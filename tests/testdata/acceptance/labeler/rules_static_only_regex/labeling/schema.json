@@ -1,0 +1,116 @@
+{
+    "test_label_category": {
+        "category": "Test Category - Nur zum Test",
+        "test_guid_label": { "description": "Test Provider GUID label in provider_guid" },
+        "test_auto_discovery_label": { "description": "Test label in test_label_category" },
+        "test_computer_name_label": { "description": "Test label in test_label_category" },
+        "test_crypto_label": { "description": "Test label in test_label_category" },
+        "test_flash_player_label": { "description": "Test label in test_label_category" },
+        "test_font_cache_label": { "description": "Test label in test_label_category" },
+        "test_target_valid_logon_id_label": { "description": "Test label in test_label_category" },
+        "test_elk_v63_label": { "description": "Test label in test_label_category" },
+        "test_message_logon_label": { "description": "Test label in test_label_category" },
+        "test_binary_with_less_than_21_characters": { "description": "Test label in test_label_category" }
+    },
+    "reporter": {
+        "category": "Der Beobachter - Merkregel: Wer meldet?",
+        "user": { "description": "(Manuelle) Mitteilung eines Nutzers, z.B. Ticket, Email" },
+        "platform": { "$ref": "#/REFERENCES/platform" },
+        "application": { "$ref": "#/REFERENCES/application" }
+    },
+    "actor": {
+        "category": "Handelnder - Merkregel: Wer hat etwas getan?",
+        "user" : {"description": "Die Handlung wurde unmittelbar vom Benutzer veranlasst"},
+        "platform": { "$ref": "#/REFERENCES/platform" },
+        "application": { "$ref": "#/REFERENCES/application" }
+    },
+    "action": {
+        "category": "Handlung - Merkregel: Was wurde getan?",
+        "authenticate": {"description": "Anmelde/Abmelde- oder anderer Authentisierungs-Vorgang"},
+        "read": {"description": "Lesender/nicht-ändernder Zugriff auf eine Resource"},
+        "create": {"description": "Erzeugen/anlegen eines neuen Objekts, wichtig: Für Ausführen ('create process') das label execute verwenden"},
+        "modify": {"description": "Ändern eines bereits existierenden Objekts"},
+        "delete": {"description": "Löschen/Entfernen eines Objekts"},
+        "execute": {"description": "Starten/Ausführen eines Dienstes/einer Anwendung, schließt ein: Laufende Programme"},
+        "terminate": {"description": "Stoppen/Beenden eines Dienstes/einer Anwendung"},
+        "result": {
+            "success": { "description": "Die Handlung ist zum Zeitpunkt der Meldung erfolgreich abgeschlossen" },
+            "failed": { "description": "Die Handlung ist zum Zeitpunkt der Meldung fehlgeschlagen" },
+            "denied": { "description": "Die Handlung wurde durch einen Sicherheitsmechanismus verhindert (z.B. Firewall: Geschlossener Port, Ändern einer Datei: Keine Schreibrechte)" },
+            "pending": { "description": "Die Handlung dauert weiter an" }
+        }
+    },
+    "object": {
+        "category": "Objekt - Merkregel: Womit wurde etwas getan?",
+        "file": { "description": "Datei" },
+        "Datenbank": {
+            "dbrecord": { "description": "Einträge in einer Datenbank (auch 'alle Einträge'" },
+            "dbschema": { "description": "Das Schema (Tabellen/Collections, Datenbanken) einer Datenbank" }
+        },
+        "permissions": { "description": "Berechtigungen" },
+        "accounts": {
+            "description": "Rechteverwaltung",
+            "useraccount": { "description": "Benutzerkonto" },
+            "groupaccount": { "description": "Gruppe in der Rechteverwaltung" },
+            "groupmembership": { "description": "Mitgliedschaft(en) in einer Gruppe" },
+            "deviceaccount": { "description": "Gerätekonto, z.B. Mitgliedschaft in Windows-Domäne" }
+        },
+        "configuration": {
+            "systemconfiguration": { "description": "Konfiguration (Dateien, Registry-Einträge, Systemzustand wie Zeit) des Betriebssystems" },
+            "serviceconfiguration": { "description": "Konfiguration (Dateien, Registry-Einträge) eines Dienstes" }
+        },
+        "superuser": { "description": "Das Objekt der Handlung ist ein Dienst, eine Anwendung, Konto o.ä., der auf der Objekt-Plattform Administrator-/root-Rechte hat bzw. benötigt. Beispiel: Init bzw. Service Control Manager laufen immer mit superuser-Rechten, weil sie den Benutzer wechseln können müssen. Ein Web-Server (www) sollte ohne superuser-Rechte laufen." },
+        "platform": { "$ref": "#/REFERENCES/platform" },
+        "application": { "$ref": "#/REFERENCES/application" }
+    },
+    "REFERENCES": {
+        "category": "Referenzen, werden in anderen Kategorien eingebunden",
+        "platform": {
+            "operatingsystem": {
+                "windows": { "description": "Rechner mit Windows-Betriebssystem" },
+                "ios": { "description": "Gerät mit iOS-Betriebssystem (Apple Handys und Tablets)" },
+                "unixlike": {
+                  "description": "Rechner mit unixoidem (*nix) Betriebssystem",
+                  "linux": { "description": "Rechner mit Linux-Betriebssystem" },
+                  "android": { "description": "Gerät mit Android-Betriebssystem" },
+                  "bsd": { "description": "Rechner mit BSD-Betriebssystem" },
+                  "macos": { "description": "Rechner mit MacOS-Betriebssystem (Apple)" }
+                }
+            },
+            "devicetype": {
+                "client": { "description": "Endnutzer-Gerät" },
+                "server": { "description": "Server" },
+                "mobile": { "description": "Mobiles Endgerät" },
+                "network": { "description": "Netzwerkgerät)",
+                    "router": { "description": "Router" },
+                    "switch": { "description": "Switch" },
+                    "securityappliance": { "description": "Security Appliance, z.B. Sandbox" },
+                    "vpngateway": { "description": "VPN-Gateway" },
+                    "wifiaccesspoint": { "description": "WLAN-Access Point" },
+                    "firewallappliance": { "description": "Firewall Appliance" }
+                }
+            }
+        },
+        "application": {
+            "desktop": { "description": "Anwendungssoftware mit Benutzerschnittstelle, d.h. Software, die üblicherweise von Endnutzern bedient wird",
+                "remotecontrol": { "description": "Fernwartungssoftware" }
+            },
+            "system": { "description": "System-Software, d.h. Programme, die integraler Bestandteil des Betriebssystems sind, z.B. init bei Linux/BSD, Service Control Manager bei Windows",
+                        "update": { "description": "Programm, das eine Aktualisierung/-en einspielt (nur über integralen Bestandteil des Betriebssystems, d.h. 'offizieller' Update-Mechanismus)" },
+                        "firewall": { "description": "Software-Firewall, z.B. netfilter/iptables oder Windows Defender Firewall" }
+            },
+            "service": { "description": "Software, die üblicherweise als Dienst im Hintegrund läuft",
+                "www": { "description": "Webserver" },
+                "webapplication": { "description": "Web-Anwendung, z.B. Forum, Wiki" },
+                "emailserver": { "description": "Mailserver" },
+                "groupware": { "description": "Groupware, z.B. Exchange, Lotus Notes, BSCW" },
+                "database": { "description": "Datenbank, z.B. MySQL, MSSQL, MongoDB" },
+                "directory": { "description": "Verzeichnisdienst, z.B. Active Directory, LDAP" },
+                "fileserver": { "description": "Dateiserver, z.B. Windows-/Samba-Dateifreigaben, FTP-Server" },
+                "antivirus": { "description": "Virenscanner" },
+                "hostbasedids": { "description": "Intrusion Detection System, das Merkmale auf einem Host überwacht, z.B. OSSEC" },
+                "networkbasedids": { "description": "Intrusion Detection System, das Netzwerke überwacht, z.B. Snort, Suricata, Bro" }
+            }
+        }
+    }
+}

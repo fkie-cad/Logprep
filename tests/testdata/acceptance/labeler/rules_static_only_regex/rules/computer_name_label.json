@@ -1,0 +1,8 @@
+[{
+  "filter": "winlog.computer_name: \"CLIENT1\"",
+  "regex_fields": ["winlog.computer_name"],
+  "label": {
+    "test_label_category": ["test_computer_name_label"]
+  },
+  "description": "*** ES 6 to 7 changes: computer_name -> winlog.computer_name ***"
+}]

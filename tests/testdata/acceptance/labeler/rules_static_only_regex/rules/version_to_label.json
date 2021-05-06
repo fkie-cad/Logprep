@@ -1,0 +1,8 @@
+[{
+  "filter": "agent.version: \"6.3.*\"",
+  "regex_fields": ["agent.version"],
+  "label": {
+    "test_label_category": ["test_elk_v63_label"]
+  },
+  "description": "*** ES 6 to 7 changes: beat.version -> agent.version ***"
+}]

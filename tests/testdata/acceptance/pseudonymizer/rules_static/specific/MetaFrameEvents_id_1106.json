@@ -1,0 +1,8 @@
+[{
+  "filter": "winlog.event_id: 1106 AND winlog.provider_name: \"MetaFrameEvents\"",
+  "pseudonymize": {
+    "winlog.event_data.param1": "RE_WHOLE_FIELD",
+    "winlog.event_data.param2": "RE_WHOLE_FIELD"
+  },
+  "description": "*** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name | event_data.param1 -> winlog.event_data.param1 | event_data.param2 -> winlog.event_data.param2 ***"
+}]

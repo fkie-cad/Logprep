@@ -1,0 +1,8 @@
+{
+    "reporter": {
+        "category": "reporter description",
+        "windows": {
+            "description": "windows description"
+        }
+    }
+}

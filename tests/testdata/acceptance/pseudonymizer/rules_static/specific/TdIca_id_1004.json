@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_id: 1004 AND winlog.provider_name: \"TdIca\"",
+  "pseudonymize": {
+    "winlog.event_data.param3": "RE_IP4_COLON_PORT"
+  },
+  "description": "*** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name | event_data.param3 -> winlog.event_data.param3 ***"
+}]

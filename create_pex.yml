@@ -1,0 +1,42 @@
+---
+
+# Adjust the variables (vars) and then execute it with: $ ansible-playbook -b create_pex.yml    (if sudo is necessary use option -K)
+
+- name: run the creation of a logprep pex file on the localhost
+  hosts: 127.0.0.1
+  connection: local
+  become: false
+  gather_facts: true
+
+  vars:
+    virtualenv_location: "~/.virtualenvs/logprep_env"
+    python_interpreter_location: "/usr/bin/python3"  # use Python 3.6
+    project_location: "~/PycharmProjects/log-management-logprep/"
+
+
+  tasks:
+
+  # Hint: the libraries of the logprep must not be installed in the virtualenv!
+  - name: Create Virtualenv with PEX
+    pip:
+      name: pex
+      virtualenv: "{{ virtualenv_location }}"
+      virtualenv_python: "{{ python_interpreter_location }}"
+
+  - name: Upgrade pip and wheel
+    shell: "{{ python_interpreter_location }} -m pip install pip --upgrade &&
+    {{ python_interpreter_location }} -m pip install wheel --upgrade"
+
+  - name: Repack confluent-kafka wheel
+    shell: "cd {{ project_location }} &&
+    rm -rf tmp_pip_cache &&
+    mkdir tmp_pip_cache &&
+    cd tmp_pip_cache &&
+    {{ python_interpreter_location }} -m pip download $(cat ../requirements.txt | grep confluent-kafka) &&
+    unzip * &&
+    rm *.whl &&
+    {{ python_interpreter_location }} -m wheel pack ."
+
+  - name: Build Pex File
+    shell: ". {{ virtualenv_location }}/bin/activate &&
+    pex . -r requirements.txt -o ./logprep.pex -c logprep --cache-dir=tmp_pip_cache --python={{ python_interpreter_location }}"  # use Python 3.6

@@ -1,0 +1,38 @@
+process_count: 1
+timeout: 0.1
+measure_time: true
+
+pipeline:
+  - normalizer:
+      type: normalizer
+      specific_rules:
+        - tests/testdata/acceptance/normalizer/rules_static/specific/
+      generic_rules:
+        - tests/testdata/acceptance/normalizer/rules_static/generic/
+      regex_mapping: tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml
+  - labelername:
+        type: labeler
+        schema: tests/testdata/acceptance/labeler/rules_static/labeling/schema.json
+        include_parent_labels: on
+        rules:
+            - tests/testdata/acceptance/labeler/rules_static/rules/
+  - pre_detector:
+      type: pre_detector
+      rules:
+        - tests/testdata/acceptance/pre_detector/rules/
+      pre_detector_topic: sre
+      tree_config: tests/testdata/acceptance/pre_detector/tree_config.json
+  - pseudonymizer:
+      type: pseudonymizer
+      pubkey_analyst: tests/testdata/acceptance/pseudonymizer/example_analyst_pub.pem
+      pubkey_depseudo: tests/testdata/acceptance/pseudonymizer/example_depseudo_pub.pem
+      regex_mapping: tests/testdata/acceptance/pseudonymizer/rules_static/regex_mapping.yml
+      hash_salt: a_secret_tasty_ingredient
+      pseudonyms_topic: pseudonyms
+      specific_rules:
+        - tests/testdata/acceptance/pseudonymizer/rules_static/specific/
+      generic_rules:
+        - tests/testdata/acceptance/pseudonymizer/rules_static/generic/
+      max_cached_pseudonyms: 1000000
+      max_caching_days: 1
+      tld_list: '-'

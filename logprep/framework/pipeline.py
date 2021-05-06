@@ -1,0 +1,316 @@
+"""This module contains all Pipeline functionality.
+
+Pipelines contain a list of processors that can be executed in order to process input log data.
+They can be multi-processed.
+
+"""
+
+from typing import List
+
+import ujson
+from ctypes import c_bool, c_ulonglong, c_double
+from logging import Logger, Handler, INFO, NOTSET
+from multiprocessing import Process, Value, Lock, current_process
+from time import time
+
+from logprep.connector.connector_factory import ConnectorFactory
+from logprep.input.input import SourceDisconnectedError, FatalInputError, WarningInputError, CriticalInputError
+from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
+from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.processor_factory import ProcessorFactory
+from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
+from logprep.util.pipeline_profiler import PipelineProfiler
+
+from logprep.util.processor_stats import StatusTracker
+from logprep.util.time_measurement import TimeMeasurement
+
+
+class PipelineError(BaseException):
+    """Base class for Pipeline related exceptions."""
+
+
+class MustProvideALogHandlerError(PipelineError):
+    """Raise if no log handler was provided."""
+
+
+class MultiprocessingPipelineError(PipelineError):
+    """Generic multiprocessing exceptions."""
+
+
+class MustProvideAnMPLogHandlerError(MultiprocessingPipelineError):
+    """Raise if no multiprocessing log handler was provided."""
+
+
+class Pipeline:
+    """Pipline of processors to be processed."""
+
+    # pylint: disable=logging-not-lazy
+    # Would require too much change in the tests.
+
+    def __init__(self, connector_config: dict, pipeline_config: List[dict], timeout: float, counter: 'SharedCounter',
+                 log_handler: Handler, status_logger_period: float, lock: Lock, shared_dict: dict,
+                 status_logger: Logger = None):
+        if not isinstance(log_handler, Handler):
+            raise MustProvideALogHandlerError
+        self._connector_config = connector_config
+        self._pipeline_config = pipeline_config
+        self._timeout = timeout
+        self._log_handler = log_handler
+        self._logger = None
+
+        self._continue_iterating = False
+        self._pipeline = []
+        self._input = None
+        self._output = None
+
+        self._processing_counter = counter
+
+        self._tracker = StatusTracker(shared_dict, status_logger_period, status_logger, lock)
+
+    def _setup(self):
+        self._create_logger()
+        self._build_pipeline()
+        self._tracker.set_pipeline(self._pipeline)
+        self._create_connectors()
+
+    def _build_pipeline(self):
+        self._logger.debug('Building \'{}\''.format(current_process().name))
+        self._pipeline = []
+        for entry in self._pipeline_config:
+            self._pipeline.append(ProcessorFactory.create(entry, self._logger))
+            self._logger.debug('Created \'{}\' processor ({})'.format(list(entry.keys())[0], current_process().name))
+            self._pipeline[-1].setup()
+        self._logger.debug('Finished building pipeline ({})'.format(current_process().name))
+
+    def _create_connectors(self):
+        self._logger.debug('Creating connectors ({})'.format(current_process().name))
+        self._input, self._output = ConnectorFactory.create(self._connector_config)
+        self._logger.debug('Created input connector \'{}\' ({})'.format(self._input.describe_endpoint(),
+                                                                        current_process().name))
+        self._logger.debug('Created output connector \'{}\' ({})'.format(self._output.describe_endpoint(),
+                                                                         current_process().name))
+
+        self._input.setup()
+        self._output.setup()
+        self._logger.debug('Finished creating connectors ({})'.format(current_process().name))
+
+    def _create_logger(self):
+        if self._log_handler.level == NOTSET:
+            self._log_handler.level = INFO
+        logger = Logger('Pipeline', level=self._log_handler.level)
+        for handler in logger.handlers:
+            logger.removeHandler(handler)
+        logger.addHandler(self._log_handler)
+
+        self._logger = logger
+
+    def run(self):
+        """Start processing processors in the Pipeline."""
+        self._setup()
+        self._enable_iteration()
+        try:
+            self._logger.debug('Start iterating ({})'.format(current_process().name))
+            while self._iterate():
+                self._retrieve_and_process_data()
+        except SourceDisconnectedError:
+            self._logger.warning(f'Lost or failed to establish connection to {self._input.describe_endpoint()}')
+        except FatalInputError as error:
+            self._logger.error(f'Input {self._input.describe_endpoint()} failed: {error}')
+        except FatalOutputError as error:
+            self._logger.error(f'Output {self._output.describe_endpoint()} failed: {error}')
+
+        self._shut_down()
+
+    def _iterate(self):
+        return self._continue_iterating
+
+    def _enable_iteration(self):
+        self._continue_iterating = True
+
+    def _retrieve_and_process_data(self):
+        event = dict()
+        try:
+            self._tracker.print_aggregate()
+            self._logger.debug('Attempting to get next event')
+            event = self._input.get_next(self._timeout)
+
+            try:
+                self._tracker.kafka_offset = self._input.current_offset
+            except AttributeError:
+                pass
+
+            if event:
+                self._logger.debug('Received event')
+                self._process_event(event)
+                self._logger.debug('Processed event')
+                self._processing_counter.increment()
+                self._processing_counter.print_if_ready()
+                if event:
+                    self._output.store(event)
+                    self._logger.debug('Stored output')
+        except SourceDisconnectedError as error:
+            raise error
+        except WarningInputError as error:
+            self._logger.warning(f'An error occurred for input {self._input.describe_endpoint()}: {error}')
+        except WarningOutputError as error:
+            self._logger.warning(f'An error occurred for output {self._output.describe_endpoint()}: {error}')
+        except CriticalInputError as error:
+            msg = f'A critical error occurred for input {self._input.describe_endpoint()}: {error}'
+            self._logger.error(msg)
+            if error.raw_input:
+                self._output.store_failed(msg, error.raw_input, event)
+        except CriticalOutputError as error:
+            msg = f'A critical error occurred for output {self._output.describe_endpoint()}: {error}'
+            self._logger.error(msg)
+            if error.raw_input:
+                self._output.store_failed(msg, error.raw_input, {})
+
+    @TimeMeasurement.measure_time('pipeline')
+    def _process_event(self, event: dict):
+        self._tracker.increment_aggregation('processed')
+
+        event_received = ujson.loads(ujson.dumps(event))
+        try:
+            for processor in self._pipeline:
+                try:
+                    extra_data = processor.process(event)
+                    if extra_data is not None:
+                        self._store_extra_data(extra_data)
+                except ProcessingWarning as error:
+                    msg = 'A non-fatal error occurred for processor {} when processing an event: {}'.format(
+                        processor.describe(), str(error))
+                    self._logger.warning(msg)
+
+                    self._tracker.add_warnings(error, processor)
+
+                if not event:
+                    self._logger.debug('Event deleted by processor {}', str(processor))
+                    return
+        # pylint: disable=broad-except
+        except BaseException as error:
+            original_error_msg = type(error).__name__
+            if str(error):
+                original_error_msg += ': {}'.format(str(error))
+            msg = 'A critical error occurred for processor {} when processing an event, ' \
+                  'processing was aborted: ({})'.format(processor.describe(), original_error_msg)
+            self._logger.error(msg)
+            self._output.store_failed(msg, event_received, event)
+            event.clear()  # 'delete' the event, i.e. no regular output
+
+            self._tracker.add_errors(error, processor)
+        # pylint: enable=broad-except
+
+    def _store_extra_data(self, extra_data: tuple):
+        self._logger.debug('Storing extra data')
+        documents = extra_data[0]
+        target = extra_data[1]
+        for document in documents:
+            self._output.store_custom(document, target)
+
+    def _shut_down(self):
+        self._input.shut_down()
+        self._output.shut_down()
+
+        while self._pipeline:
+            self._pipeline.pop().shut_down()
+
+    def stop(self):
+        """Stop processing processors in the Pipeline."""
+        self._continue_iterating = False
+
+
+class SharedCounter(object):
+    """A shared counter for multi-processing pipelines."""
+
+    def __init__(self):
+        self._val = Value(c_ulonglong, 0)
+        self._lock = Lock()
+        self._timer = Value(c_double, 0)
+        self._logger = None
+        self._period = None
+
+    def _init_timer(self, period: float):
+        if self._period is None:
+            self._period = period
+        with self._lock:
+            self._timer.value = time() + self._period
+
+    def _create_logger(self, log_handler: Handler):
+        if self._logger is None:
+            logger = Logger('Processing Counter', level=log_handler.level)
+            for handler in logger.handlers:
+                logger.removeHandler(handler)
+            logger.addHandler(log_handler)
+
+            self._logger = logger
+
+    def setup(self, print_processed_period: float, log_handler: Handler):
+        self._create_logger(log_handler)
+        self._init_timer(print_processed_period)
+
+    def increment(self):
+        """Increment the counter."""
+        with self._lock:
+            self._val.value += 1
+
+    def print_if_ready(self):
+        """Periodically print the counter and reset it."""
+        if self._timer.value != 0 and time() >= self._timer.value:
+            with self._lock:
+                if self._period / 60.0 < 1:
+                    msg = 'Processed events per {} seconds: {}'.format(
+                        self._period,
+                        self._val.value)
+                else:
+                    msg = 'Processed events per {:.2f} minutes: {}'.format(
+                        self._period / 60.0,
+                        self._val.value)
+                if self._logger:
+                    self._logger.info(msg)
+                self._val.value = 0
+                self._timer.value = time() + self._period
+
+
+class MultiprocessingPipeline(Process, Pipeline):
+    """A thread-safe Pipeline for multi-processing."""
+
+    processed_counter = SharedCounter()
+
+    def __init__(self, connector_config: dict, pipeline_config: List[dict], timeout: float, log_handler: Handler,
+                 print_processed_period: float, status_logger_period: float, lock: Lock, shared_dict: dict,
+                 profile: bool = False, status_logger: Logger = None):
+        if not isinstance(log_handler, MultiprocessingLogHandler):
+            raise MustProvideAnMPLogHandlerError
+
+        self._profile = profile
+        self.processed_counter.setup(print_processed_period, log_handler)
+
+        Pipeline.__init__(self, connector_config, pipeline_config, timeout,
+                          self.processed_counter, log_handler, status_logger_period,
+                          lock, shared_dict, status_logger=status_logger)
+
+        self._continue_iterating = Value(c_bool)
+        with self._continue_iterating.get_lock():
+            self._continue_iterating.value = False
+
+        Process.__init__(self)
+
+    def run(self):
+        """Start processing the Pipeline."""
+        if self._profile:
+            PipelineProfiler.profile_function(Pipeline.run, self)
+        else:
+            Pipeline.run(self)
+
+    def _enable_iteration(self):
+        with self._continue_iterating.get_lock():
+            self._continue_iterating.value = True
+
+    def _iterate(self) -> Value:
+        with self._continue_iterating.get_lock():
+            return self._continue_iterating.value
+
+    def stop(self):
+        """Stop processing the Pipeline."""
+        with self._continue_iterating.get_lock():
+            self._continue_iterating.value = False

@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_id: 2001",
+  "normalize": {
+    "winlog.event_data.param2": "host.user.name"
+  },
+  "description": "*** ES 6 to 7 changes: event_id -> winlog.event_id | event_data.param2 -> winlog.event_data.param2 ***"
+}]

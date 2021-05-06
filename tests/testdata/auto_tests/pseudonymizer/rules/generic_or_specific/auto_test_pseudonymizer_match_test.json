@@ -1,0 +1,10 @@
+[
+  {
+    "raw": {
+      "some_field": "something"
+    },
+    "processed": {
+      "some_field|re": "%{PSEUDONYM}"
+    }
+  }
+]

@@ -1,0 +1,7 @@
+[{
+  "filter": "file.target.path",
+  "pseudonymize": {
+    "file.target.path": "RE_WHOLE_FIELD"
+  },
+  "description": "insert a description text"
+}]

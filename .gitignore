@@ -1,0 +1,17 @@
+__pycache__/
+.cache/
+.idea/
+.pytest_cache/
+.vscode/
+*.egg-info/
+htmlcov/
+doc/build/
+doc/source/module_reference/
+*.pex
+*.out
+.coverage
+.tox/
+tests/testdata/external/
+.profile/
+*.prof
+*.pyc

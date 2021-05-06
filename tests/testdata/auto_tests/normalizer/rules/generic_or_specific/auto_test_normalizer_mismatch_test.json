@@ -1,0 +1,13 @@
+[
+  {
+    "raw": {
+      "some_field": "doesnt_matter",
+      "tags": ["syslog"]
+    },
+    "processed": {
+      "some_field": "doesnt_matter",
+      "some_normalized_field": "does_matter",
+      "tags": ["syslog"]
+    }
+  }
+]

@@ -1,0 +1,8 @@
+[{
+  "filter": "winlog.event_data.param1: \".*Adobe Flash Player.*\"",
+  "regex_fields": ["winlog.event_data.param1"],
+  "label": {
+    "test_label_category": ["test_flash_player_label"]
+  },
+  "description": "*** ES 6 to 7 changes: event_data.param1 -> winlog.event_data.param1 ***"
+}]

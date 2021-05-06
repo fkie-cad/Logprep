@@ -1,0 +1,10 @@
+[
+  {
+    "raw": {
+      "some_field": "doesnt_matter"
+    },
+    "processed": {
+      "some_field": "doesnt_matter"
+    }
+  }
+]

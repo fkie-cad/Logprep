@@ -1,0 +1,9 @@
+[{
+  "filter": "winlog.event_id: 4688",
+  "normalize": {
+    "winlog.event_data.ProcessId": "process.ppid",
+    "winlog.event_data.NewProcessId": "process.pid",
+    "winlog.event_data.ProcessName": "process.executable"
+  },
+  "description": "*** ES 6 to 7 changes: event_id -> winlog.event_id | event_data.ProcessName -> winlog.event_data.ProcessName | event_data.ProcessId -> winlog.event_data.ProcessId | event_data.NewProcessId -> winlog.event_data.NewProcessId ***"
+}]

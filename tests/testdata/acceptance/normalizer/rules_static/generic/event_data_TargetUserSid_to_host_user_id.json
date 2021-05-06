@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.TargetUserSid",
+  "normalize": {
+    "winlog.event_data.TargetUserSid": "host.user.id"
+  },
+  "description": "*** ES 6 to 7 changes: event_data.TargetUserSid -> winlog.event_data.TargetUserSid ***"
+}]

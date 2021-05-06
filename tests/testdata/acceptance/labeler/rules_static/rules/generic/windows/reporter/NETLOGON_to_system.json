@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.provider_name: \"NETLOGON\"",
+  "label": {
+    "reporter": ["windows", "system"]
+  },
+  "description": "e.g. Event-ID 3210, ToDo: set action to authenticate ? *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
+}]

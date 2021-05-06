@@ -1,0 +1,8 @@
+[{
+  "filter": "winlog.event_data.param1: \"Crypto.*\"",
+  "regex_fields": ["winlog.event_data.param1"],
+  "label": {
+    "test_label_category": ["test_crypto_label"]
+  },
+  "description": "param1: Cryptographic Services *** ES 6 to 7 changes: event_data.param1 -> winlog.event_data.param1 ***"
+}]

@@ -1,0 +1,41 @@
+process_count: 1
+timeout: 0.1
+
+pipeline:
+  - labelername:
+        type: labeler
+        schema: tests/testdata/auto_tests/labeler/schema.json
+        include_parent_labels: on
+        rules:
+            - tests/testdata/auto_tests/labeler/rules/
+  - normalizer:
+      type: normalizer
+      specific_rules:
+        - tests/testdata/auto_tests/normalizer/rules/generic_or_specific/
+      generic_rules:
+        - ''
+      regex_mapping: tests/testdata/auto_tests/normalizer/regex_mapping.yml
+  - dropper:
+      type: dropper
+      rules:
+        - tests/testdata/auto_tests/dropper/rules/
+  - pre_detector:
+      type: pre_detector
+      rules:
+        - tests/testdata/auto_tests/pre_detector/rules
+      pre_detector_topic: sre
+      tree_config: tests/testdata/auto_tests/pre_detector/tree_config.json
+  - pseudonymizer:
+      type: pseudonymizer
+      pubkey_analyst: tests/testdata/auto_tests/pseudonymizer/example_analyst_pub.pem
+      pubkey_depseudo: tests/testdata/auto_tests/pseudonymizer/example_depseudo_pub.pem
+      regex_mapping: tests/testdata/auto_tests/pseudonymizer/regex_mapping.yml
+      hash_salt: a_secret_tasty_ingredient
+      pseudonyms_topic: pseudonyms
+      specific_rules:
+        - tests/testdata/auto_tests/pseudonymizer/rules/generic_or_specific/
+      generic_rules:
+        - ''
+      max_cached_pseudonyms: 1000000
+      max_caching_days: 1
+      tld_list: '-'

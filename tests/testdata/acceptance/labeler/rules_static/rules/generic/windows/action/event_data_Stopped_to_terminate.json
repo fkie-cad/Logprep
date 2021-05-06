@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.param1: \"Stopped\" OR _source.event_data.param2: \"Stopped\"",
+  "label": {
+    "action": ["terminate"]
+  },
+  "description": "param1: e.g. Event-ID 401; param2: e.g. Event-ID 7036 *** ES 6 to 7 changes: event_data.param1 -> winlog.event_data.param1 ***"
+}]

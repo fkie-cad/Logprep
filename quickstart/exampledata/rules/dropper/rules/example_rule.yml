@@ -1,0 +1,4 @@
+filter: "test_dropper"
+drop:
+  - drop_me
+description: "..."

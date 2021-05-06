@@ -1,0 +1,8 @@
+[{
+  "filter": "winlog.task: \"Audit Policy Change\"",
+  "label": {
+    "action": ["modify"],
+    "object": ["windows", "systemconfiguration"]
+  },
+  "description": "ToDo: review *** ES 6 to 7 changes: task -> winlog.task ***"
+}]

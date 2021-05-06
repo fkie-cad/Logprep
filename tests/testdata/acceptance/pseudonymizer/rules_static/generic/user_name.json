@@ -1,0 +1,7 @@
+[{
+  "filter": "user.name",
+  "pseudonymize": {
+    "user.name": "RE_WHOLE_FIELD"
+  },
+  "description": "insert a description text"
+}]

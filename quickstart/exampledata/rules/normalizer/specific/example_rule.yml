@@ -1,0 +1,4 @@
+filter: "test_normalizer"
+normalize:
+  something_special: normalized_field
+description: "..."

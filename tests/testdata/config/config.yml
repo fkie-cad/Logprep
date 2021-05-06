@@ -1,0 +1,60 @@
+process_count: 3
+timeout: 0.1
+
+pipeline:
+  - normalizer:
+      type: normalizer
+      specific_rules:
+        - tests/testdata/unit/normalizer/rules/specific/
+      generic_rules:
+        - tests/testdata/unit/normalizer/rules/generic/
+      regex_mapping: tests/testdata/unit/normalizer/regex_mapping.yml
+  - labelername:
+        type: labeler
+        schema: tests/testdata/unit/labeler/schemas/schema3.json
+        include_parent_labels: on
+        rules:
+            - tests/testdata/unit/labeler/test_only_rules/
+  - donothingbla:
+        type: donothing
+  - donothingbla - make these names unique!:
+        type: donothing
+  - pseudonymizer:
+      type: pseudonymizer
+      pubkey_analyst: tests/testdata/unit/pseudonymizer/example_analyst_pub.pem
+      pubkey_depseudo: tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem
+      regex_mapping: tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml
+      hash_salt: a_secret_tasty_ingredient
+      pseudonyms_topic: pseudonyms
+      specific_rules:
+        - tests/testdata/unit/pseudonymizer/rules/specific/
+      generic_rules:
+        - tests/testdata/unit/pseudonymizer/rules/generic/
+      max_cached_pseudonyms: 1000000
+      max_caching_days: 1
+      tld_list: '-'
+
+connector:
+  type: confluentkafka
+  bootstrapservers:
+    - 127.0.0.1:9092
+  consumer:
+    topic: consumer
+    group: cgroup
+    auto_commit: on
+    session_timeout: 6000
+    offset_reset_policy: smallest
+  producer:
+    topic: producer
+    error_topic: producer_error
+    ack_policy: all
+    compression: none
+    maximum_backlog: 10000
+    linger_duration: 0
+    flush_timeout: 30
+    send_timeout: 2
+  ssl:
+    cafile:
+    certfile:
+    keyfile:
+    password:

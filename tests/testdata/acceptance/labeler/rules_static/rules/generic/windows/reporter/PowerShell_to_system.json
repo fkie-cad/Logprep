@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.provider_name: \"PowerShell\"",
+  "label": {
+    "reporter": ["windows", "system"]
+  },
+  "description": "*** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
+}]

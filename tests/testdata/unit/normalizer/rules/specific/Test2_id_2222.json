@@ -1,0 +1,8 @@
+[{
+  "filter": "winlog.event_id: 2222",
+  "normalize": {
+    "winlog.event_data.Test1": "test_normalized.test.field1",
+    "winlog.event_data.Test2": "test_normalized.test.field2"
+  },
+  "description": "..."
+}]

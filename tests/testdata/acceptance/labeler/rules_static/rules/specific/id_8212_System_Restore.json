@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_id: 8212 AND winlog.provider_name: \"System Restore\" AND message: \"Successfully created scheduled restore point.\"",
+  "label": {
+    "action": ["execute"]
+  },
+  "description": "ToDo: is it a process (-> execute), or it is an object (-> create) *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
+}]

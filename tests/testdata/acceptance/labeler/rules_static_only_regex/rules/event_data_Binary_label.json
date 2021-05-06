@@ -1,0 +1,8 @@
+[{
+  "filter": "winlog.event_data.Binary: \"^.{0,20}$\"",
+  "regex_fields": ["winlog.event_data.Binary"],
+  "label": {
+    "test_label_category": ["test_binary_with_less_than_21_characters"]
+  },
+  "description": "*** ES 6 to 7 changes: event_data.Binary -> winlog.event_data.Binary ***"
+}]

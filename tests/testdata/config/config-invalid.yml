@@ -1,0 +1,7 @@
+process_count: 5
+labeling_scheme: tests/testdata/labeler/unit/rules_static/labeling/schema.json
+rules:
+  - tests/testdata/unit/labeler/rules_static/rules/
+
+connector:
+  type: invalid

@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_id: 51047 AND winlog.provider_name: \"Microsoft-Windows-DHCPv6-Client\" AND message: \"DHCPv6 client service is stopped. ShutDown Flag value is 1\"",
+  "label": {
+    "action": ["terminate"]
+  },
+  "description": "e.g. Event-ID 51047 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
+}]

@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.keywords: \"Audit Failure\"",
+  "label": {
+    "action": ["failed"]
+  },
+  "description": "*** ES 6 to 7 changes: keywords -> winlog.keywords ***"
+}]

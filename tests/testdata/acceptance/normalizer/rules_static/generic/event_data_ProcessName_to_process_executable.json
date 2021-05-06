@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.ProcessName",
+  "normalize": {
+    "winlog.event_data.ProcessName": "process.executable"
+  },
+  "description": "*** ES 6 to 7 changes: event_data.ProcessName -> winlog.event_data.ProcessName ***"
+}]

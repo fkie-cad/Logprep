@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_id: 1060 AND winlog.provider_name: \"Microsoft-Windows-Terminal-RemoteConnectionManager\"",
+  "pseudonymize": {
+    "winlog.event_data.param1": "RE_WHOLE_FIELD"
+  },
+  "description": "*** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name | event_data.param1 -> winlog.event_data.param1 ***"
+}]

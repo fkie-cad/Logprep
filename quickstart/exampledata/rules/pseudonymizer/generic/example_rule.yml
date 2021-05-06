@@ -1,0 +1,4 @@
+filter: "test_pseudonymizer AND something"
+pseudonymize:
+  something: "RE_WHOLE_FIELD"
+description: "..."

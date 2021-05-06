@@ -1,0 +1,110 @@
+version: "3.9"
+
+# The following command must be executed after each restart on linux or elasticsearch exits with an error
+# sudo sysctl -w vm.max_map_count=262144
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    hostname: elasticsearch
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=es-docker-cluster
+      - cluster.initial_master_nodes=elasticsearch
+      - bootstrap.memory_lock=true
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    networks:
+      elastic:
+        ipv4_address: 172.21.0.2
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.10.2
+    container_name: kibana
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    networks:
+      elastic:
+        ipv4_address: 172.21.0.3
+    depends_on:
+      - elasticsearch
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - 2181:2181
+    networks:
+      elastic:
+        ipv4_address: 172.21.0.4
+
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - 9092:9092
+    hostname: kafka
+    networks:
+      elastic:
+        ipv4_address: 172.21.0.5
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://172.21.0.5:9092
+      KAFKA_CREATE_TOPICS: "consumer:1:1,producer:1:1,producer_error:1:1,pseudonyms:1:1,sre:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.10.2
+    container_name: logstash
+    environment:
+      LS_OPTS: "--config.reload.automatic"
+    networks:
+      elastic:
+        ipv4_address: 172.21.0.6
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    depends_on:
+      - kafka
+      - elasticsearch
+
+  logprep:
+    build:
+      context: ..
+      dockerfile: quickstart/Dockerfile
+    image: logprep
+    container_name: logprep
+    networks:
+      elastic:
+        ipv4_address: 172.21.0.7
+    profiles:
+      - logprep
+    depends_on:
+      - kafka
+
+volumes:
+  data:
+    driver: local
+
+networks:
+  elastic:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

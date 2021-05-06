@@ -1,0 +1,4 @@
+RE_IP_PORT_CAP: .*(?P<IP>[\d.]+):(?P<PORT>\d+).*
+RE_FULL_CAP: (?P<ALL>.*)
+RE_ONLY_THIS_CAP: .*(?P<ONLY_THIS>Only this!).*
+RE_SWITCH_CAP: (?P<SECOND>Second).*(?P<FIRST>First)

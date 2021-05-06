@@ -1,0 +1,24 @@
+[{
+  "filter": "winlog.provider_name: \"Service Control Manager\"",
+  "pre_detector": {
+    "id": "RULE_ONE_ID",
+    "title": "RULE_ONE",
+    "severity": "critical",
+    "mitre": ["mitre1", "mitre2"],
+    "case_condition": "directly"
+  },
+  "sigma_fields": true,
+  "description": ""
+},
+{
+  "filter": "winlog.event_id: 123",
+  "pre_detector": {
+    "id": "RULE_TWO_ID",
+    "title": "RULE_TWO",
+    "severity": "critical",
+    "mitre": ["mitre2", "mitre3"],
+    "case_condition": "directly"
+  },
+  "sigma_fields": true,
+  "description": ""
+}]

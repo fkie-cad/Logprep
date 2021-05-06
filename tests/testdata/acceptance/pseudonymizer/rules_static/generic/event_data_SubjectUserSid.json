@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.SubjectUserSid",
+  "pseudonymize": {
+    "winlog.event_data.SubjectUserSid": "RE_WHOLE_FIELD"
+  },
+  "description": "*** ES 6 to 7 changes: event_data.SubjectUserSid -> winlog.event_data.SubjectUserSid ***"
+}]

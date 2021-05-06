@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.ToFolder",
+  "pseudonymize": {
+    "winlog.event_data.ToFolder": "RE_WHOLE_FIELD"
+  },
+  "description": "*** ES 6 to 7 changes: event_data.ToFolder -> winlog.event_data.ToFolder ***"
+}]

@@ -1,0 +1,7 @@
+[{
+  "filter": "NOT winlog.event_id: 4688 AND winlog.event_data.ProcessId",
+  "normalize": {
+    "winlog.event_data.ProcessId": "process.pid"
+  },
+  "description": "*** ES 6 to 7 changes: event_id -> winlog.event_id | event_data.ProcessId -> winlog.event_data.ProcessId ***"
+}]

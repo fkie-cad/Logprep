@@ -1,0 +1,8 @@
+[{
+  "filter": "message: \".*The logon type field indicates the kind of logon that occurred. The most common types are 2.*\"",
+  "regex_fields": ["message"],
+  "label": {
+    "test_label_category": ["test_message_logon_label"]
+  },
+  "description": "..."
+}]

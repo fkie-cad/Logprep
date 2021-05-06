@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.provider_name: \"Microsoft-Windows-FilterManager\"",
+  "label": {
+    "reporter": ["windows", "system"]
+  },
+  "description": "e.g. EventID 6 *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
+}]

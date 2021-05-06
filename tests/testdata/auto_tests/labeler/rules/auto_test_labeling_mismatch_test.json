@@ -1,0 +1,11 @@
+[
+  {
+    "raw": {
+      "some_field": "stop"
+    },
+    "processed": {
+      "some_field": "stop",
+      "label": {"action": ["terminates"]}
+    }
+  }
+]

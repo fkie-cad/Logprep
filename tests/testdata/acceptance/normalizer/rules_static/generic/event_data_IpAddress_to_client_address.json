@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.IpAddress",
+  "normalize": {
+    "winlog.event_data.IpAddress": "client.address"
+  },
+  "description": "*** ES 6 to 7 changes: event_data.IpAddress -> winlog.event_data.IpAddress ***"
+}]

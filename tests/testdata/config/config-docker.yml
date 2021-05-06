@@ -1,0 +1,35 @@
+process_count: 1
+timeout: 0.1
+
+pipeline:
+  - labelername:
+        type: labeler
+        schema: tests/testdata/acceptance/labeler/rules_static/labeling/schema.json
+        include_parent_labels: on
+        rules:
+            - tests/testdata/acceptance/labeler/rules_static/rules/
+
+connector:
+  type: confluentkafka
+  bootstrapservers:
+    - 172.17.0.2:9092
+  consumer:
+    topic: wineventlog_raw
+    group: cgroup
+    auto_commit: on
+    session_timeout: 6000
+    offset_reset_policy: smallest
+  producer:
+    topic: wineventlog_labeled
+    error_topic: producer_error
+    ack_policy: all
+    compression: none
+    maximum_backlog: 10000
+    linger_duration: 0
+    flush_timeout: 30
+    send_timeout: 2
+  ssl:
+    cafile:
+    certfile:
+    keyfile:
+    password:

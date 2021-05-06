@@ -1,0 +1,996 @@
+=============
+Rule Language
+=============
+
+Basic Functionality
+===================
+
+How processors process log messages is defined via configurable rules.
+Each rule contains a filter that is used to select log messages.
+Other parameters within the rules define how certain log messages should be transformed.
+Those parameters depend on the processor for which they were created.
+
+Rule Files
+==========
+
+Rules are defined as YAML objects or JSON objects.
+Rules can be distributed over different files or multiple rules can reside within one file.
+Each file contains multiple YAML documents or a JSON array of JSON objects.
+The YAML format is preferred, since it is a superset of JSON and has better readability.
+
+Depending on the filter, a rule can trigger for different types of messages or just for specific log messages.
+In general, specific rules are being applied first.
+It depends on the directory where the rule is located if it is considered specific or generic.
+
+Further details can be found in the section for processors.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example structure of a YAML file with a rule for the labeler processor
+
+    filter: 'command: execute'  # A comment
+    label:
+      action:
+      - execute
+    description: '...'
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example structure of a YAML file containing multiple rules for the labeler processor
+
+    filter: 'command: "execute something"'
+    label:
+      action:
+      - execute
+    description: '...'
+    ---
+    filter: 'command: "terminate something"'
+    label:
+      action:
+      - terminate
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Example structure of a JSON file with a rule for the labeler processor
+
+    [{
+      "filter": "command: execute",
+      "label": {
+        "action": ["execute"]
+      },
+      "description": "..."
+    }]
+
+..  code-block:: json
+    :linenos:
+    :caption: Example structure of a JSON file containing multiple rules for the labeler processor
+
+    [{
+      "filter": "command: \"execute something\"",
+      "label": {
+        "action": ["execute"]
+      },
+      "description": "..."
+    },
+    {
+      "filter": "command: \"terminate something\"",
+      "label": {
+        "action": ["terminate"]
+      },
+      "description": "..."
+    }]
+
+Filter
+======
+
+The filters are based on the Lucene query language, but contain some additional enhancements.
+It is possible to filter for keys and values in log messages.
+**Dot notation** is used to access subfields in log messages.
+A filter for :code:`{'field': {'subfield': 'value'}}` can be specified by :code:`field.subfield': 'value`.
+
+If a key without a value is given it is filtered for the existence of the key.
+The existence of a specific field can therefore be checked by a key without a value.
+The filter :code:`field.subfield` would match for every value :code:`subfield` in :code:`{'field': {'subfield': 'value'}}`.
+
+The filter in the following example would match fields :code:`ip_address` with the value :code:`192.168.0.1`.
+Meaning all following transformations done by this rule would be applied only on log messages that match this criterion.
+This example is not complete, since rules are specific to processors and require additional options.
+
+
+..  code-block:: json
+    :linenos:
+    :caption: Example
+
+    { "filter": "ip_address: 192.168.0.1" }
+
+It is possible to use filters with field names that contain white spaces or use special symbols of the Lucene syntax.
+However, this has to be escaped.
+The filter :code:`filter: 'field.a subfield(test): value'` must be escaped as :code:`filter: 'field.a\ subfield\(test\): value'`.
+Other references to this field do not require such escaping.
+This is *only* necessary for the filter.
+It is necessary to escape twice if the file is in the JSON format - once for the filter itself and once for JSON.
+
+Operators
+---------
+
+A subset of Lucene query operators is supported:
+
+- **NOT**: Condition is not true.
+- **AND**: Connects two conditions. Both conditions must be true.
+- **OR**: Connects two conditions. At least one them must be true.
+
+In the following example log messages are filtered for which :code:`event_id: 1` is true and :code:`ip_address: 192.168.0.1` is false.
+This example is not complete, since rules are specific to processors and require additional options.
+
+
+..  code-block:: json
+    :linenos:
+    :caption: Example
+
+    { "filter": "event_id: 1 AND NOT ip_address: 192.168.0.1" }
+
+RegEx-Filter
+------------
+
+It is possible use regex expressions to match values.
+For this, the field with the regex pattern must be added to the optional field :code:`regex_fields` in the rule definition.
+
+In the following example the field :code:`ip_address` is defined as regex field.
+It would be filtered for log messages in which the value :code:`ip_address` starts with :code:`192.168.0.`.
+This example is not complete, since rules are specific to processors and require additional options.
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'ip_address: "192\.168\.0\..*"'
+    regex_fields:
+    - ip_address
+
+Labeler
+=======
+
+The labeler requires the additional field :code:`label`.
+The keys under :code:`label` define the categories under which a label should be added.
+The values are a list of labels that should be added under a category.
+
+In the following example, the label :code:`execute` will be added to the labels of the category :code:`action`:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'command: "executing something"'
+    label:
+      action:
+      - execute
+    description: '...'
+
+Normalizer
+==========
+
+The normalizer requires the additional field :code:`normalize`.
+It contains key-value pairs that define if and how fields gets normalized.
+The keys describe fields that are going to be normalized and the values describe the new normalized fields.
+Through normalizing, old fields are being copied to new fields, but the old fields are not deleted.
+
+In the following example the field :code:`event_data.ClientAddress` is normalized to :code:`client.ip`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'event_data.ClientAddress'
+    normalize:
+      event_data.ClientAddress: client.ip
+    description: '...'
+
+Extraction and Replacement
+--------------------------
+
+Instead of copying a whole field, it is possible to copy only parts of it via regex capture groups.
+These can be then extracted and rearranged in a new field.
+The groups are defined in a configurable file as keywords and can be referenced from within the rules via the Python regex syntax.
+
+Instead of specifying a target field, a list with three elements has to be used.
+The first element is the target field, the second element is a regex keyword and the third field is a regex expression that defines how the value should be inserted into the new field.
+
+In the following example :code:`event_data.address_text: "The IP is 1.2.3.4 and the port is 1234!"` is normalized to :code:`address: "1.2.3.4:1234"`.
+
+..  code-block:: json
+    :linenos:
+    :caption: Example - Definition of regex keywords in the regex mapping file
+
+    {
+      "RE_IP_PORT_CAP": ".*(?P<IP>[\\d.]+).*(?P<PORT>\\d+).*",
+      "RE_WHOLE_FIELD": "(.*)"
+    }
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Rule with extraction
+
+        filter: event_id
+        normalize:
+          event_data.address_text:
+          - address
+          - RE_IP_PORT_CAP
+          - '\g<IP>:\g<PORT>'
+
+Grok
+----
+
+Grok functionality is fully supported for field normalization.
+This can be combined with the normalizations that have been already introduced or it can be used instead of them.
+By combining both types of normalization it is possible to perform transformations on results of Grok that can not be achieved by Grok alone.
+All Grok normalizations are always performed before other normalizations.
+An example for this is the creation of nested fields.
+
+The following example would normalize :code:`event_data.ip_and_port: "Linus has the address 1.2.3.4 1234", event_data.address_text: "This is an address: 1.2.3.4:1234"` to
+:code:`address.ip: "1.2.3.4"`, :code:`address.port: 1234`, :code:`name: Linus` and :code:`address.combined: 1.2.3.4 and 1234`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Grok normalization and subsequent normalization of a result
+
+      filter: event_id
+      normalize:
+        event_data.ip_and_port: '{"grok": "%{USER:name} has the address %{IP:[address][ip]} %{NUMBER:[address][port]:int}"}'
+        event_data.address_text:
+        - address.combined
+        - RE_IP_PORT_CAP
+        - '\g<IP> and \g<PORT>'
+
+Normalization of Timestamps
+---------------------------
+
+There is a special functionality that allows to normalize timestamps.
+With this functionality different timestamp formats can be converted to ISO8601 and timezones can be adapted.
+Instead of giving a target field, the special field `timestamp` is used.
+Under this field additional configurations for the normalization can be specified.
+Under `timestamp.source_formats` a list of possible source formats for the timestamp must be defined.
+The original timezone of the timestamp must be specified in `timestamp.source_timezone`.
+Furthermore, in `timestamp.destination_timezone` the new timestamp must be specified.
+Finally, `timestamp.destination` defines the target field to which the new timestamp should be written.
+Optionally, it can be defined if the normalization is allowed to override existing values by setting `timestamp.allow_override` to `true` or `false`.
+It is allowed to override by default.
+
+Valid formats for timestamps are defined by the notation of the Python datetime module.
+Additionally, the value `ISO8601` can be used if the timestamp already exists in this format.
+
+Valid timezones are defined in the pytz module:
+
+.. raw:: html
+
+   <details>
+   <summary><a>List of all timezones</a></summary>
+
+.. code-block::
+   :linenos:
+   :caption: Timezones from the Python pytz module
+
+   Africa/Abidjan
+   Africa/Accra
+   Africa/Addis_Ababa
+   Africa/Algiers
+   Africa/Asmara
+   Africa/Asmera
+   Africa/Bamako
+   Africa/Bangui
+   Africa/Banjul
+   Africa/Bissau
+   Africa/Blantyre
+   Africa/Brazzaville
+   Africa/Bujumbura
+   Africa/Cairo
+   Africa/Casablanca
+   Africa/Ceuta
+   Africa/Conakry
+   Africa/Dakar
+   Africa/Dar_es_Salaam
+   Africa/Djibouti
+   Africa/Douala
+   Africa/El_Aaiun
+   Africa/Freetown
+   Africa/Gaborone
+   Africa/Harare
+   Africa/Johannesburg
+   Africa/Juba
+   Africa/Kampala
+   Africa/Khartoum
+   Africa/Kigali
+   Africa/Kinshasa
+   Africa/Lagos
+   Africa/Libreville
+   Africa/Lome
+   Africa/Luanda
+   Africa/Lubumbashi
+   Africa/Lusaka
+   Africa/Malabo
+   Africa/Maputo
+   Africa/Maseru
+   Africa/Mbabane
+   Africa/Mogadishu
+   Africa/Monrovia
+   Africa/Nairobi
+   Africa/Ndjamena
+   Africa/Niamey
+   Africa/Nouakchott
+   Africa/Ouagadougou
+   Africa/Porto-Novo
+   Africa/Sao_Tome
+   Africa/Timbuktu
+   Africa/Tripoli
+   Africa/Tunis
+   Africa/Windhoek
+   America/Adak
+   America/Anchorage
+   America/Anguilla
+   America/Antigua
+   America/Araguaina
+   America/Argentina/Buenos_Aires
+   America/Argentina/Catamarca
+   America/Argentina/ComodRivadavia
+   America/Argentina/Cordoba
+   America/Argentina/Jujuy
+   America/Argentina/La_Rioja
+   America/Argentina/Mendoza
+   America/Argentina/Rio_Gallegos
+   America/Argentina/Salta
+   America/Argentina/San_Juan
+   America/Argentina/San_Luis
+   America/Argentina/Tucuman
+   America/Argentina/Ushuaia
+   America/Aruba
+   America/Asuncion
+   America/Atikokan
+   America/Atka
+   America/Bahia
+   America/Bahia_Banderas
+   America/Barbados
+   America/Belem
+   America/Belize
+   America/Blanc-Sablon
+   America/Boa_Vista
+   America/Bogota
+   America/Boise
+   America/Buenos_Aires
+   America/Cambridge_Bay
+   America/Campo_Grande
+   America/Cancun
+   America/Caracas
+   America/Catamarca
+   America/Cayenne
+   America/Cayman
+   America/Chicago
+   America/Chihuahua
+   America/Coral_Harbour
+   America/Cordoba
+   America/Costa_Rica
+   America/Creston
+   America/Cuiaba
+   America/Curacao
+   America/Danmarkshavn
+   America/Dawson
+   America/Dawson_Creek
+   America/Denver
+   America/Detroit
+   America/Dominica
+   America/Edmonton
+   America/Eirunepe
+   America/El_Salvador
+   America/Ensenada
+   America/Fort_Wayne
+   America/Fortaleza
+   America/Glace_Bay
+   America/Godthab
+   America/Goose_Bay
+   America/Grand_Turk
+   America/Grenada
+   America/Guadeloupe
+   America/Guatemala
+   America/Guayaquil
+   America/Guyana
+   America/Halifax
+   America/Havana
+   America/Hermosillo
+   America/Indiana/Indianapolis
+   America/Indiana/Knox
+   America/Indiana/Marengo
+   America/Indiana/Petersburg
+   America/Indiana/Tell_City
+   America/Indiana/Vevay
+   America/Indiana/Vincennes
+   America/Indiana/Winamac
+   America/Indianapolis
+   America/Inuvik
+   America/Iqaluit
+   America/Jamaica
+   America/Jujuy
+   America/Juneau
+   America/Kentucky/Louisville
+   America/Kentucky/Monticello
+   America/Knox_IN
+   America/Kralendijk
+   America/La_Paz
+   America/Lima
+   America/Los_Angeles
+   America/Louisville
+   America/Lower_Princes
+   America/Maceio
+   America/Managua
+   America/Manaus
+   America/Marigot
+   America/Martinique
+   America/Matamoros
+   America/Mazatlan
+   America/Mendoza
+   America/Menominee
+   America/Merida
+   America/Metlakatla
+   America/Mexico_City
+   America/Miquelon
+   America/Moncton
+   America/Monterrey
+   America/Montevideo
+   America/Montreal
+   America/Montserrat
+   America/Nassau
+   America/New_York
+   America/Nipigon
+   America/Nome
+   America/Noronha
+   America/North_Dakota/Beulah
+   America/North_Dakota/Center
+   America/North_Dakota/New_Salem
+   America/Ojinaga
+   America/Panama
+   America/Pangnirtung
+   America/Paramaribo
+   America/Phoenix
+   America/Port-au-Prince
+   America/Port_of_Spain
+   America/Porto_Acre
+   America/Porto_Velho
+   America/Puerto_Rico
+   America/Rainy_River
+   America/Rankin_Inlet
+   America/Recife
+   America/Regina
+   America/Resolute
+   America/Rio_Branco
+   America/Rosario
+   America/Santa_Isabel
+   America/Santarem
+   America/Santiago
+   America/Santo_Domingo
+   America/Sao_Paulo
+   America/Scoresbysund
+   America/Shiprock
+   America/Sitka
+   America/St_Barthelemy
+   America/St_Johns
+   America/St_Kitts
+   America/St_Lucia
+   America/St_Thomas
+   America/St_Vincent
+   America/Swift_Current
+   America/Tegucigalpa
+   America/Thule
+   America/Thunder_Bay
+   America/Tijuana
+   America/Toronto
+   America/Tortola
+   America/Vancouver
+   America/Virgin
+   America/Whitehorse
+   America/Winnipeg
+   America/Yakutat
+   America/Yellowknife
+   Antarctica/Casey
+   Antarctica/Davis
+   Antarctica/DumontDUrville
+   Antarctica/Macquarie
+   Antarctica/Mawson
+   Antarctica/McMurdo
+   Antarctica/Palmer
+   Antarctica/Rothera
+   Antarctica/South_Pole
+   Antarctica/Syowa
+   Antarctica/Vostok
+   Arctic/Longyearbyen
+   Asia/Aden
+   Asia/Almaty
+   Asia/Amman
+   Asia/Anadyr
+   Asia/Aqtau
+   Asia/Aqtobe
+   Asia/Ashgabat
+   Asia/Ashkhabad
+   Asia/Baghdad
+   Asia/Bahrain
+   Asia/Baku
+   Asia/Bangkok
+   Asia/Beirut
+   Asia/Bishkek
+   Asia/Brunei
+   Asia/Calcutta
+   Asia/Choibalsan
+   Asia/Chongqing
+   Asia/Chungking
+   Asia/Colombo
+   Asia/Dacca
+   Asia/Damascus
+   Asia/Dhaka
+   Asia/Dili
+   Asia/Dubai
+   Asia/Dushanbe
+   Asia/Gaza
+   Asia/Harbin
+   Asia/Hebron
+   Asia/Ho_Chi_Minh
+   Asia/Hong_Kong
+   Asia/Hovd
+   Asia/Irkutsk
+   Asia/Istanbul
+   Asia/Jakarta
+   Asia/Jayapura
+   Asia/Jerusalem
+   Asia/Kabul
+   Asia/Kamchatka
+   Asia/Karachi
+   Asia/Kashgar
+   Asia/Kathmandu
+   Asia/Katmandu
+   Asia/Kolkata
+   Asia/Krasnoyarsk
+   Asia/Kuala_Lumpur
+   Asia/Kuching
+   Asia/Kuwait
+   Asia/Macao
+   Asia/Macau
+   Asia/Magadan
+   Asia/Makassar
+   Asia/Manila
+   Asia/Muscat
+   Asia/Nicosia
+   Asia/Novokuznetsk
+   Asia/Novosibirsk
+   Asia/Omsk
+   Asia/Oral
+   Asia/Phnom_Penh
+   Asia/Pontianak
+   Asia/Pyongyang
+   Asia/Qatar
+   Asia/Qyzylorda
+   Asia/Rangoon
+   Asia/Riyadh
+   Asia/Saigon
+   Asia/Sakhalin
+   Asia/Samarkand
+   Asia/Seoul
+   Asia/Shanghai
+   Asia/Singapore
+   Asia/Taipei
+   Asia/Tashkent
+   Asia/Tbilisi
+   Asia/Tehran
+   Asia/Tel_Aviv
+   Asia/Thimbu
+   Asia/Thimphu
+   Asia/Tokyo
+   Asia/Ujung_Pandang
+   Asia/Ulaanbaatar
+   Asia/Ulan_Bator
+   Asia/Urumqi
+   Asia/Vientiane
+   Asia/Vladivostok
+   Asia/Yakutsk
+   Asia/Yekaterinburg
+   Asia/Yerevan
+   Atlantic/Azores
+   Atlantic/Bermuda
+   Atlantic/Canary
+   Atlantic/Cape_Verde
+   Atlantic/Faeroe
+   Atlantic/Faroe
+   Atlantic/Jan_Mayen
+   Atlantic/Madeira
+   Atlantic/Reykjavik
+   Atlantic/South_Georgia
+   Atlantic/St_Helena
+   Atlantic/Stanley
+   Australia/ACT
+   Australia/Adelaide
+   Australia/Brisbane
+   Australia/Broken_Hill
+   Australia/Canberra
+   Australia/Currie
+   Australia/Darwin
+   Australia/Eucla
+   Australia/Hobart
+   Australia/LHI
+   Australia/Lindeman
+   Australia/Lord_Howe
+   Australia/Melbourne
+   Australia/NSW
+   Australia/North
+   Australia/Perth
+   Australia/Queensland
+   Australia/South
+   Australia/Sydney
+   Australia/Tasmania
+   Australia/Victoria
+   Australia/West
+   Australia/Yancowinna
+   Brazil/Acre
+   Brazil/DeNoronha
+   Brazil/East
+   Brazil/West
+   CET
+   CST6CDT
+   Canada/Atlantic
+   Canada/Central
+   Canada/East-Saskatchewan
+   Canada/Eastern
+   Canada/Mountain
+   Canada/Newfoundland
+   Canada/Pacific
+   Canada/Saskatchewan
+   Canada/Yukon
+   Chile/Continental
+   Chile/EasterIsland
+   Cuba
+   EET
+   EST
+   EST5EDT
+   Egypt
+   Eire
+   Etc/GMT
+   Etc/GMT+0
+   Etc/GMT+1
+   Etc/GMT+10
+   Etc/GMT+11
+   Etc/GMT+12
+   Etc/GMT+2
+   Etc/GMT+3
+   Etc/GMT+4
+   Etc/GMT+5
+   Etc/GMT+6
+   Etc/GMT+7
+   Etc/GMT+8
+   Etc/GMT+9
+   Etc/GMT-0
+   Etc/GMT-1
+   Etc/GMT-10
+   Etc/GMT-11
+   Etc/GMT-12
+   Etc/GMT-13
+   Etc/GMT-14
+   Etc/GMT-2
+   Etc/GMT-3
+   Etc/GMT-4
+   Etc/GMT-5
+   Etc/GMT-6
+   Etc/GMT-7
+   Etc/GMT-8
+   Etc/GMT-9
+   Etc/GMT0
+   Etc/Greenwich
+   Etc/UCT
+   Etc/UTC
+   Etc/Universal
+   Etc/Zulu
+   Europe/Amsterdam
+   Europe/Andorra
+   Europe/Athens
+   Europe/Belfast
+   Europe/Belgrade
+   Europe/Berlin
+   Europe/Bratislava
+   Europe/Brussels
+   Europe/Bucharest
+   Europe/Budapest
+   Europe/Chisinau
+   Europe/Copenhagen
+   Europe/Dublin
+   Europe/Gibraltar
+   Europe/Guernsey
+   Europe/Helsinki
+   Europe/Isle_of_Man
+   Europe/Istanbul
+   Europe/Jersey
+   Europe/Kaliningrad
+   Europe/Kiev
+   Europe/Lisbon
+   Europe/Ljubljana
+   Europe/London
+   Europe/Luxembourg
+   Europe/Madrid
+   Europe/Malta
+   Europe/Mariehamn
+   Europe/Minsk
+   Europe/Monaco
+   Europe/Moscow
+   Europe/Nicosia
+   Europe/Oslo
+   Europe/Paris
+   Europe/Podgorica
+   Europe/Prague
+   Europe/Riga
+   Europe/Rome
+   Europe/Samara
+   Europe/San_Marino
+   Europe/Sarajevo
+   Europe/Simferopol
+   Europe/Skopje
+   Europe/Sofia
+   Europe/Stockholm
+   Europe/Tallinn
+   Europe/Tirane
+   Europe/Tiraspol
+   Europe/Uzhgorod
+   Europe/Vaduz
+   Europe/Vatican
+   Europe/Vienna
+   Europe/Vilnius
+   Europe/Volgograd
+   Europe/Warsaw
+   Europe/Zagreb
+   Europe/Zaporozhye
+   Europe/Zurich
+   GB
+   GB-Eire
+   GMT
+   GMT+0
+   GMT-0
+   GMT0
+   Greenwich
+   HST
+   Hongkong
+   Iceland
+   Indian/Antananarivo
+   Indian/Chagos
+   Indian/Christmas
+   Indian/Cocos
+   Indian/Comoro
+   Indian/Kerguelen
+   Indian/Mahe
+   Indian/Maldives
+   Indian/Mauritius
+   Indian/Mayotte
+   Indian/Reunion
+   Iran
+   Israel
+   Jamaica
+   Japan
+   Kwajalein
+   Libya
+   MET
+   MST
+   MST7MDT
+   Mexico/BajaNorte
+   Mexico/BajaSur
+   Mexico/General
+   NZ
+   NZ-CHAT
+   Navajo
+   PRC
+   PST8PDT
+   Pacific/Apia
+   Pacific/Auckland
+   Pacific/Chatham
+   Pacific/Chuuk
+   Pacific/Easter
+   Pacific/Efate
+   Pacific/Enderbury
+   Pacific/Fakaofo
+   Pacific/Fiji
+   Pacific/Funafuti
+   Pacific/Galapagos
+   Pacific/Gambier
+   Pacific/Guadalcanal
+   Pacific/Guam
+   Pacific/Honolulu
+   Pacific/Johnston
+   Pacific/Kiritimati
+   Pacific/Kosrae
+   Pacific/Kwajalein
+   Pacific/Majuro
+   Pacific/Marquesas
+   Pacific/Midway
+   Pacific/Nauru
+   Pacific/Niue
+   Pacific/Norfolk
+   Pacific/Noumea
+   Pacific/Pago_Pago
+   Pacific/Palau
+   Pacific/Pitcairn
+   Pacific/Pohnpei
+   Pacific/Ponape
+   Pacific/Port_Moresby
+   Pacific/Rarotonga
+   Pacific/Saipan
+   Pacific/Samoa
+   Pacific/Tahiti
+   Pacific/Tarawa
+   Pacific/Tongatapu
+   Pacific/Truk
+   Pacific/Wake
+   Pacific/Wallis
+   Pacific/Yap
+   Poland
+   Portugal
+   ROC
+   ROK
+   Singapore
+   Turkey
+   UCT
+   US/Alaska
+   US/Aleutian
+   US/Arizona
+   US/Central
+   US/East-Indiana
+   US/Eastern
+   US/Hawaii
+   US/Indiana-Starke
+   US/Michigan
+   US/Mountain
+   US/Pacific
+   US/Pacific-New
+   US/Samoa
+   UTC
+   Universal
+   W-SU
+   WET
+   Zulu
+
+.. raw:: html
+
+   </details>
+   <br/>
+
+In the following example :code:`@timestamp: 2000 12 31 - 22:59:59` would be normalized to :code:`@timestamp: 2000-12-31T23:59:59+01:00`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Normalization of a timestamp
+
+    filter: '@timestamp'
+    normalize:
+      '@timestamp':
+        timestamp:
+          destination: '@timestamp'
+          source_formats:
+          - '%Y %m %d - %H:%M:%S'
+          source_timezone: 'UTC'
+          destination_timezone: 'Europe/Berlin'
+    description: 'Test-rule with matching auto-test'
+
+PreDetector
+===========
+
+The predetector requires the additional field :code:`pre_detector`.
+Below this, the following subfields must be provided, which are based on the Sigma format:
+
+  * :code:`id`: An ID for the triggered rule
+  * :code:`title`: A description for the triggered rule
+  * :code:`severity`: Rating how dangerous an Event is (i.e. `critical`)
+  * :code:`mitre`: A list of MITRE ATT&CK tags
+  * :code:`case_condition`: The type of the triggered rule (mostly `directly`)
+
+Those fields and a `pre_detector_id` are written into an own Kafka topic.
+The `pre_detector_id` will be furthermore added to the triggering event so that an event can be linked with its detection.
+
+The following example shows a complete rule:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'some_field: "very malicious!"'
+    pre_detector:
+      case_condition: directly
+      id: RULE_ONE_ID
+      mitre:
+      - attack.something1
+      - attack.something2
+      severity: critical
+      title: Rule one
+    description: Some malicous event.
+
+Additionally the optional field :code:`ip_fields` can be specified.
+It allows to specify a list of fields that can be compared to a list of IPs, which can be configured in the pipeline for the predetector.
+If this field was specified, then the rule will *only* trigger in case one of the IPs from the list is also available in the specified fields.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'some_field: something AND some_ip_field'
+    pre_detector:
+      id: RULE_ONE_ID
+      title: Rule one
+      severity: critical
+      mitre:
+      - some_tag
+      case_condition: directly
+    description: Some malicous event.
+    ip_fields:
+    - some_ip_field
+
+Pseudonymizer
+=============
+
+The pseudonymizer requires the additional field :code:`pseudonymize`.
+It contains key value pairs that define what will be pseudonymized.
+
+They key represents the field that will be pseudonymized and the value contains a regex keyword.
+The regex keyword defines which parts of the value are being pseudonymized.
+Only the regex matches are being pseudonymized that are also in a capture group.
+An arbitrary amount of capture groups can be used.
+The definitions of regex keywords are located in a separate file.
+
+In the following the field :code:`event_data.param1` is being completely pseudonymized.
+This is achieved by using the predefined keyword :code:`RE_WHOLE_FIELD`, which will be resolved to a regex expression.
+:code:`RE_WHOLE_FIELD` resolves to :code:`(.*)` which puts the whole match in a capture group and therefore pseudonymizes it completely.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Rule
+
+    filter: 'event_id: 1 AND source_name: "Test"'
+    pseudonymize:
+      event_data.param1: RE_WHOLE_FIELD
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Example - Regex mapping file
+
+    {
+      "RE_WHOLE_FIELD": "(.*)",
+      "RE_DOMAIN_BACKSLASH_USERNAME": "\\w+\\\\(.*)",
+      "RE_IP4_COLON_PORT": "([\\d.]+):\\d+"
+    }
+
+Dropper
+=======
+
+Which fields are removed is defined in the additional field :code:`drop`.
+It contains a list of fields in dot notation.
+For nested fields all subfields are also removed if they are empty.
+If only the specified subfield should be removed, then this can be achieved by setting the option :code:`drop_full: false`.
+
+In the following example the field :code:`keep_me.drop_me` is deleted while the fields :code:`keep_me` and :code:`keep_me.keep_me_too` are kept.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Rule
+
+    filter: keep_me.drop_me
+    drop:
+    - keep_me.drop_me
+
+..  code-block:: json
+    :linenos:
+    :caption: Example - Input document
+
+    [{
+        "keep_me": {
+            "drop_me": "something",
+            "keep_me_too": "something"
+        }
+    }]
+
+..  code-block:: json
+    :linenos:
+    :caption: Example - Expected output after application of the rule
+
+    [{
+        "keep_me": {
+            "keep_me_too": "something"
+        }
+    }]

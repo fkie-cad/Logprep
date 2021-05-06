@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.test_normalize",
+  "normalize": {
+    "winlog.event_data.test_normalize": "test_normalized.something"
+  },
+  "description": "..."
+}]

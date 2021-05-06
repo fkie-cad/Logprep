@@ -1,0 +1,7 @@
+[{
+  "filter": "some_field",
+  "pseudonymize": {
+    "some_field": "RE_WHOLE_FIELD"
+  },
+  "description": "Test-rule without auto-test"
+}]

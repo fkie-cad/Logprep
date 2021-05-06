@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.LogonType: 2 OR winlog.event_data.LogonType: 7",
+  "label": {
+    "actor": ["user"]
+  },
+  "description": "[Khi13] p.10; 2 = Interactive; 7 = Unlock *** ES 6 to 7 changes: event_data.LogonType -> winlog.event_data.LogonType ***"
+}]

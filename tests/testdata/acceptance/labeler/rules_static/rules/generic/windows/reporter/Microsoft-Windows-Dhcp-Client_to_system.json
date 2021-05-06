@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.provider_name: \"Microsoft-Windows-Dhcp-Client\"",
+  "label": {
+    "reporter": ["windows", "system"]
+  },
+  "description": "e.g. EventID 50037 *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
+}]

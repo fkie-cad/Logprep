@@ -1,0 +1,8 @@
+{
+  "reporter": {
+    "category": "reporter description",
+    "linux": {
+      "description": "linux description"
+    }
+  }
+}

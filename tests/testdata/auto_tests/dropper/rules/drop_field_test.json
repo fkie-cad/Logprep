@@ -1,0 +1,4 @@
+[{
+  "raw": {"drop_me":  "some_value", "keep_me":  "some_value"},
+  "processed": {"keep_me":  "some_value"}
+}]

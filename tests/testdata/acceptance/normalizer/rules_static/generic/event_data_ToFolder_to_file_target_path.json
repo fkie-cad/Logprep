@@ -1,0 +1,7 @@
+[{
+  "filter": "winlog.event_data.ToFolder",
+  "normalize": {
+    "winlog.event_data.ToFolder": "file.target.path"
+  },
+  "description": "*** ES 6 to 7 changes: event_data.ToFolder -> winlog.event_data.ToFolder ***"
+}]
