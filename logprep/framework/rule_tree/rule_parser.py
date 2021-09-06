@@ -2,7 +2,7 @@ from typing import Union
 
 from logprep.processor.base.rule import Rule
 from logprep.filter.expression.filter_expression import (Or, CompoundFilterExpression, Not, And, Exists,
-                                                         StringFilterExpression, FilterExpression)
+                                                         StringFilterExpression, FilterExpression, Always)
 
 
 class RuleParserException(Exception):
@@ -186,14 +186,16 @@ class RuleParser:
 
     @staticmethod
     def _sort(r: StringFilterExpression, priority_dict: dict) -> Union[dict, str]:
-        if isinstance(r, Not):
+        if isinstance(r, Always):
+            return
+        elif isinstance(r, Not):
             try:
                 if isinstance(r.expression, Exists):
                     return priority_dict[r.expression._as_dotted_string(r.expression.split_field)]
                 elif isinstance(r.expression, Not):
                     return priority_dict[r.expression.expression.split_field[0]]
                 else:
-                    return priority_dict[r.expression._key[0]]
+                    return priority_dict[r._as_dotted_string(r.expression._key)]
             except KeyError:
                 return RuleParser._sort(r.expression, priority_dict)
         elif isinstance(r, Exists):
@@ -203,7 +205,7 @@ class RuleParser:
                 return r.__repr__()[1:-1]
         else:
             try:
-                return priority_dict[r._key[0]]
+                return priority_dict[r._as_dotted_string(r._key)]
             except KeyError:
                 return r.__repr__()
 
@@ -240,6 +242,9 @@ class RuleParser:
                                 RuleParser._add_tag(rule, tag_map[expression.split_field[0]])
                         elif expression._key[0] in tag_map.keys():
                             RuleParser._add_tag(rule, tag_map[expression._key[0]])
+                    # Always Expressions do not need tags
+                    elif isinstance(segment, Always):
+                        continue
                     else:
                         if segment._key[0] in tag_map.keys():
                             RuleParser._add_tag(rule, tag_map[segment._key[0]])
@@ -272,9 +277,9 @@ class RuleParser:
 
             for segment_index in range(len(temp_parsed_rule)):
                 segment = temp_parsed_rule[segment_index]
-                # Skip Exists()-expression and Not()-expression when adding Exists()-filter
+                # Skip Always()-, Exists()- and Not()-expressions when adding Exists()-filter
                 # Not()-expressions need to be skipped for cases where the field does not exist
-                if not isinstance(segment, Exists) and not isinstance(segment, Not):
+                if not isinstance(segment, Exists) and not isinstance(segment, Not) and not isinstance(segment, Always):
                     exists_filter = Exists(segment._key)
 
                     # Skip if Exists()-filter already exists in Rule. No need to add it twice

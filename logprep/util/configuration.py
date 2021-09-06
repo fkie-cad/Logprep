@@ -100,7 +100,8 @@ class Configuration(dict):
     def _verify_values_make_sense(self):
         if self['process_count'] < 1:
             raise InvalidConfigurationError(
-                message='Process count must be an integer of one or larger, not: {}'.format(self['process_count']))
+                message=f'Process count must be an integer of one or larger, not: '
+                        f'{self["process_count"]}')
         if not self['pipeline']:
             raise InvalidConfigurationError(message='"pipeline" must contain at least one item!')
 
@@ -108,13 +109,13 @@ class Configuration(dict):
         try:
             _, _ = ConnectorFactory.create(self['connector'])
         except ConnectorFactoryError as error:
-            raise InvalidConnectorConfigurationError(str(error))
-        except KeyError:
-            raise RequiredConfigurationKeyMissingError('connector')
+            raise InvalidConnectorConfigurationError(str(error)) from error
+        except KeyError as error:
+            raise RequiredConfigurationKeyMissingError('connector') from error
 
     def _verify_pipeline(self, logger: Logger):
         try:
             for processor_config in self['pipeline']:
                 ProcessorFactory.create(processor_config, logger)
         except (FactoryInvalidConfigurationError, UnknownProcessorTypeError) as error:
-            raise InvalidProcessorConfigurationError(str(error))
+            raise InvalidProcessorConfigurationError(str(error)) from error

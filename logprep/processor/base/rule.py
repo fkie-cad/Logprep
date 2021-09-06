@@ -1,14 +1,17 @@
 """This module is the superclass for all rule classes."""
 
 from typing import Set, Optional
-from logprep.filter.expression.filter_expression import FilterExpression
 
-from json import load
-from ruamel.yaml import safe_load_all
 from os.path import basename, splitext
 
+from json import load
+from ruamel.yaml import YAML
+
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+
+yaml = YAML(typ='safe', pure=True)
 
 
 class Rule:
@@ -17,6 +20,7 @@ class Rule:
     special_field_types = ['regex_fields', 'wildcard_fields', 'sigma_fields', 'ip_fields']
 
     def __init__(self, filter_rule: FilterExpression):
+        self.filter_str = str(filter_rule)
         self._filter = filter_rule
         self._special_fields = None
         self.file_name = None
@@ -34,7 +38,7 @@ class Rule:
     def create_rules_from_file(cls, path: str) -> list:
         """Create a rule from a file."""
         with open(path, 'r') as file:
-            rule_data = list(safe_load_all(file)) if path.endswith('.yml') else load(file)
+            rule_data = list(yaml.load_all(file)) if path.endswith('.yml') else load(file)
 
         if not isinstance(rule_data, list):
             raise InvalidRuleDefinitionError('Rule file must contain a json or yml list.')
@@ -50,7 +54,8 @@ class Rule:
         raise NotImplementedError
 
     @staticmethod
-    def _check_rule_validity(rule: dict, *extra_keys: str, optional_keys: Optional[Set[str]] = None):
+    def _check_rule_validity(rule: dict, *extra_keys: str,
+                             optional_keys: Optional[Set[str]] = None):
         optional_keys = optional_keys if optional_keys else set()
         keys = [i for i in rule if i not in ['description'] + Rule.special_field_types]
         required_keys = ['filter'] + list(extra_keys)
@@ -76,7 +81,8 @@ class Rule:
         for field_type in Rule.special_field_types:
             special_fields[field_type] = rule.get(field_type, list())
             if special_fields[field_type] and not (
-                    isinstance(special_fields[field_type], list) or special_fields[field_type] is True):
+                    isinstance(special_fields[field_type], list) or
+                    special_fields[field_type] is True):
                 raise ValueError
 
         return special_fields

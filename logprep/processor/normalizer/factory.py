@@ -4,7 +4,6 @@ from logging import Logger
 
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.normalizer.processor import Normalizer
-from logprep.processor.processor_factory_error import UnknownProcessorTypeError, InvalidConfigurationError
 
 
 class NormalizerFactory(BaseFactory):
@@ -19,21 +18,17 @@ class NormalizerFactory(BaseFactory):
             name,
             configuration['specific_rules'],
             configuration['generic_rules'],
+            configuration.get('tree_config'),
             logger,
             configuration['regex_mapping'],
+            configuration.get('html_replace_fields'),
             configuration.get('grok_patterns'))
 
         return normalizer
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        if 'type' not in configuration:
-            raise InvalidConfigurationError
-        if (not isinstance(configuration['type'], str)) or (
-                configuration['type'].lower() != 'normalizer'):
-            raise UnknownProcessorTypeError
-
-        for item in ('specific_rules', 'generic_rules', 'regex_mapping'):
-            if item not in configuration:
-                raise InvalidConfigurationError(
-                    f'Item "{item}" is missing in Normalizer configuration')
+        NormalizerFactory._check_common_configuration('normalizer',
+                                                      ['specific_rules', 'generic_rules',
+                                                       'regex_mapping'],
+                                                      configuration)

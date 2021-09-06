@@ -1,0 +1,8 @@
+{
+  "priority_dict": {
+            "field_name": "priority"
+  },
+  "tag_map": {
+            "field_name_to_check_for_in_rule": "TAG-TO-CHECK-IF-IN-EVENT"
+        }
+}

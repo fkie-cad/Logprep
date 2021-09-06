@@ -16,19 +16,20 @@ logger = getLogger()
 specific_rules_dir = ['tests/testdata/unit/normalizer/rules/specific/']
 generic_rules_dir = ['tests/testdata/unit/normalizer/rules/generic/']
 cap_group_regex_mapping = 'tests/testdata/unit/normalizer/normalizer_regex_mapping.yml'
+html_replace_fields = 'tests/testdata/unit/normalizer/html_replace_fields.yml'
 
 
 @pytest.fixture()
 def normalizer():
-    return Normalizer('Test Normalizer Name', specific_rules_dir, generic_rules_dir, logger,
-                      regex_mapping=cap_group_regex_mapping)
+    return Normalizer('Test Normalizer Name', specific_rules_dir, generic_rules_dir, None, logger,
+                      regex_mapping=cap_group_regex_mapping, html_replace_fields=html_replace_fields)
 
 
 class TestNormalizer:
     @staticmethod
     def _load_specific_rule(normalizer, rule):
         specific_rule = NormalizerRule._create_from_dict(rule)
-        normalizer._specific_rules.append(specific_rule)
+        normalizer._specific_tree.add_rule(specific_rule, logger)
 
     def test_is_a_processor_implementation(self, normalizer):
         assert isinstance(normalizer, RuleBasedProcessor)
@@ -364,6 +365,141 @@ class TestNormalizer:
         assert event.get('some_ip') == '123.123.123.123'
         assert event.get('port') == 1234
 
+    def test_normalization_from_grok_match_only_exact(self, normalizer):
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'normalize me!': 'foo 123.123.123.123 1234 bar'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.normalize me!': {'grok': '%{IP:some_ip} %{NUMBER:port:int}'}
+            }
+        }
+
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event.get('some_ip') is None
+        assert event.get('port') is None
+
+    def test_normalization_from_grok_does_not_match(self, normalizer):
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'normalize me!': '123.123.123.123'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.normalize me!': {'grok': '%{IP:some_ip} %{NUMBER:port:int}'}
+            }
+        }
+
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event.get('some_ip') is None
+        assert event.get('port') is None
+
+    def test_normalization_from_grok_list_match_first_matching(self, normalizer):
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'normalize me!': '123.123.123.123 1234'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.normalize me!': {'grok': [
+                    '%{IP:some_ip_1} %{NUMBER:port_1:int}',
+                    '%{IP:some_ip_2} %{NUMBER:port_2:int}',
+                ]}
+            }
+        }
+
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event.get('some_ip_1') == '123.123.123.123'
+        assert event.get('port_1') == 1234
+        assert event.get('some_ip_2') is None
+        assert event.get('port_2') is None
+
+    def test_normalization_from_grok_list_match_first_matching_after_skipping_non_matching(self, normalizer):
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'normalize me!': '123.123.123.123 1234 bar'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.normalize me!': {'grok': [
+                    '%{IP:some_ip_1} %{NUMBER:port_1:int} foo',
+                    '%{IP:some_ip_2} %{NUMBER:port_2:int} bar',
+                ]}
+            }
+        }
+
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event.get('some_ip_1') is None
+        assert event.get('port_1') is None
+        assert event.get('some_ip_2') == '123.123.123.123'
+        assert event.get('port_2') == 1234
+
+    def test_normalization_from_grok_list_match_none(self, normalizer):
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'normalize me!': '123.123.123.123 1234'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.normalize me!': {'grok': [
+                    '%{IP:some_ip_1} %{NUMBER:port_1:int} foo',
+                    '%{IP:some_ip_2} %{NUMBER:port_2:int} bar',
+                ]}
+            }
+        }
+
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event.get('some_ip_1') is None
+        assert event.get('port_1') is None
+        assert event.get('some_ip_2') is None
+        assert event.get('port_2') is None
+
     def test_normalization_from_nested_grok(self, normalizer):
         event = {
             'winlog': {
@@ -533,6 +669,77 @@ class TestNormalizer:
         normalizer.process(event)
 
         assert event == expected
+
+    def test_normalization_from_grok_with_timestamp_normalization(self, normalizer):
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'normalize me!': '123.123.123.123 1234 1999 12 12 - 12:12:22'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.normalize me!': {'grok': '%{IP:some_ip} %{NUMBER:port:int} %{CUSTOM_TIMESTAMP:some_timestamp_utc}'},
+                'some_timestamp_utc': {
+                    'timestamp': {
+                        'destination': '@timestamp',
+                        'source_formats': ['%Y', '%Y %m %d - %H:%M:%S'],
+                        'source_timezone': 'UTC',
+                        'destination_timezone': 'UTC'
+                    }
+                }
+            }
+        }
+
+        NormalizerRule.additional_grok_patterns = 'tests/testdata/unit/normalizer/additional_grok_patterns'
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event.get('some_ip') == '123.123.123.123'
+        assert event.get('port') == 1234
+        assert event.get('@timestamp') == '1999-12-12T12:12:22Z'
+
+    def test_normalization_from_grok_with_timestamp_normalization_and_timestamp_does_not_exist(self, normalizer):
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'normalize me!': '123.123.123.123 1234'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.normalize me!': {
+                    'grok': [
+                        '%{IP:some_ip} %{NUMBER:port:int} %{CUSTOM_TIMESTAMP:some_timestamp_utc}',
+                        '%{IP:some_ip} %{NUMBER:port:int}']},
+                'some_timestamp_utc': {
+                    'timestamp': {
+                        'destination': '@timestamp',
+                        'source_formats': ['%Y', '%Y %m %d - %H:%M:%S'],
+                        'source_timezone': 'UTC',
+                        'destination_timezone': 'UTC'
+                    }
+                }
+            }
+        }
+
+        NormalizerRule.additional_grok_patterns = 'tests/testdata/unit/normalizer/additional_grok_patterns'
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event.get('some_ip') == '123.123.123.123'
+        assert event.get('port') == 1234
+        assert event.get('@timestamp') is None
 
     def test_normalization_from_timestamp_same_timezones(self, normalizer):
         expected = {
@@ -769,13 +976,45 @@ class TestNormalizer:
 
         assert event == expected
 
+    def test_normalization_with_replace_html_entity(self, normalizer):
+        event = {
+            'tags': ['testtag'],
+            'message': 'replace=MAX&#43;&#8364;MORITZ&amp;dont_replace=FOO&#43;BAR&amp;id=5'
+        }
+
+        expected = {
+            'tags': ['testtag'],
+            'message': 'replace=MAX&#43;&#8364;MORITZ&amp;dont_replace=FOO&#43;BAR&amp;id=5',
+            'test': {
+                'id': '5',
+                'dont_replace': 'FOO&#43;BAR',
+                'replace': 'MAX&#43;&#8364;MORITZ',
+                'replace_decodiert': 'MAX+€MORITZ'
+            }
+        }
+
+        rule = {
+            'filter': 'tags: testtag',
+            'normalize': {
+                'message': {
+                    'grok': 'replace=%{DATA:[test][replace]}'
+                            '&amp;dont_replace=%{DATA:[test][dont_replace]}&amp;id=%{INT:[test][id]}'
+                }
+            }
+        }
+
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event == expected
+
 
 class TestNormalizerFactory:
     VALID_CONFIG = {
         'type': 'normalizer',
         'specific_rules': specific_rules_dir,
         'generic_rules': generic_rules_dir,
-        'regex_mapping': cap_group_regex_mapping,
+        'regex_mapping': cap_group_regex_mapping
     }
 
     def test_create(self):

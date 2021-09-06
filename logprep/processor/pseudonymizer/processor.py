@@ -1,18 +1,21 @@
 """This module contains a Pseudonymizer that must be used to conform to EU privacy laws."""
 
 from typing import List, Tuple, Union, Any, Optional
-from logging import Logger
+from logging import Logger, DEBUG
 
 import re
-from ruamel.yaml import safe_load
+from ruamel.yaml import YAML
 from time import time
 import datetime
 from multiprocessing import current_process
 
-from urlextract import URLExtract
-from tldextract import TLDExtract
 from urllib.parse import parse_qs
 
+from urlextract import URLExtract
+from tldextract import TLDExtract
+
+
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 
 from logprep.util.cache import Cache
@@ -23,6 +26,8 @@ from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
 
+yaml = YAML(typ='safe', pure=True)
+
 
 class Pseudonymizer(RuleBasedProcessor):
     """Pseudonymize log events to conform to EU privacy laws."""
@@ -32,7 +37,7 @@ class Pseudonymizer(RuleBasedProcessor):
 
     def __init__(self, name: str, pubkey_analyst: str, pubkey_depseudo: str, hash_salt: str,
                  pseudonyms_topic: str, regex_mapping_path: str, cache_max_items: int,
-                 cache_max_timedelta: datetime.timedelta, tld_list: str, logger: Logger):
+                 cache_max_timedelta: datetime.timedelta, tld_list: str, tree_config: dict, logger: Logger):
         self._logger = logger
         self._name = name
         self._description = self.describe()
@@ -50,8 +55,8 @@ class Pseudonymizer(RuleBasedProcessor):
         self._regex_mapping_path = regex_mapping_path
         self._regex_mapping = dict()
 
-        self._specific_rules = []
-        self._generic_rules = []
+        self._specific_tree = RuleTree(config_path=tree_config)
+        self._generic_tree = RuleTree(config_path=tree_config)
 
         self._cache_max_items = cache_max_items
         self._cache_max_timedelta = cache_max_timedelta
@@ -64,29 +69,38 @@ class Pseudonymizer(RuleBasedProcessor):
     def setup(self):
         self._description = self.describe()
         self._encrypter.load_public_keys(self._pubkey_analyst, self._pubkey_depseudo)
-        self._cache = Cache(max_items=self._cache_max_items, max_timedelta=self._cache_max_timedelta)
+        self._cache = Cache(max_items=self._cache_max_items,
+                            max_timedelta=self._cache_max_timedelta)
         self._tld_extractor = TLDExtract(suffix_list_urls=[self._tld_list])
         self._load_regex_mapping(self._regex_mapping_path)
 
     def _load_regex_mapping(self, regex_mapping_path: str):
         with open(regex_mapping_path, 'r') as file:
-            self._regex_mapping = safe_load(file)
+            self._regex_mapping = yaml.load(file)
 
-    def add_rules_from_directory(self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]):
+    # pylint: disable=arguments-differ
+    def add_rules_from_directory(self, specific_rules_dirs: List[str],
+                                 generic_rules_dirs: List[str]):
         for specific_rules_dir in specific_rules_dirs:
             if specific_rules_dir:
-                self._specific_rules = self._get_rules_from_directory(specific_rules_dir)
+                for rule in self._get_rules_from_directory(specific_rules_dir):
+                    self._specific_tree.add_rule(rule, self._logger)
+
         for generic_rules_dir in generic_rules_dirs:
             if generic_rules_dir:
-                self._generic_rules = self._get_rules_from_directory(generic_rules_dir)
+                for rule in self._get_rules_from_directory(generic_rules_dir):
+                    self._generic_tree.add_rule(rule, self._logger)
 
-        self.ps.setup_rules(self._specific_rules + self._generic_rules)
-        self._logger.debug('{} loaded {} specific rules ({})'.format(self.describe(),
-                                                                     len(self._specific_rules),
-                                                                     current_process().name))
-        self._logger.debug(
-            '{} loaded {} generic rules ({})'.format(self.describe(), len(self._generic_rules),
-                                                     current_process().name))
+        self.ps.setup_rules([None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter)
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug('{} loaded {} specific rules ({})'.format(self.describe(),
+                                                                         self._specific_tree.rule_counter,
+                                                                         current_process().name))
+            self._logger.debug(
+                '{} loaded {} generic rules ({})'.format(self.describe(), self._generic_tree.rule_counter,
+                                                         current_process().name))
+
+    # pylint: enable=arguments-differ
 
     def describe(self) -> str:
         return f'Pseudonymizer ({self._name})'
@@ -123,24 +137,26 @@ class Pseudonymizer(RuleBasedProcessor):
         pseudonyms = []
         pseudonymized_fields = set()
 
-        for idx, rule in enumerate(self._specific_rules):
+        for rule in self._specific_tree.get_matching_rules(event):
             begin = time()
-            if rule.matches(event):
-                self._logger.debug('{} processing specific matching event'.format(self._description))
-                self._apply_rule(rule, event, pseudonymized_fields, pseudonyms)
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'{self._description} processing specific matching event')
+            self._apply_rule(rule, event, pseudonymized_fields, pseudonyms)
 
-                processing_time = float('{:.10f}'.format(time() - begin))
-                self.ps.update_per_rule(idx, processing_time, rule)
-                break
+            processing_time = float('{:.10f}'.format(time() - begin))
+            idx = self._specific_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
+            break
 
-        for idx, rule in enumerate(self._generic_rules):
+        for rule in self._generic_tree.get_matching_rules(event):
             begin = time()
-            if rule.matches(event):
-                self._logger.debug('{} processing generic matching event'.format(self._description))
-                processing_time = float('{:.10f}'.format(time() - begin))
-                self.ps.update_per_rule(idx, processing_time, rule)
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'{self._description} processing generic matching event')
+            self._apply_rule(rule, event, pseudonymized_fields, pseudonyms)
 
-                self._apply_rule(rule, event, pseudonymized_fields, pseudonyms)
+            processing_time = float('{:.10f}'.format(time() - begin))
+            idx = self._generic_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
 
         return pseudonyms
 
@@ -151,9 +167,11 @@ class Pseudonymizer(RuleBasedProcessor):
                 try:
                     dict_, key = self._innermost_field(dotted_field, event)
                     pre_pseudonymization_value = dict_[key]
-                    dict_[key], new_pseudonyms, is_match = self._pseudonymize_field(regex, str(dict_[key]))
+                    dict_[key], new_pseudonyms, is_match = self._pseudonymize_field(regex,
+                                                                                    str(dict_[key]))
                     if is_match and dotted_field in rule.url_fields:
-                        dict_[key] = self._get_field_with_pseudonymized_urls(dict_[key], new_pseudonyms)
+                        dict_[key] = self._get_field_with_pseudonymized_urls(dict_[key],
+                                                                             new_pseudonyms)
                     if pre_pseudonymization_value != dict_[key]:
                         pseudonymized_fields.add(dotted_field)
                 except KeyError:
@@ -204,13 +222,17 @@ class Pseudonymizer(RuleBasedProcessor):
 
             replacements = self._get_parts_to_replace_in_correct_order(pseudonym_map)
 
-            do_not_replace_pattern = r'(<pseudonym:[a-z0-9]*>|\?\w+=|&\w+=|{}\.{})'.format(url_parts['domain'],
-                                                                                           url_parts['suffix'])
+            do_not_replace_pattern = r'(<pseudonym:[a-z0-9]*>|\?\w+=|&\w+=|{}\.{})'.format(
+                url_parts['domain'],
+                url_parts['suffix'])
+
             for replacement in replacements:
                 parts_to_replace = re.split(do_not_replace_pattern, url_split[-1])
-                for x in range(len(parts_to_replace)):
-                    if not re.findall(do_not_replace_pattern, parts_to_replace[x]):
-                        parts_to_replace[x] = parts_to_replace[x].replace(replacement, pseudonym_map[replacement])
+                for idx, _ in enumerate(parts_to_replace):
+                    if not re.findall(do_not_replace_pattern, parts_to_replace[idx]):
+                        parts_to_replace[idx] = parts_to_replace[idx].replace(
+                            replacement,
+                            pseudonym_map[replacement])
                 url_split[-1] = ''.join(parts_to_replace)
 
             pseudonymized_url = ''.join(url_split)
@@ -229,8 +251,9 @@ class Pseudonymizer(RuleBasedProcessor):
         parts['domain'] = url.domain
         parts['subdomain'] = url.subdomain
         parts['suffix'] = url.suffix
-        parts['path'] = self._find_first(r'(?:^[a-z0-9]+\:\/\/)?{}(?:\:\d+)?([^#^\?]*).*'.format('.'.join(list(url))),
-                                         url_str)
+        parts['path'] = self._find_first(r'(?:^[a-z0-9]+\:\/\/)?{}(?:\:\d+)?([^#^\?]*).*'.format(
+            '.'.join(list(url))),
+            url_str)
         parts['query'] = self._find_first(r'.*(\?\w+=[a-zA-Z0-9](?:&\w+=[a-zA-Z0-9]+)*).*', url_str)
         parts['fragment'] = self._find_first(r'.*#(.*)', url_str)
 
@@ -251,9 +274,9 @@ class Pseudonymizer(RuleBasedProcessor):
             if not replacements:
                 replacements.append(key)
             else:
-                for x in reversed(range(len(replacements))):
-                    if not any([key in replacement for replacement in replacements[:x]]):
-                        replacements.insert(x + 1, key)
+                for idx in reversed(range(len(replacements))):
+                    if not any([key in replacement for replacement in replacements[:idx]]):
+                        replacements.insert(idx + 1, key)
                         break
         replacements.reverse()
         return replacements
@@ -273,7 +296,8 @@ class Pseudonymizer(RuleBasedProcessor):
                     pseudonym_map[value] = self._pseudonymize_value(value, pseudonyms)
         if url.get('path'):
             if url['path'][1:]:
-                pseudonym_map[url['path'][1:]] = self._pseudonymize_value(url['path'][1:], pseudonyms)
+                pseudonym_map[url['path'][1:]] = self._pseudonymize_value(url['path'][1:],
+                                                                          pseudonyms)
         return pseudonym_map
 
     @staticmethod

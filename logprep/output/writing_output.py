@@ -20,7 +20,8 @@ class WritingOutput(Output):
 
     """
 
-    def __init__(self, output_path: str, output_path_custom: str = None, output_path_error: str = None):
+    def __init__(self, output_path: str, output_path_custom: str = None,
+                 output_path_error: str = None):
         self.last_timeout = None
 
         self.events = []

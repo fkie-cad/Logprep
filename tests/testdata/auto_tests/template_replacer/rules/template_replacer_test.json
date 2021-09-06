@@ -1,0 +1,18 @@
+[{
+  "raw": {
+    "winlog": {
+      "provider_name": "the provider",
+      "event_id": 123,
+      "channel": 123
+    },
+    "dotted": {"message": "replace me!"}
+  },
+  "processed": {
+    "winlog": {
+      "provider_name": "the provider",
+      "event_id": 123,
+      "channel": 123
+    },
+    "dotted": {"message": "replaced message"}
+  }
+}]

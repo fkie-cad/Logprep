@@ -8,7 +8,7 @@ from collections import OrderedDict
 from copy import deepcopy
 
 
-class Aggregator(object):
+class Aggregator:
     """Used to aggregate log messages."""
 
     logs = OrderedDict()
@@ -82,10 +82,14 @@ class Aggregator(object):
             if count > 1 and data['last_record']:
                 time_passed = round(time() - data['first_record'].created, 1)
                 time_passed = min(time_passed, cls.log_period)
-                period = "{} sek".format(time_passed) if time_passed < 60 else f"{time_passed / 60.0:.1f} min"
+                if time_passed < 60:
+                    period = "{} sek".format(time_passed)
+                else:
+                    period = f"{time_passed / 60.0:.1f} min"
                 data['last_record'].__dict__['msg'] += ' ({} in ~{})'.format(count, period)
-                logging.getLogger(data['last_record'].__dict__['name']).log(data['last_record'].levelno,
-                                                                            data['last_record'].msg)
+                logging.getLogger(data['last_record'].__dict__['name']).log(
+                    data['last_record'].levelno,
+                    data['last_record'].msg)
 
                 cls.logs[log_id]['first_record'] = data['last_record']
                 cls.logs[log_id]['last_record'] = None

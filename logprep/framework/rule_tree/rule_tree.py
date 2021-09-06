@@ -44,7 +44,7 @@ class RuleTree:
 
         for parsed_rule in parsed_rule_list:
             end_node = self.add_parsed_rule(parsed_rule)
-            end_node.matching_rule = rule
+            end_node.matching_rules.append(rule)
 
         self._rule_mapping[rule] = self.rule_counter - 1
 
@@ -74,8 +74,8 @@ class RuleTree:
             if child.does_match(event):
                 current_node = child
 
-                if current_node.matching_rule:
-                    matches.append(child.matching_rule)
+                if current_node.matching_rules:
+                    matches += child.matching_rules
 
                 self.get_matching_rules(event, current_node, matches)
 
@@ -87,7 +87,7 @@ class RuleTree:
 
         for child in current_node.children:
             print('\t' * (depth - 1) + str(current_node.expression), '\t', '-' * depth + '>', child.expression,
-                  child.matching_rule)
+                  child.matching_rules)
 
             self.print(child, depth + 1)
 

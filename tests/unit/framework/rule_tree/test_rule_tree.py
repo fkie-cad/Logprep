@@ -23,7 +23,7 @@ class TestRuleTree:
 
         assert rt.root.children[0].expression == Exists(["winlog"])
         assert rt.root.children[0].children[0].expression == StringFilterExpression(["winlog"], "123")
-        assert rt.root.children[0].children[0].matching_rule == rule
+        assert rt.root.children[0].children[0].matching_rules == [rule]
 
         rule = PreDetectorRule._create_from_dict({"filter": "winlog: 123 AND xfoo: bar",
                                                   'pre_detector': {'id': 1, 'title': '1', 'severity': '0',
@@ -32,7 +32,7 @@ class TestRuleTree:
 
         assert rt.root.children[0].children[0].children[0].expression == Exists(["xfoo"])
         assert rt.root.children[0].children[0].children[0].children[0].expression == StringFilterExpression(["xfoo"], "bar")
-        assert rt.root.children[0].children[0].children[0].children[0].matching_rule == rule
+        assert rt.root.children[0].children[0].children[0].children[0].matching_rules == [rule]
 
     def test_get_rule_id(self):
         rt = RuleTree()

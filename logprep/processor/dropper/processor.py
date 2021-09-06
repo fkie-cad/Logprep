@@ -1,11 +1,12 @@
 """This module contains a Dropper that deletes specified fields."""
 
 from typing import List, Optional, Union
-from logging import Logger
+from logging import Logger, DEBUG
 
 from time import time
 from multiprocessing import current_process
 
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.dropper.rule import DropperRule
 
@@ -23,14 +24,14 @@ class DropperError(BaseException):
 class Dropper(RuleBasedProcessor):
     """Normalize log events by copying specific values to standardized fields."""
 
-    def __init__(self, name: str, logger: Logger):
+    def __init__(self, name: str, tree_config: str, logger: Logger):
         self._logger = logger
         self.ps = ProcessorStats()
 
         self._name = name
         self._events_processed = 0
         self._event = None
-        self._rules = []
+        self._tree = RuleTree(config_path=tree_config)
 
     def add_rules_from_directory(self, rules_dirs: List[str]):
         for rules_dir in rules_dirs:
@@ -38,9 +39,11 @@ class Dropper(RuleBasedProcessor):
             for rule_path in rule_paths:
                 rules = DropperRule.create_rules_from_file(rule_path)
                 for rule in rules:
-                    self._rules.append(rule)
-        self._logger.debug('{} loaded {} rules ({})'.format(self.describe(), len(self._rules), current_process().name))
-        self.ps.setup_rules(self._rules)
+                    self._tree.add_rule(rule, self._logger)
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug('{} loaded {} rules ({})'.format(self.describe(), self._tree.rule_counter,
+                                                                current_process().name))
+        self.ps.setup_rules([None] * self._tree.rule_counter)
 
     def describe(self) -> str:
         return f'Dropper ({self._name})'
@@ -87,15 +90,17 @@ class Dropper(RuleBasedProcessor):
     def _apply_rules(self):
         """Drops fields from event Logs."""
 
-        for idx, rule in enumerate(self._rules):
+        for rule in self._tree.get_matching_rules(self._event):
             begin = time()
-            if rule.matches(self._event):
+
+            if self._logger.isEnabledFor(DEBUG):
                 self._logger.debug('{} processing matching event'.format(self.describe()))
-                for drop_field in rule.fields_to_drop:
-                    self._try_dropping_field(drop_field, rule.drop_full)
+            for drop_field in rule.fields_to_drop:
+                self._try_dropping_field(drop_field, rule.drop_full)
 
                 processing_time = float('{:.10f}'.format(time() - begin))
-                self.ps.update_per_rule(idx, processing_time, rule)
+                idx = self._tree.get_rule_id(rule)
+                self.ps.update_per_rule(idx, processing_time)
 
     def _try_dropping_field(self, field: str, drop_full: bool):
         if self._field_exists(field):

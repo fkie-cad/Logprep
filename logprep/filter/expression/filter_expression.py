@@ -186,12 +186,8 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
     wc = re.compile(r'.*?((?:\\)*\*).*?')
     wq = re.compile(r'.*?((?:\\)*\?).*?')
 
-    @staticmethod
-    def _normalize_regex(regex: str) -> str:
-        return '^{}$'.format(regex)
-
-    def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+    def __init__(self, key: List[str], expected_value: Any):
+        super().__init__(key, expected_value)
         new_string = re.escape(str(self._expected_value))
 
         matches = self.wq.findall(new_string)
@@ -200,13 +196,20 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         matches = self.wc.findall(new_string)
         new_string = self._replace_wildcard(new_string, matches, r'\*', '.*')
 
-        expected = self._normalize_regex(new_string)
+        self.escaped_expected = self._normalize_regex(new_string)
+        self._matcher = re.compile(self.escaped_expected, flags=self.flags)
+
+    @staticmethod
+    def _normalize_regex(regex: str) -> str:
+        return '^{}$'.format(regex)
+
+    def does_match(self, document: dict) -> bool:
+        value = self._get_value(self._key, document)
 
         if isinstance(value, list):
-            matcher = re.compile(expected, flags=self.flags)
-            return any(filter(matcher.match, (str(val) for val in value)))
+            return any(filter(self._matcher.match, (str(val) for val in value)))
 
-        match_result = re.match(expected, str(value), flags=self.flags)
+        match_result = self._matcher.match(str(value))
 
         return match_result is not None
 
@@ -228,7 +231,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
 
 
 class SigmaFilterExpression(WildcardStringFilterExpression):
-    """Key value filter expression that matches for a string with wildcard support and which is case-insensitive."""
+    """Key value filter expression for strings with wildcard support that is case-insensitive."""
 
     flags = re.IGNORECASE
 
@@ -260,7 +263,8 @@ class RangeBasedFilterExpression(FilterExpression):
         self._upper_bound = upper_bound
 
     def __repr__(self) -> str:
-        return '{}:[{} TO {}]'.format(self._as_dotted_string(self._key), self._lower_bound, self._upper_bound)
+        return '{}:[{} TO {}]'.format(self._as_dotted_string(self._key), self._lower_bound,
+                                      self._upper_bound)
 
     def does_match(self, document: dict):
         raise NotImplementedError

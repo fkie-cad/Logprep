@@ -50,7 +50,7 @@ The validation of schemata and rules can be started separately by executing:
 Where :code:`$LABELING_SCHEMA` is the path to a labeling schema file and :code:`$RULES` is the path to a directory with rule files.
 
 Example
--------
+^^^^^^^
 
 ..  code-block:: yaml
     :linenos:
@@ -102,6 +102,222 @@ grok_patterns
 
 Optional path to a directory with grok patterns.
 
+GeoIP Enricher
+--------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `geoip_enricher` chooses the processor type GeoIPEnricher, which will be described here in greater detail.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/geoip_enricher_rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+geoip_enricher.db_path
+~~~~~~~~~~~~~~~~~~~~~~
+
+Path to a `Geo2Lite` city database by `Maxmind` in binary format.
+This must be downloaded separately.
+
+.. _begin:
+
+    This product includes GeoLite2 data created by MaxMind, available from
+    https://www.maxmind.com.
+
+Generic Adder
+-------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `generic_adder` chooses the processor type GenericAdder, which will be described here in greater detail.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/generic_adder_rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+Datetime Extractor
+------------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `datetime_extractor` chooses the processor type DateTimeExtractor, which will be described here in greater detail.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/datetime_extractor_rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+Generic Resolver
+----------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `generic_resolver` chooses the processor type GenericResolver, which will be described here in greater detail.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/generic_resolver_rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+generic_resolver.resolve_mapping
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Path to a JSON mapping with abbreviations of network device types.
+
+Domain Resolver
+---------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `domain_resolver` chooses the processor type DomainResolver, which will be described here in greater detail.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/domain_resolver_rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+domain_resolver.tld_list
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Path to a file with a list of top-level domains (like https://publicsuffix.org/list/public_suffix_list.dat).
+
+domain_resolver.timeout
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Timeout for resolving of domains.
+
+domain_resolver.hash_salt
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A salt that is used for hashing.
+
+domain_resolver.max_caching_days
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Number of days a domains is cached after the last time it appeared.
+This caching reduces the CPU load of Logprep (no demanding encryption must be performed repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
+Setting the caching days to Null deactivates the caching.
+In case the cache size has been exceeded (see `domain_resolver.max_cached_domains`_), the oldest cached pseudonyms will be discarded first.
+Thus, it is possible that a domain is re-added to the cache before max_caching_days has elapsed if it was discarded due to the size limit.
+
+domain_resolver.max_cached_domains
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The maximum number of cached domains.
+One cache entry requires ~250 Byte, thus 10 million elements would require about 2.3 GB RAM.
+The cache is not persisted.
+Restarting Logprep does therefore clear the cache.
+
+Template Replacer
+--------------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `template_replacer` chooses the processor type TemplateReplacer, which will be described here in greater detail.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/template_replacer_rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+template
+~~~~~~~~
+
+Path to a YML file with a list of replacements in the format `%{provider_name}-%{event_id}: %{new_message}`.
+
+pattern
+~~~~~~~
+
+Configures how to use the template file.
+
+delimiter
++++++++++
+
+Delimiter to use to split the template.
+
+fields
+++++++
+
+A list of dotted fields that are being checked by the template.
+
+allowed_delimiter_field
++++++++++++++++++++++++
+
+One of the fields in the fields list can contain the delimiter. This must be specified here.
+
+target_field
+++++++++++++
+
+The field that gets replaced by the template.
+
 PreDetector
 -----------
 
@@ -121,6 +337,11 @@ List of directory path with rule files for the Predetector, i.e.:
   * /var/git/logprep-rules/pre_detector_rules/
   * /var/git/other-rules/pre_detector_rules/
 
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
 pre_detector_topic
 ~~~~~~~~~~~~~~~~~~
 A Kafka topic for the detection results of the Predetector.
@@ -138,7 +359,7 @@ If a checked IP is covered by an IP and a network in the dictionary (i.e. IP 127
 then the expiration date of the IP is being used.
 
 Example
--------
+^^^^^^^
 
 ..  code-block:: yaml
     :linenos:
@@ -226,7 +447,17 @@ Path to a file with a list of top-level domains (i.e. https://publicsuffix.org/l
 Dropper
 -------
 
-The value `dropper` chooses the processor type Dropper.
+Parameter
+^^^^^^^^^
 
-The Dropper is used to remove fields from log messages.
-Which values are deleted is determined within each rule.
+type
+~~~~
+
+The value `dropper` chooses the processor type Dropper, which will be described here in greater detail.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/dropper_rules/

@@ -32,6 +32,9 @@ class DropperRule(Rule):
     def __eq__(self, other: 'DropperRule') -> bool:
         return (other.filter == self._filter) and (self._fields_to_drop == other.fields_to_drop)
 
+    def __hash__(self) -> int:
+        return hash(repr(self))
+
     # pylint: disable=C0111
     @property
     def fields_to_drop(self) -> List[str]:
@@ -56,6 +59,6 @@ class DropperRule(Rule):
             raise InvalidDropperDefinition('Drop value "{}" is not a list!'.format(
                                             rule['drop']))
 
-        elif not all(isinstance(value, str) for value in rule['drop']):
+        if not all(isinstance(value, str) for value in rule['drop']):
             raise InvalidDropperDefinition(
                 'Drop values {} are not a list of strings!'.format(rule['drop']))

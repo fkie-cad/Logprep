@@ -6,7 +6,7 @@ importorskip('logprep.processor.labeler')
 
 from logprep.processor.labeler.labeling_schema import (InvalidLabelingSchemaFileError, LabelingSchema,
                                                        DuplicateLabelInCategoryError,
-                                                       CategoryWithoutCategoryDesciptionInSchemaError,
+                                                       CategoryWithoutDesciptionInSchemaError,
                                                        LabelWithoutDesciptionInSchemaError,
                                                        CannotRetrieveParentsForLabelWithoutDescriptionError,
                                                        NoSuchCategoryError,
@@ -189,11 +189,11 @@ class TestLabelingSchema(SchemasForTests):
             fail('Did not accept a minimal schema')
 
     def test_rejects_schema_that_has_category_without_category_field(self):
-        with raises(CategoryWithoutCategoryDesciptionInSchemaError, match='Category "invalid" does not have a valid description'):
+        with raises(CategoryWithoutDesciptionInSchemaError, match='Category "invalid" does not have a valid description'):
             self.schema.ingest_schema(self.invalid_schema_category_without_category_field)
 
     def test_rejects_schema_that_has_non_string_category_field(self):
-        with raises(CategoryWithoutCategoryDesciptionInSchemaError, match='Category "reporter" does not have a valid description'):
+        with raises(CategoryWithoutDesciptionInSchemaError, match='Category "reporter" does not have a valid description'):
             self.schema.ingest_schema(self.invalid_schema_category_with_non_string_category_field)
 
     def test_rejects_schema_that_contains_non_description_leaf(self):

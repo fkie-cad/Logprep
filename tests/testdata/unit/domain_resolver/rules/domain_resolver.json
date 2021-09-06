@@ -1,0 +1,5 @@
+[{
+  "filter": "url",
+  "domain_resolver": {"source_url_or_domain": "url"},
+  "description": ""
+}]

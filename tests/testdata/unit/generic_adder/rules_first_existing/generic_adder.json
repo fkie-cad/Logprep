@@ -1,0 +1,20 @@
+[{
+  "filter": "add_first_existing_generic_test",
+  "generic_adder": {
+    "add_from_file": [
+    "tests/testdata/unit/generic_adder/additions_file.yml",
+    "tests/testdata/unit/generic_adder/additions_file_2.yml"
+    ],
+    "only_first_existing_file": true
+  },
+  "description": ""
+},
+{
+  "filter": "add_first_existing_with_missing_generic_test",
+  "generic_adder": {"add_from_file": [
+    "I_DO_NOT_EXIST",
+    "tests/testdata/unit/generic_adder/additions_file.yml"],
+  "only_first_existing_file": true
+  },
+  "description": ""
+}]

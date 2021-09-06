@@ -6,7 +6,8 @@ from json import JSONDecodeError
 
 from jsonref import load
 
-from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError, KeyDoesnotExistInSchemaError
+from logprep.processor.base.exceptions import (ValueDoesnotExistInSchemaError,
+                                               KeyDoesnotExistInSchemaError)
 
 
 class LabelingSchemaError(BaseException):
@@ -44,7 +45,7 @@ class InvalidLabelTreeError(LabelingSchemaError):
             super().__init__(f'Invalid schema definition: {message}')
 
 
-class CategoryWithoutCategoryDesciptionInSchemaError(InvalidLabelTreeError):
+class CategoryWithoutDesciptionInSchemaError(InvalidLabelTreeError):
     """Raise if category does not have a vailid description."""
 
     def __init__(self, name: str):
@@ -113,15 +114,16 @@ class LabelingSchema:
             labeling_schema = LabelingSchema()
             labeling_schema.ingest_schema(schema)
             return labeling_schema
-        except FileNotFoundError:
-            raise InvalidLabelingSchemaFileError(path=path, message='File not found')
+        except FileNotFoundError as error:
+            raise InvalidLabelingSchemaFileError(path=path, message='File not found') from error
         except OSError as error:
-            raise InvalidLabelingSchemaFileError(message=str(error))
+            raise InvalidLabelingSchemaFileError(message=str(error)) from error
         except JSONDecodeError as error:
             raise InvalidLabelingSchemaFileError(path=path,
-                                                 message='JSON decoder error: '+ str(error))
+                                                 message='JSON decoder error: '+ str(error)
+                                                 ) from error
         except InvalidLabelTreeError as error:
-            raise InvalidLabelingSchemaFileError(path=path, message=str(error))
+            raise InvalidLabelingSchemaFileError(path=path, message=str(error)) from error
 
     def ingest_schema(self, schema: dict):
         """Verify schema and extract labels and parent labels per category."""
@@ -140,7 +142,7 @@ class LabelingSchema:
 
     def _verify_category(self, name: str, category: dict):
         if not (('category' in category) and isinstance(category['category'], str)):
-            raise CategoryWithoutCategoryDesciptionInSchemaError(name)
+            raise CategoryWithoutDesciptionInSchemaError(name)
         if 'description' in category and isinstance(category['description'], str):
             raise CategoryMustNotContainDescriptionFieldError(name)
 
@@ -159,12 +161,10 @@ class LabelingSchema:
             if key == 'description':
                 if self._is_description(key, label_tree[key]):
                     continue
-                else:
-                    raise LabelWithoutDesciptionInSchemaError(name)
-            elif not isinstance(label_tree[key], dict):
+                raise LabelWithoutDesciptionInSchemaError(name)
+            if not isinstance(label_tree[key], dict):
                 raise NonDescriptionLeafError(key)
-            else:
-                self._verify_label_tree(key, label_tree[key])
+            self._verify_label_tree(key, label_tree[key])
 
     def _extract_labels(self, document: dict, depth: int) -> List[str]:
         labels = []
@@ -172,7 +172,7 @@ class LabelingSchema:
         for key in document:
             if (key == 'description') and isinstance(document[key], str):
                 continue
-            elif isinstance(document[key], dict):
+            if isinstance(document[key], dict):
                 if self._has_description(document[key]):
                     labels.append(key)
                 labels += self._extract_labels(document[key], depth+1)

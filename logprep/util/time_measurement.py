@@ -1,11 +1,11 @@
-"""This module can be used to measure the execution time of functions and add the results to events."""
+"""This module is used to measure the execution time of functions and add the results to events."""
 
 from time import time
 from socket import gethostname
 
 
 class TimeMeasurement:
-    """Used to measure the execution time of functions and add the results to events via a decorator."""
+    """Measures the execution time of functions and adds the results to events via a decorator."""
 
     TIME_MEASUREMENT_ENABLED = False
     HOSTNAME = gethostname()
@@ -35,7 +35,6 @@ class TimeMeasurement:
                     if 'hostname' not in event['processing_times'].keys():
                         event['processing_times']['hostname'] = TimeMeasurement.HOSTNAME
                     return result
-                else:
-                    return func(*args, **kwargs)
+                return func(*args, **kwargs)
             return inner
         return inner_decorator

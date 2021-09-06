@@ -1,13 +1,11 @@
-chardet==3.0.4
-idna==2.10
 luqum
 jsonref
 pyyaml
 ruamel.yaml
 confluent-kafka==1.5.0
 pycryptodome
-urlextract==0.13.0
-tldextract==2.2.2
+urlextract
+tldextract
 geoip2
 ujson==3.1.0
 pygrok

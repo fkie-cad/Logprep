@@ -4,6 +4,7 @@ pytest.importorskip('logprep.processor.dropper')
 import copy
 from logging import getLogger
 
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.dropper.factory import Dropper, DropperFactory
 from logprep.processor.processor_factory_error import ProcessorFactoryError
 from logprep.processor.dropper.rule import DropperRule
@@ -15,7 +16,7 @@ rules_dir = ['tests/testdata/unit/dropper/rules/']
 
 @pytest.fixture()
 def dropper():
-    dropper = Dropper('Test Dropper Name', logger)
+    dropper = Dropper('Test Dropper Name', None, logger)
     dropper.add_rules_from_directory(rules_dir)
     return dropper
 
@@ -24,10 +25,10 @@ class TestDropper:
     @staticmethod
     def _load_rule(dropper, rule):
         rule = DropperRule._create_from_dict(rule)
-        dropper._rules.append(rule)
+        dropper._tree.add_rule(rule)
 
     def _load_single_rule(self, dropper, rule):
-        dropper._rules.clear()
+        dropper._tree = RuleTree(config_path=None)
         self._load_rule(dropper, rule)
 
     def test_is_a_processor_implementation(self, dropper):
@@ -152,7 +153,7 @@ class TestDropper:
 class TestDropperFactory:
     VALID_CONFIG = {
         'type': 'dropper',
-        'rules': rules_dir,
+        'rules': rules_dir
     }
 
     def test_create(self):

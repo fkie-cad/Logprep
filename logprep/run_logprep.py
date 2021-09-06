@@ -1,12 +1,13 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
 
-from logging import getLogger, Logger
+from logging import getLogger, Logger, DEBUG, ERROR
 from logging.handlers import TimedRotatingFileHandler
 from argparse import ArgumentParser
 from pathlib import Path
 from os.path import dirname, basename
 import inspect
+import sys
 
 from logprep.runner import Runner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
@@ -21,6 +22,7 @@ from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.processor_stats import StatsClassesController
 
 DEFAULT_LOCATION_CONFIG = '/etc/logprep/pipeline.yml'
+getLogger('filelock').setLevel(ERROR)
 
 
 def _get_status_logger(config: dict) -> Logger:
@@ -33,7 +35,8 @@ def _get_status_logger(config: dict) -> Logger:
     Path(dirname(log_path)).mkdir(parents=True, exist_ok=True)
     interval = status_logger_cfg.get('rollover_interval', 60*60*24)
     backup_count = status_logger_cfg.get('backup_count', 10)
-    logger.addHandler(TimedRotatingFileHandler(log_path, when='S', interval=interval, backupCount=backup_count))
+    logger.addHandler(TimedRotatingFileHandler(log_path, when='S', interval=interval,
+                                               backupCount=backup_count))
     return logger
 
 
@@ -77,7 +80,8 @@ def _run_logprep(arguments, logger: Logger, status_logger: Logger):
         runner = Runner.get_runner()
         runner.set_logger(logger, status_logger)
         runner.load_configuration(arguments.config)
-        logger.debug('Configuration loaded')
+        if logger.isEnabledFor(DEBUG):
+            logger.debug('Configuration loaded')
         runner.start()
     # pylint: disable=broad-except
     except BaseException as error:
@@ -88,7 +92,8 @@ def _run_logprep(arguments, logger: Logger, status_logger: Logger):
 
 
 def get_processor_type_and_rule_class() -> dict:
-    return {basename(Path(inspect.getfile(rule_class)).parent): rule_class for rule_class in Rule.__subclasses__()}
+    return {basename(Path(inspect.getfile(rule_class)).parent): rule_class
+            for rule_class in Rule.__subclasses__()}
 
 
 def main():
@@ -97,27 +102,29 @@ def main():
     config = Configuration().create_from_yaml(args.config)
 
     for plugin_dir in config.get('plugin_directories', []):
+        sys.path.insert(0, plugin_dir)
         ProcessorFactory.load_plugins(plugin_dir)
 
-    AggregatingLogger.setup(config)
+    AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
     logger = AggregatingLogger.create('Logprep')
 
     status_logger = _get_status_logger(config)
-
-    logger.disabled = args.disable_logging
     status_logger.disabled = args.disable_logging
+
     TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get('measure_time', False)
     StatsClassesController.ENABLED = config.get('status_logger', dict()).get('enabled', True)
 
-    logger.debug('Time measurement enabled: {}'.format(TimeMeasurement.TIME_MEASUREMENT_ENABLED))
-    logger.debug('JSON file logger enabled: {}'.format(StatsClassesController.ENABLED))
-    logger.debug('Config path: {}'.format(args.config))
+    if logger.isEnabledFor(DEBUG):
+        logger.debug(f'Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}')
+        logger.debug(f'JSON file logger enabled: {StatsClassesController.ENABLED}')
+        logger.debug(f'Config path: {args.config}')
 
     if args.validate_rules or args.auto_test:
         type_rule_map = get_processor_type_and_rule_class()
         rules_valid = []
         for processor_type, rule_class in type_rule_map.items():
-            rules_valid.append(SchemaAndRuleChecker().validate_rules(args.config, processor_type, rule_class, logger))
+            rules_valid.append(SchemaAndRuleChecker().validate_rules(args.config, processor_type,
+                                                                     rule_class, logger))
         if not all(rules_valid):
             exit(1)
         elif not args.auto_test:

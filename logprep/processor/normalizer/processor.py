@@ -1,32 +1,37 @@
 """This module contains a Normalizer that copies specific values to standardized fields."""
+import html
+from typing import Optional, Tuple, List, Union
+from logging import Logger, DEBUG
 
-from typing import Optional, Tuple, Union
-from logging import Logger
+from ruamel.yaml import YAML
+from time import time
+from functools import reduce
+from multiprocessing import current_process
+import re
 
-import ujson
-from ruamel.yaml import safe_load
 from datetime import datetime
 from dateutil import parser
 from pytz import timezone
-from functools import reduce
-from time import time
-from multiprocessing import current_process
 
-import re
+import ujson
 
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarning
-from logprep.processor.normalizer.exceptions import *
+from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
 
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
 
+yaml = YAML(typ='safe', pure=True)
+
 
 class Normalizer(RuleBasedProcessor):
     """Normalize log events by copying specific values to standardized fields."""
 
-    def __init__(self, name: str, specific_rules_dirs: list, generic_rules_dirs: list, logger: Logger,
-                 regex_mapping: str = None, grok_patterns: str = None):
+    def __init__(self, name: str, specific_rules_dirs: list, generic_rules_dirs: list, tree_config: str,
+                 logger: Logger,regex_mapping: str = None, html_replace_fields: list = None,
+                 grok_patterns: str = None):
         self._logger = logger
         self.ps = ProcessorStats()
 
@@ -36,35 +41,45 @@ class Normalizer(RuleBasedProcessor):
         self._conflicting_fields = []
 
         self._regex_mapping = regex_mapping
+        self._html_replace_fields = html_replace_fields
 
-        self._specific_rules = []
-        self._generic_rules = []
+        self._specific_tree = RuleTree(config_path=tree_config)
+        self._generic_tree = RuleTree(config_path=tree_config)
 
         NormalizerRule.additional_grok_patterns = grok_patterns
 
         with open(regex_mapping, 'r') as file:
-            self._regex_mapping = safe_load(file)
+            self._regex_mapping = yaml.load(file)
+
+        if html_replace_fields:
+            with open(html_replace_fields, 'r') as file:
+                self._html_replace_fields = yaml.load(file)
 
         self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
 
-    def add_rules_from_directory(self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]):
+    # pylint: disable=arguments-differ
+    def add_rules_from_directory(self, specific_rules_dirs: List[str],
+                                 generic_rules_dirs: List[str]):
         for specific_rules_dir in specific_rules_dirs:
             rule_paths = self._list_json_files_in_directory(specific_rules_dir)
             for rule_path in rule_paths:
                 rules = NormalizerRule.create_rules_from_file(rule_path)
                 for rule in rules:
-                    self._specific_rules.append(rule)
+                    self._specific_tree.add_rule(rule, self._logger)
         for generic_rules_dir in generic_rules_dirs:
             rule_paths = self._list_json_files_in_directory(generic_rules_dir)
             for rule_path in rule_paths:
                 rules = NormalizerRule.create_rules_from_file(rule_path)
                 for rule in rules:
-                    self._generic_rules.append(rule)
-        self._logger.debug('{} loaded {} specific rules ({})'.format(self.describe(), len(self._specific_rules),
-                                                                     current_process().name))
-        self._logger.debug(
-            '{} loaded {} generic rules ({})'.format(self.describe(), len(self._generic_rules), current_process().name))
-        self.ps.setup_rules(self._generic_rules + self._specific_rules)
+                    self._generic_tree.add_rule(rule, self._logger)
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'{self.describe()} loaded {self._specific_tree.rule_counter} '
+                               f'specific rules ({current_process().name})')
+            self._logger.debug(
+                f'{self.describe()} loaded {self._generic_tree.rule_counter} generic rules '
+                f'({current_process().name})')
+        self.ps.setup_rules([None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter)
+    # pylint: enable=arguments-differ
 
     def describe(self) -> str:
         return f'Normalizer ({self._name})'
@@ -115,6 +130,8 @@ class Normalizer(RuleBasedProcessor):
         for field in fields:
             if field in dict_:
                 dict_ = dict_[field]
+            else:
+                return None
         return dict_
 
     def _add_field(self, dotted_field: str, value: Union[str, int]):
@@ -135,6 +152,14 @@ class Normalizer(RuleBasedProcessor):
             dict_ = dict_[field]
         dict_[missing_fields[-1]] = value
 
+        if self._html_replace_fields and dotted_field in self._html_replace_fields:
+            if self._has_html_entity(value):
+                dict_[missing_fields[-1] + '_decodiert'] = html.unescape(value)
+
+    @staticmethod
+    def _has_html_entity(value):
+        return re.search("&#[0-9]{2,4};", value)
+
     def _replace_field(self, dotted_field: str, value: str):
         fields = dotted_field.split('.')
         reduce(lambda dict_, key: dict_[key], fields[:-1], self._event)[fields[-1]] = value
@@ -151,33 +176,39 @@ class Normalizer(RuleBasedProcessor):
         warning should be an indicator of incorrect rules or unexpected/changed events.
         """
 
-        for idx, rule in enumerate(self._generic_rules):
+        for rule in self._generic_tree.get_matching_rules(self._event):
             begin = time()
-            if rule.matches(self._event):
-                self._logger.debug('{} processing generic matching event'.format(self.describe()))
-                self._try_add_grok(rule)
-                self._try_add_timestamps(rule)
-                for before, after in rule.substitutions.items():
-                    self._try_normalize_event_data_field(before, after)
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'{self.describe()} processing generic matching event')
+            self._try_add_grok(rule)
+            self._try_add_timestamps(rule)
+            for before, after in rule.substitutions.items():
+                self._try_normalize_event_data_field(before, after)
 
-                processing_time = float('{:.10f}'.format(time() - begin))
-                self.ps.update_per_rule(idx, processing_time, rule)
+            processing_time = float('{:.10f}'.format(time() - begin))
+            idx = self._generic_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
 
-        for idx, rule in enumerate(self._specific_rules):
+        for rule in self._specific_tree.get_matching_rules(self._event):
             begin = time()
-            if rule.matches(self._event):
-                self._logger.debug('{} processing specific matching event'.format(self.describe()))
-                self._try_add_grok(rule)
-                self._try_add_timestamps(rule)
-                for before, after in rule.substitutions.items():
-                    self._try_normalize_event_data_field(before, after)
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'{self.describe()} processing specific matching event')
+            self._try_add_grok(rule)
+            self._try_add_timestamps(rule)
+            for before, after in rule.substitutions.items():
+                self._try_normalize_event_data_field(before, after)
 
-                processing_time = float('{:.10f}'.format(time() - begin))
-                self.ps.update_per_rule(idx, processing_time, rule)
+            processing_time = float('{:.10f}'.format(time() - begin))
+            idx = self._specific_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
 
     def _try_add_grok(self, rule: NormalizerRule):
         for source_field, grok in rule.grok.items():
-            matches = grok.match(self._get_dotted_field_value(source_field))
+            source_value = self._get_dotted_field_value(source_field)
+            if source_value is None:
+                continue
+
+            matches = grok.match(source_value)
             for normalized_field, field_value in matches.items():
                 if field_value is not None:
                     self._try_add_field(normalized_field, field_value)
@@ -187,6 +218,9 @@ class Normalizer(RuleBasedProcessor):
             timestamp_normalization = normalization['timestamp']
 
             source_timestamp = self._get_dotted_field_value(source_field)
+
+            if source_timestamp is None:
+                continue
 
             allow_override = timestamp_normalization.get('allow_override', True)
             normalization_target = timestamp_normalization['destination']
@@ -214,9 +248,9 @@ class Normalizer(RuleBasedProcessor):
                     self._name, 'Could not parse source timestamp "{}" with formats "{}"'.format(
                         source_timestamp, source_formats))
 
-            tz = timezone(source_timezone)
+            time_zone = timezone(source_timezone)
             if not timestamp.tzinfo:
-                timestamp = tz.localize(timestamp)
+                timestamp = time_zone.localize(timestamp)
                 timestamp = timezone(source_timezone).normalize(timestamp)
             timestamp = timestamp.astimezone(timezone(destination_timezone))
             timestamp = timezone(destination_timezone).normalize(timestamp)

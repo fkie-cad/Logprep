@@ -1,0 +1,29 @@
+[{
+  "filter": "add_list_missing_generic_test",
+  "generic_adder": {"add_from_file": "I_DO_NOT_EXIST"},
+  "description": ""
+},
+{
+  "filter": "add_list_missing_and_existing_generic_test",
+  "generic_adder": {"add_from_file": [
+    "I_DO_NOT_EXIST",
+    "tests/testdata/unit/generic_adder/additions_file.yml"
+  ]},
+  "description": ""
+},
+{
+  "filter": "add_list_missing_with_only_first_generic_test",
+  "generic_adder": {
+    "add_from_file": "I_DO_NOT_EXIST",
+    "only_first_existing_file": true
+  },
+  "description": ""
+},
+{
+  "filter": "add_list_missing_as_list_with_only_first_generic_test",
+  "generic_adder": {
+    "add_from_file": ["I_DO_NOT_EXIST"],
+    "only_first_existing_file": true
+  },
+  "description": ""
+}]

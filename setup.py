@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='logprep',
-    version='0.1',
+    version='1.1.0',
     packages=find_packages(),
     entry_points={
         'console_scripts': [
@@ -10,4 +10,3 @@ setup(
          ]
     }
 )
-

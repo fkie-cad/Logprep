@@ -91,7 +91,9 @@ A filter for :code:`{'field': {'subfield': 'value'}}` can be specified by :code:
 
 If a key without a value is given it is filtered for the existence of the key.
 The existence of a specific field can therefore be checked by a key without a value.
-The filter :code:`field.subfield` would match for every value :code:`subfield` in :code:`{'field': {'subfield': 'value'}}`.
+The filter :code:`filter: field.subfield` would match for every value :code:`subfield` in :code:`{'field': {'subfield': 'value'}}`.
+The special key :code:`*` can be used to always match on any input.
+Thus, the filter :code:`filter: *` would match any input document.
 
 The filter in the following example would match fields :code:`ip_address` with the value :code:`192.168.0.1`.
 Meaning all following transformations done by this rule would be applied only on log messages that match this criterion.
@@ -242,6 +244,23 @@ The following example would normalize :code:`event_data.ip_and_port: "Linus has 
         - address.combined
         - RE_IP_PORT_CAP
         - '\g<IP> and \g<PORT>'
+
+It is furthermore possible to use more than one Grok pattern for a field by specifying them in a list.
+The patterns will be sequentially checked until one of them matches.
+
+The following example would normalize :code:`some_field_with_an_ip: "1.2.3.4 1234"` to :code:`ip: "1.2.3.4"`, :code:`port: 1234`, skipping the first Grok pattern.
+:code:`some_field_with_an_ip: "1.2.3.4 1234 foo"` would be however normalized to :code:`ip_foo: "1.2.3.4"`, :code:`port_foo: 1234`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Grok normalization with multiple patterns
+
+      filter: 'some_field_with_an_ip'
+      normalize:
+      some_field_with_an_ip:
+        grok:
+        - '%{IP:ip_foo} %{NUMBER:port_foo:int} foo'
+        - '%{IP:ip} %{NUMBER:port:int}'
 
 Normalization of Timestamps
 ---------------------------
@@ -868,6 +887,203 @@ In the following example :code:`@timestamp: 2000 12 31 - 22:59:59` would be norm
           source_timezone: 'UTC'
           destination_timezone: 'Europe/Berlin'
     description: 'Test-rule with matching auto-test'
+
+If Grok and a timestamp normalization is being used in the same rule, then Grok is being applied first,
+so that a time normalization can be performed on the Grok results.
+
+Generic Adder
+=============
+
+The generic adder requires the additional field :code:`generic_adder`.
+The field :code:`generic_adder.add` can be defined.
+It contains a dictionary of field names and values that should be added.
+If dot notation is being used, then all fields on the path are being automatically created.
+
+In the following example, the field :code:`some.added.field` with the value :code:`some added value` is being added.
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example with add
+
+    filter: add_generic_test
+    generic_adder:
+      add:
+        some.added.field: some added value
+    description: '...'
+
+Alternatively, the additional field :code:`generic_adder.add_from_file` can be added.
+It contains the path to a file with a YML file that contains a dictionary of field names and values that should be added to the document.
+Instead of a path, a list of paths can be used to add multiple files.
+All of those files must exist.
+If a list is used, it is possible to tell the generic adder to only use the first existing file by setting :code:`generic_adder.only_first_existing_file: true`.
+In that case, only one file must exist.
+
+In the following example a dictionary with field names and values is loaded from the file at :code:`PATH_TO_FILE_WITH_LIST`.
+This dictionary is used like the one that can be defined via :code:`generic_adder.add`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example with add_from_file
+
+    filter: 'add_generic_test'
+    generic_adder:
+      add_from_file: PATH_TO_FILE_WITH_LIST
+    description: '...'
+
+In the following example two files are being used.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example with multiple files
+
+    filter: 'add_generic_test'
+    generic_adder:
+      add_from_file:
+        - PATH_TO_FILE_WITH_LIST
+        - ANOTHER_PATH_TO_FILE_WITH_LIST
+    description: '...'
+
+In the following example two files are being used, but only the first existing file is being loaded.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example with multiple files and one loaded file
+
+    filter: 'add_generic_test'
+    generic_adder:
+      only_first_existing_file: true
+      add_from_file:
+        - PATH_TO_FILE_THAT_DOES_NOT_EXIST
+        - PATH_TO_FILE_WITH_LIST
+    description: '...'
+
+Datetime Extractor
+==================
+
+The datetime extractor requires the additional field :code:`datetime_extractor`.
+The additional fields :code:`datetime_extractor.datetime_field` and :code:`datetime_extractor.destination_field` must be defined.
+The first one contains the name of the field from which the timestamp should be taken and the last one contains the name of the field under which a split timestamp should be written.
+
+In the following example the timestamp will be extracted from :code:`@timestamp` and written to :code:`split_@timestamp`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: '@timestamp'
+    datetime_extractor:
+      datetime_field: '@timestamp'
+      destination_field: 'split_@timestamp'
+    description: '...'
+
+Domain Resolver
+===============
+
+The generic adder requires the additional field :code:`domain_resolver`.
+The additional field :code:`domain_resolver.source_url_or_domain` must be defined.
+It contains the field from which an URL should be parsed and then written to :code:`resolved_ip`.
+The URL can be located in continuous text insofar the URL is valid.
+
+In the following example the URL from the field :code:`url` will be extracted and written to :code:`resolved_ip`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+      filter: url
+      domain_resolver:
+        source_url_or_domain: url
+      description: '...'
+
+GeoIP Enricher
+==============
+
+The generic adder requires the additional field :code:`geoip`.
+The additional field :code:`geoip.source_ip` must be given.
+It contains the IP for which the geoip data should be added.
+
+In the following example the IP in :code:`client.ip` will be enriched with geoip data.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: client.ip
+    geoip:
+      source_ip: client.ip
+    description: '...'
+
+Template Replacer
+=================
+
+The generic adder requires the additional field :code:`template_replacer`.
+No additional configuration parameters are required for the rules.
+The module is completely configured over the pipeline configuration.
+
+In the following example the target field specified in the processor configuration is replaced for all log messages that have :code:`winlog.provider_name` and :code:`winlog.event_id` if it is defined in the template file.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: winlog.provider_name AND winlog.event_id
+    template_replacer: {}
+    description: ''
+
+Generic Resolver
+================
+
+The generic adder requires the additional field :code:`generic_resolver`.
+Configurable fields are being checked by regex patterns and a configurable value will be added if a pattern matches.
+The parameters within :code:`generic_resolver` must be of the form
+:code:`field_mapping: {SOURCE_FIELD: DESTINATION_FIELD}, resolve_list: {REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`.
+SOURCE_FIELD will be checked by the regex patterns REGEX_PATTERN_[0-N] and a new field DESTINATION_FIELD with the value ADDED_VALUE_[0-N] will be added if there is a match.
+Adding the option :code:`"append_to_list": True` makes the generic resolver write resolved values into a list so that multiple different values can be written into the same field.
+
+In the following example :code:`to_resolve` will be checked by the regex pattern :code:`.*Hello.*`.
+:code:`"resolved": "Greeting"` will be added to the event if the pattern matches the value in :code:`to_resolve`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        .*Hello.*: Greeting
+
+Alternatively, a YML file with a resolve list and a regex pattern can be used to resolve values.
+For this, a field :code:`resolve_from_file` with the subfields :code:`path` and :code:`pattern` must be added.
+The resolve list in the file at :code:`path` is then used in conjunction with the regex pattern in :code:`pattern`.
+:code:`pattern` must be a regex pattern with a capture group that is named :code:`mapping`.
+The resolver will check for the pattern and get value captured by the :code:`mapping` group.
+This captured value is then used in the list from the file.
+
+In the following example :code:`to_resolve` will be checked by the regex pattern :code:`\d*(?P<mapping>[a-z]+)\d*` and the list in :code:`path/to/resolve_mapping.yml` will be used to add new fields.
+:code:`"resolved": "resolved foo"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains foo.
+Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains bar.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example resolving with list from file
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_from_file:
+        path: path/to/resolve_mapping.yml
+        pattern: \d*(?P<mapping>[a-z]+)\d*
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example file with resolve list
+
+    foo: resolved foo
+    bar: resolved bar
 
 PreDetector
 ===========

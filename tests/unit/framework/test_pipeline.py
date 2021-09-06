@@ -7,13 +7,11 @@ from copy import deepcopy
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
-from logprep.framework.pipeline import MultiprocessingPipeline, MustProvideAnMPLogHandlerError, \
-    Pipeline, \
-    MustProvideALogHandlerError, \
-    SharedCounter
+from logprep.framework.pipeline import (MultiprocessingPipeline, MustProvideAnMPLogHandlerError,
+                                        Pipeline, MustProvideALogHandlerError, SharedCounter)
 from logprep.input.dummy_input import DummyInput
-from logprep.input.input import SourceDisconnectedError, FatalInputError, \
-    WarningInputError, CriticalInputError
+from logprep.input.input import (SourceDisconnectedError, FatalInputError, WarningInputError,
+                                 CriticalInputError)
 from logprep.output.dummy_output import DummyOutput
 from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
 from logprep.processor.base.processor import BaseProcessor, ProcessingWarning

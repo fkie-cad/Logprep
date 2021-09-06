@@ -32,5 +32,6 @@ class PipelineProfiler:
         if not os.path.exists(profiles_path):
             os.makedirs(profiles_path)
 
-        profile_output = os.path.join(profiles_path, 'output_{}.prof'.format(datetime.now()).replace(':', '_'))
+        profile_output = os.path.join(profiles_path,
+                                      'output_{}.prof'.format(datetime.now()).replace(':', '_'))
         pstats.Stats(cprofile).strip_dirs().sort_stats('cumtime').dump_stats(profile_output)

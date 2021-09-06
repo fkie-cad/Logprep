@@ -4,10 +4,13 @@ New processors are created by implementing it.
 
 """
 
-from typing import List
+from typing import List, Union, Optional
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from os import walk, path
+from logging import Logger
+
+from logprep.framework.rule_tree.rule_tree import RuleTree
 
 
 class ProcessingError(BaseException):
@@ -24,11 +27,23 @@ class ProcessingWarning(ProcessingError):
         super().__init__('ProcessingWarning', message)
 
 
-class BaseProcessor(metaclass=ABCMeta):
+class ProcessingWarningCollection(ProcessingError):
+    """A collection of ProcessingWarnings."""
+
+    def __init__(self, processing_warnings):
+        self.processing_warnings = processing_warnings
+
+
+class BaseProcessor:
     """Responsible for processing log events."""
 
-    def __init__(self):
+    def __init__(self, name, logger):
+        self._name = name
+        self._logger = logger
+
         self.ps = None
+        self._event = None
+        self._events_processed = 0
 
     def setup(self):
         """Set the processor up.
@@ -73,7 +88,8 @@ class BaseProcessor(metaclass=ABCMeta):
         This is used for diagnostics.
 
         """
-        return 0
+
+        return self._events_processed
 
     def shut_down(self):
         """Stop processing of this processor.
@@ -82,9 +98,36 @@ class BaseProcessor(metaclass=ABCMeta):
 
         """
 
+    @staticmethod
+    def _get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
+        fields = dotted_field.split('.')
+        dict_ = event
+        for field in fields:
+            if field in dict_:
+                dict_ = dict_[field]
+            else:
+                return None
+        return dict_
+
+    @staticmethod
+    def _field_exists(event: dict, dotted_field: str) -> bool:
+        fields = dotted_field.split('.')
+        dict_ = event
+        for field in fields:
+            if field in dict_:
+                dict_ = dict_[field]
+            else:
+                return False
+        return True
+
 
 class RuleBasedProcessor(BaseProcessor):
     """Responsible for processing log events."""
+
+    def __init__(self, name: str, tree_config: str, logger: Logger):
+        super().__init__(name, logger)
+        self._rules = []
+        self._tree = RuleTree(config_path=tree_config)
 
     def setup(self):
         """Set the processor up.
@@ -151,6 +194,8 @@ class RuleBasedProcessor(BaseProcessor):
     def _list_json_files_in_directory(directory: str) -> List[str]:
         valid_file_paths = []
         for root, _, files in walk(directory):
-            for file_name in [file for file in files if (file.endswith('.json') or file.endswith('.yml')) and not file.endswith('_test.json')]:
+            for file_name in [file for file in files if ((file.endswith('.json')
+                                                         or file.endswith('.yml'))
+                                                         and not file.endswith('_test.json'))]:
                 valid_file_paths.append(path.join(root, file_name))
         return valid_file_paths

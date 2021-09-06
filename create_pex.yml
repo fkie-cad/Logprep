@@ -11,7 +11,7 @@
   vars:
     virtualenv_location: "~/.virtualenvs/logprep_env"
     python_interpreter_location: "/usr/bin/python3"  # use Python 3.6
-    project_location: "~/PycharmProjects/log-management-logprep/"
+    project_location: "~/PycharmProjects/logprep/"
 
 
   tasks:
@@ -39,4 +39,4 @@
 
   - name: Build Pex File
     shell: ". {{ virtualenv_location }}/bin/activate &&
-    pex . -r requirements.txt -o ./logprep.pex -c logprep --cache-dir=tmp_pip_cache --python={{ python_interpreter_location }}"  # use Python 3.6
+    pex . -r requirements.txt -o ./logprep.pex -c logprep --pex-root=tmp_pip_cache --python={{ python_interpreter_location }}"  # use Python 3.6

@@ -41,7 +41,30 @@ class TestPreDetector:
                     'severity': 'critical',
                     'mitre': ['attack.test1', 'attack.test2'],
                     'case_condition': 'directly',
-                    'rule_description': 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")'
+                    'description': 'Test rule one',
+                    'rule_filter': 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")'
+                }
+            ],
+            'pre_detector_alerts')
+        detection_results = pre_detector.process(document)
+        self._assert_equality_of_results(document, expected, detection_results, expected_detection_results)
+
+    def test_perform_successful_pre_detection_with_host_name(self, pre_detector):
+        assert pre_detector.events_processed_count() == 0
+        document = {'host': {'name': 'Test hostname'},
+                    'winlog': {'event_id': 123, 'event_data': {'ServiceName': 'VERY BAD'}}}
+        expected = deepcopy(document)
+        expected_detection_results = (
+            [
+                {
+                    'id': 'RULE_ONE_ID',
+                    'title': 'RULE_ONE',
+                    'severity': 'critical',
+                    'mitre': ['attack.test1', 'attack.test2'],
+                    'case_condition': 'directly',
+                    'host': {'name': 'Test hostname'},
+                    'description': 'Test rule one',
+                    'rule_filter': 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")'
                 }
             ],
             'pre_detector_alerts')
@@ -60,7 +83,8 @@ class TestPreDetector:
                     'severity': 'critical',
                     'mitre': ['attack.test1', 'attack.test2'],
                     'case_condition': 'directly',
-                    'rule_description': 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")'
+                    'description': 'Test rule one',
+                    'rule_filter': 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")'
                 }
             ],
             'pre_detector_alerts')
@@ -80,7 +104,8 @@ class TestPreDetector:
                     'severity': 'critical',
                     'mitre': [],
                     'case_condition': 'directly',
-                    'rule_description': 'AND(tags:"test", '
+                    'description': 'Test rule two',
+                    'rule_filter': 'AND(tags:"test", '
                                         'process.program:"test", '
                                         'OR(message:"test1*xyz", '
                                         'message:"test2*xyz"))'
@@ -101,7 +126,8 @@ class TestPreDetector:
                     'severity': 'critical',
                     'mitre': [],
                     'case_condition': 'directly',
-                    'rule_description': 'AND(tags:"test2", '
+                    'description': 'Test rule three',
+                    'rule_filter': 'AND(tags:"test2", '
                                         'process.program:"test", '
                                         'OR(message:"test1*xyz", '
                                         'message:"test2?xyz"))'
@@ -120,7 +146,8 @@ class TestPreDetector:
                 'case_condition': 'directly',
                 'id': 'RULE_ONE_ID',
                 'mitre': ['attack.test1', 'attack.test2'],
-                'rule_description': '"first_match"',
+                'description': 'Test two rules one',
+                'rule_filter': '"first_match"',
                 'severity': 'critical',
                 'title': 'RULE_ONE'
             },
@@ -128,7 +155,8 @@ class TestPreDetector:
                 'case_condition': 'directly',
                 'id': 'RULE_TWO_ID',
                 'mitre': ['attack.test2', 'attack.test4'],
-                'rule_description': '"second_match"',
+                'description': 'Test two rules two',
+                'rule_filter': '"second_match"',
                 'severity': 'suspicious',
                 'title': 'RULE_TWO'
             }
@@ -211,7 +239,8 @@ class TestPreDetector:
                 {
                     'id': 'RULE_TWO_ID', 'title': 'RULE_TWO', 'severity': 'critical', 'mitre': [],
                     'case_condition': 'directly',
-                    'rule_description': 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))'
+                    'description': 'Test rule two',
+                    'rule_filter': 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))'
                 }
             ],
             'pre_detector_alerts')
@@ -227,7 +256,8 @@ class TestPreDetector:
                 {
                     'id': 'RULE_TWO_ID', 'title': 'RULE_TWO', 'severity': 'critical', 'mitre': [],
                     'case_condition': 'directly',
-                    'rule_description': 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))'
+                    'description': 'Test rule two',
+                    'rule_filter': 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))'
                 }
             ],
             'pre_detector_alerts')
@@ -252,8 +282,7 @@ class TestPreDetectorFactory:
     VALID_CONFIG = {
         'type': 'pre_detector',
         'rules': [rules_dir],
-        'pre_detector_topic': 'pre_detector_alerts',
-        'tree_config': 'tests/testdata/unit/pre_detector/tree_config.json'
+        'pre_detector_topic': 'pre_detector_alerts'
     }
 
     def test_create(self):

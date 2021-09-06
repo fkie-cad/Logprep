@@ -31,10 +31,9 @@ class GrokPatternLoader:
         """
         if path.isfile(pattern_path):
             return GrokPatternLoader.load_from_file(pattern_path)
-        elif path.isdir(pattern_path):
+        if path.isdir(pattern_path):
             return GrokPatternLoader.load_from_dir(pattern_path)
-        else:
-            return None
+        return None
 
     @staticmethod
     def load_from_file(pattern_path: str) -> dict:
@@ -60,7 +59,8 @@ class GrokPatternLoader:
                 identifier, pattern = line.split(' ', 1)
 
                 if identifier in grok_pattern_dict:
-                    raise GrokPatternLoaderError(f'Duplicate pattern definition - Pattern: "{identifier}"')
+                    raise GrokPatternLoaderError(f'Duplicate pattern definition - Pattern: '
+                                                 f'"{identifier}"')
                 grok_pattern_dict[identifier] = pattern
         return grok_pattern_dict
 

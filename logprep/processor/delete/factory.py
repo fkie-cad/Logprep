@@ -2,7 +2,6 @@
 
 from logging import Logger
 
-from logprep.processor.processor_factory_error import UnknownProcessorTypeError, InvalidConfigurationError
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.delete.processor import Delete
 
@@ -21,8 +20,4 @@ class DeleteFactory(BaseFactory):
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        if 'type' not in configuration:
-            raise InvalidConfigurationError
-        if (not isinstance(configuration['type'], str)) or (
-                configuration['type'].lower() != 'delete'):
-            raise UnknownProcessorTypeError
+        DeleteFactory._check_common_configuration('delete', [], configuration)

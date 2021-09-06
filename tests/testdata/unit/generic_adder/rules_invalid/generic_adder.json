@@ -1,0 +1,5 @@
+[{
+  "filter": "add_list_invalid_generic_test",
+  "generic_adder": {"add_from_file": "tests/testdata/unit/generic_adder/invalid_additions_file.yml"},
+  "description": ""
+}]

@@ -11,7 +11,7 @@ from luqum.tree import OrOperation, AndOperation, Group, FieldGroup, SearchField
 from logprep.filter.expression.filter_expression import (Or, And, StringFilterExpression,
                                                          WildcardStringFilterExpression, SigmaFilterExpression,
                                                          RegExFilterExpression, Not as NotExpression, Exists,
-                                                         Null, FilterExpression)
+                                                         Null, Always, FilterExpression)
 
 
 class LuceneFilterError(BaseException):
@@ -180,10 +180,13 @@ class LuceneTransformer:
         return StringFilterExpression(key, value)
 
     @staticmethod
-    def _create_value_expression(word: luqum.tree) -> Exists:
+    def _create_value_expression(word: luqum.tree) -> Union[Exists, Always]:
         value = word.value.replace('\\', '')
         value = value.split('.')
-        return Exists(value)
+        if value == ['*']:
+            return Always(True)
+        else:
+            return Exists(value)
 
     @staticmethod
     def _strip_quote_from_string(string: str) -> str:
