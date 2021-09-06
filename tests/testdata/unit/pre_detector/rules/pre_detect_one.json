@@ -7,5 +7,5 @@
     "mitre": ["attack.test1","attack.test2"],
     "case_condition": "directly"
   },
-  "description": ""
+  "description": "Test rule one"
 }]

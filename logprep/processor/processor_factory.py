@@ -3,16 +3,17 @@
 from typing import Tuple
 from os.path import dirname, join, isdir
 from os import listdir
-from logging import getLogger, Logger
+from logging import getLogger, Logger, DEBUG
 from copy import deepcopy
+
+import pkgutil
 
 from logprep.processor.processor_factory_error import (UnknownProcessorTypeError,
                                                        NotExactlyOneEntryInConfigurationError,
-                                                       NoTypeSpecifiedError, InvalidConfigSpecificationError)
+                                                       NoTypeSpecifiedError,
+                                                       InvalidConfigSpecificationError)
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.base.processor import BaseProcessor
-
-import pkgutil
 
 
 class ProcessorFactory:
@@ -26,6 +27,7 @@ class ProcessorFactory:
 
     @classmethod
     def load_plugins(cls, plugin_dir: str):
+        """Discover and load processor plugins."""
         directories = []
         for item in listdir(plugin_dir):
             if isdir(join(plugin_dir, item)) and 'factory.py' in listdir(join(plugin_dir, item)):
@@ -40,9 +42,13 @@ class ProcessorFactory:
                         module = importer.find_module(name)
                         module.load_module(name)
                         unique_subclasses = []
-                        new_subclasses = [item for item in BaseFactory.__subclasses__() if item not in pre_loading_submodules]
+                        new_subclasses = []
+                        for item in BaseFactory.__subclasses__():
+                            if item not in pre_loading_submodules:
+                                new_subclasses.append(item)
                         for subclass in new_subclasses:
-                            if subclass.__name__ not in (usc.__name__ for usc in unique_subclasses):
+                            if subclass.__name__ not in (
+                                    usc.__name__ for usc in unique_subclasses):
                                 unique_subclasses.append(subclass)
 
                         new_classes = []
@@ -72,7 +78,8 @@ class ProcessorFactory:
             processor = processor_factory.create(name, section, logger)
             return processor
 
-        logger.debug(f'Failed to create unknown processor type: \'{processor_type}\'')
+        if logger.isEnabledFor(DEBUG):
+            logger.debug(f'Failed to create unknown processor type: \'{processor_type}\'')
         raise UnknownProcessorTypeError(processor_type)
 
     @staticmethod

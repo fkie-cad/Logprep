@@ -9,14 +9,14 @@ from typing import List
 
 import ujson
 from ctypes import c_bool, c_ulonglong, c_double
-from logging import Logger, Handler, INFO, NOTSET
+from logging import Logger, Handler, INFO, NOTSET, DEBUG
 from multiprocessing import Process, Value, Lock, current_process
 from time import time
 
 from logprep.connector.connector_factory import ConnectorFactory
 from logprep.input.input import SourceDisconnectedError, FatalInputError, WarningInputError, CriticalInputError
 from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
-from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.base.processor import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
@@ -47,9 +47,9 @@ class Pipeline:
     # pylint: disable=logging-not-lazy
     # Would require too much change in the tests.
 
-    def __init__(self, connector_config: dict, pipeline_config: List[dict], timeout: float, counter: 'SharedCounter',
-                 log_handler: Handler, status_logger_period: float, lock: Lock, shared_dict: dict,
-                 status_logger: Logger = None):
+    def __init__(self, connector_config: dict, pipeline_config: List[dict], timeout: float,
+                 counter: 'SharedCounter', log_handler: Handler, status_logger_period: float,
+                 lock: Lock, shared_dict: dict, status_logger: Logger = None):
         if not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
         self._connector_config = connector_config
@@ -74,25 +74,33 @@ class Pipeline:
         self._create_connectors()
 
     def _build_pipeline(self):
-        self._logger.debug('Building \'{}\''.format(current_process().name))
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'Building \'{current_process().name}\'')
         self._pipeline = []
         for entry in self._pipeline_config:
             self._pipeline.append(ProcessorFactory.create(entry, self._logger))
-            self._logger.debug('Created \'{}\' processor ({})'.format(list(entry.keys())[0], current_process().name))
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'Created \'{list(entry.keys())[0]}\' processor '
+                                   f'({current_process().name})')
             self._pipeline[-1].setup()
-        self._logger.debug('Finished building pipeline ({})'.format(current_process().name))
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'Finished building pipeline ({current_process().name})')
 
     def _create_connectors(self):
-        self._logger.debug('Creating connectors ({})'.format(current_process().name))
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'Creating connectors ({current_process().name})')
         self._input, self._output = ConnectorFactory.create(self._connector_config)
-        self._logger.debug('Created input connector \'{}\' ({})'.format(self._input.describe_endpoint(),
-                                                                        current_process().name))
-        self._logger.debug('Created output connector \'{}\' ({})'.format(self._output.describe_endpoint(),
-                                                                         current_process().name))
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'Created input connector \'{self._input.describe_endpoint()}\' '
+                               f'({current_process().name})')
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'Created output connector \'{self._output.describe_endpoint()}\' '
+                               f'({current_process().name})')
 
         self._input.setup()
         self._output.setup()
-        self._logger.debug('Finished creating connectors ({})'.format(current_process().name))
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'Finished creating connectors ({current_process().name})')
 
     def _create_logger(self):
         if self._log_handler.level == NOTSET:
@@ -109,11 +117,13 @@ class Pipeline:
         self._setup()
         self._enable_iteration()
         try:
-            self._logger.debug('Start iterating ({})'.format(current_process().name))
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f'Start iterating ({current_process().name})')
             while self._iterate():
                 self._retrieve_and_process_data()
         except SourceDisconnectedError:
-            self._logger.warning(f'Lost or failed to establish connection to {self._input.describe_endpoint()}')
+            self._logger.warning(f'Lost or failed to establish connection to '
+                                 f'{self._input.describe_endpoint()}')
         except FatalInputError as error:
             self._logger.error(f'Input {self._input.describe_endpoint()} failed: {error}')
         except FatalOutputError as error:
@@ -131,7 +141,6 @@ class Pipeline:
         event = dict()
         try:
             self._tracker.print_aggregate()
-            self._logger.debug('Attempting to get next event')
             event = self._input.get_next(self._timeout)
 
             try:
@@ -140,27 +149,29 @@ class Pipeline:
                 pass
 
             if event:
-                self._logger.debug('Received event')
                 self._process_event(event)
-                self._logger.debug('Processed event')
                 self._processing_counter.increment()
                 self._processing_counter.print_if_ready()
                 if event:
                     self._output.store(event)
-                    self._logger.debug('Stored output')
+                    if self._logger.isEnabledFor(DEBUG):
+                        self._logger.debug('Stored output')
         except SourceDisconnectedError as error:
             raise error
         except WarningInputError as error:
-            self._logger.warning(f'An error occurred for input {self._input.describe_endpoint()}: {error}')
+            self._logger.warning(f'An error occurred for input {self._input.describe_endpoint()}:'
+                                 f' {error}')
         except WarningOutputError as error:
-            self._logger.warning(f'An error occurred for output {self._output.describe_endpoint()}: {error}')
+            self._logger.warning(f'An error occurred for output {self._output.describe_endpoint()}:'
+                                 f' {error}')
         except CriticalInputError as error:
             msg = f'A critical error occurred for input {self._input.describe_endpoint()}: {error}'
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, event)
         except CriticalOutputError as error:
-            msg = f'A critical error occurred for output {self._output.describe_endpoint()}: {error}'
+            msg = f'A critical error occurred for output ' \
+                  f'{self._output.describe_endpoint()}: {error}'
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})
@@ -169,7 +180,7 @@ class Pipeline:
     def _process_event(self, event: dict):
         self._tracker.increment_aggregation('processed')
 
-        event_received = ujson.loads(ujson.dumps(event))
+        event_received = ujson.dumps(event)
         try:
             for processor in self._pipeline:
                 try:
@@ -177,31 +188,40 @@ class Pipeline:
                     if extra_data is not None:
                         self._store_extra_data(extra_data)
                 except ProcessingWarning as error:
-                    msg = 'A non-fatal error occurred for processor {} when processing an event: {}'.format(
-                        processor.describe(), str(error))
-                    self._logger.warning(msg)
+                    self._logger.warning(f'A non-fatal error occurred for processor '
+                                         f'{processor.describe()} when processing an event: '
+                                         f'{error}')
 
                     self._tracker.add_warnings(error, processor)
+                except ProcessingWarningCollection as error:
+                    for warning in error.processing_warnings:
+                        self._logger.warning(f'A non-fatal error occurred for processor '
+                                             f'{processor.describe()} when processing an event: '
+                                             f'{warning}')
+
+                        self._tracker.add_warnings(warning, processor)
 
                 if not event:
-                    self._logger.debug('Event deleted by processor {}', str(processor))
+                    if self._logger.isEnabledFor(DEBUG):
+                        self._logger.debug(f'Event deleted by processor {processor}')
                     return
         # pylint: disable=broad-except
         except BaseException as error:
             original_error_msg = type(error).__name__
             if str(error):
                 original_error_msg += ': {}'.format(str(error))
-            msg = 'A critical error occurred for processor {} when processing an event, ' \
-                  'processing was aborted: ({})'.format(processor.describe(), original_error_msg)
+            msg = f'A critical error occurred for processor {processor.describe()} when ' \
+                  f'processing an event, processing was aborted: ({original_error_msg})'
             self._logger.error(msg)
-            self._output.store_failed(msg, event_received, event)
+            self._output.store_failed(msg, ujson.loads(event_received), event)
             event.clear()  # 'delete' the event, i.e. no regular output
 
             self._tracker.add_errors(error, processor)
         # pylint: enable=broad-except
 
     def _store_extra_data(self, extra_data: tuple):
-        self._logger.debug('Storing extra data')
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug('Storing extra data')
         documents = extra_data[0]
         target = extra_data[1]
         for document in documents:
@@ -222,10 +242,13 @@ class Pipeline:
 class SharedCounter(object):
     """A shared counter for multi-processing pipelines."""
 
+    CHECKING_PERIOD = 0.5
+
     def __init__(self):
         self._val = Value(c_ulonglong, 0)
         self._lock = Lock()
         self._timer = Value(c_double, 0)
+        self._checking_timer = 0
         self._logger = None
         self._period = None
 
@@ -247,6 +270,7 @@ class SharedCounter(object):
     def setup(self, print_processed_period: float, log_handler: Handler):
         self._create_logger(log_handler)
         self._init_timer(print_processed_period)
+        self._checking_timer = time() + self.CHECKING_PERIOD
 
     def increment(self):
         """Increment the counter."""
@@ -255,20 +279,20 @@ class SharedCounter(object):
 
     def print_if_ready(self):
         """Periodically print the counter and reset it."""
-        if self._timer.value != 0 and time() >= self._timer.value:
-            with self._lock:
-                if self._period / 60.0 < 1:
-                    msg = 'Processed events per {} seconds: {}'.format(
-                        self._period,
-                        self._val.value)
-                else:
-                    msg = 'Processed events per {:.2f} minutes: {}'.format(
-                        self._period / 60.0,
-                        self._val.value)
-                if self._logger:
-                    self._logger.info(msg)
-                self._val.value = 0
-                self._timer.value = time() + self._period
+        current_time = time()
+        if current_time > self._checking_timer:
+            self._checking_timer = current_time + self.CHECKING_PERIOD
+            if self._timer.value != 0 and current_time >= self._timer.value:
+                with self._lock:
+                    if self._period / 60.0 < 1:
+                        msg = f'Processed events per {self._period} seconds: {self._val.value}'
+                    else:
+                        msg = f'Processed events per {self._period / 60.0:.2f} minutes: ' \
+                              f'{self._val.value}'
+                    if self._logger:
+                        self._logger.info(msg)
+                    self._val.value = 0
+                    self._timer.value = time() + self._period
 
 
 class MultiprocessingPipeline(Process, Pipeline):
@@ -276,9 +300,10 @@ class MultiprocessingPipeline(Process, Pipeline):
 
     processed_counter = SharedCounter()
 
-    def __init__(self, connector_config: dict, pipeline_config: List[dict], timeout: float, log_handler: Handler,
-                 print_processed_period: float, status_logger_period: float, lock: Lock, shared_dict: dict,
-                 profile: bool = False, status_logger: Logger = None):
+    def __init__(self, connector_config: dict, pipeline_config: List[dict], timeout: float,
+                 log_handler: Handler, print_processed_period: float, status_logger_period: float,
+                 lock: Lock, shared_dict: dict, profile: bool = False,
+                 status_logger: Logger = None):
         if not isinstance(log_handler, MultiprocessingLogHandler):
             raise MustProvideAnMPLogHandlerError
 

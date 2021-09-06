@@ -47,4 +47,5 @@ class InvalidProcessorClassError(ProcessorFactoryError):
             if len(processor_class) == 1:
                 super().__init__(f'Processor class {processor_class} has no \'identifier\' field')
             else:
-                super().__init__(f'Processor classes {processor_class} have no \'identifier\' field')
+                super().__init__(f'Processor classes {processor_class} have no \'identifier\''
+                                 f' field')

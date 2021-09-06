@@ -2,7 +2,7 @@
 
 import signal
 from ctypes import c_bool
-from logging import Logger
+from logging import Logger, DEBUG
 from multiprocessing import Value, current_process
 
 from logprep.framework.pipeline_manager import PipelineManager
@@ -177,7 +177,8 @@ class Runner:
         self._create_manager()
         self._manager.set_configuration(self._configuration)
         self._manager.set_count(self._configuration['process_count'])
-        self._logger.debug('Pipeline manager initiated')
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug('Pipeline manager initiated')
 
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
@@ -185,7 +186,8 @@ class Runner:
         self._logger.info('Startup complete')
         try:
             while self._keep_iterating():
-                self._logger.debug('Runner iterating')
+                if self._logger.isEnabledFor(DEBUG):
+                    self._logger.debug('Runner iterating')
                 self._manager.remove_failed_pipeline()
                 self._manager.set_count(self._configuration['process_count'])
                 # Note: We are waiting half the timeout because when shutting down, we also have to

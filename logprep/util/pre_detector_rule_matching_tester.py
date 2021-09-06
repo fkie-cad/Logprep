@@ -1,17 +1,18 @@
 #!/usr/bin/python3
-"""This module is used to test if PreDetector rules match or not for given events depending on a naming scheme."""
+"""This module is used to test if PreDetector rules match depending on a naming scheme."""
 
 from typing import Tuple, List, Any
 
 import logging
 import tempfile
 from argparse import ArgumentParser
-from ruamel.yaml import load_all, YAMLError
-from os import walk, sep
+from ruamel.yaml import YAML, YAMLError
+from os import walk, sep, path
 import regex as re
-from colorama import Fore
+import json
 
-from tests.acceptance.util import *
+from ruamel.yaml import load_all, YAMLError
+from colorama import Fore
 
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.processor.pre_detector.processor import PreDetector
@@ -24,7 +25,10 @@ from logprep.util.helper import print_fcolor
 logger = logging.getLogger()
 logger.disabled = True
 
+yaml = YAML(typ='unsafe', pure=True)
 
+
+# pylint: disable=protected-access
 class MatchingRuleTesterException(BaseException):
     """Base class for MatchingRuleTester related exceptions."""
 
@@ -33,6 +37,8 @@ class MatchingRuleTesterException(BaseException):
 
 
 class TestCollector:
+    """Used to collect PreDetector tests for evasion and matching."""
+
     def __init__(self):
         self.rule_tests = dict()
 
@@ -50,7 +56,7 @@ class TestCollector:
             Rules with corresponding events.
 
         """
-        for root, dirs, files in walk(data_dir):
+        for root, _, files in walk(data_dir):
             valid_files = [file for file in files if re.search(r'\.(json|jsonl|yml)$', file)]
             for file_name in valid_files:
                 self._update_rule_tests(file_name, root)
@@ -64,7 +70,7 @@ class TestCollector:
             if part == 'events':
                 self._add_event(file_name, split_path[idx:], root)
                 break
-            elif part == 'rules':
+            if part == 'rules':
                 self._add_rule(file_name, split_path[idx:], root)
                 break
 
@@ -156,10 +162,12 @@ class RuleMatchingTester:
         print_fcolor(Fore.WHITE, '---- Results ----')
         print_fcolor(Fore.RED, f'Failed tests: {self._failed_rule_tests_cnt}')
         print_fcolor(Fore.GREEN, f'Successful tests: {self._successful_rule_tests_cnt}')
-        print_fcolor(Fore.CYAN, f'Total tests: {self._successful_rule_tests_cnt + self._failed_rule_tests_cnt}')
+        print_fcolor(Fore.CYAN, f'Total tests: '
+                                f'{self._successful_rule_tests_cnt + self._failed_rule_tests_cnt}')
         print_fcolor(Fore.RED, f'Failed events: {self._failed_events_cnt}')
         print_fcolor(Fore.GREEN, f'Successful events: {self._successful_events_cnt}')
-        print_fcolor(Fore.CYAN, f'Total events: {self._successful_events_cnt + self._failed_events_cnt}')
+        print_fcolor(Fore.CYAN, f'Total events: '
+                                f'{self._successful_events_cnt + self._failed_events_cnt}')
 
     @staticmethod
     def _print_event_numbers(indices: List[int]):
@@ -174,7 +182,7 @@ class RuleMatchingTester:
             if len(event_sequence) == 1:
                 event_numbers_compact += str(event_sequence[0] + 1)
             elif len(event_sequence) > 1:
-                event_numbers_compact += '{}-{}'.format(event_sequence[0] + 1, event_sequence[-1] + 1)
+                event_numbers_compact += f'{event_sequence[0] + 1}-{event_sequence[-1] + 1}'
             if idx < len(event_numbers) - 1:
                 event_numbers_compact += ', '
         print('Event#:', event_numbers_compact)
@@ -197,7 +205,8 @@ class RuleMatchingTester:
         else:
             self._successful_rule_tests_cnt += 1
 
-    def _update_test_results(self, event_type: str, processor: PreDetector, rule_test: dict) -> bool:
+    def _update_test_results(self, event_type: str, processor: PreDetector,
+                             rule_test: dict) -> bool:
         index = 0
         any_failed = False
         for to_test, name, event_src in rule_test[event_type]:
@@ -206,7 +215,8 @@ class RuleMatchingTester:
 
             extra_output = processor.process(to_test)
 
-            if (event_type == 'evasion' and extra_output) or (event_type == 'match' and extra_output is None):
+            if (event_type == 'evasion' and extra_output) or (event_type == 'match' and
+                                                              extra_output is None):
                 failed = True
                 any_failed = True
             else:
@@ -233,7 +243,7 @@ class RuleMatchingTester:
         print()
 
         rules = list()
-        for identifier, test in self._rule_tests.items():
+        for test in self._rule_tests.values():
             if test['rule'] is None:
                 continue
 
@@ -242,7 +252,8 @@ class RuleMatchingTester:
             match_events = self._get_test_events('match', test)
             evasion_events = self._get_test_events('evasion', test)
 
-            rules.append({'rules': multi_rule, 'match': match_events, 'evasion': evasion_events, 'file': test['rule']})
+            rules.append({'rules': multi_rule, 'match': match_events, 'evasion': evasion_events,
+                          'file': test['rule']})
 
         if self._errors:
             for error in self._errors:
@@ -254,13 +265,17 @@ class RuleMatchingTester:
     def _get_multi_rule(test: dict) -> List[dict]:
         with open(test['rule'], 'r') as rules_file:
             try:
-                multi_rule = list(load_all(rules_file)) if test['rule'].endswith('.yml') else json.load(rules_file)
+                if test['rule'].endswith('.yml'):
+                    multi_rule = list(yaml.load_all(rules_file))
+                else:
+                    multi_rule = json.load(rules_file)
             except json.decoder.JSONDecodeError as error:
                 raise MatchingRuleTesterException(
-                    'JSON decoder error in rule "{}": "{}"'.format(rules_file.name, str(error)))
+                    'JSON decoder error in rule "{}": "{}"'.format(rules_file.name, str(error))
+                ) from error
             except YAMLError as error:
                 raise MatchingRuleTesterException(
-                    'YAML error in rule "{}": "{}"'.format(rules_file.name, str(error)))
+                    'YAML error in rule "{}": "{}"'.format(rules_file.name, str(error))) from error
         return multi_rule
 
     def _get_test_events(self, event_type: str, test: dict) -> List[Tuple[Any, Any, str]]:
@@ -276,13 +291,14 @@ class RuleMatchingTester:
                                 match_events.append((json.loads(json_line), match_event, 'jsonl'))
                     except json.decoder.JSONDecodeError as error:
                         self._errors.append(
-                            'JSON decoder error in test "{}": "{}"'.format(test_file.name, str(error)))
+                            f'JSON decoder error in test "{test_file.name}": "{error}"')
                         continue
         return match_events
 
     @staticmethod
     def _is_valid_rule_name(file_name: str) -> bool:
-        return (file_name.endswith('.json') or file_name.endswith('.yml')) and not file_name.endswith('_test.json')
+        return ((file_name.endswith('.json') or file_name.endswith('.yml'))
+                and not file_name.endswith('_test.json'))
 
 
 def _parse_arguments():
@@ -295,6 +311,7 @@ def _parse_arguments():
 
 
 def main():
+    """Starts rule tester for PreDetector rules."""
     args = _parse_arguments()
     data_dir = args.daten
 

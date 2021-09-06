@@ -8,7 +8,7 @@ class Node:
     def __init__(self, expression: FilterExpression):
         self._expression = expression
         self._children = []
-        self.matching_rule = None
+        self.matching_rules = []
 
     def does_match(self, event: dict):
         try:

@@ -31,8 +31,11 @@ class NotARulesDirectoryError(RuleError):
 class InvalidRuleFileError(InvalidConfigurationError):
     """Raise if rule file at path is invalid."""
 
-    def __init__(self, name: str, path: str):
-        super().__init__(name, f'Invalid rule file "{path}".')
+    def __init__(self, name: str, path: str, message: str = ''):
+        if message:
+            super().__init__(name, f'Invalid rule file "{path}": {message}')
+        else:
+            super().__init__(name, f'Invalid rule file "{path}".')
 
 
 class InvalidRuleConfigurationError(InvalidConfigurationError):

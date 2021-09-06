@@ -2,7 +2,6 @@
 
 from logging import Logger
 
-from logprep.processor.processor_factory_error import (UnknownProcessorTypeError, InvalidConfigurationError)
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.donothing.processor import DoNothing
 
@@ -24,8 +23,4 @@ class DoNothingFactory(BaseFactory):
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        if 'type' not in configuration:
-            raise InvalidConfigurationError
-        if (not isinstance(configuration['type'], str)) or (
-                configuration['type'].lower() != 'donothing'):
-            raise UnknownProcessorTypeError
+        DoNothingFactory._check_common_configuration('donothing', [], configuration)

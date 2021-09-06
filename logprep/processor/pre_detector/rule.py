@@ -15,9 +15,11 @@ class PreDetectorRuleError(InvalidRuleDefinitionError):
 class PreDetectorRule(Rule):
     """Check if documents match a filter."""
 
-    def __init__(self, filter_rule: Optional[FilterExpression], detection_data: dict, ip_fields_to_check=None):
+    def __init__(self, filter_rule: Optional[FilterExpression], detection_data: dict,
+                 ip_fields_to_check=None, description=None):
         super().__init__(filter_rule)
         self._ip_fields = ip_fields_to_check if ip_fields_to_check else list()
+        self._description = description
         self._detection_data = detection_data
 
     def __eq__(self, other: 'PreDetectorRule') -> bool:
@@ -34,6 +36,10 @@ class PreDetectorRule(Rule):
     @property
     def ip_fields(self) -> list:
         return self._ip_fields
+
+    @property
+    def description(self) -> str:
+        return self._description
     # pylint: enable=C0111
 
     @staticmethod
@@ -42,21 +48,25 @@ class PreDetectorRule(Rule):
         PreDetectorRule._check_if_pre_detection_data_valid(rule)
 
         filter_expression = Rule._create_filter_expression(rule)
-        return PreDetectorRule(filter_expression, rule['pre_detector'], ip_fields_to_check=rule.get('ip_fields'))
+        return PreDetectorRule(filter_expression, rule['pre_detector'],
+                               ip_fields_to_check=rule.get('ip_fields'),
+                               description=rule.get('description'))
 
     @staticmethod
     def _check_if_pre_detection_data_valid(rule: dict):
         for item in ('id', 'title', 'severity', 'case_condition'):
             if item not in rule['pre_detector']:
                 raise PreDetectorRuleError(f'Item "{item}" is missing in Predetector-Rule')
-            elif not isinstance(item, str):
+
+            if not isinstance(item, str):
                 raise PreDetectorRuleError(f'Item "{item}" is not a string')
 
         if 'mitre' not in rule['pre_detector']:
             raise PreDetectorRuleError('Item "mitre" is missing in Predetector-Rule')
-        elif not isinstance(rule['pre_detector']['mitre'], list):
+
+        if not isinstance(rule['pre_detector']['mitre'], list):
             raise PreDetectorRuleError('Item "mitre" is not a list')
-        else:
-            for list_item in rule['pre_detector']['mitre']:
-                if not isinstance(list_item, str):
-                    raise PreDetectorRuleError(f'List-Item "{list_item}"is not a string')
+
+        for list_item in rule['pre_detector']['mitre']:
+            if not isinstance(list_item, str):
+                raise PreDetectorRuleError(f'List-Item "{list_item}"is not a string')

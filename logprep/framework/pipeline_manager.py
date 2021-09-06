@@ -2,7 +2,7 @@
 
 from queue import Empty
 from multiprocessing import Manager, Lock
-from logging import Logger
+from logging import Logger, DEBUG
 
 from logprep.util.configuration import Configuration
 
@@ -54,7 +54,8 @@ class PipelineManager:
            The pipeline count will be incrementally changed until it reaches this value.
 
         """
-        self._logger.debug(f'Getting pipeline count: {len(self._pipelines)}')
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug(f'Getting pipeline count: {len(self._pipelines)}')
         return len(self._pipelines)
 
     def set_count(self, count: int):
@@ -128,7 +129,8 @@ class PipelineManager:
                                        self._configuration['timeout'],
                                        self._log_handler,
                                        self._configuration.get('print_processed_period', 300),
-                                       self._configuration.get('status_logger', dict()).get('period', 1800),
+                                       self._configuration.get(
+                                           'status_logger', dict()).get('period', 1800),
                                        self._lock,
                                        self._shared_dict,
                                        profile=self._configuration.get('profile_pipelines', False),

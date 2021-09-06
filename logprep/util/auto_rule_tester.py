@@ -3,13 +3,14 @@
 
 from typing import Union, Optional
 
+from logging import getLogger
 import inspect
 import pathlib
 from difflib import ndiff
 import tempfile
-from yaml import safe_load
-from ruamel.yaml import safe_load_all, YAMLError
-from os import walk
+from ruamel.yaml import YAML, YAMLError
+from os import walk, path
+import json
 from pprint import pprint
 from collections import defaultdict
 import regex as re
@@ -17,7 +18,7 @@ from colorama import Fore
 import traceback
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from tests.acceptance.util import *
+from tests.acceptance.util import remove_file_if_exists
 
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.processor.base.rule import Rule
@@ -31,7 +32,10 @@ from logprep.util.helper import print_fcolor
 logger = getLogger()
 logger.disabled = True
 
+yaml = YAML(typ='safe', pure=True)
 
+
+# pylint: disable=protected-access
 class AutoRuleTesterException(BaseException):
     """Base class for AutoRuleTester related exceptions."""
 
@@ -130,20 +134,24 @@ class GrokPatternReplacer:
                     defined_grok_keywords = ['%{' + grok_definition + '}' for grok_definition in
                                              self._grok_patterns.keys()]
 
-                    if all([(grok_keyword in defined_grok_keywords) for grok_keyword in grok_keywords_in_value]):
+                    if all([(grok_keyword in defined_grok_keywords)
+                            for grok_keyword in grok_keywords_in_value]):
                         dotted_value = self._replace_all_keywords_in_value(dotted_value)
 
                     dotted_value = '^' + dotted_value + '$'
 
                     if dotted_value_raw:
-                        grok_keywords_in_value = bool(re.search(dotted_value, str(dotted_value_raw)))
+                        grok_keywords_in_value = bool(re.search(dotted_value,
+                                                                str(dotted_value_raw)))
                     else:
                         grok_keywords_in_value = False
 
                     if grok_keywords_in_value:
-                        self._change_dotted_field_value(reference_dict['processed'], dotted_field, dotted_value_raw)
+                        self._change_dotted_field_value(reference_dict['processed'], dotted_field,
+                                                        dotted_value_raw)
                     else:
-                        self._change_dotted_field_value(reference_dict['processed'], dotted_field, dotted_value)
+                        self._change_dotted_field_value(reference_dict['processed'], dotted_field,
+                                                        dotted_value)
 
                     processed[new_key] = processed.pop(processed_field)
 
@@ -175,19 +183,21 @@ class PreDetectionExtraHandler:
             uuid_pattern = r'^[a-fA-F0-9]{8}-(?:[a-fA-F0-9]{4}-){3}[a-fA-F0-9]{12}$'
 
             if not re.search(uuid_pattern, id_out):
-                pd_warnings.append('Warning in extra output: "id: {}" is not a valid UUID!'.format(id_out))
+                pd_warnings.append(f'Warning in extra output: "id: {id_out}" is not a valid UUID!')
 
             if 'pre_detection_id' not in pre_detection_extra_out:
                 pd_errors.append('Error in extra output: "id" field does not exist!')
 
             if 'mitre' not in pre_detection_extra_out:
                 pd_errors.append('Error in extra output: "mitre" field does not exist!')
-            elif not any([technique for technique in mitre_out if re.search(mitre_pattern, technique)]):
+            elif not any([technique for technique in mitre_out if re.search(mitre_pattern,
+                                                                            technique)]):
                 pd_errors.append('Error in extra output: "mitre: {}" does not include a valid '
                                  'mitre attack technique!'.format(mitre_out))
         return pd_errors, pd_warnings
 
-    def update_errors(self, processor: PreDetector, extra_output: tuple, errors: list, warnings: list):
+    def update_errors(self, processor: PreDetector, extra_output: tuple, errors: list,
+                      warnings: list):
         """Create aggregating logger.
 
         Parameters
@@ -212,7 +222,7 @@ class AutoRuleTester:
 
     def __init__(self, config):
         with open(config, 'r') as yaml_file:
-            self._config_yml = safe_load(yaml_file)
+            self._config_yml = yaml.load(yaml_file)
 
         self._empty_rules_dirs = [tempfile.mkdtemp()]
 
@@ -244,17 +254,20 @@ class AutoRuleTester:
 
         for processor_in_pipeline in self._config_yml['pipeline']:
             name, processor_cfg = next(iter(processor_in_pipeline.items()))
-            processor, rule_class = self._get_processor_instance_and_rule_type(name, processor_cfg, logger)
+            processor, rule_class = self._get_processor_instance_and_rule_type(name, processor_cfg,
+                                                                               logger)
 
             for rule_test in rules_pp[processor_cfg['type']]:
                 if processor and rule_class:
                     if rule_test['tests']:
-                        self._run_rule_tests_from_file(processor, rule_test, rule_class, processor_cfg)
+                        self._run_rule_tests_from_file(processor, rule_test, rule_class,
+                                                       processor_cfg)
 
         print_fcolor(Fore.WHITE, '\nResults:')
         print_fcolor(Fore.RED, f'Failed tests: {self._failed_rule_tests_cnt}')
         print_fcolor(Fore.GREEN, f'Successful tests: {self._successful_rule_tests_cnt}')
-        print_fcolor(Fore.CYAN, f'Total tests: {self._successful_rule_tests_cnt + self._failed_rule_tests_cnt}')
+        print_fcolor(Fore.CYAN, f'Total tests: '
+                                f'{self._successful_rule_tests_cnt + self._failed_rule_tests_cnt}')
         print_fcolor(Fore.YELLOW, f'Warnings: {self._warning_cnt}')
 
         if not self._success:
@@ -262,41 +275,34 @@ class AutoRuleTester:
 
     def _run_rule_tests_from_file(self, processor, rule_test, rule_class, processor_cfg):
         temp_rule_path = path.join(self._empty_rules_dirs[0], 'temp.json')
-        if processor_cfg.get('tree_config'):
+        if rule_test.get('rules'):
             for idx, rule_dict in enumerate(rule_test.get('rules', [])):
-                with open(temp_rule_path, 'w') as temp_file:
-                    json.dump([rule_dict], temp_file)
-                processor.add_rules_from_directory(self._empty_rules_dirs)
-                self._eval_rule_test(rule_test, processor, idx)
                 processor._tree = RuleTree()
-                remove_file_if_exists(temp_rule_path)
-        elif rule_test.get('rules'):
-            for idx, rule_dict in enumerate(rule_test.get('rules', [])):
                 with open(temp_rule_path, 'w') as temp_file:
                     json.dump([rule_dict], temp_file)
                 processor.add_rules_from_directory(self._empty_rules_dirs)
                 self._eval_rule_test(rule_test, processor, idx)
-                processor._rules.clear()
                 remove_file_if_exists(temp_rule_path)
         elif rule_test.get('specific_rules') or rule_test.get('generic_rules'):
             if rule_test.get('specific_rules'):
                 for idx, rule_dict in enumerate(rule_test.get('specific_rules', [])):
+                    processor._specific_tree = RuleTree()
                     with open(temp_rule_path, 'w') as temp_file:
                         json.dump([rule_dict], temp_file)
                     processor.add_rules_from_directory(self._empty_rules_dirs, [])
                     self._eval_rule_test(rule_test, processor, idx)
-                    processor._specific_rules.clear()
                     remove_file_if_exists(temp_rule_path)
             if rule_test.get('generic_rules'):
                 for idx, rule_dict in enumerate(rule_test.get('generic_rules', [])):
+                    processor._generic_tree = RuleTree()
                     with open(temp_rule_path, 'w') as temp_file:
                         json.dump([rule_dict], temp_file)
                     processor.add_rules_from_directory([], self._empty_rules_dirs)
                     self._eval_rule_test(rule_test, processor, idx)
-                    processor._generic_rules.clear()
                     remove_file_if_exists(temp_rule_path)
         else:
-            raise AutoRuleTesterException('No rules provided for processor of type {}'.format(processor.describe()))
+            raise AutoRuleTesterException(
+                f'No rules provided for processor of type {processor.describe()}')
 
     def _print_error_on_exception(self, error, rule_test, t_idx):
         self._print_filename(rule_test)
@@ -322,7 +328,8 @@ class AutoRuleTester:
             if test.get('target_rule_idx') is not None and test.get('target_rule_idx') != r_idx:
                 continue
 
-            processor.ps.setup_rules(['placeholder'])  # Setup arrays according to rule count, but here it's always one
+            # Setup arrays according to rule count, but here it's always one
+            processor.ps.setup_rules(['placeholder'])
             try:
                 extra_output = processor.process(test['raw'])
             except BaseException as error:
@@ -395,11 +402,14 @@ class AutoRuleTester:
     def _get_processor_instance_and_rule_type(name, processor_cfg, logger):
         cfg = {name: processor_cfg}
         processor = ProcessorFactory.create(cfg, logger)
-        plugin_path = path.join(str(pathlib.Path(inspect.getfile(processor.__class__)).parent), 'rule.py')
-        loaded_rule_classes_map = {inspect.getfile(rule_class): rule_class for rule_class in Rule.__subclasses__()}
+        plugin_path = path.join(str(pathlib.Path(inspect.getfile(processor.__class__)).parent),
+                                'rule.py')
+        loaded_rule_classes_map = {inspect.getfile(rule_class): rule_class
+                                   for rule_class in Rule.__subclasses__()}
         current_rule_class = loaded_rule_classes_map.get(plugin_path)
         if current_rule_class is None and isinstance(processor, RuleBasedProcessor):
-            raise AutoRuleTesterException('Rule class missing for processor: {}'.format(processor.describe()))
+            raise AutoRuleTesterException(f'Rule class missing for processor: '
+                                          f'{processor.describe()}')
 
         return processor, current_rule_class
 
@@ -415,8 +425,17 @@ class AutoRuleTester:
             else:
                 print_fcolor(Fore.CYAN, item)
 
+    def _sort_lists_in_nested_dict(self, nested_dict):
+        for key, value in nested_dict.items():
+            if isinstance(value, dict):
+                self._sort_lists_in_nested_dict(value)
+            elif isinstance(value, list):
+                nested_dict[key] = sorted(nested_dict[key])
+
     def _get_diff_raw_test(self, test):
         self._gpl.replace_grok_keywords(test['processed'], test)
+
+        self._sort_lists_in_nested_dict(test)
 
         raw = json.dumps(test['raw'], sort_keys=True, indent=4)
         processed = json.dumps(test['processed'], sort_keys=True, indent=4)
@@ -446,27 +465,28 @@ class AutoRuleTester:
 
             if invalid_keys.difference({'target_rule_idx'}):
                 errors.append(
-                    'Schema error in test "{}": "Remove keys: {}"'.format(test_file.name, invalid_keys))
+                    f'Schema error in test "{test_file.name}": "Remove keys: {invalid_keys}"')
                 has_error = True
 
             available_required_keys = rule_keys.intersection(required_keys)
             if available_required_keys != required_keys:
                 errors.append(
-                    'Schema error in test "{}": "The following required keys are missing: {}"'.format(
-                        test_file.name, required_keys.difference(available_required_keys)))
+                    f'Schema error in test "{test_file.name}": "The following required keys are '
+                    f'missing: {required_keys.difference(available_required_keys)}"')
                 has_error = True
 
             if not has_error:
-                if not isinstance(rule_test.get('raw'), dict) or not isinstance(rule_test.get('processed'), dict):
+                if not isinstance(rule_test.get('raw'), dict) or not isinstance(
+                        rule_test.get('processed'), dict):
                     errors.append(
-                        'Schema error in test "{}": "Values of raw and processed must be dictionaries"'.format(
-                            test_file.name))
+                        f'Schema error in test "{test_file.name}": "Values of raw and processed '
+                        f'must be dictionaries"')
                     has_error = True
                 if {'target_rule_idx'}.intersection(rule_keys):
                     if not isinstance(rule_test.get('target_rule_idx'), int):
                         errors.append(
-                            'Schema error in test "{}": "Value of target_rule_idx must be an integer"'.format(
-                                test_file.name))
+                            f'Schema error in test "{test_file.name}": "Value of target_rule_idx '
+                            f'must be an integer"')
                         has_error = True
             has_errors = has_errors or has_error
         return has_errors
@@ -486,30 +506,36 @@ class AutoRuleTester:
                         for file in rule_files:
                             with open(path.join(root, file), 'r') as rules_file:
                                 try:
-                                    multi_rule = list(safe_load_all(rules_file)) if file.endswith(
+                                    multi_rule = list(yaml.load_all(rules_file)) if file.endswith(
                                         '.yml') else json.load(rules_file)
                                 except json.decoder.JSONDecodeError as error:
                                     raise AutoRuleTesterException(
-                                        'JSON decoder error in rule "{}": "{}"'.format(rules_file.name, str(error)))
+                                        f'JSON decoder error in rule "{rules_file.name}": '
+                                        f'"{str(error)}"') from error
                                 except YAMLError as error:
-                                    raise AutoRuleTesterException(
-                                        'YAML error in rule "{}": "{}"'.format(rules_file.name, str(error)))
-                            test_path = path.join(root, ''.join([file.rsplit('.', maxsplit=1)[0], '_test.json']))
+                                    raise AutoRuleTesterException(f'YAML error in rule '
+                                                                  f'"{rules_file.name}": '
+                                                                  f'"{error}"') from error
+                            test_path = path.join(root, ''.join([file.rsplit('.', maxsplit=1)[0],
+                                                                 '_test.json']))
                             if path.isfile(test_path):
                                 with open(test_path, 'r') as test_file:
                                     try:
                                         rule_tests = json.load(test_file)
                                     except json.decoder.JSONDecodeError as error:
                                         errors.append(
-                                            'JSON decoder error in test "{}": "{}"'.format(test_file.name, str(error)))
+                                            'JSON decoder error in test "{}": "{}"'.format(
+                                                test_file.name, str(error)))
                                         continue
-                                    has_errors = self._check_test_validity(errors, rule_tests, test_file)
+                                    has_errors = self._check_test_validity(errors, rule_tests,
+                                                                           test_file)
                                     if has_errors:
                                         continue
                             else:
                                 rule_tests = list()
                             rules[processor_type].append(
-                                {rule_dirs_type: multi_rule, 'tests': rule_tests, 'file': path.join(root, file)})
+                                {rule_dirs_type: multi_rule, 'tests': rule_tests,
+                                 'file': path.join(root, file)})
         if errors:
             for error in errors:
                 print_fcolor(Fore.RED, error)
@@ -518,7 +544,8 @@ class AutoRuleTester:
 
     @staticmethod
     def _is_valid_rule_name(file_name):
-        return (file_name.endswith('.json') or file_name.endswith('.yml')) and not file_name.endswith('_test.json')
+        return (file_name.endswith('.json') or
+                file_name.endswith('.yml')) and not file_name.endswith('_test.json')
 
     def _get_rule_dirs_by_processor_type(self):
         rules_dirs = defaultdict(dict)

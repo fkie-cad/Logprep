@@ -7,7 +7,7 @@
     "mitre": ["attack.test1","attack.test2"],
     "case_condition": "directly"
   },
-  "description": ""
+  "description": "Test two rules one"
 },
 {
   "filter": "second_match",
@@ -18,5 +18,5 @@
     "mitre": ["attack.test2","attack.test4"],
     "case_condition": "directly"
   },
-  "description": ""
+  "description": "Test two rules two"
 }]

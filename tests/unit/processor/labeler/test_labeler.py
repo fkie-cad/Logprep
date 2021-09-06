@@ -102,7 +102,7 @@ class TestLabelerFactory:
         expected_rule = LabelingRule._create_from_dict(simple_rule[0])
         labeler = LabelerFactory.create('name', self.config, logger)
 
-        assert labeler._rules == [expected_rule]
+        assert labeler._tree._root._children[0]._children[0].matching_rules == [expected_rule]
 
 
 class TestLabeler:
@@ -136,21 +136,21 @@ class TestLabeler:
         self.emtpy_schema = LabelingSchema()
         self.emtpy_schema.ingest_schema({})
 
-        self.labeler = Labeler(self.labeler_name, logger)
+        self.labeler = Labeler(self.labeler_name, None, logger)
         self.labeler.set_labeling_scheme(self.schema)
         self.labeler.add_rules_from_directory([path_to_single_rule])
 
     def test_is_a_processor_implementation(self):
-        assert isinstance(Labeler(self.labeler_name, logger), RuleBasedProcessor)
+        assert isinstance(Labeler(self.labeler_name, None, logger), RuleBasedProcessor)
 
     def test_setup_fails_when_schema_is_unset(self):
-        labeler = Labeler(self.labeler_name, logger)
+        labeler = Labeler(self.labeler_name, None, logger)
 
         with raises(NoLabelingSchemeDefinedError, match='Labeler \\(%s\\): No labeling schema was loaded.' % self.labeler_name):
             labeler.setup()
 
     def test_setup_fails_no_rules_were_loaded(self):
-        labeler = Labeler(self.labeler_name, logger)
+        labeler = Labeler(self.labeler_name, None, logger)
         labeler.set_labeling_scheme(self.schema)
 
         with raises(MustLoadRulesFirstError, match='Labeler \\(%s\\): No rules were loaded.' % self.labeler_name):
@@ -162,7 +162,7 @@ class TestLabeler:
                 self.labeler.set_labeling_scheme(non_ruleset)
 
     def test_process_fails_if_no_rules_were_loaded(self):
-        labeler = Labeler(self.labeler_name, logger)
+        labeler = Labeler(self.labeler_name, None, logger)
         with raises(MustLoadRulesFirstError):
             labeler.process({})
 
@@ -195,14 +195,14 @@ class TestLabeler:
                      "description": "this is ä test rüle"
                     }
         rule = LabelingRule._create_from_dict(rule_dict)
-        self.labeler._rules.append(rule)
+        self.labeler._tree.add_rule(rule, logger)
 
         self.labeler.process(document)
 
         assert document == expected
 
     def test_process_adds_labels_including_parents_when_flag_was_set(self):
-        labeler = Labeler(self.labeler_name, logger)
+        labeler = Labeler(self.labeler_name, None, logger)
         labeler.set_labeling_scheme(self.expanded_schema)
         labeler.add_rules_from_directory([path_to_single_rule], include_parent_labels=True)
 
@@ -216,7 +216,7 @@ class TestLabeler:
         assert document == expected
 
     def test_cannot_add_rules_if_labeling_scheme_is_unset(self):
-        labeler = Labeler(self.labeler_name, logger)
+        labeler = Labeler(self.labeler_name, None, logger)
 
         with raises(NoLabelingSchemeDefinedError, match='Labeler \\(%s\\): No labeling schema was loaded.' % self.labeler_name):
             labeler.add_rules_from_directory([path_to_single_rule])
@@ -246,12 +246,12 @@ class TestLabeler:
 
     def test_rules_contains_expected_rules_after_adding_from_directory(self):
         expected_rule = LabelingRule._create_from_dict(simple_rule[0])
-        labeler = Labeler(self.labeler_name, logger)
+        labeler = Labeler(self.labeler_name, None, logger)
         labeler.set_labeling_scheme(self.schema)
         labeler.add_rules_from_directory([path_to_single_rule])
 
-        assert len(labeler._rules) == 1
-        assert labeler._rules[0] == expected_rule
+        assert labeler._tree.rule_counter == 1
+        assert labeler._tree._root._children[0].children[0].matching_rules == [expected_rule]
 
     def test_add_labels_changes_nothing_for_empty_event(self):
         event = {}
@@ -266,7 +266,7 @@ class TestLabeler:
         assert event['label'] == {'reporter': ['windows']}
 
     def test_labels_are_always_stored_in_alphabetical_order(self):
-        labeler = Labeler(self.labeler_name, logger)
+        labeler = Labeler(self.labeler_name, None, logger)
         labeler.set_labeling_scheme(self.expanded_schema)
         labeler.add_rules_from_directory([path_to_single_rule], include_parent_labels=True)
 
@@ -280,11 +280,11 @@ class TestLabeler:
             assert event['label']['reporter'] == ['parentlabel', 'windows']
 
     def test_multiple_labelers_just_add_more_labels(self):
-        labeler = Labeler(self.labeler_name, logger)
+        labeler = Labeler(self.labeler_name, None, logger)
         labeler.set_labeling_scheme(self.expanded_schema)
         labeler.add_rules_from_directory([path_to_single_rule])
 
-        labeler2 = Labeler('test2', logger)
+        labeler2 = Labeler('test2', None, logger)
         labeler2.set_labeling_scheme(self.expanded_schema)
         labeler2.add_rules_from_directory([path_to_rules2])
 
@@ -310,7 +310,7 @@ class TestLabeler:
                      }
 
         rule = LabelingRule._create_from_dict(rule_dict)
-        self.labeler._rules.append(rule)
+        self.labeler._tree.add_rule(rule, logger)
 
         self.labeler.process(document)
 
@@ -332,7 +332,7 @@ class TestLabeler:
                      }
 
         rule = LabelingRule._create_from_dict(rule_dict)
-        self.labeler._rules.append(rule)
+        self.labeler._tree.add_rule(rule, logger)
 
         self.labeler.process(document)
 
@@ -357,7 +357,7 @@ class TestLabeler:
                      }
 
         rule = LabelingRule._create_from_dict(rule_dict)
-        self.labeler._rules.append(rule)
+        self.labeler._tree.add_rule(rule, logger)
 
         self.labeler.process(document)
 
@@ -382,7 +382,7 @@ class TestLabeler:
                      }
 
         rule = LabelingRule._create_from_dict(rule_dict)
-        self.labeler._rules.append(rule)
+        self.labeler._tree.add_rule(rule, logger)
 
         self.labeler.process(document)
 

@@ -1,0 +1,5 @@
+[{
+  "filter": "client.ip AND NOT winlog.computer_name",
+  "geoip_enricher": {"source_ip": "client.ip"},
+  "description": ""
+}]

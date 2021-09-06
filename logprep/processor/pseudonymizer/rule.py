@@ -24,7 +24,8 @@ class InvalidPseudonymizationDefinition(PseudonymizerRuleError):
 class PseudonymizerRule(Rule):
     """Check if documents match a filter."""
 
-    def __init__(self, filter_rule: FilterExpression, pseudonyms: dict, url_fields: List[str] = None):
+    def __init__(self, filter_rule: FilterExpression, pseudonyms: dict,
+                 url_fields: List[str] = None):
         super().__init__(filter_rule)
         self._pseudonyms = pseudonyms
         self._url_fields = url_fields if url_fields else list()
@@ -34,6 +35,9 @@ class PseudonymizerRule(Rule):
         pseudonyms_equal = self._pseudonyms == other.pseudonyms
         url_fields_equal = self._url_fields == other.url_fields
         return filter_equal and pseudonyms_equal and url_fields_equal
+
+    def __hash__(self) -> int:
+        return hash(repr(self))
 
     # pylint: disable=C0111
     @property

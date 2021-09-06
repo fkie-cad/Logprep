@@ -2,7 +2,7 @@ from pytest import raises
 
 from logprep.filter.lucene_filter import LuceneFilter, LuceneFilterError
 from logprep.filter.expression.filter_expression import StringFilterExpression,\
-    RegExFilterExpression, Or, And, Null
+    RegExFilterExpression, Or, And, Null, Always
 
 
 class TestLueceneFilter:
@@ -162,3 +162,8 @@ class TestLueceneFilter:
     def test_creates_filter_not_escaped_raises_exception(self):
         with raises(LuceneFilterError):
             LuceneFilter.create('a key(: "value"')
+
+    def test_creates_filter_match_all(self):
+        filter = LuceneFilter.create('*')
+
+        assert filter == Always(True)

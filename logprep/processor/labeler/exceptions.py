@@ -1,3 +1,5 @@
+"""This module contains exceptions related to the labeler processor."""
+
 from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 

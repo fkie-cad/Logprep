@@ -200,14 +200,14 @@ class TestPseudonymizer:
         pseudonymizer._load_regex_mapping(regex_mapping_path)
         specific_rule = PseudonymizerRule._create_from_dict(rule)
         pseudonymizer._replace_regex_keywords_by_regex_expression(specific_rule)
-        pseudonymizer._specific_rules.append(specific_rule)
+        pseudonymizer._specific_tree.add_rule(specific_rule, pseudonymizer._logger)
 
     @staticmethod
     def _load_generic_rule(pseudonymizer, rule, regex_mapping_path):
         pseudonymizer._load_regex_mapping(regex_mapping_path)
         generic_rule = PseudonymizerRule._create_from_dict(rule)
         pseudonymizer._replace_regex_keywords_by_regex_expression(generic_rule)
-        pseudonymizer._generic_rules.append(generic_rule)
+        pseudonymizer._generic_tree.add_rule(generic_rule, pseudonymizer._logger)
 
     def test_pseudonymization_of_field_fails_because_filter_does_not_match(self, pseudonymizer):
         event = {
@@ -324,10 +324,8 @@ class TestPseudonymizer:
             }
         }
 
-        print(specific_rules)
         for specific_rule in specific_rules:
             self._load_specific_rule(pseudonymizer, specific_rule, real_regex_mapping)
-        print(pseudonymizer._specific_rules)
 
         pseudonymizer._pseudonymize_event(event)
 

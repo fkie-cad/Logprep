@@ -1,3 +1,5 @@
+"""This module contains exceptions related to the normalizer processor."""
+
 from typing import List
 
 

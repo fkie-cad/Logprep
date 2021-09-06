@@ -8,5 +8,5 @@
     "case_condition": "directly"
   },
   "sigma_fields": ["message"],
-  "description": ""
+  "description": "Test rule three"
 }]

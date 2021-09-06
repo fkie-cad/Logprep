@@ -10,9 +10,14 @@ build-pex:
   stage: build
   only:
     - /^dev-.*$/
+    - /^fix-.*$/
     - master
   script:
-    - ansible-playbook -b create_pex.yml --extra-vars "project_location=$PWD"
+    - ANSIBLE_STDOUT_CALLBACK=yaml ansible-playbook -b create_pex.yml --extra-vars "project_location=$PWD"
+  artifacts:
+    paths:
+      - logprep.pex
+    expire_in: 1 week
 
 unit-tests:
   stage: test

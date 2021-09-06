@@ -3,7 +3,7 @@
 from typing import List, Optional
 from copy import deepcopy
 from datetime import datetime
-from json import dumps, loads, JSONDecodeError
+import ujson
 from socket import getfqdn
 
 from confluent_kafka import Consumer, Producer
@@ -109,8 +109,8 @@ class ConfluentKafkaFactory:
 class ConfluentKafka(Input, Output):
     """A kafka connector that serves as both input and output connector."""
 
-    def __init__(self, bootstrap_servers: List[str], consumer_topic: str, consumer_group: str, producer_topic: str,
-                 producer_error_topic: str):
+    def __init__(self, bootstrap_servers: List[str], consumer_topic: str, consumer_group: str,
+                 producer_topic: str, producer_error_topic: str):
         self._bootstrap_servers = bootstrap_servers
         self._consumer_topic = consumer_topic
         self._consumer_group = consumer_group
@@ -233,11 +233,11 @@ class ConfluentKafka(Input, Output):
             raise CriticalInputError('A confluent-kafka record contains an error code: '
                                      '({})'.format(record.error()), None)
         try:
-            json_dict = loads(record.value().decode("utf-8"))
+            json_dict = ujson.loads(record.value().decode("utf-8"))
             if isinstance(json_dict, dict):
                 return json_dict
             raise InvalidMessageError
-        except JSONDecodeError as error:
+        except ValueError as error:
             raise CriticalInputError('Input record value is not a valid json string: '
                                      '({})'.format(self._format_message(error)),
                                      record.value().decode("utf-8")) from error
@@ -284,7 +284,7 @@ class ConfluentKafka(Input, Output):
             self._create_producer()
 
         try:
-            self._producer.produce(target, value=dumps(document).encode('utf-8'))
+            self._producer.produce(target, value=ujson.dumps(document).encode('utf-8'))
             self._producer.poll(0)
         except BufferError:
             # block program until buffer is empty
@@ -316,7 +316,8 @@ class ConfluentKafka(Input, Output):
             'timestamp': str(datetime.now())
         }
         try:
-            self._producer.produce(self._producer_error_topic, value=dumps(value).encode('utf-8'))
+            self._producer.produce(self._producer_error_topic,
+                                   value=ujson.dumps(value).encode('utf-8'))
             self._producer.poll(0)
         except BufferError:
             # block program until buffer is empty
