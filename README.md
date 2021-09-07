@@ -14,7 +14,7 @@ Logprep is designed to be extensible with new connectors and processors.
 
 ## Documentation
 
-A sphinx documentation for Logprep can be build via tox (install via `pip3 install tox`). 
+The documentation for Logprep is online at https://logprep.readthedocs.io/en/latest/ or it can be built locally via tox (install via `pip3 install tox`). 
 Building the documentation is done by executing the following command from within the project root directory:
 
 `tox -e docs`
