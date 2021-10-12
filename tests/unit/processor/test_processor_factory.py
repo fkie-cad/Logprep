@@ -4,6 +4,7 @@ from logging import getLogger
 
 from pytest import raises
 
+from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.donothing.processor import DoNothing
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
@@ -68,6 +69,14 @@ class TestProcessorFactory:
                 'regex_mapping': 'tests/testdata/unit/normalizer/regex_mapping.yml'}}, logger)
 
         assert isinstance(processor, Normalizer)
+
+    def test_create_clusterer_returns_Clusterer_processor(self):
+        processor = ProcessorFactory.create({'clusterer': {'type': 'clusterer',
+                                                           'output_field_name':
+                                                               "cluster_signature",
+                                                           'rules': 'test_rules'}}, logger)
+
+        assert isinstance(processor, Clusterer)
 
     def test_fails_when_section_contains_more_than_one_element(self):
         with raises(InvalidConfigurationError,

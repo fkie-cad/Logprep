@@ -30,7 +30,7 @@ def generic_adder():
 
 
 class TestGenericAdder:
-    def test_enrich_add_generic_fields(self, generic_adder):
+    def test_add_generic_fields(self, generic_adder):
         assert generic_adder.events_processed_count() == 0
         expected = {
             'add_generic_test': 'Test', 'event_id': 123,
@@ -44,7 +44,7 @@ class TestGenericAdder:
 
         assert document == expected
 
-    def test_enrich_add_generic_fields_from_file(self, generic_adder):
+    def test_add_generic_fields_from_file(self, generic_adder):
         assert generic_adder.events_processed_count() == 0
         expected = {
             'add_list_generic_test': 'Test', 'event_id': 123,
@@ -58,7 +58,7 @@ class TestGenericAdder:
 
         assert document == expected
 
-    def test_enrich_add_generic_fields_from_file_list_one_element(self, generic_adder):
+    def test_add_generic_fields_from_file_list_one_element(self, generic_adder):
         assert generic_adder.events_processed_count() == 0
         expected = {
             'add_lists_one_generic_test': 'Test', 'event_id': 123,
@@ -72,7 +72,7 @@ class TestGenericAdder:
 
         assert document == expected
 
-    def test_enrich_add_generic_fields_from_file_list_two_elements(self, generic_adder):
+    def test_add_generic_fields_from_file_list_two_elements(self, generic_adder):
         assert generic_adder.events_processed_count() == 0
         expected = {
             'add_lists_two_generic_test': 'Test', 'event_id': 123,
@@ -87,7 +87,7 @@ class TestGenericAdder:
 
         assert document == expected
 
-    def test_enrich_add_generic_fields_from_file_first_existing(self):
+    def test_add_generic_fields_from_file_first_existing(self):
         config = {
             'type': 'generic_adder',
             'rules': [rules_dir_first_existing],
@@ -109,7 +109,7 @@ class TestGenericAdder:
 
         assert document == expected
 
-    def test_enrich_add_generic_fields_from_file_first_existing_with_missing(self):
+    def test_add_generic_fields_from_file_first_existing_with_missing(self):
         config = {
             'type': 'generic_adder',
             'rules': [rules_dir_first_existing],
@@ -131,7 +131,7 @@ class TestGenericAdder:
 
         assert document == expected
 
-    def test_enrich_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
+    def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidRuleFileError, match=r'files do not exist'):
             config = {
                 'type': 'generic_adder',
@@ -141,7 +141,7 @@ class TestGenericAdder:
 
             GenericAdderFactory.create('test-generic-adder', config, logger)
 
-    def test_enrich_add_generic_fields_from_file_invalid(self):
+    def test_add_generic_fields_from_file_invalid(self):
         with pytest.raises(InvalidRuleFileError, match=r'must be a dictionary with string values'):
             config = {
                 'type': 'generic_adder',
@@ -151,7 +151,7 @@ class TestGenericAdder:
 
             GenericAdderFactory.create('test-generic-adder', config, logger)
 
-    def test_enrich_add_generic_fields_to_co_existing_field(self, generic_adder):
+    def test_add_generic_fields_to_co_existing_field(self, generic_adder):
         expected = {
             'add_generic_test': 'Test', 'event_id': 123,
             'some_added_field': 'some value',
@@ -165,7 +165,7 @@ class TestGenericAdder:
 
         assert document == expected
 
-    def test_enrich_add_generic_fields_to_existing_value(self, generic_adder):
+    def test_add_generic_fields_to_existing_value(self, generic_adder):
         expected = {
             'add_generic_test': 'Test', 'event_id': 123,
             'some_added_field': 'some_non_dict',

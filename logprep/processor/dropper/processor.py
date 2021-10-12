@@ -25,6 +25,7 @@ class Dropper(RuleBasedProcessor):
     """Normalize log events by copying specific values to standardized fields."""
 
     def __init__(self, name: str, tree_config: str, logger: Logger):
+        super().__init__(name, tree_config, logger)
         self._logger = logger
         self.ps = ProcessorStats()
 

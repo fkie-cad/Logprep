@@ -32,6 +32,7 @@ class Normalizer(RuleBasedProcessor):
     def __init__(self, name: str, specific_rules_dirs: list, generic_rules_dirs: list, tree_config: str,
                  logger: Logger,regex_mapping: str = None, html_replace_fields: list = None,
                  grok_patterns: str = None):
+        super().__init__(name, tree_config, logger)
         self._logger = logger
         self.ps = ProcessorStats()
 

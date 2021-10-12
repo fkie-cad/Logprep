@@ -220,7 +220,8 @@ class StatusTracker:
         for name, value in aggr_data.items():
             if isinstance(value, dict):
                 if not name.startswith('Multiprocessing') and name not in ('error_types',
-                                                                           'warning_types'):
+                                                                           'warning_types',
+                                                                           'clusterer'):
                     matches_per_idx = aggr_data[name]['matches_per_idx']
                     aggr_data[name]['mean_matches_per_rule'] = f"{np.mean(matches_per_idx):.1f}"
 
@@ -337,9 +338,10 @@ class StatusTracker:
             if not process_data[processor_type]:
                 process_data[processor_type] = dict()
 
-            process_data[processor_type]['matches_per_idx'] = aggr_data['matches_per_idx']
-            process_data[processor_type]['times_per_idx'] = aggr_data['times_per_idx']
-            process_data[processor_type]['matches'] = aggr_data['matches']
+            if processor_type not in ('clusterer',):
+                process_data[processor_type]['matches_per_idx'] = aggr_data['matches_per_idx']
+                process_data[processor_type]['times_per_idx'] = aggr_data['times_per_idx']
+                process_data[processor_type]['matches'] = aggr_data['matches']
             process_data[processor_type]['processed'] = aggr_data['processed']
 
     def _add_per_process_data(self, process_data: dict):

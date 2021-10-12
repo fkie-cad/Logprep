@@ -17,8 +17,7 @@ def pre_detector():
     config = {
         'type': 'pre_detector',
         'rules': [rules_dir],
-        'pre_detector_topic': 'pre_detector_alerts',
-        'tree_config': 'tests/testdata/unit/pre_detector/tree_config.json'
+        'pre_detector_topic': 'pre_detector_alerts'
     }
 
     pre_detector = PreDetectorFactory.create('test-pre-detector', config, logger)

@@ -1,4 +1,4 @@
-"""This module is used to drop specified fields from documents that match a dropper filter."""
+"""This module is used to drop specified fields that match a dropper filter."""
 
 from typing import List
 from logprep.filter.expression.filter_expression import FilterExpression

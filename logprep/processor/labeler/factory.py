@@ -1,4 +1,4 @@
-"""This modules contains a factory for labeler processors."""
+"""This module contains a factory for labeler processors."""
 
 from logging import Logger
 

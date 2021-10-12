@@ -24,6 +24,7 @@ class Rule:
         self._filter = filter_rule
         self._special_fields = None
         self.file_name = None
+        self._tests = []
 
     def __eq__(self, other: 'Rule'):
         pass
@@ -32,6 +33,10 @@ class Rule:
     @property
     def filter(self):
         return self._filter
+
+    @property
+    def tests(self) -> list:
+        return self._tests
     # pylint: enable=C0111
 
     @classmethod

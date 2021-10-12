@@ -1,5 +1,5 @@
-"""This modules contains functionality for resolving domains."""
-
+"""This module contains functionality for resolving domains."""
+from time import time
 from typing import List
 from logging import Logger, DEBUG
 
@@ -107,14 +107,15 @@ class DomainResolver(RuleBasedProcessor):
 
         self._event = event
 
-        matching_rules = self._tree.get_matching_rules(event)
-
-        if matching_rules:
-            for rule in matching_rules:
-                try:
-                    self._apply_rules(event, rule)
-                except DomainResolverError as error:
-                    raise ProcessingWarning(str(error)) from error
+        for rule in self._tree.get_matching_rules(event):
+            try:
+                begin = time()
+                self._apply_rules(event, rule)
+                processing_time = float('{:.10f}'.format(time() - begin))
+                idx = self._tree.get_rule_id(rule)
+                self.ps.update_per_rule(idx, processing_time)
+            except DomainResolverError as error:
+                raise ProcessingWarning(str(error)) from error
 
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain

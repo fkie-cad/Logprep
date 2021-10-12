@@ -1,5 +1,5 @@
-"""This modules contains functionality replacing a text field using a template."""
-
+"""This module contains functionality replacing a text field using a template."""
+from time import time
 from typing import List
 from logging import Logger, DEBUG
 
@@ -125,11 +125,12 @@ class TemplateReplacer(RuleBasedProcessor):
 
         self._event = event
 
-        matching_rules = self._tree.get_matching_rules(event)
-
-        if matching_rules:
-            for _ in matching_rules:
-                self._apply_rules(event)
+        for rule in self._tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event)
+            processing_time = float('{:.10f}'.format(time() - begin))
+            idx = self._tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
 
     def _apply_rules(self, event):
         _dict = self._mapping

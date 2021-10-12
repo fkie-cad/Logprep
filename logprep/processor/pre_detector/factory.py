@@ -1,4 +1,4 @@
-"""This modules contains a factory for pre-detector processors."""
+"""This module contains a factory for pre-detector processors."""
 
 from logging import Logger
 

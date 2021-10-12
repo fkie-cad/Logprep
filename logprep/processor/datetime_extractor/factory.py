@@ -12,7 +12,7 @@ class DateTimeExtractorFactory(BaseFactory):
         """Create a datetime extractor."""
         DateTimeExtractorFactory._check_configuration(configuration)
 
-        datetime_extractor = DateTimeExtractor(name, configuration['tree_config'], logger)
+        datetime_extractor = DateTimeExtractor(name, configuration.get('tree_config'), logger)
         datetime_extractor.add_rules_from_directory(configuration['rules'])
 
         return datetime_extractor

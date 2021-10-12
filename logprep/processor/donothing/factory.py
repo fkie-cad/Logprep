@@ -17,7 +17,7 @@ class DoNothingFactory(BaseFactory):
         errors = configuration['errors'] if 'errors' in configuration else []
         extra_data = configuration['extra_data'] if 'extra_data' in configuration else None
 
-        donothing = DoNothing(logger, errors, extra_data)
+        donothing = DoNothing(name, logger, errors, extra_data)
 
         return donothing
 

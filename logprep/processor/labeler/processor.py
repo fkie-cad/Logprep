@@ -1,4 +1,4 @@
-"""This modules contains functionality for labeling log events."""
+"""This module contains functionality for labeling log events."""
 
 from typing import List
 from logging import Logger, DEBUG
@@ -27,6 +27,7 @@ class Labeler(RuleBasedProcessor):
     """Processor used to label log events."""
 
     def __init__(self, name: str, tree_config: str, logger: Logger):
+        super().__init__(name, tree_config, logger)
         self._logger = logger
         self.ps = ProcessorStats()
 

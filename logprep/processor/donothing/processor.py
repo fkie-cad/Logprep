@@ -22,7 +22,9 @@ class DoNothing(BaseProcessor):
 
     """
 
-    def __init__(self, logger: Logger, errors: Optional[list] = None, extra_data: Any = None):
+    def __init__(self, name: str, logger: Logger, errors: Optional[list] = None,
+                 extra_data: Any = None):
+        super().__init__(name, logger)
         self._logger = logger
         self.ps = ProcessorStats()
 

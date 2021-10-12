@@ -1,4 +1,4 @@
-"""This modules contains functionality to split timestamps into fields containing their parts."""
+"""This module contains functionality to split timestamps into fields containing their parts."""
 
 from typing import List
 from logging import Logger, DEBUG
@@ -6,6 +6,7 @@ from logging import Logger, DEBUG
 from multiprocessing import current_process
 from os import walk
 from os.path import isdir, realpath, join
+from time import time
 
 from datetime import datetime
 from dateutil.parser import parse
@@ -78,11 +79,12 @@ class DateTimeExtractor(RuleBasedProcessor):
 
         self._event = event
 
-        matching_rules = self._tree.get_matching_rules(event)
-
-        if matching_rules:
-            for rule in matching_rules:
-                self._apply_rules(event, rule)
+        for rule in self._tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event, rule)
+            processing_time = float('{:.10f}'.format(time() - begin))
+            idx = self._tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
 
     @staticmethod
     def _get_timezone_name(local_timezone):
