@@ -1,5 +1,5 @@
-"""This modules contains functionality for resolving log event values using regex lists."""
-
+"""This module contains functionality for resolving log event values using regex lists."""
+from time import time
 from typing import List
 from logging import Logger, DEBUG
 
@@ -90,11 +90,12 @@ class GeoIPEnricher(RuleBasedProcessor):
 
         self._event = event
 
-        matching_rules = self._tree.get_matching_rules(event)
-
-        if matching_rules:
-            for rule in matching_rules:
-                self._apply_rules(event, rule)
+        for rule in self._tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event, rule)
+            processing_time = float('{:.10f}'.format(time() - begin))
+            idx = self._tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
 
     @staticmethod
     def _normalize_empty(db_entry):

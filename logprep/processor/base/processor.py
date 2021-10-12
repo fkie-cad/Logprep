@@ -45,6 +45,8 @@ class BaseProcessor:
         self._event = None
         self._events_processed = 0
 
+        self.has_custom_tests = False
+
     def setup(self):
         """Set the processor up.
 
@@ -189,6 +191,15 @@ class RuleBasedProcessor(BaseProcessor):
 
         """
         raise NotImplementedError
+
+    def test_rules(self) -> dict:
+        """Perform custom rule tests.
+
+        Returns a dict with a list of test results as tuples containing a result and an expected
+        result for each rule, i.e. {'RULE REPR': [('Result string', 'Expected string')]}
+        Optional: Can be used in addition to regular rule tests.
+
+        """
 
     @staticmethod
     def _list_json_files_in_directory(directory: str) -> List[str]:

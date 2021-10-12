@@ -37,7 +37,8 @@ class Pseudonymizer(RuleBasedProcessor):
 
     def __init__(self, name: str, pubkey_analyst: str, pubkey_depseudo: str, hash_salt: str,
                  pseudonyms_topic: str, regex_mapping_path: str, cache_max_items: int,
-                 cache_max_timedelta: datetime.timedelta, tld_list: str, tree_config: dict, logger: Logger):
+                 cache_max_timedelta: datetime.timedelta, tld_list: str, tree_config: str, logger: Logger):
+        super().__init__(name, tree_config, logger)
         self._logger = logger
         self._name = name
         self._description = self.describe()

@@ -2,20 +2,22 @@
 """This module implements an auto-tester that can execute tests for rules."""
 
 from typing import Union, Optional
-
 from logging import getLogger
 import inspect
 import pathlib
-from difflib import ndiff
 import tempfile
-from ruamel.yaml import YAML, YAMLError
 from os import walk, path
 import json
 from pprint import pprint
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import regex as re
-from colorama import Fore
+from io import StringIO
+from contextlib import redirect_stdout
 import traceback
+
+from colorama import Fore
+from difflib import ndiff
+from ruamel.yaml import YAML, YAMLError
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from tests.acceptance.util import remove_file_if_exists
@@ -244,24 +246,40 @@ class AutoRuleTester:
 
         self._gpl = GrokPatternReplacer(self._config_yml)
 
+        self._custom_tests_output = ''
+        self._custom_tests = []
+        self._missing_custom_tests = []
+
     def run(self):
         """Perform auto-tests."""
-        rules_dirs = self._get_rule_dirs_by_processor_type()
-        rules_pp = self._get_rules_per_processor_type(rules_dirs)
-
-        self._check_which_rule_files_miss_tests(rules_pp)
+        rules_dirs = self._get_rule_dirs_by_processor_name()
+        rules_pn = self._get_rules_per_processor_name(rules_dirs)
+        self._check_which_rule_files_miss_tests(rules_pn)
         self._set_rules_dirs_to_empty()
 
-        for processor_in_pipeline in self._config_yml['pipeline']:
-            name, processor_cfg = next(iter(processor_in_pipeline.items()))
-            processor, rule_class = self._get_processor_instance_and_rule_type(name, processor_cfg,
-                                                                               logger)
+        processors_ct, processors_no_ct = self._get_processors_split_by_custom_tests_existence()
 
-            for rule_test in rules_pp[processor_cfg['type']]:
-                if processor and rule_class:
-                    if rule_test['tests']:
-                        self._run_rule_tests_from_file(processor, rule_test, rule_class,
-                                                       processor_cfg)
+        for processor, processor_name in processors_ct.items():
+            for rule_test in rules_pn[processor_name]['rules']:
+                if processor and rule_test['tests'] or processor.has_custom_tests:
+                    self._run_custom_rule_tests(processor, rule_test)
+
+        if self._custom_tests:
+            print_fcolor(Fore.GREEN, '\nRULES WITH CUSTOM TESTS:')
+            for file_name in self._custom_tests:
+                print_fcolor(Fore.GREEN, file_name)
+
+        if self._missing_custom_tests:
+            print_fcolor(Fore.RED, '\nRULES WITHOUT CUSTOM TESTS:')
+            for file_name in self._missing_custom_tests:
+                print_fcolor(Fore.RED, file_name)
+
+        print(self._custom_tests_output)
+
+        for processor, processor_name in processors_no_ct.items():
+            for rule_test in rules_pn[processor_name]['rules']:
+                if processor and rule_test['tests']:
+                    self._run_file_rule_tests(processor, rule_test)
 
         print_fcolor(Fore.WHITE, '\nResults:')
         print_fcolor(Fore.RED, f'Failed tests: {self._failed_rule_tests_cnt}')
@@ -273,36 +291,92 @@ class AutoRuleTester:
         if not self._success:
             exit(1)
 
-    def _run_rule_tests_from_file(self, processor, rule_test, rule_class, processor_cfg):
-        temp_rule_path = path.join(self._empty_rules_dirs[0], 'temp.json')
+    def _get_processors_split_by_custom_tests_existence(self):
+        processors_with_custom_test = OrderedDict()
+        processors_without_custom_test = OrderedDict()
+        for processor_in_pipeline in self._config_yml['pipeline']:
+            name, processor_cfg = next(iter(processor_in_pipeline.items()))
+            processor = self._get_processor_instance(name, processor_cfg, logger)
+            if processor.has_custom_tests:
+                processors_with_custom_test[processor] = name
+            else:
+                processors_without_custom_test[processor] = name
+        return processors_with_custom_test, processors_without_custom_test
+
+    def _get_custom_test_mapping(self):
+        processor_uses_own_tests = {}
+        for processor_in_pipeline in self._config_yml['pipeline']:
+            name, processor_cfg = next(iter(processor_in_pipeline.items()))
+            processor = self._get_processor_instance(name, processor_cfg, logger)
+            processor_uses_own_tests[processor_cfg['type']] = processor.has_custom_tests
+        return processor_uses_own_tests
+
+    @staticmethod
+    def _get_rules(processor, rule_test):
         if rule_test.get('rules'):
-            for idx, rule_dict in enumerate(rule_test.get('rules', [])):
-                processor._tree = RuleTree()
-                with open(temp_rule_path, 'w') as temp_file:
-                    json.dump([rule_dict], temp_file)
-                processor.add_rules_from_directory(self._empty_rules_dirs)
-                self._eval_rule_test(rule_test, processor, idx)
-                remove_file_if_exists(temp_rule_path)
+            return {'rules': rule_test.get('rules', [])}
         elif rule_test.get('specific_rules') or rule_test.get('generic_rules'):
+            result = {}
             if rule_test.get('specific_rules'):
-                for idx, rule_dict in enumerate(rule_test.get('specific_rules', [])):
-                    processor._specific_tree = RuleTree()
-                    with open(temp_rule_path, 'w') as temp_file:
-                        json.dump([rule_dict], temp_file)
-                    processor.add_rules_from_directory(self._empty_rules_dirs, [])
-                    self._eval_rule_test(rule_test, processor, idx)
-                    remove_file_if_exists(temp_rule_path)
+                result['specific_rules'] = rule_test.get('specific_rules', [])
             if rule_test.get('generic_rules'):
-                for idx, rule_dict in enumerate(rule_test.get('generic_rules', [])):
-                    processor._generic_tree = RuleTree()
-                    with open(temp_rule_path, 'w') as temp_file:
-                        json.dump([rule_dict], temp_file)
-                    processor.add_rules_from_directory([], self._empty_rules_dirs)
-                    self._eval_rule_test(rule_test, processor, idx)
-                    remove_file_if_exists(temp_rule_path)
-        else:
-            raise AutoRuleTesterException(
-                f'No rules provided for processor of type {processor.describe()}')
+                result['generic_rules'] = rule_test.get('generic_rules', [])
+            return result
+        raise AutoRuleTesterException(
+            f'No rules provided for processor of type {processor.describe()}')
+
+    def _add_rules_from_directory(self, processor, rule_type):
+        if rule_type == 'rules':
+            processor.add_rules_from_directory(self._empty_rules_dirs)
+        elif rule_type == 'specific_rules':
+            processor.add_rules_from_directory(self._empty_rules_dirs, [])
+        elif rule_type == 'generic_rules':
+            processor.add_rules_from_directory([], self._empty_rules_dirs)
+
+    def _prepare_test_eval(self, processor, rule_dict, rule_type, temp_rule_path):
+        self._create_rule_file(rule_dict, temp_rule_path)
+        self._reset_trees(processor)
+        self._clear_rules(processor)
+        self._add_rules_from_directory(processor, rule_type)
+
+    def _run_custom_rule_tests(self, processor, rule_test):
+        temp_rule_path = path.join(self._empty_rules_dirs[0], 'temp.json')
+        rules = self._get_rules(processor, rule_test)
+
+        for rule_type, rules in rules.items():
+            for idx, rule_dict in enumerate(rules):
+                self._prepare_test_eval(processor, rule_dict, rule_type, temp_rule_path)
+                self._eval_custom_rule_test(rule_test, processor)
+                remove_file_if_exists(temp_rule_path)
+
+    def _run_file_rule_tests(self, processor, rule_test):
+        temp_rule_path = path.join(self._empty_rules_dirs[0], 'temp.json')
+        rules = self._get_rules(processor, rule_test)
+
+        for rule_type, rules in rules.items():
+            for idx, rule_dict in enumerate(rules):
+                self._prepare_test_eval(processor, rule_dict, rule_type, temp_rule_path)
+                self._eval_file_rule_test(rule_test, processor, idx)
+                remove_file_if_exists(temp_rule_path)
+
+    @staticmethod
+    def _clear_rules(processor):
+        if hasattr(processor, '_rules'):
+            processor._rules.clear()
+
+    @staticmethod
+    def _reset_trees(processor):
+        if hasattr(processor, '_tree'):
+            processor._tree = RuleTree()
+        if hasattr(processor, '_specific_tree'):
+            processor._specific_tree = RuleTree()
+        if hasattr(processor, '_generic_tree'):
+            processor._generic_tree = RuleTree()
+
+    @staticmethod
+    def _create_rule_file(rule_dict, rule_path):
+        with open(rule_path, 'w') as temp_file:
+            json.dump([rule_dict], temp_file)
 
     def _print_error_on_exception(self, error, rule_test, t_idx):
         self._print_filename(rule_test)
@@ -322,8 +396,15 @@ class AutoRuleTester:
             print_fcolor(Fore.LIGHTMAGENTA_EX, f'\nRULE FILE {rule_test["file"]}')
             self._filename_printed = True
 
-    def _eval_rule_test(self, rule_test, processor, r_idx):
+    def _eval_custom_rule_test(self, rule_test, processor):
         self._filename_printed = False
+        with StringIO() as buf, redirect_stdout(buf):
+            self._run_custom_tests(processor, rule_test)
+            self._custom_tests_output += buf.getvalue()
+
+    def _eval_file_rule_test(self, rule_test, processor, r_idx):
+        self._filename_printed = False
+
         for t_idx, test in enumerate(rule_test['tests']):
             if test.get('target_rule_idx') is not None and test.get('target_rule_idx') != r_idx:
                 continue
@@ -364,6 +445,25 @@ class AutoRuleTester:
 
             self._print_errors_and_warnings(errors, warnings)
 
+    def _run_custom_tests(self, processor, rule_test):
+        results_for_all_rules = processor.test_rules()
+        results = results_for_all_rules.get(processor._rules[0].__repr__(), [])
+        if not results:
+            self._missing_custom_tests.append(rule_test["file"])
+        else:
+            self._custom_tests.append(rule_test["file"])
+        for idx, result in enumerate(results):
+            diff = list(ndiff([result[0]], [result[1]]))
+            if self._check_if_different(diff):
+                if not self._filename_printed:
+                    self._print_filename(rule_test)
+                print(f'{processor.__class__.__name__.upper()} SPECIFIC TEST #{idx}:')
+                self._print_diff_test(diff)
+                self._failed_rule_tests_cnt += 1
+                self._success = False
+            else:
+                self._successful_rule_tests_cnt += 1
+
     @staticmethod
     def _print_errors_and_warnings(errors, warnings):
         for error in errors:
@@ -376,11 +476,18 @@ class AutoRuleTester:
     def _check_if_different(diff):
         return any([item for item in diff if item.startswith(('+', '-', '?'))])
 
-    @staticmethod
-    def _check_which_rule_files_miss_tests(rules_pp):
+    def _check_which_rule_files_miss_tests(self, rules_pn):
+        custom_test_mapping = self._get_custom_test_mapping()
         rules_with_tests = list()
         rules_without_tests = list()
-        for rules in rules_pp.values():
+        for processor_name, processor_test_cfg in rules_pn.items():
+            processor_type = processor_test_cfg['type']
+            rules = processor_test_cfg['rules']
+
+            has_custom_tests = custom_test_mapping.get(processor_type, False)
+            if has_custom_tests:
+                continue
+
             for rule in rules:
                 if rule['tests']:
                     rules_with_tests.append(rule['file'])
@@ -399,19 +506,20 @@ class AutoRuleTester:
             print_fcolor(Fore.LIGHTRED_EX, f'None')
 
     @staticmethod
-    def _get_processor_instance_and_rule_type(name, processor_cfg, logger):
+    def _get_processor_instance(name, processor_cfg, logger):
         cfg = {name: processor_cfg}
         processor = ProcessorFactory.create(cfg, logger)
-        plugin_path = path.join(str(pathlib.Path(inspect.getfile(processor.__class__)).parent),
-                                'rule.py')
+        processor_plugin_path = str(pathlib.Path(inspect.getfile(processor.__class__)).parent)
+
+        rule_class_path = path.join(processor_plugin_path, 'rule.py')
         loaded_rule_classes_map = {inspect.getfile(rule_class): rule_class
                                    for rule_class in Rule.__subclasses__()}
-        current_rule_class = loaded_rule_classes_map.get(plugin_path)
-        if current_rule_class is None and isinstance(processor, RuleBasedProcessor):
+        rule_class = loaded_rule_classes_map.get(rule_class_path)
+        if rule_class is None and isinstance(processor, RuleBasedProcessor):
             raise AutoRuleTesterException(f'Rule class missing for processor: '
                                           f'{processor.describe()}')
 
-        return processor, current_rule_class
+        return processor
 
     @staticmethod
     def _print_diff_test(diff):
@@ -491,13 +599,21 @@ class AutoRuleTester:
             has_errors = has_errors or has_error
         return has_errors
 
-    def _get_rules_per_processor_type(self, rules_dirs):
+    def _get_rules_per_processor_name(self, rules_dirs):
         print_fcolor(Fore.YELLOW, '\nRULES DIRECTORIES:')
-        rules = defaultdict(list)
+        rules_pn = defaultdict(dict)
         errors = []
-        for processor_type, proc_rules_dirs in rules_dirs.items():
-            print_fcolor(Fore.YELLOW, f'  {processor_type}:')
-            for rule_dirs_type, rules_dirs_by_type in proc_rules_dirs.items():
+
+        for processor_name, proc_rules_dirs in rules_dirs.items():
+            if not rules_pn[processor_name]:
+                rules_pn[processor_name] = defaultdict(dict)
+
+            processor_type = proc_rules_dirs['type']
+            rules_pn[processor_name]['type'] = processor_type
+            rules_pn[processor_name]['rules'] = []
+
+            print_fcolor(Fore.YELLOW, f'  {processor_name} ({processor_type}):')
+            for rule_dirs_type, rules_dirs_by_type in proc_rules_dirs['rule_dirs'].items():
                 print_fcolor(Fore.YELLOW, f'    {rule_dirs_type}:')
                 for rules_dir in rules_dirs_by_type:
                     print_fcolor(Fore.YELLOW, f'      {rules_dir}:')
@@ -533,24 +649,24 @@ class AutoRuleTester:
                                         continue
                             else:
                                 rule_tests = list()
-                            rules[processor_type].append(
+                            rules_pn[processor_name]['rules'].append(
                                 {rule_dirs_type: multi_rule, 'tests': rule_tests,
                                  'file': path.join(root, file)})
         if errors:
             for error in errors:
                 print_fcolor(Fore.RED, error)
             exit(1)
-        return rules
+        return rules_pn
 
     @staticmethod
     def _is_valid_rule_name(file_name):
         return (file_name.endswith('.json') or
-                file_name.endswith('.yml')) and not file_name.endswith('_test.json')
+                file_name.endswith('.yml')) and not (file_name.endswith('_test.json'))
 
-    def _get_rule_dirs_by_processor_type(self):
+    def _get_rule_dirs_by_processor_name(self):
         rules_dirs = defaultdict(dict)
         for processor in self._config_yml['pipeline']:
-            processor_cfg = next(iter(processor.values()))
+            processor_name, processor_cfg = next(iter(processor.items()))
 
             rules_to_add = list()
             print('\nProcessor Config:')
@@ -562,10 +678,15 @@ class AutoRuleTester:
                 rules_to_add.append(('generic_rules', processor_cfg['generic_rules']))
                 rules_to_add.append(('specific_rules', processor_cfg['specific_rules']))
 
-            if not rules_dirs[processor_cfg['type']]:
-                rules_dirs[processor_cfg['type']] = defaultdict(list)
+            if not rules_dirs[processor_name]:
+                rules_dirs[processor_name] = defaultdict(dict)
+
+            rules_dirs[processor_name]['type'] = processor_cfg['type']
+
+            if not rules_dirs[processor_name]['rule_dirs']:
+                rules_dirs[processor_name]['rule_dirs'] = defaultdict(list)
 
             for rule_to_add in rules_to_add:
-                rules_dirs[processor_cfg['type']][rule_to_add[0]] += rule_to_add[1]
+                rules_dirs[processor_name]['rule_dirs'][rule_to_add[0]] += rule_to_add[1]
 
         return rules_dirs

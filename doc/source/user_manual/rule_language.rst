@@ -1172,6 +1172,106 @@ This is achieved by using the predefined keyword :code:`RE_WHOLE_FIELD`, which w
       "RE_IP4_COLON_PORT": "([\\d.]+):\\d+"
     }
 
+Clusterer
+=========
+
+Rules of the clusterer are evaluated in alphanumerical order.
+Some rules do only make sense if they are performed in a sequence with other rules.
+The clusterer matches multiple rules at once and applies them all before creating a clustering signature.
+Therefore, it is recommended to prefix rules with numbers, i.e. `00_01_*`.
+Here the first two digits represent a type of rules that make sense together and the second digits represent the order of rules of the same type.
+
+The clusterer requires the additional field :code:`clusterer`.
+Which field is used for clustering is defined in :code:`clusterer.target`.
+This should be usually the field :code:`message`.
+A subset of terms from this field can be extracted into the clustering-signature field defined in the clusterer configuration.
+The field :code:`clusterer.pattern` contains a regex pattern that will be matched on :code:`clusterer.target`.
+Anything within a capture group in :code:`clusterer.pattern` will be substituted with values defined in :code:`clusterer.repl`.
+The clusterer will only extract terms into a signature that are surrounded by the tags `<+></+>`.
+One could first use rules to remove common terms, other rules to perform stemming and finally rules to wrap terms in `<+></+>` to create a signature.
+
+For example:
+  * Setting :code:`clusterer.repl: ''` would remove anything within a capture group.
+  * Setting :code:`clusterer.repl: 'FOO'` would replace anything within a capture group with `FOO`.
+  * Setting :code:`clusterer.repl: '<+>\1</+>'` would surround anything within a capture group with `<+></+>`.
+
+Since clusterer rules must be used in a sequence, it makes no sense to perform regular auto tests on them.
+Thus, every rule can have a field :code:`tests` containing signature calculation tests.
+It can contain one test or a list of tests.
+Each tests consists of the fields :code:`tests.raw` and :code:`tests.result`.
+:code:`tests.raw` is the input and would be usually the message.
+:code:`tests.result` is the expected result.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - One Test
+
+    filter: ...
+    clusterer: ...
+    tests:
+      raw:    'Some message'
+      result: 'Some changed message'
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Multiple Test
+
+    filter: ...
+    clusterer: ...
+    tests:
+      - raw:    'Some message'
+        result: 'Some changed message'
+      - raw:    'Another message'
+        result: 'Another changed message'
+
+In the following rule example the word `byte` is stemmed.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Stemming Rule
+
+    filter: message
+    clusterer:
+      target: message
+      pattern: '(bytes|Bytes|Byte)'
+      repl: 'byte'
+    description: '...'
+    tests:
+      raw:    'Byte is a Bytes is a bytes is a byte'
+      result: 'byte is a byte is a byte is a byte'
+
+In the following rule example the word `baz` is removed.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Removal Rule
+
+    filter: message
+    clusterer:
+      target: message
+      pattern: 'foo (bar) baz'
+      repl: ''
+    description: '...'
+    tests:
+      raw:    'foo bar baz'
+      result: 'foo  baz'
+
+In the following rule example the word `baz` is surrounded by extraction tags.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Extraction Rule
+
+    filter: message
+    clusterer:
+      target: message
+      pattern: 'foo (bar) baz'
+      repl: '<+>\1</+>'
+    description: '...'
+    tests:
+      raw:    'foo bar baz'
+      result: 'foo <+>bar</+> baz'
+
 Dropper
 =======
 

@@ -1,4 +1,4 @@
-"""This modules is used create labeling schemas."""
+"""This module is used create labeling schemas."""
 
 from typing import Optional, List, Any
 

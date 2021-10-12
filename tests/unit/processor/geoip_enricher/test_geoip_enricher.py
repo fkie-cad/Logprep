@@ -14,7 +14,7 @@ rules_dir = 'tests/testdata/unit/geoip_enricher/rules'
 
 
 @pytest.fixture()
-def enricher_geoip():
+def geoip_enricher():
     config = {
         'type': 'geoip_enricher',
         'rules': [rules_dir],
@@ -28,40 +28,40 @@ def enricher_geoip():
 
 @pytest.mark.skipif(not exists(geoip_db_path), reason='GeoIP db required.')
 class TestGeoIPEnricher:
-    def test_geoip_data_added(self, enricher_geoip):
-        assert enricher_geoip.events_processed_count() == 0
+    def test_geoip_data_added(self, geoip_enricher):
+        assert geoip_enricher.events_processed_count() == 0
         document = {'client': {'ip': '1.2.3.4'}}
 
-        enricher_geoip.process(document)
+        geoip_enricher.process(document)
 
-    def test_geoip_data_added_not_exists(self, enricher_geoip):
-        assert enricher_geoip.events_processed_count() == 0
+    def test_geoip_data_added_not_exists(self, geoip_enricher):
+        assert geoip_enricher.events_processed_count() == 0
         document = {'client': {'ip': '127.0.0.1'}}
 
-        enricher_geoip.process(document)
+        geoip_enricher.process(document)
 
         assert document.get('geoip') is None
 
-    def test_nothing_to_enrich(self, enricher_geoip):
-        assert enricher_geoip.events_processed_count() == 0
+    def test_nothing_to_enrich(self, geoip_enricher):
+        assert geoip_enricher.events_processed_count() == 0
         document = {'something': {'something': '1.2.3.4'}}
 
-        enricher_geoip.process(document)
+        geoip_enricher.process(document)
         assert 'geoip' not in document.keys()
 
-    def test_geoip_data_added_not_valid(self, enricher_geoip):
-        assert enricher_geoip.events_processed_count() == 0
+    def test_geoip_data_added_not_valid(self, geoip_enricher):
+        assert geoip_enricher.events_processed_count() == 0
         document = {'client': {'ip': '333.333.333.333'}}
 
-        enricher_geoip.process(document)
+        geoip_enricher.process(document)
 
         assert document.get('geoip') is None
 
-    def test_enrich_an_event_geoip(self, enricher_geoip):
-        assert enricher_geoip.events_processed_count() == 0
+    def test_enrich_an_event_geoip(self, geoip_enricher):
+        assert geoip_enricher.events_processed_count() == 0
         document = {'client': {'ip': '8.8.8.8'}}
 
-        enricher_geoip.process(document)
+        geoip_enricher.process(document)
 
         geoip = document.get('geoip')
         assert isinstance(geoip, dict)
@@ -76,11 +76,11 @@ class TestGeoIPEnricher:
         assert isinstance(geoip['properties'].get('country'), str)
         assert isinstance(geoip['properties'].get('accuracy_radius'), int)
 
-    def test_enrich_an_event_geoip_with_existing_differing_geoip(self, enricher_geoip):
-        assert enricher_geoip.events_processed_count() == 0
+    def test_enrich_an_event_geoip_with_existing_differing_geoip(self, geoip_enricher):
+        assert geoip_enricher.events_processed_count() == 0
         document = {'client': {'ip': '8.8.8.8'}, 'geoip': {'test': 'test'}}
 
         with pytest.raises(DuplicationError, match=r'GeoIPEnricher \(test-geoip-enricher\)\: The following fields '
                                                    r'already existed and were not overwritten by the Normalizer\:'
                                                    r' geoip'):
-            enricher_geoip.process(document)
+            geoip_enricher.process(document)

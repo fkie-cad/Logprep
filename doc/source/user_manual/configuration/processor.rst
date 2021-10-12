@@ -444,6 +444,42 @@ tld_list
 
 Path to a file with a list of top-level domains (i.e. https://publicsuffix.org/list/public_suffix_list.dat).
 
+Clusterer
+----------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `clusterer` chooses the processor type Clusterer, which will be described here in greater detail.
+The log clustering is mainly developed for Syslogs, unstructured and semi-structured logs.
+The clusterer calculates a log signature based on the message field.
+The log signature is calculated with heuristic and deterministic rules.
+The idea of a log signature is to extract a subset of the constant parts of a log and to delete the dynamic parts.
+If the fields syslog.facility and event.severity are in the log, then they are prefixed to the log signature.
+
+Logs are only clustered if at least one of the following criteria is fulfilled:
+
+..  code-block:: yaml
+
+    Criteria 1: { "message": "A sample message", "tags": ["clusterable", ...], ... }
+    Criteria 2: { "message": "A sample message", "clusterable": true, ... }
+    Criteria 3: { "message": "A sample message", "syslog": { "facility": <number> }, "event": { "severity": <string> }, ... }
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/clusterer_rules/
+
+output_field_name
+~~~~~~~~~~~~~~~~~
+
+The value `output_field_name` defines in which field results of the clustering should be stored.
+
 Dropper
 -------
 
@@ -461,3 +497,8 @@ rules
 List of directory paths with rule files, i.e.:
 
   * /var/git/logprep-rules/dropper_rules/
+
+output_field_name
+~~~~~~~~~~~~~~~~~
+
+The value `output_field_name` defines in which field results of the clustering should be stored.

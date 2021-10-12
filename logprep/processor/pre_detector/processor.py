@@ -1,4 +1,4 @@
-"""This modules contains functionality for pre-detecting attacks."""
+"""This module contains functionality for pre-detecting attacks."""
 
 from typing import List
 from logging import Logger, DEBUG
@@ -35,6 +35,7 @@ class PreDetector(RuleBasedProcessor):
 
     def __init__(self, name: str, pre_detector_topic: str, tree_config: str,
                  alert_ip_list_path: str, logger: Logger):
+        super().__init__(name, tree_config, logger)
         self._logger = logger
         self.ps = ProcessorStats()
 

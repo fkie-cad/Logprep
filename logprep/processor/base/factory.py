@@ -1,4 +1,4 @@
-"""This modules contains functionality for creating processors of given type."""
+"""This module contains functionality for creating processors of given type."""
 
 from typing import List
 

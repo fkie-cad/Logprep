@@ -12,7 +12,7 @@ class GenericAdderFactory(BaseFactory):
         """Create a generic adder."""
         GenericAdderFactory._check_configuration(configuration)
 
-        generic_adder = GenericAdder(name, configuration['tree_config'], logger)
+        generic_adder = GenericAdder(name, configuration.get('tree_config'), logger)
         generic_adder.add_rules_from_directory(configuration['rules'])
 
         return generic_adder

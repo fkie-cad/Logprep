@@ -89,6 +89,11 @@ Pseudonymizer
 
 The pseudonymizer is a processor that pseudonymizes certain fields of log messages to ensure privacy regulations can be adhered to.
 
+Clusterer
+---------
+
+The clusterer is a processor that uses heuristics to group unstructured and semi-structured log messages (especially Unix logs like Syslogs).
+
 Dropper
 -------
 

@@ -17,7 +17,7 @@ class DomainResolverFactory(BaseFactory):
         max_timedelta = datetime.timedelta(days=configuration["max_caching_days"])
 
         domain_resolver = DomainResolver(name,
-                                         configuration['tree_config'],
+                                         configuration.get('tree_config'),
                                          configuration['tld_list'],
                                          configuration.get('timeout', 0.5),
                                          configuration['max_cached_domains'],
