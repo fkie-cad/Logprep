@@ -6,6 +6,7 @@ pytest.importorskip('logprep.processor.datetime_extractor')
 
 from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
+from dateutil.parser import parse
 
 from logprep.processor.datetime_extractor.factory import DateTimeExtractorFactory
 from logprep.processor.datetime_extractor.processor import DateTimeExtractor
@@ -29,21 +30,29 @@ def datetime_extractor():
 class TestDateTimeExtractor:
     def test_an_event_extracted_datetime_utc(self, datetime_extractor):
         assert datetime_extractor.events_processed_count() == 0
+
         timestamp = '2019-07-30T14:37:42.861Z'
         document = {'@timestamp': timestamp, 'winlog': {'event_id': 123}}
 
         datetime_extractor.process(document)
 
+        # Two different timezones need to be used in the test to account for daylight savings
+        # Use current timezone here, since the processor initializes with timezone on the system
         tz_local_name = datetime.now(tzlocal()).strftime('%z')
-        local_hour_delta, local_minute_delta, local_timezone = self._parse_local_tz(tz_local_name)
+        _, _, local_timezone = self._parse_local_tz(tz_local_name)
+
+        # Use timestamps timezone here, since processor uses timezones of each timestamp for deltas
+        parsed_timestamp = parse(timestamp).astimezone(tzlocal())
+        tz_local_name = parsed_timestamp.strftime('%z')
+        ts_hour_delta, ts_minute_delta, _ = self._parse_local_tz(tz_local_name)
 
         expected = {'@timestamp': timestamp,
                     'winlog': {'event_id': 123},
                     'split_@timestamp': {
                         'day': 30,
-                        'hour': 14 + local_hour_delta,
+                        'hour': 14 + ts_hour_delta,
                         'microsecond': 861000,
-                        'minute': 37 + local_minute_delta,
+                        'minute': 37 + ts_minute_delta,
                         'month': 7,
                         'second': 42,
                         'timezone': local_timezone,
@@ -59,16 +68,23 @@ class TestDateTimeExtractor:
 
         datetime_extractor.process(document)
 
+        # Two different timezones need to be used in the test to account for daylight savings
+        # Use current timezone here, since the processor initializes with timezone on the system
         tz_local_name = datetime.now(tzlocal()).strftime('%z')
-        local_hour_delta, local_minute_delta, local_timezone = self._parse_local_tz(tz_local_name)
+        _, _, local_timezone = self._parse_local_tz(tz_local_name)
+
+        # Use timestamps timezone here, since processor uses timezones of each timestamp for deltas
+        parsed_timestamp = parse(timestamp).astimezone(tzlocal())
+        tz_local_name = parsed_timestamp.strftime('%z')
+        ts_hour_delta, ts_minute_delta, _ = self._parse_local_tz(tz_local_name)
 
         expected = {'@timestamp': timestamp,
                     'winlog': {'event_id': 123},
                     'split_@timestamp': {
                         'day': 30,
-                        'hour': 13 + local_hour_delta,  # 13 ist hour of src timestamp in UTC
+                        'hour': 13 + ts_hour_delta,  # 13 ist hour of src timestamp in UTC
                         'microsecond': 861000,
-                        'minute': 37 + local_minute_delta,
+                        'minute': 37 + ts_minute_delta,
                         'month': 7,
                         'second': 42,
                         'timezone': local_timezone,
