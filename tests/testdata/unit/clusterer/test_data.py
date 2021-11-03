@@ -1,6 +1,7 @@
 import collections
 from collections import defaultdict
 from types import SimpleNamespace
+import re
 
 from logprep.processor.clusterer.signature_calculation.rules.rule_template import SignatureRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import LogRecord
@@ -184,19 +185,19 @@ class SignatureRulesTest:
     end_tag = '</+>'
 
     rule_1 = SignatureRule(
-        pattern=r'\w{3}\s? \d{1,2} \d{2}:\d{2}:\d{2} \S{0,55} (\S*?)\[?\d{0,5}\]?:',
+        pattern=re.compile(r'\w{3}\s? \d{1,2} \d{2}:\d{2}:\d{2} \S{0,55} (\S*?)\[?\d{0,5}\]?:'),
         repl=r' <+>\1</+>',
         description='mark src-name of syslog header')
     rule_2 = SignatureRule(
-        pattern=r'(=)\S+',
+        pattern=re.compile(r'(=)\S+'),
         repl=r'\1',
         description='delete all values of attribute=value pairs')
     rule_3 = SignatureRule(
-        pattern=r' ([a-zA-Z*]{1,30})[ |=|:|,]',
+        pattern=re.compile(r' ([a-zA-Z*]{1,30})[ |=|:|,]'),
         repl=r' <+>\1</+> ',
         description='mark all words')
     rule_4 = SignatureRule(
-        pattern=r' ([a-zA-Z*]{1,30})$',
+        pattern=re.compile(r' ([a-zA-Z*]{1,30})$'),
         repl=r' <+>\1</+> ',
         description='mark last word of log_text')
 
