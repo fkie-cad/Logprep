@@ -42,7 +42,7 @@ class MustProvideAnMPLogHandlerError(MultiprocessingPipelineError):
 
 
 class Pipeline:
-    """Pipline of processors to be processed."""
+    """Pipeline of processors to be processed."""
 
     # pylint: disable=logging-not-lazy
     # Would require too much change in the tests.
