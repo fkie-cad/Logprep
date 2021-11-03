@@ -19,6 +19,7 @@ connector:
     auto_commit: on
     session_timeout: 6000
     offset_reset_policy: smallest
+    enable_auto_offset_store: false
   producer:
     topic: wineventlog_labeled
     error_topic: producer_error

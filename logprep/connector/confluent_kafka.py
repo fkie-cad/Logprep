@@ -49,16 +49,19 @@ class ConfluentKafkaFactory:
 
         """
         if not isinstance(configuration, dict):
-            raise InvalidConfigurationError
+            raise InvalidConfigurationError('Confluent Kafka: Configuration is not a dict!')
 
         try:
             kafka = ConfluentKafka(configuration['bootstrapservers'],
                                    configuration['consumer']['topic'],
                                    configuration['consumer']['group'],
+                                   configuration['consumer'].get('enable_auto_offset_store', True),
                                    configuration['producer']['topic'],
-                                   configuration['producer']['error_topic'])
-        except KeyError:
-            raise InvalidConfigurationError
+                                   configuration['producer']['error_topic']
+                                   )
+        except KeyError as error:
+            raise InvalidConfigurationError(f'Confluent Kafka: Missing configuration parameter '
+                                            f'{str(error)}!') from error
 
         if 'ssl' in configuration:
             ConfluentKafkaFactory._set_ssl_options(kafka, configuration['ssl'])
@@ -68,7 +71,7 @@ class ConfluentKafkaFactory:
         try:
             kafka.set_option(configuration)
         except UnknownOptionError as error:
-            raise InvalidConfigurationError('Confluent Kafka: ' + str(error))
+            raise InvalidConfigurationError(f'Confluent Kafka: {str(error)}')
 
         return kafka
 
@@ -110,7 +113,7 @@ class ConfluentKafka(Input, Output):
     """A kafka connector that serves as both input and output connector."""
 
     def __init__(self, bootstrap_servers: List[str], consumer_topic: str, consumer_group: str,
-                 producer_topic: str, producer_error_topic: str):
+                 enable_auto_offset_store: bool, producer_topic: str, producer_error_topic: str):
         self._bootstrap_servers = bootstrap_servers
         self._consumer_topic = consumer_topic
         self._consumer_group = consumer_group
@@ -129,7 +132,8 @@ class ConfluentKafka(Input, Output):
             'consumer': {
                 'auto_commit': True,
                 'session_timeout': 6000,
-                'offset_reset_policy': 'smallest'
+                'offset_reset_policy': 'smallest',
+                'enable_auto_offset_store': enable_auto_offset_store
             },
             'producer': {
                 'ack_policy': 'all',
@@ -146,6 +150,10 @@ class ConfluentKafka(Input, Output):
         self._client_id = getfqdn()
         self._consumer = None
         self._producer = None
+
+        self._record = None
+
+        self._enable_auto_offset_store = enable_auto_offset_store
 
     def describe_endpoint(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
@@ -223,31 +231,31 @@ class ConfluentKafka(Input, Output):
         if self._consumer is None:
             self._create_consumer()
 
-        record = self._consumer.poll(timeout=timeout)
-        if record is None:
+        self._record = self._consumer.poll(timeout=timeout)
+        if self._record is None:
             return None
 
-        self.current_offset = record.offset()
+        self.current_offset = self._record.offset()
 
-        if record.error():
+        if self._record.error():
             raise CriticalInputError('A confluent-kafka record contains an error code: '
-                                     '({})'.format(record.error()), None)
+                                     '({})'.format(self._record.error()), None)
         try:
-            json_dict = ujson.loads(record.value().decode("utf-8"))
+            json_dict = ujson.loads(self._record.value().decode("utf-8"))
             if isinstance(json_dict, dict):
                 return json_dict
             raise InvalidMessageError
         except ValueError as error:
             raise CriticalInputError('Input record value is not a valid json string: '
                                      '({})'.format(self._format_message(error)),
-                                     record.value().decode("utf-8")) from error
+                                     self._record.value().decode("utf-8")) from error
         except InvalidMessageError as error:
             raise CriticalInputError('Input record value could not be parsed '
                                      'as dict: ({})'.format(self._format_message(error)),
-                                     record.value().decode("utf-8")) from error
+                                     self._record.value().decode("utf-8")) from error
         except BaseException as error:
             raise CriticalInputError('Error parsing input record: ({})'.format(
-                self._format_message(error)), record.value().decode("utf-8")) from error
+                self._format_message(error)), self._record.value().decode("utf-8")) from error
 
     @staticmethod
     def _format_message(error: BaseException) -> str:
@@ -264,6 +272,9 @@ class ConfluentKafka(Input, Output):
 
         """
         self.store_custom(document, self._producer_topic)
+
+        if not self._enable_auto_offset_store:
+            self._consumer.store_offsets(message=self._record)
 
     def store_custom(self, document: dict, target: str):
         """Write document to Kafka into target topic.
@@ -336,8 +347,9 @@ class ConfluentKafka(Input, Output):
             'group.id': self._consumer_group,
             'enable.auto.commit': self._config['consumer']['auto_commit'],
             'session.timeout.ms': self._config['consumer']['session_timeout'],
-            'default.topic.config': {'auto.offset.reset':
-                                        self._config['consumer']['offset_reset_policy']},
+            'enable.auto.offset.store': self._enable_auto_offset_store,
+            'default.topic.config': {
+                'auto.offset.reset': self._config['consumer']['offset_reset_policy']},
             'acks': self._config['producer']['ack_policy'],
             'compression.type': self._config['producer']['compression'],
             'queue.buffering.max.messages': self._config['producer']['maximum_backlog'],

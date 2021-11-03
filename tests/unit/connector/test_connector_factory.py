@@ -62,7 +62,8 @@ class TestConnectorFactoryConfluentKafka:
             'bootstrapservers': ['bootstrap1:9092', 'bootstrap2:9092'],
             'consumer': {
                 'topic': 'test_consumer',
-                'group': 'test_consumer_group'
+                'group': 'test_consumer_group',
+                'enable_auto_offset_store': True
             },
             'producer': {
                 'topic': 'test_producer',
@@ -82,6 +83,7 @@ class TestConnectorFactoryConfluentKafka:
                     'bootstrap.servers': 'bootstrap1:9092,bootstrap2:9092',
                     'group.id': 'test_consumer_group',
                     'enable.auto.commit': True,
+                    'enable.auto.offset.store': True,
                     'session.timeout.ms': 6000,
                     'default.topic.config': {'auto.offset.reset': 'smallest'},
                     'acks': 'all',
