@@ -1,6 +1,7 @@
 """This module is used to get documents that match a clusterer filter."""
 
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Pattern
+import re
 
 from logprep.filter.expression.filter_expression import FilterExpression
 
@@ -29,7 +30,7 @@ class ClustererRule(Rule):
                  tests: Union[List[Dict[str, str]], Dict[str, str]] = None):
         super().__init__(filter_rule)
         self._target = clusterer_cfg['target']
-        self._pattern = clusterer_cfg['pattern']
+        self._pattern = re.compile(clusterer_cfg['pattern'])
         self._repl = clusterer_cfg['repl']
 
         if isinstance(tests, list):
@@ -52,7 +53,7 @@ class ClustererRule(Rule):
         return self._target
 
     @property
-    def pattern(self) -> str:
+    def pattern(self) -> Pattern:
         return self._pattern
 
     @property
