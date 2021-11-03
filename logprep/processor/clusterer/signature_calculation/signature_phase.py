@@ -3,7 +3,6 @@
 from typing import Tuple, List, Dict
 
 from collections import OrderedDict
-import re
 from types import SimpleNamespace
 
 from logprep.processor.clusterer.configuration import SignatureProgramTags
@@ -69,9 +68,37 @@ class SignatureEngine:
 
     @staticmethod
     def apply_signature_rule(rule: ClustererRule, sig_text: str) -> str:
-        num_of_subs = 1
-        while num_of_subs > 0:
-            (sig_text, num_of_subs) = re.subn(rule.pattern, rule.repl, sig_text)
+        """Apply a signature rule to a string based on a matching and a replacement pattern.
+
+        This function substitutes regEx matches in a string based on patterns defined in rules to
+        generate a clusterer signature. The result can be an intermediate step in the generation of
+        a signature as part of a sequence of clusterer rules.
+
+        The substitution is performed repeatedly on the same string until it doesn't match anymore.
+        To ensure that there is never an endless loop of substitutions, the loop breaks if the
+        number of performed substitutions doesn't decrease with each iteration.
+
+        Parameters
+        ----------
+        rule: ClustererRule
+            Rule containing replacement and substitution pattern.
+        sig_text: str
+            Text that is used to generate a signature from.
+
+        Returns
+        -------
+        str
+            Signature generated from input text.
+
+            This doesn't have to be a final signature, but can be an intermediate result.
+
+        """
+        sig_text, num_of_subs = rule.pattern.subn(rule.repl, sig_text)
+        # last_num_of_subs is set greater than num_of_subs so that it is possible to enter the loop
+        last_num_of_subs = num_of_subs + 1
+        while 0 < num_of_subs < last_num_of_subs:
+            last_num_of_subs = num_of_subs
+            sig_text, num_of_subs = rule.pattern.subn(rule.repl, sig_text)
         return sig_text
 
 
