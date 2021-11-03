@@ -21,6 +21,7 @@ class TestConfluentKafkaFactory:
             'group': 'test_consumergroup',
             'auto_commit': False,
             'session_timeout': 654321,
+            'enable_auto_offset_store': True,
             'offset_reset_policy': 'latest',
         },
         'producer': {
@@ -168,6 +169,7 @@ class TestConfluentKafka:
         'bootstrap.servers': 'bootstrap1,bootstrap2',
         'group.id': 'consumer_group',
         'enable.auto.commit': True,
+        'enable.auto.offset.store': True,
         'session.timeout.ms': 6000,
         'default.topic.config': {'auto.offset.reset': 'smallest'},
         'acks': 'all',
@@ -181,6 +183,7 @@ class TestConfluentKafka:
         self.kafka = ConfluentKafka(['bootstrap1', 'bootstrap2'],
                                     'consumer_topic',
                                     'consumer_group',
+                                    True,
                                     'producer_topic',
                                     'producer_error_topic')
 
@@ -190,8 +193,8 @@ class TestConfluentKafka:
 
     def test_implements_abstract_methods(self):
         try:
-            ConfluentKafka(['127.0.0.1:27001'], 'consumertopic', 'consumergroup', 'producertopic',
-                           'producer_error_topic')
+            ConfluentKafka(['127.0.0.1:27001'], 'consumertopic', 'consumergroup', True,
+                           'producertopic', 'producer_error_topic')
         except TypeError as err:
             fail('Must implement abstract methods: %s' % str(err))
 
@@ -204,7 +207,8 @@ class TestConfluentKafka:
     def test_set_option_fails_for_unknown_and_construction_options(self):
         for i in ['unknown', 'no_such_option',
                   'consumer_no_such_option', 'consumer_group', 'consumer_topic',
-                  'producer_option', 'producer_topic', 'producer_error_topic']:
+                  'enable_auto_offset_store', 'producer_option', 'producer_topic',
+                  'producer_error_topic']:
             with raises(UnknownOptionError):
                 self.kafka.set_option({i: True})
 
@@ -249,7 +253,7 @@ class TestConfluentKafka:
             'consumer': {
                 'auto_commit': False,
                 'session_timeout': 23456,
-                'offset_reset_policy': 'latest'
+                'offset_reset_policy': 'latest',
             },
             'producer': {
                 'ack_policy': '1',
@@ -279,6 +283,7 @@ class TestConfluentKafka:
         kafka = ConfluentKafkaForTest(['bootstrap1', 'bootstrap2'],
                                       'consumer_topic',
                                       'consumer_group',
+                                      'enable_auto_offset_store',
                                       producer_topic,
                                       'producer_error_topic')
         kafka.store(event)
@@ -294,6 +299,7 @@ class TestConfluentKafka:
         kafka = ConfluentKafkaForTest(['bootstrap1', 'bootstrap2'],
                                       'consumer_topic',
                                       'consumer_group',
+                                      'enable_auto_offset_store',
                                       'default_topic',
                                       'producer_error_topic')
         kafka.store_custom(event, custom_topic)
@@ -315,6 +321,7 @@ class TestConfluentKafka:
         kafka = ConfluentKafkaForTest(['bootstrap1', 'bootstrap2'],
                                       'consumer_topic',
                                       'consumer_group',
+                                      'enable_auto_offset_store',
                                       'producer_topic',
                                       producer_error_topic)
         kafka.store_failed(error_message, event_received, event)
@@ -338,6 +345,7 @@ class TestConfluentKafka:
         kafka = ConfluentKafkaForTest(['bootstrap1', 'bootstrap2'],
                                       'consumer_topic',
                                       'consumer_group',
+                                      'enable_auto_offset_store',
                                       'producer_topic',
                                       'producer_error_topic')
 
@@ -349,6 +357,7 @@ class TestConfluentKafka:
         kafka = ConfluentKafkaForTest(['bootstrap1', 'bootstrap2'],
                                       'consumer_topic',
                                       'consumer_group',
+                                      'enable_auto_offset_store',
                                       'producer_topic',
                                       'producer_error_topic')
 
@@ -363,6 +372,7 @@ class TestConfluentKafka:
         kafka = ConfluentKafkaForTest(['bootstrap1', 'bootstrap2'],
                                       'consumer_topic',
                                       'consumer_group',
+                                      'enable_auto_offset_store',
                                       'producer_topic',
                                       'producer_error_topic')
 

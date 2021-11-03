@@ -23,6 +23,7 @@ connector:
     auto_commit: on
     session_timeout: 6000
     offset_reset_policy: smallest
+    enable_auto_offset_store: true
   producer:
     topic: producer3
     error_topic: producer_error3
