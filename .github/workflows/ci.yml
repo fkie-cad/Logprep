@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [ 'main', 'master', 'dev-*', 'fix-*' ]
+
+jobs:
+  build-pex:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+
+      - uses: actions/cache@v2
+        id: cache
+        with:
+          path: |
+            /opt/hostedtoolcache/Python/3.6.15/x64/lib/python3.6/site-packages/
+            /opt/hostedtoolcache/Python/3.6.15/x64/bin/ansible
+            /opt/hostedtoolcache/Python/3.6.15/x64/bin/virtualenv
+            /opt/hostedtoolcache/Python/3.6.15/x64/bin/pex
+          key: ${{ hashFiles('setup.py') }}-${{ hashFiles('requirements_dev.txt') }}
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+          pip install virtualenv
+          pip install wheel
+          pip install pex
+
+      - name: Repack confluent-kafka wheel
+        run: |
+          rm -rf tmp_pip_cache &&
+          mkdir tmp_pip_cache &&
+          cd tmp_pip_cache &&
+          python -m pip download $(cat ../requirements.txt | grep confluent-kafka) &&
+          unzip * &&
+          rm *.whl &&
+          python -m wheel pack .
+
+      - name: Build Pex File
+        run: |
+          pex . -r requirements.txt -o ./logprep.pex -c logprep --pex-root=tmp_pip_cache
+
+      - name: Upload PEX
+        uses: actions/upload-artifact@v2
+        with:
+          name: Logprep
+          path: logprep.pex
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements_dev.txt
+
+    - name: Peroform unit tests
+      env:
+        PYTEST_ADDOPTS: "--color=yes"
+      run: |
+        pytest  -vv tests/unit
+
+    - name: Peroform acceptance tests
+      env:
+        PYTEST_ADDOPTS: "--color=yes"
+      run: |
+        pytest  -vv tests/acceptance
