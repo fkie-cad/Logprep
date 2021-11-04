@@ -12,7 +12,7 @@ appdirs==1.4.4
     # via
     #   -r requirements.txt
     #   urlextract
-astroid==2.6.5
+astroid==2.8.4
     # via pylint
 async-timeout==3.0.1
     # via
@@ -23,7 +23,7 @@ attrs==21.2.0
     #   -r requirements.txt
     #   aiohttp
     #   pytest
-certifi==2021.5.30
+certifi==2021.10.8
     # via
     #   -r requirements.txt
     #   requests
@@ -31,7 +31,7 @@ chardet==4.0.0
     # via
     #   -r requirements.txt
     #   aiohttp
-charset-normalizer==2.0.3
+charset-normalizer==2.0.7
     # via
     #   -r requirements.txt
     #   requests
@@ -39,16 +39,16 @@ colorama==0.4.4
     # via -r requirements.txt
 confluent-kafka==1.5.0
     # via -r requirements.txt
-coverage==5.5
+coverage[toml]==6.0.2
     # via pytest-cov
-filelock==3.0.12
+filelock==3.3.2
     # via
     #   -r requirements.txt
     #   tldextract
     #   urlextract
-geoip2==4.2.0
+geoip2==4.4.0
     # via -r requirements.txt
-idna==3.2
+idna==3.3
     # via
     #   -r requirements.txt
     #   idna-ssl
@@ -60,13 +60,13 @@ idna-ssl==1.1.0
     # via
     #   -r requirements.txt
     #   aiohttp
-importlib-metadata==4.6.1
+importlib-metadata==4.8.1
     # via
     #   pluggy
     #   pytest
 iniconfig==1.1.1
     # via pytest
-isort==5.9.2
+isort==5.9.3
     # via pylint
 jsonref==0.2
     # via -r requirements.txt
@@ -74,13 +74,13 @@ lazy-object-proxy==1.6.0
     # via astroid
 luqum==0.11.0
     # via -r requirements.txt
-maxminddb==2.0.3
+maxminddb==2.2.0
     # via
     #   -r requirements.txt
     #   geoip2
 mccabe==0.6.1
     # via pylint
-multidict==5.1.0
+multidict==5.2.0
     # via
     #   -r requirements.txt
     #   aiohttp
@@ -89,7 +89,9 @@ numpy==1.19.5
     # via -r requirements.txt
 packaging==21.0
     # via pytest
-pluggy==0.13.1
+platformdirs==2.4.0
+    # via pylint
+pluggy==1.0.0
     # via pytest
 ply==3.11
     # via
@@ -97,27 +99,27 @@ ply==3.11
     #   luqum
 py==1.10.0
     # via pytest
-pycryptodome==3.10.1
+pycryptodome==3.11.0
     # via -r requirements.txt
 pygrok==1.0.0
     # via -r requirements.txt
-pylint==2.9.5
+pylint==2.11.1
     # via -r requirements_dev.in
-pyparsing==2.4.7
+pyparsing==3.0.3
     # via packaging
-pytest==6.2.4
+pytest==6.2.5
     # via
     #   -r requirements_dev.in
     #   pytest-cov
-pytest-cov==2.12.1
+pytest-cov==3.0.0
     # via -r requirements_dev.in
 python-dateutil==2.8.2
     # via -r requirements.txt
-pytz==2021.1
+pytz==2021.3
     # via -r requirements.txt
-pyyaml==5.4.1
+pyyaml==6.0
     # via -r requirements.txt
-regex==2021.7.6
+regex==2021.10.23
     # via
     #   -r requirements.txt
     #   pygrok
@@ -131,7 +133,7 @@ requests-file==1.5.1
     # via
     #   -r requirements.txt
     #   tldextract
-ruamel.yaml==0.17.10
+ruamel.yaml==0.17.16
     # via -r requirements.txt
 ruamel.yaml.clib==0.2.6
     # via
@@ -142,21 +144,23 @@ six==1.16.0
     #   -r requirements.txt
     #   python-dateutil
     #   requests-file
-tldextract==3.1.0
+tldextract==3.1.2
     # via -r requirements.txt
 toml==0.10.2
     # via
     #   pylint
     #   pytest
-    #   pytest-cov
+tomli==1.2.2
+    # via coverage
 typed-ast==1.4.3
     # via astroid
-typing-extensions==3.10.0.0
+typing-extensions==3.10.0.2
     # via
     #   -r requirements.txt
     #   aiohttp
     #   astroid
     #   importlib-metadata
+    #   pylint
     #   yarl
 ujson==3.1.0
     # via -r requirements.txt
@@ -164,20 +168,20 @@ uritools==3.0.2
     # via
     #   -r requirements.txt
     #   urlextract
-urlextract==1.3.0
+urlextract==1.4.0
     # via -r requirements.txt
-urllib3==1.26.6
+urllib3==1.26.7
     # via
     #   -r requirements.txt
     #   geoip2
     #   requests
-wrapt==1.12.1
+wrapt==1.13.2
     # via astroid
-yarl==1.6.3
+yarl==1.7.0
     # via
     #   -r requirements.txt
     #   aiohttp
-zipp==3.5.0
+zipp==3.6.0
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
