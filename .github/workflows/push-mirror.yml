@@ -1,0 +1,23 @@
+name: Push mirror
+
+on:
+  push:
+    branches: [ '**' ]
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: mirror-repository
+        uses: ppcad/mirror-action@v0.4.4
+        with:
+          REMOTE: ${{ secrets.GIT_REMOTE_URL }}
+          GIT_USERNAME: ${{ secrets.GIT_USERNAME }}
+          GIT_PASSWORD: ${{ secrets.GIT_PASSWORD }}
+          GIT_PUSH_ARGS: '--force --quiet --no-progress'
+          DEBUG: "false"
