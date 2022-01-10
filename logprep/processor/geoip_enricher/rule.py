@@ -25,7 +25,12 @@ class GeoIPEnricherRule(Rule):
 
     def __init__(self, filter_rule: FilterExpression, geoip_enricher_cfg: dict):
         super().__init__(filter_rule)
-
+        
+        if 'output_field' in geoip_enricher_cfg.keys():
+            self._output_field = geoip_enricher_cfg['output_field']
+        else:
+            self._output_field = 'geoip'
+        
         self._source_ip = geoip_enricher_cfg['source_ip']
 
     def __eq__(self, other: 'GeoIPEnricherRule') -> bool:
@@ -39,6 +44,10 @@ class GeoIPEnricherRule(Rule):
     def source_ip(self) -> dict:
         return self._source_ip
     # pylint: enable=C0111
+    
+    @property
+    def output_field(self) -> dict:
+        return self._output_field
 
     @staticmethod
     def _create_from_dict(rule: dict) -> 'GeoIPEnricherRule':
@@ -55,3 +64,8 @@ class GeoIPEnricherRule(Rule):
             if not isinstance(geoip_enricher_cfg[field], str):
                 raise InvalidGeoIPEnricherDefinition('"{}" value "{}" is not a string!'.format(
                                                 field, geoip_enricher_cfg[field]))
+        if 'output_field' in geoip_enricher_cfg.keys():
+            for field in ('output_field',):
+                if not isinstance(geoip_enricher_cfg[field], str):
+                    raise InvalidGeoIPEnricherDefinition('"{}" value "{}" is not a string!'.format(
+                                                    field, geoip_enricher_cfg[field]))
