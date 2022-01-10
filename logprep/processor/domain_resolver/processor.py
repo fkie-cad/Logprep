@@ -25,6 +25,7 @@ from logprep.util.hasher import SHA256Hasher
 
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
+from logprep.util.helper import add_field_to
 
 
 class DomainResolverError(BaseException):
@@ -119,6 +120,8 @@ class DomainResolver(RuleBasedProcessor):
 
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain
+        # new variable: output field
+        output_field = rule.output_field
         domain_or_url_str = self._get_dotted_field_value(event, domain_or_url)
         if domain_or_url_str:
             domain = self._tld_extractor(domain_or_url_str).fqdn
@@ -147,10 +150,11 @@ class DomainResolver(RuleBasedProcessor):
                             event_dbg['cache_size'] = len(self._domain_ip_map.keys())
 
                         if self._domain_ip_map[hash_string] is not None:
-                            if 'resolved_ip' not in event:
-                                event['resolved_ip'] = self._domain_ip_map[hash_string]
-                            elif event['resolved_ip'] != self._domain_ip_map[hash_string]:
-                                raise DuplicationError(self._name, ['resolved_ip'])
+                            adding_was_successful = add_field_to(event, output_field, self._domain_ip_map[hash_string])
+
+                            if not adding_was_successful:
+                                raise DuplicationError(self._name, [output_field])
+
                             self.ps.increment_nested(self._name, 'resolved_cache')
                     except (context.TimeoutError, OSError):
                         self._domain_ip_map[hash_string] = None
@@ -159,10 +163,10 @@ class DomainResolver(RuleBasedProcessor):
                         raise DomainResolverError(self._name,
                                                   f'{error} for domain \'{domain}\'') from error
                 else:
-                    if 'resolved_ip' not in event:
+                    if output_field not in event:
                         try:
                             result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
-                            event['resolved_ip'] = result.get(timeout=self._timeout)
+                            event[output_field] = result.get(timeout=self._timeout)
                         except (context.TimeoutError, OSError):
                             pass
                         except UnicodeError as error:

@@ -27,6 +27,11 @@ class DomainResolverRule(Rule):
         super().__init__(filter_rule)
 
         self._source_url_or_domain = domain_resolver_cfg['source_url_or_domain']
+        # Added flexible output field assignment. If none is specified, resolved_ip is used.
+        if 'output_field' in domain_resolver_cfg.keys():
+            self._output_field = domain_resolver_cfg['output_field']
+        else:
+            self._output_field = 'resolved_ip'
 
     def __eq__(self, other: 'DomainResolverRule') -> bool:
         return (other.filter == self._filter) and \
@@ -40,6 +45,10 @@ class DomainResolverRule(Rule):
     def source_url_or_domain(self) -> str:
         return self._source_url_or_domain
     # pylint: enable=C0111
+
+    @property
+    def output_field(self) -> str:
+        return self._output_field
 
     @staticmethod
     def _create_from_dict(rule: dict) -> 'DomainResolverRule':
@@ -56,3 +65,9 @@ class DomainResolverRule(Rule):
             if not isinstance(domain_resolver_cfg[field], str):
                 raise InvalidDomainResolverDefinition('"{}" value "{}" is not a dict!'.format(
                                                 field, domain_resolver_cfg[field]))
+
+        if 'output_field' in domain_resolver_cfg.keys():
+            for field in ('output_field',):
+                if not isinstance(domain_resolver_cfg[field], str):
+                    raise InvalidDomainResolverDefinition('"{}" value "{}" is not a dict!'.format(
+                                                    field, domain_resolver_cfg[field]))
