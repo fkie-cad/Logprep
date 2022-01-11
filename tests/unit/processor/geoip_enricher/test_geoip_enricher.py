@@ -81,6 +81,13 @@ class TestGeoIPEnricher:
         document = {'client': {'ip': '8.8.8.8'}, 'geoip': {'test': 'test'}}
 
         with pytest.raises(DuplicationError, match=r'GeoIPEnricher \(test-geoip-enricher\)\: The following fields '
-                                                   r'already existed and were not overwritten by the Normalizer\:'
+                                                   r'already existed and were not overwritten by the GeoIPEnricher\:'
                                                    r' geoip'):
             geoip_enricher.process(document)
+
+    def test_configured_output_field(self, geoip_enricher):
+        assert geoip_enricher.events_processed_count() == 0
+        document = {'source': {'ip': '8.8.8.8'}}
+
+        geoip_enricher.process(document)
+        assert document.get('source_geo_data') is not None

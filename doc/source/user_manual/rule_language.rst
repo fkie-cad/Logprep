@@ -983,7 +983,10 @@ Domain Resolver
 The generic adder requires the additional field :code:`domain_resolver`.
 The additional field :code:`domain_resolver.source_url_or_domain` must be defined.
 It contains the field from which an URL should be parsed and then written to :code:`resolved_ip`.
-The URL can be located in continuous text insofar the URL is valid.
+The URL can be located in continuous text insofar the URL is valid.  
+  
+Optionally, the output field can be configured (overriding the default :code:`resolved_ip`) using the parameter :code:`output_field`.
+This can be a dotted subfield.
 
 In the following example the URL from the field :code:`url` will be extracted and written to :code:`resolved_ip`.
 
@@ -1000,6 +1003,7 @@ GeoIP Enricher
 ==============
 
 The generic adder requires the additional field :code:`geoip`.
+This output_field can be overridden using the optional parameter :code:`output_field`.
 The additional field :code:`geoip.source_ip` must be given.
 It contains the IP for which the geoip data should be added.
 

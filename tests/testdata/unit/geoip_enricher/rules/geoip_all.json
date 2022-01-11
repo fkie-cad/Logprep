@@ -2,4 +2,11 @@
   "filter": "client.ip AND NOT winlog.computer_name",
   "geoip_enricher": {"source_ip": "client.ip"},
   "description": ""
+},{
+  "filter": "source.ip",
+  "geoip_enricher": {
+    "source_ip": "source.ip",
+    "output_field": "source_geo_data"
+  },
+  "description": ""
 }]

@@ -34,7 +34,7 @@ class DuplicationError(GeoIPEnricherError):
 
     def __init__(self, name: str, skipped_fields: List[str]):
         message = 'The following fields already existed and ' \
-                  'were not overwritten by the Normalizer: '
+                  'were not overwritten by the GeoIPEnricher: '
         message += ' '.join(skipped_fields)
 
         super().__init__(name, message)
@@ -162,11 +162,12 @@ class GeoIPEnricher(RuleBasedProcessor):
 
     def _apply_rules(self, event, rule):
         source_ip = rule.source_ip
+        output_field = rule.output_field
         if source_ip:
             ip_string = self._get_dotted_field_value(event, source_ip)
             geoip_data = self._try_getting_geoip_data(ip_string)
             if geoip_data:
-                if 'geoip' not in event:
-                    event['geoip'] = geoip_data
-                elif event['geoip'] != geoip_data:
-                    raise DuplicationError(self._name, ['geoip'])
+                if output_field not in event:
+                    event[output_field] = geoip_data
+                elif event[output_field] != geoip_data:
+                    raise DuplicationError(self._name, [output_field])

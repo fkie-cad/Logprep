@@ -10,7 +10,6 @@ import pytest
 pytest.importorskip('logprep.processor.domain_resolver')
 
 from logprep.processor.domain_resolver.factory import DomainResolverFactory
-from logprep.processor.domain_resolver.processor import DomainResolverError
 from logprep.processor.base.processor import ProcessingWarning
 
 logger = getLogger()
@@ -98,3 +97,36 @@ class TestDomainResolver:
         domain_resolver.process(document)
 
         assert document.get('resolved_ip') is None
+
+    def test_configured_dotted_subfield(self, domain_resolver, monkeypatch):
+        def mockreturn(domain):
+            if domain == 'google.de':
+                return '1.2.3.4'
+            else:
+                return None
+
+        monkeypatch.setattr(socket, 'gethostbyname', mockreturn)
+
+        assert domain_resolver.events_processed_count() == 0
+        document = {'source': 'google.de'}
+
+        domain_resolver.process(document)
+        assert re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', document.get('resolved', '').get('ip'))
+
+    def test_duplication_error(self, domain_resolver, monkeypatch):
+        def mockreturn(domain):
+            if domain == 'google.de':
+                return '1.2.3.4'
+            else:
+                return None
+
+        monkeypatch.setattr(socket, 'gethostbyname', mockreturn)
+
+        assert domain_resolver.events_processed_count() == 0
+        document = {'client': 'google.de'}
+
+        # Due to duplication error logprep raises an ProcessingWarning
+        with pytest.raises(ProcessingWarning, match=r"DomainResolver \(test-domain-resolver\): The "
+                                                    r"following fields already existed and were not overwritten by the "
+                                                    r"DomainResolver: resolved_ip") as e_info:
+            domain_resolver.process(document)
