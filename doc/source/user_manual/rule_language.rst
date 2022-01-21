@@ -999,6 +999,55 @@ In the following example the URL from the field :code:`url` will be extracted an
         source_url_or_domain: url
       description: '...'
 
+Domain Label Extractor
+======================
+
+The domain label extractor requires the additional field :code:`domain_label_extractor`.
+The mandatory keys under :code:`domain_label_extractor` are :code:`target_field` and :code:`output_field`. Former
+is used to identify the field which contains the domain. And the latter is used to define the parent field where the
+results should be written to. Both fields can be dotted subfields. The sub fields of the parent output field of the
+result are: :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`.
+
+In the following example the domain :code:`www.sub.domain.de` will be split into it's subdomain :code:`www.sub`, it's
+registered domain :code:`domain` and lastly it's TLD :code:`de`:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example Rule to extract the labels / parts of a domain.
+
+    filter: 'url'
+    domain_label_extractor:
+      target_field: 'url.domain'
+      output_field: 'url'
+    description: '...'
+
+The example rule applied to the input event
+
+..  code-block:: json
+    :linenos:
+    :caption: Input Event
+
+    {
+        'url': {
+            'domain': 'www.sub.domain.de'
+        }
+    }
+
+will result in the following output
+
+..  code-block:: json
+    :linenos:
+    :caption: Output Event
+
+    {
+        'url': {
+            'domain': 'www.sub.domain.de',
+            'registered_domain': 'domain.de',
+            'top_level_domain': 'de',
+            'subdomain': 'www.sub',
+        }
+    }
+
 GeoIP Enricher
 ==============
 
