@@ -277,7 +277,10 @@ Optionally, it can be defined if the normalization is allowed to override existi
 It is allowed to override by default.
 
 Valid formats for timestamps are defined by the notation of the Python datetime module.
-Additionally, the value `ISO8601` can be used if the timestamp already exists in this format.
+Additionally, the value `ISO8601` and `UNIX` can be used for the `source_formats` field. The former can be used if the
+timestamp already exists in the ISO98601 format, such that only a timezone conversion should be applied. And the latter
+can be used if the timestamp is given in the UNIX Epoch Time. This supports the Unix timestamps in seconds and
+milliseconds.
 
 Valid timezones are defined in the pytz module:
 
