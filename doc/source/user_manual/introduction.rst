@@ -66,6 +66,12 @@ Domain Resolver
 
 The domain resolver is a processor that can resolve domains inside a defined field.
 
+Domain Label Extractor
+----------------------
+
+The domain label extractor is a processor that splits a domain into it's corresponding labels like registered_domain,
+top_level_domain and subdomain.
+
 GeoIP Enricher
 --------------
 

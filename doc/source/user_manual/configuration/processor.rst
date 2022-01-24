@@ -265,6 +265,31 @@ One cache entry requires ~250 Byte, thus 10 million elements would require about
 The cache is not persisted.
 Restarting Logprep does therefore clear the cache.
 
+Domain Label Extractor
+----------------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `domain_label_extractor` chooses the processor type DomainLabelExtractor, which configurations will be
+described here.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/domain_label_extractor/rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+
 Template Replacer
 --------------------
 

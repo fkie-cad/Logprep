@@ -1,0 +1,15 @@
+[{
+  "filter": "url",
+  "domain_label_extractor": {
+    "target_field": "url.domain",
+    "output_field": "url"
+  },
+  "description": ""
+},{
+  "filter": "url2",
+  "domain_label_extractor": {
+    "target_field": "url2.domain",
+    "output_field": "extracted.domain.info"
+  },
+  "description": ""
+}]
