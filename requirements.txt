@@ -4,29 +4,37 @@
 #
 #    pip-compile requirements.in
 #
-aiohttp==3.7.4.post0
+aiohttp==3.8.1
     # via geoip2
-appdirs==1.4.4
-    # via urlextract
-async-timeout==3.0.1
+aiosignal==1.2.0
     # via aiohttp
-attrs==21.2.0
+arrow==1.2.1
+    # via -r requirements.in
+async-timeout==4.0.2
+    # via aiohttp
+asynctest==0.13.0
+    # via aiohttp
+attrs==21.4.0
     # via aiohttp
 certifi==2021.10.8
     # via requests
-chardet==4.0.0
-    # via aiohttp
-charset-normalizer==2.0.7
-    # via requests
+charset-normalizer==2.0.10
+    # via
+    #   aiohttp
+    #   requests
 colorama==0.4.4
     # via -r requirements.in
 confluent-kafka==1.5.0
     # via -r requirements.in
-filelock==3.3.2
+filelock==3.4.1
     # via
     #   tldextract
     #   urlextract
-geoip2==4.4.0
+frozenlist==1.2.0
+    # via
+    #   aiohttp
+    #   aiosignal
+geoip2==4.5.0
     # via -r requirements.in
 idna==3.3
     # via
@@ -49,28 +57,32 @@ multidict==5.2.0
     #   yarl
 numpy==1.19.5
     # via -r requirements.in
+platformdirs==2.4.0
+    # via urlextract
 ply==3.11
     # via luqum
-pycryptodome==3.11.0
+pycryptodome==3.13.0
     # via -r requirements.in
 pygrok==1.0.0
     # via -r requirements.in
 python-dateutil==2.8.2
-    # via -r requirements.in
+    # via
+    #   -r requirements.in
+    #   arrow
 pytz==2021.3
     # via -r requirements.in
 pyyaml==6.0
     # via -r requirements.in
-regex==2021.10.23
+regex==2022.1.18
     # via pygrok
-requests==2.26.0
+requests==2.27.1
     # via
     #   geoip2
     #   requests-file
     #   tldextract
 requests-file==1.5.1
     # via tldextract
-ruamel.yaml==0.17.16
+ruamel.yaml==0.17.20
     # via -r requirements.in
 ruamel.yaml.clib==0.2.6
     # via ruamel.yaml
@@ -80,19 +92,21 @@ six==1.16.0
     #   requests-file
 tldextract==3.1.2
     # via -r requirements.in
-typing-extensions==3.10.0.2
+typing-extensions==4.0.1
     # via
     #   aiohttp
+    #   arrow
+    #   async-timeout
     #   yarl
 ujson==3.1.0
     # via -r requirements.in
 uritools==3.0.2
     # via urlextract
-urlextract==1.4.0
+urlextract==1.5.0
     # via -r requirements.in
-urllib3==1.26.7
+urllib3==1.26.8
     # via
     #   geoip2
     #   requests
-yarl==1.7.0
+yarl==1.7.2
     # via aiohttp
