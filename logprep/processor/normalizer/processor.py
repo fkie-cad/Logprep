@@ -1,7 +1,11 @@
 """This module contains a Normalizer that copies specific values to standardized fields."""
 import html
+import os
 from typing import Optional, Tuple, List, Union
+from filelock import FileLock
+import json
 from logging import Logger, DEBUG
+from pathlib import Path
 
 from ruamel.yaml import YAML
 from time import time
@@ -12,6 +16,8 @@ import re
 from datetime import datetime
 from dateutil import parser
 from pytz import timezone
+import arrow
+import calendar
 
 import ujson
 
@@ -29,9 +35,10 @@ yaml = YAML(typ='safe', pure=True)
 class Normalizer(RuleBasedProcessor):
     """Normalize log events by copying specific values to standardized fields."""
 
-    def __init__(self, name: str, specific_rules_dirs: list, generic_rules_dirs: list, tree_config: str,
-                 logger: Logger,regex_mapping: str = None, html_replace_fields: list = None,
-                 grok_patterns: str = None):
+    def __init__(self, name: str, specific_rules_dirs: list, generic_rules_dirs: list,
+                 tree_config: Optional[str], logger: Logger, regex_mapping: str = None,
+                 html_replace_fields: str = None, grok_patterns: str = None,
+                 count_grok_pattern_matches: dict = None):
         super().__init__(name, tree_config, logger)
         self._logger = logger
         self.ps = ProcessorStats()
@@ -46,6 +53,15 @@ class Normalizer(RuleBasedProcessor):
 
         self._specific_tree = RuleTree(config_path=tree_config)
         self._generic_tree = RuleTree(config_path=tree_config)
+
+        self._count_grok_pattern_matches = count_grok_pattern_matches
+        if count_grok_pattern_matches:
+            self._grok_matches_path = count_grok_pattern_matches['count_directory_path']
+            self._file_lock_path = count_grok_pattern_matches.get('lock_file_path',
+                                                                  'count_grok_pattern_matches.lock')
+            self._grok_cnt_period = count_grok_pattern_matches['write_period']
+            self._grok_cnt_timer = time()
+            self._grok_pattern_matches = {}
 
         NormalizerRule.additional_grok_patterns = grok_patterns
 
@@ -92,10 +108,47 @@ class Normalizer(RuleBasedProcessor):
         self._event = event
         self._conflicting_fields.clear()
         self._apply_rules()
+        if self._count_grok_pattern_matches:
+            self._write_grok_matches()
         try:
             self._raise_warning_if_fields_already_existed()
         except DuplicationError as error:
             raise ProcessingWarning(str(error)) from error
+
+    def _write_grok_matches(self):
+        """Write count of matches for each grok pattern into a file if configured time has passed.
+
+        If enabled, grok pattern matches are being counted.
+        This method writes them into a file after a configured time has passed.
+        First, it reads the existing counts from the file, then it sums them with the current
+        counts and writes the result back into the file.
+
+        One file is created per day if anything is written.
+        """
+        now = time()
+        if now < self._grok_cnt_timer + self._grok_cnt_period:
+            return
+        self._grok_cnt_timer = now
+
+        current_date = arrow.now().date()
+        weekday = calendar.day_name[current_date.weekday()].lower()
+
+        file_name = f'{current_date}_{weekday}.json'
+        file_path = os.path.join(self._grok_matches_path, file_name)
+        Path(self._grok_matches_path).mkdir(parents=True, exist_ok=True)
+        with FileLock(self._file_lock_path):
+            json_dict = {}
+            if os.path.isfile(file_path):
+                with open(file_path, 'r') as grok_json_file:
+                    json_dict = json.load(grok_json_file)
+
+            for key, value in self._grok_pattern_matches.items():
+                json_dict[key] = json_dict.get(key, 0) + value
+                self._grok_pattern_matches[key] = 0
+
+            with open(file_path, 'w') as grok_json_file:
+                json_dict = dict(reversed(sorted(json_dict.items(), key=lambda items: items[1])))
+                json.dump(json_dict, grok_json_file, indent=4)
 
     def _try_add_field(self, target: Union[str, List[str]], value: str):
         target, value = self._get_transformed_value(target, value)
@@ -208,7 +261,10 @@ class Normalizer(RuleBasedProcessor):
             if source_value is None:
                 continue
 
-            matches = grok.match(source_value)
+            if self._count_grok_pattern_matches:
+                matches = grok.match(source_value, self._grok_pattern_matches)
+            else:
+                matches = grok.match(source_value)
             for normalized_field, field_value in matches.items():
                 if field_value is not None:
                     self._try_add_field(normalized_field, field_value)
@@ -273,3 +329,12 @@ class Normalizer(RuleBasedProcessor):
 
     def events_processed_count(self):
         return self._events_processed
+
+    def shut_down(self):
+        """Stop processing of this processor and finish outstanding actions.
+
+        Optional: Called when stopping the pipeline
+
+        """
+        if self._count_grok_pattern_matches:
+            self._write_grok_matches()

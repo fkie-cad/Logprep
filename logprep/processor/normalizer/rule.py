@@ -54,11 +54,20 @@ class GrokWrapper:
             patterns = [f'^{pattern}$' for pattern in patterns]
             self._grok_list = [Grok(pattern_item, **kwargs) for pattern_item in patterns]
 
-    def match(self, text: str) -> Dict[str, str]:
-        """Match string via grok using delimiter."""
+        self._match_cnt_initialized = False
+
+    def match(self, text: str, pattern_matches: dict = None) -> Dict[str, str]:
+        """Match string via grok using delimiter and count matches if enabled."""
+        if pattern_matches is not None and not self._match_cnt_initialized:
+            for grok in self._grok_list:
+                pattern_matches[grok.pattern] = 0
+            self._match_cnt_initialized = True
+
         for grok in self._grok_list:
             matches = grok.match(text)
             if matches:
+                if pattern_matches is not None:
+                    pattern_matches[grok.pattern] += 1
                 dotted_matches = dict()
                 for key, value in matches.items():
                     dotted_matches[self.grok_delimiter_pattern.sub('.', key)] = value

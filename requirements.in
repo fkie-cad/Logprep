@@ -13,3 +13,5 @@ colorama
 python-dateutil
 pytz
 numpy
+arrow
+calendar
