@@ -176,7 +176,6 @@ class Normalizer(RuleBasedProcessor):
         be written in a way that no such warnings are produced during normal operation because each
         warning should be an indicator of incorrect rules or unexpected/changed events.
         """
-
         for rule in self._generic_tree.get_matching_rules(self._event):
             begin = time()
             if self._logger.isEnabledFor(DEBUG):

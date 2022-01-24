@@ -26,6 +26,7 @@ def print_fcolor(fore: AnsiFore, message: str):
     """Print string with colored font and reset the color afterwards."""
     print_color(None, fore, message)
 
+
 def add_field_to(event, output_field, content):
     """
     Add content to an output_field in the given event. Output_field can be a dotted subfield. In case of missing fields
