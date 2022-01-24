@@ -102,6 +102,32 @@ grok_patterns
 
 Optional path to a directory with grok patterns.
 
+count_grok_pattern_matches
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Optional configuration to count matches of grok patterns.
+Counting will be disabled if this value is omitted.
+
+count_directory_path
+^^^^^^^^^^^^^^^^^^^^
+
+Path to directory in which files with counts of grok pattern matches will be stored.
+One file is created for each day where there was at least one match.
+
+write_period
+^^^^^^^^^^^^
+
+Period to wait before a file with grok pattern match counts will be written.
+Setting this value very low can have a drastic impact on the performance,
+since it requires a file lock and reading from and writing to disc.
+
+lock_file_path
+^^^^^^^^^^^^^^
+
+Optional path to lock file.
+This lock will be used before writing a grok match count file by a process.
+By default, this is set to 'count_grok_pattern_matches.lock'.
+
 GeoIP Enricher
 --------------
 
