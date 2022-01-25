@@ -385,5 +385,5 @@ class TestConfluentKafka:
     def test_create_confluent_settings_contains_expected_values2(self):
         with raises(CriticalOutputError,
                     match=r'Error storing output document\: \(TypeError: <tests\.unit\.connector\.test_confluent_kafka'
-                          r'\.NotJsonSerializableMock object at 0x[a-zA-Z0-9]{12}> is not JSON serializable\)'):
+                          r'\.NotJsonSerializableMock object at 0x[a-zA-Z0-9]{9,12}> is not JSON serializable\)'):
             self.kafka.store({'invalid_json': NotJsonSerializableMock(), 'something_valid': 'im_valid!'})
