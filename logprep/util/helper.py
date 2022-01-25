@@ -26,7 +26,8 @@ def print_fcolor(fore: AnsiFore, message: str):
     """Print string with colored font and reset the color afterwards."""
     print_color(None, fore, message)
 
-def add_field_to(event, output_field, content):
+
+def add_field_to(event, output_field, content, extends_lists=False):
     """
     Add content to an output_field in the given event. Output_field can be a dotted subfield. In case of missing fields
     all intermediate fields will be created.
@@ -39,6 +40,8 @@ def add_field_to(event, output_field, content):
         Dotted subfield string indicating the target of the output value, e.g. destination.ip
     content: str, dict
         Value that should be written into the output_field, can be a str or dict object
+    extends_lists: bool
+        Flag that determines whether or not lists as existing field values should be extended
 
     Returns
     ------
@@ -60,8 +63,11 @@ def add_field_to(event, output_field, content):
 
         if isinstance(dict_[key], dict):
             dict_ = dict_[key]
+        elif isinstance(dict_[key], list) and extends_lists and idx == len(keys) - 1:
+            dict_[key].extend(content)
         else:
             conflicting_fields.append(keys[idx])
+            break
 
     if conflicting_fields:
         return False

@@ -72,6 +72,12 @@ Domain Label Extractor
 The domain label extractor is a processor that splits a domain into it's corresponding labels like registered_domain,
 top_level_domain and subdomain.
 
+List Comparison Enricher
+======================
+
+The list comparison enricher is a processor that allows to compare values of a target field against lists provided
+as files.
+
 GeoIP Enricher
 --------------
 
