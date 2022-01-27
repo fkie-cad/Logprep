@@ -254,7 +254,7 @@ class AutoRuleTester:
         """Perform auto-tests."""
         rules_dirs = self._get_rule_dirs_by_processor_name()
         rules_pn = self._get_rules_per_processor_name(rules_dirs)
-        self._check_which_rule_files_miss_tests(rules_pn)
+        rule_test_coverage = self._check_which_rule_files_miss_tests(rules_pn)
         self._set_rules_dirs_to_empty()
 
         processors_ct, processors_no_ct = self._get_processors_split_by_custom_tests_existence()
@@ -286,6 +286,7 @@ class AutoRuleTester:
         print_fcolor(Fore.GREEN, f'Successful tests: {self._successful_rule_tests_cnt}')
         print_fcolor(Fore.CYAN, f'Total tests: '
                                 f'{self._successful_rule_tests_cnt + self._failed_rule_tests_cnt}')
+        print_fcolor(Fore.BLUE, f'Rule Test Coverage: {rule_test_coverage:.2f}%')
         print_fcolor(Fore.YELLOW, f'Warnings: {self._warning_cnt}')
 
         if not self._success:
@@ -494,6 +495,8 @@ class AutoRuleTester:
                 else:
                     rules_without_tests.append(rule['file'])
 
+        rule_test_coverage = len(rules_with_tests) / (len(rules_with_tests) + len(rules_without_tests)) * 100
+
         print_fcolor(Fore.LIGHTGREEN_EX, '\nRULES WITH TESTS:')
         for rule in rules_with_tests:
             print_fcolor(Fore.LIGHTGREEN_EX, f'  {rule}')
@@ -504,6 +507,8 @@ class AutoRuleTester:
             print_fcolor(Fore.LIGHTRED_EX, f'  {rule}')
         if not rules_without_tests:
             print_fcolor(Fore.LIGHTRED_EX, f'None')
+
+        return rule_test_coverage
 
     @staticmethod
     def _get_processor_instance(name, processor_cfg, logger):
