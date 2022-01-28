@@ -983,7 +983,7 @@ In the following example the timestamp will be extracted from :code:`@timestamp`
 Domain Resolver
 ===============
 
-The generic adder requires the additional field :code:`domain_resolver`.
+The domain resolver requires the additional field :code:`domain_resolver`.
 The additional field :code:`domain_resolver.source_url_or_domain` must be defined.
 It contains the field from which an URL should be parsed and then written to :code:`resolved_ip`.
 The URL can be located in continuous text insofar the URL is valid.  
@@ -1050,6 +1050,34 @@ will result in the following output
             'subdomain': 'www.sub',
         }
     }
+
+
+List Comparison Enricher
+======================
+
+The list comparison enricher requires the additional field :code:`list_comparison`.
+The mandatory keys under :code:`list_comparison` are :code:`check_field` and :code:`output_field`. Former
+is used to identify the field which is to be checked against the provided lists. And the latter is used to define
+the parent field where the results should be written to. Both fields can be dotted subfields.
+
+Additionally, a list or array of lists can be provided underneath the required field :code:`list_file_paths`.
+
+In the following example, the field :code:`user_agent` will be checked against the provided list
+(:code:`priviliged_users.txt`).
+Assuming that the value :code:`non_privileged_user` will match the provided list, the result of the list comparison
+(:code:`in_list`) will be added to the output field :code:`List_comparison.example`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example Rule to compare a single field against a provided list.
+
+    filter: 'user_agent'
+    list_comparison:
+      check_field: 'user_agent'
+      output_field: 'List_comparison.example'
+    list_file_paths:
+        -   lists/privileged_users.txt
+    description: '...'
 
 GeoIP Enricher
 ==============

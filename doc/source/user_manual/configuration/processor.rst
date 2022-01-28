@@ -289,6 +289,30 @@ tree_config
 
 Path to JSON file with rule tree matcher config.
 
+List Comparison Enricher
+----------------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `list_comparison` chooses the processor type ListComparison, which configurations will be
+described here.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/list_comparison/rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
 
 Template Replacer
 --------------------
