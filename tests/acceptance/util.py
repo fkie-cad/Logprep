@@ -1,12 +1,17 @@
 #!/usr/bin/python3
 import json
-from logging import getLogger, DEBUG, basicConfig
+from logging import getLogger, DEBUG, basicConfig, Handler
 from os import remove, path, makedirs
 from copy import deepcopy
+from os.path import join
 
+import ujson
 from yaml import safe_dump
 
+from logprep.connector.confluent_kafka import ConfluentKafkaFactory
+from logprep.framework.pipeline import Pipeline, SharedCounter
 from logprep.runner import Runner
+from tests.unit.connector.test_confluent_kafka import RecordMock
 
 basicConfig(level=DEBUG, format='%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s')
 logger = getLogger('Logprep-Test')
@@ -147,3 +152,82 @@ def parse_json(json_path):
 
 def assert_result_equal_expected(config, expected_output, tmp_path):
     pass
+
+
+class SingleMessageConsumerJsonMock:
+
+    def __init__(self, record):
+        self.record = ujson.encode(record)
+
+    def poll(self, timeout):
+        return RecordMock(self.record, None)
+
+
+class TmpFileProducerMock:
+
+    def __init__(self, tmp_path):
+        self.tmp_path = tmp_path
+
+    def produce(self, target, value):
+        with open(self.tmp_path, "a") as f:
+            f.write(f"{target} {value.decode()}\n")
+
+    def poll(self, _):
+        ...
+
+
+def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory, tmp_path):
+    # create kafka connector manually and add custom mock consumer and mock producer objects
+    kafka = ConfluentKafkaFactory.create_from_configuration(config['connector'])
+    kafka._consumer = SingleMessageConsumerJsonMock(input_test_event)
+    output_file_path = join(tmp_path, "kafka_out.txt")
+    kafka._producer = TmpFileProducerMock(output_file_path)
+    mock_connector_factory.return_value = (kafka, kafka)
+
+    # Create, setup and execute logprep pipeline
+    pipeline = Pipeline(config['connector'], config['pipeline'], config['timeout'],
+                        SharedCounter(), Handler(), 300, 1800, dict())
+    pipeline._setup()
+    pipeline._retrieve_and_process_data()
+
+    return output_file_path
+
+
+def get_default_logprep_config(pipeline_config, with_hmac=True):
+    config_yml = {
+        'process_count': 1,
+        'timeout': 0.1,
+        'profile_pipelines': False,
+        'pipeline': pipeline_config,
+        'connector': {
+            'type': 'confluentkafka',
+            'bootstrapservers': ['testserver:9092'],
+            'consumer': {
+                'topic': 'test_input_raw',
+                'group': 'test_consumergroup',
+                'auto_commit': False,
+                'session_timeout': 654321,
+                'enable_auto_offset_store': True,
+                'offset_reset_policy': 'latest',
+            },
+            'producer': {
+                'topic': 'test_input_processed',
+                'error_topic': 'test_error_producer',
+                'ack_policy': '1',
+                'compression': 'gzip',
+                'maximum_backlog': 987654,
+                'send_timeout': 2,
+                'flush_timeout': 30,
+                'linger_duration': 4321,
+            }
+        }
+    }
+
+    if with_hmac:
+        config_yml['connector']['consumer']['hmac'] = {
+            'target': "<RAW_MSG>",
+            'key': "secret",
+            'output_field': "hmac"
+        }
+
+    return config_yml

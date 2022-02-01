@@ -17,8 +17,6 @@ def list_comparison():
     config = {
         'type': 'list_comparison',
         'rules': [rules_dir],
-        'timeout': 0.25, 'max_cached_domains': 1000000,
-        'max_caching_days': 1, 'hash_salt': 'a_secret_tasty_ingredient',
         'tree_config': 'tests/testdata/unit/shared_data/tree_config.json'
     }
 

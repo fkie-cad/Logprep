@@ -290,7 +290,7 @@ tree_config
 Path to JSON file with rule tree matcher config.
 
 List Comparison Enricher
-----------------------
+------------------------
 
 Parameter
 ^^^^^^^^^
@@ -313,6 +313,29 @@ tree_config
 
 Path to JSON file with rule tree matcher config.
 
+Selective Extractor
+-------------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `selective_extractor` chooses the processor type SelectiveExtractor, which configurations will be
+described here.
+
+selective_extractor_topic
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This parameter defines the kafka topic the extracted fields should be written to.
+
+extractor_list
+~~~~~~~~~~~~~~
+
+Path to a list of fields which should be extracted and written to the configured Kafka topic. These can be dotted fields.
+Fields are only extracted if they are contained in given log messages. If fields are provided more than once in the
+extractor list, they are only extracted once.
 
 Template Replacer
 --------------------
