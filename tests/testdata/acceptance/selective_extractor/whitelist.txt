@@ -1,0 +1,4 @@
+user.agent
+event
+#do not
+pre_detection_id
