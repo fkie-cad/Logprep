@@ -6,7 +6,7 @@
   "filter": "source.ip",
   "geoip_enricher": {
     "source_ip": "source.ip",
-    "output_field": "source_geo_data"
+    "output_field": "source.geo.ip"
   },
   "description": ""
 }]
