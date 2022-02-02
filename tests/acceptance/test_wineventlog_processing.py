@@ -2,6 +2,7 @@
 import pytest
 
 from tests.acceptance.util import *
+from logprep.util.json_handling import dump_config_as_file, parse_jsonl
 
 basicConfig(level=DEBUG, format='%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s')
 logger = getLogger('Logprep-Test')
@@ -53,7 +54,7 @@ def test_events_labeled_correctly(tmp_path, config_template, rules, schema, expe
 
     set_config(config_template, rules, schema)
     config_path = str(tmp_path / 'generated_config.yml')
-    create_temporary_config_file_at_path(config_path, config_template)
+    dump_config_as_file(config_path, config_template)
 
     test_output = get_test_output(config_path)
     store_latest_test_output(expected_output, test_output)
@@ -69,17 +70,3 @@ def test_events_labeled_correctly(tmp_path, config_template, rules, schema, expe
 def set_config(config_template, rules, schema):
     config_template['pipeline'][0]['labelername']['schema'] = path.join('tests/testdata', schema)
     config_template['pipeline'][0]['labelername']['rules'] = [path.join('tests/testdata', rule) for rule in rules]
-
-
-def get_test_output(config_path):
-    patched_runner = get_patched_runner(config_path)
-
-    test_output_path = patched_runner._configuration['connector']['output_path']
-    remove_file_if_exists(test_output_path)
-
-    patched_runner.start()
-    parsed_test_output = parse_jsonl(test_output_path)
-
-    remove_file_if_exists(test_output_path)
-
-    return parsed_test_output
