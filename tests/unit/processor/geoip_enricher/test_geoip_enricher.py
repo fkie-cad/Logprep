@@ -85,9 +85,9 @@ class TestGeoIPEnricher:
                                                    r' geoip'):
             geoip_enricher.process(document)
 
-    def test_configured_output_field(self, geoip_enricher):
+    def test_configured_dotted_output_field(self, geoip_enricher):
         assert geoip_enricher.events_processed_count() == 0
         document = {'source': {'ip': '8.8.8.8'}}
 
         geoip_enricher.process(document)
-        assert document.get('source_geo_data') is not None
+        assert document.get('source', {}).get('geo', {}).get('ip') is not None

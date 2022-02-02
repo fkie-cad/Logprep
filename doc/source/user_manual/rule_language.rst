@@ -1082,10 +1082,10 @@ Assuming that the value :code:`non_privileged_user` will match the provided list
 GeoIP Enricher
 ==============
 
-The generic adder requires the additional field :code:`geoip`.
-This output_field can be overridden using the optional parameter :code:`output_field`.
-The additional field :code:`geoip.source_ip` must be given.
-It contains the IP for which the geoip data should be added.
+The geoip enricher requires the additional field :code:`geoip`.
+The default output_field can be overridden using the optional parameter :code:`output_field`. This can be a dotted
+subfield. The additional field :code:`geoip.source_ip` must be given. It contains the IP for which the geoip data
+should be added.
 
 In the following example the IP in :code:`client.ip` will be enriched with geoip data.
 

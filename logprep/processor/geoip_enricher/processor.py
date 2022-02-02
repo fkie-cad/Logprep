@@ -20,6 +20,7 @@ from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidR
 
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
+from logprep.util.helper import add_field_to
 
 
 class GeoIPEnricherError(BaseException):
@@ -167,7 +168,7 @@ class GeoIPEnricher(RuleBasedProcessor):
             ip_string = self._get_dotted_field_value(event, source_ip)
             geoip_data = self._try_getting_geoip_data(ip_string)
             if geoip_data:
-                if output_field not in event:
-                    event[output_field] = geoip_data
-                elif event[output_field] != geoip_data:
+                adding_was_successful = add_field_to(event, output_field, geoip_data)
+
+                if not adding_was_successful:
                     raise DuplicationError(self._name, [output_field])
