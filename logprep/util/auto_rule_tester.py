@@ -20,7 +20,6 @@ from difflib import ndiff
 from ruamel.yaml import YAML, YAMLError
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from tests.acceptance.util import remove_file_if_exists
 
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.processor.base.rule import Rule
@@ -29,7 +28,7 @@ from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.pre_detector.processor import PreDetector
 
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
-from logprep.util.helper import print_fcolor
+from logprep.util.helper import print_fcolor, remove_file_if_exists
 
 logger = getLogger()
 logger.disabled = True

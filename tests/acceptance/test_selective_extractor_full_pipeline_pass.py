@@ -3,8 +3,8 @@ from unittest.mock import patch
 import pytest
 import ujson
 
-from tests.acceptance.util import create_temporary_config_file_at_path, mock_kafka_and_run_pipeline, \
-    get_default_logprep_config
+from tests.acceptance.util import mock_kafka_and_run_pipeline, get_default_logprep_config
+from logprep.util.json_handling import dump_config_as_file
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ class TestSelectiveExtractor:
 
     def test_selective_extractor_full_pipeline_pass(self, tmp_path, config):
         config_path = str(tmp_path / 'generated_config.yml')
-        create_temporary_config_file_at_path(config_path, config)
+        dump_config_as_file(config_path, config)
 
         with patch('logprep.connector.connector_factory.ConnectorFactory.create') as mock_connector_factory:
             input_test_event = {
@@ -71,7 +71,7 @@ class TestSelectiveExtractor:
     def test_extraction_field_not_in_event(self, tmp_path, config):
         # tests behaviour in case a field from the extraction list is not in the provided event
         config_path = str(tmp_path / 'generated_config.yml')
-        create_temporary_config_file_at_path(config_path, config)
+        dump_config_as_file(config_path, config)
 
         with patch('logprep.connector.connector_factory.ConnectorFactory.create') as mock_connector_factory:
             input_test_event = {

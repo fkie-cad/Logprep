@@ -1,5 +1,5 @@
 """This module contains helper functions that are shared by different modules."""
-
+from os import remove
 from typing import Optional, Union
 
 from colorama import Fore, Back
@@ -103,3 +103,38 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         else:
             return None
     return dict_
+
+
+def recursive_compare(test_output, expected_output):
+    result = None
+
+    if not isinstance(test_output, type(expected_output)):
+        return test_output, expected_output
+
+    elif isinstance(test_output, dict) and isinstance(expected_output, dict):
+        if sorted(test_output.keys()) != sorted(expected_output.keys()):
+            return sorted(test_output.keys()), sorted(expected_output.keys())
+
+        for key in test_output.keys():
+            result = recursive_compare(test_output[key], expected_output[key])
+            if result:
+                return result
+
+    elif isinstance(test_output, list) and isinstance(expected_output, list):
+        for x, _ in enumerate(test_output):
+            result = recursive_compare(test_output[x], expected_output[x])
+            if result:
+                return result
+
+    else:
+        if test_output != expected_output:
+            result = test_output, expected_output
+
+    return result
+
+
+def remove_file_if_exists(test_output_path):
+    try:
+        remove(test_output_path)
+    except FileNotFoundError:
+        pass
