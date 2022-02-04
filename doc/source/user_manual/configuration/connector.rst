@@ -5,8 +5,12 @@ Connectors
 Connectors are used to connect the pipeline with different log sources and log sinks on the system,
 allowing Logprep to read and write log messages.
 It is possible to configure different type of connectors via the `type` field.
-Currently, it is assumed that Kafka is being used, which uses the `confluentkafka` connector.
-Thus, `confluentkafka` will be described in greater detail below.
+Currently, there exist two connectors that are meant to be used in production:
+
+- The `confluentkafka` connector, which combines a Kafka input and a Kafka output.
+- The `confluentkafka_es` connector, which combines a Kafka input and an Elasticsearch output.
+
+Both will be described below in greater detail.
 The `dummy`, `writer` and `writer_json_input` connectors are only utilized in testing.
 
 
@@ -24,12 +28,16 @@ type
 Connectors are chosen by the value `confluentkafka`.
 The options for the `confluentkafka` connector will be described below.
 
+.. _cc-bootstrapservers:
+
 bootstrapservers
 ----------------
 
 This field contains a list of Kafka servers (also known as Kafka brokers or Kafka nodes) that can be contacted by Logprep to initiate the connection to a Kafka cluster.
 The list does not have to be complete, since the Kafka server contains contact information for other Kafka nodes after the initial connection.
 It is advised to list at least two Kafka servers.
+
+.. _cc-consumer:
 
 consumer
 --------
@@ -76,6 +84,8 @@ In this object the configuration for storing and processing log messages in kafk
 - **flush_timeout**: Does not correspond to any Kafka producer configuration parameter. This setting defines after how many seconds an overflown buffer (Exception BufferError) must be flushed at the latest. After the time is over processing will be resumed even if the buffer was not flushed completely. This could be eventually optimized. *flush_timeout* is a parameter for the confluent Kafka method `flush() <https://docs.confluent.io/current/clients/confluent-kafka-python/index.html#confluent_kafka.Producer.flush>`_. See `additional documentation <https://docs.confluent.io/current/clients/python.html#synchronous-writes>`_.
 - **send_timeout**: Does not correspond to any Kafka producer configuration parameter. The maximum waiting time in seconds Logprep should wait blocking. *send_timeout* is a parameter for the method `poll() <https://docs.confluent.io/current/clients/confluent-kafka-python/index.html#confluent_kafka.Producer.poll>`_.
 
+.. _cc-ssl:
+
 ssl
 ---
 
@@ -121,3 +131,86 @@ Example
         certfile:
         keyfile:
         password:
+
+Confluentkafka Elasticsearch
+============================
+
+This connector gets input data from Kafka and sends it directly to Elasticsearch.
+The target indices for Elsticsearch have to be set directly in Logprep.
+
+.. important::
+    Target indices are determined by the `_index` field in each document.
+    However, a default index and an error index have to be set in the config.
+
+    Adding `%{YYYY-MM-DD}` to an index name replaces this part of the index by the current date in
+    the format `YYYY-MM-DD`. Valid formatting tokens can be found in the `arrow documentation <https://arrow.readthedocs.io/en/latest/#supported-tokens>`__.
+
+This connector has the same Kafka configuration parameters as `Confluentkafka`_, except that it lacks `producer` configuration parameter.
+Additionally, it has configuration parameters for Elasticsearch.
+
+The Kafka configuration won't be repeated in detail, instead the Elasticseach configuration will be described.
+
+type
+----
+
+Connectors are chosen by the value `confluentkafka_es`.
+The options for the `confluentkafka_es` connector will be described below.
+
+bootstrapservers
+----------------
+
+See :ref:`bootstrapservers <cc-bootstrapservers>`.
+
+consumer
+--------
+
+See :ref:`consumer <cc-consumer>`.
+
+ssl
+---
+
+See :ref:`ssl <cc-ssl>`.
+
+elasticsearch
+-------------
+
+This section contains the connection settings for Elasticsearch, the default index, the error index
+and a buffer size.
+Documents are sent in batches to Elasticsearch to reduce the amount of times connections are created.
+
+- **host** Host of Elasticsearch server.
+- **port** Port of Elasticsearch server.
+- **default_index** Default index to write to if no index was set in the document.
+- **error_index** Index to write documents to that could not be processed.
+- **message_backlog** Amount of documents to store before sending them to Elasticsearch.
+- **timeout** Timeout for Elasticsearch connection  (default: 500ms).
+- **max_retries** Maximum number of retries for documents rejected with code `429` (default: 0). Increases backoff time by 2 seconds per try, but never exceeds 600 seconds.
+
+Example
+-------
+
+..  code-block:: yaml
+    :linenos:
+
+    connector:
+      type: confluentkafka_es
+      bootstrapservers:
+        - 127.0.0.1:9092
+      consumer:
+        topic: consumer
+        group: cgroup
+        auto_commit: on
+        session_timeout: 6000
+        offset_reset_policy: smallest
+      ssl:
+        cafile:
+        certfile:
+        keyfile:
+        password:
+      elasticsearch:
+        host: 127.0.0.1
+        port: 9200
+        default_index: default_index
+        error_index: error_index
+        message_backlog: 10000
+        timeout: 10000

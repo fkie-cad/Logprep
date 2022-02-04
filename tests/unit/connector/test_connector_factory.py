@@ -2,12 +2,13 @@ from copy import deepcopy
 
 from pytest import raises
 
-from logprep.connector.confluent_kafka import ConfluentKafka
 from logprep.connector.connector_factory import (
     InvalidConfigurationError,
     ConnectorFactory,
     UnknownConnectorTypeError,
 )
+from logprep.input.confluent_kafka_input import ConfluentKafkaInput
+from logprep.output.confluent_kafka_output import ConfluentKafkaOutput
 from logprep.input.dummy_input import DummyInput
 from logprep.output.dummy_output import DummyOutput
 
@@ -62,6 +63,7 @@ class TestConnectorFactoryConfluentKafka:
             "consumer": {
                 "topic": "test_consumer",
                 "group": "test_consumer_group",
+                "auto_commit": True,
                 "enable_auto_offset_store": True,
             },
             "producer": {
@@ -78,13 +80,22 @@ class TestConnectorFactoryConfluentKafka:
         }
 
     def test_creates_connector_with_expected_configuration(self):
-        expected = {
+        expected_input = {
             "bootstrap.servers": "bootstrap1:9092,bootstrap2:9092",
             "group.id": "test_consumer_group",
             "enable.auto.commit": True,
             "enable.auto.offset.store": True,
             "session.timeout.ms": 6000,
             "default.topic.config": {"auto.offset.reset": "smallest"},
+            "security.protocol": "SSL",
+            "ssl.ca.location": "test_cafile",
+            "ssl.certificate.location": "test_certificatefile",
+            "ssl.key.location": "test_keyfile",
+            "ssl.key.password": "test_password",
+        }
+
+        expected_output = {
+            "bootstrap.servers": "bootstrap1:9092,bootstrap2:9092",
             "acks": "all",
             "compression.type": "none",
             "queue.buffering.max.messages": 31337,
@@ -96,10 +107,10 @@ class TestConnectorFactoryConfluentKafka:
             "ssl.key.password": "test_password",
         }
 
-        input, output = ConnectorFactory.create(self.configuration)
+        cc_input, cc_output = ConnectorFactory.create(self.configuration)
 
-        assert isinstance(input, ConfluentKafka)
-        assert isinstance(output, ConfluentKafka)
-        assert input == output
+        assert isinstance(cc_input, ConfluentKafkaInput)
+        assert isinstance(cc_output, ConfluentKafkaOutput)
 
-        assert input._create_confluent_settings() == expected
+        assert cc_input._create_confluent_settings() == expected_input
+        assert cc_output._create_confluent_settings() == expected_output
