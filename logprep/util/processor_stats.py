@@ -221,7 +221,8 @@ class StatusTracker:
             if isinstance(value, dict):
                 if not name.startswith('Multiprocessing') and name not in ('error_types',
                                                                            'warning_types',
-                                                                           'clusterer'):
+                                                                           'clusterer',
+                                                                           'selectiveextractor'):
                     matches_per_idx = aggr_data[name]['matches_per_idx']
                     aggr_data[name]['mean_matches_per_rule'] = f"{np.mean(matches_per_idx):.1f}"
 
@@ -338,7 +339,7 @@ class StatusTracker:
             if not process_data[processor_type]:
                 process_data[processor_type] = dict()
 
-            if processor_type not in ('clusterer',):
+            if processor_type not in ('clusterer', 'selectiveextractor'):
                 process_data[processor_type]['matches_per_idx'] = aggr_data['matches_per_idx']
                 process_data[processor_type]['times_per_idx'] = aggr_data['times_per_idx']
                 process_data[processor_type]['matches'] = aggr_data['matches']
