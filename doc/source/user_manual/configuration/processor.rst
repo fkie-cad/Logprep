@@ -422,7 +422,7 @@ Results in this topic can be linked to the original event via a `pre_detector_id
 alert_ip_list
 ~~~~~~~~~~~~~
 
-Path to a YML file with a dictionary of IPs.
+Path to a YML file or a list of paths to YML files with dictionaries of IPs.
 It is used by the Predetector to throw alerts if one of the IPs is found in fields that were defined in a rule.
 
 It uses IPs or networks in the CIDR format as keys and can contain expiration dates in the ISO format as values.
