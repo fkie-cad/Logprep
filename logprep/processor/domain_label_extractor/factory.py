@@ -15,7 +15,10 @@ class DomainLabelExtractorFactory(BaseFactory):
         """
         DomainLabelExtractorFactory._check_configuration(configuration)
 
-        domain_label_extractor = DomainLabelExtractor(name, configuration.get('tree_config'), logger)
+        domain_label_extractor = DomainLabelExtractor(name,
+                                                      configuration.get('tree_config'),
+                                                      configuration.get('tld_lists', None),
+                                                      logger)
         domain_label_extractor.add_rules_from_directory(configuration['rules'])
 
         return domain_label_extractor
