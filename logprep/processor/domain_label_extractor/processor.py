@@ -1,20 +1,21 @@
 """ This module contains functionality to split a domain into it's parts/labels. """
+import socket
 from logging import Logger, DEBUG
 from multiprocessing import current_process
 from os import walk
 from os.path import isdir, realpath, join
-from time import time
 from typing import List
 
-from tldextract import tldextract
+from time import time
+from tldextract import TLDExtract
 
 from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
                                                InvalidRuleFileError)
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
+from logprep.util.helper import add_field_to
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.helper import add_field_to
 
 
 class DomainLabelExtractorError(BaseException):
@@ -35,18 +36,10 @@ class DuplicationError(DomainLabelExtractorError):
         super().__init__(name, message)
 
 
-class UnrecognizedTldError(DomainLabelExtractorError):
-    """Raise if the domain tld is not recognized."""
-
-    def __init__(self, name: str, domain: str):
-        message = f"The given domain '{domain}' is malformed or has an unknown tld"
-        super().__init__(name, message)
-
-
 class DomainLabelExtractor(RuleBasedProcessor):
     """Splits a domain into it's parts/labels."""
 
-    def __init__(self, name: str, tree_config: str, logger: Logger):
+    def __init__(self, name: str, tree_config: str, tld_lists: list, tagging_field_name: str, logger: Logger):
         """
         Initializes the DomainLabelExtractor processor.
 
@@ -56,12 +49,21 @@ class DomainLabelExtractor(RuleBasedProcessor):
             Name of the DomainLabelExtractor processor (as referred to in the pipeline).
         tree_config : str
             Path to the configuration file which can prioritize fields and add conditional rules.
+        tld_lists : list
+            Optional list of paths to tld-suffix lists. If 'none' a default list will be retrieved online.
         logger : Logger
             Standard logger.
         """
 
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
+
+        if tld_lists is not None:
+            self._tld_extractor = TLDExtract(suffix_list_urls=tld_lists)
+        else:
+            self._tld_extractor = TLDExtract()
+
+        self._tagging_field_name = tagging_field_name
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(self, rule_paths: List[str]):
@@ -142,6 +144,8 @@ class DomainLabelExtractor(RuleBasedProcessor):
         """
         Apply matching rule to given log event. Such that a given domain, configured via rule, is split into it's
         labels and parts. The resulting subfields will be saved in the configured output field.
+        In case no valid tld is recognized this method checks if the target field has an ipv4 or ipv6 address, if so
+        nothing will be done. If also no ip-address is recognized the tag 'unrecognized_domain' is added to the event.
 
         Parameters
         ----------
@@ -153,25 +157,35 @@ class DomainLabelExtractor(RuleBasedProcessor):
 
         if self._field_exists(event, rule.target_field):
             domain = self._get_dotted_field_value(event, rule.target_field)
-            labels = tldextract.extract(domain)
 
-            if labels.suffix == '':
-                # if no tld was recognized raise an error
-                raise UnrecognizedTldError(self._name, domain)
+            labels = self._tld_extractor(domain)
 
-            labels_dict = {
-                'registered_domain': labels.domain + "." + labels.suffix,
-                'top_level_domain': labels.suffix,
-                'subdomain': labels.subdomain
-            }
+            if labels.suffix != '':
+                labels_dict = {
+                    'registered_domain': labels.domain + "." + labels.suffix,
+                    'top_level_domain': labels.suffix,
+                    'subdomain': labels.subdomain
+                }
 
-            # add results to event
-            for label in labels_dict.keys():
-                output_field = f"{rule.output_field}.{label}"
-                adding_was_successful = add_field_to(event, output_field, labels_dict[label])
+                # add results to event
+                for label in labels_dict.keys():
+                    output_field = f"{rule.output_field}.{label}"
+                    adding_was_successful = add_field_to(event, output_field, labels_dict[label])
 
-                if not adding_was_successful:
-                    raise DuplicationError(self._name, [output_field])
+                    if not adding_was_successful:
+                        raise DuplicationError(self._name, [output_field])
+            else:
+                try:
+                    # check if ip address is ipv4
+                    socket.inet_aton(labels.domain)
+                except OSError:
+                    try:
+                        # check if ip address is ipv6
+                        socket.inet_pton(socket.AF_INET6, labels.domain)
+                    except OSError:
+                        # if it's neither ipv4 nor ipv6 then add error tag
+                        event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
+                                                          ["unrecognized_domain"]
 
     def events_processed_count(self):
         return self._events_processed
