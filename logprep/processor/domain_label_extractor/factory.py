@@ -18,6 +18,7 @@ class DomainLabelExtractorFactory(BaseFactory):
         domain_label_extractor = DomainLabelExtractor(name,
                                                       configuration.get('tree_config'),
                                                       configuration.get('tld_lists', None),
+                                                      configuration.get('tagging_field_name', 'tags'),
                                                       logger)
         domain_label_extractor.add_rules_from_directory(configuration['rules'])
 

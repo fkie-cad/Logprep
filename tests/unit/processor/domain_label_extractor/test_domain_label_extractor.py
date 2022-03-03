@@ -128,6 +128,36 @@ class TestDomainLabelExtractor:
         domain_label_extractor.process(document)
         assert document == expected_output
 
+    def test_new_non_default_tagging_field(self):
+        config = {
+            'type': 'domain_label_extractor',
+            'rules': [rules_dir],
+            'tagging_field_name': 'special_tags',
+            'tree_config': 'tests/testdata/unit/shared_data/tree_config.json'
+        }
+
+        domain_label_extractor = DomainLabelExtractorFactory.create('Test DomainLabelExtractor Name', config, logger)
+        document = {'url': {'domain': 'domain.fubarbo'}}
+        expected_output = {'url': {'domain': 'domain.fubarbo'}, "special_tags": ['unrecognized_domain']}
+
+        domain_label_extractor.process(document)
+        assert document == expected_output
+
+    def test_append_to_non_default_tagging_field(self):
+        config = {
+            'type': 'domain_label_extractor',
+            'rules': [rules_dir],
+            'tagging_field_name': 'special_tags',
+            'tree_config': 'tests/testdata/unit/shared_data/tree_config.json'
+        }
+
+        domain_label_extractor = DomainLabelExtractorFactory.create('Test DomainLabelExtractor Name', config, logger)
+        document = {'url': {'domain': 'domain.fubarbo'}, "special_tags": ['source']}
+        expected_output = {'url': {'domain': 'domain.fubarbo'}, "special_tags": ['source', 'unrecognized_domain']}
+
+        domain_label_extractor.process(document)
+        assert document == expected_output
+
     def test_domain_extraction_with_separated_tld(self, domain_label_extractor):
         document = {'url': {'domain': 'domain.co.uk'}}
         expected_output = {
@@ -241,3 +271,10 @@ class TestDomainLabelExtractorFactory:
         self.config['tld_lists'] = [tld_list]
         assert isinstance(DomainLabelExtractorFactory.create('foo', self.config, logger),
                           DomainLabelExtractor)
+
+    def test_check_configuration_with_non_default_tagging_field_name(self):
+        self.config = copy.deepcopy(self.REQUIRED_CONFIG_FIELDS)
+        self.config['tagging_field_name'] = 'special_tags'
+        extractor = DomainLabelExtractorFactory.create('foo', self.config, logger)
+        assert isinstance(extractor, DomainLabelExtractor)
+        assert extractor._tagging_field_name == self.config['tagging_field_name']

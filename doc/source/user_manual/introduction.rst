@@ -71,7 +71,7 @@ Domain Label Extractor
 
 The domain label extractor is a processor that splits a domain into it's corresponding labels like registered_domain,
 top_level_domain and subdomain. If instead an IP is given in the target field nothing is done. If neither a domain nor
-ip address can be recognized a tag 'unrecognized_domain' will be added to the 'tags' field in the event.
+ip address can be recognized a tag 'unrecognized_domain' will be added to a configurable tag field in the event.
 
 List Comparison Enricher
 ------------------------

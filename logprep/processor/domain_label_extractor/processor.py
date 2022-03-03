@@ -4,18 +4,18 @@ from logging import Logger, DEBUG
 from multiprocessing import current_process
 from os import walk
 from os.path import isdir, realpath, join
-from time import time
 from typing import List
 
+from time import time
 from tldextract import TLDExtract
 
 from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
                                                InvalidRuleFileError)
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
+from logprep.util.helper import add_field_to
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.helper import add_field_to
 
 
 class DomainLabelExtractorError(BaseException):
@@ -39,7 +39,7 @@ class DuplicationError(DomainLabelExtractorError):
 class DomainLabelExtractor(RuleBasedProcessor):
     """Splits a domain into it's parts/labels."""
 
-    def __init__(self, name: str, tree_config: str, tld_lists: list, logger: Logger):
+    def __init__(self, name: str, tree_config: str, tld_lists: list, tagging_field_name: str, logger: Logger):
         """
         Initializes the DomainLabelExtractor processor.
 
@@ -62,6 +62,8 @@ class DomainLabelExtractor(RuleBasedProcessor):
             self._tld_extractor = TLDExtract(suffix_list_urls=tld_lists)
         else:
             self._tld_extractor = TLDExtract()
+
+        self._tagging_field_name = tagging_field_name
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(self, rule_paths: List[str]):
@@ -182,7 +184,8 @@ class DomainLabelExtractor(RuleBasedProcessor):
                         socket.inet_pton(socket.AF_INET6, labels.domain)
                     except OSError:
                         # if it's neither ipv4 nor ipv6 then add error tag
-                        event["tags"] = event.get("tags", []) + ["unrecognized_domain"]
+                        event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
+                                                          ["unrecognized_domain"]
 
     def events_processed_count(self):
         return self._events_processed

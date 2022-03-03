@@ -296,6 +296,12 @@ Optional list of path to files with top-level domain lists (like https://publics
 If no path is given a default list will be retrieved online and cached in a local directory. For local files the path
 has to be given with :code:`file:///path/to/file.dat`.
 
+tagging_field_name
+~~~~~~~~~~~~~~~~~~
+
+Optional configuration field that defines into which field in the event the error indication 'unrecognized_domain'
+should be written to. If this field is not present it defaults to 'tags'.
+
 List Comparison Enricher
 ------------------------
 
