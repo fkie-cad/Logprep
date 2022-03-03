@@ -1,6 +1,6 @@
 """This module is used to generate alerts if an IP matches a pattern in a list."""
 
-from typing import Union, Optional
+from typing import Union, List, Optional
 
 from ipaddress import ip_network, ip_address, IPv4Network
 from datetime import datetime
@@ -17,28 +17,35 @@ from logprep.processor.pre_detector.rule import PreDetectorRule
 class IPAlerter:
     """Used to get if an IP is in an alert list and if the IP alert has expired."""
 
-    def __init__(self, alert_ip_list_path: str):
+    def __init__(self, alert_ip_lists_path: Union[List[str], str]):
         self._alert_ips_map = dict()
         self._single_alert_ips = set()
         self._alert_network = set()
 
-        self._init_alert_ip_list(alert_ip_list_path)
+        if isinstance(alert_ip_lists_path, str):
+            alert_ip_lists_path = [alert_ip_lists_path]
+        if not alert_ip_lists_path:
+            alert_ip_lists_path = []
+        self._init_alert_ip_list(alert_ip_lists_path)
 
     @staticmethod
     def has_ip_fields(rule: PreDetectorRule) -> bool:
         """Return if rule has IP fields."""
         return bool(rule.ip_fields)
 
-    def _init_alert_ip_list(self, alert_ip_list: str):
-        if alert_ip_list and isfile(alert_ip_list):
-            with open(alert_ip_list, 'r') as alert_ip_list_file:
-                full_alert_ip_list = yaml.load(alert_ip_list_file)
-                self._filter_non_expired_alert_ips(full_alert_ip_list)
-                self._single_alert_ips = set(ip_string for ip_string in self._alert_ips_map.keys()
-                                             if '/' not in ip_string)
-                self._alert_network = set(
-                    ip_network(ip_string) for ip_string in self._alert_ips_map.keys()
-                    if '/' in ip_string)
+    def _init_alert_ip_list(self, alert_ip_lists: List):
+        for alert_ip_list in alert_ip_lists:
+            if alert_ip_list and isfile(alert_ip_list):
+                with open(alert_ip_list, 'r') as alert_ip_list_file:
+                    full_alert_ip_list = yaml.load(alert_ip_list_file)
+                    self._filter_non_expired_alert_ips(full_alert_ip_list)
+                    self._single_alert_ips.update(set(ip_string for ip_string in
+                                                      self._alert_ips_map.keys()
+                                                      if '/' not in ip_string))
+                    self._alert_network.update(set(
+                        ip_network(ip_string) for ip_string in self._alert_ips_map.keys()
+                        if '/' in ip_string))
+                    print(self._alert_network)
 
     def _filter_non_expired_alert_ips(self, full_alert_ip_list: dict):
         for alert_ip, expiration_date_str in full_alert_ip_list.items():
