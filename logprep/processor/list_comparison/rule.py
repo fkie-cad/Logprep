@@ -4,8 +4,9 @@ are elements of a given list.
 """
 
 import os.path
-from enum import Enum
+from typing import Optional
 
+from json import load
 from ruamel.yaml import YAML
 
 from logprep.filter.expression.filter_expression import FilterExpression
@@ -32,7 +33,7 @@ class InvalidListComparisonDefinition(ListComparisonRuleError):
 class ListComparisonRule(Rule):
     """Check if documents match a filter."""
 
-    allowed_cfg_fields = ["list_file_paths", "check_field", "output_field"]
+    allowed_cfg_fields = ["list_file_paths", "check_field", "output_field", "list_search_base_path"]
 
     def __init__(self, filter_rule: FilterExpression, list_comparison_cfg: dict):
         """
@@ -55,6 +56,8 @@ class ListComparisonRule(Rule):
             if key.endswith('_paths'):
                 file_paths = list_comparison_cfg[key]
                 for file in file_paths:
+                    if list_comparison_cfg.get('list_search_base_path'):
+                        file = os.path.join(list_comparison_cfg['list_search_base_path'], file)
                     # iterate over all files specified in rule
                     with open(file, 'r') as f:
                         compare_elements = f.read().splitlines()
@@ -87,6 +90,27 @@ class ListComparisonRule(Rule):
 
         filter_expression = Rule._create_filter_expression(rule)
         return ListComparisonRule(filter_expression, rule['list_comparison'])
+
+    @classmethod
+    def create_rules_from_file(cls, path: str, list_search_base_dir: Optional[str]) -> list:
+        """Create a rule from a file."""
+        with open(path, 'r') as file:
+            rule_data = list(yaml.load_all(file)) if path.endswith('.yml') else load(file)
+
+        if not isinstance(rule_data, list):
+            raise InvalidRuleDefinitionError
+
+        if list_search_base_dir and not os.path.isabs(path):
+            for rule in rule_data:
+                if rule['list_comparison'].get('list_search_base_path') is None:
+                    rule['list_comparison']['list_search_base_path'] = list_search_base_dir
+
+        rules = [cls._create_from_dict(rule) for rule in rule_data]
+
+        for rule in rules:
+            rule.file_name = os.path.splitext(os.path.basename(path))[0]
+
+        return rules
 
     @staticmethod
     def _check_if_valid(rule: dict):

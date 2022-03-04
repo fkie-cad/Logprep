@@ -15,11 +15,13 @@ class ListComparisonFactory(BaseFactory):
         """
         ListComparisonFactory._check_configuration(configuration)
 
-        list_comparison = ListComparison(name, configuration.get('tree_config'), logger)
+        list_comparison = ListComparison(name, configuration.get('tree_config'),
+                                         configuration.get('list_search_base_path'), logger)
         list_comparison.add_rules_from_directory(configuration['rules'])
 
         return list_comparison
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        ListComparisonFactory._check_common_configuration('list_comparison', ['rules'], configuration)
+        ListComparisonFactory._check_common_configuration('list_comparison', ['rules'],
+                                                          configuration)

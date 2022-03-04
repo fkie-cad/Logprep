@@ -1062,6 +1062,10 @@ the parent field where the results should be written to. Both fields can be dott
 
 Additionally, a list or array of lists can be provided underneath the required field :code:`list_file_paths`.
 
+Optionally, `list_comparison.list_search_base_path` can be set.
+Relative list paths will be relative to this path if this is set.
+Setting `list_search_base_path` within a rule overwrites `list_search_base_path` in the pipeline config for that rule.
+
 In the following example, the field :code:`user_agent` will be checked against the provided list
 (:code:`priviliged_users.txt`).
 Assuming that the value :code:`non_privileged_user` will match the provided list, the result of the list comparison

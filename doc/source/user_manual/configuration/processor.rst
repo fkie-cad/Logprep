@@ -326,6 +326,12 @@ tree_config
 
 Path to JSON file with rule tree matcher config.
 
+list_search_base_path
+~~~~~~~~~~~~~~~~~~~~~
+
+Relative list paths in rules will be relative to this path if this is set.
+This parameter is optional.
+
 Selective Extractor
 -------------------
 
