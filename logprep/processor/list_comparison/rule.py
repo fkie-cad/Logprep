@@ -52,16 +52,20 @@ class ListComparisonRule(Rule):
         self._list_comparison_output_field = list_comparison_cfg["output_field"]
 
         self._compare_set = set()
-        for key in list_comparison_cfg.keys():
+        self._config = list_comparison_cfg
+
+    def init_list_comparison(self, list_search_base_path: Optional[str]):
+        for key in self._config.keys():
             if key.endswith('_paths'):
-                file_paths = list_comparison_cfg[key]
-                for file in file_paths:
-                    if list_comparison_cfg.get('list_search_base_path'):
-                        file = os.path.join(list_comparison_cfg['list_search_base_path'], file)
+                file_paths = self._config[key]
+                for list_path in file_paths:
+                    if list_search_base_path is not None and not os.path.isabs(list_path):
+                        list_path = os.path.join(list_search_base_path, list_path)
                     # iterate over all files specified in rule
-                    with open(file, 'r') as f:
+                    with open(list_path, 'r') as f:
                         compare_elements = f.read().splitlines()
-                        file_elem_tuples = [(os.path.basename(file), elem) for elem in compare_elements if not elem.startswith("#")]
+                        file_elem_tuples = [(os.path.basename(list_path), elem) for elem in
+                                            compare_elements if not elem.startswith("#")]
                         # add tuples to the set of elements to be compared against list files.
                         self._compare_set.update(file_elem_tuples)
 
@@ -92,18 +96,13 @@ class ListComparisonRule(Rule):
         return ListComparisonRule(filter_expression, rule['list_comparison'])
 
     @classmethod
-    def create_rules_from_file(cls, path: str, list_search_base_dir: Optional[str]) -> list:
+    def create_rules_from_file(cls, path: str) -> list:
         """Create a rule from a file."""
         with open(path, 'r') as file:
             rule_data = list(yaml.load_all(file)) if path.endswith('.yml') else load(file)
 
         if not isinstance(rule_data, list):
             raise InvalidRuleDefinitionError
-
-        if list_search_base_dir and not os.path.isabs(path):
-            for rule in rule_data:
-                if rule['list_comparison'].get('list_search_base_path') is None:
-                    rule['list_comparison']['list_search_base_path'] = list_search_base_dir
 
         rules = [cls._create_from_dict(rule) for rule in rule_data]
 

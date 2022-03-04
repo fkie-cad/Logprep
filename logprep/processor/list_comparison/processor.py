@@ -101,7 +101,10 @@ class ListComparison(RuleBasedProcessor):
 
         """        
         try:
-            return ListComparisonRule.create_rules_from_file(path, self._list_search_base_dir)
+            rules = ListComparisonRule.create_rules_from_file(path)
+            for rule in rules:
+                rule.init_list_comparison(self._list_search_base_dir)
+            return rules
         except InvalidRuleDefinitionError as error:
             raise InvalidRuleFileError(self._name, path, str(error)) from error
 
