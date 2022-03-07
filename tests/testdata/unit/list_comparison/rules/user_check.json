@@ -3,7 +3,7 @@
   "list_comparison": {
     "check_field": "user",
     "output_field": "user_results",
-    "list_file_paths": ["tests/testdata/unit/list_comparison/lists/user_list.txt"]
+    "list_file_paths": ["../lists/user_list.txt"]
   },
   "description": ""
 },{
@@ -12,8 +12,8 @@
     "check_field": "system",
     "output_field": "user_and_system_results",
     "list_file_paths": [
-      "tests/testdata/unit/list_comparison/lists/user_list.txt",
-      "tests/testdata/unit/list_comparison/lists/system_list.txt"
+      "../lists/user_list.txt",
+      "../lists/system_list.txt"
     ]
   },
   "description": ""
@@ -23,8 +23,8 @@
     "check_field": "channel.type",
     "output_field": "channel_results",
     "list_file_paths": [
-      "tests/testdata/unit/list_comparison/lists/user_list.txt",
-      "tests/testdata/unit/list_comparison/lists/system_list.txt"
+      "../lists/user_list.txt",
+      "../lists/system_list.txt"
     ]
   },
   "description": ""
@@ -34,7 +34,7 @@
     "check_field": "user",
     "output_field": "dotted.user_results",
     "list_file_paths": [
-      "tests/testdata/unit/list_comparison/lists/user_list.txt"
+      "../lists/user_list.txt"
     ]
   },
   "description": ""
@@ -44,7 +44,7 @@
     "check_field": "user",
     "output_field": "more.than.dotted.user_results",
     "list_file_paths": [
-      "tests/testdata/unit/list_comparison/lists/user_list.txt"
+      "../lists/user_list.txt"
     ]
   },
   "description": ""

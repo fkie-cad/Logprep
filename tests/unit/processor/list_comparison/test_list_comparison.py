@@ -17,7 +17,8 @@ def list_comparison():
     config = {
         'type': 'list_comparison',
         'rules': [rules_dir],
-        'tree_config': 'tests/testdata/unit/shared_data/tree_config.json'
+        'tree_config': 'tests/testdata/unit/shared_data/tree_config.json',
+        'list_search_base_path': rules_dir
     }
 
     list_comparison = ListComparisonFactory.create('test-list-comparison', config, logger)

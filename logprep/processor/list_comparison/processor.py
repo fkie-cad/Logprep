@@ -7,7 +7,7 @@ from multiprocessing import current_process
 from os import walk
 from os.path import isdir, realpath, join
 from time import time
-from typing import List
+from typing import List, Optional
 
 from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
                                                InvalidRuleFileError)
@@ -39,7 +39,8 @@ class DuplicationError(ListComparisonError):
 class ListComparison(RuleBasedProcessor):
     """Resolve values in documents by referencing a mapping list."""
 
-    def __init__(self, name: str, tree_config: str, logger: Logger):
+    def __init__(self, name: str, tree_config: str, list_search_base_path: Optional[str],
+                 logger: Logger):
         """
         Initializes the list_comparison processor.
 
@@ -53,6 +54,7 @@ class ListComparison(RuleBasedProcessor):
             Standard logger.
         """
         super().__init__(name, tree_config, logger)
+        self._list_search_base_dir = list_search_base_path
         self.ps = ProcessorStats()
 
     # pylint: disable=arguments-differ
@@ -99,7 +101,10 @@ class ListComparison(RuleBasedProcessor):
 
         """        
         try:
-            return ListComparisonRule.create_rules_from_file(path)
+            rules = ListComparisonRule.create_rules_from_file(path)
+            for rule in rules:
+                rule.init_list_comparison(self._list_search_base_dir)
+            return rules
         except InvalidRuleDefinitionError as error:
             raise InvalidRuleFileError(self._name, path, str(error)) from error
 
