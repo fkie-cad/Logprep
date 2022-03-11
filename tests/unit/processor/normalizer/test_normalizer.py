@@ -1,4 +1,11 @@
+import json
+import os
+import tempfile
+
 import pytest
+import arrow
+import calendar
+
 pytest.importorskip('logprep.processor.normalizer')
 
 import copy
@@ -22,7 +29,18 @@ html_replace_fields = 'tests/testdata/unit/normalizer/html_replace_fields.yml'
 @pytest.fixture()
 def normalizer():
     return Normalizer('Test Normalizer Name', specific_rules_dir, generic_rules_dir, None, logger,
-                      regex_mapping=cap_group_regex_mapping, html_replace_fields=html_replace_fields)
+                      regex_mapping=cap_group_regex_mapping,
+                      html_replace_fields=html_replace_fields)
+
+
+@pytest.fixture()
+def normalizer_with_grok_counter():
+    temp_path = tempfile.mkdtemp()
+    return Normalizer('Test Normalizer Name', specific_rules_dir, generic_rules_dir, None, logger,
+                      regex_mapping=cap_group_regex_mapping,
+                      html_replace_fields=html_replace_fields,
+                      count_grok_pattern_matches={'count_directory_path': temp_path,
+                                                  'write_period': 0})
 
 
 class TestNormalizer:
@@ -1089,6 +1107,63 @@ class TestNormalizer:
         normalizer.process(event)
 
         assert event == expected
+
+    def test_normalization_with_grok_pattern_count(self, normalizer_with_grok_counter):
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'normalize me!': '123.123.123.123 1234'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.normalize me!': {
+                    'grok': ['%{IP:some_ip} %{NUMBER:port:int}', 'NO MATCH']}
+            }
+        }
+
+        self._load_specific_rule(normalizer_with_grok_counter, rule)
+        normalizer_with_grok_counter.process(event)
+
+        match_cnt_path = normalizer_with_grok_counter._grok_matches_path
+        match_cnt_files = os.listdir(match_cnt_path)
+
+        assert len(match_cnt_files) == 1
+
+        now = arrow.now()
+        date = now.date()
+        match_file_name = match_cnt_files[0]
+
+        assert match_file_name.endswith('.json')
+
+        file_date, file_weekday = match_cnt_files[0][:-5].split('_')
+
+        assert date.isoformat() == file_date
+        assert calendar.day_name[date.weekday()].lower() == file_weekday
+
+        with open(os.path.join(match_cnt_path, match_file_name), 'r') as match_file:
+            match_json = json.load(match_file)
+
+            assert '^%{IP:some_ip} %{NUMBER:port:int}$' in match_json
+            assert '^NO MATCH$' in match_json
+            assert match_json['^%{IP:some_ip} %{NUMBER:port:int}$'] == 1
+            assert match_json['^NO MATCH$'] == 0
+
+        normalizer_with_grok_counter.process(event)
+
+        with open(os.path.join(match_cnt_path, match_file_name), 'r') as match_file:
+            match_json = json.load(match_file)
+
+            assert match_json['^%{IP:some_ip} %{NUMBER:port:int}$'] == 2
+            assert match_json['^NO MATCH$'] == 0
+
+        assert event.get('some_ip') == '123.123.123.123'
+        assert event.get('port') == 1234
 
 
 class TestNormalizerFactory:
