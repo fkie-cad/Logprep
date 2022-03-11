@@ -1,6 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
-
-from typing import Optional
+from os import remove
+from typing import Optional, Union
 
 from colorama import Fore, Back
 from colorama.ansi import AnsiFore, AnsiBack
@@ -27,7 +27,7 @@ def print_fcolor(fore: AnsiFore, message: str):
     print_color(None, fore, message)
 
 
-def add_field_to(event, output_field, content):
+def add_field_to(event, output_field, content, extends_lists=False):
     """
     Add content to an output_field in the given event. Output_field can be a dotted subfield. In case of missing fields
     all intermediate fields will be created.
@@ -40,6 +40,8 @@ def add_field_to(event, output_field, content):
         Dotted subfield string indicating the target of the output value, e.g. destination.ip
     content: str, dict
         Value that should be written into the output_field, can be a str or dict object
+    extends_lists: bool
+        Flag that determines whether or not lists as existing field values should be extended
 
     Returns
     ------
@@ -59,12 +61,80 @@ def add_field_to(event, output_field, content):
                 break
             dict_[key] = dict()
 
-        if isinstance(dict_[key], dict):
+        if isinstance(dict_[key], dict) and idx < len(keys) - 1:
             dict_ = dict_[key]
+        elif isinstance(dict_[key], list) and extends_lists and idx == len(keys) - 1:
+            dict_[key].extend(content)
         else:
             conflicting_fields.append(keys[idx])
+            break
 
     if conflicting_fields:
         return False
     else:
         return True
+
+
+def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
+    """
+    Returns the value of a requested dotted_field by iterating over the event dictionary until the field was found.
+    In case the field could not be found None is returned
+
+    Parameters
+    ----------
+    event: dict
+        The event from which the dotted field value should be extracted
+    dotted_field: str
+        The dotted field name which identifies the requested value
+
+    Returns
+    -------
+    dict_: dict, list, str
+        The value of the requested dotted field.
+
+    # code is originally from the BaseProcessor, such that duplicated code could be removed there.
+    """
+
+    fields = dotted_field.split('.')
+    dict_ = event
+    for field in fields:
+        if field in dict_ and isinstance(dict_, dict):
+            dict_ = dict_[field]
+        else:
+            return None
+    return dict_
+
+
+def recursive_compare(test_output, expected_output):
+    result = None
+
+    if not isinstance(test_output, type(expected_output)):
+        return test_output, expected_output
+
+    elif isinstance(test_output, dict) and isinstance(expected_output, dict):
+        if sorted(test_output.keys()) != sorted(expected_output.keys()):
+            return sorted(test_output.keys()), sorted(expected_output.keys())
+
+        for key in test_output.keys():
+            result = recursive_compare(test_output[key], expected_output[key])
+            if result:
+                return result
+
+    elif isinstance(test_output, list) and isinstance(expected_output, list):
+        for x, _ in enumerate(test_output):
+            result = recursive_compare(test_output[x], expected_output[x])
+            if result:
+                return result
+
+    else:
+        if test_output != expected_output:
+            result = test_output, expected_output
+
+    return result
+
+
+def remove_file_if_exists(test_output_path):
+    try:
+        remove(test_output_path)
+    except FileNotFoundError:
+        pass

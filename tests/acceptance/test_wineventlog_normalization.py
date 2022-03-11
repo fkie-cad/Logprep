@@ -2,6 +2,7 @@
 import pytest
 
 from tests.acceptance.util import *
+from logprep.util.json_handling import dump_config_as_file, parse_jsonl
 
 
 @pytest.fixture
@@ -34,7 +35,7 @@ def test_events_normalized_correctly(tmp_path, config):
     expected_output_path = path.join('tests/testdata/acceptance/expected_result', expected_output)
 
     config_path = str(tmp_path / 'generated_config.yml')
-    create_temporary_config_file_at_path(config_path, config)
+    dump_config_as_file(config_path, config)
 
     test_output = get_test_output(config_path)
     store_latest_test_output(expected_output, test_output)

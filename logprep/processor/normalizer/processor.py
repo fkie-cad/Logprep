@@ -290,6 +290,16 @@ class Normalizer(RuleBasedProcessor):
                 try:
                     if source_format == 'ISO8601':
                         timestamp = parser.isoparse(source_timestamp)
+
+                    elif source_format == 'UNIX':
+                        # convert UNIX Epoch timestamp string to int (with or without milliseconds)
+                        new_stamp = int(source_timestamp)
+                        if len(source_timestamp) > 10:
+                            # Epoch with milliseconds
+                            timestamp = datetime.fromtimestamp(new_stamp/1000, timezone(source_timezone))
+                        else:
+                            # Epoch without milliseconds
+                            timestamp = datetime.fromtimestamp(new_stamp, timezone(source_timezone))
                     else:
                         timestamp = datetime.strptime(source_timestamp, source_format)
                         # Set year to current year if no year was provided in timestamp

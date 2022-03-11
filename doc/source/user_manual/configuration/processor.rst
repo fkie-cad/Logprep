@@ -291,6 +291,97 @@ One cache entry requires ~250 Byte, thus 10 million elements would require about
 The cache is not persisted.
 Restarting Logprep does therefore clear the cache.
 
+Domain Label Extractor
+----------------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `domain_label_extractor` chooses the processor type DomainLabelExtractor, which configurations will be
+described here.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/domain_label_extractor/rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+tld_lists
+~~~~~~~~~
+
+Optional list of path to files with top-level domain lists (like https://publicsuffix.org/list/public_suffix_list.dat).
+If no path is given a default list will be retrieved online and cached in a local directory. For local files the path
+has to be given with :code:`file:///path/to/file.dat`.
+
+tagging_field_name
+~~~~~~~~~~~~~~~~~~
+
+Optional configuration field that defines into which field in the event the error indication 'unrecognized_domain'
+should be written to. If this field is not present it defaults to 'tags'.
+
+List Comparison Enricher
+------------------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `list_comparison` chooses the processor type ListComparison, which configurations will be
+described here.
+
+rules
+~~~~~
+
+List of directory paths with rule files, i.e.:
+
+  * /var/git/logprep-rules/list_comparison/rules/
+
+tree_config
+~~~~~~~~~~~
+
+Path to JSON file with rule tree matcher config.
+
+list_search_base_path
+~~~~~~~~~~~~~~~~~~~~~
+
+Relative list paths in rules will be relative to this path if this is set.
+This parameter is optional.
+
+Selective Extractor
+-------------------
+
+Parameter
+^^^^^^^^^
+
+type
+~~~~
+
+The value `selective_extractor` chooses the processor type SelectiveExtractor, which configurations will be
+described here.
+
+selective_extractor_topic
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This parameter defines the kafka topic the extracted fields should be written to.
+
+extractor_list
+~~~~~~~~~~~~~~
+
+Path to a list of fields which should be extracted and written to the configured Kafka topic. These can be dotted fields.
+Fields are only extracted if they are contained in given log messages. If fields are provided more than once in the
+extractor list, they are only extracted once.
+
 Template Replacer
 --------------------
 
@@ -376,7 +467,7 @@ Results in this topic can be linked to the original event via a `pre_detector_id
 alert_ip_list
 ~~~~~~~~~~~~~
 
-Path to a YML file with a dictionary of IPs.
+Path to a YML file or a list of paths to YML files with dictionaries of IPs.
 It is used by the Predetector to throw alerts if one of the IPs is found in fields that were defined in a rule.
 
 It uses IPs or networks in the CIDR format as keys and can contain expiration dates in the ISO format as values.

@@ -43,6 +43,24 @@ This object configures how log messages are being fetched from Kafka.
 - **offset_reset_policy**: Corresponds to the Kafka configuration parameter `auto.offset.reset <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This parameter influences from which offset the Kafka consumer starts to fetch log messages from an assigned partition. The values *latest/earliest/none* are possible. With a value of *none* Logprep must manage the offset by itself. However, this is not supported by Logprep, since it is not relevant for our use-case. If the value is set to *latest/largest*, the Kafka consumer starts by reading the newest log messages of a partition if a valid offset is missing. Thus, old log messages from that partition will not be processed. This setting can therefore lead to a loss of log messages. A value of *earliest/smallest* causes the Kafka consumer to read all log messages from a partition, which can lead to a duplication of log messages. Currently, the deprecated value *smallest* is used, which should be later changed to *earliest*. The default value of librdkafka is *largest*.
 - **enable_auto_offset_store**: Corresponds to the Kafka configuration parameter `enable.auto.offset.store <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This parameter defines if the offset is automatically updated in memory. Disabling this allows Logprep to update the offset more accurately. The default value in librdkafka it is *true*.
 
+Additionally to the previous configurations it is possible to automatically attach an HMAC to an incoming log message.
+If it is required to do so the following options should be appended to the general consumer options under a new
+field :code:`hmac`. This field is completely optional and can also be omitted if no hmac is needed. An example with
+hmac configuration is given at the end of this page.
+
+- **target**: Defines a field inside the log message which should be used for the hmac calculation. If the target field
+  is not found or does not exists an error message is written into the configured output field. If the hmac should be
+  calculated on the full incoming raw message instead of a subfield the target option should be set to
+  :code:`<RAW_MSG>`.
+- **key**: The secret key that will be used to calculate the hmac.
+- **output_field**: The parent name of the field where the hmac result should be written to in the original incoming
+  log message. As subfields the result will have a field called :code:`hmac`, containing the calculated hmac, and
+  :code:`compressed_base64`, containing the original message that was used to calculate the hmac in compressed and
+  base64 encoded. In case the output field exists already in the original message an error is raised.
+
+The hmac itself will be calculated with python's :code:`hashlib.sha256` algorithm and the compression is based on the
+:code:`zlib` library.
+
 
 producer
 --------
@@ -73,6 +91,7 @@ Example
 
 ..  code-block:: yaml
     :linenos:
+    :caption: Logprep configuration (with optional hmac settings)
 
     connector:
       type: confluentkafka
@@ -84,6 +103,10 @@ Example
         auto_commit: on
         session_timeout: 6000
         offset_reset_policy: smallest
+        hmac:
+          target: <RAW_MSG>
+          key: secret-key
+          output_field: Hmac
       producer:
         topic: producer
         error_topic: producer_error

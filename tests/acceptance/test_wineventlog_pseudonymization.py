@@ -1,7 +1,12 @@
 #!/usr/bin/python3
+from logging import getLogger, DEBUG, basicConfig
+from os import path
+
 import pytest
 
-from tests.acceptance.util import *
+from logprep.util.json_handling import dump_config_as_file
+from logprep.util.json_handling import parse_jsonl
+from tests.acceptance.util import get_test_output, store_latest_test_output, get_difference
 
 basicConfig(level=DEBUG, format='%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s')
 logger = getLogger('Logprep-Test')
@@ -45,7 +50,7 @@ def test_events_pseudonymized_correctly(tmp_path, config):
     expected_output_path = path.join('tests/testdata/acceptance/expected_result', expected_output)
 
     config_path = str(tmp_path / 'generated_config.yml')
-    create_temporary_config_file_at_path(config_path, config)
+    dump_config_as_file(config_path, config)
 
     test_output = get_test_output(config_path)
     store_latest_test_output(expected_output, test_output)
@@ -57,5 +62,5 @@ def test_events_pseudonymized_correctly(tmp_path, config):
 
     result = get_difference(test_output, expected_output)
 
-    assert result['difference'][0] == result['difference'][1],\
+    assert result['difference'][0] == result['difference'][1], \
         'Missmatch in event at line {}!'.format(result['event_line_no'])

@@ -277,7 +277,10 @@ Optionally, it can be defined if the normalization is allowed to override existi
 It is allowed to override by default.
 
 Valid formats for timestamps are defined by the notation of the Python datetime module.
-Additionally, the value `ISO8601` can be used if the timestamp already exists in this format.
+Additionally, the value `ISO8601` and `UNIX` can be used for the `source_formats` field. The former can be used if the
+timestamp already exists in the ISO98601 format, such that only a timezone conversion should be applied. And the latter
+can be used if the timestamp is given in the UNIX Epoch Time. This supports the Unix timestamps in seconds and
+milliseconds.
 
 Valid timezones are defined in the pytz module:
 
@@ -980,7 +983,7 @@ In the following example the timestamp will be extracted from :code:`@timestamp`
 Domain Resolver
 ===============
 
-The generic adder requires the additional field :code:`domain_resolver`.
+The domain resolver requires the additional field :code:`domain_resolver`.
 The additional field :code:`domain_resolver.source_url_or_domain` must be defined.
 It contains the field from which an URL should be parsed and then written to :code:`resolved_ip`.
 The URL can be located in continuous text insofar the URL is valid.  
@@ -999,13 +1002,90 @@ In the following example the URL from the field :code:`url` will be extracted an
         source_url_or_domain: url
       description: '...'
 
+Domain Label Extractor
+======================
+
+The domain label extractor requires the additional field :code:`domain_label_extractor`.
+The mandatory keys under :code:`domain_label_extractor` are :code:`target_field` and :code:`output_field`. Former
+is used to identify the field which contains the domain. And the latter is used to define the parent field where the
+results should be written to. Both fields can be dotted subfields. The sub fields of the parent output field of the
+result are: :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`.
+
+In the following example the domain :code:`www.sub.domain.de` will be split into it's subdomain :code:`www.sub`, it's
+registered domain :code:`domain` and lastly it's TLD :code:`de`:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example Rule to extract the labels / parts of a domain.
+
+    filter: 'url'
+    domain_label_extractor:
+      target_field: 'url.domain'
+      output_field: 'url'
+    description: '...'
+
+The example rule applied to the input event
+
+..  code-block:: json
+    :linenos:
+    :caption: Input Event
+
+    {
+        'url': {
+            'domain': 'www.sub.domain.de'
+        }
+    }
+
+will result in the following output
+
+..  code-block:: json
+    :linenos:
+    :caption: Output Event
+
+    {
+        'url': {
+            'domain': 'www.sub.domain.de',
+            'registered_domain': 'domain.de',
+            'top_level_domain': 'de',
+            'subdomain': 'www.sub',
+        }
+    }
+
+
+List Comparison Enricher
+======================
+
+The list comparison enricher requires the additional field :code:`list_comparison`.
+The mandatory keys under :code:`list_comparison` are :code:`check_field` and :code:`output_field`. Former
+is used to identify the field which is to be checked against the provided lists. And the latter is used to define
+the parent field where the results should be written to. Both fields can be dotted subfields.
+
+Additionally, a list or array of lists can be provided underneath the required field :code:`list_file_paths`.
+
+In the following example, the field :code:`user_agent` will be checked against the provided list
+(:code:`priviliged_users.txt`).
+Assuming that the value :code:`non_privileged_user` will match the provided list, the result of the list comparison
+(:code:`in_list`) will be added to the output field :code:`List_comparison.example`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example Rule to compare a single field against a provided list.
+
+    filter: 'user_agent'
+    list_comparison:
+      check_field: 'user_agent'
+      output_field: 'List_comparison.example'
+    list_file_paths:
+        -   lists/privileged_users.txt
+    description: '...'
+
 GeoIP Enricher
 ==============
 
-The generic adder requires the additional field :code:`geoip`.
-This output_field can be overridden using the optional parameter :code:`output_field`.
-The additional field :code:`geoip.source_ip` must be given.
-It contains the IP for which the geoip data should be added.
+The geoip enricher requires the additional field :code:`geoip`.
+The default output_field can be overridden using the optional parameter :code:`output_field`. This can be a dotted
+subfield. The additional field :code:`geoip.source_ip` must be given. It contains the IP for which the geoip data
+should be added.
 
 In the following example the IP in :code:`client.ip` will be enriched with geoip data.
 

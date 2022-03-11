@@ -66,6 +66,27 @@ Domain Resolver
 
 The domain resolver is a processor that can resolve domains inside a defined field.
 
+Domain Label Extractor
+----------------------
+
+The domain label extractor is a processor that splits a domain into it's corresponding labels like registered_domain,
+top_level_domain and subdomain. If instead an IP is given in the target field nothing is done. If neither a domain nor
+ip address can be recognized a tag 'unrecognized_domain' will be added to a configurable tag field in the event.
+
+List Comparison Enricher
+------------------------
+
+The list comparison enricher is a processor that allows to compare values of a target field against lists provided
+as files.
+
+Selective Extractor
+-------------------
+
+The selective extractor is a processor that allows to write field values of a given log message to a different Kafka
+topic. The output topic is configured via the pipeline yml, while the fields to be extracted are specified by means of
+a list which is also specified in the pipeline configuration as a file path. This processor is applied to all messages,
+because of that it does not need further rules to specify it's behavior.
+
 GeoIP Enricher
 --------------
 
@@ -73,7 +94,7 @@ The geoip enricher is a processor that can add geoip data to an event based on a
 
 
 Template Replacer
-------------------------
+-----------------
 
 The template replacer is a processor that can replace parts of a text field to anonymize those parts.
 The replacement is based on a template file.

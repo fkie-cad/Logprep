@@ -882,6 +882,88 @@ class TestNormalizer:
 
         assert event == expected
 
+    def test_normalization_from_UNIX_with_millis_timestamp(self, normalizer):
+        expected = {
+            '@timestamp': '2022-01-14T12:40:49.843000+01:00',
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'some_timestamp_utc': '1642160449843'
+                }
+            }
+        }
+
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'some_timestamp_utc': '1642160449843'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.some_timestamp_utc': {
+                    'timestamp': {
+                        'destination': '@timestamp',
+                        'source_formats': ['UNIX'],
+                        'source_timezone': 'UTC',
+                        'destination_timezone': 'Europe/Berlin'
+                    }
+                }
+            }
+        }
+
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event == expected
+
+    def test_normalization_from_UNIX_with_seconds_timestamp(self, normalizer):
+        expected = {
+            '@timestamp': '2022-01-14T12:40:49+01:00',
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'some_timestamp_utc': '1642160449'
+                }
+            }
+        }
+
+        event = {
+            'winlog': {
+                'api': 'wineventlog',
+                'event_id': 123456789,
+                'event_data': {
+                    'some_timestamp_utc': '1642160449'
+                }
+            }
+        }
+
+        rule = {
+            'filter': 'winlog.event_id: 123456789',
+            'normalize': {
+                'winlog.event_data.some_timestamp_utc': {
+                    'timestamp': {
+                        'destination': '@timestamp',
+                        'source_formats': ['UNIX'],
+                        'source_timezone': 'UTC',
+                        'destination_timezone': 'Europe/Berlin'
+                    }
+                }
+            }
+        }
+
+        self._load_specific_rule(normalizer, rule)
+        normalizer.process(event)
+
+        assert event == expected
+
     def test_normalization_from_timestamp_with_non_matching_patterns(self, normalizer):
         event = {
             'winlog': {

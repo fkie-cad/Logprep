@@ -139,7 +139,7 @@ def main():
     elif args.dry_run:
         json_input = True if args.dry_run_input_type == 'json' else False
         dry_runner = DryRunner(args.dry_run, args.config,
-                               args.dry_run_full_output, json_input)
+                               args.dry_run_full_output, json_input, logger)
         dry_runner.run()
     else:
         _run_logprep(args, logger, status_logger)
