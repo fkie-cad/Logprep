@@ -51,7 +51,7 @@ class ListComparisonRule(Rule):
         self._check_field = list_comparison_cfg["check_field"]
         self._list_comparison_output_field = list_comparison_cfg["output_field"]
 
-        self._compare_set = set()
+        self._compare_sets = dict()
         self._config = list_comparison_cfg
 
     def init_list_comparison(self, list_search_base_path: Optional[str]):
@@ -64,20 +64,19 @@ class ListComparisonRule(Rule):
                     # iterate over all files specified in rule
                     with open(list_path, 'r') as f:
                         compare_elements = f.read().splitlines()
-                        file_elem_tuples = [(os.path.basename(list_path), elem) for elem in
-                                            compare_elements if not elem.startswith("#")]
-                        # add tuples to the set of elements to be compared against list files.
-                        self._compare_set.update(file_elem_tuples)
+                        file_elem_tuples = [elem for elem in compare_elements if not elem.startswith("#")]
+                        file_name = os.path.basename(list_path)
+                        self._compare_sets[file_name] = set(file_elem_tuples)
 
     def __eq__(self, other: 'ListComparisonRule') -> bool:
-        return (other.filter == self._filter) and (self._compare_set == other.compare_set)
+        return (other.filter == self._filter) and (self._compare_sets == other.compare_sets)
 
     def __hash__(self) -> int:
         return hash(repr(self))
 
     @property
-    def compare_set(self) -> set:
-        return self._compare_set
+    def compare_sets(self) -> dict:
+        return self._compare_sets
 
     @property
     def check_field(self) -> str:

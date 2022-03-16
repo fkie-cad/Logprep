@@ -164,20 +164,19 @@ class ListComparison(RuleBasedProcessor):
         Check if field value violates block or allow list.
         Returns the result of the comparison (res_key), as well as a dictionary containing the result (key)
         and a list of filenames pertaining to said result (value).
-
         """
 
+        # get value that should be checked in the lists
         field_value = self._get_dotted_field_value(event, rule.check_field)
 
-        list_matches = [item[0] for item in rule.compare_set if item[1] == field_value]
-        unmatched_files = {item[0] for item in rule.compare_set if item[1] != field_value}
+        # iterate over lists and check if element is in any
+        list_matches = []
+        for compare_list in rule.compare_sets.keys():
+            if field_value in rule.compare_sets[compare_list]:
+                list_matches.append(compare_list)
 
+        # if matching list was found return it, otherwise return all list names
         if len(list_matches) > 0:
-            res_key = "in_list"
-            result = [filename for filename in list_matches]
-            return result, res_key
-
+            return list_matches, "in_list"
         elif len(list_matches) == 0:
-            res_key = "not_in_list"
-            result = [filename for filename in unmatched_files]
-            return result, res_key
+            return list(rule.compare_sets.keys()), "not_in_list"
