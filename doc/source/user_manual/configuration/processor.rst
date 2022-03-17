@@ -325,8 +325,9 @@ has to be given with :code:`file:///path/to/file.dat`.
 tagging_field_name
 ~~~~~~~~~~~~~~~~~~
 
-Optional configuration field that defines into which field in the event the error indication 'unrecognized_domain'
-should be written to. If this field is not present it defaults to 'tags'.
+Optional configuration field that defines into which field in the event the informational tags should be written to.
+If this field is not present it defaults to :code:`tags`. More about the tags can be found in the introduction of the
+:ref:`intro_domain_label_extractor`.
 
 List Comparison Enricher
 ------------------------
