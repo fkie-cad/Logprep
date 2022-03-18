@@ -116,14 +116,39 @@ class TestDomainLabelExtractor:
 
     def test_domain_extraction_without_recognized_tld(self, domain_label_extractor):
         document = {'url': {'domain': 'domain.fubarbo'}}
-        expected_output = {'url': {'domain': 'domain.fubarbo'}, "tags": ['unrecognized_domain']}
+        expected_output = {'url': {'domain': 'domain.fubarbo'}, "tags": ['invalid_domain_in_url_domain']}
 
         domain_label_extractor.process(document)
         assert document == expected_output
 
     def test_domain_extraction_without_recognized_tld_with_existing_tag_field(self, domain_label_extractor):
         document = {'url': {'domain': 'domain.fubarbo'}, "tags": ['source']}
-        expected_output = {'url': {'domain': 'domain.fubarbo'}, "tags": ['source', 'unrecognized_domain']}
+        expected_output = {'url': {'domain': 'domain.fubarbo'}, "tags": ['source', 'invalid_domain_in_url_domain']}
+
+        domain_label_extractor.process(document)
+        assert document == expected_output
+
+    def test_two_invalid_domains(self, domain_label_extractor):
+        document = {'url': {'domain': 'domain.fubarbo'}, 'source': {'domain': 'domain.invalid'}, "tags": ['source']}
+        expected_output = {'url': {'domain': 'domain.fubarbo'}, 'source': {'domain': 'domain.invalid'},
+                           "tags": ['source', 'invalid_domain_in_url_domain', 'invalid_domain_in_source_domain']}
+
+        domain_label_extractor.process(document)
+        assert document == expected_output
+
+    def test_two_domains_one_is_invalid(self, domain_label_extractor):
+        document = {'url': {'domain': 'domain.de'}, 'source': {'domain': 'domain.invalid'}, "tags": ['source']}
+        expected_output = {'url': {'domain': 'domain.de', 'registered_domain': 'domain.de', 'subdomain': '',
+                                   'top_level_domain': 'de'}, 'source': {'domain': 'domain.invalid'},
+                           "tags": ['source', 'invalid_domain_in_source_domain']}
+
+        domain_label_extractor.process(document)
+        assert document == expected_output
+
+    def test_two_domains_one_is_invalid_one_has_ip(self, domain_label_extractor):
+        document = {'url': {'domain': 'domain.fubarbo'}, 'source': {'domain': '123.123.123.123'}, "tags": ['source']}
+        expected_output = {'url': {'domain': 'domain.fubarbo'}, 'source': {'domain': '123.123.123.123'},
+                           "tags": ['source', 'invalid_domain_in_url_domain', 'ip_in_source_domain']}
 
         domain_label_extractor.process(document)
         assert document == expected_output
@@ -138,7 +163,7 @@ class TestDomainLabelExtractor:
 
         domain_label_extractor = DomainLabelExtractorFactory.create('Test DomainLabelExtractor Name', config, logger)
         document = {'url': {'domain': 'domain.fubarbo'}}
-        expected_output = {'url': {'domain': 'domain.fubarbo'}, "special_tags": ['unrecognized_domain']}
+        expected_output = {'url': {'domain': 'domain.fubarbo'}, "special_tags": ['invalid_domain_in_url_domain']}
 
         domain_label_extractor.process(document)
         assert document == expected_output
@@ -153,7 +178,7 @@ class TestDomainLabelExtractor:
 
         domain_label_extractor = DomainLabelExtractorFactory.create('Test DomainLabelExtractor Name', config, logger)
         document = {'url': {'domain': 'domain.fubarbo'}, "special_tags": ['source']}
-        expected_output = {'url': {'domain': 'domain.fubarbo'}, "special_tags": ['source', 'unrecognized_domain']}
+        expected_output = {'url': {'domain': 'domain.fubarbo'}, "special_tags": ['source', 'invalid_domain_in_url_domain']}
 
         domain_label_extractor.process(document)
         assert document == expected_output
@@ -174,14 +199,14 @@ class TestDomainLabelExtractor:
 
     def test_domain_extraction_with_ipv4_target(self, domain_label_extractor):
         document = {'url': {'domain': '123.123.123.123'}}
-        expected_output = {'url': {'domain': '123.123.123.123'}}
+        expected_output = {'url': {'domain': '123.123.123.123'}, 'tags': ['ip_in_url_domain']}
 
         domain_label_extractor.process(document)
         assert document == expected_output
 
     def test_domain_extraction_with_ipv6_target(self, domain_label_extractor):
         document = {'url': {'domain': '2001:0db8:85a3:0000:0000:8a2e:0370:7334'}}
-        expected_output = {'url': {'domain': '2001:0db8:85a3:0000:0000:8a2e:0370:7334'}}
+        expected_output = {'url': {'domain': '2001:0db8:85a3:0000:0000:8a2e:0370:7334'}, 'tags': ['ip_in_url_domain']}
 
         domain_label_extractor.process(document)
         assert document == expected_output

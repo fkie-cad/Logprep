@@ -178,14 +178,18 @@ class DomainLabelExtractor(RuleBasedProcessor):
                 try:
                     # check if ip address is ipv4
                     socket.inet_aton(labels.domain)
+                    event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
+                                                      [f"ip_in_{rule.target_field.replace('.', '_')}"]
                 except OSError:
                     try:
                         # check if ip address is ipv6
                         socket.inet_pton(socket.AF_INET6, labels.domain)
+                        event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
+                                                          [f"ip_in_{rule.target_field.replace('.', '_')}"]
                     except OSError:
                         # if it's neither ipv4 nor ipv6 then add error tag
                         event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
-                                                          ["unrecognized_domain"]
+                                                          [f"invalid_domain_in_{rule.target_field.replace('.', '_')}"]
 
     def events_processed_count(self):
         return self._events_processed

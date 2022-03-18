@@ -66,12 +66,18 @@ Domain Resolver
 
 The domain resolver is a processor that can resolve domains inside a defined field.
 
+.. _intro_domain_label_extractor:
+
 Domain Label Extractor
 ----------------------
 
-The domain label extractor is a processor that splits a domain into it's corresponding labels like registered_domain,
-top_level_domain and subdomain. If instead an IP is given in the target field nothing is done. If neither a domain nor
-ip address can be recognized a tag 'unrecognized_domain' will be added to a configurable tag field in the event.
+The domain label extractor is a processor that splits a domain into it's corresponding labels like
+:code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`. If instead an IP is given in the target field
+an informational tag is added to the configured tags field. If neither a domain nor an ip address can be recognized an
+invalid error tag will be be added to the tag field in the event. The added tags contain each the target field name that
+was checked by the configured rule, such that it is possible to distinguish between different domain fields in one
+event. For example for the target field :code:`url.domain` following tags could be added:
+:code:`invalid_domain_in_url_domain` and :code:`ip_in_url_domain`
 
 List Comparison Enricher
 ------------------------

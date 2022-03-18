@@ -12,4 +12,11 @@
     "output_field": "extracted.domain.info"
   },
   "description": ""
+},{
+  "filter": "source",
+  "domain_label_extractor": {
+    "target_field": "source.domain",
+    "output_field": "source"
+  },
+  "description": ""
 }]
