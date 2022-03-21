@@ -1,6 +1,5 @@
 # pylint: disable=missing-module-docstring
 from abc import ABC, abstractmethod
-from encodings import utf_8
 from logging import getLogger
 import json
 from logprep.processor.base.processor import RuleBasedProcessor
@@ -45,7 +44,7 @@ class BaseProcessorTestCase(ABC):
                 specific_rules_dir
             )
             for rule_path in rule_paths:
-                with open(rule_path, "r", encoding=utf_8) as rule_file:
+                with open(rule_path, "r", encoding="utf8") as rule_file:
                     rules = json.load(rule_file)
                     for rule in rules:
                         specific_rules.append(rule)
