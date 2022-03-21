@@ -1,11 +1,10 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from logging import getLogger
 import json
-import unittest
 from logprep.processor.base.processor import RuleBasedProcessor
 
 
-class BaseProcessorTestCase(unittest.TestCase):
+class BaseProcessorTestCase(ABC):
 
     factory = None
 
@@ -42,11 +41,14 @@ class BaseProcessorTestCase(unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.object = self.object = self.factory.create(
-            "Test Instance Name", self.CONFIG, self.logger
-        )
-        self.specific_rules = self.set_rules(self.specific_rules_dirs)
-        self.generic_rules = self.set_rules(self.generic_rules_dirs)
+        if self.factory is not None:
+            self.object = self.factory.create(
+                "Test Instance Name", self.CONFIG, self.logger
+            )
+            self.specific_rules = self.set_rules(self.specific_rules_dirs)
+            self.generic_rules = self.set_rules(self.generic_rules_dirs)
 
     def test_my_false(self):
         assert True
+        if self.factory is None:
+            assert False
