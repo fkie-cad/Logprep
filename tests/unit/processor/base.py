@@ -2,6 +2,7 @@
 import json
 import re
 from abc import ABC, abstractmethod
+from encodings import utf_8
 from logging import getLogger
 
 import pytest

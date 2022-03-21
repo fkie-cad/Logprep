@@ -2,7 +2,9 @@ import copy
 import datetime
 import time
 from copy import deepcopy
-from unittest import mock
+from json import load
+from logging import getLogger
+from unittest import mock, TestCase
 
 import pytest
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -22,7 +24,7 @@ cap_group_regex_mapping = (
 cache_max_timedelta = datetime.timedelta(milliseconds=100)
 
 
-class TestPseudonymizer(BaseProcessorTestCase):
+class TestPseudonymizer(BaseProcessorTestCase, TestCase):
 
     factory = PseudonymizerFactory
 
