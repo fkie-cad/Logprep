@@ -15,3 +15,5 @@ tests/testdata/external/
 .profile/
 *.prof
 *.pyc
+.venv
+*.lock
