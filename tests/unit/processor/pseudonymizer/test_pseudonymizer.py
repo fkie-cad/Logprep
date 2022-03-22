@@ -53,13 +53,10 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, RuleBasedProcessor)
 
-    def test_describe(self):
-        assert self.object.describe() == "Pseudonymizer (Test Instance Name)"
-
     @mock.patch(
         "logprep.processor.pseudonymizer.processor.Pseudonymizer._pseudonymize_event"
     )
-    def test_process(self, mock_pseudonymize_event):
+    def test_pseudonymizer_process(self, mock_pseudonymize_event):
         mock_pseudonymize_event.return_value = [{"pseudonym": "foo", "origin": "bar"}]
         count = self.object.events_processed_count()
 
@@ -85,9 +82,6 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
         pseudonyms = self.object._pseudonymize_event(event_raw)
         assert event_raw == {"foo": "bar"}
         assert pseudonyms == []
-
-    def test_events_processed_count(self):
-        assert self.object.events_processed_count() == 0
 
     def test_shut_down(self):
         self.object.shut_down()

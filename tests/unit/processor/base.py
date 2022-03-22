@@ -1,7 +1,10 @@
 # pylint: disable=missing-module-docstring
+import json
+import re
 from abc import ABC, abstractmethod
 from logging import getLogger
-import json
+
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 
 
@@ -63,7 +66,25 @@ class BaseProcessorTestCase(ABC):
             self.specific_rules = self.set_rules(self.specific_rules_dirs)
             self.generic_rules = self.set_rules(self.generic_rules_dirs)
 
-    def test_my_false(self):
-        assert True
-        if self.factory is None:
-            assert False
+    def test_process(self):
+        assert self.object.events_processed_count() == 0
+        document = {
+            "event_id": "1234",
+            "message": "user root logged in",
+            "@timestamp": "baz",
+        }
+        count = self.object.events_processed_count()
+        self.object.process(document)
+        assert self.object.events_processed_count() == count + 1
+
+    def test_describe(self):
+        describe_string = self.object.describe()
+        assert re.search("Test Instance Name", describe_string)
+
+    def test_generic_specific_rule_trees(self):
+        assert isinstance(self.object._generic_tree, RuleTree)
+        assert isinstance(self.object._specific_tree, RuleTree)
+
+    def test_generic_specific_rule_trees_not_empty(self):
+        assert self.object._generic_tree.get_size() > 0
+        assert self.object._specific_tree.get_size() > 0
