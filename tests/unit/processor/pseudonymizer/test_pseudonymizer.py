@@ -17,11 +17,11 @@ from logprep.processor.processor_factory_error import ProcessorFactoryError
 from logprep.processor.pseudonymizer.factory import Pseudonymizer, PseudonymizerFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 
-cap_group_regex_mapping = (
+CAP_GROUP_REGEX_MAPPING = (
     "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
 )
 
-cache_max_timedelta = datetime.timedelta(milliseconds=100)
+CACHE_MAX_TIMEDELTA = datetime.timedelta(milliseconds=100)
 
 
 class TestPseudonymizer(BaseProcessorTestCase, TestCase):
@@ -134,7 +134,7 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
         assert len(pseudonyms) == 1 and set(pseudonyms[0]) == {"pseudonym", "origin"}
 
     def test_recently_stored_pseudonyms_are_not_stored_again(self):
-        self.object._cache_max_timedelta = cache_max_timedelta
+        self.object._cache_max_timedelta = CACHE_MAX_TIMEDELTA
         self.object.setup()
         event = {"event_id": 1234, "something": "something"}
 
@@ -163,7 +163,7 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
             )
             assert len(pseudonyms) == 0
 
-            time.sleep(cache_max_timedelta.total_seconds())
+            time.sleep(CACHE_MAX_TIMEDELTA.total_seconds())
 
     def _load_specific_rule(self, rule, regex_mappping_path):
         self.object._load_regex_mapping(regex_mappping_path)
@@ -605,7 +605,7 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
             "pseudonymize": {"pseudo_this": regex_pattern},
             "url_fields": ["do_not_pseudo_this"],
         }
-        self._load_specific_rule(rule, cap_group_regex_mapping)
+        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
         self.object._pseudonymize_event(event)
 
         assert event["do_not_pseudo_this"] == url
@@ -630,7 +630,7 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
             },
             "url_fields": ["pseudo_this", "and_pseudo_this"],
         }
-        self._load_specific_rule(rule, cap_group_regex_mapping)
+        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
         self.object._pseudonymize_event(event)
 
         assert event["and_pseudo_this"] == pseudonymized_url
@@ -651,7 +651,7 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
             "pseudonymize": {"pseudo_this": regex_pattern},
             "url_fields": ["pseudo_this"],
         }
-        self._load_specific_rule(rule, cap_group_regex_mapping)
+        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
         self.object._pseudonymize_event(event)
 
         assert event["pseudo_this"] == pseudonymized
@@ -662,7 +662,7 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
             "filter": "filter_this: does_not_matter",
             "pseudonymize": {"pseudo_this": regex_pattern},
         }
-        self._load_specific_rule(rule, cap_group_regex_mapping)
+        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
         self.object._pseudonymize_event(event)
         return event
 
@@ -673,7 +673,7 @@ class TestPseudonymizer(BaseProcessorTestCase, TestCase):
             "pseudonymize": {"pseudo_this": regex_pattern},
             "url_fields": ["pseudo_this"],
         }
-        self._load_specific_rule(rule, cap_group_regex_mapping)
+        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
         self.object._pseudonymize_event(event)
         return event
 
