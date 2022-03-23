@@ -3,6 +3,7 @@ from os.path import join
 from logging import getLogger
 
 from pytest import raises, importorskip
+
 importorskip('logprep.processor.labeler')
 
 from unittest.mock import patch

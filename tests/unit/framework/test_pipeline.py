@@ -259,7 +259,8 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline._output.store_failed = check_if_failed_was_stored
 
-        with AssertEmitsLogMessage(self.log_handler, ERROR, contains='A critical error occurred for output'):
+        with AssertEmitsLogMessage(self.log_handler, ERROR,
+                                   contains='A critical error occurred for output'):
             pipeline._retrieve_and_process_data()
             assert self._check_failed_stored[
                        'msg'] == 'A critical error occurred for output dummy: An error message'
@@ -355,10 +356,9 @@ class TestPipeline(ConfigurationForTests):
 
         assert len(pipeline._output.events) == 1
         assert len(pipeline._output.failed_events) == 1
-        assert pipeline.get_processors()[0].events_processed_count() == 2
-        assert pipeline.get_processors()[1].events_processed_count() == 1  # failing
-        assert pipeline.get_processors()[
-                   2].events_processed_count() == 1  # does not receive first event
+        assert pipeline.get_processors()[0].ps.processed_count == 2
+        assert pipeline.get_processors()[1].ps.processed_count == 1  # failing
+        assert pipeline.get_processors()[2].ps.processed_count == 1  # does not receive first event
 
     def test_processor_fatal_error_is_logged_event_is_stored_in_error_output_pipeline_is_rebuilt(
             self):
