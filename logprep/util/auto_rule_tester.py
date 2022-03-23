@@ -1,32 +1,30 @@
 #!/usr/bin/python3
 """This module implements an auto-tester that can execute tests for rules."""
 
-from typing import Union, Optional
-from logging import getLogger
+import hashlib
 import inspect
+import json
 import pathlib
 import tempfile
-from os import walk, path
-import json
-from pprint import pprint
-from collections import defaultdict, OrderedDict
-import regex as re
-from io import StringIO
-from contextlib import redirect_stdout
 import traceback
-
-from colorama import Fore
+from collections import defaultdict, OrderedDict
+from contextlib import redirect_stdout
 from difflib import ndiff
+from io import StringIO
+from logging import getLogger
+from os import walk, path
+from pprint import pprint
+from typing import Union, Optional
+
+import regex as re
+from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
-
-from logprep.processor.processor_factory import ProcessorFactory
-from logprep.processor.base.rule import Rule
 from logprep.processor.base.processor import RuleBasedProcessor
-
+from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.processor import PreDetector
-
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
 from logprep.util.helper import print_fcolor, remove_file_if_exists
 
@@ -357,7 +355,7 @@ class AutoRuleTester:
         self._add_rules_from_directory(processor, rule_type)
 
     def _run_custom_rule_tests(self, processor, rule_test):
-        temp_rule_path = path.join(self._empty_rules_dirs[0], "temp.json")
+        temp_rule_path = path.join(self._empty_rules_dirs[0], f'{hashlib.sha256()}.json')
         rules = self._get_rules(processor, rule_test)
 
         for rule_type, rules in rules.items():
@@ -367,7 +365,7 @@ class AutoRuleTester:
                 remove_file_if_exists(temp_rule_path)
 
     def _run_file_rule_tests(self, processor, rule_test):
-        temp_rule_path = path.join(self._empty_rules_dirs[0], "temp.json")
+        temp_rule_path = path.join(self._empty_rules_dirs[0], f'{hashlib.sha256()}.json')
         rules = self._get_rules(processor, rule_test)
 
         for rule_type, rules in rules.items():

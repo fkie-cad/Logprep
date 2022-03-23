@@ -226,10 +226,15 @@ tree_config
 
 Path to JSON file with rule tree matcher config.
 
-generic_resolver.resolve_mapping
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hyperscan_db_path
+~~~~~~~~~~~~~~~~~
 
-Path to a JSON mapping with abbreviations of network device types.
+Path to a directory where the compiled `Hyperscan <https://python-hyperscan.readthedocs.io/en/latest/>`_ databases will be stored persistently.
+Persistent storage is set to false per default.
+If the specified directory does not exist, it will be created.
+The database will be stored in the directory of the generic resolver if no path has been specified within the pipeline config.
+To update and recompile a persistently stored databases simply delete the whole directory.
+The databases will be compiled again during the next run.
 
 --------
 

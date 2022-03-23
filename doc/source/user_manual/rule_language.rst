@@ -986,8 +986,8 @@ Domain Resolver
 The domain resolver requires the additional field :code:`domain_resolver`.
 The additional field :code:`domain_resolver.source_url_or_domain` must be defined.
 It contains the field from which an URL should be parsed and then written to :code:`resolved_ip`.
-The URL can be located in continuous text insofar the URL is valid.  
-  
+The URL can be located in continuous text insofar the URL is valid.
+
 Optionally, the output field can be configured (overriding the default :code:`resolved_ip`) using the parameter :code:`output_field`.
 This can be a dotted subfield.
 
@@ -1101,7 +1101,7 @@ In the following example the IP in :code:`client.ip` will be enriched with geoip
 Template Replacer
 =================
 
-The generic adder requires the additional field :code:`template_replacer`.
+The template replacer requires the additional field :code:`template_replacer`.
 No additional configuration parameters are required for the rules.
 The module is completely configured over the pipeline configuration.
 
@@ -1118,7 +1118,7 @@ In the following example the target field specified in the processor configurati
 Generic Resolver
 ================
 
-The generic adder requires the additional field :code:`generic_resolver`.
+The generic resolver requires the additional field :code:`generic_resolver`.
 Configurable fields are being checked by regex patterns and a configurable value will be added if a pattern matches.
 The parameters within :code:`generic_resolver` must be of the form
 :code:`field_mapping: {SOURCE_FIELD: DESTINATION_FIELD}, resolve_list: {REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`.
@@ -1139,14 +1139,41 @@ In the following example :code:`to_resolve` will be checked by the regex pattern
       resolve_list:
         .*Hello.*: Greeting
 
-Alternatively, a YML file with a resolve list and a regex pattern can be used to resolve values.
-For this, a field :code:`resolve_from_file` with the subfields :code:`path` and :code:`pattern` must be added.
+Alternatively, a YML file with a resolve list and an optional regex pattern can be used to resolve values.
+For this, either a field :code:`resolve_from_file` with a path to a resolve list file must be added
+or dictionary field :code:`resolve_from_file` with the subfields :code:`path` and :code:`pattern`.
+Using the :code:`pattern` option allows to define one regex pattern that can be used on all entries within a
+resolve list instead of having to write a regex pattern for each entry in the list.
 The resolve list in the file at :code:`path` is then used in conjunction with the regex pattern in :code:`pattern`.
 :code:`pattern` must be a regex pattern with a capture group that is named :code:`mapping`.
-The resolver will check for the pattern and get value captured by the :code:`mapping` group.
-This captured value is then used in the list from the file.
+The entries in the resolve list are then transformed by the pattern.
+At first, the pattern is matched with each list entry in the resolve list.
+If the capture group :code:`mapping` matches, then the capture group in the pattern is replaced with the matching result.
+This replaced pattern is then used instead of the original mapping within the resolve list file.
+This effectively wraps the list entries with the regex pattern.
 
-In the following example :code:`to_resolve` will be checked by the regex pattern :code:`\d*(?P<mapping>[a-z]+)\d*` and the list in :code:`path/to/resolve_mapping.yml` will be used to add new fields.
+In the following example :code:`to_resolve` will be checked by the list in :code:`path/to/resolve_mapping.yml`.
+:code:`"resolved": "resolved foo"` will be added to the event if the value in :code:`to_resolve` matches a pattern in the file.
+Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains bar.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example resolving with list from file
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_from_file: path/to/resolve_mapping.yml
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example file with resolve list
+
+    \d*foo\d*: resolved foo
+    \d*bar\d*: resolved bar
+
+In the following example :code:`to_resolve` will be checked with the regex pattern :code:`\d*(?P<mapping>[a-z]+)\d*` and the list in :code:`path/to/resolve_mapping.yml` will be used to add new fields.
 :code:`"resolved": "resolved foo"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains foo.
 Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains bar.
 
@@ -1168,6 +1195,10 @@ Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if th
 
     foo: resolved foo
     bar: resolved bar
+
+The generic resolver uses the `Python Hyperscan library <https://python-hyperscan.readthedocs.io/en/latest/>`_ to check regex patterns.
+By default, the compiled Hyperscan databases will be stored persistently in the directory specified in the :code:`pipeline.yml`.
+The field :code:`store_db_persistent` can be used to configure if a database compiled from a rule's :code:`resolve_list` should be stored persistently.
 
 PreDetector
 ===========

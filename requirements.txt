@@ -36,6 +36,8 @@ frozenlist==1.2.0
     #   aiosignal
 geoip2==4.5.0
     # via -r requirements.in
+hyperscan==0.1.5
+    # via -r requirements.in
 idna==3.3
     # via
     #   idna-ssl
