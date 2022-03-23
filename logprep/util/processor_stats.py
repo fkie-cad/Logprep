@@ -1,20 +1,18 @@
 """This module contains functionality to log the status of logprep."""
-
-from typing import List, Union
-from multiprocessing import Lock
-from logging import Logger
-from multiprocessing import Value, current_process
-from ctypes import c_double
-from time import time
-from copy import deepcopy
-from collections import OrderedDict
 import json
+from collections import OrderedDict
+from copy import deepcopy
+from ctypes import c_double
 from datetime import datetime
+from logging import Logger
+from multiprocessing import Lock, Value, current_process
+from typing import List, Union
 
 import numpy as np
+from time import time
 
-from logprep.processor.base.rule import Rule
 from logprep.processor.base.processor import BaseProcessor
+from logprep.processor.base.rule import Rule
 
 np.set_printoptions(suppress=True)
 
@@ -27,20 +25,24 @@ class StatsClassesController:
     @staticmethod
     def decorate_all_methods(decorator):
         """Decorate all methods of a class with another decorator."""
+
         def decorate(cls):
             for attribute in cls.__dict__:
                 if callable(getattr(cls, attribute)):
                     setattr(cls, attribute, decorator(getattr(cls, attribute)))
             return cls
+
         return decorate
 
     @staticmethod
     def is_enabled(func):
         """Disable a method if status tracking is disabled."""
+
         def inner(*args, **kwargs):
             if StatsClassesController.ENABLED:
                 return func(*args, **kwargs)
             return None
+
         return inner
 
 
@@ -49,19 +51,34 @@ class ProcessorStats:
     """Used to track processor stats."""
 
     def __init__(self):
+        self.aggr_data = None
+        self._max_time = None
+        self.num_rules = 0
+        self.reset_statistics()
+
+    def reset_statistics(self):
         self.aggr_data = {'processed': 0, 'matches': 0, 'errors': 0, 'warnings': 0}
         self._max_time = -1
 
     def setup_rules(self, rules: List[Rule]):
         """Setup aggregation data for rules."""
-        self.aggr_data['matches_per_idx'] = np.zeros(len(rules), dtype=int)
-        self.aggr_data['times_per_idx'] = np.zeros(len(rules), dtype=float)
+        self.num_rules = len(rules)
+        self.aggr_data['matches_per_idx'] = np.zeros(self.num_rules, dtype=int)
+        self.aggr_data['times_per_idx'] = np.zeros(self.num_rules, dtype=float)
 
     def update_per_rule(self, idx: int, processing_time: float):
         """Update matches and times per rule in aggregation data."""
         self.aggr_data['matches'] += 1
         self.aggr_data['matches_per_idx'][idx] += 1
         self.aggr_data['times_per_idx'][idx] += processing_time
+
+    @property
+    def processed_count(self):
+        return self.aggr_data['processed']
+
+    def increment_processed_count(self, n: int = 1):
+        """ Increments the processed count statistic."""
+        self.aggr_data['processed'] += n
 
     def update_processed_count(self, processed_count: int):
         """Increment processed count in aggregation data."""
@@ -145,6 +162,7 @@ class StatusTracker:
                 return False
             self._timer.value = time() + self._print_period
             return True
+
     # pylint: enable=C0111
 
     def set_pipeline(self, pipeline):

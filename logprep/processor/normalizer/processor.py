@@ -103,13 +103,13 @@ class Normalizer(RuleBasedProcessor):
 
     @TimeMeasurement.measure_time('normalizer')
     def process(self, event: dict):
-        self._events_processed += 1
-        self.ps.update_processed_count(self._events_processed)
         self._event = event
         self._conflicting_fields.clear()
         self._apply_rules()
         if self._count_grok_pattern_matches:
             self._write_grok_matches()
+
+        self.ps.increment_processed_count()
         try:
             self._raise_warning_if_fields_already_existed()
         except DuplicationError as error:
@@ -336,9 +336,6 @@ class Normalizer(RuleBasedProcessor):
     def _raise_warning_if_fields_already_existed(self):
         if self._conflicting_fields:
             raise DuplicationError(self._name, self._conflicting_fields)
-
-    def events_processed_count(self):
-        return self._events_processed
 
     def shut_down(self):
         """Stop processing of this processor and finish outstanding actions.

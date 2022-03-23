@@ -31,7 +31,6 @@ class DoNothing(BaseProcessor):
         self._errors = errors if errors is not None else []
         self._extra_data = extra_data
 
-        self._processed_count = 0
         self.setup_called_count = 0
         self.shut_down_called_count = 0
 
@@ -44,12 +43,8 @@ class DoNothing(BaseProcessor):
             if error is not None:
                 raise error
 
-        self._processed_count += 1
-
+        self.ps.increment_processed_count()
         return self._extra_data
-
-    def events_processed_count(self) -> int:
-        return self._processed_count
 
     def setup(self):
         self.setup_called_count += 1

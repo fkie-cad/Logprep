@@ -86,9 +86,6 @@ class GenericResolver(RuleBasedProcessor):
 
     @TimeMeasurement.measure_time('generic_resolver')
     def process(self, event: dict):
-        self._events_processed += 1
-        self.ps.update_processed_count(self._events_processed)
-
         self._event = event
 
         for rule in self._tree.get_matching_rules(event):
@@ -97,6 +94,8 @@ class GenericResolver(RuleBasedProcessor):
             processing_time = float('{:.10f}'.format(time() - begin))
             idx = self._tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
+
+        self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
         conflicting_fields = list()

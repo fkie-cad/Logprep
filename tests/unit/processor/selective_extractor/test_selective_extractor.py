@@ -26,7 +26,7 @@ def selective_extractor():
 class TestSelectiveExtractor:
 
     def test_selective_extractor_does_not_change_orig_doc(self, selective_extractor):
-        assert selective_extractor.events_processed_count() == 0
+        assert selective_extractor.ps.processed_count == 0
         document = {"user": "test_user", "other": "field"}
         exp_document = {"user": "test_user", "other": "field"}
 
@@ -35,12 +35,12 @@ class TestSelectiveExtractor:
         assert document == exp_document
 
     def test_selective_extractor_events_processed_count(self, selective_extractor):
-        assert selective_extractor.events_processed_count() == 0
+        assert selective_extractor.ps.processed_count == 0
         document = {"user": "test_user", "other": "field"}
 
         selective_extractor.process(document)
 
-        assert selective_extractor.events_processed_count() == 1
+        assert selective_extractor.ps.processed_count == 1
 
     def test_selective_extractor_self_describe(self, selective_extractor):
         assert selective_extractor.describe() == 'Selective Extractor (test-selective-extractor)'

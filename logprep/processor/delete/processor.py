@@ -26,14 +26,9 @@ class Delete(BaseProcessor):
 
         self.ps = ProcessorStats()
 
-        self._processed_count = 0
-
     def describe(self) -> str:
         return 'DELETE'
 
     def process(self, event: dict):
         event.clear()
-        self._processed_count += 1
-
-    def events_processed_count(self) -> int:
-        return self._processed_count
+        self.ps.increment_processed_count()

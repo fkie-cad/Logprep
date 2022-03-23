@@ -45,14 +45,14 @@ class TestDomainLabelExtractor:
         assert domain_label_extractor.describe() == 'DomainLabelExtractor (Test DomainLabelExtractor Name)'
 
     def test_events_processed_count(self, domain_label_extractor):
-        assert domain_label_extractor.events_processed_count() == 0
+        assert domain_label_extractor.ps.processed_count == 0
         document = {'foo': 'bar'}
         for i in range(1, 11):
             try:
                 domain_label_extractor.process(document)
             except ProcessingWarning:
                 pass
-            assert domain_label_extractor.events_processed_count() == i
+            assert domain_label_extractor.ps.processed_count == i
 
     def test_domain_extraction_from_full_url(self, domain_label_extractor):
         document = {'url': {'domain': 'https://url.full.domain.de/path/file?param=1'}}

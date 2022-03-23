@@ -41,7 +41,7 @@ class TestDomainResolver:
                 return None
         monkeypatch.setattr(socket, 'gethostbyname', mockreturn)
 
-        assert domain_resolver.events_processed_count() == 0
+        assert domain_resolver.ps.processed_count == 0
         document = {'url': 'google.de'}
 
         domain_resolver.process(document)
@@ -50,7 +50,7 @@ class TestDomainResolver:
 
     @pytest.mark.skipif(not exists(tld_list.split('file://')[-1]), reason='Tld-list required.')
     def test_invalid_dots_domain_to_ip_produces_warning(self, domain_resolver):
-        assert domain_resolver.events_processed_count() == 0
+        assert domain_resolver.ps.processed_count == 0
         document = {'url': 'google..invalid.de'}
 
         with pytest.raises(ProcessingWarning,
@@ -66,7 +66,7 @@ class TestDomainResolver:
                 return None
         monkeypatch.setattr(socket, 'gethostbyname', mockreturn)
 
-        assert domain_resolver.events_processed_count() == 0
+        assert domain_resolver.ps.processed_count == 0
         document = {'url': 'https://www.google.de/something'}
 
         domain_resolver.process(document)
@@ -78,7 +78,7 @@ class TestDomainResolver:
             return '1.2.3.4'
         monkeypatch.setattr(socket, 'gethostbyname', mockreturn)
 
-        assert domain_resolver.events_processed_count() == 0
+        assert domain_resolver.ps.processed_count == 0
         document = {'url': 'google.thisisnotavalidtld'}
 
         domain_resolver.process(document)
@@ -91,7 +91,7 @@ class TestDomainResolver:
             return '1.2.3.4'
         monkeypatch.setattr(socket, 'gethostbyname', mockreturn)
 
-        assert domain_resolver.events_processed_count() == 0
+        assert domain_resolver.ps.processed_count == 0
         document = {'url': 'google.de'}
 
         domain_resolver.process(document)
@@ -107,7 +107,7 @@ class TestDomainResolver:
 
         monkeypatch.setattr(socket, 'gethostbyname', mockreturn)
 
-        assert domain_resolver.events_processed_count() == 0
+        assert domain_resolver.ps.processed_count == 0
         document = {'source': 'google.de'}
 
         domain_resolver.process(document)
@@ -122,7 +122,7 @@ class TestDomainResolver:
 
         monkeypatch.setattr(socket, 'gethostbyname', mockreturn)
 
-        assert domain_resolver.events_processed_count() == 0
+        assert domain_resolver.ps.processed_count == 0
         document = {'client': 'google.de'}
 
         # Due to duplication error logprep raises an ProcessingWarning

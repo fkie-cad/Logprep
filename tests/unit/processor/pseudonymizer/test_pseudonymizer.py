@@ -96,18 +96,18 @@ class TestPseudonymizer:
         mock_pseudonymize_event.return_value = [
             {"pseudonym": "foo", "origin": "bar"}
         ]
-        count = pseudonymizer.events_processed_count()
+        count = pseudonymizer.ps.processed_count
 
         document = {"event_id": "1234", "message": "user root logged in"}
         pseudonyms = pseudonymizer.process(document)
         assert pseudonyms == ([{"pseudonym": "foo", "origin": "bar"}], "pseudonyms")
-        assert pseudonymizer.events_processed_count() == count + 1
+        assert pseudonymizer.ps.processed_count == count + 1
 
         document = {"event_id": "1234", "message": "user root logged in", "@timestamp": "baz"}
         pseudonyms = pseudonymizer.process(document)
         assert pseudonyms == (
             [{"pseudonym": "foo", "origin": "bar", "@timestamp": "baz"}], "pseudonyms")
-        assert pseudonymizer.events_processed_count() == count + 2
+        assert pseudonymizer.ps.processed_count == count + 2
 
     def test_pseudonymize_event(self, pseudonymizer):
         event_raw = {"foo": "bar"}
@@ -116,7 +116,7 @@ class TestPseudonymizer:
         assert pseudonyms == []
 
     def test_events_processed_count(self, pseudonymizer):
-        assert pseudonymizer.events_processed_count() == 0
+        assert pseudonymizer.ps.processed_count == 0
 
     def test_shut_down(self, pseudonymizer):
         pseudonymizer.shut_down()

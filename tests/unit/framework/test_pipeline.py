@@ -17,6 +17,7 @@ from logprep.output.output import FatalOutputError, WarningOutputError, Critical
 from logprep.processor.base.processor import BaseProcessor, ProcessingWarning
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from tests.util.testhelpers import AssertEmitsLogMessage
+from logprep.util.processor_stats import StatsClassesController
 
 
 class ConfigurationForTests:
@@ -147,15 +148,15 @@ class TestPipeline(ConfigurationForTests):
         for i in range(len(input_data)):
             pipeline._retrieve_and_process_data()
 
-        assert pipeline._pipeline[0].events_processed_count() == 3
-        assert pipeline._pipeline[2].events_processed_count() == 0
+        assert pipeline._pipeline[0].ps.processed_count == 3
+        assert pipeline._pipeline[2].ps.processed_count == 0
 
     def test_empty_documents_are_not_stored_in_the_output(self):
         pipeline = self.create_pipeline([{'test': '1'}], ['delete'])
 
         pipeline._retrieve_and_process_data()
 
-        assert pipeline._pipeline[0].events_processed_count() == 1
+        assert pipeline._pipeline[0].ps.processed_count == 1
         assert len(pipeline._output.events) == 0
 
     def test_retrieve_and_process_data_raises_exceptions_that_occur_while_retrieving_data(self):
@@ -226,9 +227,11 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline._output.store_failed = check_if_failed_was_stored
 
-        with AssertEmitsLogMessage(self.log_handler, ERROR, contains='A critical error occurred for input'):
+        with AssertEmitsLogMessage(self.log_handler, ERROR,
+                                   contains='A critical error occurred for input'):
             pipeline._retrieve_and_process_data()
-            assert self._check_failed_stored['msg'] == 'A critical error occurred for input dummy: An error message'
+            assert self._check_failed_stored[
+                       'msg'] == 'A critical error occurred for input dummy: An error message'
             assert self._check_failed_stored['raw_input'] == event
             assert self._check_failed_stored['event'] == event
 
@@ -258,7 +261,8 @@ class TestPipeline(ConfigurationForTests):
 
         with AssertEmitsLogMessage(self.log_handler, ERROR, contains='A critical error occurred for output'):
             pipeline._retrieve_and_process_data()
-            assert self._check_failed_stored['msg'] == 'A critical error occurred for output dummy: An error message'
+            assert self._check_failed_stored[
+                       'msg'] == 'A critical error occurred for output dummy: An error message'
             assert self._check_failed_stored['raw_input'] == original_event
             assert self._check_failed_stored['event'] == {}
 
@@ -326,9 +330,9 @@ class TestPipeline(ConfigurationForTests):
             pipeline.run()
 
         assert len(pipeline._output.events) == 2
-        assert pipeline.get_processors()[0].events_processed_count() == 2
-        assert pipeline.get_processors()[1].events_processed_count() == 1  # failing
-        assert pipeline.get_processors()[2].events_processed_count() == 2
+        assert pipeline.get_processors()[0].ps.processed_count == 2
+        assert pipeline.get_processors()[1].ps.processed_count == 1  # failing
+        assert pipeline.get_processors()[2].ps.processed_count == 2
 
     def test_processor_critical_error_is_logged_event_is_stored_in_error_output(self):
         input_data = [{'order': 0}, {'order': 1}]
@@ -419,6 +423,7 @@ class TestPipeline(ConfigurationForTests):
                 raise ValueError('No template for processor ' + item)
             pipeline_config.append({'pipeline%d' % len(pipeline_config): config})
 
+        StatsClassesController.ENABLED = True
         pipeline = Pipeline(connector_config,
                             pipeline_config,
                             self.timeout,
@@ -446,7 +451,8 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
     def test_fails_if_log_handler_is_not_a_MultiprocessingLogHandler(self):
         for not_a_log_handler in [None, 123, 45.67, TestMultiprocessingPipeline()]:
             with raises(MustProvideAnMPLogHandlerError):
-                MultiprocessingPipeline({}, [{}], self.timeout, not_a_log_handler, self.print_processed_period,
+                MultiprocessingPipeline({}, [{}], self.timeout, not_a_log_handler,
+                                        self.print_processed_period,
                                         self.status_logger_period, self.lock, self.shared_dict)
 
     def test_does_not_fail_if_log_handler_is_a_MultiprocessingLogHandler(self):
@@ -477,7 +483,8 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
 
     def test_enable_iteration_sets_iterate_to_true_stop_to_false(self):
         pipeline = MultiprocessingPipeline(self.connector_config, self.pipeline_config,
-                                           self.timeout, self.log_handler, self.print_processed_period,
+                                           self.timeout, self.log_handler,
+                                           self.print_processed_period,
                                            self.status_logger_period, self.lock, self.shared_dict)
         assert not pipeline._iterate()
 

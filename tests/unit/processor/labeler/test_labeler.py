@@ -196,6 +196,7 @@ class TestLabeler:
                     }
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 
@@ -311,6 +312,7 @@ class TestLabeler:
 
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 
@@ -333,6 +335,7 @@ class TestLabeler:
 
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 
@@ -358,6 +361,7 @@ class TestLabeler:
 
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 
@@ -383,6 +387,7 @@ class TestLabeler:
 
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 

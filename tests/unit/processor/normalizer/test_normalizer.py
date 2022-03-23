@@ -56,14 +56,14 @@ class TestNormalizer:
         assert normalizer.describe() == 'Normalizer (Test Normalizer Name)'
 
     def test_events_processed_count(self, normalizer):
-        assert normalizer.events_processed_count() == 0
+        assert normalizer.ps.processed_count == 0
         document = {'foo': 'bar'}
         for i in range(1, 11):
             try:
                 normalizer.process(document)
             except ProcessingWarning:
                 pass
-            assert normalizer.events_processed_count() == i
+            assert normalizer.ps.processed_count == i
 
     def test_process_normalized_field_already_exists_with_same_content(self, normalizer):
         document = {

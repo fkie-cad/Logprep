@@ -29,13 +29,13 @@ def geoip_enricher():
 @pytest.mark.skipif(not exists(geoip_db_path), reason='GeoIP db required.')
 class TestGeoIPEnricher:
     def test_geoip_data_added(self, geoip_enricher):
-        assert geoip_enricher.events_processed_count() == 0
+        assert geoip_enricher.ps.processed_count == 0
         document = {'client': {'ip': '1.2.3.4'}}
 
         geoip_enricher.process(document)
 
     def test_geoip_data_added_not_exists(self, geoip_enricher):
-        assert geoip_enricher.events_processed_count() == 0
+        assert geoip_enricher.ps.processed_count == 0
         document = {'client': {'ip': '127.0.0.1'}}
 
         geoip_enricher.process(document)
@@ -43,14 +43,14 @@ class TestGeoIPEnricher:
         assert document.get('geoip') is None
 
     def test_nothing_to_enrich(self, geoip_enricher):
-        assert geoip_enricher.events_processed_count() == 0
+        assert geoip_enricher.ps.processed_count == 0
         document = {'something': {'something': '1.2.3.4'}}
 
         geoip_enricher.process(document)
         assert 'geoip' not in document.keys()
 
     def test_geoip_data_added_not_valid(self, geoip_enricher):
-        assert geoip_enricher.events_processed_count() == 0
+        assert geoip_enricher.ps.processed_count == 0
         document = {'client': {'ip': '333.333.333.333'}}
 
         geoip_enricher.process(document)
@@ -58,7 +58,7 @@ class TestGeoIPEnricher:
         assert document.get('geoip') is None
 
     def test_enrich_an_event_geoip(self, geoip_enricher):
-        assert geoip_enricher.events_processed_count() == 0
+        assert geoip_enricher.ps.processed_count == 0
         document = {'client': {'ip': '8.8.8.8'}}
 
         geoip_enricher.process(document)
@@ -77,7 +77,7 @@ class TestGeoIPEnricher:
         assert isinstance(geoip['properties'].get('accuracy_radius'), int)
 
     def test_enrich_an_event_geoip_with_existing_differing_geoip(self, geoip_enricher):
-        assert geoip_enricher.events_processed_count() == 0
+        assert geoip_enricher.ps.processed_count == 0
         document = {'client': {'ip': '8.8.8.8'}, 'geoip': {'test': 'test'}}
 
         with pytest.raises(DuplicationError, match=r'GeoIPEnricher \(test-geoip-enricher\)\: The following fields '
@@ -86,7 +86,7 @@ class TestGeoIPEnricher:
             geoip_enricher.process(document)
 
     def test_configured_dotted_output_field(self, geoip_enricher):
-        assert geoip_enricher.events_processed_count() == 0
+        assert geoip_enricher.ps.processed_count == 0
         document = {'source': {'ip': '8.8.8.8'}}
 
         geoip_enricher.process(document)

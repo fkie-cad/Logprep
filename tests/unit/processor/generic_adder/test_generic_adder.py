@@ -31,7 +31,7 @@ def generic_adder():
 
 class TestGenericAdder:
     def test_add_generic_fields(self, generic_adder):
-        assert generic_adder.events_processed_count() == 0
+        assert generic_adder.ps.processed_count == 0
         expected = {
             'add_generic_test': 'Test', 'event_id': 123,
             'some_added_field': 'some value',
@@ -45,7 +45,7 @@ class TestGenericAdder:
         assert document == expected
 
     def test_add_generic_fields_from_file(self, generic_adder):
-        assert generic_adder.events_processed_count() == 0
+        assert generic_adder.ps.processed_count == 0
         expected = {
             'add_list_generic_test': 'Test', 'event_id': 123,
             'some_added_field': 'some value',
@@ -59,7 +59,7 @@ class TestGenericAdder:
         assert document == expected
 
     def test_add_generic_fields_from_file_list_one_element(self, generic_adder):
-        assert generic_adder.events_processed_count() == 0
+        assert generic_adder.ps.processed_count == 0
         expected = {
             'add_lists_one_generic_test': 'Test', 'event_id': 123,
             'some_added_field': 'some value',
@@ -73,7 +73,7 @@ class TestGenericAdder:
         assert document == expected
 
     def test_add_generic_fields_from_file_list_two_elements(self, generic_adder):
-        assert generic_adder.events_processed_count() == 0
+        assert generic_adder.ps.processed_count == 0
         expected = {
             'add_lists_two_generic_test': 'Test', 'event_id': 123,
             'added_from_other_file': 'some field from another file',
@@ -96,7 +96,7 @@ class TestGenericAdder:
 
         generic_adder = GenericAdderFactory.create('test-generic-adder', config, logger)
 
-        assert generic_adder.events_processed_count() == 0
+        assert generic_adder.ps.processed_count == 0
         expected = {
             'add_first_existing_generic_test': 'Test', 'event_id': 123,
             'some_added_field': 'some value',
@@ -118,7 +118,7 @@ class TestGenericAdder:
 
         generic_adder = GenericAdderFactory.create('test-generic-adder', config, logger)
 
-        assert generic_adder.events_processed_count() == 0
+        assert generic_adder.ps.processed_count == 0
         expected = {
             'add_first_existing_with_missing_generic_test': 'Test', 'event_id': 123,
             'some_added_field': 'some value',

@@ -51,7 +51,6 @@ class Pseudonymizer(RuleBasedProcessor):
         self._encrypter = DualPKCS1HybridEncrypter()
 
         self._pseudonyms_topic = pseudonyms_topic
-        self._processed_count = 0
 
         self._regex_mapping_path = regex_mapping_path
         self._regex_mapping = dict()
@@ -112,13 +111,9 @@ class Pseudonymizer(RuleBasedProcessor):
         if '@timestamp' in event:
             for pseudonym in pseudonyms:
                 pseudonym['@timestamp'] = event['@timestamp']
-        self._processed_count += 1
-        self.ps.update_processed_count(self._processed_count)
 
+        self.ps.increment_processed_count()
         return (pseudonyms, self._pseudonyms_topic) if pseudonyms != [] else None
-
-    def events_processed_count(self) -> int:
-        return self._processed_count
 
     def shut_down(self):
         pass
