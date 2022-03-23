@@ -3,7 +3,6 @@ import json
 import re
 from abc import ABC, abstractmethod
 from logging import getLogger
-
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 
@@ -88,3 +87,27 @@ class BaseProcessorTestCase(ABC):
     def test_generic_specific_rule_trees_not_empty(self):
         assert self.object._generic_tree.get_size() > 0
         assert self.object._specific_tree.get_size() > 0
+
+    def test_event_processed_count(self):
+        assert isinstance(self.object.events_processed_count(), int)
+
+    def test_get_dotted_field_value(self):
+        event = {"some": "i do not matter"}
+        dotted_field = "i.do.not.exist"
+        value = self.object._get_dotted_field_value(event, dotted_field)
+        assert value is None
+
+    def test_field_exists(self):
+        event = {"a": {"b": "I do not matter"}}
+        assert self.object._field_exists(event, "a.b")
+
+    def test_add_rules_from_directory(self):
+        generic_rules_size = self.object._generic_tree.get_size()
+        specific_rules_size = self.object._specific_tree.get_size()
+        self.object.add_rules_from_directory(
+            self.generic_rules_dirs, self.specific_rules_dirs
+        )
+        new_generic_rules_size = self.object._generic_tree.get_size()
+        new_specific_rules_size = self.object._specific_tree.get_size()
+        assert new_generic_rules_size > generic_rules_size
+        assert new_specific_rules_size > specific_rules_size
