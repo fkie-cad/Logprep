@@ -111,3 +111,22 @@ class BaseProcessorTestCase(ABC):
         new_specific_rules_size = self.object._specific_tree.get_size()
         assert new_generic_rules_size > generic_rules_size
         assert new_specific_rules_size > specific_rules_size
+
+    def test_no_redundant_rules_are_added_to_rule_tree(self):
+        """
+        prevents a kind of DDOS where a big amount of same rules are placed into
+        in the rules directories
+        ensures that every rule in rule tree is unique
+        """
+        self.object.add_rules_from_directory(
+            self.generic_rules_dirs, self.specific_rules_dirs
+        )
+        generic_rules_size = self.object._generic_tree.get_size()
+        specific_rules_size = self.object._specific_tree.get_size()
+        self.object.add_rules_from_directory(
+            self.generic_rules_dirs, self.specific_rules_dirs
+        )
+        new_generic_rules_size = self.object._generic_tree.get_size()
+        new_specific_rules_size = self.object._specific_tree.get_size()
+        assert new_generic_rules_size == generic_rules_size
+        assert new_specific_rules_size == specific_rules_size
