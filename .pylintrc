@@ -1,0 +1,21 @@
+[FORMAT]
+max-line-length=100
+
+
+[BASIC]
+no-docstring-rgx=^test_|^.*TestCase|^_|^Test
+
+
+[MESAGES CONTROL]
+disable=too-few-public-methods
+
+
+[DESIGN]
+min-public-methods=1
+max-public-methods=40
+
+
+[CLASSES]
+
+# List of method names used to declare (i.e. assign) instance attributes.
+defining-attr-methods=__init__,__new__,setUp
