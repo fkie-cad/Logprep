@@ -3,6 +3,8 @@ import json
 import re
 from abc import ABC, abstractmethod
 from logging import getLogger
+
+import pytest
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 
@@ -53,11 +55,11 @@ class BaseProcessorTestCase(ABC):
 
         return specific_rules
 
+    @pytest.fixture(autouse=True, scope="function")
     def setUp(self) -> None:  # pylint: disable=invalid-name
         """
         setUp class for the imported TestCase
         """
-        super().setUp()  # pylint: disable=no-member
         if self.factory is not None:
             self.object = self.factory.create(
                 "Test Instance Name", self.CONFIG, self.logger
