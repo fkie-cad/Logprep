@@ -46,6 +46,10 @@ class BaseProcessor:
 
         self.has_custom_tests = False
 
+    @property
+    def name(self):
+        return self._name
+
     def setup(self):
         """Set the processor up.
 

@@ -108,6 +108,8 @@ ply==3.11
     # via
     #   -r requirements.txt
     #   luqum
+prometheus-client==0.13.1
+    # via -r requirements.txt
 py==1.11.0
     # via pytest
 pycryptodome==3.13.0

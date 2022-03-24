@@ -29,13 +29,16 @@ class ConfigurationForTests:
         {'donothing1': {'type': 'donothing'}},
         {'donothing2': {'type': 'donothing'}}
     ]
+    status_logger_config = {
+        "period": 300,
+        "enabled": False,
+    }
     log_handler = MultiprocessingLogHandler(WARNING)
     timeout = 0.001
     print_processed_period = 600
-    status_logger_period = 300
     lock = Lock()
     shared_dict = dict()
-    status_logger = getLogger('Mock')
+    status_logger = [getLogger('Mock')]
     counter = SharedCounter()
 
 
@@ -71,10 +74,10 @@ class TestPipeline(ConfigurationForTests):
 
         self.pipeline = Pipeline(self.connector_config,
                                  self.pipeline_config,
+                                 self.status_logger_config,
                                  self.timeout,
                                  self.counter,
                                  self.log_handler,
-                                 self.status_logger_period,
                                  self.lock,
                                  self.shared_dict,
                                  self.status_logger)
@@ -85,10 +88,10 @@ class TestPipeline(ConfigurationForTests):
             with raises(MustProvideALogHandlerError):
                 pipeline = Pipeline(self.connector_config,
                                     self.pipeline_config,
+                                    self.status_logger_config,
                                     self.timeout,
                                     self.counter,
                                     not_a_log_handler,
-                                    self.status_logger_period,
                                     self.lock,
                                     self.shared_dict)
 
@@ -321,10 +324,10 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline = PipelineForTesting({'type': 'dummy', 'input': input_data},
                                       pipeline_config,
+                                      self.status_logger_config,
                                       self.timeout,
                                       self.counter,
                                       self.log_handler,
-                                      self.status_logger_period,
                                       self.lock,
                                       self.shared_dict)
         with AssertEmitsLogMessage(self.log_handler, WARNING, contains='ProcessorWarningMockError'):
@@ -344,10 +347,10 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline = PipelineForTesting({'type': 'dummy', 'input': input_data},
                                       pipeline_config,
+                                      self.status_logger_config,
                                       self.timeout,
                                       self.counter,
                                       self.log_handler,
-                                      self.status_logger_period,
                                       self.lock,
                                       self.shared_dict)
         with AssertEmitsLogMessage(self.log_handler, ERROR,
@@ -370,10 +373,10 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline = PipelineForTesting({'type': 'dummy', 'input': input_data},
                                       pipeline_config,
+                                      self.status_logger_config,
                                       self.timeout,
                                       self.counter,
                                       self.log_handler,
-                                      self.status_logger_period,
                                       self.lock,
                                       self.shared_dict)
         with AssertEmitsLogMessage(self.log_handler, ERROR,
@@ -391,10 +394,10 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline = PipelineForTesting({'type': 'dummy', 'input': input_data},
                                       pipeline_config,
+                                      self.status_logger_config,
                                       self.timeout,
                                       self.counter,
                                       self.log_handler,
-                                      self.status_logger_period,
                                       self.lock,
                                       self.shared_dict)
         pipeline.run()
@@ -426,10 +429,10 @@ class TestPipeline(ConfigurationForTests):
         StatsClassesController.ENABLED = True
         pipeline = Pipeline(connector_config,
                             pipeline_config,
+                            self.status_logger_config,
                             self.timeout,
                             self.counter,
                             self.log_handler,
-                            self.status_logger_period,
                             self.lock,
                             self.shared_dict)
         pipeline._setup()
@@ -451,41 +454,41 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
     def test_fails_if_log_handler_is_not_a_MultiprocessingLogHandler(self):
         for not_a_log_handler in [None, 123, 45.67, TestMultiprocessingPipeline()]:
             with raises(MustProvideAnMPLogHandlerError):
-                MultiprocessingPipeline({}, [{}], self.timeout, not_a_log_handler,
-                                        self.print_processed_period,
-                                        self.status_logger_period, self.lock, self.shared_dict)
+                MultiprocessingPipeline({}, [{}], self.status_logger_config, self.timeout,
+                                        not_a_log_handler, self.print_processed_period,
+                                        self.lock, self.shared_dict)
 
     def test_does_not_fail_if_log_handler_is_a_MultiprocessingLogHandler(self):
         try:
-            MultiprocessingPipeline(self.connector_config, self.pipeline_config, self.timeout,
-                                    self.log_handler, self.print_processed_period,
-                                    self.status_logger_period, self.lock, self.shared_dict)
+            MultiprocessingPipeline(self.connector_config, self.pipeline_config,
+                                    self.status_logger_config, self.timeout, self.log_handler,
+                                    self.print_processed_period, self.lock, self.shared_dict)
         except MustProvideAnMPLogHandlerError:
             fail('Must not raise this error for a correct handler!')
 
     def test_creates_a_new_process(self):
         children_before = active_children()
         children_running = self.start_and_stop_pipeline(
-            MultiprocessingPipeline(self.connector_config, self.pipeline_config, self.timeout,
-                                    self.log_handler, self.print_processed_period,
-                                    self.status_logger_period, self.lock, self.shared_dict))
+            MultiprocessingPipeline(self.connector_config, self.pipeline_config,
+                                    self.status_logger_config, self.timeout, self.log_handler,
+                                    self.print_processed_period, self.lock, self.shared_dict))
 
         assert len(children_running) == (len(children_before) + 1)
 
     def test_stop_terminates_the_process(self):
         children_running = self.start_and_stop_pipeline(
-            MultiprocessingPipeline(self.connector_config, self.pipeline_config, self.timeout,
-                                    self.log_handler, self.print_processed_period,
-                                    self.status_logger_period, self.lock, self.shared_dict))
+            MultiprocessingPipeline(self.connector_config, self.pipeline_config,
+                                    self.status_logger_config, self.timeout, self.log_handler,
+                                    self.print_processed_period, self.lock, self.shared_dict))
         children_after = active_children()
 
         assert len(children_after) == (len(children_running) - 1)
 
     def test_enable_iteration_sets_iterate_to_true_stop_to_false(self):
         pipeline = MultiprocessingPipeline(self.connector_config, self.pipeline_config,
-                                           self.timeout, self.log_handler,
-                                           self.print_processed_period,
-                                           self.status_logger_period, self.lock, self.shared_dict)
+                                           self.status_logger_config, self.timeout,
+                                           self.log_handler, self.print_processed_period,
+                                           self.lock, self.shared_dict)
         assert not pipeline._iterate()
 
         pipeline._enable_iteration()

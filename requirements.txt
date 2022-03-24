@@ -61,6 +61,8 @@ platformdirs==2.4.0
     # via urlextract
 ply==3.11
     # via luqum
+prometheus-client==0.13.1
+    # via -r requirements.in
 pycryptodome==3.13.0
     # via -r requirements.in
 pygrok==1.0.0
