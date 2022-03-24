@@ -11,7 +11,7 @@ disable=too-few-public-methods
 
 
 [DESIGN]
-min-public-methods=2
+min-public-methods=1
 max-public-methods=40
 
 
