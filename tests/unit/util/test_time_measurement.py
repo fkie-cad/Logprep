@@ -21,7 +21,7 @@ class TestTimeMeasurement:
         assert processing_times
         
         timestamp = processing_times.get('test')
-        assert timestamp
+        assert timestamp is not None
         assert isinstance(timestamp, float)
 
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
@@ -37,7 +37,7 @@ class TestTimeMeasurement:
         assert processing_times
         
         timestamp = processing_times.get('pipeline')
-        assert timestamp
+        assert timestamp is not None
         assert isinstance(timestamp, float)
         
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
