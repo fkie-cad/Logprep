@@ -7,7 +7,8 @@ from logging import getLogger
 
 import pytest
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
+from logprep.processor.base.processor import (ProcessingWarning,
+                                              RuleBasedProcessor)
 
 
 class BaseProcessorTestCase(ABC):
