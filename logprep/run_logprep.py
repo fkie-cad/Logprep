@@ -32,6 +32,9 @@ def _get_status_logger(config: dict, application_logger: Logger) -> List:
     status_logger_cfg = config.get('status_logger', dict())
     logging_targets = status_logger_cfg.get('targets', [])
 
+    if not logging_targets:
+        logging_targets.append({"file": {}})
+
     status_logger = []
     for target in logging_targets:
         if "file" in target.keys():
