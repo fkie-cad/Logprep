@@ -165,6 +165,14 @@ class StatusTracker:
 
         self.kafka_offset = -1
 
+    def unpack_status_logger(self, status_logger):
+        if status_logger is not None:
+            for logger in status_logger:
+                if isinstance(logger, Logger):
+                    self._file_logger = logger
+                elif isinstance(logger, PrometheusStatsExporter):
+                    self._prometheus_logger = logger
+
     def _reset_statistics(self):
         self.aggr_data = {'errors': 0, 'warnings': 0, 'processed': 0, 'error_types': dict(),
                           'warning_types': dict()}
