@@ -12,7 +12,7 @@ class PrometheusStatsExporter:
     def __init__(self, status_logger_config, application_logger):
         self._logger = application_logger
         self._configuration = status_logger_config
-        self._port = None
+        self._port = 8000
 
         self._prepare_multiprocessing()
         self._extract_port_from(self._configuration)
@@ -21,6 +21,7 @@ class PrometheusStatsExporter:
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""
         metrics = ["processed", "errors", "warnings", "matches", "mean_matches_per_rule"]
+
         self.stats = {stat_key: Counter(stat_key, "Tracks the overall processing status",
                                         labelnames=["of"], registry=None)
                       for stat_key in metrics}
@@ -39,13 +40,14 @@ class PrometheusStatsExporter:
         Sets up the proper metric registry for multiprocessing and handles the necessary
         temporary multiprocessing directory that the prometheus client expects.
         """
-        multi_processing_dir = os.environ["PROMETHEUS_MULTIPROC_DIR"]
-        multiprocess.MultiProcessCollector(REGISTRY, multi_processing_dir)
+        multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+        if multi_processing_dir:
+            multiprocess.MultiProcessCollector(REGISTRY, multi_processing_dir)
 
-        # Clean up if a directory exists already
-        if isdir(multi_processing_dir):
-            shutil.rmtree(multi_processing_dir)
-        os.makedirs(multi_processing_dir, exist_ok=True)
+            # Clean up if a directory exists already
+            if isdir(multi_processing_dir):
+                shutil.rmtree(multi_processing_dir)
+            os.makedirs(multi_processing_dir, exist_ok=True)
 
     def run(self):
         """Starts the default prometheus http endpoint"""
