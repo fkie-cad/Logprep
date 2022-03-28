@@ -35,9 +35,17 @@ status_logger
 
 The status logger exports metrics like counts of processed events, errors or warnings, for all
 processors and multiprocessing pipelines. The metrics can be exported as a rotating log file with
-JSON lines and/or via an Prometheus Exporter. The log file format has additional information like
+JSON lines and/or via a Prometheus Exporter. The log file format has additional information like
 warning and error types. Those are not available for the Prometheus Exporter. Both can be activated
-at the same time. By default only the file target is activated.
+at the same time. By default only the file target is activated. To activate the prometheus exporter
+the required target has to be configured. Furthermore the utilized `prometheus python
+client <https://github.com/prometheus/client_python>`_ requires the configuration of the environment
+variable :code:`PROMETHEUS_MULTIPROC_DIR`, a directory to save temporary files needed for between
+process communication.
+
+.. WARNING::
+   The configured directory :code:`PROMETHEUS_MULTIPROC_DIR` will be cleared on every startup. Make
+   sure it does not contain any other files as they will be lost afterwards.
 
 This status_logger is configured by the following sub parameters:
 
