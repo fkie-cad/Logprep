@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
-
+import os
 from logging import getLogger, Logger, DEBUG, ERROR
 from logging.handlers import TimedRotatingFileHandler
 from argparse import ArgumentParser
 from pathlib import Path
 from os.path import dirname, basename
 import inspect
+from typing import List, Optional
+
 import sys
 
 from logprep.runner import Runner
@@ -20,24 +22,46 @@ from logprep.processor.processor_factory import ProcessorFactory
 
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.processor_stats import StatsClassesController
+from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 DEFAULT_LOCATION_CONFIG = '/etc/logprep/pipeline.yml'
 getLogger('filelock').setLevel(ERROR)
 
 
-def _get_status_logger(config: dict) -> Logger:
+def _get_status_logger(config: dict, application_logger: Logger) -> List:
     status_logger_cfg = config.get('status_logger', dict())
+    logging_targets = status_logger_cfg.get('targets', [])
 
-    logger = getLogger('Logprep-JSON-File-Logger')
-    logger.handlers = []
+    if not logging_targets:
+        logging_targets.append({"file": {}})
 
-    log_path = status_logger_cfg.get('path', './logprep-status.jsonl')
-    Path(dirname(log_path)).mkdir(parents=True, exist_ok=True)
-    interval = status_logger_cfg.get('rollover_interval', 60*60*24)
-    backup_count = status_logger_cfg.get('backup_count', 10)
-    logger.addHandler(TimedRotatingFileHandler(log_path, when='S', interval=interval,
-                                               backupCount=backup_count))
-    return logger
+    status_logger = []
+    for target in logging_targets:
+        if "file" in target.keys():
+            file_config = target.get("file")
+            logger = getLogger('Logprep-JSON-File-Logger')
+            logger.handlers = []
+
+            log_path = file_config.get('path', './logprep-status.jsonl')
+            Path(dirname(log_path)).mkdir(parents=True, exist_ok=True)
+            interval = file_config.get('rollover_interval', 60*60*24)
+            backup_count = file_config.get('backup_count', 10)
+            logger.addHandler(TimedRotatingFileHandler(log_path, when='S', interval=interval,
+                                                       backupCount=backup_count))
+            status_logger.append(logger)
+
+        if "prometheus" in target.keys():
+            multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR", "")
+            if multi_processing_dir == "":
+                application_logger.warning("Prometheus Exporter was is deactivated because the"
+                                           "mandatory environment variable "
+                                           "'PROMETHEUS_MULTIPROC_DIR' is missing.")
+            else:
+                prometheus_exporter = PrometheusStatsExporter(status_logger_cfg, application_logger)
+                prometheus_exporter.run()
+                status_logger.append(prometheus_exporter)
+
+    return status_logger
 
 
 def _parse_arguments():
@@ -74,7 +98,7 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger, status_logger: Logger):
+def _run_logprep(arguments, logger: Logger, status_logger: Optional[List]):
     runner = None
     try:
         runner = Runner.get_runner()
@@ -100,6 +124,7 @@ def main():
     """Start the logprep runner."""
     args = _parse_arguments()
     config = Configuration().create_from_yaml(args.config)
+    config.verify(getLogger("Temporary Logger"))
 
     for plugin_dir in config.get('plugin_directories', []):
         sys.path.insert(0, plugin_dir)
@@ -108,15 +133,16 @@ def main():
     AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
     logger = AggregatingLogger.create('Logprep')
 
-    status_logger = _get_status_logger(config)
-    status_logger.disabled = args.disable_logging
+    status_logger = None
+    if not args.disable_logging:
+        status_logger = _get_status_logger(config, logger)
 
     TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get('measure_time', False)
     StatsClassesController.ENABLED = config.get('status_logger', dict()).get('enabled', True)
 
     if logger.isEnabledFor(DEBUG):
         logger.debug(f'Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}')
-        logger.debug(f'JSON file logger enabled: {StatsClassesController.ENABLED}')
+        logger.debug(f'Status logger enabled: {StatsClassesController.ENABLED}')
         logger.debug(f'Config path: {args.config}')
 
     if args.validate_rules or args.auto_test:
@@ -131,7 +157,6 @@ def main():
             exit(0)
 
     if args.auto_test:
-        status_logger.disabled = True
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
         StatsClassesController.ENABLED = False
         auto_rule_tester = AutoRuleTester(args.config)

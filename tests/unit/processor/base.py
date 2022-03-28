@@ -73,15 +73,15 @@ class BaseProcessorTestCase(ABC):
         assert isinstance(self.object, RuleBasedProcessor)
 
     def test_process(self):
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {
             "event_id": "1234",
             "message": "user root logged in",
             "@timestamp": "baz",
         }
-        count = self.object.events_processed_count()
+        count = self.object.ps.processed_count
         self.object.process(document)
-        assert self.object.events_processed_count() == count + 1
+        assert self.object.ps.processed_count == count + 1
 
     def test_describe(self):
         describe_string = self.object.describe()
@@ -96,17 +96,17 @@ class BaseProcessorTestCase(ABC):
         assert self.object._specific_tree.get_size() > 0
 
     def test_event_processed_count(self):
-        assert isinstance(self.object.events_processed_count(), int)
+        assert isinstance(self.object.ps.processed_count, int)
 
     def test_events_processed_count_counts(self):
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"foo": "bar"}
         for i in range(1, 11):
             try:
                 self.object.process(document)
             except ProcessingWarning:
                 pass
-            assert self.object.events_processed_count() == i
+            assert self.object.ps.processed_count == i
 
     def test_get_dotted_field_value_returns_none_if_not_found(self):
         event = {"some": "i do not matter"}

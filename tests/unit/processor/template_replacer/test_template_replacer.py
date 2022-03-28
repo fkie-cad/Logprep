@@ -53,7 +53,7 @@ def template_replacer_dotted_field():
 
 class TestWinMessageReplacer:
     def test_replace_message_via_template(self, template_replacer):
-        assert template_replacer.events_processed_count() == 0
+        assert template_replacer.ps.processed_count == 0
         document = {'winlog': {'channel': 'System', 'provider_name': 'Test', 'event_id': 123},
                     'message': 'foo'}
 
@@ -63,7 +63,7 @@ class TestWinMessageReplacer:
         assert document['message'] == 'Test %1 Test %2'
 
     def test_replace_non_existing_message_via_template(self, template_replacer):
-        assert template_replacer.events_processed_count() == 0
+        assert template_replacer.ps.processed_count == 0
         document = {'winlog': {'channel': 'System', 'provider_name': 'Test', 'event_id': 123}}
 
         template_replacer.process(document)
@@ -71,7 +71,7 @@ class TestWinMessageReplacer:
         assert document.get('message') is None
 
     def test_replace_dotted_message_via_template(self, template_replacer_dotted_field):
-        assert template_replacer_dotted_field.events_processed_count() == 0
+        assert template_replacer_dotted_field.ps.processed_count == 0
         document = {'winlog': {'channel': 'System', 'provider_name': 'Test', 'event_id': 123},
                     'dotted': {'message': 'foo'}}
 
@@ -82,7 +82,7 @@ class TestWinMessageReplacer:
         assert document['dotted']['message'] == 'Test %1 Test %2'
 
     def test_replace_with_additional_hyphen(self, template_replacer):
-        assert template_replacer.events_processed_count() == 0
+        assert template_replacer.ps.processed_count == 0
         document = {'winlog': {'channel': 'System', 'provider_name': 'Test-Test', 'event_id': 123},
                     'message': 'foo'}
 
@@ -92,7 +92,7 @@ class TestWinMessageReplacer:
         assert document['message'] == 'Test %1 Test %2 Test %3'
 
     def test_replace_fails_because_it_does_not_map_to_anything(self, template_replacer):
-        assert template_replacer.events_processed_count() == 0
+        assert template_replacer.ps.processed_count == 0
 
         document = {'winlog': {'channel': 'System', 'provider_name': 'Test-Test', 'event_id': 923},
                     'message': 'foo'}

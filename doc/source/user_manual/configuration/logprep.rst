@@ -33,34 +33,28 @@ It is an optional value and is set to 5 minutes by default.
 status_logger
 =============
 
-The status logger writes status information as JSON lines in a rotating log file.
-This is configured by the following sub parameters:
+The status logger exports metrics like counts of processed events, errors or warnings, for all
+processors and multiprocessing pipelines. The metrics can be exported as a rotating log file with
+JSON lines and/or via a Prometheus Exporter. The log file format has additional information like
+warning and error types. Those are not available for the Prometheus Exporter. Both can be activated
+at the same time. By default only the file target is activated. To activate the prometheus exporter
+the required target has to be configured. Furthermore the utilized `prometheus python
+client <https://github.com/prometheus/client_python>`_ requires the configuration of the environment
+variable :code:`PROMETHEUS_MULTIPROC_DIR`, a directory to save temporary files needed for between
+process communication.
 
-path
-----
+.. WARNING::
+   The configured directory :code:`PROMETHEUS_MULTIPROC_DIR` will be cleared on every startup. Make
+   sure it does not contain any other files as they will be lost afterwards.
 
-Path to the log file.
-
-rollover_interval
------------------
-
-Integer, value > 0
-
-Defines after how many seconds the log file should be rotated.
-
-backup_count
-------------
-
-Integer, value > 0
-
-Defines how many rotating log files should exist simultaneously.
+This status_logger is configured by the following sub parameters:
 
 period
 ------
 
 Integer, value > 0
 
-Defines after how many seconds the status should be written.
+Defines after how many seconds the metric should be written or updated.
 
 enabled
 -------
@@ -70,6 +64,40 @@ true/false
 Defines if the status logger should be activated.
 It is enabled by default.
 
+cumulative
+----------
+
+true/false
+
+Defines if the metrics should count continuously or if they should be reset after every period.
+It is enabled by default.
+
+targets
+-------
+
+List of targets where the statistics should be exported to. At the moment only :code:`file` and
+:code:`prometheus` is allowed. Those can be further configured with the following options:
+
+file
+^^^^
+
+| **path** *(String)*
+| Path to the log file.
+
+| **rollover_interval** *(Integer, value > 0)*
+| Defines after how many seconds the log file should be rotated.
+
+| **backup_count** *(Integer, value > 0)*
+| Defines how many rotating log files should exist simultaneously.
+
+prometheus
+^^^^^^^^^^
+
+| **port** *(Integer, value > 0)*
+| Port which should be used to start the default prometheus exporter webservers
+
+
+
 Example
 -------
 
@@ -77,11 +105,16 @@ Example
     :linenos:
 
     status_logger:
-      path: ./logs/status.json
-      rollover_interval: 86400
-      backup_count: 10
-      period: 1800
+      period: 10
       enabled: true
+      cumulative: true
+      targets:
+        - prometheus:
+            port: 8000
+        - file:
+            path: ./logs/status.json
+            rollover_interval: 86400
+            backup_count: 10
 
 logger
 ======

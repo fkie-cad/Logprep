@@ -43,9 +43,12 @@ class BaseProcessor:
 
         self.ps = None
         self._event = None
-        self._events_processed = 0
 
         self.has_custom_tests = False
+
+    @property
+    def name(self):
+        return self._name
 
     def setup(self):
         """Set the processor up.
@@ -82,16 +85,6 @@ class BaseProcessor:
         """
 
         raise NotImplementedError
-
-    @abstractmethod
-    def events_processed_count(self) -> int:
-        """Return the count of documents processed by a specific instance.
-
-        This is used for diagnostics.
-
-        """
-
-        return self._events_processed
 
     def shut_down(self):
         """Stop processing of this processor.
@@ -166,15 +159,6 @@ class RuleBasedProcessor(BaseProcessor):
         """
 
         raise NotImplementedError
-
-    @abstractmethod
-    def events_processed_count(self) -> int:
-        """Return the count of documents processed by a specific instance.
-
-        This is used for diagnostics.
-
-        """
-        return 0
 
     def shut_down(self):
         """Stop processing of this processor.

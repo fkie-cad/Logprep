@@ -4,6 +4,7 @@ import signal
 from ctypes import c_bool
 from logging import Logger, DEBUG
 from multiprocessing import Value, current_process
+from typing import List
 
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.util.configuration import Configuration, InvalidConfigurationError
@@ -103,15 +104,16 @@ class Runner:
         if not bypass_check_to_obtain_non_singleton_instance:
             raise UseGetRunnerToCreateRunnerSingleton
 
-    def set_logger(self, logger: Logger, status_logger=None):
+    def set_logger(self, logger: Logger, status_logger: List = None):
         """Setup logging for any "known" errors from any part of the software.
 
         Parameters
         ----------
         logger: Logger
             An instance of logging.Logger.
-        status_logger: Logger (optional)
-            Rotating file logger for processor status information.
+        status_logger: List (optional)
+            List of status loggers. Rotating file logger and/or prometheus exporter for processor
+            status information.
 
         Raises
         ------

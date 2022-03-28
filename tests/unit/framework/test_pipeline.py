@@ -17,6 +17,7 @@ from logprep.output.output import FatalOutputError, WarningOutputError, Critical
 from logprep.processor.base.processor import BaseProcessor, ProcessingWarning
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from tests.util.testhelpers import AssertEmitsLogMessage
+from logprep.util.processor_stats import StatsClassesController
 
 
 class ConfigurationForTests:
@@ -28,13 +29,16 @@ class ConfigurationForTests:
         {'donothing1': {'type': 'donothing'}},
         {'donothing2': {'type': 'donothing'}}
     ]
+    status_logger_config = {
+        "period": 300,
+        "enabled": False,
+    }
     log_handler = MultiprocessingLogHandler(WARNING)
     timeout = 0.001
     print_processed_period = 600
-    status_logger_period = 300
     lock = Lock()
     shared_dict = dict()
-    status_logger = getLogger('Mock')
+    status_logger = [getLogger('Mock')]
     counter = SharedCounter()
 
 
@@ -70,10 +74,10 @@ class TestPipeline(ConfigurationForTests):
 
         self.pipeline = Pipeline(self.connector_config,
                                  self.pipeline_config,
+                                 self.status_logger_config,
                                  self.timeout,
                                  self.counter,
                                  self.log_handler,
-                                 self.status_logger_period,
                                  self.lock,
                                  self.shared_dict,
                                  self.status_logger)
@@ -84,10 +88,10 @@ class TestPipeline(ConfigurationForTests):
             with raises(MustProvideALogHandlerError):
                 pipeline = Pipeline(self.connector_config,
                                     self.pipeline_config,
+                                    self.status_logger_config,
                                     self.timeout,
                                     self.counter,
                                     not_a_log_handler,
-                                    self.status_logger_period,
                                     self.lock,
                                     self.shared_dict)
 
@@ -147,15 +151,15 @@ class TestPipeline(ConfigurationForTests):
         for i in range(len(input_data)):
             pipeline._retrieve_and_process_data()
 
-        assert pipeline._pipeline[0].events_processed_count() == 3
-        assert pipeline._pipeline[2].events_processed_count() == 0
+        assert pipeline._pipeline[0].ps.processed_count == 3
+        assert pipeline._pipeline[2].ps.processed_count == 0
 
     def test_empty_documents_are_not_stored_in_the_output(self):
         pipeline = self.create_pipeline([{'test': '1'}], ['delete'])
 
         pipeline._retrieve_and_process_data()
 
-        assert pipeline._pipeline[0].events_processed_count() == 1
+        assert pipeline._pipeline[0].ps.processed_count == 1
         assert len(pipeline._output.events) == 0
 
     def test_retrieve_and_process_data_raises_exceptions_that_occur_while_retrieving_data(self):
@@ -226,9 +230,11 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline._output.store_failed = check_if_failed_was_stored
 
-        with AssertEmitsLogMessage(self.log_handler, ERROR, contains='A critical error occurred for input'):
+        with AssertEmitsLogMessage(self.log_handler, ERROR,
+                                   contains='A critical error occurred for input'):
             pipeline._retrieve_and_process_data()
-            assert self._check_failed_stored['msg'] == 'A critical error occurred for input dummy: An error message'
+            assert self._check_failed_stored[
+                       'msg'] == 'A critical error occurred for input dummy: An error message'
             assert self._check_failed_stored['raw_input'] == event
             assert self._check_failed_stored['event'] == event
 
@@ -256,9 +262,11 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline._output.store_failed = check_if_failed_was_stored
 
-        with AssertEmitsLogMessage(self.log_handler, ERROR, contains='A critical error occurred for output'):
+        with AssertEmitsLogMessage(self.log_handler, ERROR,
+                                   contains='A critical error occurred for output'):
             pipeline._retrieve_and_process_data()
-            assert self._check_failed_stored['msg'] == 'A critical error occurred for output dummy: An error message'
+            assert self._check_failed_stored[
+                       'msg'] == 'A critical error occurred for output dummy: An error message'
             assert self._check_failed_stored['raw_input'] == original_event
             assert self._check_failed_stored['event'] == {}
 
@@ -316,19 +324,19 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline = PipelineForTesting({'type': 'dummy', 'input': input_data},
                                       pipeline_config,
+                                      self.status_logger_config,
                                       self.timeout,
                                       self.counter,
                                       self.log_handler,
-                                      self.status_logger_period,
                                       self.lock,
                                       self.shared_dict)
         with AssertEmitsLogMessage(self.log_handler, WARNING, contains='ProcessorWarningMockError'):
             pipeline.run()
 
         assert len(pipeline._output.events) == 2
-        assert pipeline.get_processors()[0].events_processed_count() == 2
-        assert pipeline.get_processors()[1].events_processed_count() == 1  # failing
-        assert pipeline.get_processors()[2].events_processed_count() == 2
+        assert pipeline.get_processors()[0].ps.processed_count == 2
+        assert pipeline.get_processors()[1].ps.processed_count == 1  # failing
+        assert pipeline.get_processors()[2].ps.processed_count == 2
 
     def test_processor_critical_error_is_logged_event_is_stored_in_error_output(self):
         input_data = [{'order': 0}, {'order': 1}]
@@ -339,10 +347,10 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline = PipelineForTesting({'type': 'dummy', 'input': input_data},
                                       pipeline_config,
+                                      self.status_logger_config,
                                       self.timeout,
                                       self.counter,
                                       self.log_handler,
-                                      self.status_logger_period,
                                       self.lock,
                                       self.shared_dict)
         with AssertEmitsLogMessage(self.log_handler, ERROR,
@@ -351,10 +359,9 @@ class TestPipeline(ConfigurationForTests):
 
         assert len(pipeline._output.events) == 1
         assert len(pipeline._output.failed_events) == 1
-        assert pipeline.get_processors()[0].events_processed_count() == 2
-        assert pipeline.get_processors()[1].events_processed_count() == 1  # failing
-        assert pipeline.get_processors()[
-                   2].events_processed_count() == 1  # does not receive first event
+        assert pipeline.get_processors()[0].ps.processed_count == 2
+        assert pipeline.get_processors()[1].ps.processed_count == 1  # failing
+        assert pipeline.get_processors()[2].ps.processed_count == 1  # does not receive first event
 
     def test_processor_fatal_error_is_logged_event_is_stored_in_error_output_pipeline_is_rebuilt(
             self):
@@ -366,10 +373,10 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline = PipelineForTesting({'type': 'dummy', 'input': input_data},
                                       pipeline_config,
+                                      self.status_logger_config,
                                       self.timeout,
                                       self.counter,
                                       self.log_handler,
-                                      self.status_logger_period,
                                       self.lock,
                                       self.shared_dict)
         with AssertEmitsLogMessage(self.log_handler, ERROR,
@@ -387,10 +394,10 @@ class TestPipeline(ConfigurationForTests):
 
         pipeline = PipelineForTesting({'type': 'dummy', 'input': input_data},
                                       pipeline_config,
+                                      self.status_logger_config,
                                       self.timeout,
                                       self.counter,
                                       self.log_handler,
-                                      self.status_logger_period,
                                       self.lock,
                                       self.shared_dict)
         pipeline.run()
@@ -419,12 +426,13 @@ class TestPipeline(ConfigurationForTests):
                 raise ValueError('No template for processor ' + item)
             pipeline_config.append({'pipeline%d' % len(pipeline_config): config})
 
+        StatsClassesController.ENABLED = True
         pipeline = Pipeline(connector_config,
                             pipeline_config,
+                            self.status_logger_config,
                             self.timeout,
                             self.counter,
                             self.log_handler,
-                            self.status_logger_period,
                             self.lock,
                             self.shared_dict)
         pipeline._setup()
@@ -446,39 +454,41 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
     def test_fails_if_log_handler_is_not_a_MultiprocessingLogHandler(self):
         for not_a_log_handler in [None, 123, 45.67, TestMultiprocessingPipeline()]:
             with raises(MustProvideAnMPLogHandlerError):
-                MultiprocessingPipeline({}, [{}], self.timeout, not_a_log_handler, self.print_processed_period,
-                                        self.status_logger_period, self.lock, self.shared_dict)
+                MultiprocessingPipeline({}, [{}], self.status_logger_config, self.timeout,
+                                        not_a_log_handler, self.print_processed_period,
+                                        self.lock, self.shared_dict)
 
     def test_does_not_fail_if_log_handler_is_a_MultiprocessingLogHandler(self):
         try:
-            MultiprocessingPipeline(self.connector_config, self.pipeline_config, self.timeout,
-                                    self.log_handler, self.print_processed_period,
-                                    self.status_logger_period, self.lock, self.shared_dict)
+            MultiprocessingPipeline(self.connector_config, self.pipeline_config,
+                                    self.status_logger_config, self.timeout, self.log_handler,
+                                    self.print_processed_period, self.lock, self.shared_dict)
         except MustProvideAnMPLogHandlerError:
             fail('Must not raise this error for a correct handler!')
 
     def test_creates_a_new_process(self):
         children_before = active_children()
         children_running = self.start_and_stop_pipeline(
-            MultiprocessingPipeline(self.connector_config, self.pipeline_config, self.timeout,
-                                    self.log_handler, self.print_processed_period,
-                                    self.status_logger_period, self.lock, self.shared_dict))
+            MultiprocessingPipeline(self.connector_config, self.pipeline_config,
+                                    self.status_logger_config, self.timeout, self.log_handler,
+                                    self.print_processed_period, self.lock, self.shared_dict))
 
         assert len(children_running) == (len(children_before) + 1)
 
     def test_stop_terminates_the_process(self):
         children_running = self.start_and_stop_pipeline(
-            MultiprocessingPipeline(self.connector_config, self.pipeline_config, self.timeout,
-                                    self.log_handler, self.print_processed_period,
-                                    self.status_logger_period, self.lock, self.shared_dict))
+            MultiprocessingPipeline(self.connector_config, self.pipeline_config,
+                                    self.status_logger_config, self.timeout, self.log_handler,
+                                    self.print_processed_period, self.lock, self.shared_dict))
         children_after = active_children()
 
         assert len(children_after) == (len(children_running) - 1)
 
     def test_enable_iteration_sets_iterate_to_true_stop_to_false(self):
         pipeline = MultiprocessingPipeline(self.connector_config, self.pipeline_config,
-                                           self.timeout, self.log_handler, self.print_processed_period,
-                                           self.status_logger_period, self.lock, self.shared_dict)
+                                           self.status_logger_config, self.timeout,
+                                           self.log_handler, self.print_processed_period,
+                                           self.lock, self.shared_dict)
         assert not pipeline._iterate()
 
         pipeline._enable_iteration()

@@ -46,8 +46,6 @@ class PreDetector(RuleBasedProcessor):
         self._ids = []
         self._tree = RuleTree(config_path=tree_config)
 
-        self._processed_count = 0
-
         self._ip_alerter = IPAlerter(alert_ip_list_path)
 
     # pylint: disable=arguments-differ
@@ -103,13 +101,11 @@ class PreDetector(RuleBasedProcessor):
                 idx = self._tree.get_rule_id(rule)
                 self.ps.update_per_rule(idx, processing_time)
 
-        self._processed_count += 1
-        self.ps.update_processed_count(self._processed_count)
-
         if '@timestamp' in event:
             for detection in detection_results:
                 detection['@timestamp'] = event['@timestamp']
 
+        self.ps.increment_processed_count()
         return (detection_results, self._pre_detector_topic) if detection_results else None
 
     def _get_detection_result(self, rule: PreDetectorRule, detection_results: list):
@@ -127,6 +123,3 @@ class PreDetector(RuleBasedProcessor):
             detection_result['host'] = {'name': self._event['host']['name']}
 
         return detection_result
-
-    def events_processed_count(self) -> int:
-        return self._processed_count

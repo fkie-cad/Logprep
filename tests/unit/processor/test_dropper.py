@@ -1,4 +1,6 @@
 import pytest
+
+
 pytest.importorskip('logprep.processor.dropper')
 
 import copy
@@ -9,10 +11,10 @@ from logprep.processor.dropper.factory import Dropper, DropperFactory
 from logprep.processor.processor_factory_error import ProcessorFactoryError
 from logprep.processor.dropper.rule import DropperRule
 from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarning
+from logprep.util.processor_stats import StatsClassesController
 
 logger = getLogger()
 rules_dir = ['tests/testdata/unit/dropper/rules/']
-
 
 @pytest.fixture()
 def dropper():
@@ -22,6 +24,8 @@ def dropper():
 
 
 class TestDropper:
+    StatsClassesController.ENABLED = True
+
     @staticmethod
     def _load_rule(dropper, rule):
         rule = DropperRule._create_from_dict(rule)
@@ -38,14 +42,14 @@ class TestDropper:
         assert dropper.describe() == 'Dropper (Test Dropper Name)'
 
     def test_events_processed_count(self, dropper):
-        assert dropper.events_processed_count() == 0
+        assert dropper.ps.processed_count == 0
         document = {'foo': 'bar'}
         for i in range(1, 11):
             try:
                 dropper.process(document)
             except ProcessingWarning:
                 pass
-            assert dropper.events_processed_count() == i
+            assert dropper.ps.processed_count == i
 
     def test_field_exists(self, dropper):
         dropper._event = {

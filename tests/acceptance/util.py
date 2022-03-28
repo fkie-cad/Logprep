@@ -2,6 +2,7 @@
 import json
 from copy import deepcopy
 from logging import getLogger, DEBUG, basicConfig, Handler
+from multiprocessing import Lock
 from os import path, makedirs
 from os.path import join
 
@@ -96,8 +97,8 @@ def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory
     mock_connector_factory.return_value = (kafka, kafka)
 
     # Create, setup and execute logprep pipeline
-    pipeline = Pipeline(config['connector'], config['pipeline'], config['timeout'],
-                        SharedCounter(), Handler(), 300, 1800, dict())
+    pipeline = Pipeline(config['connector'], config['pipeline'], dict(), config['timeout'],
+                        SharedCounter(), Handler(), Lock(), dict())
     pipeline._setup()
     pipeline._retrieve_and_process_data()
 

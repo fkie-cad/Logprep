@@ -35,7 +35,6 @@ class Labeler(RuleBasedProcessor):
 
         self._tree = RuleTree(config_path=tree_config)
         self._schema = None
-        self._processed_count = 0
 
     def describe(self) -> str:
         return f'Labeler ({self._name})'
@@ -93,11 +92,9 @@ class Labeler(RuleBasedProcessor):
         if self._tree.rule_counter == 0:
             raise MustLoadRulesFirstError(self._name)
 
-        self._processed_count += 1
-        self.ps.update_processed_count(self._processed_count)
-
         self._add_labels(event)
         self._convert_label_categories_to_sorted_list(event)
+        self.ps.increment_processed_count()
 
     def _add_labels(self, event: dict):
         for rule in self._tree.get_matching_rules(event):
@@ -115,6 +112,3 @@ class Labeler(RuleBasedProcessor):
         if 'label' in event:
             for category in event['label']:
                 event['label'][category] = sorted(list(event['label'][category]))
-
-    def events_processed_count(self) -> int:
-        return self._processed_count

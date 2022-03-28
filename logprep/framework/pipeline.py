@@ -47,9 +47,9 @@ class Pipeline:
     # pylint: disable=logging-not-lazy
     # Would require too much change in the tests.
 
-    def __init__(self, connector_config: dict, pipeline_config: List[dict], timeout: float,
-                 counter: 'SharedCounter', log_handler: Handler, status_logger_period: float,
-                 lock: Lock, shared_dict: dict, status_logger: Logger = None):
+    def __init__(self, connector_config: dict, pipeline_config: List[dict],
+                 status_logger_config: dict, timeout: float, counter: 'SharedCounter',
+                 log_handler: Handler, lock: Lock, shared_dict: dict, status_logger: [] = None):
         if not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
         self._connector_config = connector_config
@@ -65,7 +65,7 @@ class Pipeline:
 
         self._processing_counter = counter
 
-        self._tracker = StatusTracker(shared_dict, status_logger_period, status_logger, lock)
+        self._tracker = StatusTracker(shared_dict, status_logger_config, status_logger, lock)
 
     def _setup(self):
         self._create_logger()
@@ -300,19 +300,19 @@ class MultiprocessingPipeline(Process, Pipeline):
 
     processed_counter = SharedCounter()
 
-    def __init__(self, connector_config: dict, pipeline_config: List[dict], timeout: float,
-                 log_handler: Handler, print_processed_period: float, status_logger_period: float,
-                 lock: Lock, shared_dict: dict, profile: bool = False,
-                 status_logger: Logger = None):
+    def __init__(self, connector_config: dict, pipeline_config: List[dict],
+                 status_logger_config: dict, timeout: float, log_handler: Handler,
+                 print_processed_period: float, lock: Lock, shared_dict: dict,
+                 profile: bool = False, status_logger: List = None):
         if not isinstance(log_handler, MultiprocessingLogHandler):
             raise MustProvideAnMPLogHandlerError
 
         self._profile = profile
         self.processed_counter.setup(print_processed_period, log_handler)
 
-        Pipeline.__init__(self, connector_config, pipeline_config, timeout,
-                          self.processed_counter, log_handler, status_logger_period,
-                          lock, shared_dict, status_logger=status_logger)
+        Pipeline.__init__(self, connector_config, pipeline_config, status_logger_config, timeout,
+                          self.processed_counter, log_handler, lock, shared_dict,
+                          status_logger=status_logger)
 
         self._continue_iterating = Value(c_bool)
         with self._continue_iterating.get_lock():

@@ -103,9 +103,6 @@ class DomainResolver(RuleBasedProcessor):
 
     @TimeMeasurement.measure_time('domain_resolver')
     def process(self, event: dict):
-        self._events_processed += 1
-        self.ps.update_processed_count(self._events_processed)
-
         self._event = event
 
         for rule in self._tree.get_matching_rules(event):
@@ -117,6 +114,8 @@ class DomainResolver(RuleBasedProcessor):
                 self.ps.update_per_rule(idx, processing_time)
             except DomainResolverError as error:
                 raise ProcessingWarning(str(error)) from error
+
+        self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain

@@ -127,10 +127,6 @@ class DomainLabelExtractor(RuleBasedProcessor):
         event : dict
             Current event log message to be processed.
         """
-
-        self._events_processed += 1
-        self.ps.update_processed_count(self._events_processed)
-
         self.event = event
 
         for rule in self._tree.get_matching_rules(event):
@@ -139,6 +135,8 @@ class DomainLabelExtractor(RuleBasedProcessor):
             processing_time = float('{:.10f}'.format(time() - begin))
             idx = self._tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
+
+        self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
@@ -190,6 +188,3 @@ class DomainLabelExtractor(RuleBasedProcessor):
                         # if it's neither ipv4 nor ipv6 then add error tag
                         event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
                                                           [f"invalid_domain_in_{rule.target_field.replace('.', '_')}"]
-
-    def events_processed_count(self):
-        return self._events_processed

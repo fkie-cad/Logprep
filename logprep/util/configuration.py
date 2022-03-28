@@ -58,6 +58,13 @@ class InvalidConnectorConfigurationError(InvalidConfigurationError):
         super().__init__(f'Invalid connector configuration: {message}')
 
 
+class InvalidStatusLoggerConfigurationError(InvalidConfigurationError):
+    """Raise if status_logger configuration is invalid."""
+
+    def __init__(self, message: str):
+        super().__init__(f'Invalid status_logger configuration: {message}')
+
+
 class Configuration(dict):
     """Used to create and verify a configuration dict parsed from a YAML file."""
 
@@ -89,6 +96,8 @@ class Configuration(dict):
         self._verify_values_make_sense()
         self._verify_connector()
         self._verify_pipeline(logger)
+        if self.get("status_logger", dict()):
+            self._verify_status_logger()
 
     def _verify_required_keys_exist(self):
         required_keys = ['process_count', 'connector', 'timeout', 'pipeline']
@@ -119,3 +128,50 @@ class Configuration(dict):
                 ProcessorFactory.create(processor_config, logger)
         except (FactoryInvalidConfigurationError, UnknownProcessorTypeError) as error:
             raise InvalidProcessorConfigurationError(str(error)) from error
+
+    def _verify_status_logger(self):
+        required_keys = ['enabled', 'period', 'cumulative', 'targets']
+
+        for key in required_keys:
+            if key not in self["status_logger"]:
+                raise RequiredConfigurationKeyMissingError(f"status_logger > {key}")
+
+        targets = self.get("status_logger").get("targets")
+
+        if not targets:
+            raise InvalidStatusLoggerConfigurationError("At least one target has to be configured")
+
+        for target in targets:
+            current_target = list(target.keys())[0]
+            if current_target == "prometheus":
+                self._verify_status_logger_prometheus_target(target["prometheus"])
+            elif current_target == "file":
+                self._verify_status_logger_file_target(target["file"])
+            else:
+                raise InvalidStatusLoggerConfigurationError(f"Unknown target "
+                                                            f"'{current_target}'")
+
+    def _verify_status_logger_prometheus_target(self, target_config):
+        if target_config is None or not target_config.get("port"):
+            raise RequiredConfigurationKeyMissingError("status_logger > targets > "
+                                                       "prometheus > port")
+
+    def _verify_status_logger_file_target(self, target_config):
+        required_keys = {"path", "rollover_interval", "backup_count"}
+        if target_config is None:
+            raise RequiredConfigurationKeyMissingError("The status_logger file target is missing "
+                                                       f"all option fields: {required_keys}")
+
+        given_keys = set(target_config.keys())
+        missing_keys = required_keys.difference(given_keys)
+        unknown_keys = given_keys.difference(required_keys)
+
+        if missing_keys:
+            raise RequiredConfigurationKeyMissingError(f"The following option keys for the "
+                                                       f"status_logger file target are missing: "
+                                                       f"{missing_keys}")
+
+        if unknown_keys:
+            raise InvalidStatusLoggerConfigurationError("The following option keys for the "
+                                                        "status_logger file target are unknown: "
+                                                        f"{unknown_keys}")

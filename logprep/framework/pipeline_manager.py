@@ -3,6 +3,7 @@
 from queue import Empty
 from multiprocessing import Manager, Lock
 from logging import Logger, DEBUG
+from typing import List
 
 from logprep.util.configuration import Configuration
 
@@ -23,7 +24,7 @@ class MustSetConfigurationFirstError(PipelineManagerError):
 
 class PipelineManager:
     """Manage pipelines via multi-processing."""
-    def __init__(self, logger: Logger, status_logger: Logger):
+    def __init__(self, logger: Logger, status_logger: List):
         self._logger = logger
         self._status_logger = status_logger
 
@@ -126,11 +127,10 @@ class PipelineManager:
         self._logger.info('Created new pipeline')
         return MultiprocessingPipeline(self._configuration['connector'],
                                        self._configuration['pipeline'],
+                                       self._configuration.get('status_logger', dict()),
                                        self._configuration['timeout'],
                                        self._log_handler,
                                        self._configuration.get('print_processed_period', 300),
-                                       self._configuration.get(
-                                           'status_logger', dict()).get('period', 1800),
                                        self._lock,
                                        self._shared_dict,
                                        profile=self._configuration.get('profile_pipelines', False),

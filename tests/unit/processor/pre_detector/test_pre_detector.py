@@ -29,7 +29,7 @@ class TestPreDetector:
     uuid_pattern = re.compile(r'^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$')
 
     def test_perform_successful_pre_detection(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
         document = {'winlog': {'event_id': 123, 'event_data': {'ServiceName': 'VERY BAD'}}}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -49,7 +49,7 @@ class TestPreDetector:
         self._assert_equality_of_results(document, expected, detection_results, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_host_name(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
         document = {'host': {'name': 'Test hostname'},
                     'winlog': {'event_id': 123, 'event_data': {'ServiceName': 'VERY BAD'}}}
         expected = deepcopy(document)
@@ -71,7 +71,7 @@ class TestPreDetector:
         self._assert_equality_of_results(document, expected, detection_results, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_same_existing_pre_detection(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
         document = {'winlog': {'event_id': 123, 'event_data': {'ServiceName': 'VERY BAD'}}}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -93,7 +93,7 @@ class TestPreDetector:
         self._assert_equality_of_results(document, expected, detection_results, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_pre_detector_complex_rule_suceeds_msg_t1(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
         document = {'tags': 'test', 'process': {'program': 'test'}, 'message': 'test1*xyz'}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -115,7 +115,7 @@ class TestPreDetector:
         self._assert_equality_of_results(document, expected, detection_results, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_pre_detector_complex_rule_succeeds_msg_t2(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
         document = {'tags': 'test2', 'process': {'program': 'test'}, 'message': 'test2Xxyz'}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -137,7 +137,7 @@ class TestPreDetector:
         self._assert_equality_of_results(document, expected, detection_results, expected_detection_results)
 
     def test_perform_successful_pre_detection_with_two_rules(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
         document = {'first_match': 'something', 'second_match': 'something'}
         expected = deepcopy(document)
         expected_detection_results = ([
@@ -164,7 +164,7 @@ class TestPreDetector:
         self._assert_equality_of_results(document, expected, detection_results, expected_detection_results)
 
     def test_correct_star_wildcard_behavior(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
 
         document = {'tags': 'test', 'process': {'program': 'test'}, 'message': 'test3*xyz'}
         expected = {'tags': 'test', 'process': {'program': 'test'}, 'message': 'test3*xyz'}
@@ -197,7 +197,7 @@ class TestPreDetector:
         assert document != expected
 
     def test_correct_questionmark_wildcard_behavior(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
 
         document = {'tags': 'test2', 'process': {'program': 'test'}, 'message': 'test3*xyz'}
         expected = {'tags': 'test2', 'process': {'program': 'test'}, 'message': 'test3*xyz'}
@@ -230,7 +230,7 @@ class TestPreDetector:
         assert document == expected
 
     def test_ignores_case(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
         document = {'tags': 'test', 'process': {'program': 'test'}, 'message': 'TEST2*xyz'}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -247,7 +247,7 @@ class TestPreDetector:
         self._assert_equality_of_results(document, expected, detection_results, expected_detection_results)
 
     def test_ignores_case_list(self, pre_detector):
-        assert pre_detector.events_processed_count() == 0
+        assert pre_detector.ps.processed_count == 0
         document = {'tags': 'test', 'process': {'program': 'test'}, 'message': ['TEST2*xyz']}
         expected = deepcopy(document)
         expected_detection_results = (

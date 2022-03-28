@@ -26,7 +26,6 @@ class Clusterer(RuleBasedProcessor):
 
         self._name = name
         self._rules = []
-        self._events_processed = 0
 
         self.sps = SignaturePhaseStreaming()
         self._output_field_name = output_field_name
@@ -58,9 +57,6 @@ class Clusterer(RuleBasedProcessor):
 
     @TimeMeasurement.measure_time('clusterer')
     def process(self, event: dict):
-        self._events_processed += 1
-        self.ps.update_processed_count(self._events_processed)
-
         if self._is_clusterable(event):
             matching_rules = list()
             for rule in self._rules:
@@ -68,8 +64,7 @@ class Clusterer(RuleBasedProcessor):
                     matching_rules.append(rule)
             self._cluster(event, matching_rules)
 
-    def events_processed_count(self) -> int:
-        return self._events_processed
+        self.ps.increment_processed_count()
 
     def _is_clusterable(self, event: dict):
         # The following blocks have not been extracted into functions for performance reasons

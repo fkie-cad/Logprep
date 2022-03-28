@@ -3,6 +3,7 @@ from os.path import join
 from logging import getLogger
 
 from pytest import raises, importorskip
+
 importorskip('logprep.processor.labeler')
 
 from unittest.mock import patch
@@ -196,6 +197,7 @@ class TestLabeler:
                     }
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 
@@ -311,6 +313,7 @@ class TestLabeler:
 
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 
@@ -333,6 +336,7 @@ class TestLabeler:
 
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 
@@ -358,6 +362,7 @@ class TestLabeler:
 
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 
@@ -383,6 +388,7 @@ class TestLabeler:
 
         rule = LabelingRule._create_from_dict(rule_dict)
         self.labeler._tree.add_rule(rule, logger)
+        self.labeler.ps.setup_rules([None] * self.labeler._tree.rule_counter)
 
         self.labeler.process(document)
 

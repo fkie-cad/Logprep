@@ -29,7 +29,7 @@ def datetime_extractor():
 
 class TestDateTimeExtractor:
     def test_an_event_extracted_datetime_utc(self, datetime_extractor):
-        assert datetime_extractor.events_processed_count() == 0
+        assert datetime_extractor.ps.processed_count == 0
 
         timestamp = '2019-07-30T14:37:42.861Z'
         document = {'@timestamp': timestamp, 'winlog': {'event_id': 123}}
@@ -61,7 +61,7 @@ class TestDateTimeExtractor:
         assert document == expected
 
     def test_an_event_extracted_datetime_plus_one(self, datetime_extractor):
-        assert datetime_extractor.events_processed_count() == 0
+        assert datetime_extractor.ps.processed_count == 0
 
         timestamp = f'2019-07-30T14:37:42.861+01:00'
         document = {'@timestamp': timestamp, 'winlog': {'event_id': 123}}
@@ -93,7 +93,7 @@ class TestDateTimeExtractor:
         assert document == expected
 
     def test_an_event_extracted_datetime_and_local_utc_without_delta(self, datetime_extractor):
-        assert datetime_extractor.events_processed_count() == 0
+        assert datetime_extractor.ps.processed_count == 0
 
         datetime_extractor._local_timezone = tzutc()
         datetime_extractor._local_timezone_name = DateTimeExtractor._get_timezone_name(datetime_extractor._local_timezone)

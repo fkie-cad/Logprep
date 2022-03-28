@@ -30,7 +30,6 @@ class Dropper(RuleBasedProcessor):
         self.ps = ProcessorStats()
 
         self._name = name
-        self._events_processed = 0
         self._event = None
         self._tree = RuleTree(config_path=tree_config)
 
@@ -51,11 +50,10 @@ class Dropper(RuleBasedProcessor):
 
     @TimeMeasurement.measure_time('dropper')
     def process(self, event: dict):
-        self._events_processed += 1
-        self.ps.update_processed_count(self._events_processed)
-
         self._event = event
         self._apply_rules()
+
+        self.ps.increment_processed_count()
 
     def _field_exists(self, dotted_field: str) -> bool:
         fields = dotted_field.split('.')
@@ -106,6 +104,3 @@ class Dropper(RuleBasedProcessor):
     def _try_dropping_field(self, field: str, drop_full: bool):
         if self._field_exists(field):
             self._drop_field(field, drop_full)
-
-    def events_processed_count(self) -> int:
-        return self._events_processed

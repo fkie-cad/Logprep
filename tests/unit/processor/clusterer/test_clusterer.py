@@ -27,14 +27,14 @@ class TestClusterer:
         assert clusterer.describe() == 'Clusterer (Test Clusterer Name)'
 
     def test_events_processed_count(self, clusterer):
-        assert clusterer.events_processed_count() == 0
+        assert clusterer.ps.processed_count == 0
         document = {'foo': 'bar'}
         for idx in range(1, 11):
             try:
                 clusterer.process(document)
             except ProcessingWarning:
                 pass
-            assert clusterer.events_processed_count() == idx
+            assert clusterer.ps.processed_count == idx
 
     def test_has_tag_clusterable(self, clusterer):
         # Sample without PRI, since PRI makes a log clusterable irrespective of the tag

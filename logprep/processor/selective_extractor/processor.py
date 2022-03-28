@@ -36,8 +36,6 @@ class SelectiveExtractor(BaseProcessor):
         self._selective_extractor_topic = selective_extractor_topic
         self._event = None
 
-        self._processed_count = 0
-
         if os.path.isfile(extractor_list_file_path) and extractor_list_file_path.endswith('.txt'):
             with open(extractor_list_file_path) as f:
                 extraction_fields = f.read().splitlines()
@@ -57,9 +55,8 @@ class SelectiveExtractor(BaseProcessor):
             self._logger.debug('{} processing matching event'.format(self.describe()))
 
         filtered_event = self._generate_filtered_event(event)
-        self._processed_count += 1
-        self.ps.update_processed_count(self._processed_count)
 
+        self.ps.increment_processed_count()
         return ([filtered_event], self._selective_extractor_topic) if filtered_event else None
 
     def _generate_filtered_event(self, event):
@@ -87,6 +84,3 @@ class SelectiveExtractor(BaseProcessor):
                 add_field_to(filtered_event, field, field_value)
 
         return filtered_event
-
-    def events_processed_count(self) -> int:
-        return self._processed_count
