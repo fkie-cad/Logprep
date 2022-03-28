@@ -2,11 +2,13 @@
 import json
 import re
 from abc import ABC, abstractmethod
+from encodings import utf_8
 from logging import getLogger
 
 import pytest
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.processor.base.processor import (ProcessingWarning,
+                                              RuleBasedProcessor)
 
 
 class BaseProcessorTestCase(ABC):
@@ -67,6 +69,9 @@ class BaseProcessorTestCase(ABC):
             self.specific_rules = self.set_rules(self.specific_rules_dirs)
             self.generic_rules = self.set_rules(self.generic_rules_dirs)
 
+    def test_is_a_processor_implementation(self):
+        assert isinstance(self.object, RuleBasedProcessor)
+
     def test_process(self):
         assert self.object.events_processed_count() == 0
         document = {
@@ -93,11 +98,36 @@ class BaseProcessorTestCase(ABC):
     def test_event_processed_count(self):
         assert isinstance(self.object.events_processed_count(), int)
 
-    def test_get_dotted_field_value(self):
+    def test_events_processed_count_counts(self):
+        assert self.object.events_processed_count() == 0
+        document = {"foo": "bar"}
+        for i in range(1, 11):
+            try:
+                self.object.process(document)
+            except ProcessingWarning:
+                pass
+            assert self.object.events_processed_count() == i
+
+    def test_get_dotted_field_value_returns_none_if_not_found(self):
         event = {"some": "i do not matter"}
         dotted_field = "i.do.not.exist"
         value = self.object._get_dotted_field_value(event, dotted_field)
         assert value is None
+
+    def test_get_dotted_field_value_returns_value(self):
+        event = {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 1111,
+                "event_data": {
+                    "param1": "Do not normalize me!",
+                    "test1": "Normalize me!",
+                },
+            }
+        }
+        dotted_field = "winlog.event_data.test1"
+        value = self.object._get_dotted_field_value(event, dotted_field)
+        assert value == "Normalize me!"
 
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
