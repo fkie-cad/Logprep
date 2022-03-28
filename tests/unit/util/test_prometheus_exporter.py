@@ -7,6 +7,9 @@ from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 class TestPrometheusStatsExporter:
 
+    def setup_method(self):
+        REGISTRY.__init__()
+
     def test_correct_setup(self):
         status_logger_config = {
             "period": 10,
