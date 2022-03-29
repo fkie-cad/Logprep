@@ -52,7 +52,6 @@ class Normalizer(RuleBasedProcessor):
         self.ps = ProcessorStats()
 
         self._name = name
-        self._events_processed = 0
         self._event = None
         self._conflicting_fields = []
 
@@ -82,15 +81,6 @@ class Normalizer(RuleBasedProcessor):
                 self._html_replace_fields = yaml.load(file)
 
         self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
-
-    def events_processed_count(self) -> int:
-        """Return the count of documents processed by a specific instance.
-
-        This is used for diagnostics.
-
-        """
-
-        return self._events_processed
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(
@@ -134,7 +124,6 @@ class Normalizer(RuleBasedProcessor):
         self._apply_rules()
         if self._count_grok_pattern_matches:
             self._write_grok_matches()
-        self._events_processed += 1
 
         self.ps.increment_processed_count()
         try:

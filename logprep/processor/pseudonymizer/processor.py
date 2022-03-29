@@ -49,7 +49,6 @@ class Pseudonymizer(RuleBasedProcessor):
         self._hash_salt = hash_salt
         self._hasher = SHA256Hasher()
         self._encrypter = DualPKCS1HybridEncrypter()
-        self._events_processed = 0
 
         self._pseudonyms_topic = pseudonyms_topic
 
@@ -74,15 +73,6 @@ class Pseudonymizer(RuleBasedProcessor):
                             max_timedelta=self._cache_max_timedelta)
         self._tld_extractor = TLDExtract(suffix_list_urls=[self._tld_list])
         self._load_regex_mapping(self._regex_mapping_path)
-
-    def events_processed_count(self) -> int:
-        """Return the count of documents processed by a specific instance.
-
-        This is used for diagnostics.
-
-        """
-
-        return self._events_processed
 
     def _load_regex_mapping(self, regex_mapping_path: str):
         with open(regex_mapping_path, 'r') as file:
@@ -123,7 +113,6 @@ class Pseudonymizer(RuleBasedProcessor):
                 pseudonym['@timestamp'] = event['@timestamp']
 
         self.ps.increment_processed_count()
-        self._events_processed += 1
         return (pseudonyms, self._pseudonyms_topic) if pseudonyms != [] else None
 
     def shut_down(self):
