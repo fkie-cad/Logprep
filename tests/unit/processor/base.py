@@ -1,5 +1,7 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
+import json
+import re
 from abc import ABC, abstractmethod
 from logging import getLogger
 import json
@@ -10,7 +12,6 @@ import pytest
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
-from logprep.util.processor_stats import StatsClassesController
 
 
 class BaseProcessorTestCase(ABC):
@@ -66,7 +67,7 @@ class BaseProcessorTestCase(ABC):
         """
         if self.factory is not None:
             self.object = self.factory.create(
-                "Test Instance Name", self.CONFIG, self.logger
+                name="Test Instance Name", configuration=self.CONFIG, logger=self.logger
             )
             self.specific_rules = self.set_rules(self.specific_rules_dirs)
             self.generic_rules = self.set_rules(self.generic_rules_dirs)
