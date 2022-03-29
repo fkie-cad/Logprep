@@ -2,11 +2,15 @@
 
 from logging import Logger, DEBUG
 
-from typing import List
+from typing import List, Optional
 from multiprocessing import current_process
+from logprep.framework.rule_tree.rule_tree import RuleTree
 
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
-    SignaturePhaseStreaming, LogRecord, SignatureEngine)
+    SignaturePhaseStreaming,
+    LogRecord,
+    SignatureEngine,
+)
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError, InvalidRuleFileError
 
@@ -19,34 +23,57 @@ from logprep.util.time_measurement import TimeMeasurement
 class Clusterer(RuleBasedProcessor):
     """Cluster log events using a heuristic."""
 
-    def __init__(self, name: str, tree_config: str, logger: Logger,
-                 output_field_name='cluster_signature'):
+    def __init__(self, name: str, logger: Logger, **configuration):
+        tree_config = configuration.get("tree_config")
+        specific_rules_dirs = configuration.get("specific_rules")
+        generic_rules_dirs = configuration.get("generic_rules")
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
 
         self._name = name
-        self._rules = []
+        self._events_processed = 0
 
         self.sps = SignaturePhaseStreaming()
-        self._output_field_name = output_field_name
+        self._output_field_name = configuration.get("output_field_name")
 
         self.has_custom_tests = True
 
-    def describe(self) -> str:
-        return f'Clusterer ({self._name})'
+        self._specific_tree = RuleTree(config_path=tree_config)
+        self._generic_tree = RuleTree(config_path=tree_config)
+        self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
 
-    # pylint: disable=W0221
-    def add_rules_from_directory(self, rules_dirs):
-        for rules_dir in rules_dirs:
-            rule_paths = sorted(self._list_json_files_in_directory(rules_dir))
+    def describe(self) -> str:
+        return f"Clusterer ({self._name})"
+
+    # pylint: disable=arguments-differ
+    def add_rules_from_directory(
+        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
+    ):
+        for specific_rules_dir in specific_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
             for rule_path in rule_paths:
-                rules = self._load_rules_from_file(rule_path)
+                rules = ClustererRule.create_rules_from_file(rule_path)
                 for rule in rules:
-                    self._rules.append(rule)
+                    self._specific_tree.add_rule(rule, self._logger)
+        for generic_rules_dir in generic_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
+            for rule_path in rule_paths:
+                rules = ClustererRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug('{} loaded {} rules ({})'.format(self.describe(), len(self._rules),
-                                                                current_process().name))
-        self.ps.setup_rules(self._rules)
+            self._logger.debug(
+                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
+                f"specific rules ({current_process().name})"
+            )
+            self._logger.debug(
+                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
+                f"({current_process().name})"
+            )
+        self.ps.setup_rules(
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
+        )
+
     # pylint: enable=W0221
 
     def _load_rules_from_file(self, path):
@@ -55,7 +82,7 @@ class Clusterer(RuleBasedProcessor):
         except InvalidRuleDefinitionError as error:
             raise InvalidRuleFileError(self._name, path) from error
 
-    @TimeMeasurement.measure_time('clusterer')
+    @TimeMeasurement.measure_time("clusterer")
     def process(self, event: dict):
         if self._is_clusterable(event):
             matching_rules = list()
@@ -69,17 +96,17 @@ class Clusterer(RuleBasedProcessor):
     def _is_clusterable(self, event: dict):
         # The following blocks have not been extracted into functions for performance reasons
         # A message can only be clustered if it exists, despite any other condition
-        if 'message' not in event:
+        if "message" not in event:
             return False
-        if event['message'] is None:
+        if event["message"] is None:
             return False
 
         # Return clusterable state if it exists, since it can be true or false
-        if 'clusterable' in event:
-            return event['clusterable']
+        if "clusterable" in event:
+            return event["clusterable"]
 
         # Alternatively, check for a clusterable tag
-        if 'tags' in event and 'clusterable' in event['tags']:
+        if "tags" in event and "clusterable" in event["tags"]:
             return True
 
         # It is clusterable if a syslog with PRI exists even if no clusterable field exists
@@ -92,18 +119,25 @@ class Clusterer(RuleBasedProcessor):
 
     @staticmethod
     def _syslog_has_pri(event: dict):
-        return ('syslog' in event and
-                'facility' in event['syslog'] and
-                'event' in event and
-                'severity' in event['event'])
+        return (
+            "syslog" in event
+            and "facility" in event["syslog"]
+            and "event" in event
+            and "severity" in event["event"]
+        )
 
     def _cluster(self, event: dict, rules: List[ClustererRule]):
-        cluster_signature_based_on_message = self.sps.run(LogRecord(raw_text=event['message']),
-                                                          rules)
+        cluster_signature_based_on_message = self.sps.run(
+            LogRecord(raw_text=event["message"]), rules
+        )
         if self._syslog_has_pri(event):
-            cluster_signature = ' , '.join([str(event['syslog']['facility']),
-                                            str(event['event']['severity']),
-                                            cluster_signature_based_on_message])
+            cluster_signature = " , ".join(
+                [
+                    str(event["syslog"]["facility"]),
+                    str(event["event"]["severity"]),
+                    cluster_signature_based_on_message,
+                ]
+            )
         else:
             cluster_signature = cluster_signature_based_on_message
         event[self._output_field_name] = cluster_signature
@@ -115,8 +149,8 @@ class Clusterer(RuleBasedProcessor):
             results[rule_repr] = []
             try:
                 for test in rule.tests:
-                    result = SignatureEngine.apply_signature_rule(rule, test['raw'])
-                    expected_result = test['result']
+                    result = SignatureEngine.apply_signature_rule(rule, test["raw"])
+                    expected_result = test["result"]
                     results[rule_repr].append((result, expected_result))
             except AttributeError:
                 results[rule_repr].append(None)
