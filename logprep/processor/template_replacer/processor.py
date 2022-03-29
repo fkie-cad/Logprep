@@ -140,11 +140,21 @@ class TemplateReplacer(Processor):
                 return
 
         if _dict is not None:
-            if self._field_exists(event, self._target_field):
-                _event = event
-                for subfield in self._target_field_split[:-1]:
+            _event = event
+            for subfield in self._target_field_split[:-1]:
+                event_sub = _event.get(subfield)
+                if isinstance(event_sub, dict):
+                    _event = event_sub
+                elif event_sub is None:
+                    _event[subfield] = {}
                     _event = _event[subfield]
-                _event[self._target_field_split[-1]] = _dict
+                else:
+                    raise TemplateReplacerError(
+                        self.name,
+                        f"Parent field '{subfield}' of target field '{self._target_field}' "
+                        f"exists and is not a dict!",
+                    )
+            _event[self._target_field_split[-1]] = _dict
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
