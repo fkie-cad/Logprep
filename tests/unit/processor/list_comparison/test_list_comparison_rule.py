@@ -15,7 +15,9 @@ def specific_rule_definition():
         "list_comparison": {
             "check_field": "user",
             "output_field": "user_results",
-            "list_file_paths": ["tests/testdata/unit/list_comparison/lists/user_list.txt"],
+            "list_file_paths": [
+                "tests/testdata/unit/list_comparison/lists/user_list.txt"
+            ],
         },
         "description": "",
     }
@@ -68,7 +70,9 @@ class TestListComparisonRule:
         assert isinstance(self.rule._compare_sets, dict)
         assert len(self.rule._compare_sets.keys()) > 0
 
-    @mock.patch("logprep.processor.list_comparison.rule.ListComparisonRule.init_list_comparison")
+    @mock.patch(
+        "logprep.processor.list_comparison.rule.ListComparisonRule.init_list_comparison"
+    )
     def test_init_compare_sets_is_called(self, mock_method, specific_rule_definition):
         rule = ListComparisonRule(
             LuceneFilter.create(specific_rule_definition["filter"]),
