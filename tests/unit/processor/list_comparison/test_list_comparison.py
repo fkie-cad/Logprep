@@ -31,7 +31,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_element_in_list(self):
         # Tests if user Franz is in user list
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"user": "Franz"}
 
         self.object.process(document)
@@ -43,7 +43,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_element_not_in_list(self):
         # Test if user Charlotte is not in user list
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"user": "Charlotte"}
 
         self.object.process(document)
@@ -53,7 +53,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_element_in_two_lists(self):
         # Tests if the system name Franz appears in two lists, username Mark is in no list
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"user": "Mark", "system": "Franz"}
 
         self.object.process(document)
@@ -65,7 +65,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_element_not_in_two_lists(self):
         # Tests if the system Gamma does not appear in two lists, and username Mark is also not in list
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"user": "Mark", "system": "Gamma"}
 
         self.object.process(document)
@@ -76,7 +76,7 @@ class TestListComparison(BaseProcessorTestCase):
         assert document.get("user_results", {}).get("in_list") is None
 
     def test_two_lists_with_one_matched(self):
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"system": "Alpha", "user": "Charlotte"}
 
         self.object.process(document)
@@ -88,7 +88,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_dotted_output_field(self):
         # tests if outputting list_comparison results to dotted fields works
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"dot_channel": "test", "user": "Franz"}
 
         self.object.process(document)
@@ -98,7 +98,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_deep_dotted_output_field(self):
         # tests if outputting list_comparison results to dotted fields works
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"dot_channel": "test", "user": "Franz"}
 
         self.object.process(document)
@@ -122,7 +122,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_extend_dotted_output_field(self):
         # tests if list_comparison properly extends lists already present in output fields.
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {
             "dot_channel": "test",
             "user": "Franz",
@@ -136,7 +136,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_dotted_parent_field_exists_but_subfield_doesnt(self):
         # tests if list_comparison properly extends lists already present in output fields.
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {
             "dot_channel": "test",
             "user": "Franz",
@@ -152,14 +152,14 @@ class TestListComparison(BaseProcessorTestCase):
         )
 
     def test_dotted_wrong_type(self):
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"dot_channel": "test", "user": "Franz", "dotted": "dotted_Franz"}
 
         with pytest.raises(DuplicationError):
             self.object.process(document)
 
     def test_intermediate_output_field_is_wrong_type(self):
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {
             "dot_channel": "test",
             "user": "Franz",
@@ -170,7 +170,7 @@ class TestListComparison(BaseProcessorTestCase):
             self.object.process(document)
 
     def test_check_in_dotted_subfield(self):
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"channel": {"type": "fast"}}
 
         self.object.process(document)
@@ -181,7 +181,7 @@ class TestListComparison(BaseProcessorTestCase):
     def test_ignore_comment_in_list(self):
         # Tests for a comment inside a list, but as a field inside a document to check
         # if the comment is actually ignored
-        assert self.object.events_processed_count() == 0
+        assert self.object.ps.processed_count == 0
         document = {"user": "# This is a doc string for testing"}
 
         self.object.process(document)

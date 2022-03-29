@@ -70,16 +70,6 @@ class ListComparison(RuleBasedProcessor):
         self.ps = ProcessorStats()
         self._specific_tree = RuleTree(config_path=tree_config)
         self._generic_tree = RuleTree(config_path=tree_config)
-        self._events_processed = 0
-
-    def events_processed_count(self) -> int:
-        """Return the count of documents processed by a specific instance.
-
-        This is used for diagnostics.
-
-        """
-
-        return self._events_processed
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(
@@ -159,7 +149,7 @@ class ListComparison(RuleBasedProcessor):
             idx = self._specific_tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
-        self._events_processed += 1
+        self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
         """
