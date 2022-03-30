@@ -2,22 +2,23 @@
 
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.datetime_extractor.processor import DateTimeExtractor
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class DateTimeExtractorFactory(BaseFactory):
     """Create datetime extractor."""
+
+    mandatory_fields = ["type", "generic_rules", "specific_rules", "tree_config"]
 
     @staticmethod
     def create(name: str, configuration: dict, logger) -> DateTimeExtractor:
         """Create a datetime extractor."""
         DateTimeExtractorFactory._check_configuration(configuration)
 
-        datetime_extractor = DateTimeExtractor(name, configuration.get('tree_config'), logger)
-        datetime_extractor.add_rules_from_directory(configuration['rules'])
-
-        return datetime_extractor
+        return DateTimeExtractor(name=name, configuration=configuration, logger=logger)
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        DateTimeExtractorFactory._check_common_configuration('datetime_extractor', ['rules'],
-                                                             configuration)
+        for field in DateTimeExtractorFactory.mandatory_fields:
+            if field not in configuration.keys():
+                raise InvalidConfigurationError
