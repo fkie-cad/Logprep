@@ -55,14 +55,15 @@ class ProcessorStats:
     def __init__(self):
         self.aggr_data = None
         self._max_time = None
-        self.num_rules = 0
-        self.processing_time_sample_counter = 0
+        self.num_rules = None
+        self._processing_time_sample_counter = None
         self.reset_statistics()
 
     def reset_statistics(self):
         self.aggr_data = {'processed': 0, 'matches': 0, 'errors': 0,
                           'warnings': 0, 'avg_processing_time': 0}
         self._max_time = -1
+        self._processing_time_sample_counter = 0
 
     def setup_rules(self, rules: List[Rule]):
         """Setup aggregation data for rules."""
@@ -95,10 +96,10 @@ class ProcessorStats:
         back to the average with the incremented sample counter.
         """
         current_average = self.aggr_data['avg_processing_time']
-        average_multiple = current_average * self.processing_time_sample_counter
+        average_multiple = current_average * self._processing_time_sample_counter
         extended_average_multiple = average_multiple + next_time_sample
-        self.processing_time_sample_counter += 1
-        new_average = extended_average_multiple / self.processing_time_sample_counter
+        self._processing_time_sample_counter += 1
+        new_average = extended_average_multiple / self._processing_time_sample_counter
         self.aggr_data['avg_processing_time'] = new_average
 
     def increment_aggregation(self, key: str):
