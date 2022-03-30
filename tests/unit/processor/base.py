@@ -1,14 +1,16 @@
 # pylint: disable=missing-module-docstring
+# pylint: disable=protected-access
+from abc import ABC, abstractmethod
+from logging import getLogger
 import json
 import re
-from abc import ABC, abstractmethod
-from encodings import utf_8
-from logging import getLogger
 
 import pytest
+
+
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import (ProcessingWarning,
-                                              RuleBasedProcessor)
+from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
+from logprep.util.processor_stats import StatsClassesController
 
 
 class BaseProcessorTestCase(ABC):
@@ -77,10 +79,10 @@ class BaseProcessorTestCase(ABC):
         document = {
             "event_id": "1234",
             "message": "user root logged in",
-            "@timestamp": "baz",
         }
         count = self.object.ps.processed_count
         self.object.process(document)
+
         assert self.object.ps.processed_count == count + 1
 
     def test_describe(self):
