@@ -58,13 +58,15 @@ class ListComparisonRule(Rule):
 
         self._compare_sets = dict()
         self._config = list_comparison_cfg
-        self.init_list_comparison()
+        self.init_list_comparison(self._config.get("list_search_base_path"))
 
-    def init_list_comparison(self):
+    def init_list_comparison(self, list_search_base_path: Optional[str]):
         for key in self._config.keys():
             if key.endswith("_paths"):
                 file_paths = self._config[key]
                 for list_path in file_paths:
+                    if list_search_base_path is not None and not os.path.isabs(list_path):
+                        list_path = os.path.join(list_search_base_path, list_path)
                     with open(list_path, "r") as f:
                         compare_elements = f.read().splitlines()
                         file_elem_tuples = [
