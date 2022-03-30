@@ -176,6 +176,54 @@ type
 
 The value `generic_adder` chooses the processor type GenericAdder.
 
+sql_config
+~~~~~~~~~~
+
+Configuration of the connection to a MySQL database and settings on how to add data from the database.
+This field is optional. The database feature will not be used if `sql_config` is omitted.
+
+sql_config.user
+~~~~~~~~~~~~~~~
+
+The user to use when connecting to the MySQL database.
+
+sql_config.password
+~~~~~~~~~~~~~~~~~~~
+
+The password to use when connecting to the MySQL database.
+
+sql_config.host
+~~~~~~~~~~~~~~~
+
+The host to use when connecting to the MySQL database.
+
+sql_config.database
+~~~~~~~~~~~~~~~~~~~
+
+The database name to use when connecting to the MySQL database.
+
+sql_config.table
+~~~~~~~~~~~~~~~~
+
+The table name to use when connecting to the MySQL database.
+
+sql_config.target_column
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The name of the column whose values are being matched against a value from an event.
+If a value matches, the remaining values of the row with the match are being added to the event.
+
+sql_config.add_target_column
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Determines if the target column itself will be added to the event.
+This is set to false per default.
+
+sql_config.timer
+~~~~~~~~~~~~~~~~
+
+Period how long to (wait in seconds) before the database table is being checked for changes.
+If there is a change, the table is reloaded by Logprep.
 
 Datetime Extractor
 ------------------

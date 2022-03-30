@@ -16,3 +16,4 @@ numpy
 arrow
 prometheus_client
 hyperscan==0.3.0
+mysql-connector-python
