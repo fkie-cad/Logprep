@@ -30,6 +30,8 @@ Logprep does periodically write the amount of processed log messages per time pe
 This value defines this time period in seconds.
 It is an optional value and is set to 5 minutes by default.
 
+.. _status_logger_configuration:
+
 status_logger
 =============
 
@@ -40,14 +42,24 @@ warning and error types. Those are not available for the Prometheus Exporter. Bo
 at the same time. By default only the file target is activated. To activate the prometheus exporter
 the required target has to be configured. Furthermore the utilized `prometheus python
 client <https://github.com/prometheus/client_python>`_ requires the configuration of the environment
-variable :code:`PROMETHEUS_MULTIPROC_DIR`, a directory to save temporary files needed for between
+variable :code:`PROMETHEUS_MULTIPROC_DIR`, a directory to save temporary files needed for in-between
 process communication.
 
 .. WARNING::
    The configured directory :code:`PROMETHEUS_MULTIPROC_DIR` will be cleared on every startup. Make
    sure it does not contain any other files as they will be lost afterwards.
 
-This status_logger is configured by the following sub parameters:
+The status_logger can export it's metrics as an aggregation of all child processes or independently,
+without any aggregation.
+
+.. hint::
+   To achieve the best results for the prometheus exporter it is suggested to deactivate
+   `cumulative` metrics as well as the process aggregation `aggregate_processes`. This ensures that
+   each process is exported as it's own metrics giving full transparency.
+   And deactivating `cumulative` will result in exporting only the statistics of the past period
+   instead of counting endlessly.
+
+This status_logger is configured with the following sub parameters:
 
 period
 ------
@@ -72,6 +84,15 @@ true/false
 Defines if the metrics should count continuously or if they should be reset after every period.
 It is enabled by default.
 
+aggregate_processes
+----------
+
+true/false
+
+Defines if the metrics of each child process should be aggregated to single values or if the metrics
+of the processes should be exported directly per process.
+The aggregation is enabled by default.
+
 targets
 -------
 
@@ -95,8 +116,6 @@ prometheus
 
 | **port** *(Integer, value > 0)*
 | Port which should be used to start the default prometheus exporter webservers
-
-
 
 Example
 -------

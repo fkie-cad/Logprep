@@ -8,6 +8,7 @@ class TimeMeasurement:
     """Measures the execution time of functions and adds the results to events via a decorator."""
 
     TIME_MEASUREMENT_ENABLED = False
+    APPEND_TO_EVENT = False
     HOSTNAME = gethostname()
 
     @staticmethod
@@ -23,17 +24,24 @@ class TimeMeasurement:
         def inner_decorator(func):
             def inner(*args, **kwargs):
                 if TimeMeasurement.TIME_MEASUREMENT_ENABLED:
+                    caller = args[0]
                     event = args[1]
                     begin = time()
                     result = func(*args, **kwargs)
                     end = time()
 
-                    if not event.get('processing_times'):
-                        event['processing_times'] = dict()
-                    event['processing_times'][name] = float('{:.10f}'.format(end - begin))
+                    processing_time = end - begin
 
-                    if 'hostname' not in event['processing_times'].keys():
-                        event['processing_times']['hostname'] = TimeMeasurement.HOSTNAME
+                    if caller.__module__.endswith("processor"):
+                        caller.ps.update_average_processing_time(processing_time)
+
+                    if TimeMeasurement.APPEND_TO_EVENT:
+                        if not event.get('processing_times'):
+                            event['processing_times'] = dict()
+                        event['processing_times'][name] = float('{:.10f}'.format(processing_time))
+
+                        if 'hostname' not in event['processing_times'].keys():
+                            event['processing_times']['hostname'] = TimeMeasurement.HOSTNAME
                     return result
                 return func(*args, **kwargs)
             return inner

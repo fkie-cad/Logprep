@@ -137,8 +137,15 @@ def main():
     if not args.disable_logging:
         status_logger = _get_status_logger(config, logger)
 
-    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get('measure_time', False)
-    StatsClassesController.ENABLED = config.get('status_logger', dict()).get('enabled', True)
+    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config \
+        .get('measure_time', dict()) \
+        .get("enabled", False)
+    TimeMeasurement.APPEND_TO_EVENT = config \
+        .get('measure_time', dict()) \
+        .get("append_to_event", False)
+    StatsClassesController.ENABLED = config \
+        .get('status_logger', dict()) \
+        .get('enabled', True)
 
     if logger.isEnabledFor(DEBUG):
         logger.debug(f'Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}')

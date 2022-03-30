@@ -130,7 +130,7 @@ class Configuration(dict):
             raise InvalidProcessorConfigurationError(str(error)) from error
 
     def _verify_status_logger(self):
-        required_keys = ['enabled', 'period', 'cumulative', 'targets']
+        required_keys = ['enabled', 'period', 'cumulative', 'aggregate_processes', 'targets']
 
         for key in required_keys:
             if key not in self["status_logger"]:

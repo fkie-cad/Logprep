@@ -1,6 +1,6 @@
 from logging import getLogger
 
-from prometheus_client import Counter, Info, REGISTRY
+from prometheus_client import Gauge, Info, REGISTRY
 
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
@@ -22,7 +22,8 @@ class TestPrometheusStatsExporter:
         }
         exporter = PrometheusStatsExporter(status_logger_config, getLogger("test-logger"))
 
-        expected_metrics = {"processed", "errors", "warnings", "matches", "mean_matches_per_rule"}
+        expected_metrics = {"processed", "errors", "warnings", "matches",
+                            "mean_matches_per_rule", "avg_processing_time"}
 
         created_metrics = exporter.stats
         created_metric_names = set(created_metrics.keys())
@@ -35,7 +36,7 @@ class TestPrometheusStatsExporter:
         assert len(unknown_keys) == 0, f"following metrics are unexpected: {unknown_keys}"
 
         for metric_key in exporter.stats.keys():
-            assert isinstance(exporter.stats[metric_key], Counter)
+            assert isinstance(exporter.stats[metric_key], Gauge)
 
         assert isinstance(exporter.info_metric, Info)
 
