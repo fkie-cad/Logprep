@@ -15,6 +15,8 @@ from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcess
 
 class BaseProcessorTestCase(ABC):
 
+    mocks: list[tuple] = None
+
     factory = None
 
     CONFIG = {}
@@ -60,8 +62,7 @@ class BaseProcessorTestCase(ABC):
 
         return specific_rules
 
-    @pytest.fixture(autouse=True, scope="function")
-    def setUp(self) -> None:  # pylint: disable=invalid-name
+    def setup_method(self) -> None:
         """
         setUp class for the imported TestCase
         """
