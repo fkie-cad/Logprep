@@ -10,7 +10,6 @@ import pytest
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
-from logprep.util.processor_stats import StatsClassesController
 
 
 class BaseProcessorTestCase(ABC):
