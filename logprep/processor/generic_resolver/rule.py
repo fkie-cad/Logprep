@@ -75,5 +75,7 @@ class GenericResolverRule(Rule):
         for field in ("field_mapping",):
             if not isinstance(generic_resolver_cfg[field], dict):
                 raise InvalidGenericResolverDefinition(
-                    '"{}" value "{}" is not a string!'.format(field, generic_resolver_cfg[field])
+                    '"{}" value "{}" is not a string!'.format(
+                        field, generic_resolver_cfg[field]
+                    )
                 )
