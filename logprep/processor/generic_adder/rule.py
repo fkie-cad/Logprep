@@ -39,52 +39,56 @@ class GenericAdderRule(Rule):
 
         add_paths = generic_adder_cfg.get("add_from_file")
         if add_paths is not None:
-            missing_files = []
-            existing_files = []
-
-            if isinstance(add_paths, str):
-                add_paths = [add_paths]
-
-            for add_path in add_paths:
-                if not isfile(add_path):
-                    missing_files.append(add_path)
-                else:
-                    existing_files.append(add_path)
-
-            if only_first_existing:
-                if existing_files:
-                    existing_files = existing_files[:1]
-                else:
-                    raise InvalidGenericAdderDefinition(
-                        f"At least one of the following files must " f"exist: '{missing_files}'"
-                    )
-            else:
-                if missing_files:
-                    raise InvalidGenericAdderDefinition(
-                        f"The following required files do " f"not exist: '{missing_files}'"
-                    )
-
-            for add_path in existing_files:
-                with open(add_path, "r") as add_file:
-                    add_dict = yaml.load(add_file)
-                    if isinstance(add_dict, dict) and all(
-                        isinstance(value, str) for value in add_dict.values()
-                    ):
-                        self._add_from_file.update(add_dict)
-                    else:
-                        error_msg = (
-                            f"Additions file '{add_path}' must be a dictionary "
-                            f"with string values!"
-                        )
-                        raise InvalidGenericAdderDefinition(error_msg)
+            self._add_from_path(only_first_existing, add_paths)
 
         self._add.update(self._add_from_file)
 
+    def _add_from_path(self, only_first_existing, add_paths):
+        """reads add fields from file"""
+        missing_files = []
+        existing_files = []
+
+        if isinstance(add_paths, str):
+            add_paths = [add_paths]
+
+        for add_path in add_paths:
+            if not isfile(add_path):
+                missing_files.append(add_path)
+            else:
+                existing_files.append(add_path)
+
+        if only_first_existing:
+            if existing_files:
+                existing_files = existing_files[:1]
+            else:
+                raise InvalidGenericAdderDefinition(
+                    f"At least one of the following files must " f"exist: '{missing_files}'"
+                )
+        else:
+            if missing_files:
+                raise InvalidGenericAdderDefinition(
+                    f"The following required files do " f"not exist: '{missing_files}'"
+                )
+
+        for add_path in existing_files:
+            with open(add_path, "r", encoding="utf8") as add_file:
+                add_dict = yaml.load(add_file)
+                if isinstance(add_dict, dict) and all(
+                    isinstance(value, str) for value in add_dict.values()
+                ):
+                    self._add_from_file.update(add_dict)
+                else:
+                    error_msg = (
+                        f"Additions file '{add_path}' must be a dictionary " f"with string values!"
+                    )
+                    raise InvalidGenericAdderDefinition(error_msg)
+
     def __eq__(self, other: "GenericAdderRule") -> bool:
-        return (
-            (other.filter == self._filter)
-            and (self._add == other.add)
-            and (self._add_from_file == other.add_from_file)
+        return all(
+            [
+                other.filter == self._filter,
+                self._add == other.add,
+            ]
         )
 
     def __hash__(self) -> int:
