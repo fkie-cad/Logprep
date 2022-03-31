@@ -1,7 +1,10 @@
+# pylint: disable=missing-docstring
 from os.path import exists
 from logging import getLogger
 
 import pytest
+from unittest import mock
+from geoip2.errors import AddressNotFoundError
 
 pytest.importorskip("logprep.processor.geoip_enricher")
 
@@ -13,7 +16,43 @@ geoip_db_path = "tests/testdata/external/GeoLite2-City.mmdb"
 rules_dir = "tests/testdata/unit/geoip_enricher/rules"
 
 
+class ReaderMock(mock.MagicMock):
+    def city(self, ip):
+        if "127.0.0.1" in ip:
+            raise AddressNotFoundError
+        if "8.8.8.8" in ip:
+
+            class MockData:
+                longitude = 1.1
+                latitude = 2.2
+                accuracy_radius = 1337
+                name = "myName"
+                code = "2342"
+                most_specific = mock.MagicMock()
+
+            class City:
+                location = MockData()
+                continent = MockData()
+                country = MockData()
+                city = MockData()
+                postal = MockData()
+                subdivisions = MockData()
+
+            city = City()
+            city.continent.name = "MyContinent"
+            city.country.name = "MyCountry"
+            city.city.name = "MyCity"
+
+            return city
+
+        return mock.MagicMock()
+
+
+new_reader = ReaderMock()
+
+
 @pytest.fixture()
+@mock.patch("geoip2.database.Reader", new=new_reader)
 def geoip_enricher():
     config = {
         "type": "geoip_enricher",
@@ -68,12 +107,12 @@ class TestGeoIPEnricher:
         assert isinstance(geoip.get("geometry"), dict)
         assert geoip["geometry"].get("type") == "Point"
         assert isinstance(geoip["geometry"].get("coordinates"), list)
-        assert isinstance(geoip["geometry"]["coordinates"][0], float)
-        assert isinstance(geoip["geometry"]["coordinates"][1], float)
+        assert geoip["geometry"]["coordinates"][0] == 1.1
+        assert geoip["geometry"]["coordinates"][1] == 2.2
         assert isinstance(geoip.get("properties"), dict)
-        assert isinstance(geoip["properties"].get("continent"), str)
-        assert isinstance(geoip["properties"].get("country"), str)
-        assert isinstance(geoip["properties"].get("accuracy_radius"), int)
+        assert geoip["properties"].get("continent") == "MyContinent"
+        assert geoip["properties"].get("country") == "MyCountry"
+        assert geoip["properties"].get("accuracy_radius") == 1337
 
     def test_enrich_an_event_geoip_with_existing_differing_geoip(self, geoip_enricher):
         assert geoip_enricher.ps.processed_count == 0
