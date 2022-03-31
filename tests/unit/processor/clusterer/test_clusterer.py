@@ -1,12 +1,15 @@
+# pylint: disable=missing-module-docstring
+# pylint: disable=wrong-import-position
+# pylint: disable=protected-access
 import copy
 from unittest import mock
 
 import pytest
-from logprep.processor.clusterer.processor import Clusterer
 from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.clusterer")
 
+from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.clusterer.factory import ClustererFactory
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.processor_factory_error import ProcessorFactoryError
