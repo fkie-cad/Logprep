@@ -1,14 +1,9 @@
-from logging import getLogger
-import tempfile
-from os import path
-from shutil import rmtree
-from pathlib import Path
-from json import dumps
 from collections import OrderedDict
+from logging import getLogger
 
 import pytest
 
-from processor.generic_resolver.rule import GenericResolverRule
+from logprep.processor.generic_resolver.rule import GenericResolverRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.generic_resolver")
