@@ -26,7 +26,6 @@ def geoip_enricher():
     return geoip_enricher
 
 
-@pytest.mark.skipif(not exists(geoip_db_path), reason="GeoIP db required.")
 class TestGeoIPEnricher:
     def test_geoip_data_added(self, geoip_enricher):
         assert geoip_enricher.ps.processed_count == 0
