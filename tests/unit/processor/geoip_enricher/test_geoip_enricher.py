@@ -5,6 +5,7 @@ from logging import getLogger
 import pytest
 from unittest import mock
 from geoip2.errors import AddressNotFoundError
+from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.geoip_enricher")
 
@@ -12,7 +13,6 @@ from logprep.processor.geoip_enricher.factory import GeoIPEnricherFactory
 from logprep.processor.geoip_enricher.processor import DuplicationError
 
 logger = getLogger()
-geoip_db_path = "tests/testdata/external/GeoLite2-City.mmdb"
 rules_dir = "tests/testdata/unit/geoip_enricher/rules"
 
 
@@ -48,24 +48,28 @@ class ReaderMock(mock.MagicMock):
         return mock.MagicMock()
 
 
-new_reader = ReaderMock()
+class TestGeoIPEnricher(BaseProcessorTestCase):
 
+    mocks = {"geoip2.database.Reader": {"new": ReaderMock()}}
 
-@pytest.fixture()
-@mock.patch("geoip2.database.Reader", new=new_reader)
-def geoip_enricher():
-    config = {
+    factory = GeoIPEnricherFactory
+
+    CONFIG = {
         "type": "geoip_enricher",
-        "rules": [rules_dir],
-        "db_path": geoip_db_path,
+        "specific_rules": ["tests/testdata/unit/geoip_enricher/rules/specific"],
+        "generic_rules": ["tests/testdata/unit/geoip_enricher/rules/generic"],
+        "db_path": "tests/testdata/external/GeoLite2-City.mmdb",
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    geoip_enricher = GeoIPEnricherFactory.create("test-geoip-enricher", config, logger)
-    return geoip_enricher
+    @property
+    def generic_rules_dirs(self):
+        return self.CONFIG["generic_rules"]
 
+    @property
+    def specific_rules_dirs(self):
+        return self.CONFIG["specific_rules"]
 
-class TestGeoIPEnricher:
     def test_geoip_data_added(self, geoip_enricher):
         assert geoip_enricher.ps.processed_count == 0
         document = {"client": {"ip": "1.2.3.4"}}
