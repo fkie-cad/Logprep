@@ -7,16 +7,16 @@ from logprep.processor.generic_adder.processor import GenericAdder
 class GenericAdderFactory(BaseFactory):
     """Create generic adder."""
 
+    mandatory_fields = ["generic_rules", "specific_rules"]
+
     @staticmethod
     def create(name: str, configuration: dict, logger) -> GenericAdder:
         """Create a generic adder."""
         GenericAdderFactory._check_configuration(configuration)
-
-        generic_adder = GenericAdder(name, configuration.get("tree_config"), logger)
-        generic_adder.add_rules_from_directory(configuration["rules"])
-
-        return generic_adder
+        return GenericAdder(name, configuration, logger)
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        GenericAdderFactory._check_common_configuration("generic_adder", ["rules"], configuration)
+        GenericAdderFactory._check_common_configuration(
+            "generic_adder", GenericAdderFactory.mandatory_fields, configuration
+        )
