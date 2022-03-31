@@ -15,7 +15,7 @@ class GeoIPEnricherFactory(BaseFactory):
         GeoIPEnricherFactory._check_configuration(configuration)
 
         geoip_enricher = GeoIPEnricher(
-            name, configuration.get("tree_config"), configuration["db_path"], logger
+            name=name, configuration=configuration, logger=logger
         )
 
         return geoip_enricher
