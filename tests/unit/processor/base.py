@@ -3,27 +3,30 @@
 import json
 import re
 from abc import ABC, abstractmethod
-from encodings import utf_8
 from logging import getLogger
 
-import pytest
+from unittest import mock
 
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
+from logprep.processor.base.processor import (
+    BaseProcessor,
+    ProcessingWarning,
+    RuleBasedProcessor,
+)
 
 
 class BaseProcessorTestCase(ABC):
 
-    mocks: list[tuple] = None
+    mocks: dict = {}
 
     factory = None
 
-    CONFIG = {}
+    CONFIG: dict = {}
 
     logger = getLogger()
 
-    object = None
+    object: BaseProcessor = None
 
     @property
     @abstractmethod
@@ -66,12 +69,23 @@ class BaseProcessorTestCase(ABC):
         """
         setUp class for the imported TestCase
         """
+        self.patchers = []
+        for name, kwargs in self.mocks.items():
+            patcher = mock.patch(name, **kwargs)
+            patcher.start()
+            self.patchers.append(patcher)
         if self.factory is not None:
             self.object = self.factory.create(
                 name="Test Instance Name", configuration=self.CONFIG, logger=self.logger
             )
             self.specific_rules = self.set_rules(self.specific_rules_dirs)
             self.generic_rules = self.set_rules(self.generic_rules_dirs)
+
+    def teardown_method(self) -> None:
+        """teardown for all methods"""
+        while len(self.patchers) > 0:
+            patcher = self.patchers.pop()
+            patcher.stop()
 
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, RuleBasedProcessor)
