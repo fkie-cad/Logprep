@@ -31,7 +31,6 @@ class Clusterer(RuleBasedProcessor):
         self.ps = ProcessorStats()
 
         self._name = name
-        self._events_processed = 0
 
         self.sps = SignaturePhaseStreaming()
         self._output_field_name = configuration.get("output_field_name")
