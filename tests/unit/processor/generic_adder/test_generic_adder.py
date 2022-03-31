@@ -1,6 +1,10 @@
+from copy import deepcopy
 from logging import getLogger
 
 import pytest
+from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
+
+from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.generic_adder")
 
@@ -10,28 +14,31 @@ from logprep.processor.generic_adder.factory import GenericAdderFactory
 from logprep.processor.generic_adder.processor import DuplicationError
 
 
-logger = getLogger()
-rules_dir = "tests/testdata/unit/generic_adder/rules"
 rules_dir_missing = "tests/testdata/unit/generic_adder/rules_missing"
 rules_dir_invalid = "tests/testdata/unit/generic_adder/rules_invalid"
 rules_dir_first_existing = "tests/testdata/unit/generic_adder/rules_first_existing"
 
 
-@pytest.fixture()
-def generic_adder():
-    config = {
+class TestGenericAdder(BaseProcessorTestCase):
+
+    factory = GenericAdderFactory
+
+    CONFIG = {
         "type": "generic_adder",
-        "rules": [rules_dir],
-        "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+        "generic_rules": ["tests/testdata/unit/generic_adder/rules/generic"],
+        "specific_rules": ["tests/testdata/unit/generic_adder/rules/specific"],
     }
 
-    generic_adder = GenericAdderFactory.create("test-generic-adder", config, logger)
-    return generic_adder
+    @property
+    def generic_rules_dirs(self):
+        return self.CONFIG.get("generic_rules")
 
+    @property
+    def specific_rules_dirs(self):
+        return self.CONFIG.get("specific_rules")
 
-class TestGenericAdder:
-    def test_add_generic_fields(self, generic_adder):
-        assert generic_adder.ps.processed_count == 0
+    def test_add_generic_fields(self):
+        assert self.object.ps.processed_count == 0
         expected = {
             "add_generic_test": "Test",
             "event_id": 123,
@@ -41,12 +48,12 @@ class TestGenericAdder:
         }
         document = {"add_generic_test": "Test", "event_id": 123}
 
-        generic_adder.process(document)
+        self.object.process(document)
 
         assert document == expected
 
-    def test_add_generic_fields_from_file(self, generic_adder):
-        assert generic_adder.ps.processed_count == 0
+    def test_add_generic_fields_from_file(self):
+        assert self.object.ps.processed_count == 0
         expected = {
             "add_list_generic_test": "Test",
             "event_id": 123,
@@ -56,12 +63,12 @@ class TestGenericAdder:
         }
         document = {"add_list_generic_test": "Test", "event_id": 123}
 
-        generic_adder.process(document)
+        self.object.process(document)
 
         assert document == expected
 
-    def test_add_generic_fields_from_file_list_one_element(self, generic_adder):
-        assert generic_adder.ps.processed_count == 0
+    def test_add_generic_fields_from_file_list_one_element(self):
+        assert self.object.ps.processed_count == 0
         expected = {
             "add_lists_one_generic_test": "Test",
             "event_id": 123,
@@ -71,12 +78,12 @@ class TestGenericAdder:
         }
         document = {"add_lists_one_generic_test": "Test", "event_id": 123}
 
-        generic_adder.process(document)
+        self.object.process(document)
 
         assert document == expected
 
-    def test_add_generic_fields_from_file_list_two_elements(self, generic_adder):
-        assert generic_adder.ps.processed_count == 0
+    def test_add_generic_fields_from_file_list_two_elements(self):
+        assert self.object.ps.processed_count == 0
         expected = {
             "add_lists_two_generic_test": "Test",
             "event_id": 123,
@@ -87,18 +94,16 @@ class TestGenericAdder:
         }
         document = {"add_lists_two_generic_test": "Test", "event_id": 123}
 
-        generic_adder.process(document)
+        self.object.process(document)
 
         assert document == expected
 
     def test_add_generic_fields_from_file_first_existing(self):
-        config = {
-            "type": "generic_adder",
-            "rules": [rules_dir_first_existing],
-            "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        }
+        config = deepcopy(self.CONFIG)
+        config["generic_rules"] = [rules_dir_first_existing]
+        config["specific_rules"] = []
 
-        generic_adder = GenericAdderFactory.create("test-generic-adder", config, logger)
+        generic_adder = GenericAdderFactory.create("test-generic-adder", config, self.logger)
 
         assert generic_adder.ps.processed_count == 0
         expected = {
@@ -115,13 +120,11 @@ class TestGenericAdder:
         assert document == expected
 
     def test_add_generic_fields_from_file_first_existing_with_missing(self):
-        config = {
-            "type": "generic_adder",
-            "rules": [rules_dir_first_existing],
-            "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        }
+        config = deepcopy(self.CONFIG)
+        config["specific_rules"] = [rules_dir_first_existing]
+        config["generic_rules"] = []
 
-        generic_adder = GenericAdderFactory.create("test-generic-adder", config, logger)
+        generic_adder = GenericAdderFactory.create("test-generic-adder", config, self.logger)
 
         assert generic_adder.ps.processed_count == 0
         expected = {
@@ -131,33 +134,33 @@ class TestGenericAdder:
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}},
         }
-        document = {"add_first_existing_with_missing_generic_test": "Test", "event_id": 123}
+        document = {
+            "add_first_existing_with_missing_generic_test": "Test",
+            "event_id": 123,
+        }
 
         generic_adder.process(document)
 
         assert document == expected
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
-        with pytest.raises(InvalidRuleFileError, match=r"files do not exist"):
-            config = {
-                "type": "generic_adder",
-                "rules": [rules_dir_missing],
-                "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-            }
+        with pytest.raises(InvalidGenericAdderDefinition, match=r"files do not exist"):
+            config = deepcopy(self.CONFIG)
+            config["specific_rules"] = [rules_dir_missing]
 
-            GenericAdderFactory.create("test-generic-adder", config, logger)
+            GenericAdderFactory.create("test-generic-adder", config, self.logger)
 
     def test_add_generic_fields_from_file_invalid(self):
-        with pytest.raises(InvalidRuleFileError, match=r"must be a dictionary with string values"):
-            config = {
-                "type": "generic_adder",
-                "rules": [rules_dir_invalid],
-                "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-            }
+        with pytest.raises(
+            InvalidGenericAdderDefinition,
+            match=r"must be a dictionary with string values",
+        ):
+            config = deepcopy(self.CONFIG)
+            config["generic_rules"] = [rules_dir_invalid]
 
-            GenericAdderFactory.create("test-generic-adder", config, logger)
+            GenericAdderFactory.create("test-generic-adder", config, self.logger)
 
-    def test_add_generic_fields_to_co_existing_field(self, generic_adder):
+    def test_add_generic_fields_to_co_existing_field(self):
         expected = {
             "add_generic_test": "Test",
             "event_id": 123,
@@ -165,13 +168,17 @@ class TestGenericAdder:
             "another_added_field": "another_value",
             "dotted": {"added": {"field": "yet_another_value"}, "i_exist": "already"},
         }
-        document = {"add_generic_test": "Test", "event_id": 123, "dotted": {"i_exist": "already"}}
+        document = {
+            "add_generic_test": "Test",
+            "event_id": 123,
+            "dotted": {"i_exist": "already"},
+        }
 
-        generic_adder.process(document)
+        self.object.process(document)
 
         assert document == expected
 
-    def test_add_generic_fields_to_existing_value(self, generic_adder):
+    def test_add_generic_fields_to_existing_value(self):
         expected = {
             "add_generic_test": "Test",
             "event_id": 123,
@@ -186,6 +193,6 @@ class TestGenericAdder:
         }
 
         with pytest.raises(DuplicationError):
-            generic_adder.process(document)
+            self.object.process(document)
 
         assert document == expected
