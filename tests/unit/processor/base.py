@@ -4,6 +4,7 @@ import json
 import re
 from abc import ABC, abstractmethod
 from logging import getLogger
+from numpy import isin
 
 from unittest import mock
 
@@ -29,22 +30,18 @@ class BaseProcessorTestCase(ABC):
     object: BaseProcessor = None
 
     @property
-    @abstractmethod
     def specific_rules_dirs(self):
         """
-        the specific rules_dirs for the processor
-        has to be implemented
+        gets the specific rules_dirs for the processor from CONFIG
         """
-        ...
+        return self.CONFIG.get("specific_rules")
 
     @property
-    @abstractmethod
     def generic_rules_dirs(self):
         """
-        the generic rules_dirs for the processor
-        has to be implemented
+        gets the generic rules_dirs for the processor from CONFIG
         """
-        ...
+        return self.CONFIG.get("generic_rules")
 
     def set_rules(self, rules_dirs):
         """
