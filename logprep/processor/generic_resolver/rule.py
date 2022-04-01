@@ -1,7 +1,6 @@
 """This module is used to resolve field values from documents via a list."""
 
 from logprep.filter.expression.filter_expression import FilterExpression
-
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 
 
@@ -75,7 +74,5 @@ class GenericResolverRule(Rule):
         for field in ("field_mapping",):
             if not isinstance(generic_resolver_cfg[field], dict):
                 raise InvalidGenericResolverDefinition(
-                    '"{}" value "{}" is not a string!'.format(
-                        field, generic_resolver_cfg[field]
-                    )
+                    f'"{field}" value "{generic_resolver_cfg[field]}" is not a string!'
                 )

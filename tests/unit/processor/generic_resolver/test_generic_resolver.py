@@ -1,13 +1,16 @@
+# pylint: disable=protected-access
+# pylint: disable=missing-module-docstring
+# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-order
 from collections import OrderedDict
 from logging import getLogger
 
 import pytest
 
-from logprep.processor.generic_resolver.rule import GenericResolverRule
-from tests.unit.processor.base import BaseProcessorTestCase
-
 pytest.importorskip("logprep.processor.generic_resolver")
 
+from tests.unit.processor.base import BaseProcessorTestCase
+from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.processor.generic_resolver.factory import GenericResolverFactory
 from logprep.processor.generic_resolver.processor import (
     GenericResolver,
@@ -31,10 +34,12 @@ class TestGenericResolver(BaseProcessorTestCase):
 
     @property
     def specific_rules_dirs(self):
+        """Return the paths of the specific rules"""
         return self.CONFIG["specific_rules"]
 
     @property
     def generic_rules_dirs(self):
+        """Return the paths of the generic rules"""
         return self.CONFIG["generic_rules"]
 
     def _load_specific_rule(self, rule):
@@ -181,7 +186,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_no_match_from_fileF(
+    def test_resolve_generic_existing_dotted_src_field_without_conflict_no_match_from_file(
         self,
     ):
         rule = {
