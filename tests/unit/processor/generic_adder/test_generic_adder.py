@@ -1,22 +1,15 @@
+# pylint: disable=missing-module-docstring
 from copy import deepcopy
-from logging import getLogger
 
 import pytest
-from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
-
-from tests.unit.processor.base import BaseProcessorTestCase
-
-pytest.importorskip("logprep.processor.generic_adder")
-
-from logprep.processor.base.exceptions import InvalidRuleFileError
-
 from logprep.processor.generic_adder.factory import GenericAdderFactory
 from logprep.processor.generic_adder.processor import DuplicationError
+from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
+from tests.unit.processor.base import BaseProcessorTestCase
 
-
-rules_dir_missing = "tests/testdata/unit/generic_adder/rules_missing"
-rules_dir_invalid = "tests/testdata/unit/generic_adder/rules_invalid"
-rules_dir_first_existing = "tests/testdata/unit/generic_adder/rules_first_existing"
+RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
+RULES_DIR_INVALID = "tests/testdata/unit/generic_adder/rules_invalid"
+RULES_DIR_FIRST_EXISTING = "tests/testdata/unit/generic_adder/rules_first_existing"
 
 
 class TestGenericAdder(BaseProcessorTestCase):
@@ -100,7 +93,7 @@ class TestGenericAdder(BaseProcessorTestCase):
 
     def test_add_generic_fields_from_file_first_existing(self):
         config = deepcopy(self.CONFIG)
-        config["generic_rules"] = [rules_dir_first_existing]
+        config["generic_rules"] = [RULES_DIR_FIRST_EXISTING]
         config["specific_rules"] = []
 
         generic_adder = GenericAdderFactory.create("test-generic-adder", config, self.logger)
@@ -121,7 +114,7 @@ class TestGenericAdder(BaseProcessorTestCase):
 
     def test_add_generic_fields_from_file_first_existing_with_missing(self):
         config = deepcopy(self.CONFIG)
-        config["specific_rules"] = [rules_dir_first_existing]
+        config["specific_rules"] = [RULES_DIR_FIRST_EXISTING]
         config["generic_rules"] = []
 
         generic_adder = GenericAdderFactory.create("test-generic-adder", config, self.logger)
@@ -146,7 +139,7 @@ class TestGenericAdder(BaseProcessorTestCase):
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
         with pytest.raises(InvalidGenericAdderDefinition, match=r"files do not exist"):
             config = deepcopy(self.CONFIG)
-            config["specific_rules"] = [rules_dir_missing]
+            config["specific_rules"] = [RULES_DIR_MISSING]
 
             GenericAdderFactory.create("test-generic-adder", config, self.logger)
 
@@ -156,7 +149,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             match=r"must be a dictionary with string values",
         ):
             config = deepcopy(self.CONFIG)
-            config["generic_rules"] = [rules_dir_invalid]
+            config["generic_rules"] = [RULES_DIR_INVALID]
 
             GenericAdderFactory.create("test-generic-adder", config, self.logger)
 

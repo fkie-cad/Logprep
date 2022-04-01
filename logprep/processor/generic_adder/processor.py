@@ -3,8 +3,6 @@ from time import time
 from typing import List
 from logging import Logger, DEBUG
 
-from os import walk
-from os.path import isdir, realpath, join
 
 from multiprocessing import current_process
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -12,7 +10,6 @@ from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
     InvalidRuleDefinitionError,
     InvalidRuleFileError,
 )
