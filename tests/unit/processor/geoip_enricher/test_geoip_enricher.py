@@ -70,40 +70,40 @@ class TestGeoIPEnricher(BaseProcessorTestCase):
     def specific_rules_dirs(self):
         return self.CONFIG["specific_rules"]
 
-    def test_geoip_data_added(self, geoip_enricher):
-        assert geoip_enricher.ps.processed_count == 0
+    def test_geoip_data_added(self):
+        assert self.object.ps.processed_count == 0
         document = {"client": {"ip": "1.2.3.4"}}
 
-        geoip_enricher.process(document)
+        self.object.process(document)
 
-    def test_geoip_data_added_not_exists(self, geoip_enricher):
-        assert geoip_enricher.ps.processed_count == 0
+    def test_geoip_data_added_not_exists(self):
+        assert self.object.ps.processed_count == 0
         document = {"client": {"ip": "127.0.0.1"}}
 
-        geoip_enricher.process(document)
+        self.object.process(document)
 
         assert document.get("geoip") is None
 
-    def test_nothing_to_enrich(self, geoip_enricher):
-        assert geoip_enricher.ps.processed_count == 0
+    def test_nothing_to_enrich(self):
+        assert self.object.ps.processed_count == 0
         document = {"something": {"something": "1.2.3.4"}}
 
-        geoip_enricher.process(document)
+        self.object.process(document)
         assert "geoip" not in document.keys()
 
-    def test_geoip_data_added_not_valid(self, geoip_enricher):
-        assert geoip_enricher.ps.processed_count == 0
+    def test_geoip_data_added_not_valid(self):
+        assert self.object.ps.processed_count == 0
         document = {"client": {"ip": "333.333.333.333"}}
 
-        geoip_enricher.process(document)
+        self.object.process(document)
 
         assert document.get("geoip") is None
 
-    def test_enrich_an_event_geoip(self, geoip_enricher):
-        assert geoip_enricher.ps.processed_count == 0
+    def test_enrich_an_event_geoip(self):
+        assert self.object.ps.processed_count == 0
         document = {"client": {"ip": "8.8.8.8"}}
 
-        geoip_enricher.process(document)
+        self.object.process(document)
 
         geoip = document.get("geoip")
         assert isinstance(geoip, dict)
@@ -118,21 +118,21 @@ class TestGeoIPEnricher(BaseProcessorTestCase):
         assert geoip["properties"].get("country") == "MyCountry"
         assert geoip["properties"].get("accuracy_radius") == 1337
 
-    def test_enrich_an_event_geoip_with_existing_differing_geoip(self, geoip_enricher):
-        assert geoip_enricher.ps.processed_count == 0
+    def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
+        assert self.object.ps.processed_count == 0
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"test": "test"}}
 
         with pytest.raises(
             DuplicationError,
-            match=r"GeoIPEnricher \(test-geoip-enricher\)\: The following fields "
+            match=r"GeoIPEnricher \(Test Instance Name\)\: The following fields "
             r"already existed and were not overwritten by the GeoIPEnricher\:"
             r" geoip",
         ):
-            geoip_enricher.process(document)
+            self.object.process(document)
 
-    def test_configured_dotted_output_field(self, geoip_enricher):
-        assert geoip_enricher.ps.processed_count == 0
+    def test_configured_dotted_output_field(self):
+        assert self.object.ps.processed_count == 0
         document = {"source": {"ip": "8.8.8.8"}}
 
-        geoip_enricher.process(document)
+        self.object.process(document)
         assert document.get("source", {}).get("geo", {}).get("ip") is not None
