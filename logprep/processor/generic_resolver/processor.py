@@ -4,8 +4,8 @@ from logging import Logger, DEBUG
 from multiprocessing import current_process
 from typing import List
 
-from ruamel.yaml import YAML
 from time import time
+from ruamel.yaml import YAML
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
@@ -53,6 +53,8 @@ class GenericResolver(RuleBasedProcessor):
         self._specific_tree = RuleTree(config_path=tree_config)
         self._generic_tree = RuleTree(config_path=tree_config)
 
+        self._event = None
+
         self._replacements_from_file = {}
 
         self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
@@ -89,34 +91,36 @@ class GenericResolver(RuleBasedProcessor):
             [None] * self._generic_tree.rule_counter
             + [None] * self._specific_tree.rule_counter
         )
-
     # pylint: enable=arguments-differ
 
     def describe(self) -> str:
+        """Describe the current processor"""
         return f"GenericResolver ({self._name})"
 
     @TimeMeasurement.measure_time("generic_resolver")
     def process(self, event: dict):
+        """Process the current event"""
         self._event = event
 
         for rule in self._generic_tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
+            processing_time = float(f"{time() - begin:.10f}")
             idx = self._generic_tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
         for rule in self._specific_tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
+            processing_time = float(f"{time() - begin:.10f}")
             idx = self._specific_tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
         self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
-        conflicting_fields = list()
+        """Apply the given rule to the current event"""
+        conflicting_fields = []
 
         if rule.resolve_from_file:
             if rule.resolve_from_file["path"] not in self._replacements_from_file:
