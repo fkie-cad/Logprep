@@ -154,7 +154,9 @@ class BaseProcessorTestCase(ABC):
     def test_add_rules_from_directory(self):
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
-        self.object.add_rules_from_directory(self.generic_rules_dirs, self.specific_rules_dirs)
+        self.object.add_rules_from_directory(
+            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+        )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
         assert new_generic_rules_size > generic_rules_size
@@ -166,10 +168,14 @@ class BaseProcessorTestCase(ABC):
         in the rules directories
         ensures that every rule in rule tree is unique
         """
-        self.object.add_rules_from_directory(self.generic_rules_dirs, self.specific_rules_dirs)
+        self.object.add_rules_from_directory(
+            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+        )
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
-        self.object.add_rules_from_directory(self.generic_rules_dirs, self.specific_rules_dirs)
+        self.object.add_rules_from_directory(
+            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+        )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
         assert new_generic_rules_size == generic_rules_size
