@@ -17,27 +17,28 @@ class NormalizerFactory(BaseFactory):
 
         normalizer = Normalizer(
             name,
-            configuration['specific_rules'],
-            configuration['generic_rules'],
-            configuration.get('tree_config'),
+            configuration["specific_rules"],
+            configuration["generic_rules"],
+            configuration.get("tree_config"),
             logger,
-            configuration['regex_mapping'],
-            configuration.get('html_replace_fields'),
-            configuration.get('grok_patterns'),
-            configuration.get('count_grok_pattern_matches'))
+            configuration["regex_mapping"],
+            configuration.get("html_replace_fields"),
+            configuration.get("grok_patterns"),
+            configuration.get("count_grok_pattern_matches"),
+        )
 
         return normalizer
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        NormalizerFactory._check_common_configuration('normalizer',
-                                                      ['specific_rules', 'generic_rules',
-                                                       'regex_mapping'],
-                                                      configuration)
-        if 'count_grok_pattern_matches' in configuration:
-            required_items = ('count_directory_path', 'write_period')
+        NormalizerFactory._check_common_configuration(
+            "normalizer", ["specific_rules", "generic_rules", "regex_mapping"], configuration
+        )
+        if "count_grok_pattern_matches" in configuration:
+            required_items = ("count_directory_path", "write_period")
             for item in required_items:
-                if item not in configuration['count_grok_pattern_matches']:
+                if item not in configuration["count_grok_pattern_matches"]:
                     raise InvalidConfigurationError(
-                        f'Item \'count_grok_pattern_matches.{item}\' is missing in '
-                        f'\'normalizer\' configuration')
+                        f"Item 'count_grok_pattern_matches.{item}' is missing in "
+                        f"'normalizer' configuration"
+                    )

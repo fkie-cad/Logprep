@@ -8,10 +8,19 @@ import luqum
 from luqum.parser import parser, ParseSyntaxError, IllegalCharacterError
 from luqum.tree import OrOperation, AndOperation, Group, FieldGroup, SearchField, Phrase, Word, Not
 
-from logprep.filter.expression.filter_expression import (Or, And, StringFilterExpression,
-                                                         WildcardStringFilterExpression, SigmaFilterExpression,
-                                                         RegExFilterExpression, Not as NotExpression, Exists,
-                                                         Null, Always, FilterExpression)
+from logprep.filter.expression.filter_expression import (
+    Or,
+    And,
+    StringFilterExpression,
+    WildcardStringFilterExpression,
+    SigmaFilterExpression,
+    RegExFilterExpression,
+    Not as NotExpression,
+    Exists,
+    Null,
+    Always,
+    FilterExpression,
+)
 
 
 class LuceneFilterError(BaseException):
@@ -61,11 +70,11 @@ class LuceneFilter:
             length = len(match) - 1
             if length > 1:
                 matches[idx] = matches[idx][:-1] + matches[idx]
-                matches[idx] = '\\' + matches[idx]
+                matches[idx] = "\\" + matches[idx]
         split = re.split(r'(?:\\)+"', query_string)
-        query_string = ''.join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
+        query_string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
-        query_string = re.sub(r'((?:\\)+"[\s\)]*(?:AND|OR|NOT|$))', r'\\\g<1>', query_string)
+        query_string = re.sub(r'((?:\\)+"[\s\)]*(?:AND|OR|NOT|$))', r"\\\g<1>", query_string)
         return query_string
 
 
@@ -73,9 +82,9 @@ class LuceneTransformer:
     """A transformer that converts a luqum tree into a FilterExpression."""
 
     _special_fields_map = {
-        'regex_fields': RegExFilterExpression,
-        'wildcard_fields': WildcardStringFilterExpression,
-        'sigma_fields': SigmaFilterExpression
+        "regex_fields": RegExFilterExpression,
+        "wildcard_fields": WildcardStringFilterExpression,
+        "sigma_fields": SigmaFilterExpression,
     }
 
     def __init__(self, tree: luqum.tree, special_fields: dict = None):
@@ -85,7 +94,9 @@ class LuceneTransformer:
 
         special_fields = special_fields if special_fields else dict()
         for key in self._special_fields_map.keys():
-            self._special_fields[key] = special_fields.get(key) if special_fields.get(key) else list()
+            self._special_fields[key] = (
+                special_fields.get(key) if special_fields.get(key) else list()
+            )
 
         self._last_search_field = None
 
@@ -106,7 +117,9 @@ class LuceneTransformer:
         if isinstance(tree, AndOperation):
             return And(*self._collect_children(tree))
         if isinstance(tree, Not):
-            return NotExpression(*self._collect_children(tree))  # pylint: disable=no-value-for-parameter
+            return NotExpression(
+                *self._collect_children(tree)
+            )  # pylint: disable=no-value-for-parameter
         if isinstance(tree, Group):
             return self._parse_tree(tree.children[0])
         if isinstance(tree, SearchField):
@@ -143,7 +156,7 @@ class LuceneTransformer:
             Parsed filter expression.
 
         """
-        key = self._last_search_field.split('.')
+        key = self._last_search_field.split(".")
         value = self._strip_quote_from_string(tree.value)
         value = self._remove_lucene_escaping(value)
         return self._get_filter_expression(key, value)
@@ -156,9 +169,9 @@ class LuceneTransformer:
 
     def _create_field(self, tree: luqum.tree) -> Optional[FilterExpression]:
         if isinstance(tree.expr, (Phrase, Word)):
-            key = tree.name.replace('\\', '')
-            key = key.split('.')
-            if tree.expr.value == 'null':
+            key = tree.name.replace("\\", "")
+            key = key.split(".")
+            if tree.expr.value == "null":
                 return Null(key)
 
             value = self._strip_quote_from_string(tree.expr.value)
@@ -166,13 +179,15 @@ class LuceneTransformer:
             return self._get_filter_expression(key, value)
         return None
 
-    def _get_filter_expression(self, key: List[str], value) -> Union[RegExFilterExpression, StringFilterExpression]:
-        key_and_modifier = key[-1].split('|')
+    def _get_filter_expression(
+        self, key: List[str], value
+    ) -> Union[RegExFilterExpression, StringFilterExpression]:
+        key_and_modifier = key[-1].split("|")
         if len(key_and_modifier) == 2:
-            if key_and_modifier[-1] == 're':
+            if key_and_modifier[-1] == "re":
                 return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
 
-        dotted_field = '.'.join(key)
+        dotted_field = ".".join(key)
         if self._special_fields.items():
             for sf_key, sf_value in self._special_fields.items():
                 if sf_value is True or dotted_field in sf_value:
@@ -181,16 +196,16 @@ class LuceneTransformer:
 
     @staticmethod
     def _create_value_expression(word: luqum.tree) -> Union[Exists, Always]:
-        value = word.value.replace('\\', '')
-        value = value.split('.')
-        if value == ['*']:
+        value = word.value.replace("\\", "")
+        value = value.split(".")
+        if value == ["*"]:
             return Always(True)
         else:
             return Exists(value)
 
     @staticmethod
     def _strip_quote_from_string(string: str) -> str:
-        if (string[0] == string[-1]) and (string[0] in ['\'', '"']):
+        if (string[0] == string[-1]) and (string[0] in ["'", '"']):
             return string[1:-1]
         return string
 
@@ -201,20 +216,20 @@ class LuceneTransformer:
         matches = re.findall(r'.*?((?:\\)*").*?', string)
         for idx, match in enumerate(matches):
             length = len(match) - 1
-            matches[idx] = '\\' * (length // 2 - 1) + '"'
+            matches[idx] = "\\" * (length // 2 - 1) + '"'
 
         split = re.split(r'(?:\\)*"', string)
-        string = ''.join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
+        string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
         backslashes = 0
         for x in range(len(string)):
             chara = string[len(string) - 1 - x]
-            if chara == '\\':
+            if chara == "\\":
                 backslashes += 1
             else:
                 break
 
         if backslashes > 0:
-            string = string[:-backslashes] + '\\' * (backslashes // 2 - 2)
+            string = string[:-backslashes] + "\\" * (backslashes // 2 - 2)
 
         return string

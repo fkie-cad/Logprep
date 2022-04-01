@@ -9,20 +9,23 @@ from logprep.util.json_handling import dump_config_as_file
 
 @pytest.fixture
 def config():
-    pipeline = [{
-        'normalizername': {
-            'type': 'normalizer',
-            'specific_rules': ['tests/testdata/acceptance/normalizer/rules_static/specific'],
-            'generic_rules': ['tests/testdata/acceptance/normalizer/rules_static/generic'],
-            'regex_mapping': 'tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml'
-        }
-    }, {
-        'selective_extractor': {
-            'type': 'selective_extractor',
-            'selective_extractor_topic': 'selection_target',
-            'extractor_list': 'tests/testdata/acceptance/selective_extractor/whitelist.txt'
-        }
-    }]
+    pipeline = [
+        {
+            "normalizername": {
+                "type": "normalizer",
+                "specific_rules": ["tests/testdata/acceptance/normalizer/rules_static/specific"],
+                "generic_rules": ["tests/testdata/acceptance/normalizer/rules_static/generic"],
+                "regex_mapping": "tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml",
+            }
+        },
+        {
+            "selective_extractor": {
+                "type": "selective_extractor",
+                "selective_extractor_topic": "selection_target",
+                "extractor_list": "tests/testdata/acceptance/selective_extractor/whitelist.txt",
+            }
+        },
+    ]
     return get_default_logprep_config(pipeline)
 
 
@@ -41,12 +44,13 @@ def check_extractions(expected_extraction_event, expected_pipeline_event, kafka_
 
 
 class TestSelectiveExtractor:
-
     def test_selective_extractor_full_pipeline_pass(self, tmp_path, config):
-        config_path = str(tmp_path / 'generated_config.yml')
+        config_path = str(tmp_path / "generated_config.yml")
         dump_config_as_file(config_path, config)
 
-        with patch('logprep.connector.connector_factory.ConnectorFactory.create') as mock_connector_factory:
+        with patch(
+            "logprep.connector.connector_factory.ConnectorFactory.create"
+        ) as mock_connector_factory:
             input_test_event = {
                 "user": {"agent": "ok_admin", "other": "field"},
                 "event": {"action": "less_evil_action"},
@@ -56,24 +60,28 @@ class TestSelectiveExtractor:
                 "event": {"action": "less_evil_action"},
             }
             expected_pipeline_event = {
-                'user': {'agent': 'ok_admin', 'other': 'field'},
-                'event': {'action': 'less_evil_action'},
-                'hmac': {
-                    'hmac': '18e2a3df8590b6cbab040f7ea4b9df399febbb5f259817459c460b196f42c4ca',
-                    'compressed_base64': 'eJwtykEOgCAMBdG7/DUn4DKESNVGLImtbEjvLhq382bgVroQB/JGYohoR8rlZEFAs/01rEy1wAOof8+cF+MmkyqpJupc05/cH589HPw='
-                }
+                "user": {"agent": "ok_admin", "other": "field"},
+                "event": {"action": "less_evil_action"},
+                "hmac": {
+                    "hmac": "18e2a3df8590b6cbab040f7ea4b9df399febbb5f259817459c460b196f42c4ca",
+                    "compressed_base64": "eJwtykEOgCAMBdG7/DUn4DKESNVGLImtbEjvLhq382bgVroQB/JGYohoR8rlZEFAs/01rEy1wAOof8+cF+MmkyqpJupc05/cH589HPw=",
+                },
             }
 
-            kafka_output_file = mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory, tmp_path)
+            kafka_output_file = mock_kafka_and_run_pipeline(
+                config, input_test_event, mock_connector_factory, tmp_path
+            )
 
             check_extractions(expected_extraction_event, expected_pipeline_event, kafka_output_file)
 
     def test_extraction_field_not_in_event(self, tmp_path, config):
         # tests behaviour in case a field from the extraction list is not in the provided event
-        config_path = str(tmp_path / 'generated_config.yml')
+        config_path = str(tmp_path / "generated_config.yml")
         dump_config_as_file(config_path, config)
 
-        with patch('logprep.connector.connector_factory.ConnectorFactory.create') as mock_connector_factory:
+        with patch(
+            "logprep.connector.connector_factory.ConnectorFactory.create"
+        ) as mock_connector_factory:
             input_test_event = {
                 "user": {"other": "field"},
                 "event": {"action": "less_evil_action"},
@@ -82,17 +90,16 @@ class TestSelectiveExtractor:
                 "event": {"action": "less_evil_action"},
             }
             expected_pipeline_event = {
-                'user': {'other': 'field'},
-                'event': {'action': 'less_evil_action'},
-                'hmac': {
-                    'hmac': 'cae31468df13e701f46e70bfbea86f29e77ab69f6253ac156ddda5e38fdbed92',
-                    'compressed_base64': 'eJyrViotTi1SsqpWyi/JADGU0jJTc1KUanWUUstS80pAMonJJZn5eUCpnNTi4vjUssyceKhQbS0Ay/oWvQ=='
-                }
+                "user": {"other": "field"},
+                "event": {"action": "less_evil_action"},
+                "hmac": {
+                    "hmac": "cae31468df13e701f46e70bfbea86f29e77ab69f6253ac156ddda5e38fdbed92",
+                    "compressed_base64": "eJyrViotTi1SsqpWyi/JADGU0jJTc1KUanWUUstS80pAMonJJZn5eUCpnNTi4vjUssyceKhQbS0Ay/oWvQ==",
+                },
             }
 
-            kafka_output_file = mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory, tmp_path)
+            kafka_output_file = mock_kafka_and_run_pipeline(
+                config, input_test_event, mock_connector_factory, tmp_path
+            )
 
             check_extractions(expected_extraction_event, expected_pipeline_event, kafka_output_file)
-
-
-

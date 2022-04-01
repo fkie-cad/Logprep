@@ -27,7 +27,7 @@ class DummyOutput(Output):
         self.setup_called_count += 1
 
     def describe_endpoint(self) -> str:
-        return 'dummy'
+        return "dummy"
 
     def store(self, document: dict):
         if self._exceptions:

@@ -15,8 +15,8 @@ from logprep.util.json_handling import parse_jsonl
 from logprep.util.rule_dry_runner import get_patched_runner
 from tests.unit.connector.test_confluent_kafka import RecordMock
 
-basicConfig(level=DEBUG, format='%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s')
-logger = getLogger('Logprep-Test')
+basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
+logger = getLogger("Logprep-Test")
 
 
 def get_difference(test_output, expected_output):
@@ -25,33 +25,33 @@ def get_difference(test_output, expected_output):
         expected_event = deepcopy(expected_output[x])
         difference = recursive_compare(test_event, expected_event)
         if difference:
-            return {'event_line_no': x, 'difference': difference}
-    return {'event_line_no': None, 'difference': (None, None)}
+            return {"event_line_no": x, "difference": difference}
+    return {"event_line_no": None, "difference": (None, None)}
 
 
 def store_latest_test_output(target_output_identifier, output_of_test):
-    """ Store output for test.
+    """Store output for test.
 
     This can be used to create expected outputs for new rules.
     The resulting file can be used as it is.
 
     """
 
-    output_dir = 'tests/testdata/out'
-    latest_output_path = path.join(output_dir, 'latest_{}.out'.format(target_output_identifier))
+    output_dir = "tests/testdata/out"
+    latest_output_path = path.join(output_dir, "latest_{}.out".format(target_output_identifier))
 
     if not path.exists(output_dir):
         makedirs(output_dir)
 
-    with open(latest_output_path, 'w') as latest_output:
+    with open(latest_output_path, "w") as latest_output:
         for test_output_line in output_of_test:
-            latest_output.write(json.dumps(test_output_line) + '\n')
+            latest_output.write(json.dumps(test_output_line) + "\n")
 
 
 def get_test_output(config_path):
     patched_runner = get_patched_runner(config_path, logger)
 
-    test_output_path = patched_runner._configuration['connector']['output_path']
+    test_output_path = patched_runner._configuration["connector"]["output_path"]
     remove_file_if_exists(test_output_path)
 
     patched_runner.start()
@@ -67,7 +67,6 @@ def assert_result_equal_expected(config, expected_output, tmp_path):
 
 
 class SingleMessageConsumerJsonMock:
-
     def __init__(self, record):
         self.record = ujson.encode(record)
 
@@ -76,7 +75,6 @@ class SingleMessageConsumerJsonMock:
 
 
 class TmpFileProducerMock:
-
     def __init__(self, tmp_path):
         self.tmp_path = tmp_path
 
@@ -90,15 +88,23 @@ class TmpFileProducerMock:
 
 def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory, tmp_path):
     # create kafka connector manually and add custom mock consumer and mock producer objects
-    kafka = ConfluentKafkaFactory.create_from_configuration(config['connector'])
+    kafka = ConfluentKafkaFactory.create_from_configuration(config["connector"])
     kafka._consumer = SingleMessageConsumerJsonMock(input_test_event)
     output_file_path = join(tmp_path, "kafka_out.txt")
     kafka._producer = TmpFileProducerMock(output_file_path)
     mock_connector_factory.return_value = (kafka, kafka)
 
     # Create, setup and execute logprep pipeline
-    pipeline = Pipeline(config['connector'], config['pipeline'], dict(), config['timeout'],
-                        SharedCounter(), Handler(), Lock(), dict())
+    pipeline = Pipeline(
+        config["connector"],
+        config["pipeline"],
+        dict(),
+        config["timeout"],
+        SharedCounter(),
+        Handler(),
+        Lock(),
+        dict(),
+    )
     pipeline._setup()
     pipeline._retrieve_and_process_data()
 
@@ -107,39 +113,39 @@ def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory
 
 def get_default_logprep_config(pipeline_config, with_hmac=True):
     config_yml = {
-        'process_count': 1,
-        'timeout': 0.1,
-        'profile_pipelines': False,
-        'pipeline': pipeline_config,
-        'connector': {
-            'type': 'confluentkafka',
-            'bootstrapservers': ['testserver:9092'],
-            'consumer': {
-                'topic': 'test_input_raw',
-                'group': 'test_consumergroup',
-                'auto_commit': False,
-                'session_timeout': 654321,
-                'enable_auto_offset_store': True,
-                'offset_reset_policy': 'latest',
+        "process_count": 1,
+        "timeout": 0.1,
+        "profile_pipelines": False,
+        "pipeline": pipeline_config,
+        "connector": {
+            "type": "confluentkafka",
+            "bootstrapservers": ["testserver:9092"],
+            "consumer": {
+                "topic": "test_input_raw",
+                "group": "test_consumergroup",
+                "auto_commit": False,
+                "session_timeout": 654321,
+                "enable_auto_offset_store": True,
+                "offset_reset_policy": "latest",
             },
-            'producer': {
-                'topic': 'test_input_processed',
-                'error_topic': 'test_error_producer',
-                'ack_policy': '1',
-                'compression': 'gzip',
-                'maximum_backlog': 987654,
-                'send_timeout': 2,
-                'flush_timeout': 30,
-                'linger_duration': 4321,
-            }
-        }
+            "producer": {
+                "topic": "test_input_processed",
+                "error_topic": "test_error_producer",
+                "ack_policy": "1",
+                "compression": "gzip",
+                "maximum_backlog": 987654,
+                "send_timeout": 2,
+                "flush_timeout": 30,
+                "linger_duration": 4321,
+            },
+        },
     }
 
     if with_hmac:
-        config_yml['connector']['consumer']['hmac'] = {
-            'target': "<RAW_MSG>",
-            'key': "secret",
-            'output_field': "hmac"
+        config_yml["connector"]["consumer"]["hmac"] = {
+            "target": "<RAW_MSG>",
+            "key": "secret",
+            "output_field": "hmac",
         }
 
     return config_yml

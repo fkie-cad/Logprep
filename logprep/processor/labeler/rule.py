@@ -13,7 +13,7 @@ class LabelingRule(Rule):
         super().__init__(filter_rule)
         self._label = label
 
-    def __eq__(self, other: 'LabelingRule'):
+    def __eq__(self, other: "LabelingRule"):
         return (self._filter == other.filter) and (self._label == other.label)
 
     def __hash__(self) -> int:
@@ -23,14 +23,15 @@ class LabelingRule(Rule):
     @property
     def label(self) -> dict:
         return self._label
+
     # pylint: enable=C0111
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> 'LabelingRule':
-        LabelingRule._check_rule_validity(rule, 'label')
+    def _create_from_dict(rule: dict) -> "LabelingRule":
+        LabelingRule._check_rule_validity(rule, "label")
 
         filter_expression = Rule._create_filter_expression(rule)
-        return LabelingRule(filter_expression, rule['label'])
+        return LabelingRule(filter_expression, rule["label"])
 
     def conforms_to_schema(self, schema: LabelingSchema) -> bool:
         """Check if labels are valid."""
@@ -54,16 +55,16 @@ class LabelingRule(Rule):
         self._add_label_values(document)
 
     def _add_label_fields(self, document: dict):
-        if 'label' not in document:
-            document['label'] = {}
+        if "label" not in document:
+            document["label"] = {}
 
         for key in self._label:
-            if key not in document['label']:
-                document['label'][key] = set()
+            if key not in document["label"]:
+                document["label"][key] = set()
 
     def _add_label_values(self, document: dict):
         for key in self._label:
-            if not isinstance(document['label'][key], set):
-                document['label'][key] = set(document['label'][key])
+            if not isinstance(document["label"][key], set):
+                document["label"][key] = set(document["label"][key])
 
-            document['label'][key].update(self._label[key])
+            document["label"][key].update(self._label[key])

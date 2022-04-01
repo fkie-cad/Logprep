@@ -28,7 +28,7 @@ class JsonInput(Input):
         self.shut_down_called_count = 0
 
     def describe_endpoint(self) -> str:
-        return 'json'
+        return "json"
 
     def setup(self):
         self.setup_called_count += 1
@@ -51,5 +51,5 @@ class JsonInput(Input):
 
     @staticmethod
     def _parse_json(json_path: str) -> List[Union[dict, type, BaseException]]:
-        with open(json_path, 'r') as json_file:
+        with open(json_path, "r") as json_file:
             return json.load(json_file)

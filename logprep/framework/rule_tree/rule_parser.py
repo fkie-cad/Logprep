@@ -8,9 +8,16 @@ behavior, allowing a simpler construction of the rule tree.
 from typing import Union
 
 from logprep.processor.base.rule import Rule
-from logprep.filter.expression.filter_expression import (Or, CompoundFilterExpression, Not, And,
-                                                         Exists, StringFilterExpression,
-                                                         FilterExpression, Always)
+from logprep.filter.expression.filter_expression import (
+    Or,
+    CompoundFilterExpression,
+    Not,
+    And,
+    Exists,
+    StringFilterExpression,
+    FilterExpression,
+    Always,
+)
 
 
 class RuleParserException(Exception):
@@ -72,8 +79,8 @@ class RuleParser:
 
     @staticmethod
     def _parse_not_expression(
-            rule: Union[Not, And, Or, StringFilterExpression]) -> Union[Not, And, Or,
-                                                                        StringFilterExpression]:
+        rule: Union[Not, And, Or, StringFilterExpression]
+    ) -> Union[Not, And, Or, StringFilterExpression]:
         """Parse NOT-expressions in given filter expression.
 
         This function resolves NOT-expressions found in the given filter expression according to
@@ -125,8 +132,9 @@ class RuleParser:
                 result_segments = ()
 
                 for and_segment in rule.expressions:
-                    result_segments = result_segments + (RuleParser.
-                                                         _parse_not_expression(and_segment),)
+                    result_segments = result_segments + (
+                        RuleParser._parse_not_expression(and_segment),
+                    )
 
                 result = And(*result_segments)
                 return result
@@ -134,8 +142,9 @@ class RuleParser:
                 result_segments = ()
 
                 for or_segment in rule.expressions:
-                    result_segments = result_segments + (RuleParser.
-                                                         _parse_not_expression(or_segment),)
+                    result_segments = result_segments + (
+                        RuleParser._parse_not_expression(or_segment),
+                    )
 
                 result = Or(*result_segments)
                 return result
@@ -533,7 +542,7 @@ class RuleParser:
             if segment.__repr__()[1:-1] == tag:
                 return True
         elif isinstance(segment, StringFilterExpression):
-            if segment.__repr__().replace('"', '') == tag:
+            if segment.__repr__().replace('"', "") == tag:
                 return True
 
     @staticmethod
@@ -560,8 +569,11 @@ class RuleParser:
                 segment = temp_parsed_rule[segment_index]
                 # Skip Always()-, Exists()- and Not()-expressions when adding Exists()-filter
                 # Not()-expressions need to be skipped for cases where the field does not exist
-                if (not isinstance(segment, Exists) and not isinstance(segment, Not)
-                        and not isinstance(segment, Always)):
+                if (
+                    not isinstance(segment, Exists)
+                    and not isinstance(segment, Not)
+                    and not isinstance(segment, Always)
+                ):
                     exists_filter = Exists(segment._key)
 
                     # Skip if Exists()-filter already exists in Rule. No need to add it twice

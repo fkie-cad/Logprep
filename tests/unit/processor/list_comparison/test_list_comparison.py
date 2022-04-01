@@ -18,7 +18,7 @@ class TestListComparison(BaseProcessorTestCase):
         "specific_rules": ["tests/testdata/unit/list_comparison/rules/specific"],
         "generic_rules": ["tests/testdata/unit/list_comparison/rules/generic"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        "list_search_base_path": "./"
+        "list_search_base_path": "./",
     }
     factory = ListComparisonFactory
 

@@ -10,14 +10,14 @@ class DropperRuleError(InvalidRuleDefinitionError):
     """Base class for Dropper rule related exceptions."""
 
     def __init__(self, message: str):
-        super().__init__(f'Dropper rule ({message}): ')
+        super().__init__(f"Dropper rule ({message}): ")
 
 
 class InvalidDropperDefinition(DropperRuleError):
     """Raise if Dropper definition invalid."""
 
     def __init__(self, definition):
-        message = f'The following Dropper definition is invalid: {definition}'
+        message = f"The following Dropper definition is invalid: {definition}"
         super().__init__(message)
 
 
@@ -29,7 +29,7 @@ class DropperRule(Rule):
         self._fields_to_drop = drop
         self._drop_full = drop_full
 
-    def __eq__(self, other: 'DropperRule') -> bool:
+    def __eq__(self, other: "DropperRule") -> bool:
         return (other.filter == self._filter) and (self._fields_to_drop == other.fields_to_drop)
 
     def __hash__(self) -> int:
@@ -43,22 +43,23 @@ class DropperRule(Rule):
     @property
     def drop_full(self) -> bool:
         return self._drop_full
+
     # pylint: enable=C0111
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> 'DropperRule':
-        DropperRule._check_rule_validity(rule, 'drop', optional_keys={'drop_full'})
+    def _create_from_dict(rule: dict) -> "DropperRule":
+        DropperRule._check_rule_validity(rule, "drop", optional_keys={"drop_full"})
         DropperRule._check_if_drops_valid(rule)
 
         filter_expression = Rule._create_filter_expression(rule)
-        return DropperRule(filter_expression, rule['drop'], rule.get('drop_full', True))
+        return DropperRule(filter_expression, rule["drop"], rule.get("drop_full", True))
 
     @staticmethod
     def _check_if_drops_valid(rule: dict):
-        if not isinstance(rule['drop'], list):
-            raise InvalidDropperDefinition('Drop value "{}" is not a list!'.format(
-                                            rule['drop']))
+        if not isinstance(rule["drop"], list):
+            raise InvalidDropperDefinition('Drop value "{}" is not a list!'.format(rule["drop"]))
 
-        if not all(isinstance(value, str) for value in rule['drop']):
+        if not all(isinstance(value, str) for value in rule["drop"]):
             raise InvalidDropperDefinition(
-                'Drop values {} are not a list of strings!'.format(rule['drop']))
+                "Drop values {} are not a list of strings!".format(rule["drop"])
+            )

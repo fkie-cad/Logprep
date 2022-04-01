@@ -54,12 +54,8 @@ class TestNormalizer(BaseProcessorTestCase):
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 1234,
-                "event_data": {
-                    "test_normalize": "Existing and normalized have the same value"
-                },
-                "test_normalized": {
-                    "something": "Existing and normalized have the same value"
-                },
+                "event_data": {"test_normalize": "Existing and normalized have the same value"},
+                "test_normalized": {"something": "Existing and normalized have the same value"},
             }
         }
         try:
@@ -91,10 +87,7 @@ class TestNormalizer(BaseProcessorTestCase):
         ):
             self.object.process(document)
 
-        assert (
-            document["test_normalized"]["something"]
-            == "I already exist but I am different!"
-        )
+        assert document["test_normalized"]["something"] == "I already exist but I am different!"
 
     def test_apply_windows_rules_catch_all(self):
         document = {
@@ -201,9 +194,7 @@ class TestNormalizer(BaseProcessorTestCase):
     def test_normalize_with_invalid_list_fails(self):
         rule = {
             "filter": "winlog.event_id: 123456789",
-            "normalize": {
-                "winlog.event_data.invalid_normalization": ["I am normalized!", ""]
-            },
+            "normalize": {"winlog.event_data.invalid_normalization": ["I am normalized!", ""]},
         }
 
         with pytest.raises(InvalidNormalizationDefinition):
@@ -321,9 +312,7 @@ class TestNormalizer(BaseProcessorTestCase):
         rule = {
             "filter": "winlog.event_id: 123456789",
             "normalize": {
-                "winlog.event_data.normalize me!": {
-                    "grok": "%{IP:some_ip} %{NUMBER:port:int}"
-                }
+                "winlog.event_data.normalize me!": {"grok": "%{IP:some_ip} %{NUMBER:port:int}"}
             },
         }
 
@@ -345,9 +334,7 @@ class TestNormalizer(BaseProcessorTestCase):
         rule = {
             "filter": "winlog.event_id: 123456789",
             "normalize": {
-                "winlog.event_data.normalize me!": {
-                    "grok": "%{IP:some_ip} %{NUMBER:port:int}"
-                }
+                "winlog.event_data.normalize me!": {"grok": "%{IP:some_ip} %{NUMBER:port:int}"}
             },
         }
 
@@ -369,9 +356,7 @@ class TestNormalizer(BaseProcessorTestCase):
         rule = {
             "filter": "winlog.event_id: 123456789",
             "normalize": {
-                "winlog.event_data.normalize me!": {
-                    "grok": "%{IP:some_ip} %{NUMBER:port:int}"
-                }
+                "winlog.event_data.normalize me!": {"grok": "%{IP:some_ip} %{NUMBER:port:int}"}
             },
         }
 
@@ -539,9 +524,7 @@ class TestNormalizer(BaseProcessorTestCase):
         rule = {
             "filter": "winlog.event_id: 123456789",
             "normalize": {
-                "winlog.event_data.normalize me!": {
-                    "grok": "%{IP:some_ip} %{NUMBER:port:int}"
-                },
+                "winlog.event_data.normalize me!": {"grok": "%{IP:some_ip} %{NUMBER:port:int}"},
                 "some_ip": "some.ip",
             },
         }
@@ -566,9 +549,7 @@ class TestNormalizer(BaseProcessorTestCase):
         rule = {
             "filter": "winlog.event_id: 123456789",
             "normalize": {
-                "winlog.event_data.normalize me!": {
-                    "grok": "%{IP:winlog} %{NUMBER:port:int}"
-                }
+                "winlog.event_data.normalize me!": {"grok": "%{IP:winlog} %{NUMBER:port:int}"}
             },
         }
 
@@ -585,9 +566,7 @@ class TestNormalizer(BaseProcessorTestCase):
         rule = {
             "filter": "winlog.event_id: 123456789",
             "normalize": {
-                "winlog.event_data.normalize me!": {
-                    "groks": "%{IP:some_ip} %{NUMBER:port:int}"
-                }
+                "winlog.event_data.normalize me!": {"groks": "%{IP:some_ip} %{NUMBER:port:int}"}
             },
         }
 
@@ -598,9 +577,7 @@ class TestNormalizer(BaseProcessorTestCase):
         rule = {
             "filter": "winlog.event_id: 123456789",
             "normalize": {
-                "winlog.event_data.normalize me!": {
-                    "grok": "%{IP:some_ip} %{NUMBA:port:int}"
-                }
+                "winlog.event_data.normalize me!": {"grok": "%{IP:some_ip} %{NUMBA:port:int}"}
             },
         }
 
@@ -649,9 +626,7 @@ class TestNormalizer(BaseProcessorTestCase):
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {
-                    "normalize me!": "123.123.123.123 1234 1999 12 12 - 12:12:22"
-                },
+                "event_data": {"normalize me!": "123.123.123.123 1234 1999 12 12 - 12:12:22"},
             }
         }
 
@@ -1051,11 +1026,16 @@ class TestNormalizer(BaseProcessorTestCase):
     def test_normalization_with_grok_pattern_count(self):
 
         temp_path = tempfile.mkdtemp()
-        self.object = Normalizer('Test Normalizer Name', self.generic_rules_dirs, self.generic_rules_dirs, None, self.logger,
-                            regex_mapping=self.CONFIG["regex_mapping"],
-                            html_replace_fields=self.CONFIG["html_replace_fields"],
-                            count_grok_pattern_matches={'count_directory_path': temp_path,
-                                                        'write_period': 0})
+        self.object = Normalizer(
+            "Test Normalizer Name",
+            self.generic_rules_dirs,
+            self.generic_rules_dirs,
+            None,
+            self.logger,
+            regex_mapping=self.CONFIG["regex_mapping"],
+            html_replace_fields=self.CONFIG["html_replace_fields"],
+            count_grok_pattern_matches={"count_directory_path": temp_path, "write_period": 0},
+        )
 
         event = {
             "winlog": {
@@ -1115,9 +1095,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
 class TestNormalizerFactory(TestNormalizer):
     def test_create(self):
-        assert isinstance(
-            NormalizerFactory.create("foo", self.CONFIG, self.logger), Normalizer
-        )
+        assert isinstance(NormalizerFactory.create("foo", self.CONFIG, self.logger), Normalizer)
 
     def test_check_configuration(self):
         NormalizerFactory._check_configuration(self.CONFIG)

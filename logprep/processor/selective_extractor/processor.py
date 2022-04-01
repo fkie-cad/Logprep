@@ -17,7 +17,7 @@ class SelectiveExtractorError(BaseException):
     """Base class for Selective Extractor related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f'Selective Extractor ({name}): {message}')
+        super().__init__(f"Selective Extractor ({name}): {message}")
 
 
 class SelectiveExtractorConfigurationError(SelectiveExtractorError):
@@ -27,7 +27,13 @@ class SelectiveExtractorConfigurationError(SelectiveExtractorError):
 class SelectiveExtractor(BaseProcessor):
     """Processor used to selectively extract fields from log events."""
 
-    def __init__(self, name: str, selective_extractor_topic: str, extractor_list_file_path: str, logger: Logger):
+    def __init__(
+        self,
+        name: str,
+        selective_extractor_topic: str,
+        extractor_list_file_path: str,
+        logger: Logger,
+    ):
         super().__init__(name, logger)
         self._logger = logger
         self.ps = ProcessorStats()
@@ -36,23 +42,27 @@ class SelectiveExtractor(BaseProcessor):
         self._selective_extractor_topic = selective_extractor_topic
         self._event = None
 
-        if os.path.isfile(extractor_list_file_path) and extractor_list_file_path.endswith('.txt'):
+        if os.path.isfile(extractor_list_file_path) and extractor_list_file_path.endswith(".txt"):
             with open(extractor_list_file_path) as f:
                 extraction_fields = f.read().splitlines()
-                self.extraction_fields = [field for field in extraction_fields if not field.startswith("#")]
+                self.extraction_fields = [
+                    field for field in extraction_fields if not field.startswith("#")
+                ]
         else:
-            raise SelectiveExtractorConfigurationError(self._name, "The given extraction_list file does not exist or "
-                                                                   "is not a valid '.txt' file.")
+            raise SelectiveExtractorConfigurationError(
+                self._name,
+                "The given extraction_list file does not exist or " "is not a valid '.txt' file.",
+            )
 
     def describe(self) -> str:
-        return f'Selective Extractor ({self._name})'
+        return f"Selective Extractor ({self._name})"
 
-    @TimeMeasurement.measure_time('selective_extractor')
+    @TimeMeasurement.measure_time("selective_extractor")
     def process(self, event: dict) -> tuple:
         self._event = event
 
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug('{} processing matching event'.format(self.describe()))
+            self._logger.debug("{} processing matching event".format(self.describe()))
 
         filtered_event = self._generate_filtered_event(event)
 

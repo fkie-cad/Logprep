@@ -30,14 +30,14 @@ class TestCache:
 
     def test_requires_storing_nonzero_deltatime(self, cache):
         for _ in range(3):
-            assert cache.requires_storing('foo')
-            assert not cache.requires_storing('foo')
+            assert cache.requires_storing("foo")
+            assert not cache.requires_storing("foo")
             time.sleep(0.1)
 
     def test_requires_storing_zero_deltatime(self, cache):
         cache._max_timedelta = datetime.timedelta(days=0)
         for _ in range(10):
-            assert cache.requires_storing('foo')
+            assert cache.requires_storing("foo")
 
     def test_max_items(self, cache):
         extra_items = 3
