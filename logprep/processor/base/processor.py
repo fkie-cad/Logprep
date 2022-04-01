@@ -17,14 +17,14 @@ class ProcessingError(BaseException):
     """Base class for exceptions related to processing events."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f'{name}: ({message})')
+        super().__init__(f"{name}: ({message})")
 
 
 class ProcessingWarning(ProcessingError):
     """An minor error occurred - log the error but continue processing the event."""
 
     def __init__(self, message: str):
-        super().__init__('ProcessingWarning', message)
+        super().__init__("ProcessingWarning", message)
 
 
 class ProcessingWarningCollection(ProcessingError):
@@ -69,7 +69,7 @@ class BaseProcessor:
         >>> Labeler(name)
 
         """
-        return 'undescribed processor'
+        return "undescribed processor"
 
     @abstractmethod
     def process(self, event: dict):
@@ -95,7 +95,7 @@ class BaseProcessor:
 
     @staticmethod
     def _get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
-        fields = dotted_field.split('.')
+        fields = dotted_field.split(".")
         dict_ = event
         for field in fields:
             if field in dict_:
@@ -106,7 +106,7 @@ class BaseProcessor:
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
-        fields = dotted_field.split('.')
+        fields = dotted_field.split(".")
         dict_ = event
         for field in fields:
             if field in dict_ and isinstance(dict_, dict):
@@ -143,7 +143,7 @@ class RuleBasedProcessor(BaseProcessor):
         >>> Labeler(name)
 
         """
-        return 'undescribed processor'
+        return "undescribed processor"
 
     @abstractmethod
     def process(self, event: dict):
@@ -189,8 +189,13 @@ class RuleBasedProcessor(BaseProcessor):
     def _list_json_files_in_directory(directory: str) -> List[str]:
         valid_file_paths = []
         for root, _, files in walk(directory):
-            for file_name in [file for file in files if ((file.endswith('.json')
-                                                         or file.endswith('.yml'))
-                                                         and not file.endswith('_test.json'))]:
+            for file_name in [
+                file
+                for file in files
+                if (
+                    (file.endswith(".json") or file.endswith(".yml"))
+                    and not file.endswith("_test.json")
+                )
+            ]:
                 valid_file_paths.append(path.join(root, file_name))
         return valid_file_paths
