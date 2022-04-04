@@ -7,29 +7,29 @@ class TemplateReplacerRuleError(InvalidRuleDefinitionError):
     """Base class for TemplateReplacer rule related exceptions."""
 
     def __init__(self, message: str):
-        super().__init__(f'TemplateReplacer rule ({message}): ')
+        super().__init__(f"TemplateReplacer rule ({message}): ")
 
 
 class InvalidTemplateReplacerDefinition(TemplateReplacerRuleError):
     """Raise if TemplateReplacer definition invalid."""
 
     def __init__(self, definition):
-        message = f'The following TemplateReplacer definition is invalid: {definition}'
+        message = f"The following TemplateReplacer definition is invalid: {definition}"
         super().__init__(message)
 
 
 class TemplateReplacerRule(Rule):
     """Check if documents match a filter."""
 
-    def __eq__(self, other: 'TemplateReplacerRule') -> bool:
+    def __eq__(self, other: "TemplateReplacerRule") -> bool:
         return other.filter == self._filter
 
     def __hash__(self) -> int:
         return hash(repr(self))
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> 'TemplateReplacerRule':
-        TemplateReplacerRule._check_rule_validity(rule, 'template_replacer')
+    def _create_from_dict(rule: dict) -> "TemplateReplacerRule":
+        TemplateReplacerRule._check_rule_validity(rule, "template_replacer")
 
         filter_expression = Rule._create_filter_expression(rule)
         return TemplateReplacerRule(filter_expression)

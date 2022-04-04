@@ -8,11 +8,11 @@ from tests.testdata.metadata import path_to_config, path_to_schema, path_to_rule
 class ConfigurationForTest:
     def __init__(self, change={}, remove=[], inject_changes=[]):
         self._temp_file = None
-        with open(path_to_config, 'r') as file:
+        with open(path_to_config, "r") as file:
             self.config = safe_load(file)
 
-        self.config['labeling_scheme'] = path_to_schema
-        self.config['rules'] = [path_to_rules]
+        self.config["labeling_scheme"] = path_to_schema
+        self.config["rules"] = [path_to_rules]
 
         self.config.update(change)
 
@@ -23,7 +23,7 @@ class ConfigurationForTest:
             self._remove(keys)
 
     def __enter__(self):
-        self._temp_file = NamedTemporaryFile(mode='w')
+        self._temp_file = NamedTemporaryFile(mode="w")
         dump(self.config, self._temp_file)
         self._temp_file.flush()
 

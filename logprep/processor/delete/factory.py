@@ -14,10 +14,10 @@ class DeleteFactory(BaseFactory):
         """Create a delete processor."""
         DeleteFactory._check_configuration(configuration)
 
-        delete = Delete(configuration['i_really_want_to_delete_all_log_events'])
+        delete = Delete(configuration["i_really_want_to_delete_all_log_events"])
 
         return delete
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        DeleteFactory._check_common_configuration('delete', [], configuration)
+        DeleteFactory._check_common_configuration("delete", [], configuration)

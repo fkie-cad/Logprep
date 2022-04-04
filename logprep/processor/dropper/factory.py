@@ -12,11 +12,11 @@ class DropperFactory(BaseFactory):
         """Create a dropper."""
         DropperFactory._check_configuration(configuration)
 
-        dropper = Dropper(name, configuration.get('tree_config'), logger)
-        dropper.add_rules_from_directory(configuration['rules'])
+        dropper = Dropper(name, configuration.get("tree_config"), logger)
+        dropper.add_rules_from_directory(configuration["rules"])
 
         return dropper
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        DropperFactory._check_common_configuration('dropper', ['rules'], configuration)
+        DropperFactory._check_common_configuration("dropper", ["rules"], configuration)

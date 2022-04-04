@@ -97,8 +97,7 @@ class ListComparison(RuleBasedProcessor):
                 f"({current_process().name})"
             )
         self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter
-            + [None] * self._specific_tree.rule_counter
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
         )
 
     # pylint: enable=arguments-differ
@@ -116,9 +115,7 @@ class ListComparison(RuleBasedProcessor):
         try:
             return ListComparisonRule.create_rules_from_file(list_comparison_path)
         except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(
-                self._name, list_comparison_path, str(error)
-            ) from error
+            raise InvalidRuleFileError(self._name, list_comparison_path, str(error)) from error
 
     def describe(self) -> str:
         """Return name of given processor instance."""

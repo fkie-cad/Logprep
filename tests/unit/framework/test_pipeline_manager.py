@@ -23,7 +23,7 @@ class MultiprocessingPipelineMock(MultiprocessingPipeline):
         MultiprocessingPipelineMock.process_count += 1
 
     def __repr__(self):
-        return 'MultiprocessingLogprepWrapperMock-%d' % self._id
+        return "MultiprocessingLogprepWrapperMock-%d" % self._id
 
     def start(self):
         self.was_started = True
@@ -49,7 +49,7 @@ class TestPipelineManager:
     def setup_class(self):
         self.config = Configuration.create_from_yaml(path_to_config)
         self.handler = HandlerStub()
-        self.logger = Logger('test')
+        self.logger = Logger("test")
         self.status_logger = self.logger
         self.logger.addHandler(self.handler)
 
@@ -59,7 +59,10 @@ class TestPipelineManager:
     def test_create_pipeline_fails_if_config_is_unset(self):
         manager = PipelineManager(self.logger, self.status_logger)
 
-        with raises(MustSetConfigurationFirstError, match='Failed to create new pipeline: Configuration is unset'):
+        with raises(
+            MustSetConfigurationFirstError,
+            match="Failed to create new pipeline: Configuration is unset",
+        ):
             manager._create_pipeline()
 
     def test_get_count_returns_count_of_pipelines(self):
@@ -145,7 +148,7 @@ class TestPipelineManager:
         failed_pipeline = self.manager._pipelines[-1]
         failed_pipeline.process_is_alive = False
 
-        with AssertEmitsLogMessage(self.handler, WARNING, message='Removed 1 failed pipeline(s)'):
+        with AssertEmitsLogMessage(self.handler, WARNING, message="Removed 1 failed pipeline(s)"):
             self.manager.remove_failed_pipeline()
 
     def test_handle_logs_into_logger_returns_after_timeout(self):
@@ -165,14 +168,14 @@ class TestPipelineManager:
 
         handler = HandlerStub()
 
-        logger_in = Logger('test_handle_logs_into_logger_forwards_log_record_to_logger')
+        logger_in = Logger("test_handle_logs_into_logger_forwards_log_record_to_logger")
         logger_in.addHandler(self.manager._log_handler)
-        logger_in.error('this is a test')
+        logger_in.error("this is a test")
 
-        logger_out = Logger('test_handle_logs_into_logger_forwards_log_record_to_logger')
+        logger_out = Logger("test_handle_logs_into_logger_forwards_log_record_to_logger")
         logger_out.addHandler(handler)
 
-        with AssertEmitsLogMessage(handler, ERROR, 'this is a test'):
+        with AssertEmitsLogMessage(handler, ERROR, "this is a test"):
             self.manager.handle_logs_into_logger(logger_out, timeout=timeout)
 
     def test_handle_logs_into_logger_retrieves_all_logs_with_a_single_call(self):
@@ -181,19 +184,19 @@ class TestPipelineManager:
 
         handler = HandlerStub()
 
-        logger_in = Logger('test_handle_logs_into_logger_forwards_log_record_to_logger')
+        logger_in = Logger("test_handle_logs_into_logger_forwards_log_record_to_logger")
         logger_in.addHandler(self.manager._log_handler)
-        logger_in.error('msg1')
-        logger_in.warning('msg2')
-        logger_in.info('msg3')
+        logger_in.error("msg1")
+        logger_in.warning("msg2")
+        logger_in.info("msg3")
 
-        logger_out = Logger('test_handle_logs_into_logger_forwards_log_record_to_logger')
+        logger_out = Logger("test_handle_logs_into_logger_forwards_log_record_to_logger")
         logger_out.addHandler(handler)
         # NOTE: This test failed once in a while (fewer messages received than expected),
         # this sleep seems to have fixed it, try adjusting, if the test fails randomly.
         sleep(0.01)
 
-        with AssertEmitsLogMessages(handler, [ERROR, WARNING, INFO], ['msg1', 'msg2', 'msg3']):
+        with AssertEmitsLogMessages(handler, [ERROR, WARNING, INFO], ["msg1", "msg2", "msg3"]):
             self.manager.handle_logs_into_logger(logger_out, timeout=timeout)
 
     def test_stop_terminates_processes_created(self):
@@ -206,4 +209,3 @@ class TestPipelineManager:
 
         for logprep_instance in logprep_instances:
             assert logprep_instance.was_started and logprep_instance.was_stopped
-

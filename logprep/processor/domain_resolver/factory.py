@@ -16,21 +16,24 @@ class DomainResolverFactory(BaseFactory):
 
         max_timedelta = datetime.timedelta(days=configuration["max_caching_days"])
 
-        domain_resolver = DomainResolver(name,
-                                         configuration.get('tree_config'),
-                                         configuration['tld_list'],
-                                         configuration.get('timeout', 0.5),
-                                         configuration['max_cached_domains'],
-                                         max_timedelta,
-                                         configuration['hash_salt'],
-                                         configuration.get('cache_enabled', True),
-                                         configuration.get('debug_cache', False),
-                                         logger)
-        domain_resolver.add_rules_from_directory(configuration['rules'])
+        domain_resolver = DomainResolver(
+            name,
+            configuration.get("tree_config"),
+            configuration["tld_list"],
+            configuration.get("timeout", 0.5),
+            configuration["max_cached_domains"],
+            max_timedelta,
+            configuration["hash_salt"],
+            configuration.get("cache_enabled", True),
+            configuration.get("debug_cache", False),
+            logger,
+        )
+        domain_resolver.add_rules_from_directory(configuration["rules"])
 
         return domain_resolver
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        DomainResolverFactory._check_common_configuration('domain_resolver', ['rules'],
-                                                          configuration)
+        DomainResolverFactory._check_common_configuration(
+            "domain_resolver", ["rules"], configuration
+        )

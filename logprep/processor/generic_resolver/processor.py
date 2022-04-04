@@ -14,29 +14,33 @@ from ruamel.yaml import YAML
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
-                                               InvalidRuleFileError)
+from logprep.processor.base.exceptions import (
+    NotARulesDirectoryError,
+    InvalidRuleDefinitionError,
+    InvalidRuleFileError,
+)
 
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
 
-yaml = YAML(typ='safe', pure=True)
+yaml = YAML(typ="safe", pure=True)
 
 
 class GenericResolverError(BaseException):
     """Base class for GenericResolver related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f'GenericResolver ({name}): {message}')
+        super().__init__(f"GenericResolver ({name}): {message}")
 
 
 class DuplicationError(GenericResolverError):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
-        message = 'The following fields already existed and ' \
-                  'were not overwritten by the Normalizer: '
-        message += ' '.join(skipped_fields)
+        message = (
+            "The following fields already existed and " "were not overwritten by the Normalizer: "
+        )
+        message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
@@ -60,8 +64,9 @@ class GenericResolver(RuleBasedProcessor):
             for root, _, files in walk(path):
                 json_files = []
                 for file in files:
-                    if (file.endswith('.json') or file.endswith('.yml')) and not file.endswith(
-                            '_test.json'):
+                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
+                        "_test.json"
+                    ):
                         json_files.append(file)
                 for file in json_files:
                     rules = self._load_rules_from_file(join(root, file))
@@ -69,10 +74,13 @@ class GenericResolver(RuleBasedProcessor):
                         self._tree.add_rule(rule, self._logger)
 
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(f'{self.describe()} loaded {self._tree.rule_counter} rules '
-                               f'({current_process().name})')
+            self._logger.debug(
+                f"{self.describe()} loaded {self._tree.rule_counter} rules "
+                f"({current_process().name})"
+            )
 
         self.ps.setup_rules([None] * self._tree.rule_counter)
+
     # pylint: enable=arguments-differ
 
     def _load_rules_from_file(self, path: str):
@@ -82,16 +90,16 @@ class GenericResolver(RuleBasedProcessor):
             raise InvalidRuleFileError(self._name, path) from error
 
     def describe(self) -> str:
-        return f'GenericResolver ({self._name})'
+        return f"GenericResolver ({self._name})"
 
-    @TimeMeasurement.measure_time('generic_resolver')
+    @TimeMeasurement.measure_time("generic_resolver")
     def process(self, event: dict):
         self._event = event
 
         for rule in self._tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event, rule)
-            processing_time = float('{:.10f}'.format(time() - begin))
+            processing_time = float("{:.10f}".format(time() - begin))
             idx = self._tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
@@ -101,45 +109,49 @@ class GenericResolver(RuleBasedProcessor):
         conflicting_fields = list()
 
         if rule.resolve_from_file:
-            if rule.resolve_from_file['path'] not in self._replacements_from_file:
+            if rule.resolve_from_file["path"] not in self._replacements_from_file:
                 try:
-                    with open(rule.resolve_from_file['path'], 'r') as add_file:
+                    with open(rule.resolve_from_file["path"], "r") as add_file:
                         add_dict = yaml.load(add_file)
                         if isinstance(add_dict, dict) and all(
-                                isinstance(value, str) for value in add_dict.values()):
-                            self._replacements_from_file[rule.resolve_from_file['path']] = add_dict
+                            isinstance(value, str) for value in add_dict.values()
+                        ):
+                            self._replacements_from_file[rule.resolve_from_file["path"]] = add_dict
                         else:
-                            raise GenericResolverError(self._name,
-                                                       f'Additions file '
-                                                       f'\'{rule.resolve_from_file["path"]}\''
-                                                       f' must be a dictionary with string values!')
+                            raise GenericResolverError(
+                                self._name,
+                                f"Additions file "
+                                f'\'{rule.resolve_from_file["path"]}\''
+                                f" must be a dictionary with string values!",
+                            )
                 except FileNotFoundError as error:
-                    raise GenericResolverError(self._name,
-                                               f'Additions file \'{rule.resolve_from_file["path"]}'
-                                               f'\' not found!') from error
+                    raise GenericResolverError(
+                        self._name,
+                        f'Additions file \'{rule.resolve_from_file["path"]}' f"' not found!",
+                    ) from error
 
         for resolve_source, resolve_target in rule.field_mapping.items():
-            keys = resolve_target.split('.')
+            keys = resolve_target.split(".")
             src_val = self._get_dotted_field_value(event, resolve_source)
 
             if rule.resolve_from_file and src_val:
                 pattern = f'^{rule.resolve_from_file["pattern"]}$'
-                replacements = self._replacements_from_file[rule.resolve_from_file['path']]
+                replacements = self._replacements_from_file[rule.resolve_from_file["path"]]
                 matches = re.match(pattern, src_val)
                 if matches:
                     try:
-                        dest_val = replacements.get(matches.group('mapping'))
+                        dest_val = replacements.get(matches.group("mapping"))
                     except IndexError as error:
-                        raise GenericResolverError(self._name,
-                                                   'Mapping group is missing in mapping file '
-                                                   'pattern!') from error
+                        raise GenericResolverError(
+                            self._name, "Mapping group is missing in mapping file " "pattern!"
+                        ) from error
                     if dest_val:
                         dict_ = event
                         for idx, key in enumerate(keys):
                             if key not in dict_:
                                 if idx == len(keys) - 1:
                                     if rule.append_to_list:
-                                        dict_[key] = dict_.get('key', [])
+                                        dict_[key] = dict_.get("key", [])
                                         if dest_val not in dict_[key]:
                                             dict_[key].append(dest_val)
                                     else:
@@ -162,7 +174,7 @@ class GenericResolver(RuleBasedProcessor):
                         if key not in dict_:
                             if idx == len(keys) - 1:
                                 if rule.append_to_list:
-                                    dict_[key] = dict_.get('key', [])
+                                    dict_[key] = dict_.get("key", [])
                                     dict_[key].append(dest_val)
                                 else:
                                     dict_[key] = dest_val

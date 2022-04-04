@@ -70,17 +70,13 @@ class ListComparisonRule(Rule):
                     with open(list_path, "r") as f:
                         compare_elements = f.read().splitlines()
                         file_elem_tuples = [
-                            elem
-                            for elem in compare_elements
-                            if not elem.startswith("#")
+                            elem for elem in compare_elements if not elem.startswith("#")
                         ]
                         file_name = os.path.basename(list_path)
                         self._compare_sets[file_name] = set(file_elem_tuples)
 
     def __eq__(self, other: "ListComparisonRule") -> bool:
-        return (other.filter == self._filter) and (
-            self._check_field == other.check_field
-        )
+        return (other.filter == self._filter) and (self._check_field == other.check_field)
 
     def __hash__(self) -> int:
         return hash(repr(self))
@@ -157,9 +153,7 @@ class ListComparisonRule(Rule):
                 # iterate over all given files
                 for path in list_comparison_cfg[key]:
                     if not isinstance(path, str) and not os.path.isfile(path):
-                        raise InvalidListComparisonDefinition(
-                            f"{path} is not a existing file."
-                        )
+                        raise InvalidListComparisonDefinition(f"{path} is not a existing file.")
 
             if key == "check_field":
                 if not isinstance(list_comparison_cfg[key], str):

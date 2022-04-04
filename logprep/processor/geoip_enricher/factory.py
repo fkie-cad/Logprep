@@ -12,12 +12,13 @@ class GeoIPEnricherFactory(BaseFactory):
         """Create a generic resolver."""
         GeoIPEnricherFactory._check_configuration(configuration)
 
-        geoip_enricher = GeoIPEnricher(name, configuration.get('tree_config'), configuration['db_path'],
-                                       logger)
-        geoip_enricher.add_rules_from_directory(configuration['rules'])
+        geoip_enricher = GeoIPEnricher(
+            name, configuration.get("tree_config"), configuration["db_path"], logger
+        )
+        geoip_enricher.add_rules_from_directory(configuration["rules"])
 
         return geoip_enricher
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        GeoIPEnricherFactory._check_common_configuration('geoip_enricher', ['rules'], configuration)
+        GeoIPEnricherFactory._check_common_configuration("geoip_enricher", ["rules"], configuration)

@@ -48,7 +48,7 @@ class StopIteratingError(RunnerError):
 
 
 class UseGetRunnerToCreateRunnerSingleton(RunnerError):
-    """"Raise if the runner was not created as a singleton."""
+    """ "Raise if the runner was not created as a singleton."""
 
 
 class Runner:
@@ -178,30 +178,31 @@ class Runner:
 
         self._create_manager()
         self._manager.set_configuration(self._configuration)
-        self._manager.set_count(self._configuration['process_count'])
+        self._manager.set_count(self._configuration["process_count"])
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug('Pipeline manager initiated')
+            self._logger.debug("Pipeline manager initiated")
 
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
 
-        self._logger.info('Startup complete')
+        self._logger.info("Startup complete")
         try:
             while self._keep_iterating():
                 if self._logger.isEnabledFor(DEBUG):
-                    self._logger.debug('Runner iterating')
+                    self._logger.debug("Runner iterating")
                 self._manager.remove_failed_pipeline()
-                self._manager.set_count(self._configuration['process_count'])
+                self._manager.set_count(self._configuration["process_count"])
                 # Note: We are waiting half the timeout because when shutting down, we also have to
                 # wait for the logprep's timeout before the shutdown is actually initiated.
-                self._manager.handle_logs_into_logger(self._logger,
-                                                      self._configuration['timeout'] / 2.0)
+                self._manager.handle_logs_into_logger(
+                    self._logger, self._configuration["timeout"] / 2.0
+                )
         except (StopIteratingError, KeyboardInterrupt):
             self.stop()
 
-        self._logger.info('Initiated shutdown')
+        self._logger.info("Initiated shutdown")
         self._manager.stop()
-        self._logger.info('Shutdown complete')
+        self._logger.info("Shutdown complete")
 
     def reload_configuration(self):
         """Reload the configuration from the configured yaml path.
@@ -224,11 +225,15 @@ class Runner:
             self._configuration = new_configuration
             self._manager.set_configuration(self._configuration)
             self._manager.replace_pipelines()
-            self._manager.set_count(self._configuration['process_count'])
-            self._logger.info('Successfully reloaded configuration')
+            self._manager.set_count(self._configuration["process_count"])
+            self._logger.info("Successfully reloaded configuration")
         except InvalidConfigurationError as error:
-            self._logger.error('Invalid configuration, leaving old configuration in place: '
-                               + self._yaml_path + ': ' + str(error))
+            self._logger.error(
+                "Invalid configuration, leaving old configuration in place: "
+                + self._yaml_path
+                + ": "
+                + str(error)
+            )
 
     def _create_manager(self):
         if self._manager is not None:
@@ -237,9 +242,9 @@ class Runner:
 
     def stop(self):
         """Stop the current process"""
-        if current_process().name == 'MainProcess':
+        if current_process().name == "MainProcess":
             if self._logger is not None:
-                self._logger.info('Shutting down')
+                self._logger.info("Shutting down")
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
 
@@ -251,7 +256,7 @@ class Runner:
 def signal_handler(signal_number: int, _):
     """Handle signals for stopping the runner and reloading the configuration."""
     if signal_number == signal.SIGUSR1:
-        print('Info: Reloading config')
+        print("Info: Reloading config")
         Runner.get_runner().reload_configuration()
     else:
         Runner.get_runner().stop()

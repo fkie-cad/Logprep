@@ -20,14 +20,15 @@ class Delete(BaseProcessor):
        Must be set to 'I really do' to avoid to prevent accidental deletion of log events.
 
     """
+
     def __init__(self, i_really_want_to_delete_all_log_events: str):
-        if i_really_want_to_delete_all_log_events != 'I really do':
-            raise ValueError('Read the documentation and pass the correct parameter!')
+        if i_really_want_to_delete_all_log_events != "I really do":
+            raise ValueError("Read the documentation and pass the correct parameter!")
 
         self.ps = ProcessorStats()
 
     def describe(self) -> str:
-        return 'DELETE'
+        return "DELETE"
 
     def process(self, event: dict):
         event.clear()

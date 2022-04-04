@@ -22,9 +22,12 @@ class PrometheusStatsExporter:
         """Sets up the metrics that the prometheus exporter should expose"""
         metrics = ["processed", "errors", "warnings", "matches", "mean_matches_per_rule"]
 
-        self.stats = {stat_key: Counter(stat_key, "Tracks the overall processing status",
-                                        labelnames=["of"], registry=None)
-                      for stat_key in metrics}
+        self.stats = {
+            stat_key: Counter(
+                stat_key, "Tracks the overall processing status", labelnames=["of"], registry=None
+            )
+            for stat_key in metrics
+        }
 
         self.info_metric = Info("tracking", "Gives general information about the tracking")
         self.info_metric.info({"interval_in_seconds": str(self._configuration.get("period"))})

@@ -25,17 +25,18 @@ class PreDetectorFactory(BaseFactory):
 
         pre_detector = PreDetector(
             name,
-            configuration['pre_detector_topic'],
-            configuration.get('tree_config'),
-            configuration.get('alert_ip_list'),
-            logger)
+            configuration["pre_detector_topic"],
+            configuration.get("tree_config"),
+            configuration.get("alert_ip_list"),
+            logger,
+        )
 
-        pre_detector.add_rules_from_directory(configuration['rules'])
+        pre_detector.add_rules_from_directory(configuration["rules"])
 
         return pre_detector
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        PreDetectorFactory._check_common_configuration('pre_detector',
-                                                       ['rules', 'pre_detector_topic'],
-                                                       configuration)
+        PreDetectorFactory._check_common_configuration(
+            "pre_detector", ["rules", "pre_detector_topic"], configuration
+        )

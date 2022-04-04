@@ -119,9 +119,7 @@ class TestDateTimeExtractor(BaseProcessorTestCase):
         self.object.process(document)
 
         tz_local_name = "+0000"
-        local_hour_delta, local_minute_delta, local_timezone = self._parse_local_tz(
-            tz_local_name
-        )
+        local_hour_delta, local_minute_delta, local_timezone = self._parse_local_tz(tz_local_name)
 
         expected = {
             "@timestamp": timestamp,
@@ -145,7 +143,5 @@ class TestDateTimeExtractor(BaseProcessorTestCase):
         sign = tz_local_name[:1]
         hour = tz_local_name[1:-2]
         minute = tz_local_name[3:]
-        timezone_utc = (
-            f"UTC{sign}{hour}:{minute}" if hour != "00" or minute != "00" else "UTC"
-        )
+        timezone_utc = f"UTC{sign}{hour}:{minute}" if hour != "00" or minute != "00" else "UTC"
         return int(f"{sign}{hour}"), int(f"{sign}{minute}"), timezone_utc

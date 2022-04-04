@@ -3,15 +3,19 @@ from collections import defaultdict
 
 import pytest
 
-pytest.importorskip('logprep.processor.clusterer')
+pytest.importorskip("logprep.processor.clusterer")
 
-from logprep.processor.clusterer.signature_calculation.signature_phase import (LogRecord,
-                                                                               SignatureEngine,
-                                                                               SignatureTagParser,
-                                                                               SignatureAggregator,
-                                                                               SignaturePhaseStreaming)
-from tests.testdata.unit.clusterer.test_data import (LogSaltModeTestComposition,
-                                                     DatasetSignatureProcessing)
+from logprep.processor.clusterer.signature_calculation.signature_phase import (
+    LogRecord,
+    SignatureEngine,
+    SignatureTagParser,
+    SignatureAggregator,
+    SignaturePhaseStreaming,
+)
+from tests.testdata.unit.clusterer.test_data import (
+    LogSaltModeTestComposition,
+    DatasetSignatureProcessing,
+)
 
 
 class TestSignatureEngine:
@@ -23,7 +27,8 @@ class TestSignatureEngine:
         raw_text=DatasetSignatureProcessing.test_record_1.raw_text,
         sig_text=DatasetSignatureProcessing.test_record_1.sig_text,
         sig_list=DatasetSignatureProcessing.test_record_1.sig_list,
-        sig_str=DatasetSignatureProcessing.test_record_1.sig_str_brackets)
+        sig_str=DatasetSignatureProcessing.test_record_1.sig_str_brackets,
+    )
 
     def test_run(self):
         se = SignatureEngine()
@@ -31,8 +36,10 @@ class TestSignatureEngine:
 
     def test_apply_signature_engine(self):
         se = SignatureEngine()
-        assert se._apply_signature_rules(self.log_record.raw_text,
-                                         LogSaltModeTestComposition.rules) == self.expected_record.sig_text
+        assert (
+            se._apply_signature_rules(self.log_record.raw_text, LogSaltModeTestComposition.rules)
+            == self.expected_record.sig_text
+        )
 
     @staticmethod
     def test_exception_if_raw_text_with_start_tag():
@@ -50,8 +57,9 @@ class TestSignatureEngine:
 
     @staticmethod
     def test_missing_end_tag_in_sig_text():
-        sig_text = "Test log with a start tag <+>, but a missing end tag, " \
-                         "must raise an exception"
+        sig_text = (
+            "Test log with a start tag <+>, but a missing end tag, " "must raise an exception"
+        )
         stp = SignatureTagParser()
         with pytest.raises(BaseException):
             stp.calculate_signature(sig_text)
@@ -79,10 +87,8 @@ class TestSignatureAggregator:
     def test_logs_with_equal_signature_in_same_bucket(self):
         records = [self.record_1, self.log_record_2]
         expected_mapping_sig_log_nr = defaultdict(list)
-        expected_mapping_sig_log_nr[self.record_1.sig_str].append(
-            self.record_1.number)
-        expected_mapping_sig_log_nr[self.log_record_2.sig_str].append(
-            self.log_record_2.number)
+        expected_mapping_sig_log_nr[self.record_1.sig_str].append(self.record_1.number)
+        expected_mapping_sig_log_nr[self.log_record_2.sig_str].append(self.log_record_2.number)
         sa = SignatureAggregator()
         mapping_signature_lognumber = None
         for record in records:
@@ -95,7 +101,8 @@ class TestSignatureAggregator:
         expected_mapping_sig_log_nr[self.record_1.sig_str].append(self.record_1.number)
         expected_mapping_sig_log_nr[self.record_3.sig_str].append(self.record_3.number)
         expected_mapping_sig_log_nr = collections.OrderedDict(
-            sorted(expected_mapping_sig_log_nr.items()))
+            sorted(expected_mapping_sig_log_nr.items())
+        )
         sa = SignatureAggregator()
         mapping_sig_lognumber = None
         for log_record in records:

@@ -19,11 +19,12 @@ class MustSetConfigurationFirstError(PipelineManagerError):
     """Raise if configuration was not set."""
 
     def __init__(self, what_failed: str):
-        super().__init__(f'Failed to {what_failed}: Configuration is unset')
+        super().__init__(f"Failed to {what_failed}: Configuration is unset")
 
 
 class PipelineManager:
     """Manage pipelines via multi-processing."""
+
     def __init__(self, logger: Logger, status_logger: List):
         self._logger = logger
         self._status_logger = status_logger
@@ -43,7 +44,7 @@ class PipelineManager:
 
         manager = Manager()
         self._shared_dict = manager.dict()
-        for idx in range(configuration['process_count']):
+        for idx in range(configuration["process_count"]):
             self._shared_dict[idx] = None
 
     def get_count(self) -> int:
@@ -56,7 +57,7 @@ class PipelineManager:
 
         """
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(f'Getting pipeline count: {len(self._pipelines)}')
+            self._logger.debug(f"Getting pipeline count: {len(self._pipelines)}")
         return len(self._pipelines)
 
     def set_count(self, count: int):
@@ -105,7 +106,7 @@ class PipelineManager:
             self._pipelines.remove(failed_pipeline)
 
         if failed_pipelines:
-            self._logger.warning('Removed %d failed pipeline(s)' % len(failed_pipelines))
+            self._logger.warning("Removed %d failed pipeline(s)" % len(failed_pipelines))
 
     def handle_logs_into_logger(self, logger: Logger, timeout: float):
         """Handle logs."""
@@ -122,16 +123,18 @@ class PipelineManager:
 
     def _create_pipeline(self) -> MultiprocessingPipeline:
         if self._configuration is None:
-            raise MustSetConfigurationFirstError('create new pipeline')
+            raise MustSetConfigurationFirstError("create new pipeline")
 
-        self._logger.info('Created new pipeline')
-        return MultiprocessingPipeline(self._configuration['connector'],
-                                       self._configuration['pipeline'],
-                                       self._configuration.get('status_logger', dict()),
-                                       self._configuration['timeout'],
-                                       self._log_handler,
-                                       self._configuration.get('print_processed_period', 300),
-                                       self._lock,
-                                       self._shared_dict,
-                                       profile=self._configuration.get('profile_pipelines', False),
-                                       status_logger=self._status_logger)
+        self._logger.info("Created new pipeline")
+        return MultiprocessingPipeline(
+            self._configuration["connector"],
+            self._configuration["pipeline"],
+            self._configuration.get("status_logger", dict()),
+            self._configuration["timeout"],
+            self._log_handler,
+            self._configuration.get("print_processed_period", 300),
+            self._lock,
+            self._shared_dict,
+            profile=self._configuration.get("profile_pipelines", False),
+            status_logger=self._status_logger,
+        )

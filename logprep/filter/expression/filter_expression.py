@@ -18,7 +18,7 @@ class FilterExpression(metaclass=ABCMeta):
     """Base class for all filter expression used for matching rules."""
 
     def matches(self, document: dict) -> bool:
-        """ Receives a document and returns True if it is matched by the expression.
+        """Receives a document and returns True if it is matched by the expression.
 
         This is a thin wrapper that only ensures that document is a dict and returns False in case a
         KeyDoesNotExistError occurs (you may catch that exception earlier to do something else in
@@ -81,7 +81,7 @@ class FilterExpression(metaclass=ABCMeta):
 
     @staticmethod
     def _as_dotted_string(key_list: List[str]) -> str:
-        return '.'.join([str(i) for i in key_list])
+        return ".".join([str(i) for i in key_list])
 
 
 class Always(FilterExpression):
@@ -92,8 +92,8 @@ class Always(FilterExpression):
 
     def __repr__(self):
         if self._value:
-            return 'TRUE'
-        return 'FALSE'
+            return "TRUE"
+        return "FALSE"
 
     def does_match(self, document: dict):
         return self._value
@@ -106,7 +106,7 @@ class Not(FilterExpression):
         self.expression = expression
 
     def __repr__(self) -> str:
-        return 'NOT({})'.format(str(self.expression))
+        return "NOT({})".format(str(self.expression))
 
     def does_match(self, document: dict) -> bool:
         return not self.expression.matches(document)
@@ -126,7 +126,7 @@ class And(CompoundFilterExpression):
     """Compound filter expression that is a logical conjunction."""
 
     def __repr__(self) -> str:
-        return 'AND({})'.format(', '.join([str(i) for i in self.expressions]))
+        return "AND({})".format(", ".join([str(i) for i in self.expressions]))
 
     def does_match(self, document: dict) -> bool:
         for expression in self.expressions:
@@ -140,7 +140,7 @@ class Or(CompoundFilterExpression):
     """Compound filter expression that is a logical disjunction."""
 
     def __repr__(self) -> str:
-        return 'OR({})'.format(', '.join([str(i) for i in self.expressions]))
+        return "OR({})".format(", ".join([str(i) for i in self.expressions]))
 
     def does_match(self, document: dict) -> bool:
         for expression in self.expressions:
@@ -158,7 +158,7 @@ class KeyValueBasedFilterExpression(FilterExpression):
         self._expected_value = expected_value
 
     def __repr__(self) -> str:
-        return '{}:{}'.format(self._as_dotted_string(self._key), str(self._expected_value))
+        return "{}:{}".format(self._as_dotted_string(self._key), str(self._expected_value))
 
     def does_match(self, document):
         raise NotImplementedError
@@ -183,25 +183,25 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
 
     flags = 0
 
-    wc = re.compile(r'.*?((?:\\)*\*).*?')
-    wq = re.compile(r'.*?((?:\\)*\?).*?')
+    wc = re.compile(r".*?((?:\\)*\*).*?")
+    wq = re.compile(r".*?((?:\\)*\?).*?")
 
     def __init__(self, key: List[str], expected_value: Any):
         super().__init__(key, expected_value)
         new_string = re.escape(str(self._expected_value))
 
         matches = self.wq.findall(new_string)
-        new_string = self._replace_wildcard(new_string, matches, r'\?', '.?')
+        new_string = self._replace_wildcard(new_string, matches, r"\?", ".?")
 
         matches = self.wc.findall(new_string)
-        new_string = self._replace_wildcard(new_string, matches, r'\*', '.*')
+        new_string = self._replace_wildcard(new_string, matches, r"\*", ".*")
 
         self.escaped_expected = self._normalize_regex(new_string)
         self._matcher = re.compile(self.escaped_expected, flags=self.flags)
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
-        return '^{}$'.format(regex)
+        return "^{}$".format(regex)
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self._key, document)
@@ -223,8 +223,8 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
                 matches[idx] = match[:-4] + symbol
             elif length > 2:
                 matches[idx] = match[:-4] + wildcard
-        split = re.split(r'(?:\\)*' + symbol, expected)
-        return ''.join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
+        split = re.split(r"(?:\\)*" + symbol, expected)
+        return "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
     def __repr__(self) -> str:
         return '{}:"{}"'.format(self._as_dotted_string(self._key), self._expected_value)
@@ -263,8 +263,9 @@ class RangeBasedFilterExpression(FilterExpression):
         self._upper_bound = upper_bound
 
     def __repr__(self) -> str:
-        return '{}:[{} TO {}]'.format(self._as_dotted_string(self._key), self._lower_bound,
-                                      self._upper_bound)
+        return "{}:[{} TO {}]".format(
+            self._as_dotted_string(self._key), self._lower_bound, self._upper_bound
+        )
 
     def does_match(self, document: dict):
         raise NotImplementedError
@@ -297,17 +298,17 @@ class RegExFilterExpression(FilterExpression):
         self._matcher = re.compile(self._regex)
 
     def __repr__(self) -> str:
-        return '{}:r/{}/'.format(self._as_dotted_string(self._key), self._regex)
+        return "{}:r/{}/".format(self._as_dotted_string(self._key), self._regex)
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
         if not regex:
-            return '^$'
+            return "^$"
 
-        if regex[0] != '^':
-            regex = '^' + regex
-        if regex[-1] != '$':
-            regex += '$'
+        if regex[0] != "^":
+            regex = "^" + regex
+        if regex[-1] != "$":
+            regex += "$"
         return regex
 
     def does_match(self, document: dict) -> bool:
@@ -346,7 +347,7 @@ class Null(FilterExpression):
         self._key = key
 
     def __repr__(self) -> str:
-        return '{}:{}'.format(self._as_dotted_string(self._key), None)
+        return "{}:{}".format(self._as_dotted_string(self._key), None)
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self._key, document)

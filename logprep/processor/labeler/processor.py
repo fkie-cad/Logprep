@@ -9,12 +9,18 @@ from multiprocessing import current_process
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
-from logprep.processor.base.exceptions import (NotARulesDirectoryError, RuleError,
-                                               InvalidRuleDefinitionError, InvalidRuleFileError)
-from logprep.processor.labeler.exceptions import (InvalidLabelingSchemaError,
-                                                  NoLabelingSchemeDefinedError,
-                                                  RuleDoesNotConformToLabelingSchemaError,
-                                                  MustLoadRulesFirstError)
+from logprep.processor.base.exceptions import (
+    NotARulesDirectoryError,
+    RuleError,
+    InvalidRuleDefinitionError,
+    InvalidRuleFileError,
+)
+from logprep.processor.labeler.exceptions import (
+    InvalidLabelingSchemaError,
+    NoLabelingSchemeDefinedError,
+    RuleDoesNotConformToLabelingSchemaError,
+    MustLoadRulesFirstError,
+)
 from logprep.processor.labeler.rule import LabelingRule
 
 from logprep.processor.labeler.labeling_schema import LabelingSchema
@@ -37,12 +43,12 @@ class Labeler(RuleBasedProcessor):
         self._schema = None
 
     def describe(self) -> str:
-        return f'Labeler ({self._name})'
+        return f"Labeler ({self._name})"
 
     def set_labeling_scheme(self, schema: LabelingSchema):
         """Set a labeling scheme."""
         if not isinstance(schema, LabelingSchema):
-            raise InvalidLabelingSchemaError(self._name, 'Not a labeling schema: ' + str(schema))
+            raise InvalidLabelingSchemaError(self._name, "Not a labeling schema: " + str(schema))
 
         self._schema = schema
 
@@ -63,9 +69,12 @@ class Labeler(RuleBasedProcessor):
                         rule.add_parent_labels_from_schema(self._schema)
                     self._tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(f'{self.describe()} loaded {self._tree.rule_counter} rules '
-                               f'({current_process().name})')
+            self._logger.debug(
+                f"{self.describe()} loaded {self._tree.rule_counter} rules "
+                f"({current_process().name})"
+            )
         self.ps.setup_rules([None] * self._tree.rule_counter)
+
     # pylint: enable=arguments-differ
 
     def _load_rule_from_file(self, path: str) -> List[LabelingRule]:
@@ -87,7 +96,7 @@ class Labeler(RuleBasedProcessor):
         if self._tree.rule_counter == 0:
             raise MustLoadRulesFirstError(self._name)
 
-    @TimeMeasurement.measure_time('labeler')
+    @TimeMeasurement.measure_time("labeler")
     def process(self, event: dict):
         if self._tree.rule_counter == 0:
             raise MustLoadRulesFirstError(self._name)
@@ -100,15 +109,15 @@ class Labeler(RuleBasedProcessor):
         for rule in self._tree.get_matching_rules(event):
             begin = time()
             if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug('{} processing matching event'.format(self.describe()))
+                self._logger.debug("{} processing matching event".format(self.describe()))
             rule.add_labels(event)
 
-            processing_time = float('{:.10f}'.format(time() - begin))
+            processing_time = float("{:.10f}".format(time() - begin))
             idx = self._tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
     @staticmethod
     def _convert_label_categories_to_sorted_list(event: dict):
-        if 'label' in event:
-            for category in event['label']:
-                event['label'][category] = sorted(list(event['label'][category]))
+        if "label" in event:
+            for category in event["label"]:
+                event["label"][category] = sorted(list(event["label"][category]))

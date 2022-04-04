@@ -7,21 +7,21 @@ from ruamel.yaml import YAML
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 
-yaml = YAML(typ='safe', pure=True)
+yaml = YAML(typ="safe", pure=True)
 
 
 class DomainLabelExtractorRuleError(InvalidRuleDefinitionError):
     """Base class for DomainLabelExtractor rule related exceptions."""
 
     def __init__(self, message: str):
-        super().__init__(f'DomainLabelExtractor rule ({message})')
+        super().__init__(f"DomainLabelExtractor rule ({message})")
 
 
 class InvalidDomainLabelExtractorDefinition(DomainLabelExtractorRuleError):
     """Raise if DomainLabelExtractor definition invalid."""
 
     def __init__(self, definition):
-        message = f'The following DomainLabelExtractor definition is invalid: {definition}'
+        message = f"The following DomainLabelExtractor definition is invalid: {definition}"
         super().__init__(message)
 
 
@@ -44,7 +44,7 @@ class DomainLabelExtractorRule(Rule):
         self._target_field = domain_label_extractor_cfg["target_field"]
         self._output_field = domain_label_extractor_cfg["output_field"]
 
-    def __eq__(self, other: 'DomainLabelExtractorRule') -> bool:
+    def __eq__(self, other: "DomainLabelExtractorRule") -> bool:
         return (other.filter == self._filter) and (self._compare_set == other.compare_set)
 
     def __hash__(self) -> int:
@@ -59,12 +59,12 @@ class DomainLabelExtractorRule(Rule):
         return self._output_field
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> 'DomainLabelExtractorRule':
-        DomainLabelExtractorRule._check_rule_validity(rule, 'domain_label_extractor')
+    def _create_from_dict(rule: dict) -> "DomainLabelExtractorRule":
+        DomainLabelExtractorRule._check_rule_validity(rule, "domain_label_extractor")
         DomainLabelExtractorRule._check_if_valid(rule)
 
         filter_expression = Rule._create_filter_expression(rule)
-        return DomainLabelExtractorRule(filter_expression, rule['domain_label_extractor'])
+        return DomainLabelExtractorRule(filter_expression, rule["domain_label_extractor"])
 
     @staticmethod
     def _check_if_valid(rule: dict):
@@ -77,16 +77,24 @@ class DomainLabelExtractorRule(Rule):
             Current rule to be checked for configuration or field reference problems.
         """
 
-        domain_label_extractor_cfg = rule['domain_label_extractor']
+        domain_label_extractor_cfg = rule["domain_label_extractor"]
 
-        if 'target_field' not in domain_label_extractor_cfg.keys():
-            raise InvalidDomainLabelExtractorDefinition(f"Missing 'target_field' in rule configuration.")
-        elif not isinstance(domain_label_extractor_cfg['target_field'], str):
-            raise InvalidDomainLabelExtractorDefinition(f"'target_field' should be 'str' and not"
-                                                        f" '{type(domain_label_extractor_cfg['target_field'])}'")
+        if "target_field" not in domain_label_extractor_cfg.keys():
+            raise InvalidDomainLabelExtractorDefinition(
+                f"Missing 'target_field' in rule configuration."
+            )
+        elif not isinstance(domain_label_extractor_cfg["target_field"], str):
+            raise InvalidDomainLabelExtractorDefinition(
+                f"'target_field' should be 'str' and not"
+                f" '{type(domain_label_extractor_cfg['target_field'])}'"
+            )
 
-        if 'output_field' not in domain_label_extractor_cfg.keys():
-            raise InvalidDomainLabelExtractorDefinition(f"Missing 'output_field' in rule configuration.")
-        elif not isinstance(domain_label_extractor_cfg['output_field'], str):
-            raise InvalidDomainLabelExtractorDefinition(f"'output_field' should be 'str' and not"
-                                                        f" '{type(domain_label_extractor_cfg['output_field'])}'")
+        if "output_field" not in domain_label_extractor_cfg.keys():
+            raise InvalidDomainLabelExtractorDefinition(
+                f"Missing 'output_field' in rule configuration."
+            )
+        elif not isinstance(domain_label_extractor_cfg["output_field"], str):
+            raise InvalidDomainLabelExtractorDefinition(
+                f"'output_field' should be 'str' and not"
+                f" '{type(domain_label_extractor_cfg['output_field'])}'"
+            )

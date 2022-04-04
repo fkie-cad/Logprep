@@ -6,6 +6,6 @@ from types import SimpleNamespace
 class SignatureRule(SimpleNamespace):
     """Template for signature definition."""
 
-    pattern = r''
-    repl = r''
-    description = ''
+    pattern = r""
+    repl = r""
+    description = ""
