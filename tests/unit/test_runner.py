@@ -15,7 +15,7 @@ from logprep.runner import (
     UseGetRunnerToCreateRunnerSingleton,
     MustNotCreateMoreThanOneManagerError,
 )
-from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
+from logprep.util.configuration import InvalidConfigurationError
 from tests.testdata.ConfigurationForTest import ConfigurationForTest
 from tests.testdata.metadata import (
     path_to_config,
@@ -25,7 +25,7 @@ from tests.testdata.metadata import (
     path_to_schema2,
     path_to_testdata,
 )
-from logprep.util.configuration import InvalidConfigurationError
+from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
 from tests.util.testhelpers import HandlerStub, AssertEmitsLogMessage
 
 
@@ -127,10 +127,21 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
                 self.runner.load_configuration(path)
 
     def test_fails_when_rules_are_invalid(self):
-        with raises(InvalidConfigurationError, match='Invalid rule file ".*".'):
+        with raises(
+            InvalidConfigurationError, match="Invalid processor config: Invalid rule file: .*"
+        ):
             with ConfigurationForTest(
                 inject_changes=[
-                    {"pipeline": {1: {"labelername": {"rules": [path_to_invalid_rules]}}}}
+                    {
+                        "pipeline": {
+                            1: {
+                                "labelername": {
+                                    "specific_rules": [path_to_invalid_rules],
+                                    "generic_rules": [path_to_invalid_rules],
+                                }
+                            }
+                        }
+                    }
                 ]
             ) as path:
                 self.runner.load_configuration(path)
@@ -138,7 +149,7 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
     def test_fails_when_schema_and_rules_are_inconsistent(self):
         with raises(
             InvalidConfigurationError,
-            match='Invalid rule file ".*": Does not conform to labeling schema.',
+            match='Invalid processor config: Rule does not conform to labeling schema: .*',
         ):
             with ConfigurationForTest(
                 inject_changes=[{"pipeline": {1: {"labelername": {"schema": path_to_schema2}}}}]

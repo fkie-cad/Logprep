@@ -1,26 +1,12 @@
 from copy import deepcopy
-from os.path import join
 from logging import getLogger
 
 from pytest import fail, raises
 
-from tests.testdata.metadata import (
-    path_to_config,
-    path_to_schema,
-    path_to_testdata,
-    path_to_invalid_rules,
-    path_to_schema2,
-)
 from logprep.util.configuration import InvalidConfigurationError, Configuration
+from tests.testdata.metadata import path_to_config
 
 logger = getLogger()
-
-
-class Keys:
-    class Labeler:
-        schema = ["pipeline", 1, "labelername", "schema"]
-        include_parents = ["pipeline", 1, "labelername", "include_parent_labels"]
-        rules = ["pipeline", 1, "labelername", "rules"]
 
 
 class ConfigurationTestCommon:
@@ -71,45 +57,4 @@ class TestConfiguration(ConfigurationTestCommon):
     def test_verify_verifies_connector_config(self):
         self.assert_fails_when_replacing_key_with_value(
             "connector", {"type": "unknown"}, 'Unknown connector type: "unknown"'
-        )
-
-    def test_fails_when_rules_are_invalid(self):
-        self.assert_fails_when_replacing_key_with_value(
-            Keys.Labeler.rules, [path_to_invalid_rules], 'Invalid rule file ".*"'
-        )
-
-    def test_fails_when_schema_and_rules_are_inconsistent(self):
-        self.assert_fails_when_replacing_key_with_value(
-            Keys.Labeler.schema,
-            path_to_schema2,
-            'Invalid rule file ".*": Does not conform to labeling schema.',
-        )
-
-
-class TestConfigurationProcessorLabeler(ConfigurationTestCommon):
-    def test_verify_fails_if_schema_points_to_non_existing_file(self):
-        self.assert_fails_when_replacing_key_with_value(
-            Keys.Labeler.schema, join("non", "existing", "file"), "Not a valid schema file: "
-        )
-
-    def test_verify_fails_if_schema_points_to_directory(self):
-        self.assert_fails_when_replacing_key_with_value(
-            Keys.Labeler.schema, path_to_testdata, "Not a valid schema file: "
-        )
-
-    def test_verify_fails_if_rules_entry_points_to_file(self):
-        self.assert_fails_when_replacing_key_with_value(
-            Keys.Labeler.rules, [path_to_schema], "Not a rule directory: "
-        )
-
-    def test_verify_fails_if_rules_entry_points_to_non_existing_path(self):
-        self.assert_fails_when_replacing_key_with_value(
-            Keys.Labeler.rules, [join("non", "existing", "directory")], "Not a rule directory: "
-        )
-
-    def test_verify_fails_if_include_parent_labels_is_a_string(self):
-        self.assert_fails_when_replacing_key_with_value(
-            Keys.Labeler.include_parents,
-            "this is a string",
-            '"include_parent_labels" must be either true or false',
         )
