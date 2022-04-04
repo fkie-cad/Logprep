@@ -14,13 +14,6 @@ class LabelerConfigurationError(LabelerError):
     """Generic labeler configuration error."""
 
 
-class NoLabelingSchemeDefinedError(LabelerError):
-    """Raise if no labeling schema is defined."""
-
-    def __init__(self, name: str):
-        super().__init__(name, 'No labeling schema was loaded.')
-
-
 class MustLoadRulesFirstError(LabelerError):
     """Raise if no rules were loaded."""
 

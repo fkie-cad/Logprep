@@ -1,0 +1,7 @@
+[{
+  "filter": "applyotherrule: yes",
+  "label": {
+    "reporter": ["windows"]
+  },
+  "description": "this is another test rule"
+}]

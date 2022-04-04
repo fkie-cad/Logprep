@@ -93,7 +93,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         with pytest.raises(
             InvalidRuleDefinitionError,
-            match=r"Keys \[\'filter\', \'something\'\] must be \[\'filter\', \'pseudonymize\'\]\.",
+            match=r"Keys \[\'filter\', \'something\'\] must be \[\'filter\', \'pseudonymize\'\]",
         ):
             PseudonymizerRule._create_from_dict(rule_dict)
 
