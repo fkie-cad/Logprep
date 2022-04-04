@@ -52,7 +52,6 @@ class Normalizer(RuleBasedProcessor):
         self.ps = ProcessorStats()
 
         self._name = name
-        self._events_processed = 0
         self._event = None
         self._conflicting_fields = []
 
