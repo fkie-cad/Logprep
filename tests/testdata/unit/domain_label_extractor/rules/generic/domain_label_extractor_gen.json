@@ -1,0 +1,9 @@
+[
+  {
+    "filter": "irrelevant",
+    "domain_label_extractor": {
+      "target_field": "url.domain",
+      "output_field": "url"
+    }
+  }
+]

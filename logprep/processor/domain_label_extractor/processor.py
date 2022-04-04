@@ -9,6 +9,7 @@ from typing import List
 from time import time
 from tldextract import TLDExtract
 
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import (
     NotARulesDirectoryError,
     InvalidRuleDefinitionError,
@@ -17,8 +18,10 @@ from logprep.processor.base.exceptions import (
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to
-from logprep.util.processor_stats import ProcessorStats
+from logprep.util.processor_stats import ProcessorStats, StatsClassesController
 from logprep.util.time_measurement import TimeMeasurement
+
+StatsClassesController.ENABLED = True
 
 
 class DomainLabelExtractorError(BaseException):
@@ -45,7 +48,12 @@ class DomainLabelExtractor(RuleBasedProcessor):
     """Splits a domain into it's parts/labels."""
 
     def __init__(
-        self, name: str, tree_config: str, tld_lists: list, tagging_field_name: str, logger: Logger
+        self,
+        name: str,
+        configuration: dict,
+        tld_lists: list,
+        tagging_field_name: str,
+        logger: Logger,
     ):
         """
         Initializes the DomainLabelExtractor processor.
@@ -62,8 +70,17 @@ class DomainLabelExtractor(RuleBasedProcessor):
             Standard logger.
         """
 
-        super().__init__(name, tree_config, logger)
+        tree_config = configuration.get("tree_config")
+        super().__init__(name, tree_config=tree_config, logger=logger)
         self.ps = ProcessorStats()
+        self._specific_tree = RuleTree(config_path=tree_config)
+        self._generic_tree = RuleTree(config_path=tree_config)
+        specific_rules_dirs = configuration.get("specific_rules")
+        generic_rules_dirs = configuration.get("generic_rules")
+        self.add_rules_from_directory(
+            generic_rules_dirs=generic_rules_dirs,
+            specific_rules_dirs=specific_rules_dirs,
+        )
 
         if tld_lists is not None:
             self._tld_extractor = TLDExtract(suffix_list_urls=tld_lists)
@@ -73,39 +90,46 @@ class DomainLabelExtractor(RuleBasedProcessor):
         self._tagging_field_name = tagging_field_name
 
     # pylint: disable=arguments-differ
-    def add_rules_from_directory(self, rule_paths: List[str]):
+    def add_rules_from_directory(
+        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
+    ):
         """
         Collect rules from given directory.
 
         Parameters
         ----------
-        rules_paths : List[str]
-            Path to the directory containing DomainLabelExtractor rules.
+        specific_rules_dirs : List[str]
+            Path to the directory containing specific DomainLabelExtractor rules.
+        generic_rules_dirs : List[str]
+            Path to the directory containing specific DomainLabelExtractor rules.
 
         """
-        for path in rule_paths:
-            if not isdir(realpath(path)):
-                raise NotARulesDirectoryError(self._name, path)
-
-            for root, _, files in walk(path):
-                json_files = []
-                for file in files:
-                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
-                        "_test.json"
-                    ):
-                        json_files.append(file)
-                for file in json_files:
-                    rules = self._load_rules_from_file(join(root, file))
-                    for rule in rules:
-                        self._tree.add_rule(rule, self._logger)
+        for specific_rules_dir in specific_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
+            for rule_path in rule_paths:
+                rules = DomainLabelExtractorRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._specific_tree.add_rule(rule, self._logger)
+        for generic_rules_dir in generic_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
+            for rule_path in rule_paths:
+                rules = DomainLabelExtractorRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._generic_tree.add_rule(rule, self._logger)
 
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                f"{self.describe()} loaded {self._tree.rule_counter} rules "
+                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
+                f"specific rules ({current_process().name})"
+            )
+            self._logger.debug(
+                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
                 f"({current_process().name})"
             )
 
-        self.ps.setup_rules([None] * self._tree.rule_counter)
+        self.ps.setup_rules(
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
+        )
 
     # pylint: enable=arguments-differ
 
@@ -139,9 +163,16 @@ class DomainLabelExtractor(RuleBasedProcessor):
         event : dict
             Current event log message to be processed.
         """
-        self.event = event
+        self._event = event
 
-        for rule in self._tree.get_matching_rules(event):
+        for rule in self._specific_tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(self._event, rule)
+            processing_time = float("{:.10f}".format(time() - begin))
+            idx = self._specific_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
+
+        for rule in self._generic_tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event, rule)
             processing_time = float("{:.10f}".format(time() - begin))
