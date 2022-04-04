@@ -15,9 +15,7 @@ from logprep.processor.processor_factory_error import ProcessorFactoryError
 from logprep.processor.pseudonymizer.factory import Pseudonymizer, PseudonymizerFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 
-CAP_GROUP_REGEX_MAPPING = (
-    "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
-)
+CAP_GROUP_REGEX_MAPPING = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
 
 CACHE_MAX_TIMEDELTA = datetime.timedelta(milliseconds=100)
 
@@ -51,9 +49,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, RuleBasedProcessor)
 
-    @mock.patch(
-        "logprep.processor.pseudonymizer.processor.Pseudonymizer._pseudonymize_event"
-    )
+    @mock.patch("logprep.processor.pseudonymizer.processor.Pseudonymizer._pseudonymize_event")
     def test_pseudonymizer_process(self, mock_pseudonymize_event):
         mock_pseudonymize_event.return_value = [{"pseudonym": "foo", "origin": "bar"}]
         count = self.object.ps.processed_count
@@ -412,27 +408,21 @@ class TestPseudonymizer(BaseProcessorTestCase):
         pseudonym = "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
         expected = "KEEP_THIS+" + pseudonym + "+KEEP_THIS"
 
-        event = self._pseudo_source_by_pattern(
-            r"KEEP_THIS+PSEUDO_THIS+KEEP_THIS", "RE_CAP"
-        )
+        event = self._pseudo_source_by_pattern(r"KEEP_THIS+PSEUDO_THIS+KEEP_THIS", "RE_CAP")
         assert event["pseudo_this"] == expected
 
     def test_match_capture_group_right(self):
         pseudonym = "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
         expected = "KEEP_THIS+" + pseudonym
 
-        event = self._pseudo_source_by_pattern(
-            r"KEEP_THIS+PSEUDO_THIS", "RE_PATTERN_CAP"
-        )
+        event = self._pseudo_source_by_pattern(r"KEEP_THIS+PSEUDO_THIS", "RE_PATTERN_CAP")
         assert event["pseudo_this"] == expected
 
     def test_match_capture_group_left(self):
         pseudonym = "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
         expected = pseudonym + "+KEEP_THIS"
 
-        event = self._pseudo_source_by_pattern(
-            r"PSEUDO_THIS+KEEP_THIS", "RE_CAP_PATTERN"
-        )
+        event = self._pseudo_source_by_pattern(r"PSEUDO_THIS+KEEP_THIS", "RE_CAP_PATTERN")
         assert event["pseudo_this"] == expected
 
     def test_match_two_capture_groups_covering_match(self):
@@ -440,9 +430,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         pseudonym_2 = "<pseudonym:2c868c09bcc9ee59486e915ad2865d33f22b045ea0050215d7f99fd55b12a5d3>"
         expected = pseudonym_1 + pseudonym_2
 
-        event = self._pseudo_source_by_pattern(
-            r"_PSEUDO_THIS_1__PSEUDO_THIS_2_", "RE_TWO_CAPS"
-        )
+        event = self._pseudo_source_by_pattern(r"_PSEUDO_THIS_1__PSEUDO_THIS_2_", "RE_TWO_CAPS")
         assert event["pseudo_this"] == expected
 
     def test_match_two_capture_groups_with_gap(self):
@@ -467,40 +455,54 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_subdomain(self):
-        subdomain_pseudonym = "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        subdomain_pseudonym = (
+            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        )
         expected = "https://{}.test.de".format(subdomain_pseudonym)
 
         event = self._pseudo_with_url("https://www.test.de", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_subdomain_without_scheme(self):
-        subdomain_pseudonym = "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        subdomain_pseudonym = (
+            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        )
         expected = "{}.test.de".format(subdomain_pseudonym)
 
         event = self._pseudo_with_url("www.test.de", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_path(self):
-        path_pseudonym = "<pseudonym:f285389e9dc7921109e18f2f1375b26cb47bbe2981d8399ee7e70c3fd156337f>"
+        path_pseudonym = (
+            "<pseudonym:f285389e9dc7921109e18f2f1375b26cb47bbe2981d8399ee7e70c3fd156337f>"
+        )
         expected = "https://test.de/{}".format(path_pseudonym)
 
         event = self._pseudo_with_url("https://test.de/some/path", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_query(self):
-        query_pseudonym_b = "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
-        query_pseudonym_d = "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
-        expected = "https://test.de/?a={}&c={}".format(
-            query_pseudonym_b, query_pseudonym_d
+        query_pseudonym_b = (
+            "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
         )
+        query_pseudonym_d = (
+            "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
+        )
+        expected = "https://test.de/?a={}&c={}".format(query_pseudonym_b, query_pseudonym_d)
 
         event = self._pseudo_with_url("https://test.de/?a=b&c=d", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_query_substrings(self):
-        query_pseudonym_b = "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
-        query_pseudonym_d = "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
-        query_pseudonym_bd = "<pseudonym:49713f9217c2cac56d0e87a6930669f45be876812eff4bd01ec86d6f22578f99>"
+        query_pseudonym_b = (
+            "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
+        )
+        query_pseudonym_d = (
+            "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
+        )
+        query_pseudonym_bd = (
+            "<pseudonym:49713f9217c2cac56d0e87a6930669f45be876812eff4bd01ec86d6f22578f99>"
+        )
         expected = "https://test.de/?a={}&c={}&e={}".format(
             query_pseudonym_b, query_pseudonym_d, query_pseudonym_bd
         )
@@ -509,24 +511,30 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_subdomain_in_sentence(self):
-        subdomain_pseudonym = "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        subdomain_pseudonym = (
+            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        )
         expected = "This is https://{}.test.de !".format(subdomain_pseudonym)
 
         event = self._pseudo_with_url("This is https://www.test.de !", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_two_identical_urls_subdomain(self):
-        subdomain_pseudonym = "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        subdomain_pseudonym = (
+            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        )
         expected = "https://{0}.test.de https://{0}.test.de".format(subdomain_pseudonym)
 
-        event = self._pseudo_with_url(
-            "https://www.test.de https://www.test.de", "RE_ALL_NO_CAP"
-        )
+        event = self._pseudo_with_url("https://www.test.de https://www.test.de", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_two_different_urls(self):
-        path_pseudonym = "<pseudonym:f285389e9dc7921109e18f2f1375b26cb47bbe2981d8399ee7e70c3fd156337f>"
-        subdomain_pseudonym = "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        path_pseudonym = (
+            "<pseudonym:f285389e9dc7921109e18f2f1375b26cb47bbe2981d8399ee7e70c3fd156337f>"
+        )
+        subdomain_pseudonym = (
+            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        )
         expected = "https://{0}.other.de/{1} https://{0}.test.de".format(
             subdomain_pseudonym, path_pseudonym
         )
@@ -538,13 +546,15 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_username_password(self):
-        auth_pseudonym = "<pseudonym:a204fdad51be9a1e4ee63cea128cc8016226e4459fea2d1ed430c180e6f06359>"
-        subdomain_pseudonym = "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        auth_pseudonym = (
+            "<pseudonym:a204fdad51be9a1e4ee63cea128cc8016226e4459fea2d1ed430c180e6f06359>"
+        )
+        subdomain_pseudonym = (
+            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+        )
         expected = "https://{}@{}.test.de".format(auth_pseudonym, subdomain_pseudonym)
 
-        event = self._pseudo_with_url(
-            "https://user:password@www.test.de", "RE_ALL_NO_CAP"
-        )
+        event = self._pseudo_with_url("https://user:password@www.test.de", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_fragment(self):
@@ -555,9 +565,15 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_fragment_with_path_and_query(self):
-        path_pseudonym = "<pseudonym:25d02f39a74a2bee3e08c5c82577528f70b653f0805ad1c56570829bfb368881>"
-        query_pseudonym = "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
-        fragment_pseudonym = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
+        path_pseudonym = (
+            "<pseudonym:25d02f39a74a2bee3e08c5c82577528f70b653f0805ad1c56570829bfb368881>"
+        )
+        query_pseudonym = (
+            "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
+        )
+        fragment_pseudonym = (
+            "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
+        )
         expected = "https://test.de/{}?a={}#{}".format(
             path_pseudonym, query_pseudonym, fragment_pseudonym
         )
@@ -629,8 +645,12 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert event["pseudo_this"] == pseudonymized_url
 
     def test_pseudonymize_url_and_cap_groups(self):
-        pseudonym_cap = "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
-        pseudonym_url = "<pseudonym:f742a956bf2ab54f5e7f9cca7caaa33a1b488f6e907cef147fbfb1a99c8de5b6>"
+        pseudonym_cap = (
+            "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
+        )
+        pseudonym_url = (
+            "<pseudonym:f742a956bf2ab54f5e7f9cca7caaa33a1b488f6e907cef147fbfb1a99c8de5b6>"
+        )
         pseudonymized = "SOMETHING {} SOMETHING https://{}.this.de SOMETHING".format(
             pseudonym_cap, pseudonym_url
         )

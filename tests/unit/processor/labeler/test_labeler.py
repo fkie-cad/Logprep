@@ -33,6 +33,7 @@ from tests.testdata.metadata import (
     path_to_schema,
 )
 
+
 logger = getLogger()
 
 
@@ -78,6 +79,7 @@ class TestLabeler(BaseProcessorTestCase):
     timeout = 0.01
 
     factory = LabelerFactory
+
 
     CONFIG = {
         "type": "labeler",
@@ -135,7 +137,6 @@ class TestLabeler(BaseProcessorTestCase):
         self, reporter_schema_expanded
     ):
         rule = {"filter": "applyrule", "label": {"reporter": ["windows"]}}
-
         document = {"applyrule": "yes"}
         expected = {"applyrule": "yes", "label": {"reporter": ["parentlabel", "windows"]}}
 

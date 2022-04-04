@@ -31,7 +31,7 @@ class NotARulesDirectoryError(RuleError):
 class InvalidRuleFileError(InvalidConfigurationError):
     """Raise if rule file at path is invalid."""
 
-    def __init__(self, name: str, path: str, message: str = ''):
+    def __init__(self, name: str, path: str, message: str = ""):
         if message:
             super().__init__(name, f'Invalid rule file "{path}": {message}')
         else:
@@ -46,11 +46,11 @@ class KeyDoesnotExistInSchemaError(MismatchedRuleDefinitionError):
     """Raise if key in defined rule does not conform to schema."""
 
     def __init__(self, key: str):
-        super().__init__(f'Invalid key \'{key}\'.')
+        super().__init__(f"Invalid key '{key}'.")
 
 
 class ValueDoesnotExistInSchemaError(MismatchedRuleDefinitionError):
     """Raise if value in defined rule does not conform to schema."""
 
     def __init__(self, key: str, value: Any):
-        super().__init__(f'Invalid value \'{value}\' for key \'{key}\'.')
+        super().__init__(f"Invalid value '{value}' for key '{key}'.")

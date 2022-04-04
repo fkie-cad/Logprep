@@ -15,8 +15,11 @@ from geoip2.errors import AddressNotFoundError
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.geoip_enricher.rule import GeoIPEnricherRule
-from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
-                                               InvalidRuleFileError)
+from logprep.processor.base.exceptions import (
+    NotARulesDirectoryError,
+    InvalidRuleDefinitionError,
+    InvalidRuleFileError,
+)
 
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
@@ -27,16 +30,18 @@ class GeoIPEnricherError(BaseException):
     """Base class for GeoIPEnricher related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f'GeoIPEnricher ({name}): {message}')
+        super().__init__(f"GeoIPEnricher ({name}): {message}")
 
 
 class DuplicationError(GeoIPEnricherError):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
-        message = 'The following fields already existed and ' \
-                  'were not overwritten by the GeoIPEnricher: '
-        message += ' '.join(skipped_fields)
+        message = (
+            "The following fields already existed and "
+            "were not overwritten by the GeoIPEnricher: "
+        )
+        message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
@@ -60,8 +65,9 @@ class GeoIPEnricher(RuleBasedProcessor):
             for root, _, files in walk(path):
                 json_files = []
                 for file in files:
-                    if (file.endswith('.json') or file.endswith('.yml')) and not file.endswith(
-                            '_test.json'):
+                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
+                        "_test.json"
+                    ):
                         json_files.append(file)
                 for file in json_files:
                     rules = self._load_rules_from_file(join(root, file))
@@ -69,10 +75,13 @@ class GeoIPEnricher(RuleBasedProcessor):
                         self._tree.add_rule(rule, self._logger)
 
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(f'{self.describe()} loaded {self._tree.rule_counter} rules '
-                               f'({current_process().name})')
+            self._logger.debug(
+                f"{self.describe()} loaded {self._tree.rule_counter} rules "
+                f"({current_process().name})"
+            )
 
         self.ps.setup_rules([None] * self._tree.rule_counter)
+
     # pylint: enable=arguments-differ
 
     def _load_rules_from_file(self, path: str):
@@ -82,16 +91,16 @@ class GeoIPEnricher(RuleBasedProcessor):
             raise InvalidRuleFileError(self._name, path) from error
 
     def describe(self) -> str:
-        return f'GeoIPEnricher ({self._name})'
+        return f"GeoIPEnricher ({self._name})"
 
-    @TimeMeasurement.measure_time('geoip_enricher')
+    @TimeMeasurement.measure_time("geoip_enricher")
     def process(self, event: dict):
         self._event = event
 
         for rule in self._tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event, rule)
-            processing_time = float('{:.10f}'.format(time() - begin))
+            processing_time = float("{:.10f}".format(time() - begin))
             idx = self._tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
@@ -112,48 +121,45 @@ class GeoIPEnricher(RuleBasedProcessor):
             ip_data = self._city_db.city(ip)
 
             if ip_data:
-                geoip['type'] = 'Feature'
+                geoip["type"] = "Feature"
                 properties = {}
 
                 if ip_data.location:
                     longitude = self._normalize_empty(ip_data.location.longitude)
                     latitude = self._normalize_empty(ip_data.location.latitude)
                     if longitude and latitude:
-                        geoip['geometry'] = {
-                            'type': 'Point',
-                            'coordinates': [longitude, latitude]
-                        }
+                        geoip["geometry"] = {"type": "Point", "coordinates": [longitude, latitude]}
 
                     accuracy_radius = self._normalize_empty(ip_data.location.accuracy_radius)
                     if accuracy_radius:
-                        properties['accuracy_radius'] = accuracy_radius
+                        properties["accuracy_radius"] = accuracy_radius
 
                 if ip_data.continent:
                     continent = self._normalize_empty(ip_data.continent.name)
                     if continent:
-                        properties['continent'] = continent
+                        properties["continent"] = continent
 
                 if ip_data.country:
                     country = self._normalize_empty(ip_data.country.name)
                     if country:
-                        properties['country'] = country
+                        properties["country"] = country
 
                 if ip_data.city:
                     city = self._normalize_empty(ip_data.city.name)
                     if city:
-                        properties['city'] = city
+                        properties["city"] = city
 
                 if ip_data.postal:
                     postal_code = self._normalize_empty(ip_data.postal.code)
                     if postal_code:
-                        properties['postal_code'] = postal_code
+                        properties["postal_code"] = postal_code
 
                 if ip_data.subdivisions:
                     if ip_data.subdivisions.most_specific:
-                        properties['subdivision'] = ip_data.subdivisions.most_specific.name
+                        properties["subdivision"] = ip_data.subdivisions.most_specific.name
 
                 if properties:
-                    geoip['properties'] = properties
+                    geoip["properties"] = properties
 
                 return geoip
 

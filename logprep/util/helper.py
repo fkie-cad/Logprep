@@ -8,7 +8,7 @@ from colorama.ansi import AnsiFore, AnsiBack
 
 def print_color(back: Optional[AnsiBack], fore: Optional[AnsiFore], message: str):
     """Print string with colors and reset the color afterwards."""
-    color = ''
+    color = ""
     if back:
         color += back
     if fore:
@@ -52,7 +52,7 @@ def add_field_to(event, output_field, content, extends_lists=False):
     """
     conflicting_fields = list()
 
-    keys = output_field.split('.')
+    keys = output_field.split(".")
     dict_ = event
     for idx, key in enumerate(keys):
         if key not in dict_:
@@ -95,7 +95,7 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
     # code is originally from the BaseProcessor, such that duplicated code could be removed there.
     """
 
-    fields = dotted_field.split('.')
+    fields = dotted_field.split(".")
     dict_ = event
     for field in fields:
         if field in dict_ and isinstance(dict_, dict):

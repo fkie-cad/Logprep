@@ -52,7 +52,7 @@ class Input(metaclass=ABCMeta):
         May be used as a word in a sentence.
 
         """
-        return 'Input: the.host.name.tld:1234'
+        return "Input: the.host.name.tld:1234"
 
     @abstractmethod
     def get_next(self, timeout: float):

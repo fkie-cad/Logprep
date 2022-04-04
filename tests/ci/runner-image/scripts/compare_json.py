@@ -25,7 +25,9 @@ def parse_expected(path):
 
 
 def test_compare_output():
-    output_jsonl = parse_json_path('tests/testdata/output.jsonl')
-    expected_jsonl = parse_expected('tests/testdata/acceptance/expected_result/expected_test_compare.jsonl')
+    output_jsonl = parse_json_path("tests/testdata/output.jsonl")
+    expected_jsonl = parse_expected(
+        "tests/testdata/acceptance/expected_result/expected_test_compare.jsonl"
+    )
 
     assert DeepDiff(output_jsonl, expected_jsonl, ignore_order=True, report_repetition=True) == {}

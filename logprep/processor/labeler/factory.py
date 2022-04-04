@@ -29,7 +29,7 @@ class LabelerFactory(BaseFactory):
             tree_config=configuration.get("tree_config"),
             logger=logger,
         )
-
+        
         return labeler
 
     @staticmethod

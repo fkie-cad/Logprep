@@ -3,8 +3,10 @@
 from typing import Tuple
 
 from logprep.connector.confluent_kafka import ConfluentKafkaFactory
-from logprep.connector.connector_factory_error import (UnknownConnectorTypeError,
-                                                       InvalidConfigurationError)
+from logprep.connector.connector_factory_error import (
+    UnknownConnectorTypeError,
+    InvalidConfigurationError,
+)
 from logprep.input.input import Input
 from logprep.output.output import Output
 from logprep.input.dummy_input import DummyInput
@@ -42,34 +44,36 @@ class ConnectorFactory:
 
         """
         try:
-            if config['type'].lower() == 'dummy':
+            if config["type"].lower() == "dummy":
                 return ConnectorFactory._create_dummy_connector(config)
-            if config['type'].lower() == 'writer':
+            if config["type"].lower() == "writer":
                 return ConnectorFactory._create_writing_connector(config)
-            if config['type'].lower() == 'writer_json_input':
+            if config["type"].lower() == "writer_json_input":
                 return ConnectorFactory._create_writing_json_input_connector(config)
-            if config['type'].lower() == 'confluentkafka':
+            if config["type"].lower() == "confluentkafka":
                 confluent_kafka = ConfluentKafkaFactory.create_from_configuration(config)
                 return confluent_kafka, confluent_kafka
-            raise UnknownConnectorTypeError('Unknown connector type: "{}"'.format(config['type']))
+            raise UnknownConnectorTypeError('Unknown connector type: "{}"'.format(config["type"]))
         except KeyError:
-            raise InvalidConfigurationError('Connector type not specified')
+            raise InvalidConfigurationError("Connector type not specified")
 
     @staticmethod
     def _create_dummy_connector(config: dict) -> Tuple[DummyInput, DummyOutput]:
-        output_exceptions = config['output'] if 'output' in config else []
-        return DummyInput(config['input']), DummyOutput(output_exceptions)
+        output_exceptions = config["output"] if "output" in config else []
+        return DummyInput(config["input"]), DummyOutput(output_exceptions)
 
     @staticmethod
     def _create_writing_connector(config: dict) -> Tuple[JsonlInput, WritingOutput]:
-        return JsonlInput(config['input_path']), WritingOutput(
-            config['output_path'],
-            config.get('output_path_custom', None),
-            config.get('output_path_errors', None))
+        return JsonlInput(config["input_path"]), WritingOutput(
+            config["output_path"],
+            config.get("output_path_custom", None),
+            config.get("output_path_errors", None),
+        )
 
     @staticmethod
     def _create_writing_json_input_connector(config: dict) -> Tuple[JsonInput, WritingOutput]:
-        return JsonInput(config['input_path']), WritingOutput(
-            config['output_path'],
-            config.get('output_path_custom', None),
-            config.get('output_path_errors', None))
+        return JsonInput(config["input_path"]), WritingOutput(
+            config["output_path"],
+            config.get("output_path_custom", None),
+            config.get("output_path_errors", None),
+        )

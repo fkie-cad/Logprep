@@ -45,28 +45,50 @@ class AssertEmitsLogMessages:
         records = self._retrieve_records()
 
         if len(records) <= 0:
-            fail('Did not emit any log message.')
+            fail("Did not emit any log message.")
         elif len(records) < len(self._expected_levels):
-            fail('Expected {} log messages but only {} message(s) were emitted.'.format(len(self._expected_levels),
-                                                                                        len(records)))
+            fail(
+                "Expected {} log messages but only {} message(s) were emitted.".format(
+                    len(self._expected_levels), len(records)
+                )
+            )
 
         for offset in range(len(self._expected_levels)):
             if records[offset].levelno != self._expected_levels[offset]:
-                fail('Message {}: Expected log level {}, have {}: {}'.format(
-                    offset, getLevelName(self._expected_levels[offset]), getLevelName(records[offset].levelno),
-                    records[offset].msg))
+                fail(
+                    "Message {}: Expected log level {}, have {}: {}".format(
+                        offset,
+                        getLevelName(self._expected_levels[offset]),
+                        getLevelName(records[offset].levelno),
+                        records[offset].msg,
+                    )
+                )
 
-            if (not self._expected_messages[offset] is None) \
-                    and (records[offset].msg != self._expected_messages[offset]):
-                fail('Expected message "{}" but got: {}'.format(self._expected_prefixes[offset], records[offset].msg))
-            if (not self._expected_prefixes[offset] is None) \
-                    and (records[offset].msg[:len(self._expected_prefixes[offset])] != self._expected_prefixes[offset]):
-                fail('Message does not start with prefix "{}": {}'.format(self._expected_prefixes[offset],
-                                                                          records[offset].msg))
-            if (not self._expected_contains[offset] is None) \
-                    and (not self._expected_contains[offset] in records[offset].msg):
-                fail('Expected message "{}" not found in: {}'.format(self._expected_contains[offset],
-                                                                     records[offset].msg))
+            if (not self._expected_messages[offset] is None) and (
+                records[offset].msg != self._expected_messages[offset]
+            ):
+                fail(
+                    'Expected message "{}" but got: {}'.format(
+                        self._expected_prefixes[offset], records[offset].msg
+                    )
+                )
+            if (not self._expected_prefixes[offset] is None) and (
+                records[offset].msg[: len(self._expected_prefixes[offset])]
+                != self._expected_prefixes[offset]
+            ):
+                fail(
+                    'Message does not start with prefix "{}": {}'.format(
+                        self._expected_prefixes[offset], records[offset].msg
+                    )
+                )
+            if (not self._expected_contains[offset] is None) and (
+                not self._expected_contains[offset] in records[offset].msg
+            ):
+                fail(
+                    'Expected message "{}" not found in: {}'.format(
+                        self._expected_contains[offset], records[offset].msg
+                    )
+                )
 
     def _retrieve_records(self):
         records = []

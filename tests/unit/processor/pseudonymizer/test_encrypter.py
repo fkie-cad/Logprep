@@ -2,7 +2,8 @@ import re
 from unittest import mock
 
 import pytest
-pytest.importorskip('logprep.processor.pseudonymizer')
+
+pytest.importorskip("logprep.processor.pseudonymizer")
 
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 
@@ -12,7 +13,8 @@ MOCK_PUBKEY_1024 = (
     "bw2RQ80JmgWsI/Qyh8ADYa02K/7fhP4oJasFPLPt1UHWjYZR4zY1qCyOdLkYOP+d\n"
     "eiiiKuds6+5od47HKlZdkoOdZiDQJ0sdtCVKPPmtRByDig4LEgaAwqAR0nMKpoH9\n"
     "PyLe/89Z6vPR3xZGywIDAQAB\n"
-    "-----END PUBLIC KEY-----")
+    "-----END PUBLIC KEY-----"
+)
 
 MOCK_PUBKEY_2048 = (
     "-----BEGIN PUBLIC KEY-----\n"
@@ -23,12 +25,13 @@ MOCK_PUBKEY_2048 = (
     "9RzInui0HKvgMpT+5HfpC0ejdODT8nQ77bw56tNvX4LbSfOyYiEqxLu4hJHafuhL\n"
     "kIvdKlFT87zhbyjDwPgNNwcbyAFtDw4xqdM+isGpx/U3VqUGapOKHlj2Lq0gKtjL\n"
     "kQIDAQAB\n"
-    "-----END PUBLIC KEY-----")
+    "-----END PUBLIC KEY-----"
+)
 
 BASE64_REGEX = r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
 
 
-class TestDualPKCS1HybridEncrypter():
+class TestDualPKCS1HybridEncrypter:
     def test_encrypt_without_loaded_keys(self):
         encrypter = DualPKCS1HybridEncrypter()
         with pytest.raises(ValueError):
@@ -38,7 +41,7 @@ class TestDualPKCS1HybridEncrypter():
     def test_load_public_keys_successfully(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data=MOCK_PUBKEY_1024).return_value,
-            mock.mock_open(read_data=MOCK_PUBKEY_2048).return_value
+            mock.mock_open(read_data=MOCK_PUBKEY_2048).return_value,
         ]
         encrypter = DualPKCS1HybridEncrypter()
         encrypter.load_public_keys("foo", "bar")
@@ -49,7 +52,7 @@ class TestDualPKCS1HybridEncrypter():
     def test_load_public_keys_invalid_key(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data="foo").return_value,
-            mock.mock_open(read_data="bar").return_value
+            mock.mock_open(read_data="bar").return_value,
         ]
         encrypter = DualPKCS1HybridEncrypter()
         with pytest.raises(ValueError):
@@ -64,7 +67,7 @@ class TestDualPKCS1HybridEncrypter():
     def test_encrypt(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data=MOCK_PUBKEY_1024).return_value,
-            mock.mock_open(read_data=MOCK_PUBKEY_2048).return_value
+            mock.mock_open(read_data=MOCK_PUBKEY_2048).return_value,
         ]
         encrypter = DualPKCS1HybridEncrypter()
         encrypter.load_public_keys("foo", "bar")

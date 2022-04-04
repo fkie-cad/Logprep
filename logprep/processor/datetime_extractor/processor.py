@@ -76,8 +76,7 @@ class DateTimeExtractor(RuleBasedProcessor):
                 f"({current_process().name})"
             )
         self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter
-            + [None] * self._specific_tree.rule_counter
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
         )
 
     # pylint: enable=arguments-differ

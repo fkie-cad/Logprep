@@ -12,16 +12,16 @@ from logprep.processor.clusterer.rule import ClustererRule
 class LogRecord(SimpleNamespace):
     """Container for raw text and the signature in different states."""
 
-    raw_text = ''
+    raw_text = ""
     # str 'Mar 15 00:34:53 combo sshd[11755]: Accepted password for judy55 from
     # 192.168.56.13 port 59405 ssh2'
-    sig_text = ''
+    sig_text = ""
     # str '(...) <+>sshd</+> <+>Failed</+> (...) judy55 ssh2'
-    sig_list = ''
+    sig_list = ""
     # list ['<+>sshd</+>', '<+>Failed</+>', (...)]
-    sig_str = ''
+    sig_str = ""
     # str '<+>sshd</+> <+>Failed</+> (...)'
-    sig_str_no_tags = ''
+    sig_str_no_tags = ""
     # str 'sshd Failed'
 
 
@@ -40,9 +40,9 @@ class SignaturePhaseStreaming:
     @staticmethod
     def _remove_tags(sig_str: str) -> str:
         """Remove the tag respectively markup signs."""
-        sig_str_no_tags = (sig_str
-                           .replace(SignatureProgramTags.start_tag, "")
-                           .replace(SignatureProgramTags.end_tag, ""))
+        sig_str_no_tags = sig_str.replace(SignatureProgramTags.start_tag, "").replace(
+            SignatureProgramTags.end_tag, ""
+        )
         return sig_str_no_tags
 
 
@@ -56,7 +56,7 @@ class SignatureEngine:
         """Run the signature engine."""
         record.sig_text = self._apply_signature_rules(record.raw_text, rules)
         record.sig_list = self._sp.calculate_signature(record.sig_text)
-        record.sig_str = ' '.join(record.sig_list)
+        record.sig_str = " ".join(record.sig_list)
         return record
 
     def _apply_signature_rules(self, raw_text: str, rules: List[ClustererRule]) -> str:
@@ -142,7 +142,7 @@ class SignatureTagParser:
         sig_pos_list = self._calculate_signature_positions(sig_text)
         sig_list = []
         for sig_pos in sig_pos_list:
-            signature = sig_text[sig_pos[0]:sig_pos[1]]
+            signature = sig_text[sig_pos[0] : sig_pos[1]]
             sig_list.append(signature)
         return sig_list
 
@@ -157,7 +157,7 @@ class SignatureTagParser:
             cursor = cursor + start_pos + len(self.start_tag)
             end_pos = sig_text[cursor:].find(self.end_tag)
             if end_pos == -1:
-                raise Exception(f'ERROR: invalid grammatic, missing {self.end_tag} tag')
+                raise Exception(f"ERROR: invalid grammatic, missing {self.end_tag} tag")
             sig_token_end = cursor + end_pos + len(self.end_tag)
             sig_token_pos.append([sig_token_start, sig_token_end])
         return sig_token_pos
@@ -165,6 +165,6 @@ class SignatureTagParser:
     def check_no_start_and_end_tag_in_raw_text(self, raw_text: str):
         """Check if the start and end tags are in the raw text."""
         if self.start_tag in raw_text:
-            raise Exception(f'ERROR: Start-tag {self.start_tag} in raw log message')
+            raise Exception(f"ERROR: Start-tag {self.start_tag} in raw log message")
         if self.end_tag in raw_text:
-            raise Exception(f'ERROR: End-tag {self.end_tag} in raw log message')
+            raise Exception(f"ERROR: End-tag {self.end_tag} in raw log message")
