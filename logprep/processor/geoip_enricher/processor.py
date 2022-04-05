@@ -85,7 +85,7 @@ class GeoIPEnricher(RuleBasedProcessor):
             )
             self._logger.debug(
                 f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
+                f"generic rules ({current_process().name})"
             )
         self.ps.setup_rules(
             [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
