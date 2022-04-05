@@ -105,12 +105,23 @@ class Labeler(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
     
-    def verify_rules_and_add_to(self, tree, include_parent_labels, specific_rules_dir):
+    def verify_rules_and_add_to(self, tree, include_parent_labels, rules_dir):
         """
         Creates LabelingRules, verifies if they conform with the given schema and adds them to
         the given rule_tree.
+
+        Parameters
+        ----------
+        tree : RuleTree
+            The rule tree to which the new rules should be added to.
+        include_parent_labels : bool
+            A flag that decides whether labels from the parent schema should be added to the rule
+            or not.
+        rules_dir : str
+            The path to the directory with the rule configurations that should be added to the
+            rule tree
         """
-        rule_paths = self._list_json_files_in_directory(specific_rules_dir)
+        rule_paths = self._list_json_files_in_directory(rules_dir)
         for rule_path in rule_paths:
             rules = LabelingRule.create_rules_from_file(rule_path)
             for rule in rules:
