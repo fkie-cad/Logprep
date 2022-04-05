@@ -2,6 +2,7 @@ import copy
 from pathlib import Path
 import pytest
 
+from logprep.filter.lucene_filter import LuceneFilter
 from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.domain_label_extractor")
@@ -35,6 +36,42 @@ class TestDomainLabelExtractorRule:
 
     def test_valid_rule(self):
         DomainLabelExtractorRule._create_from_dict(self.RULE)
+
+    def test_rules_are_equal(self):
+        rule1 = DomainLabelExtractorRule(
+            LuceneFilter.create(self.RULE["filter"]),
+            self.RULE["domain_label_extractor"],
+        )
+
+        rule2 = DomainLabelExtractorRule(
+            LuceneFilter.create(self.RULE["filter"]),
+            self.RULE["domain_label_extractor"],
+        )
+
+        assert rule1 == rule2
+
+    def test_rules_are_not_equal(self):
+        rule = DomainLabelExtractorRule(
+            LuceneFilter.create(self.RULE["filter"]),
+            self.RULE["domain_label_extractor"],
+        )
+
+        rule_diff_target_field = DomainLabelExtractorRule(
+            LuceneFilter.create(self.RULE["filter"]),
+            self.RULE["domain_label_extractor"],
+        )
+
+        rule_diff_filter = DomainLabelExtractorRule(
+            LuceneFilter.create(self.RULE["filter"]),
+            self.RULE["domain_label_extractor"],
+        )
+
+        rule_diff_target_field._target_field = ["diff_field"]
+        rule_diff_filter._filter = ["diff_domain"]
+
+        assert rule != rule_diff_target_field
+        assert rule != rule_diff_filter
+        assert rule_diff_target_field != rule_diff_filter
 
     def test_missing_target_field(self):
         rule = copy.deepcopy(self.RULE)
