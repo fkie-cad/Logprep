@@ -35,33 +35,32 @@ class Labeler(RuleBasedProcessor):
     def __init__(
         self,
         name: str,
-        specific_rules_dirs: list,
-        generic_rules_dirs: list,
-        labeling_schema: str,
-        include_parent_labels: bool,
-        tree_config: str,
+        configuration: dict,
         logger: Logger,
     ):
-        super().__init__(name, tree_config, logger)
+        self.tree_config = configuration.get("tree_config")
+        super().__init__(name, self.tree_config, logger)
+
         self._logger = logger
         self.ps = ProcessorStats()
 
         self._name = name
 
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
+        self._specific_tree = RuleTree(config_path=self.tree_config)
+        self._generic_tree = RuleTree(config_path=self.tree_config)
 
         try:
-            self._schema = LabelingSchema.create_from_file(labeling_schema)
+            self._schema = LabelingSchema.create_from_file(configuration.get("schema"))
         except InvalidLabelingSchemaFileError as error:
             raise InvalidSchemaDefinitionError(str(error)) from error
 
         try:
             self.add_rules_from_directory(
-                specific_rules_dirs, generic_rules_dirs, include_parent_labels
+                configuration.get("specific_rules"),
+                configuration.get("generic_rules"),
+                configuration.get("include_parent_labels", False),
             )
         except (
-            # LabelingSchemaError,
             InvalidRuleDefinitionError,
             RuleDoesNotConformToLabelingSchemaError,
             NotARulesDirectoryError,
@@ -104,6 +103,10 @@ class Labeler(RuleBasedProcessor):
         )
 
     def verify_rules_and_add_to(self, tree, include_parent_labels, specific_rules_dir):
+        """
+        Creates LabelingRules, verifies if they conform with the given schema and adds them to
+        the given rule_tree.
+        """
         rule_paths = self._list_json_files_in_directory(specific_rules_dir)
         for rule_path in rule_paths:
             rules = LabelingRule.create_rules_from_file(rule_path)
