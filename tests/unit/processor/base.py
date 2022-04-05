@@ -3,7 +3,6 @@
 import json
 import re
 from abc import ABC, abstractmethod
-from encodings import utf_8
 from logging import getLogger
 
 import pytest
@@ -45,6 +44,7 @@ class BaseProcessorTestCase(ABC):
         """
         sets the rules from the given rules_dirs
         """
+        assert rules_dirs is not None
         assert isinstance(rules_dirs, list)
         specific_rules = list()
 
