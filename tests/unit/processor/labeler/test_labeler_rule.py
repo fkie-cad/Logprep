@@ -1,11 +1,17 @@
+# pylint: disable=protected-access
+# pylint: disable=missing-module-docstring
+# pylint: disable=missing-class-docstring
+# pylint: disable=missing-function-docstring
+# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-order
 from copy import deepcopy
 
 from pytest import raises, fail
 
 from logprep.filter.expression.filter_expression import StringFilterExpression
-from logprep.processor.labeler.rule import LabelingRule
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
+from logprep.processor.labeler.rule import LabelingRule
 from tests.testdata.FilledTempFile import JsonTempFile
 from tests.testdata.ruledata import (
     simple_rule,
@@ -105,19 +111,6 @@ class TestRule:
 
         assert self.rule.conforms_to_schema(dummy_schema)
 
-    def test_add_parent_labels_from_schema_adds_parents_to_all_labels(self):
-        dummy_schema = MockLabelingSchema(True)
-
-        with JsonTempFile(simple_rule) as rule_path:
-            rules = list(LabelingRule.create_rules_from_file(rule_path))[0]
-
-            rules.add_parent_labels_from_schema(dummy_schema)
-
-            document = {}
-            rules.add_labels(document)
-
-            assert document == {"label": {"reporter": {"windows", "parent:windows"}}}
-
     def test_rules_may_contain_description(self):
         rule_with_description = deepcopy(simple_rule[0])
         rule_with_description["description"] = "this is the description"
@@ -137,40 +130,6 @@ class TestRule:
         non_matching_documents = [{}, {"applyrule": "wrong value"}, {"wrong key": "value"}]
         for document in non_matching_documents:
             assert not self.rule.matches(document)
-
-    def test_add_labels_inserts_all_defined_labels(self):
-        extented_rule_dict = deepcopy(simple_rule_dict)
-        extented_rule_dict["label"]["reporter"].append("client")
-        extented_rule_dict["label"]["object"] = ["file"]
-
-        with JsonTempFile([extented_rule_dict]) as rule_path:
-            rule = LabelingRule.create_rules_from_file(rule_path)[0]
-        document = {"key": "value"}
-        rule.add_labels(document)
-
-        assert "label" in document
-        assert "reporter" in document["label"]
-        assert document["label"]["reporter"] == {"windows", "client"}
-        assert "object" in document["label"]
-        assert document["label"]["object"] == {"file"}
-
-    def test_add_labels_does_not_overwrite_existing_values(self):
-        document = {"key": "value", "label": {"reporter": {"linux"}}}
-
-        self.rule.add_labels(document)
-
-        assert "label" in document
-        assert "reporter" in document["label"]
-        assert document["label"]["reporter"] == {"windows", "linux"}
-
-    def test_add_labels_converts_existing_list_of_labels_into_set(self):
-        document = {"key": "value", "label": {"reporter": ["linux"]}}
-
-        self.rule.add_labels(document)
-
-        assert "label" in document
-        assert "reporter" in document["label"]
-        assert document["label"]["reporter"] == {"windows", "linux"}
 
     def test_rules_are_different_if_their_filters_differ(self):
         rule1 = LabelingRule._create_from_dict(simple_rule_dict)
