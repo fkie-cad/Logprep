@@ -1,3 +1,9 @@
+# pylint: disable=protected-access
+# pylint: disable=missing-module-docstring
+# pylint: disable=missing-class-docstring
+# pylint: disable=missing-function-docstring
+# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-order
 from copy import deepcopy
 from os.path import join
 
@@ -7,14 +13,8 @@ importorskip("logprep.processor.labeler")
 
 from logprep.processor.labeler.labeling_schema import (
     InvalidLabelingSchemaFileError,
+    LabelingSchemaError,
     LabelingSchema,
-    DuplicateLabelInCategoryError,
-    CategoryWithoutDesciptionInSchemaError,
-    LabelWithoutDesciptionInSchemaError,
-    CannotRetrieveParentsForLabelWithoutDescriptionError,
-    NoSuchCategoryError,
-    NonDescriptionLeafError,
-    CategoryMustNotContainDescriptionFieldError,
 )
 from logprep.processor.base.exceptions import (
     KeyDoesnotExistInSchemaError,
@@ -95,7 +95,9 @@ class SchemasForTests:
 
 class TestLabelingSchemaCreateFromFile(SchemasForTests):
     def test_create_schema_fails_if_file_does_not_exist(self):
-        with raises(InvalidLabelingSchemaFileError, match='File not found: ".*".'):
+        with raises(
+            InvalidLabelingSchemaFileError, match="Not a valid schema file: File not found: '.*'."
+        ):
             LabelingSchema.create_from_file(join("path", "to", "non-existing", "file"))
 
     def test_create_schema_fails_if_path_points_to_directory(self):
@@ -109,13 +111,13 @@ class TestLabelingSchemaCreateFromFile(SchemasForTests):
         with JsonTempFile({}) as schema_file:
             with raises(
                 InvalidLabelingSchemaFileError,
-                match='Not a valid schema file: JSON decoder error: .*: ".*".',
+                match="Not a valid schema file: JSON decoder error: .*: '.*'.",
             ):
                 LabelingSchema.create_from_file(path_to_config)
 
     def test_create_schema_fails_is_file_is_empty(self):
         with JsonTempFile({}) as schema_file:
-            with raises(InvalidLabelingSchemaFileError, match='Not a valid schema file: ".*".'):
+            with raises(InvalidLabelingSchemaFileError, match="Not a valid schema file: '.*'."):
                 LabelingSchema.create_from_file(schema_file)
 
     def test_fails_if_schema_contains_description_with_non_string_value(self):
@@ -127,7 +129,7 @@ class TestLabelingSchemaCreateFromFile(SchemasForTests):
 
             self.assert_fails_with_expected_message(
                 schema,
-                'Not a valid schema file: Invalid schema definition: Label "key" does not have a valid description: ".*".',
+                "Not a valid schema file: Label 'key' does not have a valid description: '.*'.",
             )
 
     def test_accepts_schema_that_has_only_one_entry(self):
@@ -140,25 +142,25 @@ class TestLabelingSchemaCreateFromFile(SchemasForTests):
     def test_rejects_schema_that_has_category_without_category_field(self):
         self.assert_fails_with_expected_message(
             self.invalid_schema_category_without_category_field,
-            'Not a valid schema file: Invalid schema definition: Category "invalid" does not have a valid description: ".*".',
+            "Not a valid schema file: Category 'invalid' does not have a valid description: '.*'.",
         )
 
     def test_rejects_schema_that_has_non_string_category_field(self):
         self.assert_fails_with_expected_message(
             self.invalid_schema_category_with_non_string_category_field,
-            'Not a valid schema file: Invalid schema definition: Category "reporter" does not have a valid description: ".*".',
+            "Not a valid schema file: Category 'reporter' does not have a valid description: '.*'.",
         )
 
     def test_rejects_schema_that_contains_non_description_leaf(self):
         self.assert_fails_with_expected_message(
             self.invalid_schema_category_with_non_description_leaf,
-            'Not a valid schema file: Invalid schema definition: "key" is a leaf but not a description: ".*".',
+            r"Not a valid schema file: 'key' is a leaf but not a description: '.*'.",
         )
 
     def test_rejects_schema_with_duplicate_label_in_same_category(self):
         self.assert_fails_with_expected_message(
             self.invalid_schema_with_duplicate_label_in_same_category,
-            'Not a valid schema file: Invalid schema definition: Category "reporter" contains label "windows" more than once: ".*".',
+            "Not a valid schema file: Category 'reporter' contains label 'windows' more than once",
         )
 
     def assert_fails_with_expected_message(self, schema, error_message):
@@ -178,8 +180,8 @@ class TestLabelingSchema(SchemasForTests):
         for non_string in [123, 456.789, None]:
             schema["reporter"]["key"]["description"] = non_string
             with raises(
-                LabelWithoutDesciptionInSchemaError,
-                match='Label "key" does not have a valid description',
+                LabelingSchemaError,
+                match="Label 'key' does not have a valid description",
             ):
                 self.schema.ingest_schema(schema)
 
@@ -191,36 +193,36 @@ class TestLabelingSchema(SchemasForTests):
 
     def test_rejects_schema_that_has_category_without_category_field(self):
         with raises(
-            CategoryWithoutDesciptionInSchemaError,
-            match='Category "invalid" does not have a valid description',
+            LabelingSchemaError,
+            match="Category 'invalid' does not have a valid description",
         ):
             self.schema.ingest_schema(self.invalid_schema_category_without_category_field)
 
     def test_rejects_schema_that_has_non_string_category_field(self):
         with raises(
-            CategoryWithoutDesciptionInSchemaError,
-            match='Category "reporter" does not have a valid description',
+            LabelingSchemaError,
+            match="Category 'reporter' does not have a valid description",
         ):
             self.schema.ingest_schema(self.invalid_schema_category_with_non_string_category_field)
 
     def test_rejects_schema_that_contains_non_description_leaf(self):
         with raises(
-            NonDescriptionLeafError,
-            match='Invalid schema definition: "key" is a leaf but not a description',
+            LabelingSchemaError,
+            match="'key' is a leaf but not a description",
         ):
             self.schema.ingest_schema(self.invalid_schema_category_with_non_description_leaf)
 
     def test_rejects_schema_with_duplicate_label_in_same_category(self):
         with raises(
-            DuplicateLabelInCategoryError,
-            match='Invalid schema definition: Category "reporter" contains label "windows" more than once',
+            LabelingSchemaError,
+            match="Category 'reporter' contains label 'windows' more than once",
         ):
             self.schema.ingest_schema(self.invalid_schema_with_duplicate_label_in_same_category)
 
     def test_top_level_entries_must_not_have_description(self):
         with raises(
-            CategoryMustNotContainDescriptionFieldError,
-            match='Category "invalid" must not have a description field',
+            LabelingSchemaError,
+            match="Category 'invalid' must not have a description field",
         ):
             self.schema.ingest_schema(self.invalid_schema_with_description_in_top_level)
 
@@ -273,13 +275,13 @@ class TestLabelingSchema(SchemasForTests):
     def test_get_parent_labels_fails_when_called_for_non_existing_category(self):
         self.schema.ingest_schema(self.deep_schema)
 
-        with raises(NoSuchCategoryError):
+        with raises(LabelingSchemaError):
             self.schema.get_parent_labels("non-existing category", "test")
 
     def test_get_parent_labels_fails_when_called_for_label_without_description(self):
         self.schema.ingest_schema(self.deep_schema)
 
-        with raises(CannotRetrieveParentsForLabelWithoutDescriptionError):
+        with raises(LabelingSchemaError):
             self.schema.get_parent_labels("reporter", "unixlike")
 
     def test_get_parent_labels_returns_all_labels_with_description_up_to_category_root(self):

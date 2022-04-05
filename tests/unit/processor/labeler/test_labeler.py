@@ -11,7 +11,9 @@ from os.path import join
 import pytest
 from pytest import raises, importorskip
 
-from logprep.processor.base.exceptions import InvalidRuleConfigurationError
+from logprep.processor.base.exceptions import (
+    ValueDoesnotExistInSchemaError,
+)
 from tests.unit.processor.base import BaseProcessorTestCase
 
 importorskip("logprep.processor.labeler")
@@ -21,14 +23,8 @@ from logprep.processor.processor_factory_error import (
     ProcessorFactoryError,
     InvalidConfigurationError,
 )
-from logprep.processor.labeler.exceptions import (
-    InvalidIncludeParentsValueError,
-    InvalidSchemaDefinitionError,
-    RulesDefinitionMissingError,
-    SchemaDefinitionMissingError,
-)
 from logprep.processor.labeler.rule import LabelingRule
-from logprep.processor.labeler.labeling_schema import LabelingSchema
+from logprep.processor.labeler.labeling_schema import LabelingSchema, InvalidLabelingSchemaFileError
 from tests.testdata.metadata import (
     path_to_testdata,
     path_to_schema2,
@@ -275,23 +271,23 @@ class TestLabelerFactory(TestLabeler):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = join("path", "to", "non-existing", "file")
         with raises(
-            InvalidSchemaDefinitionError,
-            match='Not a valid schema file: File not found: ".*".',
+            InvalidLabelingSchemaFileError,
+            match="Not a valid schema file: File not found: '.*'.",
         ):
             LabelerFactory.create("name", config, logger)
 
     def test_create_fails_when_schema_config_points_to_directory(self):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_testdata
-        with raises(InvalidSchemaDefinitionError, match="Is a directory: .*"):
+        with raises(InvalidLabelingSchemaFileError, match="Is a directory: .*"):
             LabelerFactory.create("name", config, logger)
 
     def test_create_fails_when_include_parent_labels_is_not_boolean(self):
         config = copy.deepcopy(self.CONFIG)
         config["include_parent_labels"] = "this is a string"
         with raises(
-            InvalidIncludeParentsValueError,
-            match='"include_parent_labels" must be either true or false.',
+            InvalidConfigurationError,
+            match="'include_parent_labels' is not a boolean",
         ):
             LabelerFactory.create("name", config, logger)
 
@@ -299,17 +295,9 @@ class TestLabelerFactory(TestLabeler):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_schema2
         with raises(
-            InvalidRuleConfigurationError, match="Rule does not conform to labeling schema: .*"
+            ValueDoesnotExistInSchemaError, match="Invalid value 'windows' for key 'reporter'."
         ):
             LabelerFactory.create("name", config, logger)
-
-    def test_create_only_raises_factory_errors(self):
-        # Note: This will have to be maintained manually anyway; checking the
-        # classes implies less code duplication than triggering the exceptions
-        assert issubclass(RulesDefinitionMissingError, InvalidConfigurationError)
-        assert issubclass(SchemaDefinitionMissingError, InvalidConfigurationError)
-        assert issubclass(InvalidIncludeParentsValueError, InvalidConfigurationError)
-        assert issubclass(InvalidRuleConfigurationError, InvalidConfigurationError)
 
     def test_create_loads_the_specified_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
