@@ -48,6 +48,7 @@ class Rule:
         if not isinstance(rule_data, list):
             raise InvalidRuleDefinitionError(f"Rule file must contain a json or yml list: {path}")
 
+
         try:
             rules = [cls._create_from_dict(rule) for rule in rule_data]
             for rule in rules:

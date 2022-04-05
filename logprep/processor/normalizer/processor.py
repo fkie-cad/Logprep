@@ -52,7 +52,6 @@ class Normalizer(RuleBasedProcessor):
         self.ps = ProcessorStats()
 
         self._name = name
-        self._events_processed = 0
         self._event = None
         self._conflicting_fields = []
 
@@ -109,8 +108,7 @@ class Normalizer(RuleBasedProcessor):
                 f"({current_process().name})"
             )
         self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter
-            + [None] * self._specific_tree.rule_counter
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
         )
 
     # pylint: enable=arguments-differ
@@ -164,9 +162,7 @@ class Normalizer(RuleBasedProcessor):
                 self._grok_pattern_matches[key] = 0
 
             with open(file_path, "w") as grok_json_file:
-                json_dict = dict(
-                    reversed(sorted(json_dict.items(), key=lambda items: items[1]))
-                )
+                json_dict = dict(reversed(sorted(json_dict.items(), key=lambda items: items[1])))
                 json.dump(json_dict, grok_json_file, indent=4)
 
     def _try_add_field(self, target: Union[str, List[str]], value: str):
@@ -178,9 +174,7 @@ class Normalizer(RuleBasedProcessor):
         else:
             self._add_field(target, value)
 
-    def _get_transformed_value(
-        self, target: Union[str, List[str]], value: str
-    ) -> Tuple[str, str]:
+    def _get_transformed_value(self, target: Union[str, List[str]], value: str) -> Tuple[str, str]:
         if isinstance(target, list):
             matching_pattern = self._regex_mapping.get(target[1], None)
             if matching_pattern:
@@ -217,9 +211,7 @@ class Normalizer(RuleBasedProcessor):
 
     def _replace_field(self, dotted_field: str, value: str):
         fields = dotted_field.split(".")
-        reduce(lambda dict_, key: dict_[key], fields[:-1], self._event)[
-            fields[-1]
-        ] = value
+        reduce(lambda dict_, key: dict_[key], fields[:-1], self._event)[fields[-1]] = value
 
     def _apply_rules(self):
         """Normalizes Windows Event Logs.
@@ -235,9 +227,7 @@ class Normalizer(RuleBasedProcessor):
         for rule in self._generic_tree.get_matching_rules(self._event):
             begin = time()
             if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug(
-                    f"{self.describe()} processing generic matching event"
-                )
+                self._logger.debug(f"{self.describe()} processing generic matching event")
             self._try_add_grok(rule)
             self._try_add_timestamps(rule)
             for before, after in rule.substitutions.items():
@@ -250,9 +240,7 @@ class Normalizer(RuleBasedProcessor):
         for rule in self._specific_tree.get_matching_rules(self._event):
             begin = time()
             if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug(
-                    f"{self.describe()} processing specific matching event"
-                )
+                self._logger.debug(f"{self.describe()} processing specific matching event")
             self._try_add_grok(rule)
             self._try_add_timestamps(rule)
             for before, after in rule.substitutions.items():
@@ -308,9 +296,7 @@ class Normalizer(RuleBasedProcessor):
                             )
                         else:
                             # Epoch without milliseconds
-                            timestamp = datetime.fromtimestamp(
-                                new_stamp, timezone(source_timezone)
-                            )
+                            timestamp = datetime.fromtimestamp(new_stamp, timezone(source_timezone))
                     else:
                         timestamp = datetime.strptime(source_timestamp, source_format)
                         # Set year to current year if no year was provided in timestamp
@@ -345,9 +331,7 @@ class Normalizer(RuleBasedProcessor):
 
     def _try_normalize_event_data_field(self, field: str, normalized_field: str):
         if self._field_exists(self._event, field):
-            self._try_add_field(
-                normalized_field, self._get_dotted_field_value(self._event, field)
-            )
+            self._try_add_field(normalized_field, self._get_dotted_field_value(self._event, field))
 
     def _raise_warning_if_fields_already_existed(self):
         if self._conflicting_fields:

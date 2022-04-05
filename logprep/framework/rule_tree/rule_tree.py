@@ -37,7 +37,7 @@ class RuleTree:
         if root:
             self._root = root
         else:
-            self._root = Node('root')
+            self._root = Node("root")
 
     def _setup(self):
         """Basic setup of rule tree.
@@ -49,11 +49,11 @@ class RuleTree:
         self.tag_map = {}
 
         if self._config_path:
-            with open(self._config_path, 'r') as file:
+            with open(self._config_path, "r") as file:
                 config_data = load(file)
 
-            self.priority_dict = config_data['priority_dict']
-            self.tag_map = config_data['tag_map']
+            self.priority_dict = config_data["priority_dict"]
+            self.tag_map = config_data["tag_map"]
 
     def add_rule(self, rule: Rule, logger: Logger = None):
         """Add rule to rule tree.
@@ -76,8 +76,10 @@ class RuleTree:
         try:
             parsed_rule_list = RuleParser.parse_rule(rule, self.priority_dict, self.tag_map)
         except Exception as ex:
-            logger.warning(f'Error parsing rule "{rule.filter}": {type(ex).__name__}: {ex}.'
-                           f'\nIgnore and continue with next rule.')
+            logger.warning(
+                f'Error parsing rule "{rule.filter}": {type(ex).__name__}: {ex}.'
+                f"\nIgnore and continue with next rule."
+            )
             return
 
         self.rule_counter += 1
@@ -143,7 +145,8 @@ class RuleTree:
         return self._rule_mapping[rule]
 
     def get_matching_rules(
-            self, event: dict, current_node: Node = None, matches: List[Rule] = None) -> list:
+        self, event: dict, current_node: Node = None, matches: List[Rule] = None
+    ) -> list:
         """Get all rules in the tree that match given event.
 
         This function gets all rules that were added to the rule tree that match a given event.
@@ -204,8 +207,13 @@ class RuleTree:
             current_node = self._root
 
         for child in current_node.children:
-            print('\t' * (depth - 1) + str(current_node.expression), '\t', '-' * depth + '>',
-                  child.expression, child.matching_rules)
+            print(
+                "\t" * (depth - 1) + str(current_node.expression),
+                "\t",
+                "-" * depth + ">",
+                child.expression,
+                child.matching_rules,
+            )
 
             self.print(child, depth + 1)
 

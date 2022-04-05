@@ -23,6 +23,7 @@ def config_template():
                     "include_parent_labels": True,
                     "specific_rules": None,
                     "generic_rules": None,
+
                 }
             }
         ],
@@ -62,6 +63,7 @@ def test_events_labeled_correctly(tmp_path, config_template, specific_rules, gen
     expected_output_path = path.join("tests/testdata/acceptance/expected_result", expected_output)
 
     set_config(config_template, specific_rules, generic_rules, schema)
+
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config_template)
 

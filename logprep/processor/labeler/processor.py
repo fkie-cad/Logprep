@@ -98,10 +98,13 @@ class Labeler(RuleBasedProcessor):
                 f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
                 f"({current_process().name})"
             )
+        
         self.ps.setup_rules(
             [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
         )
 
+    # pylint: enable=arguments-differ
+    
     def verify_rules_and_add_to(self, tree, include_parent_labels, specific_rules_dir):
         """
         Creates LabelingRules, verifies if they conform with the given schema and adds them to
@@ -128,7 +131,6 @@ class Labeler(RuleBasedProcessor):
 
                 tree.add_rule(rule, self._logger)
 
-    # pylint: enable=arguments-differ
 
     @TimeMeasurement.measure_time("labeler")
     def process(self, event: dict):
@@ -156,6 +158,7 @@ class Labeler(RuleBasedProcessor):
 
             processing_time = float(f"{time() - begin:.10f}")
             idx = self._specific_tree.get_rule_id(rule)
+
             self.ps.update_per_rule(idx, processing_time)
 
     @staticmethod

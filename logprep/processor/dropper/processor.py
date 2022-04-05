@@ -18,7 +18,7 @@ class DropperError(BaseException):
     """Base class for Dropper related exceptions."""
 
     def __init__(self, name, message):
-        super().__init__(f'Dropper ({name}): {message}')
+        super().__init__(f"Dropper ({name}): {message}")
 
 
 class Dropper(RuleBasedProcessor):
@@ -41,14 +41,17 @@ class Dropper(RuleBasedProcessor):
                 for rule in rules:
                     self._tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug('{} loaded {} rules ({})'.format(self.describe(), self._tree.rule_counter,
-                                                                current_process().name))
+            self._logger.debug(
+                "{} loaded {} rules ({})".format(
+                    self.describe(), self._tree.rule_counter, current_process().name
+                )
+            )
         self.ps.setup_rules([None] * self._tree.rule_counter)
 
     def describe(self) -> str:
-        return f'Dropper ({self._name})'
+        return f"Dropper ({self._name})"
 
-    @TimeMeasurement.measure_time('dropper')
+    @TimeMeasurement.measure_time("dropper")
     def process(self, event: dict):
         self._event = event
         self._apply_rules()
@@ -56,7 +59,7 @@ class Dropper(RuleBasedProcessor):
         self.ps.increment_processed_count()
 
     def _field_exists(self, dotted_field: str) -> bool:
-        fields = dotted_field.split('.')
+        fields = dotted_field.split(".")
         dict_ = self._event
         for field in fields:
             if field in dict_:
@@ -66,7 +69,7 @@ class Dropper(RuleBasedProcessor):
         return True
 
     def _get_dotted_field_value(self, dotted_field: str) -> Optional[Union[dict, list, str]]:
-        fields = dotted_field.split('.')
+        fields = dotted_field.split(".")
         dict_ = self._event
         for field in fields:
             if field in dict_:
@@ -75,7 +78,11 @@ class Dropper(RuleBasedProcessor):
 
     def _traverse_dict(self, dict_: dict, sub_fields, drop_full: bool):
         sub_field = sub_fields[0] if sub_fields else None
-        if isinstance(dict_, dict) and sub_field in dict_ and (isinstance(dict_[sub_field], dict) and dict_[sub_field]):
+        if (
+            isinstance(dict_, dict)
+            and sub_field in dict_
+            and (isinstance(dict_[sub_field], dict) and dict_[sub_field])
+        ):
             self._traverse_dict(dict_[sub_field], sub_fields[1:], drop_full)
             if dict_[sub_field] == {} and drop_full:
                 del dict_[sub_field]
@@ -83,7 +90,7 @@ class Dropper(RuleBasedProcessor):
             del dict_[sub_field]
 
     def _drop_field(self, dotted_field: str, drop_full: bool):
-        sub_fields = dotted_field.split('.')
+        sub_fields = dotted_field.split(".")
         self._traverse_dict(self._event, sub_fields, drop_full)
 
     def _apply_rules(self):
@@ -93,11 +100,11 @@ class Dropper(RuleBasedProcessor):
             begin = time()
 
             if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug('{} processing matching event'.format(self.describe()))
+                self._logger.debug("{} processing matching event".format(self.describe()))
             for drop_field in rule.fields_to_drop:
                 self._try_dropping_field(drop_field, rule.drop_full)
 
-                processing_time = float('{:.10f}'.format(time() - begin))
+                processing_time = float("{:.10f}".format(time() - begin))
                 idx = self._tree.get_rule_id(rule)
                 self.ps.update_per_rule(idx, processing_time)
 

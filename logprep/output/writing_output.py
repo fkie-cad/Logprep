@@ -20,23 +20,24 @@ class WritingOutput(Output):
 
     """
 
-    def __init__(self, output_path: str, output_path_custom: str = None,
-                 output_path_error: str = None):
+    def __init__(
+        self, output_path: str, output_path_custom: str = None, output_path_error: str = None
+    ):
         self.last_timeout = None
 
         self.events = []
         self.failed_events = []
 
-        self._output_file = open(output_path, 'a+')
-        self._output_file_custom = open(output_path_custom, 'a+') if output_path_custom else None
-        self._output_file_error = open(output_path_error, 'a+') if output_path_error else None
+        self._output_file = open(output_path, "a+")
+        self._output_file_custom = open(output_path_custom, "a+") if output_path_custom else None
+        self._output_file_error = open(output_path_error, "a+") if output_path_error else None
 
     def describe_endpoint(self) -> str:
-        return 'writer'
+        return "writer"
 
     @staticmethod
     def _write_json(file: TextIO, line: dict):
-        file.write('{}\n'.format(json.dumps(line)))
+        file.write("{}\n".format(json.dumps(line)))
 
     def store(self, document: dict):
         self.events.append(document)
@@ -53,10 +54,14 @@ class WritingOutput(Output):
         self.failed_events.append((error_message, document_received, document_processed))
 
         if self._output_file_error:
-            WritingOutput._write_json(self._output_file_error, {
-                'error_message': error_message, 'document_received': document_received,
-                'document_processed': document_processed
-            })
+            WritingOutput._write_json(
+                self._output_file_error,
+                {
+                    "error_message": error_message,
+                    "document_received": document_received,
+                    "document_processed": document_processed,
+                },
+            )
 
     def shut_down(self):
         self._output_file.close()

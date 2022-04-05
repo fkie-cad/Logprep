@@ -15,15 +15,19 @@ from colorama import Fore
 
 from logprep.util.configuration import Configuration
 
-from logprep.processor.base.exceptions import (InvalidRuleDefinitionError,
-                                               MismatchedRuleDefinitionError)
+from logprep.processor.base.exceptions import (
+    InvalidRuleDefinitionError,
+    MismatchedRuleDefinitionError,
+)
 from logprep.processor.base.rule import Rule
 from logprep.processor.base.processor import BaseProcessor
-from logprep.processor.labeler.labeling_schema import (LabelingSchema,
-                                                       InvalidLabelingSchemaFileError,
-                                                       DuplicateLabelInCategoryError,
-                                                       CategoryWithoutDesciptionInSchemaError,
-                                                       LabelWithoutDesciptionInSchemaError)
+from logprep.processor.labeler.labeling_schema import (
+    LabelingSchema,
+    InvalidLabelingSchemaFileError,
+    DuplicateLabelInCategoryError,
+    CategoryWithoutDesciptionInSchemaError,
+    LabelWithoutDesciptionInSchemaError,
+)
 from logprep.filter.lucene_filter import LuceneFilterError
 
 
@@ -36,12 +40,14 @@ class SchemaAndRuleChecker:
     @staticmethod
     def _parse_command_line_arguments():
         argument_parser = ArgumentParser()
-        argument_parser.add_argument('--labeling-schema', help='Path to labeling schema file')
-        argument_parser.add_argument('--labeling-rules', help='Path to labeling rule directory')
-        argument_parser.add_argument('--normalization-rules',
-                                     help='Path to normalizer rule directory')
-        argument_parser.add_argument('--pseudonymization-rules',
-                                     help='Path to pseudonymizer rule directory')
+        argument_parser.add_argument("--labeling-schema", help="Path to labeling schema file")
+        argument_parser.add_argument("--labeling-rules", help="Path to labeling rule directory")
+        argument_parser.add_argument(
+            "--normalization-rules", help="Path to normalizer rule directory"
+        )
+        argument_parser.add_argument(
+            "--pseudonymization-rules", help="Path to pseudonymizer rule directory"
+        )
 
         arguments = argument_parser.parse_args()
         return arguments
@@ -49,51 +55,54 @@ class SchemaAndRuleChecker:
     def _print_valid(self, msg: str):
         if not self.errors:
             print(Fore.GREEN + msg)
-            print(Fore.RESET, end='')
+            print(Fore.RESET, end="")
 
     def _print_errors(self):
         for error in self.errors:
             print(Fore.RED + error)
-        print(Fore.RESET, end='')
+        print(Fore.RESET, end="")
 
     @staticmethod
     def init_additional_grok_patterns(rule_class: Rule, config: dict):
-        if isinstance(config, dict) and config.get('grok_patterns'):
-            rule_class.additional_grok_patterns = config.get('grok_patterns')
+        if isinstance(config, dict) and config.get("grok_patterns"):
+            rule_class.additional_grok_patterns = config.get("grok_patterns")
 
     @staticmethod
     def _get_pipeline(config_path: str) -> Iterable:
         config_path = Configuration().create_from_yaml(config_path)
-        pipeline = config_path['pipeline']
+        pipeline = config_path["pipeline"]
         return pipeline
 
-    def _get_rule_and_schema_paths_from_config(self, config_path: str,
-                                               processor_type: BaseProcessor):
+    def _get_rule_and_schema_paths_from_config(
+        self, config_path: str, processor_type: BaseProcessor
+    ):
         pipeline = self._get_pipeline(config_path)
         for processor in pipeline:
             options = next(iter(processor.values()))
-            if options['type'] == processor_type:
+            if options["type"] == processor_type:
                 rules = []
-                if options.get('rules') is not None:
-                    rules = options['rules']
-                elif None not in (options.get('specific_rules'), options.get('generic_rules')):
-                    rules = options['specific_rules'] + options['generic_rules']
-                yield options.get('schema'), rules
+                if options.get("rules") is not None:
+                    rules = options["rules"]
+                elif None not in (options.get("specific_rules"), options.get("generic_rules")):
+                    rules = options["specific_rules"] + options["generic_rules"]
+                yield options.get("schema"), rules
 
     def _get_config_values(self, config_path, processor_type):
         pipeline = self._get_pipeline(config_path)
         for processor in pipeline:
             options = next(iter(processor.values()))
-            if options['type'] == processor_type:
+            if options["type"] == processor_type:
                 return options
 
     @staticmethod
     def _log_error_message(error: KeyError, logger: Logger):
-        logger.critical(f'Key {error} does not exist in configuration file! Rules can\'t be '
-                        f'validated!')
+        logger.critical(
+            f"Key {error} does not exist in configuration file! Rules can't be " f"validated!"
+        )
 
-    def validate_rules(self, config_path: str, processor_type: BaseProcessor, rule_class: Rule,
-                       logger: Logger) -> bool:
+    def validate_rules(
+        self, config_path: str, processor_type: BaseProcessor, rule_class: Rule, logger: Logger
+    ) -> bool:
         """Validate rule for processor.
 
         Parameters
@@ -119,16 +128,23 @@ class SchemaAndRuleChecker:
 
             valid = True
             for schema_path, rules_paths in self._get_rule_and_schema_paths_from_config(
-                    config_path, processor_type):
+                config_path, processor_type
+            ):
                 for rules_path in rules_paths:
-                    valid = valid and self._validate_rules_in_path(rules_path, processor_type,
-                                                                   rule_class, schema_path)
+                    valid = valid and self._validate_rules_in_path(
+                        rules_path, processor_type, rule_class, schema_path
+                    )
             return valid
         except KeyError as error:
             self._log_error_message(error, logger)
 
-    def _validate_rules_in_path(self, path_rules: str, processor_type: BaseProcessor,
-                                rule_class: Rule, path_schema: str = None):
+    def _validate_rules_in_path(
+        self,
+        path_rules: str,
+        processor_type: BaseProcessor,
+        rule_class: Rule,
+        path_schema: str = None,
+    ):
         number_of_checked_rules = 0
         for root, _, files in walk(path_rules):
             for file in files:
@@ -139,15 +155,17 @@ class SchemaAndRuleChecker:
                 self._validate_schema(multi_rule, path_schema, rule_path)
             self._print_schema_check_results(path_schema)
         if not self.errors:
-            self._print_valid(f'Valid {processor_type} rules in {path_rules} '
-                              f'({number_of_checked_rules} rules checked).')
+            self._print_valid(
+                f"Valid {processor_type} rules in {path_rules} "
+                f"({number_of_checked_rules} rules checked)."
+            )
 
         self._print_errors()
         return False if self.errors else True
 
     def _print_schema_check_results(self, path_schema: str):
         if path_schema:
-            self._print_valid(f'Valid labeler schema in {path_schema}.')
+            self._print_valid(f"Valid labeler schema in {path_schema}.")
 
     def _validate_schema(self, multi_rule: list, path_schema: str, rule_path: str):
         if path_schema:
@@ -158,16 +176,19 @@ class SchemaAndRuleChecker:
                         rule.conforms_to_schema(schema)
                     except MismatchedRuleDefinitionError as error:
                         self.errors.append(
-                            f'Mismatch of rule definition in {rule_path} with schema in '
-                            f'{path_schema}: {str(error)}')
+                            f"Mismatch of rule definition in {rule_path} with schema in "
+                            f"{path_schema}: {str(error)}"
+                        )
 
     def _validate_schema_definition(self, path_schema: str) -> LabelingSchema:
         try:
             schema = LabelingSchema.create_from_file(path_schema)
-        except (InvalidLabelingSchemaFileError,
-                DuplicateLabelInCategoryError,
-                CategoryWithoutDesciptionInSchemaError,
-                LabelWithoutDesciptionInSchemaError) as error:
+        except (
+            InvalidLabelingSchemaFileError,
+            DuplicateLabelInCategoryError,
+            CategoryWithoutDesciptionInSchemaError,
+            LabelWithoutDesciptionInSchemaError,
+        ) as error:
             self.errors.append(str(error))
         else:
             return schema
@@ -190,16 +211,13 @@ class SchemaAndRuleChecker:
         """
         rule = None
         try:
-            if rule_path.endswith('.json') or rule_path.endswith('.yml'):
-                if not rule_path.endswith('_test.json'):
+            if rule_path.endswith(".json") or rule_path.endswith(".yml"):
+                if not rule_path.endswith("_test.json"):
                     rule = rule_class.create_rules_from_file(rule_path)
         except InvalidRuleDefinitionError as error:
-            self.errors.append('Invalid rule definition in {}: {}'.format(
-                rule_path, str(error)))
+            self.errors.append("Invalid rule definition in {}: {}".format(rule_path, str(error)))
         except JSONDecodeError as error:
-            self.errors.append('JSON decoder Error in {}: {}'.format(
-                rule_path, str(error)))
+            self.errors.append("JSON decoder Error in {}: {}".format(rule_path, str(error)))
         except LuceneFilterError as error:
-            self.errors.append('Lucene Filter Error in {}: {}'.format(
-                rule_path, str(error)))
+            self.errors.append("Lucene Filter Error in {}: {}".format(rule_path, str(error)))
         return rule

@@ -24,7 +24,7 @@ class LabelerFactory(BaseFactory):
             configuration=configuration,
             logger=logger,
         )
-
+        
         return labeler
 
     @staticmethod

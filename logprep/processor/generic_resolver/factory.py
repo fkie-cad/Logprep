@@ -12,12 +12,13 @@ class GenericResolverFactory(BaseFactory):
         """Create a generic resolver."""
         GenericResolverFactory._check_configuration(configuration)
 
-        generic_resolver = GenericResolver(name, configuration.get('tree_config'), logger)
-        generic_resolver.add_rules_from_directory(configuration['rules'])
+        generic_resolver = GenericResolver(name, configuration.get("tree_config"), logger)
+        generic_resolver.add_rules_from_directory(configuration["rules"])
 
         return generic_resolver
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        GenericResolverFactory._check_common_configuration('generic_resolver', ['rules'],
-                                                           configuration)
+        GenericResolverFactory._check_common_configuration(
+            "generic_resolver", ["rules"], configuration
+        )

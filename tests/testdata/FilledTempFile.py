@@ -22,5 +22,4 @@ class FilledTempFile:
 
 class JsonTempFile(FilledTempFile):
     def __init__(self, rule):
-        super().__init__(bytes(dumps(rule), encoding='utf-8'))
-
+        super().__init__(bytes(dumps(rule), encoding="utf-8"))

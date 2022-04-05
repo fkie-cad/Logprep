@@ -1,7 +1,7 @@
 import pytest
 
 
-pytest.importorskip('logprep.processor.dropper')
+pytest.importorskip("logprep.processor.dropper")
 
 import copy
 from logging import getLogger
@@ -14,11 +14,12 @@ from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarni
 from logprep.util.processor_stats import StatsClassesController
 
 logger = getLogger()
-rules_dir = ['tests/testdata/unit/dropper/rules/']
+rules_dir = ["tests/testdata/unit/dropper/rules/"]
+
 
 @pytest.fixture()
 def dropper():
-    dropper = Dropper('Test Dropper Name', None, logger)
+    dropper = Dropper("Test Dropper Name", None, logger)
     dropper.add_rules_from_directory(rules_dir)
     return dropper
 
@@ -39,11 +40,11 @@ class TestDropper:
         assert isinstance(dropper, RuleBasedProcessor)
 
     def test_describe(self, dropper):
-        assert dropper.describe() == 'Dropper (Test Dropper Name)'
+        assert dropper.describe() == "Dropper (Test Dropper Name)"
 
     def test_events_processed_count(self, dropper):
         assert dropper.ps.processed_count == 0
-        document = {'foo': 'bar'}
+        document = {"foo": "bar"}
         for i in range(1, 11):
             try:
                 dropper.process(document)
@@ -52,102 +53,61 @@ class TestDropper:
             assert dropper.ps.processed_count == i
 
     def test_field_exists(self, dropper):
-        dropper._event = {
-            'a': {
-                'b': {
-                    'c': 'foo'}}}
-        assert dropper._field_exists('a')
-        assert dropper._field_exists('a.b')
-        assert dropper._field_exists('a.b.c')
-        assert not dropper._field_exists('foo')
-        assert not dropper._field_exists('b')
-        assert not dropper._field_exists('b.c')
+        dropper._event = {"a": {"b": {"c": "foo"}}}
+        assert dropper._field_exists("a")
+        assert dropper._field_exists("a.b")
+        assert dropper._field_exists("a.b.c")
+        assert not dropper._field_exists("foo")
+        assert not dropper._field_exists("b")
+        assert not dropper._field_exists("b.c")
 
     def test_not_nested_field_gets_dropped_with_rule_loaded_from_file(self, dropper):
         expected = {}
-        document = {
-            'drop_me': 'something'
-        }
+        document = {"drop_me": "something"}
         dropper.process(document)
 
         assert document == expected
 
     def test_nested_field_gets_dropped(self, dropper):
-        rule = {
-            'filter': 'drop.me',
-            'drop':  ['drop.me']
-        }
+        rule = {"filter": "drop.me", "drop": ["drop.me"]}
         expected = {}
-        document = {'drop': {'me': 'something'}}
+        document = {"drop": {"me": "something"}}
         self._load_single_rule(dropper, rule)
         dropper.process(document)
 
         assert document == expected
 
     def test_nested_field_with_neighbours_gets_dropped(self, dropper):
-        rule = {
-            'filter': 'keep_me.drop_me',
-            'drop':  ['keep_me.drop_me']
-        }
-        expected = {
-            'keep_me': {
-                'keep_me_too': 'something'
-            }
-        }
-        document = {
-            'keep_me': {
-                'drop_me': 'something',
-                'keep_me_too': 'something'
-            }
-        }
+        rule = {"filter": "keep_me.drop_me", "drop": ["keep_me.drop_me"]}
+        expected = {"keep_me": {"keep_me_too": "something"}}
+        document = {"keep_me": {"drop_me": "something", "keep_me_too": "something"}}
         self._load_single_rule(dropper, rule)
         dropper.process(document)
 
         assert document == expected
 
     def test_deep_nested_field_gets_dropped(self, dropper):
-        rule = {
-                  'filter': 'keep_me.drop.me',
-                  'drop':  ['keep_me.drop.me'],
-                  'drop_full': False
-        }
-        expected = {'keep_me': {'drop': {}}}
-        document = {'keep_me': {'drop': {'me': 'something'}}}
+        rule = {"filter": "keep_me.drop.me", "drop": ["keep_me.drop.me"], "drop_full": False}
+        expected = {"keep_me": {"drop": {}}}
+        document = {"keep_me": {"drop": {"me": "something"}}}
         self._load_single_rule(dropper, rule)
         dropper.process(document)
 
         assert document == expected
 
     def test_deep_nested_field_gets_dropped_fully(self, dropper):
-        rule = {
-            'filter': 'please.drop.me.fully',
-            'drop':  ['please.drop.me.fully']
-        }
+        rule = {"filter": "please.drop.me.fully", "drop": ["please.drop.me.fully"]}
         expected = {}
-        document = {'please': {'drop': {'me': {'fully': 'something'}}}}
+        document = {"please": {"drop": {"me": {"fully": "something"}}}}
         self._load_single_rule(dropper, rule)
         dropper.process(document)
 
         assert document == expected
 
     def test_deep_nested_field_with_neighbours_gets_dropped(self, dropper):
-        rule = {
-                  'filter': 'keep_me.drop.me',
-                  'drop':  ['keep_me.drop.me'],
-                  'drop_full': False
-        }
-        expected = {
-            'keep_me': {
-                'drop': {},
-                'keep_me_too': 'something'
-            }
-        }
-        document = {
-            'keep_me': {
-                'drop': {'me': 'something'},
-                'keep_me_too': 'something'
-            }
-        }
+        rule = {"filter": "keep_me.drop.me", "drop": ["keep_me.drop.me"], "drop_full": False}
+        expected = {"keep_me": {"drop": {}, "keep_me_too": "something"}}
+        document = {"keep_me": {"drop": {"me": "something"}, "keep_me_too": "something"}}
         self._load_single_rule(dropper, rule)
         dropper.process(document)
 
@@ -155,13 +115,10 @@ class TestDropper:
 
 
 class TestDropperFactory:
-    VALID_CONFIG = {
-        'type': 'dropper',
-        'rules': rules_dir
-    }
+    VALID_CONFIG = {"type": "dropper", "rules": rules_dir}
 
     def test_create(self):
-        assert isinstance(DropperFactory.create('foo', self.VALID_CONFIG, logger), Dropper)
+        assert isinstance(DropperFactory.create("foo", self.VALID_CONFIG, logger), Dropper)
 
     def test_check_configuration(self):
         DropperFactory._check_configuration(self.VALID_CONFIG)

@@ -26,7 +26,7 @@ class DummyInput(Input):
         self.shut_down_called_count = 0
 
     def describe_endpoint(self) -> str:
-        return 'dummy'
+        return "dummy"
 
     def setup(self):
         self.setup_called_count += 1

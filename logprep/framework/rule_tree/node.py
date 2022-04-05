@@ -49,7 +49,7 @@ class Node:
         except KeyDoesNotExistError:
             return False
 
-    def add_child(self, node: 'Node'):
+    def add_child(self, node: "Node"):
         """Add child to node.
 
         This function adds a given child node to the node by appending it to the list of the node's
@@ -63,7 +63,7 @@ class Node:
         """
         self._children.append(node)
 
-    def has_child_with_expression(self, expression: FilterExpression) -> Optional['Node']:
+    def has_child_with_expression(self, expression: FilterExpression) -> Optional["Node"]:
         """Check if node has child with given expression.
 
         This function checks if a node has a child with the given filter expression.
@@ -82,7 +82,7 @@ class Node:
         """
         return self.get_child_with_expression(expression)
 
-    def get_child_with_expression(self, expression: FilterExpression) -> Optional['Node']:
+    def get_child_with_expression(self, expression: FilterExpression) -> Optional["Node"]:
         """Get child of node with given expression.
 
         This function returns a node's child with the given expression or None if such child node
@@ -110,5 +110,5 @@ class Node:
         return self._expression
 
     @property
-    def children(self) -> List['Node']:
+    def children(self) -> List["Node"]:
         return self._children

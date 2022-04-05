@@ -9,7 +9,7 @@ from os.path import isfile
 from dateutil import parser, tz
 from ruamel.yaml import YAML
 
-yaml = YAML(typ='safe', pure=True)
+yaml = YAML(typ="safe", pure=True)
 
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
@@ -36,15 +36,23 @@ class IPAlerter:
     def _init_alert_ip_list(self, alert_ip_lists: List):
         for alert_ip_list in alert_ip_lists:
             if alert_ip_list and isfile(alert_ip_list):
-                with open(alert_ip_list, 'r') as alert_ip_list_file:
+                with open(alert_ip_list, "r") as alert_ip_list_file:
                     full_alert_ip_list = yaml.load(alert_ip_list_file)
                     self._filter_non_expired_alert_ips(full_alert_ip_list)
-                    self._single_alert_ips.update(set(ip_string for ip_string in
-                                                      self._alert_ips_map.keys()
-                                                      if '/' not in ip_string))
-                    self._alert_network.update(set(
-                        ip_network(ip_string) for ip_string in self._alert_ips_map.keys()
-                        if '/' in ip_string))
+                    self._single_alert_ips.update(
+                        set(
+                            ip_string
+                            for ip_string in self._alert_ips_map.keys()
+                            if "/" not in ip_string
+                        )
+                    )
+                    self._alert_network.update(
+                        set(
+                            ip_network(ip_string)
+                            for ip_string in self._alert_ips_map.keys()
+                            if "/" in ip_string
+                        )
+                    )
                     print(self._alert_network)
 
     def _filter_non_expired_alert_ips(self, full_alert_ip_list: dict):
@@ -75,7 +83,7 @@ class IPAlerter:
 
     @staticmethod
     def _get_dotted_field_value(dotted_field: str, event: dict) -> Optional[Union[dict, list, str]]:
-        fields = dotted_field.split('.')
+        fields = dotted_field.split(".")
         dict_ = event
         for field in fields:
             if field in dict_:

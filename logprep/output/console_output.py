@@ -12,7 +12,7 @@ class ConsoleOutput(Output):
         self._printer = PrettyPrinter()
 
     def describe_endpoint(self) -> str:
-        return 'console output'
+        return "console output"
 
     def store(self, document: dict):
         self._printer.pprint(document)

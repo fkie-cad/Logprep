@@ -21,17 +21,18 @@ class PipelineProfiler:
             Arguments for the function to be profiled
 
         """
-        profiles_path = '.profile'
+        profiles_path = ".profile"
 
         cprofile = cProfile.Profile()
         cprofile.enable()
         function(*args)
         cprofile.disable()
-        pstats.Stats(cprofile).strip_dirs().sort_stats('cumtime').print_stats(50)
+        pstats.Stats(cprofile).strip_dirs().sort_stats("cumtime").print_stats(50)
 
         if not os.path.exists(profiles_path):
             os.makedirs(profiles_path)
 
-        profile_output = os.path.join(profiles_path,
-                                      'output_{}.prof'.format(datetime.now()).replace(':', '_'))
-        pstats.Stats(cprofile).strip_dirs().sort_stats('cumtime').dump_stats(profile_output)
+        profile_output = os.path.join(
+            profiles_path, "output_{}.prof".format(datetime.now()).replace(":", "_")
+        )
+        pstats.Stats(cprofile).strip_dirs().sort_stats("cumtime").dump_stats(profile_output)
