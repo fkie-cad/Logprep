@@ -46,6 +46,8 @@ class Labeler(RuleBasedProcessor):
 
         self._name = name
 
+        self._include_parent_labels = configuration.get("include_parent_labels", False)
+
         self._specific_tree = RuleTree(config_path=self.tree_config)
         self._generic_tree = RuleTree(config_path=self.tree_config)
 
@@ -58,7 +60,6 @@ class Labeler(RuleBasedProcessor):
             self.add_rules_from_directory(
                 configuration.get("specific_rules"),
                 configuration.get("generic_rules"),
-                configuration.get("include_parent_labels", False),
             )
         except (
             InvalidRuleDefinitionError,
@@ -76,18 +77,13 @@ class Labeler(RuleBasedProcessor):
         self,
         specific_rules_dirs: List[str],
         generic_rules_dirs: List[str],
-        include_parent_labels=False,
     ):
 
         for specific_rules_dir in specific_rules_dirs:
-            self.verify_rules_and_add_to(
-                self._specific_tree, include_parent_labels, specific_rules_dir
-            )
+            self.verify_rules_and_add_to(self._specific_tree, specific_rules_dir)
 
         for generic_rules_dir in generic_rules_dirs:
-            self.verify_rules_and_add_to(
-                self._generic_tree, include_parent_labels, generic_rules_dir
-            )
+            self.verify_rules_and_add_to(self._generic_tree, generic_rules_dir)
 
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
@@ -98,14 +94,14 @@ class Labeler(RuleBasedProcessor):
                 f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
                 f"({current_process().name})"
             )
-        
+
         self.ps.setup_rules(
             [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
         )
 
     # pylint: enable=arguments-differ
-    
-    def verify_rules_and_add_to(self, tree, include_parent_labels, rules_dir):
+
+    def verify_rules_and_add_to(self, tree, rules_dir):
         """
         Creates LabelingRules, verifies if they conform with the given schema and adds them to
         the given rule_tree.
@@ -114,9 +110,6 @@ class Labeler(RuleBasedProcessor):
         ----------
         tree : RuleTree
             The rule tree to which the new rules should be added to.
-        include_parent_labels : bool
-            A flag that decides whether labels from the parent schema should be added to the rule
-            or not.
         rules_dir : str
             The path to the directory with the rule configurations that should be added to the
             rule tree
@@ -125,7 +118,7 @@ class Labeler(RuleBasedProcessor):
         for rule_path in rule_paths:
             rules = LabelingRule.create_rules_from_file(rule_path)
             for rule in rules:
-                if include_parent_labels:
+                if self._include_parent_labels:
                     try:
                         rule.add_parent_labels_from_schema(self._schema)
                     except LabelingSchemaError as error:
@@ -142,20 +135,15 @@ class Labeler(RuleBasedProcessor):
 
                 tree.add_rule(rule, self._logger)
 
-
     @TimeMeasurement.measure_time("labeler")
     def process(self, event: dict):
         """Process the current event"""
-        self._add_labels(event)
-        self._convert_label_categories_to_sorted_list(event)
-        self.ps.increment_processed_count()
 
-    def _add_labels(self, event: dict):
         for rule in self._generic_tree.get_matching_rules(event):
             begin = time()
             if self._logger.isEnabledFor(DEBUG):
                 self._logger.debug(f"{self.describe()} processing matching event")
-            rule.add_labels(event)
+            self._apply_rules(event, rule)
 
             processing_time = float(f"{time() - begin:.10f}")
             idx = self._generic_tree.get_rule_id(rule)
@@ -165,11 +153,38 @@ class Labeler(RuleBasedProcessor):
             begin = time()
             if self._logger.isEnabledFor(DEBUG):
                 self._logger.debug(f"{self.describe()} processing matching event")
-            rule.add_labels(event)
+            self._apply_rules(event, rule)
 
             processing_time = float(f"{time() - begin:.10f}")
             idx = self._specific_tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
+
+        self._convert_label_categories_to_sorted_list(event)
+        self.ps.increment_processed_count()
+
+    def _apply_rules(self, event, rule):
+        """Applies the rule to the current event"""
+        self._add_label_fields(event, rule)
+        self._add_label_values(event, rule)
+
+    @staticmethod
+    def _add_label_fields(event: dict, rule: LabelingRule):
+        """Prepares the event by adding empty label fields"""
+        if "label" not in event:
+            event["label"] = {}
+
+        for key in rule.label:
+            if key not in event["label"]:
+                event["label"][key] = set()
+
+    @staticmethod
+    def _add_label_values(event: dict, rule: LabelingRule):
+        """Adds the labels from the rule to the event"""
+        for key in rule.label:
+            if not isinstance(event["label"][key], set):
+                event["label"][key] = set(event["label"][key])
+
+            event["label"][key].update(rule.label[key])
 
     @staticmethod
     def _convert_label_categories_to_sorted_list(event: dict):

@@ -1,5 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-module-docstring
+# pylint: disable=missing-class-docstring
+# pylint: disable=missing-function-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 import copy
@@ -26,7 +28,7 @@ from logprep.processor.labeler.exceptions import (
     SchemaDefinitionMissingError,
 )
 from logprep.processor.labeler.rule import LabelingRule
-from logprep.processor.labeler.labeling_schema import LabelingSchema, InvalidLabelingSchemaFileError
+from logprep.processor.labeler.labeling_schema import LabelingSchema
 from tests.testdata.metadata import (
     path_to_testdata,
     path_to_schema2,
@@ -144,7 +146,33 @@ class TestLabeler(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_labels_are_always_stored_in_alphabetical_order(self, reporter_schema_expanded):
+    def test_process_adds_more_than_one_label(self):
+        rule = {
+            "filter": "key: value",
+            "label": {"reporter": ["client", "windows"], "object": ["file"]},
+        }
+        document = {"key": "value"}
+        expected = {
+            "key": "value",
+            "label": {"reporter": ["client", "windows"], "object": ["file"]},
+        }
+
+        self._load_specific_rule(rule)
+        self.object.process(document)
+
+        assert document == expected
+
+    def test_process_does_not_overwrite_existing_values(self):
+        rule = {"filter": "applyrule", "label": {"reporter": ["windows"]}}
+        document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
+        expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
+
+        self._load_specific_rule(rule)
+        self.object.process(document)
+
+        assert document == expected
+
+    def test_process_returns_labels_in_alphabetical_order(self, reporter_schema_expanded):
         event = {"applyrule": "yes"}
         rule = {"filter": "applyrule", "label": {"reporter": ["windows"]}}
 
@@ -255,10 +283,7 @@ class TestLabelerFactory(TestLabeler):
     def test_create_fails_when_schema_config_points_to_directory(self):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_testdata
-        with raises(
-                InvalidSchemaDefinitionError,
-                match="Is a directory: .*"
-        ):
+        with raises(InvalidSchemaDefinitionError, match="Is a directory: .*"):
             LabelerFactory.create("name", config, logger)
 
     def test_create_fails_when_include_parent_labels_is_not_boolean(self):
