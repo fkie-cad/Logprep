@@ -1,0 +1,39 @@
+[
+  {
+    "filter": "specific_add_generic_test",
+    "generic_adder": {
+      "add": {
+        "some_added_field": "some value",
+        "another_added_field": "another_value",
+        "dotted.added.field": "yet_another_value"
+      }
+    },
+    "description": ""
+  },
+  {
+    "filter": "specific_add_list_generic_test",
+    "generic_adder": {
+      "add_from_file": "tests/testdata/unit/generic_adder/additions_file.yml"
+    },
+    "description": ""
+  },
+  {
+    "filter": "specific_add_lists_one_generic_test",
+    "generic_adder": {
+      "add_from_file": [
+        "tests/testdata/unit/generic_adder/additions_file.yml"
+      ]
+    },
+    "description": ""
+  },
+  {
+    "filter": "specific_add_lists_two_generic_test",
+    "generic_adder": {
+      "add_from_file": [
+        "tests/testdata/unit/generic_adder/additions_file.yml",
+        "tests/testdata/unit/generic_adder/additions_file_2.yml"
+      ]
+    },
+    "description": ""
+  }
+]

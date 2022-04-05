@@ -45,6 +45,7 @@ class BaseProcessorTestCase(ABC):
         """
         sets the rules from the given rules_dirs
         """
+        assert isinstance(rules_dirs, list)
         specific_rules = list()
 
         for specific_rules_dir in rules_dirs:
