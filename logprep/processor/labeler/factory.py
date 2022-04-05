@@ -3,9 +3,9 @@
 from logging import Logger
 
 from logprep.processor.base.factory import BaseFactory
-from logprep.processor.labeler.exceptions import InvalidIncludeParentsValueError
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.labeler.rule import LabelingRule
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class LabelerFactory(BaseFactory):
@@ -38,4 +38,4 @@ class LabelerFactory(BaseFactory):
         if "include_parent_labels" in configuration and not isinstance(
             configuration["include_parent_labels"], bool
         ):
-            raise InvalidIncludeParentsValueError()
+            raise InvalidConfigurationError("'include_parent_labels' is not a boolean")

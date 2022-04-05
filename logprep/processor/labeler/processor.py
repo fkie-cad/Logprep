@@ -7,22 +7,9 @@ from typing import List
 from time import time
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.exceptions import (
-    RuleError,
-    InvalidRuleConfigurationError,
-    NotARulesDirectoryError,
-    KeyDoesnotExistInSchemaError,
-    InvalidRuleDefinitionError,
-)
 from logprep.processor.base.processor import RuleBasedProcessor
-from logprep.processor.labeler.exceptions import (
-    InvalidSchemaDefinitionError,
-    RuleDoesNotConformToLabelingSchemaError,
-)
 from logprep.processor.labeler.labeling_schema import (
     LabelingSchema,
-    InvalidLabelingSchemaFileError,
-    LabelingSchemaError,
 )
 from logprep.processor.labeler.rule import LabelingRule
 from logprep.util.processor_stats import ProcessorStats
@@ -51,23 +38,12 @@ class Labeler(RuleBasedProcessor):
         self._specific_tree = RuleTree(config_path=self.tree_config)
         self._generic_tree = RuleTree(config_path=self.tree_config)
 
-        try:
-            self._schema = LabelingSchema.create_from_file(configuration.get("schema"))
-        except InvalidLabelingSchemaFileError as error:
-            raise InvalidSchemaDefinitionError(str(error)) from error
+        self._schema = LabelingSchema.create_from_file(configuration.get("schema"))
 
-        try:
-            self.add_rules_from_directory(
-                configuration.get("specific_rules"),
-                configuration.get("generic_rules"),
-            )
-        except (
-            InvalidRuleDefinitionError,
-            RuleDoesNotConformToLabelingSchemaError,
-            NotARulesDirectoryError,
-            KeyDoesnotExistInSchemaError,
-        ) as error:
-            raise InvalidRuleConfigurationError(f"Invalid rule file: {str(error)}") from error
+        self.add_rules_from_directory(
+            configuration.get("specific_rules"),
+            configuration.get("generic_rules"),
+        )
 
     def describe(self) -> str:
         return f"Labeler ({self._name})"
@@ -119,19 +95,9 @@ class Labeler(RuleBasedProcessor):
             rules = LabelingRule.create_rules_from_file(rule_path)
             for rule in rules:
                 if self._include_parent_labels:
-                    try:
-                        rule.add_parent_labels_from_schema(self._schema)
-                    except LabelingSchemaError as error:
-                        raise InvalidRuleConfigurationError(
-                            f"Rule does not conform to labeling schema: {rule_path}"
-                        ) from error
+                    rule.add_parent_labels_from_schema(self._schema)
 
-                try:
-                    rule.conforms_to_schema(self._schema)
-                except RuleError as error:
-                    raise InvalidRuleConfigurationError(
-                        f"Rule does not conform to labeling schema: {rule_path}"
-                    ) from error
+                rule.conforms_to_schema(self._schema)
 
                 tree.add_rule(rule, self._logger)
 

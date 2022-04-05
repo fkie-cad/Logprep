@@ -48,13 +48,9 @@ class Rule:
         if not isinstance(rule_data, list):
             raise InvalidRuleDefinitionError(f"Rule file must contain a json or yml list: {path}")
 
-
-        try:
-            rules = [cls._create_from_dict(rule) for rule in rule_data]
-            for rule in rules:
-                rule.file_name = splitext(basename(path))[0]
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleDefinitionError(f"{str(error)} in '{path}'") from error
+        rules = [cls._create_from_dict(rule) for rule in rule_data]
+        for rule in rules:
+            rule.file_name = splitext(basename(path))[0]
 
         return rules
 
@@ -89,7 +85,7 @@ class Rule:
         special_fields = dict()
 
         for field_type in Rule.special_field_types:
-            special_fields[field_type] = rule.get(field_type, list())
+            special_fields[field_type] = rule.get(field_type, [])
             if special_fields[field_type] and not (
                 isinstance(special_fields[field_type], list) or special_fields[field_type] is True
             ):
