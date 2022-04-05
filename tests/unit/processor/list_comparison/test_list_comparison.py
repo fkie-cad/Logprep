@@ -18,7 +18,7 @@ class TestListComparison(BaseProcessorTestCase):
         "specific_rules": ["tests/testdata/unit/list_comparison/rules/specific"],
         "generic_rules": ["tests/testdata/unit/list_comparison/rules/generic"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        "list_search_base_path": "./",
+        "list_search_base_path": "./"
     }
     factory = ListComparisonFactory
 
@@ -39,7 +39,7 @@ class TestListComparison(BaseProcessorTestCase):
 
         assert self.object._event.get("user_results") is not None
         assert isinstance(self.object._event.get("user_results"), dict)
-        assert document.get("user_results").get("in_list") is not None
+        assert document.get('user_results').get('in_list') is not None
         assert document.get("user_results").get("not_in_list") is None
 
     def test_element_not_in_list(self):
@@ -94,8 +94,13 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
-        assert document.get("dotted", {}).get("user_results", {}).get("in_list") is not []
+        assert (
+            document.get("dotted", {}).get("user_results", {}).get("not_in_list")
+            is None
+        )
+        assert (
+            document.get("dotted", {}).get("user_results", {}).get("in_list") is not []
+        )
 
     def test_deep_dotted_output_field(self):
         # tests if outputting list_comparison results to dotted fields works
@@ -132,8 +137,13 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
-        assert len(document.get("dotted", {}).get("user_results", {}).get("in_list")) == 2
+        assert (
+            document.get("dotted", {}).get("user_results", {}).get("not_in_list")
+            is None
+        )
+        assert (
+            len(document.get("dotted", {}).get("user_results", {}).get("in_list")) == 2
+        )
 
     def test_dotted_parent_field_exists_but_subfield_doesnt(self):
         # tests if list_comparison properly extends lists already present in output fields.
@@ -146,10 +156,20 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
-        assert len(document.get("dotted", {}).get("user_results", {}).get("in_list")) == 1
         assert (
-            len(document.get("dotted", {}).get("preexistent_output_field", {}).get("in_list")) == 1
+            document.get("dotted", {}).get("user_results", {}).get("not_in_list")
+            is None
+        )
+        assert (
+            len(document.get("dotted", {}).get("user_results", {}).get("in_list")) == 1
+        )
+        assert (
+            len(
+                document.get("dotted", {})
+                .get("preexistent_output_field", {})
+                .get("in_list")
+            )
+            == 1
         )
 
     def test_dotted_wrong_type(self):
