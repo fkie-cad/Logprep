@@ -2,16 +2,13 @@
 import socket
 from logging import Logger, DEBUG
 from multiprocessing import current_process
-from os import walk
-from os.path import isdir, realpath, join
+from time import time
 from typing import List
 
-from time import time
 from tldextract import TLDExtract
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
     InvalidRuleDefinitionError,
     InvalidRuleFileError,
 )

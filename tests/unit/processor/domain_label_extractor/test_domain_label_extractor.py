@@ -1,5 +1,5 @@
-import copy
 from pathlib import Path
+
 import pytest
 
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -8,15 +8,12 @@ pytest.importorskip("logprep.processor.domain_label_extractor")
 
 from logging import getLogger
 
-from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarning
-from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.processor.base.processor import ProcessingWarning
 from logprep.processor.domain_label_extractor.rule import (
     DomainLabelExtractorRule,
-    InvalidDomainLabelExtractorDefinition,
 )
 from logprep.processor.domain_label_extractor.factory import DomainLabelExtractorFactory
 from logprep.processor.domain_label_extractor.processor import (
-    DomainLabelExtractor,
     DuplicationError,
 )
 
