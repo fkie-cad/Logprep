@@ -48,7 +48,7 @@ class LabelingSchema:
     def create_from_file(path: str) -> "LabelingSchema":
         """Create a schema from a file at a given path."""
         try:
-            with open(path, "r", encoding="UFT-8") as file:
+            with open(path, "r", encoding="utf-8") as file:
                 schema = load(file)
             if not schema:
                 raise LabelingSchemaError()
