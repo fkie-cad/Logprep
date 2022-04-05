@@ -49,38 +49,47 @@ class DuplicationError(GeoIPEnricherError):
 class GeoIPEnricher(RuleBasedProcessor):
     """Resolve values in documents by referencing a mapping list."""
 
-    def __init__(self, name: str, tree_config: str, geoip_db_path: str, logger: Logger):
+    def __init__(self, name: str, configuration: dict, logger: Logger):
+        tree_config = configuration.get("tree_config")
         super().__init__(name, tree_config, logger)
+        specific_rules_dirs = configuration.get("specific_rules")
+        generic_rules_dirs = configuration.get("generic_rules")
+        geoip_db_path = configuration.get("db_path")
         self.ps = ProcessorStats()
-
+        self.add_rules_from_directory(
+            specific_rules_dirs=specific_rules_dirs,
+            generic_rules_dirs=generic_rules_dirs,
+        )
         self._city_db = database.Reader(geoip_db_path)
 
     # pylint: disable=arguments-differ
-    def add_rules_from_directory(self, rule_paths: List[str]):
-        """Add rules from given directory."""
-        for path in rule_paths:
-            if not isdir(realpath(path)):
-                raise NotARulesDirectoryError(self._name, path)
-
-            for root, _, files in walk(path):
-                json_files = []
-                for file in files:
-                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
-                        "_test.json"
-                    ):
-                        json_files.append(file)
-                for file in json_files:
-                    rules = self._load_rules_from_file(join(root, file))
-                    for rule in rules:
-                        self._tree.add_rule(rule, self._logger)
-
+    def add_rules_from_directory(
+        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
+    ):
+        for specific_rules_dir in specific_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
+            for rule_path in rule_paths:
+                rules = GeoIPEnricherRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._specific_tree.add_rule(rule, self._logger)
+        for generic_rules_dir in generic_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
+            for rule_path in rule_paths:
+                rules = GeoIPEnricherRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                f"{self.describe()} loaded {self._tree.rule_counter} rules "
-                f"({current_process().name})"
+                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
+                f"specific rules ({current_process().name})"
             )
-
-        self.ps.setup_rules([None] * self._tree.rule_counter)
+            self._logger.debug(
+                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
+                f"generic rules ({current_process().name})"
+            )
+        self.ps.setup_rules(
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
+        )
 
     # pylint: enable=arguments-differ
 
@@ -97,11 +106,18 @@ class GeoIPEnricher(RuleBasedProcessor):
     def process(self, event: dict):
         self._event = event
 
-        for rule in self._tree.get_matching_rules(event):
+        for rule in self._generic_tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event, rule)
             processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._tree.get_rule_id(rule)
+            idx = self._generic_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
+
+        for rule in self._specific_tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event, rule)
+            processing_time = float("{:.10f}".format(time() - begin))
+            idx = self._specific_tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
         self.ps.increment_processed_count()
@@ -128,7 +144,10 @@ class GeoIPEnricher(RuleBasedProcessor):
                     longitude = self._normalize_empty(ip_data.location.longitude)
                     latitude = self._normalize_empty(ip_data.location.latitude)
                     if longitude and latitude:
-                        geoip["geometry"] = {"type": "Point", "coordinates": [longitude, latitude]}
+                        geoip["geometry"] = {
+                            "type": "Point",
+                            "coordinates": [longitude, latitude],
+                        }
 
                     accuracy_radius = self._normalize_empty(ip_data.location.accuracy_radius)
                     if accuracy_radius:
