@@ -81,7 +81,7 @@ cumulative
 
 true/false
 
-Defines if the metrics should count continuously or if they should be reset after every period.
+Defines if the metrics should count continuously (true) or if they should be reset after every period (false).
 It is enabled by default.
 
 aggregate_processes
@@ -97,7 +97,7 @@ targets
 -------
 
 List of targets where the statistics should be exported to. At the moment only :code:`file` and
-:code:`prometheus` is allowed. Those can be further configured with the following options:
+:code:`prometheus` are allowed. Those can be further configured with the following options:
 
 file
 ^^^^
