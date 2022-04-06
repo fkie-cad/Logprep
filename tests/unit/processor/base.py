@@ -2,9 +2,8 @@
 # pylint: disable=protected-access
 import json
 import re
-from abc import ABC, abstractmethod
+from abc import ABC
 from logging import getLogger
-from numpy import isin
 
 from unittest import mock
 

@@ -114,9 +114,9 @@ class PreDetector(RuleBasedProcessor):
                 and not self._ip_alerter.is_in_alerts_list(rule, event)
             ):
                 if self._logger.isEnabledFor(DEBUG):
-                    self._logger.debug("{} processing matching event".format(self.describe()))
+                    self._logger.debug(f"{self.describe()} processing matching event")
                 self._get_detection_result(rule, detection_results)
-                processing_time = float("{:.10f}".format(time() - begin))
+                processing_time = time() - begin
                 idx = self._generic_tree.get_rule_id(rule)
                 self.ps.update_per_rule(idx, processing_time)
 
@@ -127,9 +127,9 @@ class PreDetector(RuleBasedProcessor):
                 and not self._ip_alerter.is_in_alerts_list(rule, event)
             ):
                 if self._logger.isEnabledFor(DEBUG):
-                    self._logger.debug("{} processing matching event".format(self.describe()))
+                    self._logger.debug(f"{self.describe()} processing matching event")
                 self._get_detection_result(rule, detection_results)
-                processing_time = float("{:.10f}".format(time() - begin))
+                processing_time = time() - begin
                 idx = self._specific_tree.get_rule_id(rule)
                 self.ps.update_per_rule(idx, processing_time)
 

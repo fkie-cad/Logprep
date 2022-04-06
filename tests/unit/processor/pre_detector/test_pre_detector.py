@@ -1,9 +1,9 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
 import re
-import pytest
 from copy import deepcopy
 
+import pytest
 from logprep.processor.pre_detector.factory import PreDetector, PreDetectorFactory
 from logprep.processor.processor_factory_error import ProcessorFactoryError
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -35,7 +35,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": ["attack.test1", "attack.test2"],
                     "case_condition": "directly",
                     "description": "Test rule one",
-                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',
+                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
             "pre_detector_alerts",
@@ -62,7 +62,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "case_condition": "directly",
                     "host": {"name": "Test hostname"},
                     "description": "Test rule one",
-                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',
+                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
             "pre_detector_alerts",
@@ -85,7 +85,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": ["attack.test1", "attack.test2"],
                     "case_condition": "directly",
                     "description": "Test rule one",
-                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',
+                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
             "pre_detector_alerts",
@@ -260,7 +260,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": [],
                     "case_condition": "directly",
                     "description": "Test rule two",
-                    "rule_filter": 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))',
+                    "rule_filter": 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))',  # pylint: disable=line-too-long
                 }
             ],
             "pre_detector_alerts",
@@ -283,7 +283,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": [],
                     "case_condition": "directly",
                     "description": "Test rule two",
-                    "rule_filter": 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))',
+                    "rule_filter": 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))',  # pylint: disable=line-too-long
                 }
             ],
             "pre_detector_alerts",
