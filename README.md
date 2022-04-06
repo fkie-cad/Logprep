@@ -29,8 +29,8 @@ This readme provides basic information to the following topics:
 - [About Logprep](#about-logprep)    
 - [Getting Started](#getting-started)
 - [Docker Quickstart](#docker-quickstart-environment)
-- [Contributing](#contributing)
 - [Documentation](#documentation)
+- [Contributing](#contributing)
 - [License](#license)
 
 More detailed information can be found in the 
