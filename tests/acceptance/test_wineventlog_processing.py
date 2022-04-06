@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 import pytest
 
-from tests.acceptance.util import *
 from logprep.util.json_handling import dump_config_as_file, parse_jsonl
+from tests.acceptance.util import *
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
@@ -21,7 +21,8 @@ def config_template():
                     "type": "labeler",
                     "schema": "",
                     "include_parent_labels": True,
-                    "rules": None,
+                    "specific_rules": None,
+                    "generic_rules": None,
                 }
             }
         ],
@@ -35,27 +36,32 @@ def config_template():
 
 
 @pytest.mark.parametrize(
-    "rules, schema, expected_output",
+    "specific_rules, generic_rules, schema, expected_output",
     [
         (
-            ["acceptance/labeler/rules_static/rules"],
+            ["acceptance/labeler/rules_static/rules/specific"],
+            ["acceptance/labeler/rules_static/rules/generic"],
             "acceptance/labeler/rules_static/labeling/schema.json",
             "labeled_win_event_log.jsonl",
         ),
         (
             [
-                "acceptance/labeler/rules_static/rules",
-                "acceptance/labeler/rules_static_only_regex/rules",
+                "acceptance/labeler/rules_static/rules/specific",
+                "acceptance/labeler/rules_static_only_regex/rules/specific",
+            ],
+            [
+                "acceptance/labeler/rules_static/rules/generic",
+                "acceptance/labeler/rules_static_only_regex/rules/generic",
             ],
             "acceptance/labeler/rules_static_only_regex/labeling/schema.json",
             "labeled_win_event_log_with_regex.jsonl",
         ),
     ],
 )
-def test_events_labeled_correctly(tmp_path, config_template, rules, schema, expected_output):
+def test_events_labeled_correctly(tmp_path, config_template, specific_rules, generic_rules, schema, expected_output):
     expected_output_path = path.join("tests/testdata/acceptance/expected_result", expected_output)
 
-    set_config(config_template, rules, schema)
+    set_config(config_template, specific_rules, generic_rules, schema)
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config_template)
 
@@ -71,8 +77,11 @@ def test_events_labeled_correctly(tmp_path, config_template, rules, schema, expe
     ), "Missmatch in event at line {}!".format(result["event_line_no"])
 
 
-def set_config(config_template, rules, schema):
+def set_config(config_template, specific_rules, generic_rules, schema):
     config_template["pipeline"][0]["labelername"]["schema"] = path.join("tests/testdata", schema)
-    config_template["pipeline"][0]["labelername"]["rules"] = [
-        path.join("tests/testdata", rule) for rule in rules
+    config_template["pipeline"][0]["labelername"]["specific_rules"] = [
+        path.join("tests/testdata", rule) for rule in specific_rules
+    ]
+    config_template["pipeline"][0]["labelername"]["generic_rules"] = [
+        path.join("tests/testdata", rule) for rule in generic_rules
     ]

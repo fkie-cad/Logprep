@@ -1,9 +1,8 @@
 """This module is used to apply configured labeling rules on given documents."""
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.labeler.labeling_schema import LabelingSchema
-
 from logprep.processor.base.rule import Rule
+from logprep.processor.labeler.labeling_schema import LabelingSchema
 
 
 class LabelingRule(Rule):
@@ -48,23 +47,3 @@ class LabelingRule(Rule):
                 for parent in schema.get_parent_labels(category, label):
                     expanded_label[category].add(parent)
             self._label[category] = expanded_label[category]
-
-    def add_labels(self, document: dict):
-        """Add labels from this rule to a given document."""
-        self._add_label_fields(document)
-        self._add_label_values(document)
-
-    def _add_label_fields(self, document: dict):
-        if "label" not in document:
-            document["label"] = {}
-
-        for key in self._label:
-            if key not in document["label"]:
-                document["label"][key] = set()
-
-    def _add_label_values(self, document: dict):
-        for key in self._label:
-            if not isinstance(document["label"][key], set):
-                document["label"][key] = set(document["label"][key])
-
-            document["label"][key].update(self._label[key])

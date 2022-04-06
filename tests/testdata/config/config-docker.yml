@@ -6,9 +6,10 @@ pipeline:
         type: labeler
         schema: tests/testdata/acceptance/labeler/rules_static/labeling/schema.json
         include_parent_labels: on
-        rules:
-            - tests/testdata/acceptance/labeler/rules_static/rules/
-
+        specific_rules:
+            - tests/testdata/acceptance/labeler/rules_static/rules/specific/
+        generic_rules:
+          - tests/testdata/acceptance/labeler/rules_static/rules/generic/
 connector:
   type: confluentkafka
   bootstrapservers:

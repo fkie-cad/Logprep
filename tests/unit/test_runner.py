@@ -1,9 +1,20 @@
+# pylint: disable=protected-access
+# pylint: disable=missing-module-docstring
+# pylint: disable=missing-class-docstring
+# pylint: disable=missing-function-docstring
+# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-order
 from copy import deepcopy
 from logging import Logger, ERROR, INFO
 from os.path import split, join
 
 from pytest import raises
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.labeler.labeling_schema import (
+    InvalidLabelingSchemaFileError,
+    LabelingSchemaError,
+)
 from logprep.runner import (
     Runner,
     MustNotConfigureTwiceError,
@@ -15,7 +26,6 @@ from logprep.runner import (
     UseGetRunnerToCreateRunnerSingleton,
     MustNotCreateMoreThanOneManagerError,
 )
-from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
 from tests.testdata.ConfigurationForTest import ConfigurationForTest
 from tests.testdata.metadata import (
     path_to_config,
@@ -25,7 +35,7 @@ from tests.testdata.metadata import (
     path_to_schema2,
     path_to_testdata,
 )
-from logprep.util.configuration import InvalidConfigurationError
+from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
 from tests.util.testhelpers import HandlerStub, AssertEmitsLogMessage
 
 
@@ -93,7 +103,9 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
             self.runner.start()
 
     def test_fails_when_schema_is_invalid(self):
-        with raises(InvalidConfigurationError, match='File not found: ".*".'):
+        with raises(
+            InvalidLabelingSchemaFileError, match="Not a valid schema file: File not found: '.*'."
+        ):
             with ConfigurationForTest(
                 inject_changes=[
                     {
@@ -110,7 +122,8 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
                 self.runner.load_configuration(path)
 
         with raises(
-            InvalidConfigurationError, match="Invalid processor config: .*Is a directory: .*"
+            InvalidLabelingSchemaFileError,
+            match=r"Not a valid schema file: \[Errno 21\] Is a directory: .*",
         ):
             with ConfigurationForTest(
                 inject_changes=[{"pipeline": {1: {"labelername": {"schema": path_to_testdata}}}}]
@@ -118,8 +131,11 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
                 self.runner.load_configuration(path)
 
         with raises(
-            InvalidConfigurationError,
-            match='Invalid processor config: .*JSON decoder error: .*: ".*".',
+            InvalidLabelingSchemaFileError,
+            match=(
+                r"Not a valid schema file: JSON decoder error: "
+                r"Expecting value: line 1 column 1 \(char 0\): '.*'."
+            ),
         ):
             with ConfigurationForTest(
                 inject_changes=[{"pipeline": {1: {"labelername": {"schema": path_to_config}}}}]
@@ -127,19 +143,25 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
                 self.runner.load_configuration(path)
 
     def test_fails_when_rules_are_invalid(self):
-        with raises(InvalidConfigurationError, match='Invalid rule file ".*".'):
+        with raises(InvalidRuleDefinitionError, match=r"Keys \[\] must be \['filter', 'label'\]"):
             with ConfigurationForTest(
                 inject_changes=[
-                    {"pipeline": {1: {"labelername": {"rules": [path_to_invalid_rules]}}}}
+                    {
+                        "pipeline": {
+                            1: {
+                                "labelername": {
+                                    "specific_rules": [path_to_invalid_rules],
+                                    "generic_rules": [path_to_invalid_rules],
+                                }
+                            }
+                        }
+                    }
                 ]
             ) as path:
                 self.runner.load_configuration(path)
 
     def test_fails_when_schema_and_rules_are_inconsistent(self):
-        with raises(
-            InvalidConfigurationError,
-            match='Invalid rule file ".*": Does not conform to labeling schema.',
-        ):
+        with raises(LabelingSchemaError):
             with ConfigurationForTest(
                 inject_changes=[{"pipeline": {1: {"labelername": {"schema": path_to_schema2}}}}]
             ) as path:

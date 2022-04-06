@@ -1,14 +1,13 @@
 """This module is used create labeling schemas."""
 
-from typing import Optional, List, Any
-
 from json import JSONDecodeError
+from typing import Optional, List, Any
 
 from jsonref import load
 
 from logprep.processor.base.exceptions import (
-    ValueDoesnotExistInSchemaError,
     KeyDoesnotExistInSchemaError,
+    ValueDoesnotExistInSchemaError,
 )
 
 
@@ -20,74 +19,14 @@ class InvalidLabelingSchemaFileError(LabelingSchemaError):
     """Raise if labeling schema file is invalid."""
 
     def __init__(self, path: Optional[str] = None, message: Optional[str] = None):
-        if (path is not None) and (message is not None):
-            super().__init__(f'Not a valid schema file: {message}: "{path}".')
-        elif message is not None:
+        if (path is not None) and (message is not None) and (message != ""):
+            super().__init__(f"Not a valid schema file: {message}: '{path}''.")
+        elif message is not None and (message != ""):
             super().__init__(f"Not a valid schema file: {message}.")
         elif path is not None:
-            super().__init__(f'Not a valid schema file: "{path}".')
+            super().__init__(f"Not a valid schema file: '{path}''.")
         else:
             super().__init__("Not a valid schema file.")
-
-
-class SchemaFileNotFoundError(InvalidLabelingSchemaFileError):
-    """Raise if labeling schema file could not be found."""
-
-    def __init__(self, path: str):
-        super().__init__(f'Not a valid schema file: "{path}".')
-
-
-class InvalidLabelTreeError(LabelingSchemaError):
-    """Raise if schema definition is invalid."""
-
-    def __init__(self, message: Optional[str] = None):
-        if message is None:
-            super().__init__("Invalid schema definition")
-        else:
-            super().__init__(f"Invalid schema definition: {message}")
-
-
-class CategoryWithoutDesciptionInSchemaError(InvalidLabelTreeError):
-    """Raise if category does not have a vailid description."""
-
-    def __init__(self, name: str):
-        super().__init__(f'Category "{name}" does not have a valid description')
-
-
-class CategoryMustNotContainDescriptionFieldError(InvalidLabelTreeError):
-    """Raise if category has a description field."""
-
-    def __init__(self, name: str):
-        super().__init__(f'Category "{name}" must not have a description field')
-
-
-class NonDescriptionLeafError(InvalidLabelTreeError):
-    """Raise if leaf has no description field."""
-
-    def __init__(self, name: str):
-        super().__init__(f'"{name}" is a leaf but not a description')
-
-
-class DuplicateLabelInCategoryError(InvalidLabelTreeError):
-    """Raise if category contains duplicate labels."""
-
-    def __init__(self, category: str, label: str):
-        super().__init__(f'Category "{category}" contains label "{label}" more than once')
-
-
-class LabelWithoutDesciptionInSchemaError(InvalidLabelTreeError):
-    """Raise if label has no valid description."""
-
-    def __init__(self, name: str):
-        super().__init__(f'Label "{name}" does not have a valid description')
-
-
-class NoSuchCategoryError(LabelingSchemaError):
-    """Raise if a category does not exist."""
-
-
-class CannotRetrieveParentsForLabelWithoutDescriptionError(LabelingSchemaError):
-    """Raise if retrieval of parents on label without description is attempted."""
 
 
 class LabelingSchema:
@@ -109,10 +48,10 @@ class LabelingSchema:
     def create_from_file(path: str) -> "LabelingSchema":
         """Create a schema from a file at a given path."""
         try:
-            with open(path, "r") as file:
+            with open(path, "r", encoding="utf-8") as file:
                 schema = load(file)
             if not schema:
-                raise InvalidLabelingSchemaFileError(path)
+                raise LabelingSchemaError()
             labeling_schema = LabelingSchema()
             labeling_schema.ingest_schema(schema)
             return labeling_schema
@@ -124,7 +63,7 @@ class LabelingSchema:
             raise InvalidLabelingSchemaFileError(
                 path=path, message="JSON decoder error: " + str(error)
             ) from error
-        except InvalidLabelTreeError as error:
+        except LabelingSchemaError as error:
             raise InvalidLabelingSchemaFileError(path=path, message=str(error)) from error
 
     def ingest_schema(self, schema: dict):
@@ -144,9 +83,9 @@ class LabelingSchema:
 
     def _verify_category(self, name: str, category: dict):
         if not (("category" in category) and isinstance(category["category"], str)):
-            raise CategoryWithoutDesciptionInSchemaError(name)
+            raise LabelingSchemaError(f"Category '{name}' does not have a valid description")
         if "description" in category and isinstance(category["description"], str):
-            raise CategoryMustNotContainDescriptionFieldError(name)
+            raise LabelingSchemaError(f"Category '{name}' must not have a description field")
 
         for key in category:
             if key == "category":
@@ -155,17 +94,17 @@ class LabelingSchema:
 
     def _verify_label_tree(self, name: str, label_tree: dict):
         if not isinstance(label_tree, dict):
-            raise InvalidLabelTreeError
+            raise LabelingSchemaError("Invalid Label Tree")
         if not label_tree:
-            raise InvalidLabelTreeError
+            raise LabelingSchemaError("Invalid Label Tree")
 
         for key in label_tree:
             if key == "description":
                 if self._is_description(key, label_tree[key]):
                     continue
-                raise LabelWithoutDesciptionInSchemaError(name)
+                raise LabelingSchemaError(f"Label '{name}' does not have a valid description")
             if not isinstance(label_tree[key], dict):
-                raise NonDescriptionLeafError(key)
+                raise LabelingSchemaError(f"'{key}' is a leaf but not a description")
             self._verify_label_tree(key, label_tree[key])
 
     def _extract_labels(self, document: dict, depth: int) -> List[str]:
@@ -185,7 +124,9 @@ class LabelingSchema:
         if len(set(self._schema[name])) < len(self._schema[name]):
             for label in self._schema[name]:
                 if self._schema[name].count(label) > 1:
-                    raise DuplicateLabelInCategoryError(name, label)
+                    raise LabelingSchemaError(
+                        f"Category '{name}' contains label '{label}' more than once"
+                    )
 
     def _has_description(self, document: dict) -> bool:
         if "description" in document:
@@ -225,7 +166,9 @@ class LabelingSchema:
     def get_parent_labels(self, category: str, label: str):
         """Get parent labels of a given label and category."""
         if category not in self._parents:
-            raise NoSuchCategoryError
+            raise LabelingSchemaError(f"No such category: '{category}'")
         if label not in self._parents[category]:
-            raise CannotRetrieveParentsForLabelWithoutDescriptionError
+            raise LabelingSchemaError(
+                f"Cannot retrieve parents for label '{label}' without description"
+            )
         return self._parents[category][label]

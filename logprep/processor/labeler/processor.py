@@ -1,30 +1,17 @@
 """This module contains functionality for labeling log events."""
 
-from typing import List
 from logging import Logger, DEBUG
-
-from os.path import realpath, isdir
-from time import time
 from multiprocessing import current_process
+from typing import List
+
+from time import time
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
-from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
-    RuleError,
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
-from logprep.processor.labeler.exceptions import (
-    InvalidLabelingSchemaError,
-    NoLabelingSchemeDefinedError,
-    RuleDoesNotConformToLabelingSchemaError,
-    MustLoadRulesFirstError,
+from logprep.processor.labeler.labeling_schema import (
+    LabelingSchema,
 )
 from logprep.processor.labeler.rule import LabelingRule
-
-from logprep.processor.labeler.labeling_schema import LabelingSchema
-
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
 
@@ -32,89 +19,138 @@ from logprep.util.time_measurement import TimeMeasurement
 class Labeler(RuleBasedProcessor):
     """Processor used to label log events."""
 
-    def __init__(self, name: str, tree_config: str, logger: Logger):
-        super().__init__(name, tree_config, logger)
+    def __init__(
+        self,
+        name: str,
+        configuration: dict,
+        logger: Logger,
+    ):
+        self.tree_config = configuration.get("tree_config")
+        super().__init__(name, self.tree_config, logger)
+
         self._logger = logger
         self.ps = ProcessorStats()
 
         self._name = name
 
-        self._tree = RuleTree(config_path=tree_config)
-        self._schema = None
+        self._include_parent_labels = configuration.get("include_parent_labels", False)
+
+        self._specific_tree = RuleTree(config_path=self.tree_config)
+        self._generic_tree = RuleTree(config_path=self.tree_config)
+
+        self._schema = LabelingSchema.create_from_file(configuration.get("schema"))
+
+        self.add_rules_from_directory(
+            configuration.get("specific_rules"),
+            configuration.get("generic_rules"),
+        )
 
     def describe(self) -> str:
         return f"Labeler ({self._name})"
 
-    def set_labeling_scheme(self, schema: LabelingSchema):
-        """Set a labeling scheme."""
-        if not isinstance(schema, LabelingSchema):
-            raise InvalidLabelingSchemaError(self._name, "Not a labeling schema: " + str(schema))
-
-        self._schema = schema
-
     # pylint: disable=arguments-differ
-    def add_rules_from_directory(self, rules_dirs: List[str], include_parent_labels=False):
-        if not isinstance(self._schema, LabelingSchema):
-            raise NoLabelingSchemeDefinedError(self._name)
+    def add_rules_from_directory(
+        self,
+        specific_rules_dirs: List[str],
+        generic_rules_dirs: List[str],
+    ):
 
-        for rules_dir in rules_dirs:
-            if not isdir(realpath(rules_dir)):
-                raise NotARulesDirectoryError(self._name, rules_dir)
+        for specific_rules_dir in specific_rules_dirs:
+            self.verify_rules_and_add_to(self._specific_tree, specific_rules_dir)
 
-            rule_paths = self._list_json_files_in_directory(rules_dir)
-            for rule_path in rule_paths:
-                rules = self._load_rule_from_file(rule_path)
-                for rule in rules:
-                    if include_parent_labels:
-                        rule.add_parent_labels_from_schema(self._schema)
-                    self._tree.add_rule(rule, self._logger)
+        for generic_rules_dir in generic_rules_dirs:
+            self.verify_rules_and_add_to(self._generic_tree, generic_rules_dir)
+
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                f"{self.describe()} loaded {self._tree.rule_counter} rules "
+                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
+                f"specific rules ({current_process().name})"
+            )
+            self._logger.debug(
+                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
                 f"({current_process().name})"
             )
-        self.ps.setup_rules([None] * self._tree.rule_counter)
+
+        self.ps.setup_rules(
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
+        )
 
     # pylint: enable=arguments-differ
 
-    def _load_rule_from_file(self, path: str) -> List[LabelingRule]:
-        try:
-            rules = LabelingRule.create_rules_from_file(path)
+    def verify_rules_and_add_to(self, tree, rules_dir):
+        """
+        Creates LabelingRules, verifies if they conform with the given schema and adds them to
+        the given rule_tree.
+
+        Parameters
+        ----------
+        tree : RuleTree
+            The rule tree to which the new rules should be added to.
+        rules_dir : str
+            The path to the directory with the rule configurations that should be added to the
+            rule tree
+        """
+        rule_paths = self._list_json_files_in_directory(rules_dir)
+        for rule_path in rule_paths:
+            rules = LabelingRule.create_rules_from_file(rule_path)
             for rule in rules:
-                try:
-                    rule.conforms_to_schema(self._schema)
-                except RuleError as error:
-                    raise RuleDoesNotConformToLabelingSchemaError(self._name, path) from error
-            return rules
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path) from error
+                if self._include_parent_labels:
+                    rule.add_parent_labels_from_schema(self._schema)
 
-    def setup(self):
-        if not isinstance(self._schema, LabelingSchema):
-            raise NoLabelingSchemeDefinedError(self._name)
+                rule.conforms_to_schema(self._schema)
 
-        if self._tree.rule_counter == 0:
-            raise MustLoadRulesFirstError(self._name)
+                tree.add_rule(rule, self._logger)
 
     @TimeMeasurement.measure_time("labeler")
     def process(self, event: dict):
-        if self._tree.rule_counter == 0:
-            raise MustLoadRulesFirstError(self._name)
+        """Process the current event"""
 
-        self._add_labels(event)
+        for rule in self._generic_tree.get_matching_rules(event):
+            begin = time()
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f"{self.describe()} processing matching event")
+            self._apply_rules(event, rule)
+
+            processing_time = float(f"{time() - begin:.10f}")
+            idx = self._generic_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
+
+        for rule in self._specific_tree.get_matching_rules(event):
+            begin = time()
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f"{self.describe()} processing matching event")
+            self._apply_rules(event, rule)
+
+            processing_time = float(f"{time() - begin:.10f}")
+            idx = self._specific_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
+
         self._convert_label_categories_to_sorted_list(event)
         self.ps.increment_processed_count()
 
-    def _add_labels(self, event: dict):
-        for rule in self._tree.get_matching_rules(event):
-            begin = time()
-            if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug("{} processing matching event".format(self.describe()))
-            rule.add_labels(event)
+    def _apply_rules(self, event, rule):
+        """Applies the rule to the current event"""
+        self._add_label_fields(event, rule)
+        self._add_label_values(event, rule)
 
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
+    @staticmethod
+    def _add_label_fields(event: dict, rule: LabelingRule):
+        """Prepares the event by adding empty label fields"""
+        if "label" not in event:
+            event["label"] = {}
+
+        for key in rule.label:
+            if key not in event["label"]:
+                event["label"][key] = set()
+
+    @staticmethod
+    def _add_label_values(event: dict, rule: LabelingRule):
+        """Adds the labels from the rule to the event"""
+        for key in rule.label:
+            if not isinstance(event["label"][key], set):
+                event["label"][key] = set(event["label"][key])
+
+            event["label"][key].update(rule.label[key])
 
     @staticmethod
     def _convert_label_categories_to_sorted_list(event: dict):
