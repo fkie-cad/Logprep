@@ -3,6 +3,8 @@
 from time import time
 from socket import gethostname
 
+from logprep.processor.base.processor import BaseProcessor
+
 
 class TimeMeasurement:
     """Measures the execution time of functions and adds the results to events via a decorator."""
@@ -33,7 +35,7 @@ class TimeMeasurement:
 
                     processing_time = end - begin
 
-                    if caller.__module__.endswith("processor"):
+                    if isinstance(caller, BaseProcessor):
                         caller.ps.update_average_processing_time(processing_time)
 
                     if TimeMeasurement.APPEND_TO_EVENT:
