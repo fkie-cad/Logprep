@@ -7,9 +7,6 @@
 ![GitHub contributors](https://img.shields.io/github/contributors/fkie-cad/Logprep)
 ![GitHub Repo stars](https://img.shields.io/github/stars/fkie-cad/logprep?style=social)  
 </h3>
-<h4 align="center">
-[Report a bug](https://github.com/fkie-cad/Logprep/issues) · [Request a feature](https://github.com/fkie-cad/Logprep/issues)
-</h4>
 
 ## Introduction
 
