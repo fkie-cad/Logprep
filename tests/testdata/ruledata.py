@@ -11,7 +11,7 @@ simple_regex_rule_dict = {
 # String of length >= 8 with at least 3 of these: upper-case, lower-case, number, non-alphanumeric
 # Simple rules don't cover many possibilities for parsing errors
 complex_regex_rule_dict = {
-    "filter": 'applyrule: "(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}"',
+    "filter": r'applyrule: "(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}"',
     "regex_fields": ["applyrule"],
     "label": {"reporter": ["windows"]},
 }
