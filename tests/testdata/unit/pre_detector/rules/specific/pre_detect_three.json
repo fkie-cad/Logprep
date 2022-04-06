@@ -1,0 +1,16 @@
+[
+  {
+    "filter": "tags: \"specifictest2\" AND process.program: \"test\" AND (message: \"test1*xyz\" OR message: \"test2?xyz\")",
+    "pre_detector": {
+      "id": "RULE_THREE_ID",
+      "title": "RULE_THREE",
+      "severity": "critical",
+      "mitre": [],
+      "case_condition": "directly"
+    },
+    "sigma_fields": [
+      "message"
+    ],
+    "description": "Test rule three"
+  }
+]

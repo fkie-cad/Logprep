@@ -18,25 +18,21 @@ class InvalidRuleConfigurationError(InvalidPreDetectorFactoryConfigurationError)
 class PreDetectorFactory(BaseFactory):
     """Create pre-detectors."""
 
+    mandatory_fields = ["specific_rules", "generic_rules", "pre_detector_topic"]
+
     @staticmethod
     def create(name: str, configuration: dict, logger: Logger):
         """Create an pre-detector."""
         PreDetectorFactory._check_configuration(configuration)
 
-        pre_detector = PreDetector(
-            name,
-            configuration["pre_detector_topic"],
-            configuration.get("tree_config"),
-            configuration.get("alert_ip_list"),
-            logger,
+        return PreDetector(
+            name=name,
+            configuration=configuration,
+            logger=logger,
         )
-
-        pre_detector.add_rules_from_directory(configuration["rules"])
-
-        return pre_detector
 
     @staticmethod
     def _check_configuration(configuration: dict):
         PreDetectorFactory._check_common_configuration(
-            "pre_detector", ["rules", "pre_detector_topic"], configuration
+            "pre_detector", PreDetectorFactory.mandatory_fields, configuration
         )

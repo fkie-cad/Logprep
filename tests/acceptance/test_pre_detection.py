@@ -20,7 +20,8 @@ def config():
                 "pre_detector": {
                     "type": "pre_detector",
                     "pre_detector_topic": "pre_detector_topic",
-                    "rules": ["tests/testdata/acceptance/pre_detector/rules/"],
+                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/generic/"],
+                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/specific/"],
                     "tree_config": "tests/testdata/acceptance/pre_detector/tree_config.json",
                 }
             }
