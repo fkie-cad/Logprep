@@ -144,18 +144,18 @@ class TemplateReplacer(RuleBasedProcessor):
     def process(self, event: dict):
         self._event = event
 
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
         for rule in self._generic_tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event)
             processing_time = float("{:.10f}".format(time() - begin))
             idx = self._generic_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
+
+        for rule in self._specific_tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event)
+            processing_time = float("{:.10f}".format(time() - begin))
+            idx = self._specific_tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
         self.ps.increment_processed_count()

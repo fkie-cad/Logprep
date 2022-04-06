@@ -1,4 +1,5 @@
 # pylint: disable=missing-module-docstring
+from copy import deepcopy
 import pytest
 
 from logprep.processor.template_replacer.factory import TemplateReplacerFactory
@@ -53,20 +54,9 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
         assert document.get("message") is None
 
     def test_replace_dotted_message_via_template(self):
-        self.CONFIG = {  # pylint: disable=invalid-name
-            "type": "template_replacer",
-            "generic_rules": ["tests/testdata/unit/template_replacer/rules/generic"],
-            "specific_rules": ["tests/testdata/unit/template_replacer/rules/specific"],
-            "template": "tests/testdata/unit/template_replacer/replacer_template.yml",
-            "pattern": {
-                "delimiter": "-",
-                "fields": ["winlog.channel", "winlog.provider_name", "winlog.event_id"],
-                "allowed_delimiter_field": "winlog.provider_name",
-                "target_field": "dotted.message",
-            },
-            "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        }
-        self.object = TemplateReplacerFactory.create("test_instance", self.CONFIG, self.logger)
+        config = deepcopy(self.CONFIG)
+        config.get("pattern").update({"target_field": "dotted.message"})
+        self.object = TemplateReplacerFactory.create("test_instance", config, self.logger)
         assert self.object.ps.processed_count == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
@@ -109,19 +99,9 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
         assert document.get("message") == "foo"
 
     def test_replace_fails_with_invalid_template(self):
-        self.CONFIG = {
-            "type": "template_replacer",
-            "generic_rules": ["tests/testdata/unit/template_replacer/rules/generic"],
-            "specific_rules": ["tests/testdata/unit/template_replacer/rules/specific"],
-            "template": "tests/testdata/unit/template_replacer/replacer_template_invalid.yml",
-            "pattern": {
-                "delimiter": "-",
-                "fields": ["winlog.channel", "winlog.provider_name", "winlog.event_id"],
-                "allowed_delimiter_field": "winlog.provider_name",
-                "target_field": "message",
-            },
-            "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        }
-
+        config = deepcopy(self.CONFIG)
+        config.update(
+            {"template": "tests/testdata/unit/template_replacer/replacer_template_invalid.yml"}
+        )
         with pytest.raises(TemplateReplacerError, match="Not enough delimiters"):
-            TemplateReplacerFactory.create("test-template-replacer", self.CONFIG, self.logger)
+            TemplateReplacerFactory.create("test-template-replacer", config, self.logger)
