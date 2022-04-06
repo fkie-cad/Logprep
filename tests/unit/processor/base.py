@@ -1,25 +1,32 @@
 # pylint: disable=missing-module-docstring
+# pylint: disable=protected-access
 import json
 import re
 from abc import ABC, abstractmethod
-from encodings import utf_8
 from logging import getLogger
 
-import pytest
+from unittest import mock
+
+
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import (ProcessingWarning,
-                                              RuleBasedProcessor)
+from logprep.processor.base.processor import (
+    BaseProcessor,
+    ProcessingWarning,
+    RuleBasedProcessor,
+)
 
 
 class BaseProcessorTestCase(ABC):
 
+    mocks: dict = {}
+
     factory = None
 
-    CONFIG = {}
+    CONFIG: dict = {}
 
     logger = getLogger()
 
-    object = None
+    object: BaseProcessor = None
 
     @property
     @abstractmethod
@@ -43,6 +50,7 @@ class BaseProcessorTestCase(ABC):
         """
         sets the rules from the given rules_dirs
         """
+        assert isinstance(rules_dirs, list)
         specific_rules = list()
 
         for specific_rules_dir in rules_dirs:
@@ -57,17 +65,27 @@ class BaseProcessorTestCase(ABC):
 
         return specific_rules
 
-    @pytest.fixture(autouse=True, scope="function")
-    def setUp(self) -> None:  # pylint: disable=invalid-name
+    def setup_method(self) -> None:
         """
         setUp class for the imported TestCase
         """
+        self.patchers = []
+        for name, kwargs in self.mocks.items():
+            patcher = mock.patch(name, **kwargs)
+            patcher.start()
+            self.patchers.append(patcher)
         if self.factory is not None:
             self.object = self.factory.create(
-                "Test Instance Name", self.CONFIG, self.logger
+                name="Test Instance Name", configuration=self.CONFIG, logger=self.logger
             )
             self.specific_rules = self.set_rules(self.specific_rules_dirs)
             self.generic_rules = self.set_rules(self.generic_rules_dirs)
+
+    def teardown_method(self) -> None:
+        """teardown for all methods"""
+        while len(self.patchers) > 0:
+            patcher = self.patchers.pop()
+            patcher.stop()
 
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, RuleBasedProcessor)
@@ -77,10 +95,10 @@ class BaseProcessorTestCase(ABC):
         document = {
             "event_id": "1234",
             "message": "user root logged in",
-            "@timestamp": "baz",
         }
         count = self.object.ps.processed_count
         self.object.process(document)
+
         assert self.object.ps.processed_count == count + 1
 
     def test_describe(self):
@@ -137,7 +155,7 @@ class BaseProcessorTestCase(ABC):
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.add_rules_from_directory(
-            self.generic_rules_dirs, self.specific_rules_dirs
+            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
         )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
@@ -151,12 +169,12 @@ class BaseProcessorTestCase(ABC):
         ensures that every rule in rule tree is unique
         """
         self.object.add_rules_from_directory(
-            self.generic_rules_dirs, self.specific_rules_dirs
+            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
         )
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.add_rules_from_directory(
-            self.generic_rules_dirs, self.specific_rules_dirs
+            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
         )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()

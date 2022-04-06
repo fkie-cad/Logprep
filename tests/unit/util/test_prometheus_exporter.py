@@ -6,7 +6,6 @@ from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 
 class TestPrometheusStatsExporter:
-
     def setup_method(self):
         REGISTRY.__init__()
 
@@ -17,8 +16,8 @@ class TestPrometheusStatsExporter:
             "cumulative": True,
             "targets": [
                 {"prometheus": {"port": 80}},
-                {"file": {"path": "", "rollover_interval": 200, "backup_count": 10}}
-            ]
+                {"file": {"path": "", "rollover_interval": 200, "backup_count": 10}},
+            ],
         }
         exporter = PrometheusStatsExporter(status_logger_config, getLogger("test-logger"))
 
@@ -53,9 +52,7 @@ class TestPrometheusStatsExporter:
             "period": 10,
             "enabled": True,
             "cumulative": True,
-            "targets": [
-                {"file": {"path": "", "rollover_interval": 200, "backup_count": 10}}
-            ]
+            "targets": [{"file": {"path": "", "rollover_interval": 200, "backup_count": 10}}],
         }
         exporter = PrometheusStatsExporter(status_logger_config, getLogger("test-logger"))
 

@@ -21,15 +21,16 @@ class SelectiveExtractorFactory(BaseFactory):
 
         selective_extractor = SelectiveExtractor(
             name,
-            configuration['selective_extractor_topic'],
-            configuration.get('extractor_list'),
-            logger)
+            configuration["selective_extractor_topic"],
+            configuration.get("extractor_list"),
+            logger,
+        )
 
         return selective_extractor
 
     @staticmethod
     def _check_configuration(configuration: dict):
         """Check if the processor configuration has the mandatory fields."""
-        SelectiveExtractorFactory._check_common_configuration('selective_extractor',
-                                                              ['extractor_list', 'selective_extractor_topic'],
-                                                              configuration)
+        SelectiveExtractorFactory._check_common_configuration(
+            "selective_extractor", ["extractor_list", "selective_extractor_topic"], configuration
+        )

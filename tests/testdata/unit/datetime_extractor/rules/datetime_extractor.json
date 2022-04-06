@@ -1,7 +1,0 @@
-[{
-  "filter": "@timestamp",
-  "datetime_extractor": {
-    "datetime_field": "@timestamp",
-    "destination_field": "split_@timestamp"},
-  "description": ""
-}]

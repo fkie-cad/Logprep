@@ -21,6 +21,7 @@ class TimeMeasurement:
             Name to write processing times to in event.
 
         """
+
         def inner_decorator(func):
             def inner(*args, **kwargs):
                 if TimeMeasurement.TIME_MEASUREMENT_ENABLED:
@@ -36,13 +37,15 @@ class TimeMeasurement:
                         caller.ps.update_average_processing_time(processing_time)
 
                     if TimeMeasurement.APPEND_TO_EVENT:
-                        if not event.get('processing_times'):
-                            event['processing_times'] = dict()
-                        event['processing_times'][name] = float('{:.10f}'.format(processing_time))
+                        if not event.get("processing_times"):
+                            event["processing_times"] = dict()
+                        event["processing_times"][name] = float(f"{processing_time:.10f}")
 
-                        if 'hostname' not in event['processing_times'].keys():
-                            event['processing_times']['hostname'] = TimeMeasurement.HOSTNAME
+                        if "hostname" not in event["processing_times"].keys():
+                            event["processing_times"]["hostname"] = TimeMeasurement.HOSTNAME
                     return result
                 return func(*args, **kwargs)
+
             return inner
+
         return inner_decorator

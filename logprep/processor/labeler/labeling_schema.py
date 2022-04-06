@@ -6,8 +6,10 @@ from json import JSONDecodeError
 
 from jsonref import load
 
-from logprep.processor.base.exceptions import (ValueDoesnotExistInSchemaError,
-                                               KeyDoesnotExistInSchemaError)
+from logprep.processor.base.exceptions import (
+    ValueDoesnotExistInSchemaError,
+    KeyDoesnotExistInSchemaError,
+)
 
 
 class LabelingSchemaError(BaseException):
@@ -21,11 +23,11 @@ class InvalidLabelingSchemaFileError(LabelingSchemaError):
         if (path is not None) and (message is not None):
             super().__init__(f'Not a valid schema file: {message}: "{path}".')
         elif message is not None:
-            super().__init__(f'Not a valid schema file: {message}.')
+            super().__init__(f"Not a valid schema file: {message}.")
         elif path is not None:
             super().__init__(f'Not a valid schema file: "{path}".')
         else:
-            super().__init__('Not a valid schema file.')
+            super().__init__("Not a valid schema file.")
 
 
 class SchemaFileNotFoundError(InvalidLabelingSchemaFileError):
@@ -40,9 +42,9 @@ class InvalidLabelTreeError(LabelingSchemaError):
 
     def __init__(self, message: Optional[str] = None):
         if message is None:
-            super().__init__('Invalid schema definition')
+            super().__init__("Invalid schema definition")
         else:
-            super().__init__(f'Invalid schema definition: {message}')
+            super().__init__(f"Invalid schema definition: {message}")
 
 
 class CategoryWithoutDesciptionInSchemaError(InvalidLabelTreeError):
@@ -95,7 +97,7 @@ class LabelingSchema:
         self._schema = {}
         self._parents = {}
 
-    def __eq__(self, other: 'LabelingSchema') -> bool:
+    def __eq__(self, other: "LabelingSchema") -> bool:
         return self._schema == other.schema
 
     @property
@@ -104,10 +106,10 @@ class LabelingSchema:
         return self._schema
 
     @staticmethod
-    def create_from_file(path: str) -> 'LabelingSchema':
+    def create_from_file(path: str) -> "LabelingSchema":
         """Create a schema from a file at a given path."""
         try:
-            with open(path, 'r') as file:
+            with open(path, "r") as file:
                 schema = load(file)
             if not schema:
                 raise InvalidLabelingSchemaFileError(path)
@@ -115,13 +117,13 @@ class LabelingSchema:
             labeling_schema.ingest_schema(schema)
             return labeling_schema
         except FileNotFoundError as error:
-            raise InvalidLabelingSchemaFileError(path=path, message='File not found') from error
+            raise InvalidLabelingSchemaFileError(path=path, message="File not found") from error
         except OSError as error:
             raise InvalidLabelingSchemaFileError(message=str(error)) from error
         except JSONDecodeError as error:
-            raise InvalidLabelingSchemaFileError(path=path,
-                                                 message='JSON decoder error: '+ str(error)
-                                                 ) from error
+            raise InvalidLabelingSchemaFileError(
+                path=path, message="JSON decoder error: " + str(error)
+            ) from error
         except InvalidLabelTreeError as error:
             raise InvalidLabelingSchemaFileError(path=path, message=str(error)) from error
 
@@ -129,25 +131,25 @@ class LabelingSchema:
         """Verify schema and extract labels and parent labels per category."""
         self._schema = {}
         for key in schema:
-            if key == 'REFERENCES':
+            if key == "REFERENCES":
                 continue
 
             self._verify_category(key, schema[key])
             category = dict(schema[key])
-            del category['category']  # get rid of the implied corner cases
+            del category["category"]  # get rid of the implied corner cases
 
             self._schema[key] = self._extract_labels(category, 1)
             self._parents[key] = self._extract_parents([], category)
             self._fail_if_category_contains_duplicate_labels(key)
 
     def _verify_category(self, name: str, category: dict):
-        if not (('category' in category) and isinstance(category['category'], str)):
+        if not (("category" in category) and isinstance(category["category"], str)):
             raise CategoryWithoutDesciptionInSchemaError(name)
-        if 'description' in category and isinstance(category['description'], str):
+        if "description" in category and isinstance(category["description"], str):
             raise CategoryMustNotContainDescriptionFieldError(name)
 
         for key in category:
-            if key == 'category':
+            if key == "category":
                 continue
             self._verify_label_tree(key, category[key])
 
@@ -158,7 +160,7 @@ class LabelingSchema:
             raise InvalidLabelTreeError
 
         for key in label_tree:
-            if key == 'description':
+            if key == "description":
                 if self._is_description(key, label_tree[key]):
                     continue
                 raise LabelWithoutDesciptionInSchemaError(name)
@@ -170,12 +172,12 @@ class LabelingSchema:
         labels = []
 
         for key in document:
-            if (key == 'description') and isinstance(document[key], str):
+            if (key == "description") and isinstance(document[key], str):
                 continue
             if isinstance(document[key], dict):
                 if self._has_description(document[key]):
                     labels.append(key)
-                labels += self._extract_labels(document[key], depth+1)
+                labels += self._extract_labels(document[key], depth + 1)
 
         return labels
 
@@ -186,13 +188,13 @@ class LabelingSchema:
                     raise DuplicateLabelInCategoryError(name, label)
 
     def _has_description(self, document: dict) -> bool:
-        if 'description' in document:
-            return self._is_description('description', document['description'])
+        if "description" in document:
+            return self._is_description("description", document["description"])
         return False
 
     @staticmethod
     def _is_description(key: str, value: Any):
-        if (key == 'description') and isinstance(value, str):
+        if (key == "description") and isinstance(value, str):
             return True
         return False
 

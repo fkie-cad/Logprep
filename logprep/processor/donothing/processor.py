@@ -22,8 +22,9 @@ class DoNothing(BaseProcessor):
 
     """
 
-    def __init__(self, name: str, logger: Logger, errors: Optional[list] = None,
-                 extra_data: Any = None):
+    def __init__(
+        self, name: str, logger: Logger, errors: Optional[list] = None, extra_data: Any = None
+    ):
         super().__init__(name, logger)
         self._logger = logger
         self.ps = ProcessorStats()
@@ -35,7 +36,7 @@ class DoNothing(BaseProcessor):
         self.shut_down_called_count = 0
 
     def describe(self) -> str:
-        return 'DoNothing'
+        return "DoNothing"
 
     def process(self, event: dict) -> Any:
         if self._errors:

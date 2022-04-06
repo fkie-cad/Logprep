@@ -3,14 +3,19 @@ This module contains functionality for checking if values exist or not exist in 
 black- and whitelisting capabilities.
 """
 from logging import Logger, DEBUG
+from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.framework import rule_tree
 from multiprocessing import current_process
 from os import walk
 from os.path import isdir, realpath, join
 from time import time
 from typing import List, Optional
 
-from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
-                                               InvalidRuleFileError)
+from logprep.processor.base.exceptions import (
+    NotARulesDirectoryError,
+    InvalidRuleDefinitionError,
+    InvalidRuleFileError,
+)
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to
@@ -22,16 +27,18 @@ class ListComparisonError(BaseException):
     """Base class for ListComparison related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f'ListComparison ({name}): {message}')
+        super().__init__(f"ListComparison ({name}): {message}")
 
 
 class DuplicationError(ListComparisonError):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
-        message = 'The following fields could not be written, because ' \
-                  'one or more subfields existed and could not be extended: '
-        message += ' '.join(skipped_fields)
+        message = (
+            "The following fields could not be written, because "
+            "one or more subfields existed and could not be extended: "
+        )
+        message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
@@ -39,8 +46,13 @@ class DuplicationError(ListComparisonError):
 class ListComparison(RuleBasedProcessor):
     """Resolve values in documents by referencing a mapping list."""
 
-    def __init__(self, name: str, tree_config: str, list_search_base_path: Optional[str],
-                 logger: Logger):
+    def __init__(
+        self,
+        name: str,
+        tree_config: str,
+        list_search_base_path: Optional[str],
+        logger: Logger,
+    ):
         """
         Initializes the list_comparison processor.
 
@@ -56,41 +68,42 @@ class ListComparison(RuleBasedProcessor):
         super().__init__(name, tree_config, logger)
         self._list_search_base_dir = list_search_base_path
         self.ps = ProcessorStats()
+        self._specific_tree = RuleTree(config_path=tree_config)
+        self._generic_tree = RuleTree(config_path=tree_config)
 
     # pylint: disable=arguments-differ
-    def add_rules_from_directory(self, rule_paths: List[str]):
-        """
-        Collect rules from given directory.
-
-        Parameters
-        ----------
-        rules_paths : List[str]
-            Path to the directory containing list_comparison rules.
-
-        """
-        for path in rule_paths:
-            if not isdir(realpath(path)):
-                raise NotARulesDirectoryError(self._name, path)
-
-            for root, _, files in walk(path):
-                json_files = []
-                for file in files:
-                    if (file.endswith('.json') or file.endswith('.yml')) and not file.endswith('_test.json'):
-                        json_files.append(file)
-                for file in json_files:
-                    rules = self._load_rules_from_file(join(root, file))
-                    for rule in rules:
-                        self._tree.add_rule(rule, self._logger)
-
+    def add_rules_from_directory(
+        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
+    ):
+        for specific_rules_dir in specific_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
+            for rule_path in rule_paths:
+                rules = ListComparisonRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._specific_tree.add_rule(rule, self._logger)
+        for generic_rules_dir in generic_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
+            for rule_path in rule_paths:
+                rules = ListComparisonRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(f'{self.describe()} loaded {self._tree.rule_counter} rules '
-                               f'({current_process().name})')
-
-        self.ps.setup_rules([None] * self._tree.rule_counter)
+            self._logger.debug(
+                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
+                f"specific rules ({current_process().name})"
+            )
+            self._logger.debug(
+                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
+                f"({current_process().name})"
+            )
+        self.ps.setup_rules(
+            [None] * self._generic_tree.rule_counter
+            + [None] * self._specific_tree.rule_counter
+        )
 
     # pylint: enable=arguments-differ
 
-    def _load_rules_from_file(self, path: str):
+    def _load_rules_from_file(self, list_comparison_path: str):
         """
         Collect rule(s) from a given file.
 
@@ -99,20 +112,19 @@ class ListComparison(RuleBasedProcessor):
         path : str
             Path to the file containing a list_comparison rule.
 
-        """        
+        """
         try:
-            rules = ListComparisonRule.create_rules_from_file(path)
-            for rule in rules:
-                rule.init_list_comparison(self._list_search_base_dir)
-            return rules
+            return ListComparisonRule.create_rules_from_file(list_comparison_path)
         except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path, str(error)) from error
+            raise InvalidRuleFileError(
+                self._name, list_comparison_path, str(error)
+            ) from error
 
     def describe(self) -> str:
         """Return name of given processor instance."""
-        return f'ListComparison ({self._name})'
+        return f"ListComparison ({self._name})"
 
-    @TimeMeasurement.measure_time('list_comparison')
+    @TimeMeasurement.measure_time("list_comparison")
     def process(self, event: dict):
         """
         Process log message.
@@ -122,23 +134,30 @@ class ListComparison(RuleBasedProcessor):
         event : dict
             Current event log message to be processed.
 
-        """         
+        """
 
         self._event = event
 
-        for rule in self._tree.get_matching_rules(event):
+        for rule in self._generic_tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event, rule)
-            processing_time = float('{:.10f}'.format(time() - begin))
-            idx = self._tree.get_rule_id(rule)
+            processing_time = float("{:.10f}".format(time() - begin))
+            idx = self._generic_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
+
+        for rule in self._specific_tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event, rule)
+            processing_time = float("{:.10f}".format(time() - begin))
+            idx = self._specific_tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
         self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
         """
-        Apply matching rule to given log event. 
-        In the process of doing so, add the result of comparing 
+        Apply matching rule to given log event.
+        In the process of doing so, add the result of comparing
         the log with a given list to the specified subfield. This subfield will contain
         a list of list comparison results that might be based on multiple rules.
 
@@ -146,15 +165,15 @@ class ListComparison(RuleBasedProcessor):
         ----------
         event : dict
             Log message being processed.
-        rule : 
+        rule :
             Currently applied list comparison rule.
 
-        """ 
+        """
 
         comparison_result, comparison_key = self._list_comparison(rule, event)
 
         if comparison_result is not None:
-            output_field = rule.list_comparison_output_field+"."+comparison_key
+            output_field = f"{ rule.list_comparison_output_field }.{ comparison_key }"
             field_possible = add_field_to(event, output_field, comparison_result, True)
             if not field_possible:
                 raise DuplicationError(self._name, [output_field])

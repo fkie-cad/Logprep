@@ -1,0 +1,17 @@
+[
+  {
+    "filter": "specific.client.ip AND NOT winlog.computer_name",
+    "geoip_enricher": {
+      "source_ip": "client.ip"
+    },
+    "description": ""
+  },
+  {
+    "filter": "specific.source.ip",
+    "geoip_enricher": {
+      "source_ip": "source.ip",
+      "output_field": "source.geo.ip"
+    },
+    "description": ""
+  }
+]

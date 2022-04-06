@@ -9,8 +9,11 @@ from typing import List
 from time import time
 from tldextract import TLDExtract
 
-from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
-                                               InvalidRuleFileError)
+from logprep.processor.base.exceptions import (
+    NotARulesDirectoryError,
+    InvalidRuleDefinitionError,
+    InvalidRuleFileError,
+)
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to
@@ -22,16 +25,18 @@ class DomainLabelExtractorError(BaseException):
     """Base class for DomainLabelExtractor related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f'DomainLabelExtractor ({name}): {message}')
+        super().__init__(f"DomainLabelExtractor ({name}): {message}")
 
 
 class DuplicationError(DomainLabelExtractorError):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
-        message = 'The following fields already existed and ' \
-                  'were not overwritten by the DomainLabelExtractor: '
-        message += ' '.join(skipped_fields)
+        message = (
+            "The following fields already existed and "
+            "were not overwritten by the DomainLabelExtractor: "
+        )
+        message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
@@ -39,7 +44,9 @@ class DuplicationError(DomainLabelExtractorError):
 class DomainLabelExtractor(RuleBasedProcessor):
     """Splits a domain into it's parts/labels."""
 
-    def __init__(self, name: str, tree_config: str, tld_lists: list, tagging_field_name: str, logger: Logger):
+    def __init__(
+        self, name: str, tree_config: str, tld_lists: list, tagging_field_name: str, logger: Logger
+    ):
         """
         Initializes the DomainLabelExtractor processor.
 
@@ -83,7 +90,9 @@ class DomainLabelExtractor(RuleBasedProcessor):
             for root, _, files in walk(path):
                 json_files = []
                 for file in files:
-                    if (file.endswith('.json') or file.endswith('.yml')) and not file.endswith('_test.json'):
+                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
+                        "_test.json"
+                    ):
                         json_files.append(file)
                 for file in json_files:
                     rules = self._load_rules_from_file(join(root, file))
@@ -91,10 +100,13 @@ class DomainLabelExtractor(RuleBasedProcessor):
                         self._tree.add_rule(rule, self._logger)
 
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(f'{self.describe()} loaded {self._tree.rule_counter} rules '
-                               f'({current_process().name})')
+            self._logger.debug(
+                f"{self.describe()} loaded {self._tree.rule_counter} rules "
+                f"({current_process().name})"
+            )
 
         self.ps.setup_rules([None] * self._tree.rule_counter)
+
     # pylint: enable=arguments-differ
 
     def _load_rules_from_file(self, path: str):
@@ -115,9 +127,9 @@ class DomainLabelExtractor(RuleBasedProcessor):
 
     def describe(self) -> str:
         """Return name of given processor instance."""
-        return f'DomainLabelExtractor ({self._name})'
+        return f"DomainLabelExtractor ({self._name})"
 
-    @TimeMeasurement.measure_time('domain_label_extractor')
+    @TimeMeasurement.measure_time("domain_label_extractor")
     def process(self, event: dict):
         """
         Process log message.
@@ -132,7 +144,7 @@ class DomainLabelExtractor(RuleBasedProcessor):
         for rule in self._tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event, rule)
-            processing_time = float('{:.10f}'.format(time() - begin))
+            processing_time = float("{:.10f}".format(time() - begin))
             idx = self._tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
@@ -149,7 +161,7 @@ class DomainLabelExtractor(RuleBasedProcessor):
         ----------
         event : dict
             Log message being processed.
-        rule : 
+        rule :
             Currently applied domain label extractor rule.
         """
 
@@ -158,11 +170,11 @@ class DomainLabelExtractor(RuleBasedProcessor):
 
             labels = self._tld_extractor(domain)
 
-            if labels.suffix != '':
+            if labels.suffix != "":
                 labels_dict = {
-                    'registered_domain': labels.domain + "." + labels.suffix,
-                    'top_level_domain': labels.suffix,
-                    'subdomain': labels.subdomain
+                    "registered_domain": labels.domain + "." + labels.suffix,
+                    "top_level_domain": labels.suffix,
+                    "subdomain": labels.subdomain,
                 }
 
                 # add results to event
@@ -176,15 +188,18 @@ class DomainLabelExtractor(RuleBasedProcessor):
                 try:
                     # check if ip address is ipv4
                     socket.inet_aton(labels.domain)
-                    event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
-                                                      [f"ip_in_{rule.target_field.replace('.', '_')}"]
+                    event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + [
+                        f"ip_in_{rule.target_field.replace('.', '_')}"
+                    ]
                 except OSError:
                     try:
                         # check if ip address is ipv6
                         socket.inet_pton(socket.AF_INET6, labels.domain)
-                        event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
-                                                          [f"ip_in_{rule.target_field.replace('.', '_')}"]
+                        event[self._tagging_field_name] = event.get(
+                            self._tagging_field_name, []
+                        ) + [f"ip_in_{rule.target_field.replace('.', '_')}"]
                     except OSError:
                         # if it's neither ipv4 nor ipv6 then add error tag
-                        event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + \
-                                                          [f"invalid_domain_in_{rule.target_field.replace('.', '_')}"]
+                        event[self._tagging_field_name] = event.get(
+                            self._tagging_field_name, []
+                        ) + [f"invalid_domain_in_{rule.target_field.replace('.', '_')}"]

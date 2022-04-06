@@ -23,9 +23,12 @@ class PrometheusStatsExporter:
         metrics = ["processed", "errors", "warnings", "matches",
                    "mean_matches_per_rule", "avg_processing_time"]
 
-        self.stats = {stat_key: Gauge(stat_key, "Tracks the overall processing status",
-                                      labelnames=["of"], registry=None)
-                      for stat_key in metrics}
+        self.stats = {
+            stat_key: Gauge(
+                stat_key, "Tracks the overall processing status", labelnames=["of"], registry=None
+            )
+            for stat_key in metrics
+        }
 
         self.info_metric = Info("tracking", "Gives general information about the tracking")
         self.info_metric.info({"interval_in_seconds": str(self._configuration.get("period"))})

@@ -45,26 +45,26 @@ class Aggregator:
 
     @classmethod
     def _aggregate(cls, record: LogRecord) -> bool:
-        log_id = '{0[levelname]}:{0[name]}:{0[msg]}'.format(record.__dict__)
+        log_id = "{0[levelname]}:{0[name]}:{0[msg]}".format(record.__dict__)
         if log_id not in cls.logs:
             cls.logs[log_id] = {
-                'cnt': 1,
-                'first_record': record,
-                'last_record': None,
-                'cnt_passed': 0,
-                'aggregate': False
+                "cnt": 1,
+                "first_record": record,
+                "last_record": None,
+                "cnt_passed": 0,
+                "aggregate": False,
             }
         else:
-            cls.logs[log_id]['cnt'] += 1
-            cls.logs[log_id]['last_record'] = record
+            cls.logs[log_id]["cnt"] += 1
+            cls.logs[log_id]["last_record"] = record
 
-            if record.created - cls.logs[log_id]['last_record'].created < cls.log_period:
-                if cls.logs[log_id]['cnt'] > cls.count_threshold or cls.logs[log_id]['aggregate']:
+            if record.created - cls.logs[log_id]["last_record"].created < cls.log_period:
+                if cls.logs[log_id]["cnt"] > cls.count_threshold or cls.logs[log_id]["aggregate"]:
                     return False
 
-        cls.logs[log_id]['aggregate'] = False
-        cls.logs[log_id]['first_record'] = record
-        cls.logs[log_id]['cnt_passed'] += 1
+        cls.logs[log_id]["aggregate"] = False
+        cls.logs[log_id]["first_record"] = record
+        cls.logs[log_id]["cnt_passed"] += 1
 
         return True
 
@@ -78,27 +78,27 @@ class Aggregator:
     def _perform_logging_if_possible(cls):
         _logs = deepcopy(cls.logs)
         for log_id, data in _logs.items():
-            count = data['cnt'] - data['cnt_passed']
-            if count > 1 and data['last_record']:
-                time_passed = round(time() - data['first_record'].created, 1)
+            count = data["cnt"] - data["cnt_passed"]
+            if count > 1 and data["last_record"]:
+                time_passed = round(time() - data["first_record"].created, 1)
                 time_passed = min(time_passed, cls.log_period)
                 if time_passed < 60:
                     period = "{} sek".format(time_passed)
                 else:
                     period = f"{time_passed / 60.0:.1f} min"
-                data['last_record'].__dict__['msg'] += ' ({} in ~{})'.format(count, period)
-                logging.getLogger(data['last_record'].__dict__['name']).log(
-                    data['last_record'].levelno,
-                    data['last_record'].msg)
+                data["last_record"].__dict__["msg"] += " ({} in ~{})".format(count, period)
+                logging.getLogger(data["last_record"].__dict__["name"]).log(
+                    data["last_record"].levelno, data["last_record"].msg
+                )
 
-                cls.logs[log_id]['first_record'] = data['last_record']
-                cls.logs[log_id]['last_record'] = None
-                cls.logs[log_id]['cnt'] = 0
-                cls.logs[log_id]['cnt_passed'] = 0
-                cls.logs[log_id]['aggregate'] = True
+                cls.logs[log_id]["first_record"] = data["last_record"]
+                cls.logs[log_id]["last_record"] = None
+                cls.logs[log_id]["cnt"] = 0
+                cls.logs[log_id]["cnt_passed"] = 0
+                cls.logs[log_id]["aggregate"] = True
             else:
-                if time() - cls.logs[log_id]['first_record'].created >= cls.log_period:
-                    cls.logs[log_id]['aggregate'] = False
+                if time() - cls.logs[log_id]["first_record"].created >= cls.log_period:
+                    cls.logs[log_id]["aggregate"] = False
 
     @staticmethod
     def filter(record: LogRecord) -> bool:

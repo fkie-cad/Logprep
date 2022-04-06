@@ -12,29 +12,34 @@ from ruamel.yaml import YAML
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
-from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
-                                               InvalidRuleFileError)
+from logprep.processor.base.exceptions import (
+    NotARulesDirectoryError,
+    InvalidRuleDefinitionError,
+    InvalidRuleFileError,
+)
 
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
 
-yaml = YAML(typ='safe', pure=True)
+yaml = YAML(typ="safe", pure=True)
 
 
 class TemplateReplacerError(BaseException):
     """Base class for TemplateReplacer related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f'TemplateReplacer ({name}): {message}')
+        super().__init__(f"TemplateReplacer ({name}): {message}")
 
 
 class DuplicationError(TemplateReplacerError):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
-        message = 'The following fields already existed and ' \
-                  'were not overwritten by the TemplateReplacer: '
-        message += ' '.join(skipped_fields)
+        message = (
+            "The following fields already existed and "
+            "were not overwritten by the TemplateReplacer: "
+        )
+        message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
@@ -42,32 +47,38 @@ class DuplicationError(TemplateReplacerError):
 class TemplateReplacer(RuleBasedProcessor):
     """Resolve values in documents by referencing a mapping list."""
 
-    def __init__(self, name: str, tree_config: str, template_path: str, pattern: dict, logger: Logger):
+    def __init__(
+        self, name: str, tree_config: str, template_path: str, pattern: dict, logger: Logger
+    ):
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
 
-        self._target_field = pattern['target_field']
-        self._target_field_split = self._target_field.split('.')
-        self._fields = pattern['fields']
-        delimiter = pattern['delimiter']
-        allow_delimiter_field = pattern['allowed_delimiter_field']
+        self._target_field = pattern["target_field"]
+        self._target_field_split = self._target_field.split(".")
+        self._fields = pattern["fields"]
+        delimiter = pattern["delimiter"]
+        allow_delimiter_field = pattern["allowed_delimiter_field"]
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
 
         self._mapping = dict()
-        with open(template_path, 'r') as template_file:
+        with open(template_path, "r") as template_file:
             template = yaml.load(template_file)
 
         for key, value in template.items():
             split_key = key.split(delimiter)
-            left, middle_and_right = split_key[:allow_delimiter_index], split_key[allow_delimiter_index:]
-            middle = middle_and_right[:-(len(self._fields) - allow_delimiter_index - 1)]
-            right = middle_and_right[-(len(self._fields) - allow_delimiter_index - 1):]
-            recombined_keys = left + ['-'.join(middle)] + right
+            left, middle_and_right = (
+                split_key[:allow_delimiter_index],
+                split_key[allow_delimiter_index:],
+            )
+            middle = middle_and_right[: -(len(self._fields) - allow_delimiter_index - 1)]
+            right = middle_and_right[-(len(self._fields) - allow_delimiter_index - 1) :]
+            recombined_keys = left + ["-".join(middle)] + right
 
             if len(recombined_keys) != len(self._fields):
-                raise TemplateReplacerError(self._name,
-                                            f'Not enough delimiters in \'{template_path}\' '
-                                            f'to populate {self._fields}')
+                raise TemplateReplacerError(
+                    self._name,
+                    f"Not enough delimiters in '{template_path}' " f"to populate {self._fields}",
+                )
 
             try:
                 _dict = self._mapping
@@ -81,8 +92,8 @@ class TemplateReplacer(RuleBasedProcessor):
 
             except ValueError as error:
                 raise TemplateReplacerError(
-                    self._name,
-                    'template_replacer template is invalid!') from error
+                    self._name, "template_replacer template is invalid!"
+                ) from error
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(self, rule_paths: List[str]):
@@ -94,8 +105,9 @@ class TemplateReplacer(RuleBasedProcessor):
             for root, _, files in walk(path):
                 json_files = []
                 for file in files:
-                    if (file.endswith('.json') or file.endswith('.yml')) and not file.endswith(
-                            '_test.json'):
+                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
+                        "_test.json"
+                    ):
                         json_files.append(file)
                 for file in json_files:
                     rules = self._load_rules_from_file(join(root, file))
@@ -103,8 +115,10 @@ class TemplateReplacer(RuleBasedProcessor):
                         self._tree.add_rule(rule, self._logger)
 
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(f'{self.describe()} loaded {self._tree.rule_counter} rules '
-                               f'({current_process().name})')
+            self._logger.debug(
+                f"{self.describe()} loaded {self._tree.rule_counter} rules "
+                f"({current_process().name})"
+            )
 
         self.ps.setup_rules([None] * self._tree.rule_counter)
         # pylint: enable=arguments-differ
@@ -116,16 +130,16 @@ class TemplateReplacer(RuleBasedProcessor):
             raise InvalidRuleFileError(self._name, path) from error
 
     def describe(self) -> str:
-        return f'TemplateReplacer ({self._name})'
+        return f"TemplateReplacer ({self._name})"
 
-    @TimeMeasurement.measure_time('template_replacer')
+    @TimeMeasurement.measure_time("template_replacer")
     def process(self, event: dict):
         self._event = event
 
         for rule in self._tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event)
-            processing_time = float('{:.10f}'.format(time() - begin))
+            processing_time = float("{:.10f}".format(time() - begin))
             idx = self._tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
@@ -152,7 +166,7 @@ class TemplateReplacer(RuleBasedProcessor):
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
-        fields = dotted_field.split('.')
+        fields = dotted_field.split(".")
         dict_ = event
         for field in fields:
             if field in dict_:

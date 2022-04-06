@@ -12,14 +12,19 @@ class TemplateReplacerFactory(BaseFactory):
         """Create a template replacer."""
         TemplateReplacerFactory._check_configuration(configuration)
 
-        template_replacer = TemplateReplacer(name, configuration.get('tree_config'),
-                                             configuration['template'], configuration['pattern'],
-                                             logger)
-        template_replacer.add_rules_from_directory(configuration['rules'])
+        template_replacer = TemplateReplacer(
+            name,
+            configuration.get("tree_config"),
+            configuration["template"],
+            configuration["pattern"],
+            logger,
+        )
+        template_replacer.add_rules_from_directory(configuration["rules"])
 
         return template_replacer
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        TemplateReplacerFactory._check_common_configuration('template_replacer', ['rules'],
-                                                            configuration)
+        TemplateReplacerFactory._check_common_configuration(
+            "template_replacer", ["rules"], configuration
+        )

@@ -1,0 +1,11 @@
+[{
+  "filter": "something-else",
+  "generic_resolver": {
+    "field_mapping": {
+      "to_resolve": "well-resolved"
+    },
+    "resolve_list": {
+      "pattern": "result"
+    }
+  }
+}]

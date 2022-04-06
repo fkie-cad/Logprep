@@ -41,11 +41,11 @@ class Output(metaclass=ABCMeta):
     def describe_endpoint(self) -> str:
         """Return a brief description of the endpoint for this output.
 
-         This may be used as a word in a sentence.
-         Setting a description is optional.
+        This may be used as a word in a sentence.
+        Setting a description is optional.
 
-         """
-        return 'Output: the.host.name.tld:1234'
+        """
+        return "Output: the.host.name.tld:1234"
 
     @abstractmethod
     def store(self, document: dict):

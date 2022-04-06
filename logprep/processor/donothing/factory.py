@@ -14,8 +14,8 @@ class DoNothingFactory(BaseFactory):
         """Create a donothing processor."""
         DoNothingFactory._check_configuration(configuration)
 
-        errors = configuration['errors'] if 'errors' in configuration else []
-        extra_data = configuration['extra_data'] if 'extra_data' in configuration else None
+        errors = configuration["errors"] if "errors" in configuration else []
+        extra_data = configuration["extra_data"] if "extra_data" in configuration else None
 
         donothing = DoNothing(name, logger, errors, extra_data)
 
@@ -23,4 +23,4 @@ class DoNothingFactory(BaseFactory):
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        DoNothingFactory._check_common_configuration('donothing', [], configuration)
+        DoNothingFactory._check_common_configuration("donothing", [], configuration)

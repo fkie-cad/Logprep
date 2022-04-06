@@ -17,8 +17,11 @@ from tldextract import TLDExtract
 
 from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarning
 from logprep.processor.domain_resolver.rule import DomainResolverRule
-from logprep.processor.base.exceptions import (NotARulesDirectoryError, InvalidRuleDefinitionError,
-                                               InvalidRuleFileError)
+from logprep.processor.base.exceptions import (
+    NotARulesDirectoryError,
+    InvalidRuleDefinitionError,
+    InvalidRuleFileError,
+)
 
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
@@ -32,16 +35,18 @@ class DomainResolverError(BaseException):
     """Base class for DomainResolver related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f'DomainResolver ({name}): {message}')
+        super().__init__(f"DomainResolver ({name}): {message}")
 
 
 class DuplicationError(DomainResolverError):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
-        message = 'The following fields already existed and ' \
-                  'were not overwritten by the DomainResolver: '
-        message += ' '.join(skipped_fields)
+        message = (
+            "The following fields already existed and "
+            "were not overwritten by the DomainResolver: "
+        )
+        message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
@@ -49,9 +54,19 @@ class DuplicationError(DomainResolverError):
 class DomainResolver(RuleBasedProcessor):
     """Resolve domains."""
 
-    def __init__(self, name: str, tree_config: str, tld_list: str, timeout: float,
-                 cache_max_items: int, cache_max_timedelta: datetime.timedelta, salt: str,
-                 cache_enabled: bool, debug_cache: bool, logger: Logger):
+    def __init__(
+        self,
+        name: str,
+        tree_config: str,
+        tld_list: str,
+        timeout: float,
+        cache_max_items: int,
+        cache_max_timedelta: datetime.timedelta,
+        salt: str,
+        cache_enabled: bool,
+        debug_cache: bool,
+        logger: Logger,
+    ):
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
 
@@ -77,8 +92,9 @@ class DomainResolver(RuleBasedProcessor):
             for root, _, files in walk(path):
                 json_files = []
                 for file in files:
-                    if (file.endswith('.json') or file.endswith('.yml')) and not file.endswith(
-                            '_test.json'):
+                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
+                        "_test.json"
+                    ):
                         json_files.append(file)
                 for file in json_files:
                     rules = self._load_rules_from_file(join(root, file))
@@ -86,10 +102,13 @@ class DomainResolver(RuleBasedProcessor):
                         self._tree.add_rule(rule, self._logger)
 
         if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(f'{self.describe()} loaded {self._tree.rule_counter} rules'
-                               f' ({current_process().name})')
+            self._logger.debug(
+                f"{self.describe()} loaded {self._tree.rule_counter} rules"
+                f" ({current_process().name})"
+            )
 
         self.ps.setup_rules([None] * self._tree.rule_counter)
+
     # pylint: enable=arguments-differ
 
     def _load_rules_from_file(self, path: str):
@@ -99,9 +118,9 @@ class DomainResolver(RuleBasedProcessor):
             raise InvalidRuleFileError(self._name, path) from error
 
     def describe(self) -> str:
-        return f'DomainResolver ({self._name})'
+        return f"DomainResolver ({self._name})"
 
-    @TimeMeasurement.measure_time('domain_resolver')
+    @TimeMeasurement.measure_time("domain_resolver")
     def process(self, event: dict):
         self._event = event
 
@@ -109,7 +128,7 @@ class DomainResolver(RuleBasedProcessor):
             try:
                 begin = time()
                 self._apply_rules(event, rule)
-                processing_time = float('{:.10f}'.format(time() - begin))
+                processing_time = float("{:.10f}".format(time() - begin))
                 idx = self._tree.get_rule_id(rule)
                 self.ps.update_per_rule(idx, processing_time)
             except DomainResolverError as error:
@@ -125,7 +144,7 @@ class DomainResolver(RuleBasedProcessor):
         if domain_or_url_str:
             domain = self._tld_extractor(domain_or_url_str).fqdn
             if domain:
-                self.ps.increment_nested(self._name, 'total_urls')
+                self.ps.increment_nested(self._name, "total_urls")
                 if self._cache_enabled:
                     try:
                         hash_string = self._hasher.hash_str(domain, salt=self._salt)
@@ -137,30 +156,33 @@ class DomainResolver(RuleBasedProcessor):
                                 first_hash = next(iter(self._cache.keys()))
                                 del self._domain_ip_map[first_hash]
                             self._domain_ip_map[hash_string] = resolved_ip
-                            self.ps.increment_nested(self._name, 'resolved_new')
+                            self.ps.increment_nested(self._name, "resolved_new")
 
                         if self._debug_cache:
-                            event['resolved_ip_debug'] = dict()
-                            event_dbg = event['resolved_ip_debug']
+                            event["resolved_ip_debug"] = dict()
+                            event_dbg = event["resolved_ip_debug"]
                             if requires_storing:
-                                event_dbg['obtained_from_cache'] = False
+                                event_dbg["obtained_from_cache"] = False
                             else:
-                                event_dbg['obtained_from_cache'] = True
-                            event_dbg['cache_size'] = len(self._domain_ip_map.keys())
+                                event_dbg["obtained_from_cache"] = True
+                            event_dbg["cache_size"] = len(self._domain_ip_map.keys())
 
                         if self._domain_ip_map[hash_string] is not None:
-                            adding_was_successful = add_field_to(event, output_field, self._domain_ip_map[hash_string])
+                            adding_was_successful = add_field_to(
+                                event, output_field, self._domain_ip_map[hash_string]
+                            )
 
                             if not adding_was_successful:
                                 raise DuplicationError(self._name, [output_field])
 
-                            self.ps.increment_nested(self._name, 'resolved_cache')
+                            self.ps.increment_nested(self._name, "resolved_cache")
                     except (context.TimeoutError, OSError):
                         self._domain_ip_map[hash_string] = None
-                        self.ps.increment_nested(self._name, 'timeouts')
+                        self.ps.increment_nested(self._name, "timeouts")
                     except UnicodeError as error:
-                        raise DomainResolverError(self._name,
-                                                  f'{error} for domain \'{domain}\'') from error
+                        raise DomainResolverError(
+                            self._name, f"{error} for domain '{domain}'"
+                        ) from error
                 else:
                     if output_field not in event:
                         try:
@@ -169,5 +191,5 @@ class DomainResolver(RuleBasedProcessor):
                         except (context.TimeoutError, OSError):
                             pass
                         except UnicodeError as error:
-                            error_msg = f'{error} for domain \'{domain}\''
+                            error_msg = f"{error} for domain '{domain}'"
                             raise DomainResolverError(self._name, error_msg) from error

@@ -28,7 +28,7 @@ class JsonlInput(Input):
         self.shut_down_called_count = 0
 
     def describe_endpoint(self) -> str:
-        return 'jsonl'
+        return "jsonl"
 
     def setup(self):
         self.setup_called_count += 1
@@ -54,7 +54,7 @@ class JsonlInput(Input):
         parsed_events = []
         with open(jsonl_path) as jsonl_file:
             for json_string in jsonl_file.readlines():
-                if json_string.strip() != '':
+                if json_string.strip() != "":
                     event = json.loads(json_string)
                     parsed_events.append(event)
         return parsed_events

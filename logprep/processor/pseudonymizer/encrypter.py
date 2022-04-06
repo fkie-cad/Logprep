@@ -38,7 +38,10 @@ class DualPKCS1HybridEncrypter(Encrypter):
         with open(keyfile_depseudo) as file:
             self._pubkey_depseudo = RSA.import_key(file.read())
 
-    def encrypt(self, input_str: str, ) -> str:
+    def encrypt(
+        self,
+        input_str: str,
+    ) -> str:
         """Encrypt a string using hybrid encryption.
 
         The input string is encrypted with AES in CTR mode using a random

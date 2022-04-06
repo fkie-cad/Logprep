@@ -8,7 +8,7 @@ class GrokPatternLoaderError(BaseException):
     """Base class for GrokPatternLoader related exceptions."""
 
     def __init__(self, message: str):
-        super().__init__(f'GrokPatternLoader: {message}')
+        super().__init__(f"GrokPatternLoader: {message}")
 
 
 class GrokPatternLoader:
@@ -51,16 +51,17 @@ class GrokPatternLoader:
 
         """
         grok_pattern_dict = dict()
-        with open(pattern_path, 'r') as pattern_file:
+        with open(pattern_path, "r") as pattern_file:
             lines = pattern_file.readlines()
-            lines = [line for line in lines if line.strip() and not line.startswith('#')]
+            lines = [line for line in lines if line.strip() and not line.startswith("#")]
             for idx, line in enumerate(lines):
-                line = line.rstrip('\n') if idx != len(lines) - 1 else line
-                identifier, pattern = line.split(' ', 1)
+                line = line.rstrip("\n") if idx != len(lines) - 1 else line
+                identifier, pattern = line.split(" ", 1)
 
                 if identifier in grok_pattern_dict:
-                    raise GrokPatternLoaderError(f'Duplicate pattern definition - Pattern: '
-                                                 f'"{identifier}"')
+                    raise GrokPatternLoaderError(
+                        f"Duplicate pattern definition - Pattern: " f'"{identifier}"'
+                    )
                 grok_pattern_dict[identifier] = pattern
         return grok_pattern_dict
 
@@ -86,6 +87,7 @@ class GrokPatternLoader:
                 intersection = set(grok_pattern_dict).intersection(new_patterns)
                 if intersection:
                     raise GrokPatternLoaderError(
-                        f'Duplicate pattern definition across files - Patterns: "{intersection}"')
+                        f'Duplicate pattern definition across files - Patterns: "{intersection}"'
+                    )
                 grok_pattern_dict.update(new_patterns)
         return grok_pattern_dict

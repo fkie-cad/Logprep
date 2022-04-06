@@ -15,7 +15,7 @@ def dump_config_as_file(config_path, config):
         The configuration that should be saved
     """
 
-    with open(config_path, 'w') as generated_config_file:
+    with open(config_path, "w") as generated_config_file:
         safe_dump(config, generated_config_file)
 
 
@@ -34,9 +34,9 @@ def parse_jsonl(jsonl_path):
         A list of dictionaries where each dictionary represents one event
     """
     parsed_events = []
-    with open(jsonl_path, 'r') as jsonl_file:
+    with open(jsonl_path, "r") as jsonl_file:
         for json_string in jsonl_file.readlines():
-            if json_string.strip() != '':
+            if json_string.strip() != "":
                 event = json.loads(json_string)
                 parsed_events.append(event)
     return parsed_events
@@ -56,5 +56,5 @@ def parse_json(json_path):
     dict
         The dictionary representing the json.
     """
-    with open(json_path, 'r') as json_file:
+    with open(json_path, "r") as json_file:
         return json.load(json_file)
