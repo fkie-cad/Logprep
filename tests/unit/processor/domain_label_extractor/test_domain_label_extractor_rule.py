@@ -1,24 +1,16 @@
 import copy
 from pathlib import Path
-import pytest
 
+import pytest
 from logprep.filter.lucene_filter import LuceneFilter
-from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.domain_label_extractor")
 
 from logging import getLogger
 
-from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarning
-from logprep.processor.processor_factory_error import InvalidConfigurationError
 from logprep.processor.domain_label_extractor.rule import (
     DomainLabelExtractorRule,
     InvalidDomainLabelExtractorDefinition,
-)
-from logprep.processor.domain_label_extractor.factory import DomainLabelExtractorFactory
-from logprep.processor.domain_label_extractor.processor import (
-    DomainLabelExtractor,
-    DuplicationError,
 )
 
 logger = getLogger()
@@ -50,28 +42,33 @@ class TestDomainLabelExtractorRule:
 
         assert rule1 == rule2
 
-    def test_rules_are_not_equal(self):
-        rule = DomainLabelExtractorRule(
+    def test_rules_are_not_equal_filter_different(self):
+        rule1 = DomainLabelExtractorRule(
             LuceneFilter.create(self.RULE["filter"]),
             self.RULE["domain_label_extractor"],
         )
 
-        rule_diff_target_field = DomainLabelExtractorRule(
+        rule2 = DomainLabelExtractorRule(
+            LuceneFilter.create("diff_domain"),
+            self.RULE["domain_label_extractor"],
+        )
+
+        assert rule1 != rule2
+
+    def test_rules_are_not_equal_target_field_different(self):
+        rule1 = DomainLabelExtractorRule(
             LuceneFilter.create(self.RULE["filter"]),
             self.RULE["domain_label_extractor"],
         )
 
-        rule_diff_filter = DomainLabelExtractorRule(
+        rule2 = DomainLabelExtractorRule(
             LuceneFilter.create(self.RULE["filter"]),
             self.RULE["domain_label_extractor"],
         )
 
-        rule_diff_target_field._target_field = ["diff_field"]
-        rule_diff_filter._filter = ["diff_domain"]
+        rule2._target_field = ["diff_field"]
 
-        assert rule != rule_diff_target_field
-        assert rule != rule_diff_filter
-        assert rule_diff_target_field != rule_diff_filter
+        assert rule1 != rule2
 
     def test_missing_target_field(self):
         rule = copy.deepcopy(self.RULE)
