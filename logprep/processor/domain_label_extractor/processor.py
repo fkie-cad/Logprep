@@ -169,27 +169,21 @@ class DomainLabelExtractor(RuleBasedProcessor):
         """
         if not self._field_exists:
             return
-
         domain = self._get_dotted_field_value(event, rule.target_field)
+        tagging_field = event.get(self._tagging_field_name, [])
 
-        try:
-            ipaddress.ip_address(domain)
-            tagging_field = event.get(self._tagging_field_name, [])
+        if self._is_valid_ip(domain):
             tagging_field.append(f"ip_in_{rule.target_field.replace('.', '_')}")
             event[self._tagging_field_name] = tagging_field
             return
-        except ValueError:
-            pass
 
         labels = self._tld_extractor(domain)
-
         if labels.suffix != "":
             labels_dict = {
                 "registered_domain": labels.domain + "." + labels.suffix,
                 "top_level_domain": labels.suffix,
                 "subdomain": labels.subdomain,
             }
-
             for label, _ in labels_dict.items():
                 output_field = f"{rule.output_field}.{label}"
                 adding_was_successful = add_field_to(event, output_field, labels_dict[label])
@@ -197,6 +191,13 @@ class DomainLabelExtractor(RuleBasedProcessor):
                 if not adding_was_successful:
                     raise DuplicationError(self._name, [output_field])
         else:
-            event[self._tagging_field_name] = event.get(self._tagging_field_name, []) + [
-                f"invalid_domain_in_{rule.target_field.replace('.', '_')}"
-            ]
+            tagging_field.append(f"invalid_domain_in_{rule.target_field.replace('.', '_')}")
+            event[self._tagging_field_name] = tagging_field
+
+    @staticmethod
+    def _is_valid_ip(domain):
+        try:
+            ipaddress.ip_address(domain)
+            return True
+        except ValueError:
+            return False
