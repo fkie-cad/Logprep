@@ -13,8 +13,10 @@ pipeline:
       type: labeler
       schema: tests/testdata/unit/labeler/schemas/schema3.json
       include_parent_labels: on
-      rules:
-        - tests/testdata/unit/labeler/test_only_rules/
+      specific_rules:
+        - tests/testdata/unit/labeler/rules/specific/
+      generic_rules:
+        - tests/testdata/unit/labeler/rules/generic/
   - donothingbla:
       type: donothing
   - donothingbla - make these names unique!:

@@ -3,17 +3,15 @@ from time import time
 from typing import List
 from logging import Logger, DEBUG
 
-from os import walk
-from os.path import isdir, realpath, join
 
 from multiprocessing import current_process
 
 from ruamel.yaml import YAML
+from logprep.framework.rule_tree.rule_tree import RuleTree
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
     InvalidRuleDefinitionError,
     InvalidRuleFileError,
 )
@@ -47,12 +45,19 @@ class DuplicationError(TemplateReplacerError):
 class TemplateReplacer(RuleBasedProcessor):
     """Resolve values in documents by referencing a mapping list."""
 
-    def __init__(
-        self, name: str, tree_config: str, template_path: str, pattern: dict, logger: Logger
-    ):
+    def __init__(self, name: str, configuration: dict, logger: Logger):
+        tree_config = configuration.get("tree_config")
+        pattern = configuration.get("pattern")
+        template_path = configuration.get("template")
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
-
+        specific_rules_dirs = configuration.get("specific_rules")
+        generic_rules_dirs = configuration.get("generic_rules")
+        self._generic_tree = RuleTree(config_path=tree_config)
+        self._specific_tree = RuleTree(config_path=tree_config)
+        self.add_rules_from_directory(
+            generic_rules_dirs=generic_rules_dirs, specific_rules_dirs=specific_rules_dirs
+        )
         self._target_field = pattern["target_field"]
         self._target_field_split = self._target_field.split(".")
         self._fields = pattern["fields"]
@@ -61,7 +66,7 @@ class TemplateReplacer(RuleBasedProcessor):
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
 
         self._mapping = dict()
-        with open(template_path, "r") as template_file:
+        with open(template_path, "r", encoding="utf8") as template_file:
             template = yaml.load(template_file)
 
         for key, value in template.items():
@@ -96,32 +101,35 @@ class TemplateReplacer(RuleBasedProcessor):
                 ) from error
 
     # pylint: disable=arguments-differ
-    def add_rules_from_directory(self, rule_paths: List[str]):
-        """Add rules from given directory."""
-        for path in rule_paths:
-            if not isdir(realpath(path)):
-                raise NotARulesDirectoryError(self._name, path)
-
-            for root, _, files in walk(path):
-                json_files = []
-                for file in files:
-                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
-                        "_test.json"
-                    ):
-                        json_files.append(file)
-                for file in json_files:
-                    rules = self._load_rules_from_file(join(root, file))
-                    for rule in rules:
-                        self._tree.add_rule(rule, self._logger)
-
+    def add_rules_from_directory(
+        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
+    ):
+        for specific_rules_dir in specific_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
+            for rule_path in rule_paths:
+                rules = TemplateReplacerRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._specific_tree.add_rule(rule, self._logger)
+        for generic_rules_dir in generic_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
+            for rule_path in rule_paths:
+                rules = TemplateReplacerRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                f"{self.describe()} loaded {self._tree.rule_counter} rules "
+                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
+                f"specific rules ({current_process().name})"
+            )
+            self._logger.debug(
+                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
                 f"({current_process().name})"
             )
+        self.ps.setup_rules(
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
+        )
 
-        self.ps.setup_rules([None] * self._tree.rule_counter)
-        # pylint: enable=arguments-differ
+    # pylint: enable=arguments-differ
 
     def _load_rules_from_file(self, path: str):
         try:
@@ -136,11 +144,18 @@ class TemplateReplacer(RuleBasedProcessor):
     def process(self, event: dict):
         self._event = event
 
-        for rule in self._tree.get_matching_rules(event):
+        for rule in self._generic_tree.get_matching_rules(event):
             begin = time()
             self._apply_rules(event)
             processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._tree.get_rule_id(rule)
+            idx = self._generic_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
+
+        for rule in self._specific_tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event)
+            processing_time = float("{:.10f}".format(time() - begin))
+            idx = self._specific_tree.get_rule_id(rule)
             self.ps.update_per_rule(idx, processing_time)
 
         self.ps.increment_processed_count()

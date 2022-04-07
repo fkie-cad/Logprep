@@ -2,7 +2,7 @@
 # pylint: disable=protected-access
 import json
 import re
-from abc import ABC, abstractmethod
+from abc import ABC
 from logging import getLogger
 
 from unittest import mock
@@ -29,27 +29,24 @@ class BaseProcessorTestCase(ABC):
     object: BaseProcessor = None
 
     @property
-    @abstractmethod
     def specific_rules_dirs(self):
         """
-        the specific rules_dirs for the processor
-        has to be implemented
+        gets the specific rules_dirs for the processor from CONFIG
         """
-        ...
+        return self.CONFIG.get("specific_rules")
 
     @property
-    @abstractmethod
     def generic_rules_dirs(self):
         """
-        the generic rules_dirs for the processor
-        has to be implemented
+        gets the generic rules_dirs for the processor from CONFIG
         """
-        ...
+        return self.CONFIG.get("generic_rules")
 
     def set_rules(self, rules_dirs):
         """
         sets the rules from the given rules_dirs
         """
+        assert rules_dirs is not None
         assert isinstance(rules_dirs, list)
         specific_rules = list()
 

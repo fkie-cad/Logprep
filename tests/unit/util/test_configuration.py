@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 
 from copy import deepcopy
-from os.path import join
 from logging import getLogger
 
 import pytest

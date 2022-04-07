@@ -6,8 +6,10 @@ pipeline:
         type: labeler
         schema: tests/testdata/auto_tests/labeler/schema.json
         include_parent_labels: True
-        rules:
-            - tests/testdata/auto_tests/labeler/rules/
+        specific_rules:
+            - tests/testdata/auto_tests/labeler/rules/specific/
+        generic_rules:
+          - tests/testdata/auto_tests/labeler/rules/generic/
   - normalizer:
       type: normalizer
       specific_rules:

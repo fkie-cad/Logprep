@@ -1,0 +1,30 @@
+[
+  {
+    "filter": "other_match",
+    "pre_detector": {
+      "id": "RULE_ONE_ID",
+      "title": "RULE_ONE",
+      "severity": "critical",
+      "mitre": [
+        "attack.test1",
+        "attack.test2"
+      ],
+      "case_condition": "directly"
+    },
+    "description": "Test two rules one"
+  },
+  {
+    "filter": "another_match",
+    "pre_detector": {
+      "id": "RULE_TWO_ID",
+      "title": "RULE_TWO",
+      "severity": "suspicious",
+      "mitre": [
+        "attack.test2",
+        "attack.test4"
+      ],
+      "case_condition": "directly"
+    },
+    "description": "Test two rules two"
+  }
+]

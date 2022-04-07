@@ -1,8 +1,6 @@
 """This module contains functionality for creating processors of given type."""
-
-from typing import List
-
 from logging import Logger
+from typing import List
 
 from logprep.processor.processor_factory_error import (
     UnknownProcessorTypeError,
@@ -19,11 +17,6 @@ class BaseFactory:
     @staticmethod
     def create(name: str, configuration: dict, logger: Logger):
         raise NotImplementedError
-
-    @staticmethod
-    def _add_defaults_to_configuration(configuration: dict):
-        if "include_parent_labels" not in configuration:
-            configuration["include_parent_labels"] = False  # default
 
     @staticmethod
     def _check_configuration(configuration: dict):

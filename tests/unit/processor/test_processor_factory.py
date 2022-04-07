@@ -121,7 +121,8 @@ class TestProcessorFactory:
                 "labelername": {
                     "type": "labeler",
                     "schema": path_to_schema,
-                    "rules": [path_to_single_rule],
+                    "generic_rules": [path_to_single_rule],
+                    "specific_rules": [path_to_single_rule],
                 }
             },
             logger,
