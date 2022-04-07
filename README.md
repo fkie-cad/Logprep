@@ -90,7 +90,7 @@ and secondly they specify how to process the message.
 For example which fields should be deleted or to which IP-address the geolocation should be 
 retrieved.
 
-For performance reasons on startup all rules per processor are aggregated to one single rule-tree. 
+For performance reasons on startup all rules per processor are aggregated to a generic and a specific rule tree, respectively. 
 Instead of evaluating all rules independently for each log message the message is checked against 
 the rule tree.
 Each node in the rule tree represents a condition that has to be meet,
@@ -112,7 +112,7 @@ D-->J(rule 3)
 E-->G(Rule 4)
 ```
 
-To further improve the performance it is possible to reorder the rule tree,
+To further improve the performance it is possible to prioritize specific nodes of the rule tree,
 such that broader conditions are higher up in the tree. 
 And specific conditions can be moved further down.
 Following json gives an example of such a rule tree configuration. 
@@ -202,7 +202,7 @@ connector:
     send_timeout: 2
 ```
 
-The following yaml represents a dropper-configuration which according to the previous configuration 
+The following yaml represents a dropper rule which according to the previous configuration 
 should be in the `rules/03_dropper/generic/` directory.
 
 ```yaml
