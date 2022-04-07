@@ -46,9 +46,11 @@ class DomainLabelExtractorRule(Rule):
 
     def __eq__(self, other: "DomainLabelExtractorRule") -> bool:
         return all(
-            other.filter == self._filter,
-            self._output_field == other.output_field,
-            self._target_field == other.target_field,
+            [
+                self._output_field == other.output_field,
+                other.filter == self._filter,
+                self._target_field == other.target_field,
+            ]
         )
 
     def __hash__(self) -> int:
