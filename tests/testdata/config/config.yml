@@ -10,15 +10,15 @@ pipeline:
         - tests/testdata/unit/normalizer/rules/generic/
       regex_mapping: tests/testdata/unit/normalizer/regex_mapping.yml
   - labelername:
-        type: labeler
-        schema: tests/testdata/unit/labeler/schemas/schema3.json
-        include_parent_labels: on
-        rules:
-            - tests/testdata/unit/labeler/test_only_rules/
+      type: labeler
+      schema: tests/testdata/unit/labeler/schemas/schema3.json
+      include_parent_labels: on
+      rules:
+        - tests/testdata/unit/labeler/test_only_rules/
   - donothingbla:
-        type: donothing
+      type: donothing
   - donothingbla - make these names unique!:
-        type: donothing
+      type: donothing
   - pseudonymizer:
       type: pseudonymizer
       pubkey_analyst: tests/testdata/unit/pseudonymizer/example_analyst_pub.pem
@@ -32,7 +32,7 @@ pipeline:
         - tests/testdata/unit/pseudonymizer/rules/generic/
       max_cached_pseudonyms: 1000000
       max_caching_days: 1
-      tld_list: '-'
+      tld_list: "-"
 
 connector:
   type: confluentkafka
