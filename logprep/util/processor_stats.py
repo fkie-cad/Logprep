@@ -1,6 +1,5 @@
 """This module contains functionality to log the status of logprep."""
 import json
-import math
 from collections import OrderedDict
 from copy import deepcopy
 from ctypes import c_double
@@ -9,6 +8,7 @@ from logging import Logger
 from multiprocessing import Lock, Value, current_process
 from typing import List, Union
 
+import math
 import numpy as np
 from time import time
 
@@ -60,8 +60,13 @@ class ProcessorStats:
         self.reset_statistics()
 
     def reset_statistics(self):
-        self.aggr_data = {"processed": 0, "matches": 0, "errors": 0,
-                          "warnings": 0, "avg_processing_time": 0}
+        self.aggr_data = {
+            "processed": 0,
+            "matches": 0,
+            "errors": 0,
+            "warnings": 0,
+            "avg_processing_time": 0,
+        }
         self._max_time = -1
         self._processing_time_sample_counter = 0
 
@@ -79,11 +84,12 @@ class ProcessorStats:
 
     @property
     def processed_count(self):
+        """Return the current count of processed events"""
         return self.aggr_data["processed"]
 
-    def increment_processed_count(self, n: int = 1):
+    def increment_processed_count(self, number: int = 1):
         """Increments the processed count statistic."""
-        self.aggr_data["processed"] += n
+        self.aggr_data["processed"] += number
 
     def update_processed_count(self, processed_count: int):
         """Increment processed count in aggregation data."""
@@ -95,12 +101,12 @@ class ProcessorStats:
         currently observed samples. Then incrementing this by the new sample value and dividing it
         back to the average with the incremented sample counter.
         """
-        current_average = self.aggr_data['avg_processing_time']
+        current_average = self.aggr_data["avg_processing_time"]
         average_multiple = current_average * self._processing_time_sample_counter
         extended_average_multiple = average_multiple + next_time_sample
         self._processing_time_sample_counter += 1
         new_average = extended_average_multiple / self._processing_time_sample_counter
-        self.aggr_data['avg_processing_time'] = new_average
+        self.aggr_data["avg_processing_time"] = new_average
 
     def increment_aggregation(self, key: str):
         """Increment value in aggregation data."""
@@ -160,11 +166,28 @@ class StatusTracker:
     def __init__(
         self, shared_dict: dict, status_logger_config: dict, status_logger: List, lock: Lock
     ):
+        """
+        Initiates a status tracker object that can aggregate metrics from the different pipeline
+        processes and export them to a rolling file or a prometheus.
 
+        Parameters
+        ----------
+        shared_dict : dict
+            A common data structure shared between the multiprocessing processes. It contains the
+            metrics for each pipeline.
+        status_logger_config : dict
+            The status tracker configuration defining for example the aggregation period or the
+            export targets.
+        status_logger : List
+            This list contains the configured logger. Can contain an actual python Logger or an
+            PrometheusStatsExporter.
+        lock : Lock
+            A multiprocessing lock that prevents concurrent access to the shared dict.
+        """
         self._file_logger = None
         self._prometheus_logger = None
 
-        self.unpack_status_logger(status_logger)
+        self._unpack_status_logger(status_logger)
 
         self._shared_dict = shared_dict
 
@@ -188,7 +211,16 @@ class StatusTracker:
 
         self.kafka_offset = -1
 
-    def unpack_status_logger(self, status_logger):
+    def _unpack_status_logger(self, status_logger):
+        """
+        Extracts the configured logger from the given list and assigns them to the proper
+        class attributes.
+
+        Parameters
+        ----------
+        status_logger : List
+            List of different status logger
+        """
         if status_logger is not None:
             for logger in status_logger:
                 if isinstance(logger, Logger):
@@ -197,6 +229,7 @@ class StatusTracker:
                     self._prometheus_logger = logger
 
     def _reset_statistics(self):
+        """Resets the status tracker statistics as well as the statistics of each processor."""
         self.aggr_data = {
             "errors": 0,
             "warnings": 0,
