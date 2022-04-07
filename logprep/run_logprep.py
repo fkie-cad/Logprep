@@ -123,7 +123,7 @@ def _run_logprep(arguments, logger: Logger, status_logger: Optional[List]):
     # pylint: enable=broad-except
 
 
-def get_processor_type_and_rule_class() -> dict:
+def get_processor_type_and_rule_class() -> dict:  # pylint: disable=missing-docstring
     return {
         basename(Path(inspect.getfile(rule_class)).parent): rule_class
         for rule_class in Rule.__subclasses__()
@@ -147,15 +147,13 @@ def main():
     if not args.disable_logging:
         status_logger = _get_status_logger(config, logger)
 
-    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config \
-        .get("measure_time", dict()) \
-        .get("enabled", False)
-    TimeMeasurement.APPEND_TO_EVENT = config \
-        .get("measure_time", dict()) \
-        .get("append_to_event", False)
-    StatsClassesController.ENABLED = config \
-        .get("status_logger", dict()) \
-        .get("enabled", True)
+    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get("measure_time", dict()).get(
+        "enabled", False
+    )
+    TimeMeasurement.APPEND_TO_EVENT = config.get("measure_time", dict()).get(
+        "append_to_event", False
+    )
+    StatsClassesController.ENABLED = config.get("status_logger", dict()).get("enabled", True)
 
     if logger.isEnabledFor(DEBUG):
         logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
