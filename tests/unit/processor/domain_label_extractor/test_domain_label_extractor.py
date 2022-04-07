@@ -1,25 +1,11 @@
-from pathlib import Path
-
+# pylint: disable=protected-access
+# pylint: disable=missing-docstring
 import pytest
-
-from tests.unit.processor.base import BaseProcessorTestCase
-
-pytest.importorskip("logprep.processor.domain_label_extractor")
-
-from logging import getLogger
-
 from logprep.processor.base.processor import ProcessingWarning
-from logprep.processor.domain_label_extractor.rule import (
-    DomainLabelExtractorRule,
-)
 from logprep.processor.domain_label_extractor.factory import DomainLabelExtractorFactory
-from logprep.processor.domain_label_extractor.processor import (
-    DuplicationError,
-)
-
-logger = getLogger()
-rel_tld_list_path = "tests/testdata/external/public_suffix_list.dat"
-tld_list = f"file://{Path().absolute().joinpath(rel_tld_list_path).as_posix()}"
+from logprep.processor.domain_label_extractor.processor import DuplicationError
+from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDomainLabelExtractor(BaseProcessorTestCase):
@@ -41,7 +27,6 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
 
-    @staticmethod
     def _load_specific_rule(self, rule):
         specific_rule = DomainLabelExtractorRule._create_from_dict(rule)
         self.object._specific_tree.add_rule(specific_rule, self.logger)
@@ -196,7 +181,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         }
 
         domain_label_extractor = DomainLabelExtractorFactory.create(
-            name="Test DomainLabelExtractor Name", configuration=config, logger=logger
+            name="Test DomainLabelExtractor Name", configuration=config, logger=self.logger
         )
         document = {"url": {"domain": "domain.fubarbo"}}
         expected_output = {
@@ -217,7 +202,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         }
 
         domain_label_extractor = DomainLabelExtractorFactory.create(
-            "Test DomainLabelExtractor Name", config, logger
+            "Test DomainLabelExtractor Name", config, self.logger
         )
         document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
         expected_output = {
