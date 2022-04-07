@@ -44,14 +44,7 @@ class DuplicationError(DomainLabelExtractorError):
 class DomainLabelExtractor(RuleBasedProcessor):
     """Splits a domain into it's parts/labels."""
 
-    def __init__(
-        self,
-        name: str,
-        configuration: dict,
-        tld_lists: list,
-        tagging_field_name: str,
-        logger: Logger,
-    ):
+    def __init__(self, name: str, configuration: dict, logger: Logger):
         """
         Initializes the DomainLabelExtractor processor.
 
@@ -59,15 +52,15 @@ class DomainLabelExtractor(RuleBasedProcessor):
         ----------
         name : str
             Name of the DomainLabelExtractor processor (as referred to in the pipeline).
-        tree_config : str
-            Path to the configuration file which can prioritize fields and add conditional rules.
-        tld_lists : list
-            Optional list of paths to tld-suffix lists. If 'none' a default list will be retrieved online.
+        configuraiton : dict
+            Configuration of the processor
         logger : Logger
             Standard logger.
         """
 
         tree_config = configuration.get("tree_config")
+        tld_lists = configuration.get("tld_lists")
+        tagging_field_name = configuration.get("tagging_field_name", "tags")
         super().__init__(name, tree_config=tree_config, logger=logger)
         self.ps = ProcessorStats()
         self._specific_tree = RuleTree(config_path=tree_config)

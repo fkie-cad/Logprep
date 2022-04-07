@@ -21,8 +21,6 @@ class DomainLabelExtractorFactory(BaseFactory):
         return DomainLabelExtractor(
             name=name,
             configuration=configuration,
-            tld_lists=configuration.get("tld_lists", None),
-            tagging_field_name=configuration.get("tagging_field_name", "tags"),
             logger=logger,
         )
 
