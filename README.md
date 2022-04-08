@@ -20,12 +20,12 @@ The main idea is that each processor performs a simple task that is easy to carr
 Once the log massage is passed through all processors in the pipeline the resulting
 message is sent to a configured output connector.
 
-Logprep is designed to be extensible with new connectors and processors.
+Logprep is designed to be expandable with new connectors and processors.
 
-Logprep is primarily designed to process log message, generally Logprep can handle JSON messages,
+Logprep is primarily designed to process log messages. Generally, Logprep can handle JSON messages,
 allowing further applications besides log handling.
 
-This readme provides basic information to the following topics:
+This readme provides basic information about the following topics:
 - [About Logprep](#about-logprep)    
 - [Getting Started](#getting-started)
 - [Docker Quickstart](#docker-quickstart-environment)
@@ -74,18 +74,18 @@ J --> K[Output\nConnector]
 ### Processors
 
 Every processor has one simple task to fulfill.
-For example the `Normalizer` can split up long message fields into multiple subfields or copy 
+For example, the `Normalizer` can split up long message fields into multiple subfields or copy 
 content from one field into another one, leading to a normalized message pattern.
-The `Geo-IP Enricher` takes for example an ip-address and adds the geolocation of it to the 
+The `Geo-IP Enricher`, for example, takes an ip-address and adds the geolocation of it to the 
 log message, based on a configured geo-ip database. 
 Or the `Dropper` deletes fields from the log message.
 
 As detailed overview of all processors can be found in the
 [processor documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/processor.html).
 
-To influence the behaviour of those processors each can be configured with a set of rules.
+To influence the behaviour of those processors, each can be configured with a set of rules.
 These rules define two things.
-Firstly they specify when the processor should process a log message
+Firstly, they specify when the processor should process a log message
 and secondly they specify how to process the message. 
 For example which fields should be deleted or to which IP-address the geolocation should be 
 retrieved.
@@ -95,7 +95,7 @@ Instead of evaluating all rules independently for each log message the message i
 the rule tree.
 Each node in the rule tree represents a condition that has to be meet,
 while the leafs represent changes that the processor should apply.
-If no condition is meet the processor will just pass the log event to the next processor.
+If no condition is met, the processor will just pass the log event to the next processor.
 
 The following chart gives an example of such a rule tree:
 
@@ -112,7 +112,7 @@ D-->J(rule 3)
 E-->G(Rule 4)
 ```
 
-To further improve the performance it is possible to prioritize specific nodes of the rule tree,
+To further improve the performance, it is possible to prioritize specific nodes of the rule tree,
 such that broader conditions are higher up in the tree. 
 And specific conditions can be moved further down.
 Following json gives an example of such a rule tree configuration. 
@@ -130,11 +130,10 @@ This configuration will lead to the prioritization of `tags` and `message` in th
 }
 ```
 
-Instead of writing very specific rules that apply to single log messages it is also possible
+Instead of writing very specific rules that apply to single log messages, it is also possible
 to define generic rules that apply to multiple messages. 
-It is possible to define for each processor a set of generic and specific rules, resulting in 
-two rule trees. 
-The generic rules will be applied before the specific rules.
+It is possible to define a set of generic and specific rules for each processor, resulting 
+in two rule trees. 
 
 ### Connectors
 
@@ -147,9 +146,9 @@ The details regarding the connectors can be found in the
 
 ### Configuration
 
-To run Logprep certain configurations have to be given. 
-Firstly a general configuration that describes the pipeline and the connectors, 
-and lastly the processors need rules in order to process messages correctly.
+To run Logprep, certain configurations have to be provided. 
+First, a general configuration is given that describes the pipeline and the connectors, 
+and lastly, the processors need rules in order to process messages correctly.
 
 The following yaml configuration shows an example configuration for the pipeline shown 
 in the graph above:
@@ -317,9 +316,9 @@ The docker-compose file is located in the directory quickstart.
 
 ### Running the Test Environment
 
-Before running docker-compose `sysctl -w vm.max_map_count=262144` must be executed.
+Before running, docker-compose `sysctl -w vm.max_map_count=262144` must be executed.
 Otherwise, Elasticsearch is not properly started.
-The environment can be either started with a Logprep container or without one.
+The environment can either be started with a Logprep container or without one.
 To start it without Logprep, the command `docker-compose up -d` can be executed from within 
 the quickstart directory.
 It starts and connects Kafka, ZooKeeper, Logstash, Elasticsearch and Kibana.
