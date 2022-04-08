@@ -21,8 +21,7 @@ configurations below.
 generic_rules
 -------------
 
-List of directory paths with generic rule files that can match multiple event types.
-These rules are being executed before specific rules, i.e.:
+List of directory paths with generic rule files that can match multiple event types, e.g.:
 
   * /var/git/logprep-rules/processor/generic/
   * /var/git/other-rules/processor/generic/
@@ -30,8 +29,7 @@ These rules are being executed before specific rules, i.e.:
 specific_rules
 --------------
 
-List of directory paths with rule files that are specific for only some specific events.
-These rules are being executed after generic rules, i.e.:
+List of directory paths with rule files that are specific for only some specific events, e.g.:
 
   * /var/git/logprep-rules/processor/specific/
   * /var/git/other-rules/processor/specific/
