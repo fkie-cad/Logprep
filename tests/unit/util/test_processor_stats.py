@@ -79,7 +79,7 @@ class TestProcessorStats:
         processor_stats.increment_processed_count(number)
         assert processor_stats.processed_count == 2 * number
 
-    def test_update_processed_count_is_correct(self):
+    def test_update_processed_count_sets_number_in_processed_count(self):
         processor_stats = ProcessorStats()
         assert processor_stats.processed_count == 0
         number = 42
