@@ -37,7 +37,7 @@ List of directory paths with rule files that are specific for only some specific
 tree_config
 -----------
 
-Path to JSON file with rule tree configuration.
+Path to a JSON file with a valid rule tree configuration.
 
 --------
 
@@ -304,7 +304,7 @@ tld_lists
 
 Optional list of path to files with top-level domain lists
 (like https://publicsuffix.org/list/public_suffix_list.dat).
-If no path is given a default list will be retrieved online and cached in a local directory.
+If no path is given, a default list will be retrieved online and cached in a local directory.
 For local files the path
 has to be given with :code:`file:///path/to/file.dat`.
 
