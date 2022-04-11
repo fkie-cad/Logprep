@@ -31,15 +31,21 @@ class PrometheusStatsExporter:
             os.makedirs(multi_processing_dir, exist_ok=True)
 
     def _extract_port_from(self, configuration):
-        target_configs = configuration.get("targets")
+        target_configs = configuration.get("targets", [])
         for config in target_configs:
             if "prometheus" in config:
                 self._port = config.get("prometheus").get("port")
 
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""
-        metrics = ["processed", "errors", "warnings", "matches",
-                   "mean_matches_per_rule", "avg_processing_time"]
+        metrics = [
+            "processed",
+            "errors",
+            "warnings",
+            "matches",
+            "mean_matches_per_rule",
+            "avg_processing_time",
+        ]
 
         self.stats = {
             stat_key: Gauge(
