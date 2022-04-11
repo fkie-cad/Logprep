@@ -1,17 +1,12 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
 
 from copy import deepcopy
 from logging import getLogger
 
 import pytest
 
-from tests.testdata.metadata import (
-    path_to_config,
-    path_to_schema,
-    path_to_testdata,
-    path_to_invalid_rules,
-    path_to_schema2,
-)
+from tests.testdata.metadata import path_to_config
 from logprep.util.configuration import (
     InvalidConfigurationError,
     Configuration,
@@ -23,6 +18,9 @@ logger = getLogger()
 
 
 class TestConfiguration:
+
+    config: dict
+
     def setup_method(self):
         self.config = Configuration.create_from_yaml(path_to_config)
 
@@ -193,7 +191,9 @@ class TestConfiguration:
             ),
         ],
     )
-    def test_verify_status_logger(self, status_logger_config_dict, raised_error, test_case):
+    def test_verify_status_logger(
+        self, status_logger_config_dict, raised_error, test_case
+    ):  # pylint: disable=unused-argument
         status_logger_config = deepcopy(self.config)
         status_logger_config.update(status_logger_config_dict)
         if raised_error is not None:
