@@ -90,24 +90,8 @@ class TestProcessorStats:
         assert processor_stats.processed_count == number
 
 
-class PrometheusMockGauge(dict):
-    def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
-        super().__init__()
-        self.current_reporter = None
-
-    def labels(self, of):  # pylint: disable=invalid-name
-        self.current_reporter = of
-        return self
-
-    def set(self, value):
-        self[self.current_reporter] = value
-
-
 class TestStatusTracker:
     def setup_method(self):
-        self.patcher = mock.patch("logprep.util.prometheus_exporter.Gauge", PrometheusMockGauge)
-        self.patcher.start()
-
         REGISTRY.__init__()
         StatsClassesController.ENABLED = True
         logger = logging.getLogger("test-logger")
@@ -141,9 +125,6 @@ class TestStatusTracker:
         second_dropper.ps.num_rules = 9
 
         self.status_tracker.set_pipeline([first_dropper, second_dropper])
-
-    def teardown(self):
-        self.patcher.stop()
 
     def test_unpack_status_logger_sets_correct_attributes(self):
         assert isinstance(self.status_tracker._file_logger, logging.Logger)
@@ -191,7 +172,8 @@ class TestStatusTracker:
             assert len(processor.ps.aggr_data["times_per_idx"]) == processor.ps.num_rules
             assert np.sum(processor.ps.aggr_data["times_per_idx"]) == 0
 
-    def test_log_to_prometheus_exports_correct_metrics(self):
+    @mock.patch("prometheus_client.Gauge.labels")
+    def test_log_to_prometheus_exports_calls_gauge_labels(self, mock_labels):
         metrics = {
             "MultiprocessingPipeline-1": {"kafka_offset": 1, "processed": 123},
             "MultiprocessingPipeline-2": {"kafka_offset": 3, "processed": 50},
@@ -201,18 +183,18 @@ class TestStatusTracker:
             "error_types": {"A": 2, "B": 2},
             "warning_types": {"A": 2, "B": 2},
             "Dropper1": {
-                "processed": 1,
-                "matches": 1,
-                "errors": 1,
-                "warnings": 1,
+                "processed": 10,
+                "matches": 11,
+                "errors": 12,
+                "warnings": 13,
                 "mean_matches_per_rule": 1,
                 "avg_processing_time": 1,
             },
             "Dropper2": {
-                "processed": 2,
-                "matches": 2,
-                "errors": 2,
-                "warnings": 2,
+                "processed": 20,
+                "matches": 21,
+                "errors": 22,
+                "warnings": 23,
                 "mean_matches_per_rule": 2,
                 "avg_processing_time": 2,
             },
@@ -220,19 +202,14 @@ class TestStatusTracker:
         }
 
         self.status_tracker._log_to_prometheus(ordered_data=metrics)
-
-        exported_metrics = self.status_tracker._prometheus_logger.stats
-        assert exported_metrics.get("processed") == {
-            "pipeline": 37,
-            "Dropper1": 1.0,
-            "Dropper2": 2.0,
-        }
-        assert exported_metrics.get("errors") == {"pipeline": 12, "Dropper1": 1.0, "Dropper2": 2.0}
-        assert exported_metrics.get("warnings") == {
-            "pipeline": 13,
-            "Dropper1": 1.0,
-            "Dropper2": 2.0,
-        }
-        assert exported_metrics.get("matches") == {"Dropper1": 1.0, "Dropper2": 2.0}
-        assert exported_metrics.get("mean_matches_per_rule") == {"Dropper1": 1.0, "Dropper2": 2.0}
-        assert exported_metrics.get("avg_processing_time") == {"Dropper1": 1.0, "Dropper2": 2.0}
+        mock_labels.assert_has_calls([mock.call(of="pipeline"), mock.call().set(12)])
+        mock_labels.assert_has_calls([mock.call(of="pipeline"), mock.call().set(13)])
+        mock_labels.assert_has_calls([mock.call(of="pipeline"), mock.call().set(37)])
+        mock_labels.assert_has_calls([mock.call(of="Dropper1"), mock.call().set(10)])
+        mock_labels.assert_has_calls([mock.call(of="Dropper1"), mock.call().set(11)])
+        mock_labels.assert_has_calls([mock.call(of="Dropper1"), mock.call().set(12)])
+        mock_labels.assert_has_calls([mock.call(of="Dropper1"), mock.call().set(13)])
+        mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(20)])
+        mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(21)])
+        mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(22)])
+        mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(23)])
