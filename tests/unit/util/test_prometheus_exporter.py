@@ -1,3 +1,5 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
 from logging import getLogger
 
 from prometheus_client import Gauge, Info, REGISTRY
@@ -21,8 +23,14 @@ class TestPrometheusStatsExporter:
         }
         exporter = PrometheusStatsExporter(status_logger_config, getLogger("test-logger"))
 
-        expected_metrics = {"processed", "errors", "warnings", "matches",
-                            "mean_matches_per_rule", "avg_processing_time"}
+        expected_metrics = {
+            "processed",
+            "errors",
+            "warnings",
+            "matches",
+            "mean_matches_per_rule",
+            "avg_processing_time",
+        }
 
         created_metric_names = set(exporter.stats.keys())
 
@@ -32,7 +40,9 @@ class TestPrometheusStatsExporter:
         assert len(missing_keys) == 0, f"following metrics are missing: {missing_keys}"
         assert len(unknown_keys) == 0, f"following metrics are unexpected: {unknown_keys}"
 
-        assert all([isinstance(exporter.stats[metric_key], Gauge) for metric_key in exporter.stats.keys()])
+        assert all(
+            [isinstance(exporter.stats[metric_key], Gauge) for metric_key in exporter.stats.keys()]
+        )
 
         assert isinstance(exporter.info_metric, Info)
 
