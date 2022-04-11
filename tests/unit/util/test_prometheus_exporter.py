@@ -1,6 +1,8 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
 from logging import getLogger
 
-from prometheus_client import Counter, Info, REGISTRY
+from prometheus_client import Gauge, Info, REGISTRY
 
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
@@ -21,27 +23,31 @@ class TestPrometheusStatsExporter:
         }
         exporter = PrometheusStatsExporter(status_logger_config, getLogger("test-logger"))
 
-        expected_metrics = {"processed", "errors", "warnings", "matches", "mean_matches_per_rule"}
+        expected_metrics = {
+            "processed",
+            "errors",
+            "warnings",
+            "matches",
+            "mean_matches_per_rule",
+            "avg_processing_time",
+        }
 
-        created_metrics = exporter.stats
-        created_metric_names = set(created_metrics.keys())
+        created_metric_names = set(exporter.stats.keys())
 
         missing_keys = expected_metrics.difference(created_metric_names)
         unknown_keys = created_metric_names.difference(expected_metrics)
 
-        # assert that correct metrics were created
         assert len(missing_keys) == 0, f"following metrics are missing: {missing_keys}"
         assert len(unknown_keys) == 0, f"following metrics are unexpected: {unknown_keys}"
 
-        for metric_key in exporter.stats.keys():
-            assert isinstance(exporter.stats[metric_key], Counter)
+        assert all(
+            [isinstance(exporter.stats[metric_key], Gauge) for metric_key in exporter.stats.keys()]
+        )
 
         assert isinstance(exporter.info_metric, Info)
 
-        # assert correct configuration
         assert exporter._port == status_logger_config["targets"][0]["prometheus"]["port"]
 
-        # assert if the tracking interval is tracked correctly
         expected_label = {"interval_in_seconds": f"{status_logger_config['period']}"}
         tracked_tracking_interval = REGISTRY.get_sample_value("tracking_info", expected_label)
         assert tracked_tracking_interval == 1
@@ -55,5 +61,4 @@ class TestPrometheusStatsExporter:
         }
         exporter = PrometheusStatsExporter(status_logger_config, getLogger("test-logger"))
 
-        # assert correct configuration
         assert exporter._port == 8000

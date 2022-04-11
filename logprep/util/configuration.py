@@ -133,7 +133,7 @@ class Configuration(dict):
             raise InvalidProcessorConfigurationError(str(error)) from error
 
     def _verify_status_logger(self):
-        required_keys = ["enabled", "period", "cumulative", "targets"]
+        required_keys = ["enabled", "period", "cumulative", "aggregate_processes", "targets"]
 
         for key in required_keys:
             if key not in self["status_logger"]:
@@ -163,25 +163,12 @@ class Configuration(dict):
 
     def _verify_status_logger_file_target(self, target_config):
         required_keys = {"path", "rollover_interval", "backup_count"}
-        if target_config is None:
-            raise RequiredConfigurationKeyMissingError(
-                "The status_logger file target is missing " f"all option fields: {required_keys}"
-            )
-
         given_keys = set(target_config.keys())
         missing_keys = required_keys.difference(given_keys)
-        unknown_keys = given_keys.difference(required_keys)
 
         if missing_keys:
             raise RequiredConfigurationKeyMissingError(
                 f"The following option keys for the "
                 f"status_logger file target are missing: "
                 f"{missing_keys}"
-            )
-
-        if unknown_keys:
-            raise InvalidStatusLoggerConfigurationError(
-                "The following option keys for the "
-                "status_logger file target are unknown: "
-                f"{unknown_keys}"
             )
