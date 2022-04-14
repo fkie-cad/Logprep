@@ -21,13 +21,7 @@ from logprep.processor.base.exceptions import (
 )
 from logprep.processor.base.rule import Rule
 from logprep.processor.base.processor import BaseProcessor
-from logprep.processor.labeler.labeling_schema import (
-    LabelingSchema,
-    InvalidLabelingSchemaFileError,
-    DuplicateLabelInCategoryError,
-    CategoryWithoutDesciptionInSchemaError,
-    LabelWithoutDesciptionInSchemaError,
-)
+from logprep.processor.labeler.labeling_schema import LabelingSchema, InvalidLabelingSchemaFileError
 from logprep.filter.lucene_filter import LuceneFilterError
 
 
@@ -183,12 +177,7 @@ class SchemaAndRuleChecker:
     def _validate_schema_definition(self, path_schema: str) -> LabelingSchema:
         try:
             schema = LabelingSchema.create_from_file(path_schema)
-        except (
-            InvalidLabelingSchemaFileError,
-            DuplicateLabelInCategoryError,
-            CategoryWithoutDesciptionInSchemaError,
-            LabelWithoutDesciptionInSchemaError,
-        ) as error:
+        except InvalidLabelingSchemaFileError as error:
             self.errors.append(str(error))
         else:
             return schema
