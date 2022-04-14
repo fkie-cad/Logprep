@@ -1,8 +1,11 @@
 name: CI
 
+# only run tests for pull requests cause no file has to be changed without review
+# open -> open the pull request
+# synchronize -> push to branch of pull request
 on:
-  push:
-    branches: [ 'main', 'master', 'dev-*', 'fix-*' ]
+  pull_request:
+    types: [opened, synchronize]
 
 jobs:
   build-pex:
@@ -58,25 +61,65 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.6
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.6
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements_dev.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements_dev.txt
 
-    - name: Peroform unit tests
-      env:
-        PYTEST_ADDOPTS: "--color=yes"
-      run: |
-        pytest  -vv tests/unit
+      - name: Perform unit tests
+        env:
+          PYTEST_ADDOPTS: "--color=yes"
+        run: |
+          pytest  -vv tests/unit
 
-    - name: Peroform acceptance tests
-      env:
-        PYTEST_ADDOPTS: "--color=yes"
-      run: |
-        pytest  -vv tests/acceptance
+      - name: Perform acceptance tests
+        env:
+          PYTEST_ADDOPTS: "--color=yes"
+        run: |
+          pytest  -vv tests/acceptance
+
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.6
+
+      - name: Get changed python files
+        id: changed-files
+        uses: tj-actions/changed-files@v18.7
+        with:
+          files: |
+            **/*.py
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements_dev.txt
+
+      - name: check black formating
+        run: |
+          pip install black
+          black --check --diff --config ./pyproject.toml .
+
+      - name: lint changed and added files
+        run: |
+          pylint --rcfile=.pylintrc --fail-under 9.5 ${{ steps.changed-files.outputs.all_changed_files }}
+
+      - name: Run tests and collect coverage
+        run: pytest tests --cov=logprep --cov-report=xml
+
+      - name: Upload coverage reports to Codecov with GitHub Action
+        uses: codecov/codecov-action@v2
