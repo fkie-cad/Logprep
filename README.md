@@ -5,7 +5,10 @@
 ![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/fkie-cad/logprep/CI/main)
 [![Documentation Status](https://readthedocs.org/projects/logprep/badge/?version=latest)](http://logprep.readthedocs.io/?badge=latest)
 ![GitHub contributors](https://img.shields.io/github/contributors/fkie-cad/Logprep)
-![GitHub Repo stars](https://img.shields.io/github/stars/fkie-cad/logprep?style=social)  
+<a href="https://codecov.io/github/fkie-cad/Logprep" target="_blank">
+    <img src="https://img.shields.io/codecov/c/github/fkie-cad/Logprep?color=%2334D058" alt="Coverage">
+</a>
+![GitHub Repo stars](https://img.shields.io/github/stars/fkie-cad/logprep?style=social)
 </h3>
 
 ## Introduction
