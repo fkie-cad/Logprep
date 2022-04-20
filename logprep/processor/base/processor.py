@@ -121,8 +121,6 @@ class RuleBasedProcessor(BaseProcessor):
 
     def __init__(self, name: str, tree_config: str, logger: Logger):
         super().__init__(name, logger)
-        self._specific_rules = []
-        self._generic_rules = []
         self._specific_tree = RuleTree(config_path=tree_config)
         self._generic_tree = RuleTree(config_path=tree_config)
 
@@ -132,6 +130,39 @@ class RuleBasedProcessor(BaseProcessor):
         Optional: Called before processing starts.
 
         """
+
+    @property
+    def _specific_rules(self):
+        """
+        returns all specific rules
+
+        Returns
+        -------
+        specific_rules: list[Rule]
+        """
+        return self._specific_tree.rules
+
+    @property
+    def _generic_rules(self):
+        """
+        returns all generic rules
+
+        Returns
+        -------
+        generic_rules: list[Rule]
+        """
+        return self._generic_tree.rules
+
+    @property
+    def _rules(self):
+        """
+        returns all rules
+
+        Returns
+        -------
+        rules: list[Rule]
+        """
+        return [*self._generic_rules, *self._specific_rules]
 
     @abstractmethod
     def describe(self) -> str:
