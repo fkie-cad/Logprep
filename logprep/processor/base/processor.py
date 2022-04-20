@@ -10,7 +10,9 @@ from abc import abstractmethod
 from os import walk, path
 from logging import Logger
 
+
 from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 
 
 class ProcessingError(BaseException):
@@ -118,6 +120,8 @@ class BaseProcessor:
 
 class RuleBasedProcessor(BaseProcessor):
     """Responsible for processing log events."""
+
+    _strategy = SpecificGenericProcessStrategy()
 
     def __init__(self, name: str, tree_config: str, logger: Logger):
         super().__init__(name, logger)

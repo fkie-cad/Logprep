@@ -14,6 +14,7 @@ from logprep.processor.base.processor import (
     ProcessingWarning,
     RuleBasedProcessor,
 )
+from logprep.processor.processor_strategy import ProcessStrategy
 
 
 class BaseProcessorTestCase(ABC):
@@ -194,3 +195,13 @@ class BaseProcessorTestCase(ABC):
         all_rules_count = len(generic_rules) + len(specific_rules)
         object_rules_count = len(self.object._rules)
         assert all_rules_count == object_rules_count
+
+    def test_process_strategy_returns_strategy_object(self):
+        assert isinstance(self.object._strategy, ProcessStrategy)
+
+    def test_process_calls_strategy(self):
+        with mock.patch(
+            "logprep.processor.processor_strategy.SpecificGenericProcessStrategy.process"
+        ) as mock_strategy_process:
+            self.object.process({})
+            mock_strategy_process.assert_called()
