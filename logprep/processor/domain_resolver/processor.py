@@ -57,57 +57,62 @@ class DomainResolver(RuleBasedProcessor):
     def __init__(
         self,
         name: str,
-        tree_config: str,
-        tld_list: str,
-        timeout: float,
-        cache_max_items: int,
-        cache_max_timedelta: datetime.timedelta,
-        salt: str,
-        cache_enabled: bool,
-        debug_cache: bool,
+        configuration: dict,
         logger: Logger,
     ):
+        tree_config = configuration.get("tree_config")
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
 
-        self._timeout = timeout
+        self._timeout = configuration.get("timeout", 0.5)
+        tld_list = configuration.get("tld_list")
         self._tld_extractor = TLDExtract(suffix_list_urls=[tld_list])
         self._thread_pool = ThreadPool(processes=1)
 
         self._hasher = SHA256Hasher()
-        self._salt = salt
+        self._salt = configuration.get("hash_salt")
+        cache_max_items = configuration.get("max_cached_domains")
+        cache_max_timedelta = datetime.timedelta(days=configuration["max_caching_days"])
         self._cache = Cache(max_items=cache_max_items, max_timedelta=cache_max_timedelta)
-        self._cache_enabled = cache_enabled
-        self._debug_cache = debug_cache
+        self._cache_enabled = configuration.get("cache_enabled", True)
+        self._debug_cache = configuration.get("debug_cache", False)
 
         self._domain_ip_map = dict()
+        self._specific_rules_dirs = configuration.get("specific_rules")
+        self._generic_rules_dirs = configuration.get("generic_rules")
+        self.add_rules_from_directory(
+            specific_rules_dirs=self._specific_rules_dirs,
+            generic_rules_dirs=self._generic_rules_dirs,
+        )
 
     # pylint: disable=arguments-differ
-    def add_rules_from_directory(self, rule_paths: List[str]):
-        """Add rules from given directory."""
-        for path in rule_paths:
-            if not isdir(realpath(path)):
-                raise NotARulesDirectoryError(self._name, path)
-
-            for root, _, files in walk(path):
-                json_files = []
-                for file in files:
-                    if (file.endswith(".json") or file.endswith(".yml")) and not file.endswith(
-                        "_test.json"
-                    ):
-                        json_files.append(file)
-                for file in json_files:
-                    rules = self._load_rules_from_file(join(root, file))
-                    for rule in rules:
-                        self._tree.add_rule(rule, self._logger)
-
+    def add_rules_from_directory(
+        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
+    ):
+        for specific_rules_dir in specific_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
+            for rule_path in rule_paths:
+                rules = DomainResolverRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._specific_tree.add_rule(rule, self._logger)
+        for generic_rules_dir in generic_rules_dirs:
+            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
+            for rule_path in rule_paths:
+                rules = DomainResolverRule.create_rules_from_file(rule_path)
+                for rule in rules:
+                    self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                f"{self.describe()} loaded {self._tree.rule_counter} rules"
-                f" ({current_process().name})"
+                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
+                f"specific rules ({current_process().name})"
             )
-
-        self.ps.setup_rules([None] * self._tree.rule_counter)
+            self._logger.debug(
+                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
+                f"generic rules ({current_process().name})"
+            )
+        self.ps.setup_rules(
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
+        )
 
     # pylint: enable=arguments-differ
 
@@ -123,17 +128,19 @@ class DomainResolver(RuleBasedProcessor):
     @TimeMeasurement.measure_time("domain_resolver")
     def process(self, event: dict):
         self._event = event
+        for rule in self._generic_tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event, rule)
+            processing_time = time() - begin
+            idx = self._generic_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
 
-        for rule in self._tree.get_matching_rules(event):
-            try:
-                begin = time()
-                self._apply_rules(event, rule)
-                processing_time = float("{:.10f}".format(time() - begin))
-                idx = self._tree.get_rule_id(rule)
-                self.ps.update_per_rule(idx, processing_time)
-            except DomainResolverError as error:
-                raise ProcessingWarning(str(error)) from error
-
+        for rule in self._specific_tree.get_matching_rules(event):
+            begin = time()
+            self._apply_rules(event, rule)
+            processing_time = time() - begin
+            idx = self._specific_tree.get_rule_id(rule)
+            self.ps.update_per_rule(idx, processing_time)
         self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
@@ -173,8 +180,13 @@ class DomainResolver(RuleBasedProcessor):
                             )
 
                             if not adding_was_successful:
-                                raise DuplicationError(self._name, [output_field])
-
+                                message = (
+                                    f"DomainResolver ({self.name}): The following "
+                                    f"fields already existed and "
+                                    f"were not overwritten by the DomainResolver: "
+                                    f"{output_field}"
+                                )
+                                raise ProcessingWarning(message=message)
                             self.ps.increment_nested(self._name, "resolved_cache")
                     except (context.TimeoutError, OSError):
                         self._domain_ip_map[hash_string] = None

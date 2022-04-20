@@ -121,10 +121,8 @@ class RuleBasedProcessor(BaseProcessor):
 
     def __init__(self, name: str, tree_config: str, logger: Logger):
         super().__init__(name, logger)
-        self._rules = []
         self._specific_rules = []
         self._generic_rules = []
-        self._tree = RuleTree(config_path=tree_config)
         self._specific_tree = RuleTree(config_path=tree_config)
         self._generic_tree = RuleTree(config_path=tree_config)
 
