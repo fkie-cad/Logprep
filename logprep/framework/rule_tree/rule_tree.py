@@ -49,7 +49,7 @@ class RuleTree:
         self.tag_map = {}
 
         if self._config_path:
-            with open(self._config_path, "r") as file:
+            with open(self._config_path, "r", encoding="utf8") as file:
                 config_data = load(file)
 
             self.priority_dict = config_data["priority_dict"]
