@@ -1,21 +1,16 @@
 """This module contains a Clusterer that clusters events using a heuristic approach."""
 
-from logging import Logger, DEBUG
-
-from typing import List, Optional
+from logging import DEBUG, Logger
 from multiprocessing import current_process
-from logprep.framework.rule_tree.rule_tree import RuleTree
+from typing import List
 
+from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
-    SignaturePhaseStreaming,
     LogRecord,
     SignatureEngine,
+    SignaturePhaseStreaming,
 )
-from logprep.processor.base.processor import RuleBasedProcessor
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError, InvalidRuleFileError
-
-from logprep.processor.clusterer.rule import ClustererRule
-
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
 
@@ -37,8 +32,6 @@ class Clusterer(RuleBasedProcessor):
 
         self.has_custom_tests = True
 
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
         self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
 
     def describe(self) -> str:
@@ -75,19 +68,11 @@ class Clusterer(RuleBasedProcessor):
 
     # pylint: enable=W0221
 
-    def _load_rules_from_file(self, path):
-        try:
-            return ClustererRule.create_rules_from_file(path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path) from error
-
     @TimeMeasurement.measure_time("clusterer")
     def process(self, event: dict):
         if self._is_clusterable(event):
-            matching_rules = list()
-            for rule in self._rules:
-                if rule.matches(event):
-                    matching_rules.append(rule)
+            matching_rules = self._specific_tree.get_matching_rules(event)
+            matching_rules += self._generic_tree.get_matching_rules(event)
             self._cluster(event, matching_rules)
 
         self.ps.increment_processed_count()
@@ -143,7 +128,7 @@ class Clusterer(RuleBasedProcessor):
 
     def test_rules(self):
         results = {}
-        for idx, rule in enumerate(self._rules):
+        for _, rule in enumerate(self._rules):
             rule_repr = rule.__repr__()
             results[rule_repr] = []
             try:
