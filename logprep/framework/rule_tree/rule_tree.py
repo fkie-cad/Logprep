@@ -244,6 +244,19 @@ class RuleTree:
 
         return size
 
+    def _get_rules_as_list(self) -> List[Rule]:
+        """get all rules
+        Returns
+        -------
+        rules: List[Rule]
+        """
+
+        return [rule for rule in self._rule_mapping]
+
     @property
-    def root(self) -> Node:
+    def rules(self):  # pylint: disable=missing-docstring
+        return self._get_rules_as_list()
+
+    @property
+    def root(self) -> Node:  # pylint: disable=missing-docstring
         return self._root
