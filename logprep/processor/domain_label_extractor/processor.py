@@ -2,7 +2,6 @@
 import ipaddress
 from logging import Logger, DEBUG
 from multiprocessing import current_process
-from time import time
 from typing import List
 
 from tldextract import TLDExtract
@@ -11,10 +10,7 @@ from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to
-from logprep.util.processor_stats import ProcessorStats, StatsClassesController
-from logprep.util.time_measurement import TimeMeasurement
-
-StatsClassesController.ENABLED = True
+from logprep.util.processor_stats import ProcessorStats
 
 
 class DomainLabelExtractorError(BaseException):
@@ -122,33 +118,6 @@ class DomainLabelExtractor(RuleBasedProcessor):
     def describe(self) -> str:
         """Return name of given processor instance."""
         return f"DomainLabelExtractor ({self._name})"
-
-    @TimeMeasurement.measure_time("domain_label_extractor")
-    def process(self, event: dict):
-        """
-        Process log message.
-
-        Parameters
-        ----------
-        event : dict
-            Current event log message to be processed.
-        """
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = time() - begin
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = time() - begin
-            idx = self._tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
