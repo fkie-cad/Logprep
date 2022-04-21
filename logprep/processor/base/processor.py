@@ -13,6 +13,7 @@ from logging import Logger
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
+from logprep.util.time_measurement import TimeMeasurement
 
 
 class ProcessingError(BaseException):
@@ -182,11 +183,11 @@ class RuleBasedProcessor(BaseProcessor):
         """
         return "undescribed processor"
 
-    @abstractmethod
+    @TimeMeasurement.measure_time()
     def process(self, event: dict):
-        """Process a log event by modifying its values in place.
-
-        To prevent any further processing/delete an event, remove all its contents.
+        """
+        Process a log event by calling the implemented `process` method of the
+        strategy object set in  `_strategy` attribute.
 
         Parameters
         ----------
@@ -195,7 +196,17 @@ class RuleBasedProcessor(BaseProcessor):
 
         """
 
-        raise NotImplementedError
+        self._strategy.process(
+            event,
+            generic_tree=self._generic_tree,
+            specific_tree=self._specific_tree,
+            callback=self._apply_rules,
+            processor_stats=self.ps,
+        )
+
+    @abstractmethod
+    def _apply_rules(self, event, rule):
+        ...
 
     def shut_down(self):
         """Stop processing of this processor.

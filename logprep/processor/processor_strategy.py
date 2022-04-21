@@ -27,7 +27,7 @@ class ProcessStrategy(ABC):
 
 class SpecificGenericProcessStrategy(ProcessStrategy):
     """
-    Strategy to process rules in following order:
+    Strategy to process rules in rule trees in the following order:
     specific_rules >> generic_rules
     """
 

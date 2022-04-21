@@ -15,6 +15,8 @@ from logprep.processor.base.processor import (
     RuleBasedProcessor,
 )
 from logprep.processor.processor_strategy import ProcessStrategy
+from logprep.util.helper import camel_to_snake
+from logprep.util.time_measurement import TimeMeasurement
 
 
 class BaseProcessorTestCase(ABC):
@@ -200,8 +202,30 @@ class BaseProcessorTestCase(ABC):
         assert isinstance(self.object._strategy, ProcessStrategy)
 
     def test_process_calls_strategy(self):
+        """
+        This test method needs to be overwritten in your ProcessorTests
+        if your processor uses another strategy
+        """
         with mock.patch(
             "logprep.processor.processor_strategy.SpecificGenericProcessStrategy.process"
         ) as mock_strategy_process:
             self.object.process({})
             mock_strategy_process.assert_called()
+
+    def test_process_is_measured(self):
+        TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
+        TimeMeasurement.APPEND_TO_EVENT = True
+        event = {}
+        self.object.process(event)
+        processing_times = event.get("processing_times")
+        assert processing_times
+
+    def test_process_measurements_appended_under_processor_config_name(self):
+        TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
+        TimeMeasurement.APPEND_TO_EVENT = True
+        event = {}
+        self.object.process(event)
+        processing_times = event.get("processing_times")
+        config_name = camel_to_snake(self.object.__class__.__name__)
+        assert processing_times[config_name]
+        assert isinstance(processing_times[config_name], float)
