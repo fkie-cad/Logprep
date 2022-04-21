@@ -4,7 +4,6 @@ from logging import Logger, DEBUG
 from multiprocessing import current_process
 from typing import List
 
-from time import time
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
@@ -13,7 +12,6 @@ from logprep.processor.labeler.labeling_schema import (
 )
 from logprep.processor.labeler.rule import LabelingRule
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class Labeler(RuleBasedProcessor):
@@ -101,37 +99,11 @@ class Labeler(RuleBasedProcessor):
 
                 tree.add_rule(rule, self._logger)
 
-    @TimeMeasurement.measure_time("labeler")
-    def process(self, event: dict):
-        """Process the current event"""
-
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug(f"{self.describe()} processing matching event")
-            self._apply_rules(event, rule)
-
-            processing_time = float(f"{time() - begin:.10f}")
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug(f"{self.describe()} processing matching event")
-            self._apply_rules(event, rule)
-
-            processing_time = float(f"{time() - begin:.10f}")
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        self._convert_label_categories_to_sorted_list(event)
-        self.ps.increment_processed_count()
-
     def _apply_rules(self, event, rule):
         """Applies the rule to the current event"""
         self._add_label_fields(event, rule)
         self._add_label_values(event, rule)
+        self._convert_label_categories_to_sorted_list(event)
 
     @staticmethod
     def _add_label_fields(event: dict, rule: LabelingRule):
