@@ -1,10 +1,7 @@
 """This module contains functionality for resolving log event values using regex lists."""
-from time import time
 from typing import List
 from logging import Logger, DEBUG
 
-from os import walk
-from os.path import isdir, realpath, join
 
 from multiprocessing import current_process
 
@@ -15,14 +12,8 @@ from geoip2.errors import AddressNotFoundError
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.geoip_enricher.rule import GeoIPEnricherRule
-from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
 
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.helper import add_field_to
 
 
@@ -93,34 +84,8 @@ class GeoIPEnricher(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def _load_rules_from_file(self, path: str):
-        try:
-            return GeoIPEnricherRule.create_rules_from_file(path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path) from error
-
     def describe(self) -> str:
         return f"GeoIPEnricher ({self._name})"
-
-    @TimeMeasurement.measure_time("geoip_enricher")
-    def process(self, event: dict):
-        self._event = event
-
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        self.ps.increment_processed_count()
 
     @staticmethod
     def _normalize_empty(db_entry):
