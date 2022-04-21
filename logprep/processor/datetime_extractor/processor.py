@@ -7,6 +7,7 @@ from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import tzlocal
 
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.datetime_extractor.rule import DateTimeExtractorRule
 from logprep.util.processor_stats import ProcessorStats
