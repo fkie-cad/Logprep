@@ -12,13 +12,13 @@ from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
 from dateutil.parser import parse
 
-from logprep.processor.datetime_extractor.factory import DateTimeExtractorFactory
-from logprep.processor.datetime_extractor.processor import DateTimeExtractor
+from logprep.processor.datetime_extractor.factory import DatetimeExtractorFactory
+from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 
 
-class TestDateTimeExtractor(BaseProcessorTestCase):
+class TestDatetimeExtractor(BaseProcessorTestCase):
 
-    factory = DateTimeExtractorFactory
+    factory = DatetimeExtractorFactory
 
     CONFIG = {
         "type": "datetime_extractor",
@@ -109,7 +109,7 @@ class TestDateTimeExtractor(BaseProcessorTestCase):
         assert self.object.ps.processed_count == 0
 
         self.object._local_timezone = tzutc()
-        self.object._local_timezone_name = DateTimeExtractor._get_timezone_name(
+        self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
             self.object._local_timezone
         )
 

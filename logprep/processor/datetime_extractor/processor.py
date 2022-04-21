@@ -2,27 +2,15 @@
 
 from typing import List
 from logging import Logger, DEBUG
-
 from multiprocessing import current_process
-from os import walk
-from os.path import isdir, realpath, join
-from time import time
-
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import tzlocal
-from logprep.framework.rule_tree.rule_tree import RuleTree
 
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.datetime_extractor.rule import DateTimeExtractorRule
-from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
-
-from logprep.util.processor_stats import ProcessorStats, StatsClassesController
-from logprep.util.time_measurement import TimeMeasurement
+from logprep.util.processor_stats import ProcessorStats
 
 
 class DateTimeExtractorError(BaseException):
@@ -32,7 +20,7 @@ class DateTimeExtractorError(BaseException):
         super().__init__(f"DateTimeExtractor ({name}): {message}")
 
 
-class DateTimeExtractor(RuleBasedProcessor):
+class DatetimeExtractor(RuleBasedProcessor):
     """Split timestamps into fields containing their parts."""
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
@@ -81,34 +69,8 @@ class DateTimeExtractor(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def _load_rules_from_file(self, path: str):
-        try:
-            return DateTimeExtractorRule.create_rules_from_file(path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path) from error
-
     def describe(self) -> str:
         return f"DateTimeExtractor ({self._name})"
-
-    @TimeMeasurement.measure_time("datetime_extractor")
-    def process(self, event: dict):
-        self._event = event
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(self._event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(self._event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        self.ps.increment_processed_count()
 
     @staticmethod
     def _get_timezone_name(local_timezone):

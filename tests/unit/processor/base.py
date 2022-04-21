@@ -69,6 +69,8 @@ class BaseProcessorTestCase(ABC):
         """
         setUp class for the imported TestCase
         """
+        TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
+        TimeMeasurement.APPEND_TO_EVENT = False
         self.patchers = []
         for name, kwargs in self.mocks.items():
             patcher = mock.patch(name, **kwargs)
