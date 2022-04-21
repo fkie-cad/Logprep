@@ -3,7 +3,8 @@
 from time import time
 from socket import gethostname
 
-from logprep.processor.base.processor import BaseProcessor
+import logprep.processor.base.processor as processor
+from logprep.util.helper import camel_to_snake
 
 
 class TimeMeasurement:
@@ -14,7 +15,7 @@ class TimeMeasurement:
     HOSTNAME = gethostname()
 
     @staticmethod
-    def measure_time(name: str):
+    def measure_time(name: str = None):
         """Decorate function to measure execution time for function and add results to event.
 
         Parameters
@@ -35,17 +36,19 @@ class TimeMeasurement:
 
                     processing_time = end - begin
 
-                    if isinstance(caller, BaseProcessor):
+                    if isinstance(caller, processor.BaseProcessor):
                         caller.ps.update_average_processing_time(processing_time)
 
                     if TimeMeasurement.APPEND_TO_EVENT:
-                        add_processing_times_to_event(event, processing_time)
+                        add_processing_times_to_event(event, processing_time, caller, name)
                     return result
                 return func(*args, **kwargs)
 
-            def add_processing_times_to_event(event, processing_time):
+            def add_processing_times_to_event(event, processing_time, caller, name):
                 if not event.get("processing_times"):
-                    event["processing_times"] = dict()
+                    event["processing_times"] = {}
+                if name is None:
+                    name = f"{camel_to_snake(caller.__class__.__name__)}"
                 event["processing_times"][name] = float(f"{processing_time:.10f}")
                 if "hostname" not in event["processing_times"].keys():
                     event["processing_times"]["hostname"] = TimeMeasurement.HOSTNAME
