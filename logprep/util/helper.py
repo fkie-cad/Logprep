@@ -1,4 +1,5 @@
 """This module contains helper functions that are shared by different modules."""
+import re
 from os import remove
 from typing import Optional, Union
 
@@ -138,3 +139,16 @@ def remove_file_if_exists(test_output_path):
         remove(test_output_path)
     except FileNotFoundError:
         pass
+
+
+def camel_to_snake(camel: str) -> str:
+    """
+    Is it ironic that this function is written in camel case, yet it
+    converts to snake case? hmm..
+    """
+
+    _underscorer1 = re.compile(r"(.)([A-Z][a-z]+)")
+    _underscorer2 = re.compile("([a-z0-9])([A-Z])")
+
+    subbed = _underscorer1.sub(r"\1_\2", camel)
+    return _underscorer2.sub(r"\1_\2", subbed).lower()
