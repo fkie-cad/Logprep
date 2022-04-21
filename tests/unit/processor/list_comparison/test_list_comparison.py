@@ -90,11 +90,6 @@ class TestListComparison(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
-        assert len(document.get("dotted", {}).get("user_results", {}).get("in_list")) != 0
-
-    def test_deep_dotted_output_field(self):
-        # tests if outputting list_comparison results to dotted fields works
-        assert self.object.ps.processed_count == 0
         document = {"dot_channel": "test", "user": "Franz"}
 
         self.object.process(document)
