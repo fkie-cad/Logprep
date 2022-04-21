@@ -1,34 +1,20 @@
 """This module contains functionality for resolving domains."""
-from time import time
-from typing import List
-from logging import Logger, DEBUG
-
-import socket
-from multiprocessing.pool import ThreadPool
-from multiprocessing import context
-from multiprocessing import current_process
-
-from os import walk
-from os.path import isdir, realpath, join
-
 import datetime
+import socket
+from logging import DEBUG, Logger
+from multiprocessing import context, current_process
+from multiprocessing.pool import ThreadPool
+from typing import List
 
 from tldextract import TLDExtract
 
-from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarning
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError, InvalidRuleFileError
+from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
 from logprep.processor.domain_resolver.rule import DomainResolverRule
-from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
-
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
-
-from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.helper import add_field_to
+from logprep.util.processor_stats import ProcessorStats
 
 
 class DomainResolverError(BaseException):
@@ -124,24 +110,6 @@ class DomainResolver(RuleBasedProcessor):
 
     def describe(self) -> str:
         return f"DomainResolver ({self._name})"
-
-    @TimeMeasurement.measure_time("domain_resolver")
-    def process(self, event: dict):
-        self._event = event
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = time() - begin
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = time() - begin
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-        self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain
