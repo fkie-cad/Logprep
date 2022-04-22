@@ -7,5 +7,14 @@
             "repl": "<+>\\1</+>"
         },
         "description": "insert a description text"
+    },
+    {
+        "filter": "message",
+        "clusterer": {
+            "target": "message",
+            "pattern": "test2 (signature) test2",
+            "repl": "<+>\\1</+>"
+        },
+        "description": "insert a description text"
     }
 ]

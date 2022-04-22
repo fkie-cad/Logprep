@@ -5,6 +5,7 @@ from multiprocessing import current_process
 from typing import List
 
 from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.processor.base.rule import Rule
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
     LogRecord,
@@ -12,11 +13,12 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
     SignaturePhaseStreaming,
 )
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class Clusterer(RuleBasedProcessor):
     """Cluster log events using a heuristic."""
+
+    matching_rules: list[Rule] = []
 
     def __init__(self, name: str, logger: Logger, **configuration):
         tree_config = configuration.get("tree_config")
@@ -68,14 +70,13 @@ class Clusterer(RuleBasedProcessor):
 
     # pylint: enable=W0221
 
-    @TimeMeasurement.measure_time("clusterer")
     def process(self, event: dict):
+        super().process(event)
         if self._is_clusterable(event):
-            matching_rules = self._specific_tree.get_matching_rules(event)
-            matching_rules += self._generic_tree.get_matching_rules(event)
-            self._cluster(event, matching_rules)
+            self._cluster(event, self.matching_rules)
 
-        self.ps.increment_processed_count()
+    def _apply_rules(self, event, rule):
+        self.matching_rules.append(rule)
 
     def _is_clusterable(self, event: dict):
         # The following blocks have not been extracted into functions for performance reasons
