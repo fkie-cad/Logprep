@@ -1,19 +1,15 @@
-# pylint: disable=wrong-import-position
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=too-many-lines
 import calendar
+import copy
 import json
 import os
 import tempfile
 
 import arrow
 import pytest
-
-from tests.unit.processor.base import BaseProcessorTestCase
-
-pytest.importorskip("logprep.processor.normalizer")
-
-import copy
-
-from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
+from logprep.processor.base.processor import ProcessingWarning
 from logprep.processor.normalizer.exceptions import NormalizerError
 from logprep.processor.normalizer.factory import Normalizer, NormalizerFactory
 from logprep.processor.normalizer.rule import (
@@ -22,6 +18,7 @@ from logprep.processor.normalizer.rule import (
     NormalizerRule,
 )
 from logprep.processor.processor_factory_error import ProcessorFactoryError
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestNormalizer(BaseProcessorTestCase):
@@ -122,11 +119,11 @@ class TestNormalizer(BaseProcessorTestCase):
         assert "test1" not in document.get("test_normalized", dict())
 
     def test_add_field_without_conflicts(self):
-        self.object._event = {"host": {"ip": "127.0.0.1"}, "client": {"port": 22222}}
-        self.object._add_field("foo.bar.baz", 1234)
-        self.object._add_field("host.user.name", "admin")
-        self.object._add_field("client.address", "localhost")
-        assert self.object._event == {
+        event = {"host": {"ip": "127.0.0.1"}, "client": {"port": 22222}}
+        self.object._add_field(event, "foo.bar.baz", 1234)
+        self.object._add_field(event, "host.user.name", "admin")
+        self.object._add_field(event, "client.address", "localhost")
+        assert event == {
             "foo": {"bar": {"baz": 1234}},
             "host": {"ip": "127.0.0.1", "user": {"name": "admin"}},
             "client": {"address": "localhost", "port": 22222},
@@ -134,8 +131,8 @@ class TestNormalizer(BaseProcessorTestCase):
         assert not self.object._conflicting_fields
 
     def test_add_field_with_conflicts(self):
-        self.object._event = {"host": "localhost"}
-        self.object._add_field("host.user.name", "admin")
+        event = {"host": "localhost"}
+        self.object._add_field(event, "host.user.name", "admin")
         assert self.object._conflicting_fields == ["host.user.name"]
 
     def test_normalization_from_specific_rules(self):
@@ -772,7 +769,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert event == expected
 
-    def test_normalization_from_ISO8601_timestamp(self):
+    def test_normalization_from_iso8601_timestamp(self):
         expected = {
             "@timestamp": "2020-01-03T14:04:05.879000Z",
             "winlog": {
@@ -809,7 +806,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert event == expected
 
-    def test_normalization_from_UNIX_with_millis_timestamp(self):
+    def test_normalization_from_unix_with_millis_timestamp(self):
         expected = {
             "@timestamp": "2022-01-14T12:40:49.843000+01:00",
             "winlog": {
@@ -846,7 +843,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert event == expected
 
-    def test_normalization_from_UNIX_with_seconds_timestamp(self):
+    def test_normalization_from_unix_with_seconds_timestamp(self):
         expected = {
             "@timestamp": "2022-01-14T12:40:49+01:00",
             "winlog": {
@@ -1073,7 +1070,9 @@ class TestNormalizer(BaseProcessorTestCase):
         assert date.isoformat() == file_date
         assert calendar.day_name[date.weekday()].lower() == file_weekday
 
-        with open(os.path.join(match_cnt_path, match_file_name), "r") as match_file:
+        with open(
+            os.path.join(match_cnt_path, match_file_name), "r", encoding="utf8"
+        ) as match_file:
             match_json = json.load(match_file)
 
             assert "^%{IP:some_ip} %{NUMBER:port:int}$" in match_json
@@ -1083,7 +1082,9 @@ class TestNormalizer(BaseProcessorTestCase):
 
         self.object.process(event)
 
-        with open(os.path.join(match_cnt_path, match_file_name), "r") as match_file:
+        with open(
+            os.path.join(match_cnt_path, match_file_name), "r", encoding="utf8"
+        ) as match_file:
             match_json = json.load(match_file)
 
             assert match_json["^%{IP:some_ip} %{NUMBER:port:int}$"] == 2
@@ -1093,7 +1094,12 @@ class TestNormalizer(BaseProcessorTestCase):
         assert event.get("port") == 1234
 
 
-class TestNormalizerFactory(TestNormalizer):
+class TestNormalizerFactory:
+
+    CONFIG = TestNormalizer.CONFIG
+
+    logger = TestNormalizer.logger
+
     def test_create(self):
         assert isinstance(NormalizerFactory.create("foo", self.CONFIG, self.logger), Normalizer)
 
