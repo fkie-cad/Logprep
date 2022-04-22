@@ -32,12 +32,12 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
     """
 
     def process(self, event: dict, **kwargs):
-        specific_rules = kwargs.get("specific_tree")
-        generic_rules = kwargs.get("generic_tree")
+        specific_tree = kwargs.get("specific_tree")
+        generic_tree = kwargs.get("generic_tree")
         callback = kwargs.get("callback")
         processor_stats = kwargs.get("processor_stats")
-        self._process_specific(event, specific_rules, callback, processor_stats)
-        self._process_generic(event, generic_rules, callback, processor_stats)
+        self._process_specific(event, specific_tree, callback, processor_stats)
+        self._process_generic(event, generic_tree, callback, processor_stats)
         processor_stats.increment_processed_count()
 
     def _process_specific(
