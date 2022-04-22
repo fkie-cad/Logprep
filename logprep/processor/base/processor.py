@@ -51,6 +51,7 @@ class BaseProcessor:
 
     @property
     def name(self):
+        """Name of Processor as property"""
         return self._name
 
     def setup(self):
@@ -216,7 +217,7 @@ class RuleBasedProcessor(BaseProcessor):
         """
 
     @abstractmethod
-    def add_rules_from_directory(*args, **kwargs):
+    def add_rules_from_directory(self, *args, **kwargs):
         """Add rule from lists of directories.
 
         So far this can be for 'rules' or 'specific_rules' and 'generic_rules'

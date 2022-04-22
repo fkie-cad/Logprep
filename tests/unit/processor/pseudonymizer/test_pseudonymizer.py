@@ -1,19 +1,17 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
 import copy
 import datetime
 import time
 from copy import deepcopy
-from unittest import mock
 
 import pytest
-from tests.unit.processor.base import BaseProcessorTestCase
-
-pytest.importorskip("logprep.processor.pseudonymizer")
-
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.processor_factory_error import ProcessorFactoryError
 from logprep.processor.pseudonymizer.factory import Pseudonymizer, PseudonymizerFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
+from tests.unit.processor.base import BaseProcessorTestCase
 
 CAP_GROUP_REGEX_MAPPING = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
 
@@ -35,45 +33,16 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
         "max_cached_pseudonyms": 1000000,
         "max_caching_days": 1,
-        "tld_list": "tests/testdata/external/public_suffix_list.dat",  # This is external data that needs to be downloaded manually
+        "tld_list": "tests/testdata/external/public_suffix_list.dat",
     }
-
-    @property
-    def specific_rules_dirs(self):
-        return ["tests/testdata/unit/pseudonymizer/rules/specific/"]
-
-    @property
-    def generic_rules_dirs(self):
-        return ["tests/testdata/unit/pseudonymizer/rules/generic/"]
 
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, RuleBasedProcessor)
 
-    @mock.patch("logprep.processor.pseudonymizer.processor.Pseudonymizer._pseudonymize_event")
-    def test_pseudonymizer_process(self, mock_pseudonymize_event):
-        mock_pseudonymize_event.return_value = [{"pseudonym": "foo", "origin": "bar"}]
-        count = self.object.ps.processed_count
-
-        document = {"event_id": "1234", "message": "user root logged in"}
-        pseudonyms = self.object.process(document)
-        assert pseudonyms == ([{"pseudonym": "foo", "origin": "bar"}], "pseudonyms")
-        assert self.object.ps.processed_count == count + 1
-
-        document = {
-            "event_id": "1234",
-            "message": "user root logged in",
-            "@timestamp": "baz",
-        }
-        pseudonyms = self.object.process(document)
-        assert pseudonyms == (
-            [{"pseudonym": "foo", "origin": "bar", "@timestamp": "baz"}],
-            "pseudonyms",
-        )
-        assert self.object.ps.processed_count == count + 2
-
     def test_pseudonymize_event(self):
         event_raw = {"foo": "bar"}
-        pseudonyms = self.object._pseudonymize_event(event_raw)
+        self.object.process(event_raw)
+        pseudonyms = self.object.pseudonyms
         assert event_raw == {"foo": "bar"}
         assert pseudonyms == []
 
@@ -113,7 +82,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
 
-        pseudonyms = self.object._pseudonymize_event(event)
+        self.object.process(event)
+        pseudonyms = self.object.pseudonyms
 
         assert (
             event["something"]
@@ -133,20 +103,21 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
 
         self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
-
         for _ in range(3):
-            e = deepcopy(event)
-            pseudonyms = self.object._pseudonymize_event(e)
+            copied_event = deepcopy(event)
+            self.object.process(copied_event)
+            pseudonyms = self.object.pseudonyms
             assert (
-                e["something"]
+                copied_event["something"]
                 == "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>"
             )
             assert len(pseudonyms) == 1
 
-            e = deepcopy(event)
-            pseudonyms = self.object._pseudonymize_event(e)
+            copied_event = deepcopy(event)
+            self.object.process(copied_event)
+            pseudonyms = self.object.pseudonyms
             assert (
-                e["something"]
+                copied_event["something"]
                 == "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>"
             )
             assert len(pseudonyms) == 0
@@ -158,12 +129,20 @@ class TestPseudonymizer(BaseProcessorTestCase):
         specific_rule = PseudonymizerRule._create_from_dict(rule)
         self.object._replace_regex_keywords_by_regex_expression(specific_rule)
         self.object._specific_tree.add_rule(specific_rule, self.object._logger)
+        self.object.ps.setup_rules(
+            [None] * self.object._generic_tree.rule_counter
+            + [None] * self.object._specific_tree.rule_counter
+        )
 
     def _load_generic_rule(self, rule, regex_mappping_path):
         self.object._load_regex_mapping(regex_mappping_path)
         generic_rule = PseudonymizerRule._create_from_dict(rule)
         self.object._replace_regex_keywords_by_regex_expression(generic_rule)
         self.object._generic_tree.add_rule(generic_rule, self.object._logger)
+        self.object.ps.setup_rules(
+            [None] * self.object._generic_tree.rule_counter
+            + [None] * self.object._specific_tree.rule_counter
+        )
 
     def test_pseudonymization_of_field_fails_because_filter_does_not_match(self):
         event = {"event_id": 1105, "something": "Not pseudonymized"}
@@ -176,7 +155,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
 
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert event["something"] == "Not pseudonymized"
 
@@ -192,7 +171,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(deepcopy(rule_dict), self.CONFIG["regex_mapping"])
         self._load_generic_rule(rule_dict, self.CONFIG["regex_mapping"])
 
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert (
             event["something"]
@@ -212,8 +191,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
 
-        self.object._pseudonymize_event(event)
-        self.object._pseudonymize_event(event_other_id)
+        self.object.process(event)
+        self.object.process(event_other_id)
 
         assert (
             event["something"]
@@ -252,7 +231,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
 
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert event == expected
 
@@ -268,10 +247,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             }
         }
 
-        for specific_rule in self.specific_rules:
-            self._load_specific_rule(specific_rule, self.CONFIG["regex_mapping"])
-
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert (
             event["winlog"]["event_data"]["param1"]
@@ -297,7 +273,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         for generic_rule in self.generic_rules:
             self._load_generic_rule(generic_rule, self.CONFIG["regex_mapping"])
 
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert (
             event["winlog"]["event_data"]["IpAddress"]
@@ -317,13 +293,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             }
         }
 
-        for specific_rule in self.specific_rules:
-            self._load_specific_rule(specific_rule, self.CONFIG["regex_mapping"])
-
-        for generic_rule in self.generic_rules:
-            self._load_generic_rule(generic_rule, self.CONFIG["regex_mapping"])
-
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert (
             event["winlog"]["event_data"]["param2"]
@@ -347,7 +317,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
 
         self.object.setup()
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert (
             event["winlog"]["event_data"]["param2"]
@@ -367,15 +337,11 @@ class TestPseudonymizer(BaseProcessorTestCase):
             }
         }
 
-        for specific_rule in self.specific_rules:
-            self._load_specific_rule(specific_rule, self.CONFIG["regex_mapping"])
-
-        self.object._pseudonymize_event(event)
-
-        assert (
-            event["winlog"]["event_data"]["param1"]
-            == r"DOMAIN\<pseudonym:fd5ada8080bcb4a2bcf094bb7aaa7cb907fabeebfff8650676676632cdf4ac4c>"
+        self.object.process(event)
+        expected = (
+            r"DOMAIN\<pseudonym:fd5ada8080bcb4a2bcf094bb7aaa7cb907fabeebfff8650676676632cdf4ac4c>"
         )
+        assert event["winlog"]["event_data"]["param1"] == expected
 
     def test_do_not_match_regex_mapping(self):
         event = {
@@ -384,10 +350,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "winlog": {"event_data": {"param1": r"!\pseudonymize me!"}},
         }
 
-        for specific_rule in self.specific_rules:
-            self._load_specific_rule(specific_rule, self.CONFIG["regex_mapping"])
-
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert event["winlog"]["event_data"]["param1"] == r"!\pseudonymize me!"
 
@@ -458,7 +421,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         subdomain_pseudonym = (
             "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
         )
-        expected = "https://{}.test.de".format(subdomain_pseudonym)
+        expected = f"https://{subdomain_pseudonym}.test.de"
 
         event = self._pseudo_with_url("https://www.test.de", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
@@ -467,7 +430,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         subdomain_pseudonym = (
             "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
         )
-        expected = "{}.test.de".format(subdomain_pseudonym)
+        expected = f"{subdomain_pseudonym}.test.de"
 
         event = self._pseudo_with_url("www.test.de", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
@@ -476,7 +439,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         path_pseudonym = (
             "<pseudonym:f285389e9dc7921109e18f2f1375b26cb47bbe2981d8399ee7e70c3fd156337f>"
         )
-        expected = "https://test.de/{}".format(path_pseudonym)
+        expected = f"https://test.de/{path_pseudonym}"
 
         event = self._pseudo_with_url("https://test.de/some/path", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
@@ -488,7 +451,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         query_pseudonym_d = (
             "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
         )
-        expected = "https://test.de/?a={}&c={}".format(query_pseudonym_b, query_pseudonym_d)
+        expected = f"https://test.de/?a={query_pseudonym_b}&c={query_pseudonym_d}"
 
         event = self._pseudo_with_url("https://test.de/?a=b&c=d", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
@@ -503,10 +466,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         query_pseudonym_bd = (
             "<pseudonym:49713f9217c2cac56d0e87a6930669f45be876812eff4bd01ec86d6f22578f99>"
         )
-        expected = "https://test.de/?a={}&c={}&e={}".format(
-            query_pseudonym_b, query_pseudonym_d, query_pseudonym_bd
+        expected = (
+            f"https://test.de/?a={query_pseudonym_b}&c={query_pseudonym_d}&e={query_pseudonym_bd}"
         )
-
         event = self._pseudo_with_url("https://test.de/?a=b&c=d&e=bd", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
@@ -514,7 +476,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         subdomain_pseudonym = (
             "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
         )
-        expected = "This is https://{}.test.de !".format(subdomain_pseudonym)
+        expected = f"This is https://{subdomain_pseudonym}.test.de !"
 
         event = self._pseudo_with_url("This is https://www.test.de !", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
@@ -523,7 +485,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         subdomain_pseudonym = (
             "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
         )
-        expected = "https://{0}.test.de https://{0}.test.de".format(subdomain_pseudonym)
+        expected = f"https://{subdomain_pseudonym}.test.de https://{subdomain_pseudonym}.test.de"
 
         event = self._pseudo_with_url("https://www.test.de https://www.test.de", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
@@ -535,10 +497,10 @@ class TestPseudonymizer(BaseProcessorTestCase):
         subdomain_pseudonym = (
             "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
         )
-        expected = "https://{0}.other.de/{1} https://{0}.test.de".format(
-            subdomain_pseudonym, path_pseudonym
+        expected = (
+            f"https://{subdomain_pseudonym}.other.de/{path_pseudonym} "
+            f"https://{subdomain_pseudonym}.test.de"
         )
-
         event = self._pseudo_with_url(
             "https://www.other.de/some/path https://www.test.de",
             "RE_ALL_NO_CAP",
@@ -552,14 +514,14 @@ class TestPseudonymizer(BaseProcessorTestCase):
         subdomain_pseudonym = (
             "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
         )
-        expected = "https://{}@{}.test.de".format(auth_pseudonym, subdomain_pseudonym)
+        expected = f"https://{auth_pseudonym}@{subdomain_pseudonym}.test.de"
 
         event = self._pseudo_with_url("https://user:password@www.test.de", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_fragment(self):
         fragment = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
-        expected = "https://test.de/#{}".format(fragment)
+        expected = f"https://test.de/#{fragment}"
 
         event = self._pseudo_with_url("https://test.de/#test", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
@@ -574,23 +536,20 @@ class TestPseudonymizer(BaseProcessorTestCase):
         fragment_pseudonym = (
             "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
         )
-        expected = "https://test.de/{}?a={}#{}".format(
-            path_pseudonym, query_pseudonym, fragment_pseudonym
-        )
-
+        expected = f"https://test.de/{path_pseudonym}?a={query_pseudonym}#{fragment_pseudonym}"
         event = self._pseudo_with_url("https://test.de/test/?a=b#test", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_url_except_port(self):
         fragment = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
-        expected = "https://test.de:123/#{}".format(fragment)
+        expected = f"https://test.de:123/#{fragment}"
 
         event = self._pseudo_with_url("https://test.de:123/#test", "RE_ALL_NO_CAP")
         assert event["pseudo_this"] == expected
 
     def test_pseudonymize_no_valid_html(self):
         pseudonym = "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
-        expected = "fail://fail.failfailfail https://{}.correct.de".format(pseudonym)
+        expected = f"fail://fail.failfailfail https://{pseudonym}.correct.de"
 
         event = self._pseudo_with_url(
             "fail://fail.failfailfail https://www.correct.de",
@@ -614,14 +573,14 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "url_fields": ["do_not_pseudo_this"],
         }
         self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert event["do_not_pseudo_this"] == url
         assert event["pseudo_this"] == pseudonym
 
     def test_pseudonymize_multiple_url_fields(self):
         pseudonym = "<pseudonym:f742a956bf2ab54f5e7f9cca7caaa33a1b488f6e907cef147fbfb1a99c8de5b6>"
-        pseudonymized_url = "https://{}.this.de".format(pseudonym)
+        pseudonymized_url = f"https://{pseudonym}.this.de"
 
         url = "https://www.pseudo.this.de"
         regex_pattern = "RE_ALL_NO_CAP"
@@ -639,7 +598,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "url_fields": ["pseudo_this", "and_pseudo_this"],
         }
         self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert event["and_pseudo_this"] == pseudonymized_url
         assert event["pseudo_this"] == pseudonymized_url
@@ -651,8 +610,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
         pseudonym_url = (
             "<pseudonym:f742a956bf2ab54f5e7f9cca7caaa33a1b488f6e907cef147fbfb1a99c8de5b6>"
         )
-        pseudonymized = "SOMETHING {} SOMETHING https://{}.this.de SOMETHING".format(
-            pseudonym_cap, pseudonym_url
+        pseudonymized = (
+            f"SOMETHING {pseudonym_cap} SOMETHING https://{pseudonym_url}.this.de SOMETHING"
         )
 
         url = "SOMETHING PSEUDO_THIS SOMETHING https://www.pseudo.this.de SOMETHING"
@@ -664,7 +623,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "url_fields": ["pseudo_this"],
         }
         self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
 
         assert event["pseudo_this"] == pseudonymized
 
@@ -675,7 +634,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudonymize": {"pseudo_this": regex_pattern},
         }
         self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
         return event
 
     def _pseudo_with_url(self, source_field, regex_pattern):
@@ -686,11 +645,16 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "url_fields": ["pseudo_this"],
         }
         self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
-        self.object._pseudonymize_event(event)
+        self.object.process(event)
         return event
 
 
-class TestPseudonymizerFactory(TestPseudonymizer):
+class TestPseudonymizerFactory:
+
+    CONFIG = TestPseudonymizer.CONFIG
+
+    logger = TestPseudonymizer.logger
+
     def test_create(self):
         assert isinstance(
             PseudonymizerFactory.create("foo", self.CONFIG, self.logger), Pseudonymizer

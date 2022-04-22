@@ -31,6 +31,12 @@ class BaseProcessorTestCase(ABC):
 
     object: BaseProcessor = None
 
+    patchers: list = None
+
+    specific_rules: list
+
+    generic_rules = list
+
     @property
     def specific_rules_dirs(self):
         """
