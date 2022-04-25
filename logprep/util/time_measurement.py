@@ -3,7 +3,7 @@
 from time import time
 from socket import gethostname
 
-import logprep.processor.base.processor as processor
+from logprep.processor.base import processor
 from logprep.util.helper import camel_to_snake
 
 

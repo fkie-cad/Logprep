@@ -18,7 +18,7 @@ from logprep.util.processor_stats import ProcessorStats
 class Clusterer(RuleBasedProcessor):
     """Cluster log events using a heuristic."""
 
-    matching_rules: list[Rule] = []
+    matching_rules: List[Rule] = []
 
     def __init__(self, name: str, logger: Logger, **configuration):
         tree_config = configuration.get("tree_config")
