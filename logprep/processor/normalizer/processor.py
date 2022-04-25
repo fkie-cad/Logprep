@@ -54,9 +54,6 @@ class Normalizer(RuleBasedProcessor):
         self._regex_mapping = regex_mapping
         self._html_replace_fields = html_replace_fields
 
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
-
         self._count_grok_pattern_matches = count_grok_pattern_matches
         if count_grok_pattern_matches:
             self._grok_matches_path = count_grok_pattern_matches["count_directory_path"]
@@ -194,6 +191,16 @@ class Normalizer(RuleBasedProcessor):
         fields = dotted_field.split(".")
         reduce(lambda dict_, key: dict_[key], fields[:-1], event)[fields[-1]] = value
 
+    def process(self, event: dict):
+        self._conflicting_fields.clear()
+        super().process(event)
+        if self._count_grok_pattern_matches:
+            self._write_grok_matches()
+        try:
+            self._raise_warning_if_fields_already_existed()
+        except DuplicationError as error:
+            raise ProcessingWarning(str(error)) from error
+
     def _apply_rules(self, event, rule):
         """Normalizes Windows Event Logs.
 
@@ -205,18 +212,10 @@ class Normalizer(RuleBasedProcessor):
         be written in a way that no such warnings are produced during normal operation because each
         warning should be an indicator of incorrect rules or unexpected/changed events.
         """
-        self._conflicting_fields.clear()
         self._try_add_grok(event, rule)
         self._try_add_timestamps(event, rule)
         for before, after in rule.substitutions.items():
             self._try_normalize_event_data_field(event, before, after)
-
-        if self._count_grok_pattern_matches:
-            self._write_grok_matches()
-        try:
-            self._raise_warning_if_fields_already_existed()
-        except DuplicationError as error:
-            raise ProcessingWarning(str(error)) from error
 
     def _try_add_grok(self, event: dict, rule: NormalizerRule):
         for source_field, grok in rule.grok.items():
