@@ -7,7 +7,7 @@ from logprep.processor.domain_label_extractor.processor import DomainLabelExtrac
 class DomainLabelExtractorFactory(BaseFactory):
     """Factory used to instantiate DomainLabelExtractor processors."""
 
-    mandatory_fields = ["generic_rules", "specific_rules", "tree_config"]
+    mandatory_fields = ["generic_rules", "specific_rules"]
 
     @staticmethod
     def create(name: str, configuration: dict, logger) -> DomainLabelExtractor:

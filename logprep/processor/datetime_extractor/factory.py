@@ -7,7 +7,7 @@ from logprep.processor.datetime_extractor.processor import DateTimeExtractor
 class DateTimeExtractorFactory(BaseFactory):
     """Create datetime extractor."""
 
-    mandatory_fields = ["generic_rules", "specific_rules", "tree_config"]
+    mandatory_fields = ["generic_rules", "specific_rules"]
 
     @staticmethod
     def create(name: str, configuration: dict, logger) -> DateTimeExtractor:

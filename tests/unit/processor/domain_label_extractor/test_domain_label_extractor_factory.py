@@ -29,8 +29,7 @@ class TestDomainLabelExtractorFactory:
     REQUIRED_CONFIG_FIELDS = {
         "type": "domain_label_extractor",
         "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
-        "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
-        "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+        "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"]
     }
 
     def test_create(self):
