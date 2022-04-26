@@ -46,8 +46,6 @@ class GenericAdder(RuleBasedProcessor):
         generic_rules_dirs = configuration.get("generic_rules")
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
-        self._generic_tree = RuleTree(tree_config)
-        self._specific_tree = RuleTree(tree_config)
         self.add_rules_from_directory(
             generic_rules_dirs=generic_rules_dirs,
             specific_rules_dirs=specific_rules_dirs,
