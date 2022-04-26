@@ -2,13 +2,12 @@
 
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.domain_label_extractor.processor import DomainLabelExtractor
-from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class DomainLabelExtractorFactory(BaseFactory):
     """Factory used to instantiate DomainLabelExtractor processors."""
 
-    mandatory_fields = ["type", "generic_rules", "specific_rules", "tree_config"]
+    mandatory_fields = ["generic_rules", "specific_rules", "tree_config"]
 
     @staticmethod
     def create(name: str, configuration: dict, logger) -> DomainLabelExtractor:
@@ -26,6 +25,8 @@ class DomainLabelExtractorFactory(BaseFactory):
 
     @staticmethod
     def _check_configuration(configuration: dict):
-        for field in DomainLabelExtractorFactory.mandatory_fields:
-            if field not in configuration.keys():
-                raise InvalidConfigurationError
+        DomainLabelExtractorFactory._check_common_configuration(
+            processor_type="domain_label_extractor",
+            existing_items=DomainLabelExtractorFactory.mandatory_fields,
+            configuration=configuration,
+        )

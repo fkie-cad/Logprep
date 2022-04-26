@@ -14,6 +14,8 @@ class LabelerFactory(BaseFactory):
     processor_type = Labeler
     rule_type = LabelingRule
 
+    mandatory_fields = ["generic_rules", "specific_rules", "tree_config",  "schema"]
+
     @staticmethod
     def create(name: str, configuration: dict, logger: Logger) -> Labeler:
         """Create a labeler."""
@@ -31,7 +33,7 @@ class LabelerFactory(BaseFactory):
     def _check_configuration(configuration: dict):
         LabelerFactory._check_common_configuration(
             processor_type="labeler",
-            existing_items=["schema"],
+            existing_items=LabelerFactory.mandatory_fields,
             configuration=configuration,
         )
 
