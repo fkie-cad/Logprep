@@ -60,7 +60,15 @@ class TestProcessorStats:
 
         processor_stats.reset_statistics()
 
-        assert all(processor_stats.aggr_data[key] == 0 for key in processor_stats.aggr_data)
+        assert all(
+            processor_stats.aggr_data[key] == 0
+            for key in processor_stats.aggr_data
+            if not key.endswith("_idx")
+        )
+        assert len(processor_stats.aggr_data["matches_per_idx"]) == processor_stats.num_rules
+        assert np.sum(processor_stats.aggr_data["matches_per_idx"]) == 0
+        assert len(processor_stats.aggr_data["times_per_idx"]) == processor_stats.num_rules
+        assert np.sum(processor_stats.aggr_data["times_per_idx"]) == 0
 
         assert processor_stats._max_time == -1
         assert processor_stats._processing_time_sample_counter == 0
