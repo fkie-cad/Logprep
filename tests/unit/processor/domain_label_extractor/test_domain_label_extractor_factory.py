@@ -1,28 +1,24 @@
+# pylint: disable=protected-access
+# pylint: disable=missing-docstring
+# pylint: disable=attribute-defined-outside-init
 import copy
+from logging import getLogger
 from pathlib import Path
-import pytest
 
-from tests.unit.processor.base import BaseProcessorTestCase
+import pytest
 
 pytest.importorskip("logprep.processor.domain_label_extractor")
 
-from logging import getLogger
 
-from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarning
 from logprep.processor.processor_factory_error import InvalidConfigurationError
-from logprep.processor.domain_label_extractor.rule import (
-    DomainLabelExtractorRule,
-    InvalidDomainLabelExtractorDefinition,
-)
 from logprep.processor.domain_label_extractor.factory import DomainLabelExtractorFactory
 from logprep.processor.domain_label_extractor.processor import (
     DomainLabelExtractor,
-    DuplicationError,
 )
 
 logger = getLogger()
-rel_tld_list_path = "tests/testdata/external/public_suffix_list.dat"
-tld_list = f"file://{Path().absolute().joinpath(rel_tld_list_path).as_posix()}"
+REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
+tld_list = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 
 
 class TestDomainLabelExtractorFactory:
@@ -30,7 +26,6 @@ class TestDomainLabelExtractorFactory:
         "type": "domain_label_extractor",
         "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
         "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
-        "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
     def test_create(self):
