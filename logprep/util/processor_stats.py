@@ -55,7 +55,7 @@ class ProcessorStats:
     def __init__(self):
         self.aggr_data = None
         self._max_time = None
-        self.num_rules = None
+        self.num_rules = 0
         self._processing_time_sample_counter = None
         self.reset_statistics()
 
@@ -66,6 +66,8 @@ class ProcessorStats:
             "errors": 0,
             "warnings": 0,
             "avg_processing_time": 0,
+            "matches_per_idx": np.zeros(0, dtype=int),
+            "times_per_idx": np.zeros(0, dtype=float),
         }
         self._max_time = -1
         self._processing_time_sample_counter = 0
