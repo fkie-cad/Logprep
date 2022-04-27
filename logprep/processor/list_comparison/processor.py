@@ -90,21 +90,6 @@ class ListComparison(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def _load_rules_from_file(self, list_comparison_path: str):
-        """
-        Collect rule(s) from a given file.
-
-        Parameters
-        ----------
-        path : str
-            Path to the file containing a list_comparison rule.
-
-        """
-        try:
-            return ListComparisonRule.create_rules_from_file(list_comparison_path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, list_comparison_path, str(error)) from error
-
     def _apply_rules(self, event, rule):
         """
         Apply matching rule to given log event.

@@ -81,12 +81,6 @@ class GenericAdder(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def _load_rules_from_file(self, path: str):
-        try:
-            return GenericAdderRule.create_rules_from_file(path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path, str(error)) from error
-
     def _apply_rules(self, event, rule):
         conflicting_fields = list()
 
