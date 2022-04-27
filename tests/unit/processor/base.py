@@ -35,7 +35,7 @@ class BaseProcessorTestCase(ABC):
 
     specific_rules: list
 
-    generic_rules = list
+    generic_rules: list
 
     @property
     def specific_rules_dirs(self):
