@@ -36,9 +36,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "tld_list": "tests/testdata/external/public_suffix_list.dat",
     }
 
-    def test_is_a_processor_implementation(self):
-        assert isinstance(self.object, RuleBasedProcessor)
-
     def test_pseudonymize_event(self):
         event_raw = {"foo": "bar"}
         self.object.process(event_raw)
