@@ -42,8 +42,11 @@ class SelectiveExtractor(BaseProcessor):
         self._selective_extractor_topic = selective_extractor_topic
         self._event = None
 
+        self._load_extraction_fields(extractor_list_file_path)
+
+    def _load_extraction_fields(self, extractor_list_file_path):
         if os.path.isfile(extractor_list_file_path) and extractor_list_file_path.endswith(".txt"):
-            with open(extractor_list_file_path) as f:
+            with open(extractor_list_file_path, "r", encoding="utf8") as f:
                 extraction_fields = f.read().splitlines()
                 self.extraction_fields = [
                     field for field in extraction_fields if not field.startswith("#")
@@ -67,7 +70,9 @@ class SelectiveExtractor(BaseProcessor):
         filtered_event = self._generate_filtered_event(event)
 
         self.ps.increment_processed_count()
-        return ([filtered_event], self._selective_extractor_topic) if filtered_event else None
+        if filtered_event:
+            return ([filtered_event], self._selective_extractor_topic)
+        return None
 
     def _generate_filtered_event(self, event):
         """
