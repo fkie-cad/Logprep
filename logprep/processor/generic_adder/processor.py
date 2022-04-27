@@ -37,8 +37,6 @@ class DuplicationError(GenericAdderError):
 class GenericAdder(RuleBasedProcessor):
     """Resolve values in documents by referencing a mapping list."""
 
-    _config_name = "generic_adder"
-
     def __init__(self, name: str, configuration: dict, logger: Logger):
         tree_config = configuration.get("tree_config")
         specific_rules_dirs = configuration.get("specific_rules")
