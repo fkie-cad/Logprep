@@ -44,8 +44,6 @@ class TemplateReplacer(RuleBasedProcessor):
         self.ps = ProcessorStats()
         specific_rules_dirs = configuration.get("specific_rules")
         generic_rules_dirs = configuration.get("generic_rules")
-        self._generic_tree = RuleTree(config_path=tree_config)
-        self._specific_tree = RuleTree(config_path=tree_config)
         self.add_rules_from_directory(
             generic_rules_dirs=generic_rules_dirs, specific_rules_dirs=specific_rules_dirs
         )

@@ -59,8 +59,6 @@ class ListComparison(RuleBasedProcessor):
         super().__init__(name, tree_config, logger)
         self._list_search_base_dir = list_search_base_path
         self.ps = ProcessorStats()
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(

@@ -55,8 +55,6 @@ class DomainLabelExtractor(RuleBasedProcessor):
         tagging_field_name = configuration.get("tagging_field_name", "tags")
         super().__init__(name, tree_config=tree_config, logger=logger)
         self.ps = ProcessorStats()
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
         specific_rules_dirs = configuration.get("specific_rules")
         generic_rules_dirs = configuration.get("generic_rules")
         self.add_rules_from_directory(

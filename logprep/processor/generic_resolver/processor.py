@@ -48,9 +48,6 @@ class GenericResolver(RuleBasedProcessor):
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
 
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
-
         self._event = None
 
         self._replacements_from_file = {}

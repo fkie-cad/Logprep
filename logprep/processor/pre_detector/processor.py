@@ -41,8 +41,6 @@ class PreDetector(RuleBasedProcessor):
         self._event = None
 
         self._ids = []
-        self._generic_tree = RuleTree(config_path=tree_config)
-        self._specific_tree = RuleTree(config_path=tree_config)
 
         self._ip_alerter = IPAlerter(alert_ip_list_path)
         self.add_rules_from_directory(
