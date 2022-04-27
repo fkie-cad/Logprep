@@ -108,9 +108,6 @@ class DomainResolver(RuleBasedProcessor):
         except InvalidRuleDefinitionError as error:
             raise InvalidRuleFileError(self._name, path) from error
 
-    def describe(self) -> str:
-        return f"DomainResolver ({self._name})"
-
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain
         # new variable: output field

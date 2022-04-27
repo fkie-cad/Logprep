@@ -105,10 +105,6 @@ class ListComparison(RuleBasedProcessor):
         except InvalidRuleDefinitionError as error:
             raise InvalidRuleFileError(self._name, list_comparison_path, str(error)) from error
 
-    def describe(self) -> str:
-        """Return name of given processor instance."""
-        return f"ListComparison ({self._name})"
-
     def _apply_rules(self, event, rule):
         """
         Apply matching rule to given log event.

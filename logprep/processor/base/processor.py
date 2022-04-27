@@ -170,7 +170,6 @@ class RuleBasedProcessor(BaseProcessor):
         """
         return [*self._generic_rules, *self._specific_rules]
 
-    @abstractmethod
     def describe(self) -> str:
         """Provide a brief name-like description of the processor.
 
@@ -182,7 +181,7 @@ class RuleBasedProcessor(BaseProcessor):
         >>> Labeler(name)
 
         """
-        return "undescribed processor"
+        return f"{self.__class__.__name__} ({self._name})"
 
     @TimeMeasurement.measure_time()
     def process(self, event: dict):

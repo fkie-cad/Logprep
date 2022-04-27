@@ -84,9 +84,6 @@ class GeoIPEnricher(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def describe(self) -> str:
-        return f"GeoIPEnricher ({self._name})"
-
     @staticmethod
     def _normalize_empty(db_entry):
         return db_entry if db_entry else None

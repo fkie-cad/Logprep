@@ -66,9 +66,6 @@ class DatetimeExtractor(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def describe(self) -> str:
-        return f"DateTimeExtractor ({self._name})"
-
     @staticmethod
     def _get_timezone_name(local_timezone):
         tz_name = datetime.now(local_timezone).strftime("%z")

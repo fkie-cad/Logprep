@@ -87,10 +87,6 @@ class GenericResolver(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def describe(self) -> str:
-        """Describe the current processor"""
-        return f"GenericResolver ({self._name})"
-
     def _apply_rules(self, event, rule):
         """Apply the given rule to the current event"""
         conflicting_fields = []

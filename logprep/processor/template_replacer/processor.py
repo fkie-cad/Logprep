@@ -119,9 +119,6 @@ class TemplateReplacer(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def describe(self) -> str:
-        return f"TemplateReplacer ({self._name})"
-
     def _apply_rules(self, event, rule):
         _dict = self._mapping
         for field in self._fields:

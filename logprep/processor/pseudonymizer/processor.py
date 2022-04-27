@@ -114,9 +114,6 @@ class Pseudonymizer(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def describe(self) -> str:
-        return f"Pseudonymizer ({self._name})"
-
     def shut_down(self):
         pass
 

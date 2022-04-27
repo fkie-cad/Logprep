@@ -39,9 +39,6 @@ class Labeler(RuleBasedProcessor):
             configuration.get("generic_rules"),
         )
 
-    def describe(self) -> str:
-        return f"Labeler ({self._name})"
-
     # pylint: disable=arguments-differ
     def add_rules_from_directory(
         self,

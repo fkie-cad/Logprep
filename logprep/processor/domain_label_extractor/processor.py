@@ -112,10 +112,6 @@ class DomainLabelExtractor(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def describe(self) -> str:
-        """Return name of given processor instance."""
-        return f"DomainLabelExtractor ({self._name})"
-
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
         Apply matching rule to given log event. Such that a given domain,

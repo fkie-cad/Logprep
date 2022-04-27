@@ -36,9 +36,6 @@ class Clusterer(RuleBasedProcessor):
 
         self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
 
-    def describe(self) -> str:
-        return f"Clusterer ({self._name})"
-
     # pylint: disable=arguments-differ
     def add_rules_from_directory(
         self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]

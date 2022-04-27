@@ -111,7 +111,7 @@ class BaseProcessorTestCase(ABC):
 
     def test_describe(self):
         describe_string = self.object.describe()
-        assert re.search("Test Instance Name", describe_string)
+        assert f"{self.object.__class__.__name__} (Test Instance Name)" == describe_string
 
     def test_generic_specific_rule_trees(self):
         assert isinstance(self.object._generic_tree, RuleTree)

@@ -105,9 +105,6 @@ class Normalizer(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def describe(self) -> str:
-        return f"Normalizer ({self._name})"
-
     def _write_grok_matches(self):
         """Write count of matches for each grok pattern into a file if configured time has passed.
 

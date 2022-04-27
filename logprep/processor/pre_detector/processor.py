@@ -25,6 +25,8 @@ class PreDetectorConfigurationError(PreDetectorError):
 class PreDetector(RuleBasedProcessor):
     """Processor used to pre_detect log events."""
 
+    detection_results: list
+
     def __init__(self, name: str, configuration: dict, logger: Logger):
         tree_config = configuration.get("tree_config")
         pre_detector_topic = configuration.get("pre_detector_topic")
@@ -76,9 +78,6 @@ class PreDetector(RuleBasedProcessor):
         )
 
     # pylint: enable=arguments-differ
-
-    def describe(self) -> str:
-        return f"PreDetector ({self._name})"
 
     def setup(self):
         pass

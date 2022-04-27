@@ -87,9 +87,6 @@ class GenericAdder(RuleBasedProcessor):
         except InvalidRuleDefinitionError as error:
             raise InvalidRuleFileError(self._name, path, str(error)) from error
 
-    def describe(self) -> str:
-        return f"GenericAdder ({self._name})"
-
     def _apply_rules(self, event, rule):
         conflicting_fields = list()
 
