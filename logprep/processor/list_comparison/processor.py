@@ -6,7 +6,6 @@ from logging import DEBUG, Logger
 from multiprocessing import current_process
 from typing import List, Optional
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError, InvalidRuleFileError
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.list_comparison.rule import ListComparisonRule

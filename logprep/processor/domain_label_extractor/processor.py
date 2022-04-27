@@ -6,7 +6,6 @@ from typing import List
 
 from tldextract import TLDExtract
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to

@@ -5,7 +5,6 @@ from multiprocessing import current_process
 from typing import List
 from uuid import uuid4
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule

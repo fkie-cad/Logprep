@@ -19,7 +19,6 @@ from filelock import FileLock
 from pytz import timezone
 from ruamel.yaml import YAML
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule

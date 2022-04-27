@@ -6,7 +6,6 @@ from typing import List
 
 from ruamel.yaml import YAML
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.processor_stats import ProcessorStats

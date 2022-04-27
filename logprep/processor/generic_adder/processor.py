@@ -1,11 +1,9 @@
 """This module contains functionality for adding fields using regex lists."""
-from time import time
 from typing import List
 from logging import Logger, DEBUG
 
 
 from multiprocessing import current_process
-from logprep.framework.rule_tree.rule_tree import RuleTree
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.generic_adder.rule import GenericAdderRule
@@ -15,7 +13,6 @@ from logprep.processor.base.exceptions import (
 )
 
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class GenericAdderError(BaseException):

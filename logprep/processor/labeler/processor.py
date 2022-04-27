@@ -5,7 +5,6 @@ from multiprocessing import current_process
 from typing import List
 
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.labeler.labeling_schema import (
     LabelingSchema,
@@ -23,8 +22,8 @@ class Labeler(RuleBasedProcessor):
         configuration: dict,
         logger: Logger,
     ):
-        self.tree_config = configuration.get("tree_config")
-        super().__init__(name, self.tree_config, logger)
+        tree_config = configuration.get("tree_config")
+        super().__init__(name, tree_config, logger)
 
         self._logger = logger
         self.ps = ProcessorStats()
@@ -32,9 +31,6 @@ class Labeler(RuleBasedProcessor):
         self._name = name
 
         self._include_parent_labels = configuration.get("include_parent_labels", False)
-
-        self._specific_tree = RuleTree(config_path=self.tree_config)
-        self._generic_tree = RuleTree(config_path=self.tree_config)
 
         self._schema = LabelingSchema.create_from_file(configuration.get("schema"))
 
