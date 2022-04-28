@@ -1,16 +1,16 @@
 """This module contains functionality to log the status of logprep."""
 import json
+import math
 from collections import OrderedDict
 from copy import deepcopy
 from ctypes import c_double
 from datetime import datetime
 from logging import Logger
 from multiprocessing import Lock, Value, current_process
+from time import time
 from typing import List, Union
 
-import math
 import numpy as np
-from time import time
 
 from logprep.processor.base.processor import BaseProcessor
 from logprep.processor.base.rule import Rule
@@ -60,6 +60,7 @@ class ProcessorStats:
         self.reset_statistics()
 
     def reset_statistics(self):
+        """Resets all the processor statistics to the initial zero values."""
         self.aggr_data = {
             "processed": 0,
             "matches": 0,
@@ -110,15 +111,15 @@ class ProcessorStats:
 
     def increment_aggregation(self, key: str):
         """Increment value in aggregation data."""
-        if key not in self.aggr_data.keys():
+        if key not in self.aggr_data:
             self.aggr_data[key] = 1
         else:
             self.aggr_data[key] += 1
 
     def increment_nested(self, key: str, nested_key: str):
         """Increment nested value in aggregation data."""
-        if key not in self.aggr_data.keys():
-            self.aggr_data[key] = dict()
+        if key not in self.aggr_data:
+            self.aggr_data[key] = {}
         if nested_key not in self.aggr_data[key].keys():
             self.aggr_data[key][nested_key] = 1
         else:
@@ -144,8 +145,8 @@ class ProcessorStats:
 
     def set_nested(self, key: str, nested_key: str, value):
         """Set nested value in aggregation data and create containing dict if it does not exist."""
-        if key not in self.aggr_data.keys():
-            self.aggr_data[key] = dict()
+        if key not in self.aggr_data:
+            self.aggr_data[key] = {}
         self.aggr_data[key][nested_key] = value
 
     def set_nested_existing(self, key: str, nested_key: str, value):
@@ -204,8 +205,8 @@ class StatusTracker:
             "errors": 0,
             "warnings": 0,
             "processed": 0,
-            "error_types": dict(),
-            "warning_types": dict(),
+            "error_types": {},
+            "warning_types": {},
         }
         self._lock = lock
         self._timer = Value(c_double, time() + self._print_period)
@@ -235,8 +236,8 @@ class StatusTracker:
             "errors": 0,
             "warnings": 0,
             "processed": 0,
-            "error_types": dict(),
-            "warning_types": dict(),
+            "error_types": {},
+            "warning_types": {},
         }
         for processor in self._pipeline:
             processor.ps.reset_statistics()
@@ -405,7 +406,7 @@ class StatusTracker:
             )
             # Aggregate non-processor specific
             for key in ("processed", "errors", "warnings"):
-                if key not in aggregated_data.keys():
+                if key not in aggregated_data:
                     aggregated_data[key] = 0
                 aggregated_data[key] += process[key]
 
@@ -448,7 +449,7 @@ class StatusTracker:
                     aggregated_data[error_type][error] += error_count
 
     def _get_process_data_from_shared_dict(self) -> list:
-        processes = list()
+        processes = []
         for process in self._shared_dict.values():
             processes.append(deepcopy(process))
         for key in self._shared_dict.keys():
@@ -467,7 +468,7 @@ class StatusTracker:
                     if isinstance(_iter, dict):
                         if key_iter not in _iter.keys():
                             if idx < len(key_path) - 1:
-                                _iter[key_iter] = dict()
+                                _iter[key_iter] = {}
                             else:
                                 _iter[key_iter] = value
                         if idx < len(key_path) - 1:
