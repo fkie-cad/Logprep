@@ -31,8 +31,8 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert self.object._event.get("user_results") is not None
-        assert isinstance(self.object._event.get("user_results"), dict)
+        assert document.get("user_results") is not None
+        assert isinstance(document.get("user_results"), dict)
         assert document.get("user_results").get("in_list") is not None
         assert document.get("user_results").get("not_in_list") is None
 
