@@ -201,8 +201,8 @@ class Pseudonymizer(RuleBasedProcessor):
             replacements = self._get_parts_to_replace_in_correct_order(pseudonym_map)
 
             do_not_replace_pattern = (
-                fr"(<pseudonym:[a-z0-9]*>|\?\w+=|&\w+=|"
-                fr"{url_parts['domain']}\.{url_parts['suffix']})"
+                rf"(<pseudonym:[a-z0-9]*>|\?\w+=|&\w+=|"
+                rf"{url_parts['domain']}\.{url_parts['suffix']})"
             )
 
             for replacement in replacements:
@@ -232,7 +232,7 @@ class Pseudonymizer(RuleBasedProcessor):
         parts["suffix"] = url.suffix
         url_list = ".".join(list(url))
         parts["path"] = self._find_first(
-            fr"(?:^[a-z0-9]+\:\/\/)?{url_list}(?:\:\d+)?([^#^\?]*).*", url_str
+            rf"(?:^[a-z0-9]+\:\/\/)?{url_list}(?:\:\d+)?([^#^\?]*).*", url_str
         )
         parts["query"] = self._find_first(r".*(\?\w+=[a-zA-Z0-9](?:&\w+=[a-zA-Z0-9]+)*).*", url_str)
         parts["fragment"] = self._find_first(r".*#(.*)", url_str)
