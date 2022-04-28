@@ -1,11 +1,9 @@
 name: CI
 
-# only run tests for pull requests cause no file has to be changed without review
-# open -> open the pull request
-# synchronize -> push to branch of pull request
+# ensures that main has our basic test and code quality
 on:
-  pull_request:
-    types: [opened, synchronize]
+  push:
+    branches: [main]
 
 jobs:
   build-pex:

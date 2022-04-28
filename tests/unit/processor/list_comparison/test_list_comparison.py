@@ -1,15 +1,9 @@
-from logging import getLogger
-
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
 import pytest
-from tests.unit.processor.base import BaseProcessorTestCase
-
-from logprep.processor.list_comparison.processor import DuplicationError
-
-pytest.importorskip("logprep.processor.list_comparison")
-
 from logprep.processor.list_comparison.factory import ListComparisonFactory
-
-logger = getLogger()
+from logprep.processor.list_comparison.processor import DuplicationError
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestListComparison(BaseProcessorTestCase):
@@ -18,7 +12,7 @@ class TestListComparison(BaseProcessorTestCase):
         "specific_rules": ["tests/testdata/unit/list_comparison/rules/specific"],
         "generic_rules": ["tests/testdata/unit/list_comparison/rules/generic"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        "list_search_base_path": "./"
+        "list_search_base_path": "./",
     }
     factory = ListComparisonFactory
 
@@ -39,7 +33,7 @@ class TestListComparison(BaseProcessorTestCase):
 
         assert self.object._event.get("user_results") is not None
         assert isinstance(self.object._event.get("user_results"), dict)
-        assert document.get('user_results').get('in_list') is not None
+        assert document.get("user_results").get("in_list") is not None
         assert document.get("user_results").get("not_in_list") is None
 
     def test_element_not_in_list(self):
@@ -49,7 +43,7 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert document.get("user_results", {}).get("not_in_list") is not []
+        assert len(document.get("user_results", {}).get("not_in_list")) == 1
         assert document.get("user_results", {}).get("in_list") is None
 
     def test_element_in_two_lists(self):
@@ -59,21 +53,22 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert len(document.get("user_results", {}).get("not_in_list")) is 1
+        assert len(document.get("user_results", {}).get("not_in_list")) == 1
         assert document.get("user_results", {}).get("in_list") is None
-        assert len(document.get("user_and_system_results", {}).get("in_list")) is 2
+        assert len(document.get("user_and_system_results", {}).get("in_list")) == 2
         assert document.get("user_and_system_results", {}).get("not_in_list") is None
 
     def test_element_not_in_two_lists(self):
-        # Tests if the system Gamma does not appear in two lists, and username Mark is also not in list
+        # Tests if the system Gamma does not appear in two lists,
+        # and username Mark is also not in list
         assert self.object.ps.processed_count == 0
         document = {"user": "Mark", "system": "Gamma"}
 
         self.object.process(document)
 
-        assert len(document.get("user_and_system_results", {}).get("not_in_list")) is 2
+        assert len(document.get("user_and_system_results", {}).get("not_in_list")) == 2
         assert document.get("user_and_system_results", {}).get("in_list") is None
-        assert len(document.get("user_results", {}).get("not_in_list")) is 1
+        assert len(document.get("user_results", {}).get("not_in_list")) == 1
         assert document.get("user_results", {}).get("in_list") is None
 
     def test_two_lists_with_one_matched(self):
@@ -82,10 +77,10 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert document.get("user_results", {}).get("not_in_list") is not []
+        assert len(document.get("user_results", {}).get("not_in_list")) != 0
         assert document.get("user_results", {}).get("in_list") is None
         assert document.get("user_and_system_results", {}).get("not_in_list") is None
-        assert document.get("user_and_system_results", {}).get("in_list") is not []
+        assert len(document.get("user_and_system_results", {}).get("in_list")) != 0
 
     def test_dotted_output_field(self):
         # tests if outputting list_comparison results to dotted fields works
@@ -94,13 +89,8 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert (
-            document.get("dotted", {}).get("user_results", {}).get("not_in_list")
-            is None
-        )
-        assert (
-            document.get("dotted", {}).get("user_results", {}).get("in_list") is not []
-        )
+        assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
+        assert len(document.get("dotted", {}).get("user_results", {}).get("in_list")) != 0
 
     def test_deep_dotted_output_field(self):
         # tests if outputting list_comparison results to dotted fields works
@@ -117,14 +107,6 @@ class TestListComparison(BaseProcessorTestCase):
             .get("not_in_list")
             is None
         )
-        assert (
-            document.get("more", {})
-            .get("than", {})
-            .get("dotted", {})
-            .get("user_results", {})
-            .get("not_in_list")
-            is not []
-        )
 
     def test_extend_dotted_output_field(self):
         # tests if list_comparison properly extends lists already present in output fields.
@@ -137,13 +119,8 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert (
-            document.get("dotted", {}).get("user_results", {}).get("not_in_list")
-            is None
-        )
-        assert (
-            len(document.get("dotted", {}).get("user_results", {}).get("in_list")) == 2
-        )
+        assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
+        assert len(document.get("dotted", {}).get("user_results", {}).get("in_list")) == 2
 
     def test_dotted_parent_field_exists_but_subfield_doesnt(self):
         # tests if list_comparison properly extends lists already present in output fields.
@@ -156,20 +133,10 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
+        assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
+        assert len(document.get("dotted", {}).get("user_results", {}).get("in_list")) == 1
         assert (
-            document.get("dotted", {}).get("user_results", {}).get("not_in_list")
-            is None
-        )
-        assert (
-            len(document.get("dotted", {}).get("user_results", {}).get("in_list")) == 1
-        )
-        assert (
-            len(
-                document.get("dotted", {})
-                .get("preexistent_output_field", {})
-                .get("in_list")
-            )
-            == 1
+            len(document.get("dotted", {}).get("preexistent_output_field", {}).get("in_list")) == 1
         )
 
     def test_dotted_wrong_type(self):
@@ -196,7 +163,7 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert len(document.get("channel_results", {}).get("not_in_list")) is 2
+        assert len(document.get("channel_results", {}).get("not_in_list")) == 2
         assert document.get("channel_results", {}).get("in_list") is None
 
     def test_ignore_comment_in_list(self):
@@ -207,5 +174,5 @@ class TestListComparison(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert len(document.get("user_results", {}).get("not_in_list")) is 1
+        assert len(document.get("user_results", {}).get("not_in_list")) == 1
         assert document.get("user_results", {}).get("in_list") is None

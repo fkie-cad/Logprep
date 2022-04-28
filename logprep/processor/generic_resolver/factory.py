@@ -13,11 +13,9 @@ class GenericResolverFactory(BaseFactory):
         GenericResolverFactory._check_configuration(configuration)
 
         generic_resolver = GenericResolver(
-            name,
-            configuration['specific_rules'],
-            configuration['generic_rules'],
-            configuration.get("tree_config"),
-            logger
+            name=name,
+            configuration=configuration,
+            logger=logger,
         )
 
         return generic_resolver
