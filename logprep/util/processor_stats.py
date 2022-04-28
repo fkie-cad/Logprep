@@ -66,8 +66,6 @@ class ProcessorStats:
             "errors": 0,
             "warnings": 0,
             "avg_processing_time": 0,
-            "matches_per_idx": np.zeros(0, dtype=int),
-            "times_per_idx": np.zeros(0, dtype=float),
         }
         self._max_time = -1
         self._processing_time_sample_counter = 0
@@ -164,6 +162,7 @@ class StatusTracker:
     """Used to track logprep stats."""
 
     _instance = None
+    rule_based_stats_exclusion = ["clusterer", "selective_extractor"]
 
     def __init__(
         self, shared_dict: dict, status_logger_config: dict, status_logger: List, lock: Lock
@@ -283,7 +282,7 @@ class StatusTracker:
     def print_aggregate(self):
         """Print aggregated status data."""
         if self.time_to_print:
-            process_data = dict()
+            process_data = {}
             self._add_per_process_data(process_data)
             self._add_per_processor_data(process_data)
             self._add_process_data_to_shared_process_dict(process_data)
@@ -296,7 +295,7 @@ class StatusTracker:
         process_name = current_process().name
         for processor in self._pipeline:
             if not process_data.get(process_name):
-                process_data[process_name] = dict()
+                process_data[process_name] = {}
             process_data[processor.name] = deepcopy(processor.ps.aggr_data)
 
         # Add data to MultiprocessingPipeline that is supposed to stay
@@ -313,10 +312,10 @@ class StatusTracker:
         for processor in self._pipeline:
             aggr_data = processor.ps.aggr_data
 
-            if not process_data[processor.name]:
-                process_data[processor.name] = dict()
+            if not process_data.get(processor.name):
+                process_data[processor.name] = {}
 
-            if processor.name not in ("clusterer", "selectiveextractor"):
+            if str(type(processor)) not in self.rule_based_stats_exclusion:
                 process_data[processor.name]["matches_per_idx"] = aggr_data["matches_per_idx"]
                 process_data[processor.name]["times_per_idx"] = aggr_data["times_per_idx"]
                 process_data[processor.name]["matches"] = aggr_data["matches"]
@@ -348,7 +347,7 @@ class StatusTracker:
     def prepare_logging_data(self, metrics=None):
         if not metrics:
             metrics = self._get_aggregated_data_from_pipeline()
-        StatusTracker._add_derivative_data(metrics)
+        self._add_derivative_data(metrics)
 
         filtered_data = StatusTracker._get_filtered_stats(metrics)
         filtered_data["timestamp"] = datetime.now().isoformat()
@@ -359,7 +358,7 @@ class StatusTracker:
     def _get_sorted_output_dict(filtered_data: dict) -> OrderedDict:
         sorted_data = OrderedDict(sorted(filtered_data.items()))
         ordered_data = OrderedDict()
-        used_keys = list()
+        used_keys = []
         for key, value in sorted_data.items():
             if key.startswith("MultiprocessingPipeline"):
                 ordered_data[key] = value
@@ -373,15 +372,13 @@ class StatusTracker:
                 ordered_data[key] = value
         return ordered_data
 
-    @staticmethod
-    def _add_derivative_data(aggr_data: dict):
+    def _add_derivative_data(self, aggr_data: dict):
         for name, value in aggr_data.items():
             if isinstance(value, dict):
                 if not name.startswith("Multiprocessing") and name not in (
                     "error_types",
                     "warning_types",
-                    "clusterer",
-                    "selectiveextractor",
+                    *self.rule_based_stats_exclusion,
                 ):
                     matches_per_idx = aggr_data[name]["matches_per_idx"]
                     aggr_data[name]["mean_matches_per_rule"] = f"{np.mean(matches_per_idx):.1f}"
@@ -399,7 +396,7 @@ class StatusTracker:
     def _get_aggregated_data_from_pipeline(self) -> dict:
         processes = self._get_process_data_from_shared_dict()
 
-        aggregated_data = dict()
+        aggregated_data = {}
         excluded_keys = ("error_types", "warning_types", "processed", "errors", "warnings")
         for process in processes:
             self._aggregate_processor_specific(aggregated_data, excluded_keys, process)
