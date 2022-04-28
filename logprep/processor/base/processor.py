@@ -4,13 +4,13 @@ New processors are created by implementing it.
 
 """
 
+from abc import abstractmethod
+from logging import Logger
+from os import walk, path
 from typing import List, Union, Optional
 
-from abc import abstractmethod
-from os import walk, path
-from logging import Logger
-
 from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.util.helper import camel_to_snake
 
 
 class ProcessingError(BaseException):
@@ -34,7 +34,17 @@ class ProcessingWarningCollection(ProcessingError):
         self.processing_warnings = processing_warnings
 
 
-class BaseProcessor:
+class SnakeType(type):
+    """
+    If set as a metaclass it rewrites the type(cls) call to return the camel case version
+    of the class
+    """
+
+    def __repr__(cls):
+        return camel_to_snake(cls.__name__)
+
+
+class BaseProcessor(metaclass=SnakeType):
     """Responsible for processing log events."""
 
     def __init__(self, name, logger):
@@ -47,7 +57,7 @@ class BaseProcessor:
         self.has_custom_tests = False
 
     @property
-    def name(self):
+    def name(self):  # pylint: disable=missing-function-docstring
         return self._name
 
     def setup(self):
