@@ -139,8 +139,7 @@ class RuleBasedProcessor(BaseProcessor):
 
     @property
     def _specific_rules(self):
-        """
-        returns all specific rules
+        """Returns all specific rules
 
         Returns
         -------
@@ -150,8 +149,7 @@ class RuleBasedProcessor(BaseProcessor):
 
     @property
     def _generic_rules(self):
-        """
-        returns all generic rules
+        """Returns all generic rules
 
         Returns
         -------
@@ -161,8 +159,7 @@ class RuleBasedProcessor(BaseProcessor):
 
     @property
     def _rules(self):
-        """
-        returns all rules
+        """Returns all rules
 
         Returns
         -------
@@ -185,8 +182,7 @@ class RuleBasedProcessor(BaseProcessor):
 
     @TimeMeasurement.measure_time()
     def process(self, event: dict):
-        """
-        Process a log event by calling the implemented `process` method of the
+        """Process a log event by calling the implemented `process` method of the
         strategy object set in  `_strategy` attribute.
 
         Parameters
