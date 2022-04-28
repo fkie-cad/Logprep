@@ -4,14 +4,11 @@ from logging import Logger, DEBUG
 from multiprocessing import current_process
 from typing import List
 
-from time import time
 from ruamel.yaml import YAML
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -49,9 +46,6 @@ class GenericResolver(RuleBasedProcessor):
         tree_config = configuration.get("tree_config")
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
-
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
 
         self._event = None
 
@@ -92,31 +86,6 @@ class GenericResolver(RuleBasedProcessor):
         )
 
     # pylint: enable=arguments-differ
-
-    def describe(self) -> str:
-        """Describe the current processor"""
-        return f"GenericResolver ({self._name})"
-
-    @TimeMeasurement.measure_time("generic_resolver")
-    def process(self, event: dict):
-        """Process the current event"""
-        self._event = event
-
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = float(f"{time() - begin:.10f}")
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = float(f"{time() - begin:.10f}")
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
         """Apply the given rule to the current event"""

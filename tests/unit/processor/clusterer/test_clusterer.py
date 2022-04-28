@@ -93,11 +93,13 @@ class TestClusterer(BaseProcessorTestCase):
     @mock.patch("logprep.processor.clusterer.processor.Clusterer._cluster")
     def test_only_clusterable_logs_are_clustered(self, mock_cluster, mock_is_clusterable):
         mock_is_clusterable.return_value = False
-        self.object.process({})
+        self.object.process({"message": "test_message"})
+        mock_is_clusterable.assert_called()
         mock_cluster.assert_not_called()
 
         mock_is_clusterable.return_value = True
-        self.object.process({})
+        self.object.process({"message": "test_message"})
+        mock_is_clusterable.assert_called()
         mock_cluster.assert_called_once()
 
     def test_syslog_has_severity_and_facility(self):
@@ -182,7 +184,12 @@ class TestClusterer(BaseProcessorTestCase):
         assert document == expected
 
 
-class TestClustererFactory(TestClusterer):
+class TestClustererFactory:
+
+    CONFIG = TestClusterer.CONFIG
+
+    logger = TestClusterer.logger
+
     def test_create(self):
         assert isinstance(ClustererFactory.create("foo", self.CONFIG, self.logger), Clusterer)
 

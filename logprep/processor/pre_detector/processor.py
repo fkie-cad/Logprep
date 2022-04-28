@@ -1,25 +1,14 @@
 """This module contains functionality for pre-detecting attacks."""
 
-from typing import List
-from logging import Logger, DEBUG
-from os import walk
-from os.path import isdir, realpath, join
-from uuid import uuid4
-from time import time
+from logging import DEBUG, Logger
 from multiprocessing import current_process
+from typing import List
+from uuid import uuid4
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.processor import RuleBasedProcessor
-from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
-
+from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class PreDetectorError(BaseException):
@@ -36,6 +25,8 @@ class PreDetectorConfigurationError(PreDetectorError):
 class PreDetector(RuleBasedProcessor):
     """Processor used to pre_detect log events."""
 
+    detection_results: list
+
     def __init__(self, name: str, configuration: dict, logger: Logger):
         tree_config = configuration.get("tree_config")
         pre_detector_topic = configuration.get("pre_detector_topic")
@@ -51,8 +42,6 @@ class PreDetector(RuleBasedProcessor):
         self._event = None
 
         self._ids = []
-        self._generic_tree = RuleTree(config_path=tree_config)
-        self._specific_tree = RuleTree(config_path=tree_config)
 
         self._ip_alerter = IPAlerter(alert_ip_list_path)
         self.add_rules_from_directory(
@@ -90,55 +79,28 @@ class PreDetector(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def _load_rules_from_file(self, path: str):
-        try:
-            return PreDetectorRule.create_rules_from_file(path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path) from error
-
-    def describe(self) -> str:
-        return f"PreDetector ({self._name})"
-
     def setup(self):
         pass
 
-    @TimeMeasurement.measure_time("pre_detector")
     def process(self, event: dict) -> tuple:
         self._event = event
-        detection_results = []
+        self.detection_results = []
+        super().process(event)
+        return (
+            (self.detection_results, self._pre_detector_topic) if self.detection_results else None
+        )
 
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            if not (
-                self._ip_alerter.has_ip_fields(rule)
-                and not self._ip_alerter.is_in_alerts_list(rule, event)
-            ):
-                if self._logger.isEnabledFor(DEBUG):
-                    self._logger.debug(f"{self.describe()} processing matching event")
-                self._get_detection_result(rule, detection_results)
-                processing_time = time() - begin
-                idx = self._generic_tree.get_rule_id(rule)
-                self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            if not (
-                self._ip_alerter.has_ip_fields(rule)
-                and not self._ip_alerter.is_in_alerts_list(rule, event)
-            ):
-                if self._logger.isEnabledFor(DEBUG):
-                    self._logger.debug(f"{self.describe()} processing matching event")
-                self._get_detection_result(rule, detection_results)
-                processing_time = time() - begin
-                idx = self._specific_tree.get_rule_id(rule)
-                self.ps.update_per_rule(idx, processing_time)
-
+    def _apply_rules(self, event, rule):
+        if not (
+            self._ip_alerter.has_ip_fields(rule)
+            and not self._ip_alerter.is_in_alerts_list(rule, event)
+        ):
+            if self._logger.isEnabledFor(DEBUG):
+                self._logger.debug(f"{self.describe()} processing matching event")
+            self._get_detection_result(rule, self.detection_results)
         if "@timestamp" in event:
-            for detection in detection_results:
+            for detection in self.detection_results:
                 detection["@timestamp"] = event["@timestamp"]
-
-        self.ps.increment_processed_count()
-        return (detection_results, self._pre_detector_topic) if detection_results else None
 
     def _get_detection_result(self, rule: PreDetectorRule, detection_results: list):
         if self._event.get("pre_detection_id") is None:

@@ -24,7 +24,7 @@ class ProcessorFactory:
     disabled_logger = getLogger("DISABLED")
     disabled_logger.disabled = True
 
-    processors_factory_map = dict()
+    processors_factory_map = {}
     already_added_classes = []
 
     @classmethod
@@ -37,7 +37,7 @@ class ProcessorFactory:
 
         for directory in directories:
             if directory != "base":
-                cls.processors_factory_map[directory] = dict()
+                cls.processors_factory_map[directory] = {}
                 for (importer, name, _) in pkgutil.iter_modules([join(plugin_dir, directory)]):
                     if name == "factory":
                         pre_loading_submodules = deepcopy(BaseFactory.__subclasses__())
