@@ -28,7 +28,11 @@ attrs==21.4.0
     # via
     #   -r requirements.txt
     #   aiohttp
+    #   jsonschema
     #   pytest
+    #   semgrep
+bracex==2.2.1
+    # via wcmatch
 certifi==2021.10.8
     # via
     #   -r requirements.txt
@@ -38,8 +42,16 @@ charset-normalizer==2.0.10
     #   -r requirements.txt
     #   aiohttp
     #   requests
+click==8.0.4
+    # via
+    #   click-option-group
+    #   semgrep
+click-option-group==0.5.3
+    # via semgrep
 colorama==0.4.4
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   semgrep
 confluent-kafka==1.8.2
     # via -r requirements.txt
 coverage[toml]==6.2
@@ -72,14 +84,20 @@ idna-ssl==1.1.0
     #   aiohttp
 importlib-metadata==4.8.3
     # via
+    #   click
+    #   jsonschema
     #   pluggy
     #   pytest
+importlib-resources==5.4.0
+    # via tqdm
 iniconfig==1.1.1
     # via pytest
 isort==5.10.1
     # via pylint
 jsonref==0.2
     # via -r requirements.txt
+jsonschema==3.2.0
+    # via semgrep
 lazy-object-proxy==1.7.1
     # via astroid
 luqum==0.11.0
@@ -98,7 +116,11 @@ multidict==5.2.0
 numpy==1.19.5
     # via -r requirements.txt
 packaging==21.3
-    # via pytest
+    # via
+    #   pytest
+    #   semgrep
+peewee==3.14.10
+    # via semgrep
 platformdirs==2.4.0
     # via
     #   -r requirements.txt
@@ -122,6 +144,8 @@ pylint==2.12.2
     # via -r requirements_dev.in
 pyparsing==3.0.7
     # via packaging
+pyrsistent==0.18.0
+    # via jsonschema
 pytest==6.2.5
     # via
     #   -r requirements_dev.in
@@ -145,20 +169,26 @@ requests==2.27.1
     #   -r requirements.txt
     #   geoip2
     #   requests-file
+    #   semgrep
     #   tldextract
 requests-file==1.5.1
     # via
     #   -r requirements.txt
     #   tldextract
 ruamel.yaml==0.17.20
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   semgrep
 ruamel.yaml.clib==0.2.6
     # via
     #   -r requirements.txt
     #   ruamel.yaml
+semgrep==0.81.0
+    # via -r requirements_dev.in
 six==1.16.0
     # via
     #   -r requirements.txt
+    #   jsonschema
     #   python-dateutil
     #   requests-file
 tldextract==3.1.2
@@ -169,6 +199,8 @@ toml==0.10.2
     #   pytest
 tomli==1.2.3
     # via coverage
+tqdm==4.64.0
+    # via semgrep
 typed-ast==1.5.2
     # via astroid
 typing-extensions==4.0.1
@@ -194,6 +226,8 @@ urllib3==1.26.8
     #   -r requirements.txt
     #   geoip2
     #   requests
+wcmatch==8.3
+    # via semgrep
 wrapt==1.13.3
     # via astroid
 yarl==1.7.2
@@ -201,7 +235,9 @@ yarl==1.7.2
     #   -r requirements.txt
     #   aiohttp
 zipp==3.6.0
-    # via importlib-metadata
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

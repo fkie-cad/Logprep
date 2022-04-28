@@ -1,0 +1,13 @@
+rules:
+  - id: processor-implements-apply-rules-method
+    message: Processor must implement apply_rules method
+    severity: INFO
+    languages: [python]
+    patterns:
+      - pattern: |
+          class $X(RuleBasedProcessor):
+            ...
+      - pattern-not: | 
+          class $X(RuleBasedProcessor):
+            def _apply_rules(...):
+              ...
