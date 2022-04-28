@@ -82,7 +82,7 @@ class Rule:
 
     @staticmethod
     def _get_special_fields_for_rule_matching(rule: dict) -> dict:
-        special_fields = dict()
+        special_fields = {}
 
         for field_type in Rule.special_field_types:
             special_fields[field_type] = rule.get(field_type, [])

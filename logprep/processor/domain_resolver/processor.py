@@ -63,7 +63,7 @@ class DomainResolver(RuleBasedProcessor):
         self._cache_enabled = configuration.get("cache_enabled", True)
         self._debug_cache = configuration.get("debug_cache", False)
 
-        self._domain_ip_map = dict()
+        self._domain_ip_map = {}
         self._specific_rules_dirs = configuration.get("specific_rules")
         self._generic_rules_dirs = configuration.get("generic_rules")
         self.add_rules_from_directory(
@@ -125,7 +125,7 @@ class DomainResolver(RuleBasedProcessor):
                             self.ps.increment_nested(self._name, "resolved_new")
 
                         if self._debug_cache:
-                            event["resolved_ip_debug"] = dict()
+                            event["resolved_ip_debug"] = {}
                             event_dbg = event["resolved_ip_debug"]
                             if requires_storing:
                                 event_dbg["obtained_from_cache"] = False

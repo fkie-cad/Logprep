@@ -90,7 +90,7 @@ class GenericAdder(RuleBasedProcessor):
                     if idx == len(keys) - 1:
                         dict_[key] = value
                         break
-                    dict_[key] = dict()
+                    dict_[key] = {}
 
                 if isinstance(dict_[key], dict):
                     dict_ = dict_[key]

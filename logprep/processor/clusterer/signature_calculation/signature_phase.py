@@ -108,7 +108,7 @@ class SignatureAggregator:
     """
 
     def __init__(self):
-        self.sig_to_log_nr_map = dict()
+        self.sig_to_log_nr_map = {}
 
     def run(self, record: LogRecord) -> Tuple[Dict[str, List[int]], None]:
         """Run the signature aggregator."""

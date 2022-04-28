@@ -53,7 +53,7 @@ class TemplateReplacer(RuleBasedProcessor):
         allow_delimiter_field = pattern["allowed_delimiter_field"]
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
 
-        self._mapping = dict()
+        self._mapping = {}
         with open(template_path, "r", encoding="utf8") as template_file:
             template = yaml.load(template_file)
 
@@ -78,7 +78,7 @@ class TemplateReplacer(RuleBasedProcessor):
                 for idx, recombined_key in enumerate(recombined_keys):
                     if idx < len(self._fields) - 1:
                         if not _dict.get(recombined_key):
-                            _dict[recombined_key] = dict()
+                            _dict[recombined_key] = {}
                         _dict = _dict[recombined_key]
                     else:
                         _dict[recombined_key] = value

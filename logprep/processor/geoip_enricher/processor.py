@@ -93,7 +93,7 @@ class GeoIPEnricher(RuleBasedProcessor):
             return dict()
 
         try:
-            geoip = dict()
+            geoip = {}
 
             ip = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip)

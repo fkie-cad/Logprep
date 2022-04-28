@@ -68,7 +68,7 @@ class GrokWrapper:
             if matches:
                 if pattern_matches is not None:
                     pattern_matches[grok.pattern] += 1
-                dotted_matches = dict()
+                dotted_matches = {}
                 for key, value in matches.items():
                     dotted_matches[self.grok_delimiter_pattern.sub(".", key)] = value
                 return dotted_matches
@@ -84,9 +84,9 @@ class NormalizerRule(Rule):
 
     def __init__(self, filter_rule: FilterExpression, normalizations: dict):
         super().__init__(filter_rule)
-        self._substitutions = dict()
-        self._grok = dict()
-        self._timestamps = dict()
+        self._substitutions = {}
+        self._grok = {}
+        self._timestamps = {}
 
         self._parse_normalizations(normalizations)
 

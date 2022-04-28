@@ -262,7 +262,7 @@ class Pseudonymizer(RuleBasedProcessor):
         return replacements
 
     def _get_pseudonym_map(self, pseudonyms: List[dict], url: dict) -> dict:
-        pseudonym_map = dict()
+        pseudonym_map = {}
         if url.get("subdomain"):
             pseudonym_map[url["subdomain"]] = self._pseudonymize_value(url["subdomain"], pseudonyms)
         if url.get("fragment"):
