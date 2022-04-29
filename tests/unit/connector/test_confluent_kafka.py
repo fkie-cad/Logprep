@@ -672,8 +672,8 @@ class TestConfluentKafka:
 
         assert len(kafka_output._producer.produced) == 1
         assert (
-                kafka_output._producer.produced[0][1]["error"]
-                == "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
+            kafka_output._producer.produced[0][1]["error"]
+            == "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
         )
         assert kafka_output._producer.produced[0][1]["original"] == test_event
 
