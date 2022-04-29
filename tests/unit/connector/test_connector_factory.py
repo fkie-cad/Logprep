@@ -1,3 +1,9 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-order
+# pylint: disable=attribute-defined-outside-init
+# pylint: disable=no-self-use
 from copy import deepcopy
 
 from pytest import raises
@@ -30,7 +36,7 @@ class TestConnectorFactory:
     def test_fails_to_create_a_connector_when_type_is_unknown(self):
         for unknown_type in ["test", "unknown", "this is not a known type"]:
             with raises(
-                UnknownConnectorTypeError, match='Unknown connector type: "%s"' % unknown_type
+                UnknownConnectorTypeError, match=f'Unknown connector type: "{unknown_type}"'
             ):
                 ConnectorFactory.create({"type": unknown_type})
 
@@ -47,12 +53,12 @@ class TestConnectorFactoryDummy:
             ConnectorFactory.create({"type": "dummy"})
 
     def test_returns_a_dummy_input_and_output_instance(self):
-        input, output = ConnectorFactory.create(self.configuration)
+        _input, output = ConnectorFactory.create(self.configuration)
 
-        assert isinstance(input, DummyInput)
+        assert isinstance(_input, DummyInput)
         assert isinstance(output, DummyOutput)
 
-        assert input._documents == self.configuration["input"]
+        assert _input._documents == self.configuration["input"]
 
 
 class TestConnectorFactoryConfluentKafka:

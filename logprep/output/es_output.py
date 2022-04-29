@@ -236,14 +236,14 @@ class ElasticsearchOutput(Output):
         self._add_dates(document)
         self._write_to_es(document)
 
-    def store_custom(self, document: dict, target_index: str):
+    def store_custom(self, document: dict, target: str):
         """Write document to Elasticsearch into the target index.
 
         Parameters
         ----------
         document : dict
             Document to be stored into the target index.
-        target_index : str
+        target : str
             Index to store the document in.
         Raises
         ------
@@ -251,7 +251,7 @@ class ElasticsearchOutput(Output):
             Raises if any error except a BufferError occurs while writing into elasticsearch.
 
         """
-        document["_index"] = target_index
+        document["_index"] = target
         self._add_dates(document)
         self._write_to_es(document)
 
@@ -288,8 +288,4 @@ class ElasticsearchOutput(Output):
 
     @staticmethod
     def _format_message(error: BaseException) -> str:
-        return (
-            "{}: {}".format(type(error).__name__, str(error))
-            if str(error)
-            else type(error).__name__
-        )
+        return f"{type(error).__name__}: {str(error)}" if str(error) else type(error).__name__

@@ -1,3 +1,9 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-order
+# pylint: disable=attribute-defined-outside-init
+# pylint: disable=no-self-use
 from base64 import b64decode
 from copy import deepcopy
 from datetime import datetime
@@ -191,14 +197,12 @@ class RecordMock:
     def value(self):
         if self.record_value is None:
             return None
-        else:
-            return self.record_value.encode("utf-8")
+        return self.record_value.encode("utf-8")
 
     def error(self):
         if self.record_error is None:
             return None
-        else:
-            return self.record_error
+        return self.record_error
 
     @staticmethod
     def offset():
@@ -209,25 +213,25 @@ class ConsumerJsonMock:
     def __init__(self, record):
         self.record = ujson.encode(record)
 
-    def poll(self, timeout):
+    def poll(self, timeout):  # pylint: disable=unused-argument
         return RecordMock(self.record, None)
 
 
 class ConsumerInvalidJsonMock:
     @staticmethod
-    def poll(timeout):
+    def poll(timeout):  # pylint: disable=unused-argument
         return RecordMock("This is not a valid JSON string!", None)
 
 
 class ConsumerRecordWithKafkaErrorMock:
     @staticmethod
-    def poll(timeout):
+    def poll(timeout):  # pylint: disable=unused-argument
         return RecordMock('{"test_variable" : "test value" }', "An arbitrary confluent-kafka error")
 
 
 class ConsumerNoRecordMock:
     @staticmethod
-    def poll(timeout):
+    def poll(timeout):  # pylint: disable=unused-argument
         return None
 
 
@@ -506,15 +510,17 @@ class TestConfluentKafka:
 
         with raises(
             CriticalInputError,
-            match=r"Input record value is not a valid json string: \(ValueError\: Expected object or value\)",
+            match=r"Input record value is not a valid json string: \(ValueError\: Expected object "
+            r"or value\)",
         ):
             kafka_input.get_next(1)
 
     def test_create_confluent_settings_contains_expected_values2(self):
         with raises(
             CriticalOutputError,
-            match=r"Error storing output document\: \(TypeError: <tests\.unit\.connector\.test_confluent_kafka"
-            r"\.NotJsonSerializableMock object at 0x[a-zA-Z0-9]{9,12}> is not JSON serializable\)",
+            match=r"Error storing output document\: \(TypeError: <tests\.unit\.connector\.test_"
+            r"confluent_kafka\.NotJsonSerializableMock object at 0x[a-zA-Z0-9]{9,12}> is not "
+            r"JSON serializable\)",
         ):
             self.kafka_output.store(
                 {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"}
@@ -596,7 +602,8 @@ class TestConfluentKafka:
             "message": {"with_subfield": "content"},
             "Hmac": {
                 "hmac": "error",
-                "compressed_base64": "eJyzSa0oSE0uSU1RyMhNTFYoSSxKTy1RSMtMzUlRUM/Lz4tPrcgsLsnMS48Hi6kr5OUDpfNL81LsAJILFeQ=",
+                "compressed_base64": "eJyzSa0oSE0uSU1RyMhNTFYoSSxKTy1RSMtMzUlRUM"
+                "/Lz4tPrcgsLsnMS48Hi6kr5OUDpfNL81LsAJILFeQ=",
             },
         }
         kafka_input._consumer = ConsumerJsonMock(test_event)
@@ -673,7 +680,8 @@ class TestConfluentKafka:
         assert len(kafka_output._producer.produced) == 1
         assert (
             kafka_output._producer.produced[0][1]["error"]
-            == "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
+            == "Couldn't add the hmac to the input event as the desired output field 'message' "
+            "already exist."
         )
         assert kafka_output._producer.produced[0][1]["original"] == test_event
 

@@ -1,3 +1,9 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-order
+# pylint: disable=attribute-defined-outside-init
+# pylint: disable=no-self-use
 from copy import deepcopy
 
 from pytest import fail, raises
@@ -30,8 +36,8 @@ class TestElasticsearchFactory:
     }
 
     def setup_method(self, _):
-        self.config = deepcopy(self.valid_configuration)
-        self.kafka_input = ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        config = deepcopy(self.valid_configuration)
+        self.kafka_input = ConfluentKafkaInputFactory.create_from_configuration(config)
 
     def test_es_output_creation(self):
         ElasticsearchOutputFactory.create_from_configuration(self.valid_configuration)

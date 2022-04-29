@@ -1,3 +1,9 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-order
+# pylint: disable=attribute-defined-outside-init
+# pylint: disable=no-self-use
 import re
 from datetime import datetime
 from json import loads, dumps
@@ -15,14 +21,16 @@ class NotJsonSerializableMock:
     pass
 
 
-def mock_bulk(_, documents: list, max_retries: int = 0, chunk_size: int = 500):
+def mock_bulk(
+    _, documents: list, max_retries: int = 0, chunk_size: int = 500
+):  # pylint: disable=unused-argument
     for document in documents:
         try:
             loads(dumps(document))
-        except TypeError:
+        except TypeError as error:
             raise CriticalOutputError(
                 "Error storing output document: Serialization Error", document
-            )
+            ) from error
 
 
 elasticsearch.helpers.bulk = mock_bulk
@@ -38,7 +46,7 @@ class TestElasticsearchOutput:
         try:
             ElasticsearchOutput("host", 123, "default_index", "error_index", 2, 5000, 0)
         except TypeError as err:
-            fail("Must implement abstract methods: %s" % str(err))
+            fail(f"Must implement abstract methods: {str(err)}")
 
     def test_describe_endpoint_returns_elasticsearch_output(self):
         assert self.es_output.describe_endpoint() == "Elasticsearch Output: host123"

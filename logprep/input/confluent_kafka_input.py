@@ -218,8 +218,7 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
 
         if self._record.error():
             raise CriticalInputError(
-                "A confluent-kafka record contains an error code: "
-                "({})".format(self._record.error()),
+                f"A confluent-kafka record contains an error code: ({self._record.error()})",
                 None,
             )
         try:
@@ -235,44 +234,43 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             raise InvalidMessageError
         except ValueError as error:
             raise CriticalInputError(
-                "Input record value is not a valid json string: "
-                "({})".format(self._format_message(error)),
+                f"Input record value is not a valid json string: ({self._format_message(error)})",
                 self._record.value().decode("utf-8"),
             ) from error
         except InvalidMessageError as error:
             raise CriticalInputError(
-                "Input record value could not be parsed "
-                "as dict: ({})".format(self._format_message(error)),
+                f"Input record value could not be parsed as dict: ({self._format_message(error)})",
                 self._record.value().decode("utf-8"),
             ) from error
         except BaseException as error:
             raise CriticalInputError(
-                "Error parsing input record: ({})".format(self._format_message(error)),
+                f"Error parsing input record: ({self._format_message(error)})",
                 self._record.value().decode("utf-8"),
             ) from error
 
     def _add_hmac_to(self, event_dict, hmac_target_field_name, raw_event):
         """
-        Calculates an HMAC (Hash-based message authentication code) based on a given target field and adds it to the
-        given event. If the target field has the value '<RAW_MSG>' the full raw byte message is used instead as a
-        target for the HMAC calculation. As a result the target field value and the resulting hmac will be added to
-        the original event. The target field value will be compressed and base64 encoded though to reduce memory usage.
+        Calculates an HMAC (Hash-based message authentication code) based on a given target field
+        and adds it to the given event. If the target field has the value '<RAW_MSG>' the full raw
+        byte message is used instead as a target for the HMAC calculation. As a result the target
+        field value and the resulting hmac will be added to the original event. The target field
+        value will be compressed and base64 encoded though to reduce memory usage.
 
         Parameters
         ----------
         event_dict: dict
             The event to which the calculated hmac should be appended
         hmac_target_field_name: str
-            The dotted field name of the target value that should be used for the hmac calculation. If instead
-            '<RAW_MSG>' is used then the hmac will be calculated over the full raw event.
+            The dotted field name of the target value that should be used for the hmac calculation.
+            If instead '<RAW_MSG>' is used then the hmac will be calculated over the full raw event.
         raw_event: bytearray
             The raw event how it is received from kafka.
 
         Returns
         -------
         event_dict: dict
-            The original event extended with a field that has the hmac and the corresponding target field, which was
-            used to calculate the hmac.
+            The original event extended with a field that has the hmac and the corresponding target
+            field, which was used to calculate the hmac.
         """
 
         # calculate hmac of full raw message
@@ -304,7 +302,8 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
                     event_dict,
                 )
 
-        # compress received_orig_message and create output with base 64 encoded compressed received_orig_message
+        # compress received_orig_message and create output with base 64 encoded compressed
+        # received_orig_message
         compressed = compress(received_orig_message, level=-1)
         hmac_output = {"hmac": hmac, "compressed_base64": b64encode(compressed).decode()}
 
