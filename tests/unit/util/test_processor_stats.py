@@ -238,20 +238,24 @@ class TestStatusTracker:
 
         assert process_data.get("Dropper1", {}).get("matches") == 0
         assert process_data.get("Dropper1", {}).get("processed") == 13
-        assert all(process_data.get("Dropper1", {}).get("matches_per_idx") == np.zeros(
-            self.status_tracker._pipeline[0].ps.num_rules
-        ))
-        assert all(process_data.get("Dropper1", {}).get("times_per_idx") == np.zeros(
-            self.status_tracker._pipeline[0].ps.num_rules
-        ))
+        assert all(
+            process_data.get("Dropper1", {}).get("matches_per_idx")
+            == np.zeros(self.status_tracker._pipeline[0].ps.num_rules)
+        )
+        assert all(
+            process_data.get("Dropper1", {}).get("times_per_idx")
+            == np.zeros(self.status_tracker._pipeline[0].ps.num_rules)
+        )
 
         assert process_data.get("Dropper2", {}).get("matches") == 0
         assert process_data.get("Dropper2", {}).get("processed") == 21
-        assert all(process_data.get("Dropper2", {}).get("matches_per_idx") == np.zeros(
-            self.status_tracker._pipeline[1].ps.num_rules
-        ))
-        assert all(process_data.get("Dropper2", {}).get("times_per_idx") == np.zeros(
-            self.status_tracker._pipeline[1].ps.num_rules
-        ))
+        assert all(
+            process_data.get("Dropper2", {}).get("matches_per_idx")
+            == np.zeros(self.status_tracker._pipeline[1].ps.num_rules)
+        )
+        assert all(
+            process_data.get("Dropper2", {}).get("times_per_idx")
+            == np.zeros(self.status_tracker._pipeline[1].ps.num_rules)
+        )
 
         assert process_data.get("Clusterer1", {}).get("processed") == 78
