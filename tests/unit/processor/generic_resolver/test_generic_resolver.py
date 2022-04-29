@@ -428,7 +428,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "resolve_list": {"FOO": "BAR"},
@@ -453,7 +453,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)c)\d*",
                 },
             },
@@ -471,7 +471,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\)c)\d*",
                 },
             },
@@ -495,7 +495,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\\\)c)\d*",
                 },
             },
@@ -519,7 +519,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\\\\)c)\d*",
                 },
             },
@@ -535,7 +535,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve_1": "resolved_1", "to_resolve_2": "resolved_2"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "resolve_list": {"fg": "fg_server_type"},
@@ -563,7 +563,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "resolve_list": {"FOO": "BAR"},
@@ -590,7 +590,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -613,7 +613,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>(([a-z])+)())\d*",
                 },
                 "append_to_list": True,
@@ -636,7 +636,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -659,7 +659,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[123]+)\d*",
                 },
                 "append_to_list": True,
@@ -684,7 +684,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -710,7 +710,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved", "other_to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/generic_resolver"
-                            "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -764,6 +764,6 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
         with pytest.raises(
             InvalidGenericResolverDefinition,
             match=r"The following GenericResolver definition is invalid: Additions file '{'path': "
-                  r"'foo', 'pattern': 'bar'}' not found!",
+            r"'foo', 'pattern': 'bar'}' not found!",
         ):
             self._load_specific_rule(rule)

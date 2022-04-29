@@ -102,11 +102,7 @@ class GenericResolverRule(Rule):
             last_pos += 1
             if bracket_cnt <= 0:
                 break
-        replaced_pattern = (
-                pattern[:first_pos]
-                + re.escape(mapping)
-                + pattern[last_pos:]
-        )
+        replaced_pattern = pattern[:first_pos] + re.escape(mapping) + pattern[last_pos:]
         return replaced_pattern
 
     def _get_resolve_file_path_and_pattern(self) -> Tuple[str, str]:
