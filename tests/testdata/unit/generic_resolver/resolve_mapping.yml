@@ -1,2 +1,2 @@
-\d*ab\d*: ab_server_type
-\d*de\d*: de_server_type
+ab: ab_server_type
+de: de_server_type

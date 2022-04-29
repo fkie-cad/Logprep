@@ -212,19 +212,18 @@ Parameter
 type
 ~~~~
 
-The value `generic_resolver` chooses the processor type GenericResolver, which will be described here in greater detail.
+The value `generic_resolver` chooses the processor type GenericResolver.
 
-rules
-~~~~~
+Hyperscan Resolver
+----------------
 
-List of directory paths with rule files, i.e.:
+Parameter
+^^^^^^^^^
 
-  * /var/git/logprep-rules/generic_resolver_rules/
+type
+~~~~
 
-tree_config
-~~~~~~~~~~~
-
-Path to JSON file with rule tree matcher config.
+The value `hyperscan_resolver` chooses the processor type GenericResolver.
 
 hyperscan_db_path
 ~~~~~~~~~~~~~~~~~

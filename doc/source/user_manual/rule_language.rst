@@ -1118,7 +1118,8 @@ In the following example the target field specified in the processor configurati
 Generic Resolver
 ================
 
-The generic resolver requires the additional field :code:`generic_resolver`.
+The generic adder requires the additional field :code:`generic_resolver`.
+It works similarly to the hyperscan resolver, which utilizes hyperscan to process resolve lists.
 Configurable fields are being checked by regex patterns and a configurable value will be added if a pattern matches.
 The parameters within :code:`generic_resolver` must be of the form
 :code:`field_mapping: {SOURCE_FIELD: DESTINATION_FIELD}, resolve_list: {REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`.
@@ -1134,6 +1135,61 @@ In the following example :code:`to_resolve` will be checked by the regex pattern
 
     filter: to_resolve
     generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        .*Hello.*: Greeting
+
+Alternatively, a YML file with a resolve list and a regex pattern can be used to resolve values.
+For this, a field :code:`resolve_from_file` with the subfields :code:`path` and :code:`pattern` must be added.
+The resolve list in the file at :code:`path` is then used in conjunction with the regex pattern in :code:`pattern`.
+:code:`pattern` must be a regex pattern with a capture group that is named :code:`mapping`.
+The resolver will check for the pattern and get value captured by the :code:`mapping` group.
+This captured value is then used in the list from the file.
+
+In the following example :code:`to_resolve` will be checked by the regex pattern :code:`\d*(?P<mapping>[a-z]+)\d*` and the list in :code:`path/to/resolve_mapping.yml` will be used to add new fields.
+:code:`"resolved": "resolved foo"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains foo.
+Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains bar.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example resolving with list from file
+
+    filter: to_resolve
+    generic_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_from_file:
+        path: path/to/resolve_mapping.yml
+        pattern: \d*(?P<mapping>[a-z]+)\d*
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example file with resolve list
+
+    foo: resolved foo
+    bar: resolved bar
+
+Hyperscan Resolver
+================
+
+The hyperscan resolver requires the additional field :code:`hyperscan_resolver`.
+It works similarly to the generic resolver, but utilized hyperscan to process resolve lists.
+Configurable fields are being checked by regex patterns and a configurable value will be added if a pattern matches.
+The parameters within :code:`hyperscan_resolver` must be of the form
+:code:`field_mapping: {SOURCE_FIELD: DESTINATION_FIELD}, resolve_list: {REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`.
+SOURCE_FIELD will be checked by the regex patterns REGEX_PATTERN_[0-N] and a new field DESTINATION_FIELD with the value ADDED_VALUE_[0-N] will be added if there is a match.
+Adding the option :code:`"append_to_list": True` makes the hyperscan resolver write resolved values into a list so that multiple different values can be written into the same field.
+
+In the following example :code:`to_resolve` will be checked by the regex pattern :code:`.*Hello.*`.
+:code:`"resolved": "Greeting"` will be added to the event if the pattern matches the value in :code:`to_resolve`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    hyperscan_resolver:
       field_mapping:
         to_resolve: resolved
       resolve_list:
@@ -1161,7 +1217,7 @@ Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if th
     :caption: Example resolving with list from file
 
     filter: to_resolve
-    generic_resolver:
+    hyperscan_resolver:
       field_mapping:
         to_resolve: resolved
       resolve_from_file: path/to/resolve_mapping.yml
@@ -1182,7 +1238,7 @@ Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if th
     :caption: Example resolving with list from file
 
     filter: to_resolve
-    generic_resolver:
+    hyperscan_resolver:
       field_mapping:
         to_resolve: resolved
       resolve_from_file:
@@ -1196,7 +1252,7 @@ Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if th
     foo: resolved foo
     bar: resolved bar
 
-The generic resolver uses the `Python Hyperscan library <https://python-hyperscan.readthedocs.io/en/latest/>`_ to check regex patterns.
+The hyperscan resolver uses the `Python Hyperscan library <https://python-hyperscan.readthedocs.io/en/latest/>`_ to check regex patterns.
 By default, the compiled Hyperscan databases will be stored persistently in the directory specified in the :code:`pipeline.yml`.
 The field :code:`store_db_persistent` can be used to configure if a database compiled from a rule's :code:`resolve_list` should be stored persistently.
 
