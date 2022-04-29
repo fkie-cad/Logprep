@@ -1,5 +1,5 @@
 # pylint: disable=protected-access
-# pylint: disable=missing-module-docstring
+# pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 from collections import OrderedDict

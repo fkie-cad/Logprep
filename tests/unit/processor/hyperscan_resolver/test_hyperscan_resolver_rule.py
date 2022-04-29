@@ -1,5 +1,5 @@
 # pylint: disable=protected-access
-# pylint: disable=missing-module-docstring
+# pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 import pytest
@@ -10,8 +10,8 @@ from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
 pytest.importorskip("logprep.processor.normalizer")
 
 
-@pytest.fixture()
-def specific_rule_definition():
+@pytest.fixture(name="specific_rule_definition")
+def fixture_specific_rule_definition():
     return {
         "filter": 'winlog.event_id: 1234 AND source_name: "test"',
         "hyperscan_resolver": {
