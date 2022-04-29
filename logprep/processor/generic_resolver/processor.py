@@ -46,13 +46,13 @@ class GenericResolver(RuleBasedProcessor):
         generic_rules_dirs = configuration.get("generic_rules")
         tree_config = configuration.get("tree_config")
         super().__init__(name, tree_config, logger)
-        self._hyperscan_databases = dict()
+        self._hyperscan_databases = {}
 
         hyperscan_db_path = configuration.get("hyperscan_db_path")
         if hyperscan_db_path:
             self._hyperscan_database_path = hyperscan_db_path
         else:
-            self._hyperscan_database_path = path.dirname(path.abspath(__file__)) + "/hyperscan_dbs/"
+            self._hyperscan_database_path = f"{path.dirname(path.abspath(__file__))}/hyperscan_dbs/"
         self.ps = ProcessorStats()
 
         self._event = None
@@ -108,7 +108,7 @@ class GenericResolver(RuleBasedProcessor):
             if src_val:
                 result = []
 
-                def on_match(matching_pattern_id: int, fr, to, flags, context):
+                def on_match(matching_pattern_id: int, _fr, _to, _flags, _context):
                     result.append(matching_pattern_id)
 
                 hyperscan_db.scan(src_val, match_event_handler=on_match)
@@ -130,7 +130,7 @@ class GenericResolver(RuleBasedProcessor):
                                         result[result.index(min(result))]
                                     ]
                                 break
-                            dict_[key] = dict()
+                            dict_[key] = {}
                         if isinstance(dict_[key], dict):
                             dict_ = dict_[key]
                         else:
@@ -154,17 +154,17 @@ class GenericResolver(RuleBasedProcessor):
         database_id = rule.file_name
         resolve_list = rule.resolve_list
 
-        if database_id not in self._hyperscan_databases.keys():
+        if database_id not in self._hyperscan_databases:
             try:
-                db, value_mapping = self._load_database(database_id, resolve_list)
+                database, value_mapping = self._load_database(database_id, resolve_list)
             except FileNotFoundError:
-                db, value_mapping = self._create_database(resolve_list)
+                database, value_mapping = self._create_database(resolve_list)
 
                 if rule.store_db_persistent:
-                    self._save_database(db, database_id)
+                    self._save_database(database, database_id)
 
             self._hyperscan_databases[database_id] = {}
-            self._hyperscan_databases[database_id]["db"] = db
+            self._hyperscan_databases[database_id]["db"] = database
             self._hyperscan_databases[database_id]["value_mapping"] = value_mapping
 
         return (
@@ -175,8 +175,8 @@ class GenericResolver(RuleBasedProcessor):
     def _load_database(self, database_id, resolve_list):
         value_mapping = {}
 
-        with open(self._hyperscan_database_path + "/" + database_id + ".db", "rb") as f:
-            data = f.read()
+        with open(self._hyperscan_database_path + "/" + database_id + ".db", "rb") as db_file:
+            data = db_file.read()
 
         for idx, pattern in enumerate(resolve_list.keys()):
             value_mapping[idx] = resolve_list[pattern]
@@ -187,8 +187,8 @@ class GenericResolver(RuleBasedProcessor):
         _create_hyperscan_dbs_dir(self._hyperscan_database_path)
         serialized_db = dumpb(database)
 
-        with open(self._hyperscan_database_path + "/" + database_id + ".db", "wb") as f:
-            f.write(serialized_db)
+        with open(self._hyperscan_database_path + "/" + database_id + ".db", "wb") as db_file:
+            db_file.write(serialized_db)
 
     def _create_database(self, resolve_list):
         database = Database()
@@ -208,9 +208,9 @@ class GenericResolver(RuleBasedProcessor):
         return database, value_mapping
 
 
-def _create_hyperscan_dbs_dir(path):
+def _create_hyperscan_dbs_dir(path_):
     try:
-        makedirs(path)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
+        makedirs(path_)
+    except OSError as error:
+        if error.errno != errno.EEXIST:
             raise

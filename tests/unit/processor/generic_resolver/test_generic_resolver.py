@@ -7,11 +7,12 @@ from logging import getLogger
 
 import pytest
 
+from tests.unit.processor.base import BaseProcessorTestCase
+
 from logprep.processor.generic_resolver.rule import (
     InvalidGenericResolverDefinition,
     GenericResolverRule,
 )
-from tests.unit.processor.base import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.generic_resolver")
 
@@ -58,7 +59,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert isinstance(self.object, GenericResolver)
 
-    def test_resolve_generic_existing_not_dotted_field_without_conflict_match(self):
+    def test_resolve_generic_not_dotted_field_no_conflict_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -76,7 +77,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_not_dotted_field_without_conflict_and_to_list_entries_match(
+    def test_resolve_generic_not_dotted_field_no_conflict_and_to_list_entries_match(
         self,
     ):
         rule = {
@@ -100,7 +101,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    def test_resolve_generic_existing_not_dotted_field_without_conflict_no_match(self):
+    def test_resolve_generic_not_dotted_field_no_conflict_no_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -118,7 +119,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match(self):
+    def test_resolve_generic_dotted_no_conflict_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -136,7 +137,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file(self):
+    def test_resolve_generic_dotted_no_conflict_from_file(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -179,7 +180,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_no_match_from_fileF(self):
+    def test_resolve_generic_dotted_no_conflict_no_from_file(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -200,7 +201,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_list(
         self,
     ):
         rule = {
@@ -221,7 +222,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list_has_conflict(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_list_has_conflict(
         self,
     ):
         rule = {
@@ -243,7 +244,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list_has_conflict_and_different_inputs(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_list_has_conflict_and_diff_inputs(
         self,
     ):
         rule = {
@@ -269,7 +270,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_match_from_file_and_file_does_not_exist(self):
+    def test_resolve_generic_from_file_and_file_does_not_exist(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -281,7 +282,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
         with pytest.raises(InvalidGenericResolverDefinition):
             self._load_specific_rule(rule)
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_no_match(self):
+    def test_resolve_generic_dotted_no_conflict_no_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -299,7 +300,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_dest_field_without_conflict_match(self):
+    def test_resolve_generic_dotted_dest_field_no_conflict_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -317,7 +318,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_dest_field_without_conflict_no_match(self):
+    def test_resolve_generic_dotted_dest_field_no_conflict_no_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -335,7 +336,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_and_dest_field_without_conflict_match(self):
+    def test_resolve_generic_dotted_and_dest_field_no_conflict_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -353,7 +354,7 @@ class TestGenericResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_and_dest_field_with_conflict_match(self):
+    def test_resolve_generic_dotted_and_dest_field_with_conflict_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -420,13 +421,14 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
         specific_rule.file_name = "some_file_name_is_required_for_hyperscan"
         self.object._specific_tree.add_rule(specific_rule, self.logger)
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file(self):
+    def test_resolve_generic_dotted_no_conflict_from_file(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "resolve_list": {"FOO": "BAR"},
@@ -442,7 +444,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_and_unbalanced_parenthesis(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_unbalanced_parenthesis(
         self,
     ):
         rule = {
@@ -450,7 +452,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)c)\d*",
                 },
             },
@@ -459,7 +462,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
         with pytest.raises(Exception, match="unbalanced parenthesis"):
             self._load_specific_rule(rule)
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_and_escaped_parenthesis(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_escaped_parenthesis(
         self,
     ):
         rule = {
@@ -467,7 +470,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\)c)\d*",
                 },
             },
@@ -482,7 +486,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_and_escaped_parenthesis_and_backslash(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_escaped_parenthesis_and_backslash(
         self,
     ):
         rule = {
@@ -490,7 +494,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\\\)c)\d*",
                 },
             },
@@ -505,7 +510,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_and_escaped_to_unbalanced_parenthesis(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_escaped_to_unbalanced_parenthesis(
         self,
     ):
         rule = {
@@ -513,7 +518,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\\\\)c)\d*",
                 },
             },
@@ -528,7 +534,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve_1": "resolved_1", "to_resolve_2": "resolved_2"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "resolve_list": {"fg": "fg_server_type"},
@@ -549,13 +556,14 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_no_match_from_file(self):
+    def test_resolve_generic_dotted_no_conflict_no_from_file(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "resolve_list": {"FOO": "BAR"},
@@ -573,7 +581,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_list(
         self,
     ):
         rule = {
@@ -581,7 +589,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -603,7 +612,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>(([a-z])+)())\d*",
                 },
                 "append_to_list": True,
@@ -625,7 +635,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -647,7 +658,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[123]+)\d*",
                 },
                 "append_to_list": True,
@@ -663,7 +675,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
         ):
             self.object.process(document)
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list_has_conflict(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_list_has_conflict(
         self,
     ):
         rule = {
@@ -671,7 +683,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -688,7 +701,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list_has_conflict_and_different_inputs(
+    def test_resolve_generic_dotted_no_conflict_from_file_and_list_has_conflict_and_diff_inputs(
         self,
     ):
         rule = {
@@ -696,7 +709,8 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
             "generic_resolver": {
                 "field_mapping": {"to_resolve": "resolved", "other_to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/generic_resolver/resolve_mapping_without_patterns.yml",
+                    "path": "tests/testdata/unit/generic_resolver"
+                            "/resolve_mapping_without_patterns.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -717,7 +731,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_group_mapping_does_not_exist(
+    def test_resolve_generic_dotted_no_conflict_from_file_group_mapping_does_not_exist(
         self,
     ):
         rule = {
@@ -738,7 +752,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         self.object.process(document)
 
-    def test_resolve_generic_match_from_file_and_file_does_not_exist(self):
+    def test_resolve_generic_from_file_and_file_does_not_exist(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -749,6 +763,7 @@ class TestGenericResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         with pytest.raises(
             InvalidGenericResolverDefinition,
-            match=r"The following GenericResolver definition is invalid: Additions file '{'path': 'foo', 'pattern': 'bar'}' not found!",
+            match=r"The following GenericResolver definition is invalid: Additions file '{'path': "
+                  r"'foo', 'pattern': 'bar'}' not found!",
         ):
             self._load_specific_rule(rule)
