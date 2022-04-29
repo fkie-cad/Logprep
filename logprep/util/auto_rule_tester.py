@@ -355,7 +355,7 @@ class AutoRuleTester:
         self._add_rules_from_directory(processor, rule_type)
 
     def _run_custom_rule_tests(self, processor, rule_test):
-        temp_rule_path = path.join(self._empty_rules_dirs[0], f'{hashlib.sha256()}.json')
+        temp_rule_path = path.join(self._empty_rules_dirs[0], f"{hashlib.sha256()}.json")
         rules = self._get_rules(processor, rule_test)
 
         for rule_type, rules in rules.items():
@@ -365,7 +365,7 @@ class AutoRuleTester:
                 remove_file_if_exists(temp_rule_path)
 
     def _run_file_rule_tests(self, processor, rule_test):
-        temp_rule_path = path.join(self._empty_rules_dirs[0], f'{hashlib.sha256()}.json')
+        temp_rule_path = path.join(self._empty_rules_dirs[0], f"{hashlib.sha256()}.json")
         rules = self._get_rules(processor, rule_test)
 
         for rule_type, rules in rules.items():
