@@ -1171,7 +1171,7 @@ Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if th
     bar: resolved bar
 
 Hyperscan Resolver
-================
+==================
 
 The hyperscan resolver requires the additional field :code:`hyperscan_resolver`.
 It works similarly to the generic resolver, but utilized hyperscan to process resolve lists.

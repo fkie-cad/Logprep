@@ -215,7 +215,7 @@ type
 The value `generic_resolver` chooses the processor type GenericResolver.
 
 Hyperscan Resolver
-----------------
+------------------
 
 Parameter
 ^^^^^^^^^
