@@ -1,19 +1,11 @@
 # pylint: disable=missing-docstring
-from os.path import exists
-from logging import getLogger
+from unittest import mock
 
 import pytest
-from unittest import mock
 from geoip2.errors import AddressNotFoundError
-from tests.unit.processor.base import BaseProcessorTestCase
-
-pytest.importorskip("logprep.processor.geoip_enricher")
-
 from logprep.processor.geoip_enricher.factory import GeoIPEnricherFactory
 from logprep.processor.geoip_enricher.processor import DuplicationError
-
-logger = getLogger()
-rules_dir = "tests/testdata/unit/geoip_enricher/rules"
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class ReaderMock(mock.MagicMock):
@@ -89,7 +81,7 @@ class TestGeoIPEnricher(BaseProcessorTestCase):
         document = {"something": {"something": "1.2.3.4"}}
 
         self.object.process(document)
-        assert "geoip" not in document.keys()
+        assert "geoip" not in document
 
     def test_geoip_data_added_not_valid(self):
         assert self.object.ps.processed_count == 0

@@ -1,26 +1,16 @@
 """
-This module contains functionality for checking if values exist or not exist in file lists. This processor implements
-black- and whitelisting capabilities.
+This module contains functionality for checking if values exist or not exist in file lists.
+This processor implements black- and whitelisting capabilities.
 """
-from logging import Logger, DEBUG
-from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.framework import rule_tree
+from logging import DEBUG, Logger
 from multiprocessing import current_process
-from os import walk
-from os.path import isdir, realpath, join
-from time import time
 from typing import List, Optional
 
-from logprep.processor.base.exceptions import (
-    NotARulesDirectoryError,
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError, InvalidRuleFileError
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class ListComparisonError(BaseException):
@@ -68,8 +58,6 @@ class ListComparison(RuleBasedProcessor):
         super().__init__(name, tree_config, logger)
         self._list_search_base_dir = list_search_base_path
         self.ps = ProcessorStats()
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(
@@ -97,62 +85,10 @@ class ListComparison(RuleBasedProcessor):
                 f"({current_process().name})"
             )
         self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter
-            + [None] * self._specific_tree.rule_counter
+            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
         )
 
     # pylint: enable=arguments-differ
-
-    def _load_rules_from_file(self, list_comparison_path: str):
-        """
-        Collect rule(s) from a given file.
-
-        Parameters
-        ----------
-        path : str
-            Path to the file containing a list_comparison rule.
-
-        """
-        try:
-            return ListComparisonRule.create_rules_from_file(list_comparison_path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(
-                self._name, list_comparison_path, str(error)
-            ) from error
-
-    def describe(self) -> str:
-        """Return name of given processor instance."""
-        return f"ListComparison ({self._name})"
-
-    @TimeMeasurement.measure_time("list_comparison")
-    def process(self, event: dict):
-        """
-        Process log message.
-
-        Parameters
-        ----------
-        event : dict
-            Current event log message to be processed.
-
-        """
-
-        self._event = event
-
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        self.ps.increment_processed_count()
 
     def _apply_rules(self, event, rule):
         """
@@ -181,8 +117,8 @@ class ListComparison(RuleBasedProcessor):
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
         """
         Check if field value violates block or allow list.
-        Returns the result of the comparison (res_key), as well as a dictionary containing the result (key)
-        and a list of filenames pertaining to said result (value).
+        Returns the result of the comparison (res_key), as well as a dictionary containing
+        the result (key) and a list of filenames pertaining to said result (value).
         """
 
         # get value that should be checked in the lists
@@ -195,7 +131,6 @@ class ListComparison(RuleBasedProcessor):
                 list_matches.append(compare_list)
 
         # if matching list was found return it, otherwise return all list names
-        if len(list_matches) > 0:
-            return list_matches, "in_list"
-        elif len(list_matches) == 0:
+        if len(list_matches) == 0:
             return list(rule.compare_sets.keys()), "not_in_list"
+        return list_matches, "in_list"

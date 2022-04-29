@@ -1,11 +1,9 @@
 """This module contains functionality for adding fields using regex lists."""
-from time import time
 from typing import List
 from logging import Logger, DEBUG
 
 
 from multiprocessing import current_process
-from logprep.framework.rule_tree.rule_tree import RuleTree
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.generic_adder.rule import GenericAdderRule
@@ -15,7 +13,6 @@ from logprep.processor.base.exceptions import (
 )
 
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class GenericAdderError(BaseException):
@@ -46,8 +43,6 @@ class GenericAdder(RuleBasedProcessor):
         generic_rules_dirs = configuration.get("generic_rules")
         super().__init__(name, tree_config, logger)
         self.ps = ProcessorStats()
-        self._generic_tree = RuleTree(tree_config)
-        self._specific_tree = RuleTree(tree_config)
         self.add_rules_from_directory(
             generic_rules_dirs=generic_rules_dirs,
             specific_rules_dirs=specific_rules_dirs,
@@ -84,35 +79,6 @@ class GenericAdder(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def _load_rules_from_file(self, path: str):
-        try:
-            return GenericAdderRule.create_rules_from_file(path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path, str(error)) from error
-
-    def describe(self) -> str:
-        return f"GenericAdder ({self._name})"
-
-    @TimeMeasurement.measure_time("generic_adder")
-    def process(self, event: dict):
-        self._event = event
-
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event, rule)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        self.ps.increment_processed_count()
-
     def _apply_rules(self, event, rule):
         conflicting_fields = list()
 
@@ -124,7 +90,7 @@ class GenericAdder(RuleBasedProcessor):
                     if idx == len(keys) - 1:
                         dict_[key] = value
                         break
-                    dict_[key] = dict()
+                    dict_[key] = {}
 
                 if isinstance(dict_[key], dict):
                     dict_ = dict_[key]

@@ -5,12 +5,10 @@ are elements of a given list.
 
 import os.path
 from typing import Optional
-
-from json import load
 from ruamel.yaml import YAML
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
+from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -56,45 +54,42 @@ class ListComparisonRule(Rule):
         self._check_field = list_comparison_cfg["check_field"]
         self._list_comparison_output_field = list_comparison_cfg["output_field"]
 
-        self._compare_sets = dict()
+        self._compare_sets = {}
         self._config = list_comparison_cfg
         self.init_list_comparison(self._config.get("list_search_base_path"))
 
     def init_list_comparison(self, list_search_base_path: Optional[str]):
+        """init method for list_comparision"""
         for key in self._config.keys():
             if key.endswith("_paths"):
                 file_paths = self._config[key]
                 for list_path in file_paths:
                     if list_search_base_path is not None and not os.path.isabs(list_path):
                         list_path = os.path.join(list_search_base_path, list_path)
-                    with open(list_path, "r") as f:
-                        compare_elements = f.read().splitlines()
+                    with open(list_path, "r", encoding="utf8") as list_file:
+                        compare_elements = list_file.read().splitlines()
                         file_elem_tuples = [
-                            elem
-                            for elem in compare_elements
-                            if not elem.startswith("#")
+                            elem for elem in compare_elements if not elem.startswith("#")
                         ]
                         file_name = os.path.basename(list_path)
                         self._compare_sets[file_name] = set(file_elem_tuples)
 
     def __eq__(self, other: "ListComparisonRule") -> bool:
-        return (other.filter == self._filter) and (
-            self._check_field == other.check_field
-        )
+        return (other.filter == self._filter) and (self._check_field == other.check_field)
 
     def __hash__(self) -> int:
         return hash(repr(self))
 
     @property
-    def compare_sets(self) -> dict:
+    def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
         return self._compare_sets
 
     @property
-    def check_field(self) -> str:
+    def check_field(self) -> str:  # pylint: disable=missing-docstring
         return self._check_field
 
     @property
-    def list_comparison_output_field(self) -> str:
+    def list_comparison_output_field(self) -> str:  # pylint: disable=missing-docstring
         return self._list_comparison_output_field
 
     @staticmethod
@@ -108,7 +103,8 @@ class ListComparisonRule(Rule):
     @staticmethod
     def _check_if_valid(rule: dict):
         """
-        Check validity of a given rule file in relation to the processor configuration in the given pipeline.
+        Check validity of a given rule file in relation to the processor configuration
+        in the given pipeline.
 
         Parameters
         ----------
@@ -130,8 +126,8 @@ class ListComparisonRule(Rule):
             <= 4
         ):
             raise InvalidListComparisonDefinition(
-                f"Allowed config fields are: {', '.join(ListComparisonRule.allowed_cfg_fields)}, and of them"
-                f" only one path field should be present."
+                f"Allowed config fields are: {', '.join(ListComparisonRule.allowed_cfg_fields)}, "
+                f"and of them only one path field should be present."
             )
 
         # check if config contains unknown fields
@@ -151,15 +147,13 @@ class ListComparisonRule(Rule):
             if key in ["list_file_paths"]:
                 if len(list_comparison_cfg[key]) == 0:
                     raise InvalidListComparisonDefinition(
-                        f"The rule should have at least one list configured"
+                        "The rule should have at least one list configured"
                     )
 
                 # iterate over all given files
                 for path in list_comparison_cfg[key]:
                     if not isinstance(path, str) and not os.path.isfile(path):
-                        raise InvalidListComparisonDefinition(
-                            f"{path} is not a existing file."
-                        )
+                        raise InvalidListComparisonDefinition(f"{path} is not a existing file.")
 
             if key == "check_field":
                 if not isinstance(list_comparison_cfg[key], str):

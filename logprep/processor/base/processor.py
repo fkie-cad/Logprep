@@ -9,8 +9,11 @@ from logging import Logger
 from os import walk, path
 from typing import List, Union, Optional
 
+
 from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util.helper import camel_to_snake
+from logprep.util.time_measurement import TimeMeasurement
 
 
 class ProcessingError(BaseException):
@@ -57,7 +60,8 @@ class BaseProcessor(metaclass=SnakeType):
         self.has_custom_tests = False
 
     @property
-    def name(self):  # pylint: disable=missing-function-docstring
+    def name(self):
+        """Name of Processor as property"""
         return self._name
 
     def setup(self):
@@ -129,12 +133,10 @@ class BaseProcessor(metaclass=SnakeType):
 class RuleBasedProcessor(BaseProcessor):
     """Responsible for processing log events."""
 
+    _strategy = SpecificGenericProcessStrategy()
+
     def __init__(self, name: str, tree_config: str, logger: Logger):
         super().__init__(name, logger)
-        self._rules = []
-        self._specific_rules = []
-        self._generic_rules = []
-        self._tree = RuleTree(config_path=tree_config)
         self._specific_tree = RuleTree(config_path=tree_config)
         self._generic_tree = RuleTree(config_path=tree_config)
 
@@ -145,7 +147,36 @@ class RuleBasedProcessor(BaseProcessor):
 
         """
 
-    @abstractmethod
+    @property
+    def _specific_rules(self):
+        """Returns all specific rules
+
+        Returns
+        -------
+        specific_rules: list[Rule]
+        """
+        return self._specific_tree.rules
+
+    @property
+    def _generic_rules(self):
+        """Returns all generic rules
+
+        Returns
+        -------
+        generic_rules: list[Rule]
+        """
+        return self._generic_tree.rules
+
+    @property
+    def _rules(self):
+        """Returns all rules
+
+        Returns
+        -------
+        rules: list[Rule]
+        """
+        return [*self._generic_rules, *self._specific_rules]
+
     def describe(self) -> str:
         """Provide a brief name-like description of the processor.
 
@@ -157,13 +188,12 @@ class RuleBasedProcessor(BaseProcessor):
         >>> Labeler(name)
 
         """
-        return "undescribed processor"
+        return f"{self.__class__.__name__} ({self._name})"
 
-    @abstractmethod
+    @TimeMeasurement.measure_time()
     def process(self, event: dict):
-        """Process a log event by modifying its values in place.
-
-        To prevent any further processing/delete an event, remove all its contents.
+        """Process a log event by calling the implemented `process` method of the
+        strategy object set in  `_strategy` attribute.
 
         Parameters
         ----------
@@ -172,7 +202,17 @@ class RuleBasedProcessor(BaseProcessor):
 
         """
 
-        raise NotImplementedError
+        self._strategy.process(
+            event,
+            generic_tree=self._generic_tree,
+            specific_tree=self._specific_tree,
+            callback=self._apply_rules,
+            processor_stats=self.ps,
+        )
+
+    @abstractmethod
+    def _apply_rules(self, event, rule):
+        ...
 
     def shut_down(self):
         """Stop processing of this processor.
@@ -182,7 +222,7 @@ class RuleBasedProcessor(BaseProcessor):
         """
 
     @abstractmethod
-    def add_rules_from_directory(*args, **kwargs):
+    def add_rules_from_directory(self, *args, **kwargs):
         """Add rule from lists of directories.
 
         So far this can be for 'rules' or 'specific_rules' and 'generic_rules'

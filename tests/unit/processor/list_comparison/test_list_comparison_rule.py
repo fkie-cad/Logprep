@@ -1,23 +1,21 @@
-from logprep.filter.lucene_filter import LuceneFilter
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=no-self-use
+from unittest import mock
 
 import pytest
-
-pytest.importorskip("logprep.processor.list_comparison")
-
-from unittest import mock
+from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.list_comparison.rule import ListComparisonRule
 
 
-@pytest.fixture()
-def specific_rule_definition():
+@pytest.fixture(name="specific_rule_definition")
+def fixture_specific_rule_definition():
     return {
         "filter": "user",
         "list_comparison": {
             "check_field": "user",
             "output_field": "user_results",
-            "list_file_paths": [
-                "tests/testdata/unit/list_comparison/lists/user_list.txt"
-            ],
+            "list_file_paths": ["tests/testdata/unit/list_comparison/lists/user_list.txt"],
         },
         "description": "",
     }
@@ -61,20 +59,18 @@ class TestListComparisonRule:
         assert rule_diff_check_field != rule_diff_filter
 
     def test_compare_set_not_empty_for_valid_rule_def(self, specific_rule_definition):
-        self.rule = ListComparisonRule(
+        rule = ListComparisonRule(
             LuceneFilter.create(specific_rule_definition["filter"]),
             specific_rule_definition["list_comparison"],
         )
 
-        assert self.rule._compare_sets is not None
-        assert isinstance(self.rule._compare_sets, dict)
-        assert len(self.rule._compare_sets.keys()) > 0
+        assert rule._compare_sets is not None
+        assert isinstance(rule._compare_sets, dict)
+        assert len(rule._compare_sets.keys()) > 0
 
-    @mock.patch(
-        "logprep.processor.list_comparison.rule.ListComparisonRule.init_list_comparison"
-    )
+    @mock.patch("logprep.processor.list_comparison.rule.ListComparisonRule.init_list_comparison")
     def test_init_compare_sets_is_called(self, mock_method, specific_rule_definition):
-        rule = ListComparisonRule(
+        _ = ListComparisonRule(
             LuceneFilter.create(specific_rule_definition["filter"]),
             specific_rule_definition["list_comparison"],
         )

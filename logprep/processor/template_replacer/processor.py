@@ -1,23 +1,13 @@
 """This module contains functionality replacing a text field using a template."""
-from time import time
-from typing import List
-from logging import Logger, DEBUG
-
-
+from logging import DEBUG, Logger
 from multiprocessing import current_process
+from typing import List
 
 from ruamel.yaml import YAML
-from logprep.framework.rule_tree.rule_tree import RuleTree
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
-from logprep.processor.base.exceptions import (
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
-
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -53,8 +43,6 @@ class TemplateReplacer(RuleBasedProcessor):
         self.ps = ProcessorStats()
         specific_rules_dirs = configuration.get("specific_rules")
         generic_rules_dirs = configuration.get("generic_rules")
-        self._generic_tree = RuleTree(config_path=tree_config)
-        self._specific_tree = RuleTree(config_path=tree_config)
         self.add_rules_from_directory(
             generic_rules_dirs=generic_rules_dirs, specific_rules_dirs=specific_rules_dirs
         )
@@ -65,7 +53,7 @@ class TemplateReplacer(RuleBasedProcessor):
         allow_delimiter_field = pattern["allowed_delimiter_field"]
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
 
-        self._mapping = dict()
+        self._mapping = {}
         with open(template_path, "r", encoding="utf8") as template_file:
             template = yaml.load(template_file)
 
@@ -90,7 +78,7 @@ class TemplateReplacer(RuleBasedProcessor):
                 for idx, recombined_key in enumerate(recombined_keys):
                     if idx < len(self._fields) - 1:
                         if not _dict.get(recombined_key):
-                            _dict[recombined_key] = dict()
+                            _dict[recombined_key] = {}
                         _dict = _dict[recombined_key]
                     else:
                         _dict[recombined_key] = value
@@ -131,36 +119,7 @@ class TemplateReplacer(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def _load_rules_from_file(self, path: str):
-        try:
-            return TemplateReplacerRule.create_rules_from_file(path)
-        except InvalidRuleDefinitionError as error:
-            raise InvalidRuleFileError(self._name, path) from error
-
-    def describe(self) -> str:
-        return f"TemplateReplacer ({self._name})"
-
-    @TimeMeasurement.measure_time("template_replacer")
-    def process(self, event: dict):
-        self._event = event
-
-        for rule in self._generic_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(event):
-            begin = time()
-            self._apply_rules(event)
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        self.ps.increment_processed_count()
-
-    def _apply_rules(self, event):
+    def _apply_rules(self, event, rule):
         _dict = self._mapping
         for field in self._fields:
             dotted_field_value = self._get_dotted_field_value(event, field)

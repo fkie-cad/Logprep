@@ -1,33 +1,28 @@
 """This module contains a Normalizer that copies specific values to standardized fields."""
-import html
-import os
-from typing import Optional, Tuple, List, Union
-from filelock import FileLock
-import json
-from logging import Logger, DEBUG
-from pathlib import Path
-
-from ruamel.yaml import YAML
-from time import time
-from functools import reduce
-from multiprocessing import current_process
-import re
-
-from datetime import datetime
-from dateutil import parser
-from pytz import timezone
-import arrow
 import calendar
+import html
+import json
+import os
+import re
+from datetime import datetime
+from functools import reduce
+from logging import DEBUG, Logger
+from multiprocessing import current_process
+from pathlib import Path
+from time import time
+from typing import List, Optional, Tuple, Union
 
+import arrow
 import ujson
+from dateutil import parser
+from filelock import FileLock
+from pytz import timezone
+from ruamel.yaml import YAML
 
-from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import RuleBasedProcessor, ProcessingWarning
+from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
-
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -58,9 +53,6 @@ class Normalizer(RuleBasedProcessor):
         self._regex_mapping = regex_mapping
         self._html_replace_fields = html_replace_fields
 
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
-
         self._count_grok_pattern_matches = count_grok_pattern_matches
         if count_grok_pattern_matches:
             self._grok_matches_path = count_grok_pattern_matches["count_directory_path"]
@@ -73,11 +65,11 @@ class Normalizer(RuleBasedProcessor):
 
         NormalizerRule.additional_grok_patterns = grok_patterns
 
-        with open(regex_mapping, "r") as file:
+        with open(regex_mapping, "r", encoding="utf8") as file:
             self._regex_mapping = yaml.load(file)
 
         if html_replace_fields:
-            with open(html_replace_fields, "r") as file:
+            with open(html_replace_fields, "r", encoding="utf8") as file:
                 self._html_replace_fields = yaml.load(file)
 
         self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
@@ -113,23 +105,6 @@ class Normalizer(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def describe(self) -> str:
-        return f"Normalizer ({self._name})"
-
-    @TimeMeasurement.measure_time("normalizer")
-    def process(self, event: dict):
-        self._event = event
-        self._conflicting_fields.clear()
-        self._apply_rules()
-        if self._count_grok_pattern_matches:
-            self._write_grok_matches()
-
-        self.ps.increment_processed_count()
-        try:
-            self._raise_warning_if_fields_already_existed()
-        except DuplicationError as error:
-            raise ProcessingWarning(str(error)) from error
-
     def _write_grok_matches(self):
         """Write count of matches for each grok pattern into a file if configured time has passed.
 
@@ -154,25 +129,25 @@ class Normalizer(RuleBasedProcessor):
         with FileLock(self._file_lock_path):
             json_dict = {}
             if os.path.isfile(file_path):
-                with open(file_path, "r") as grok_json_file:
+                with open(file_path, "r", encoding="utf8") as grok_json_file:
                     json_dict = json.load(grok_json_file)
 
             for key, value in self._grok_pattern_matches.items():
                 json_dict[key] = json_dict.get(key, 0) + value
                 self._grok_pattern_matches[key] = 0
 
-            with open(file_path, "w") as grok_json_file:
+            with open(file_path, "w", encoding="utf8") as grok_json_file:
                 json_dict = dict(reversed(sorted(json_dict.items(), key=lambda items: items[1])))
                 json.dump(json_dict, grok_json_file, indent=4)
 
-    def _try_add_field(self, target: Union[str, List[str]], value: str):
+    def _try_add_field(self, event: dict, target: Union[str, List[str]], value: str):
         target, value = self._get_transformed_value(target, value)
 
-        if self._field_exists(self._event, target):
-            if self._get_dotted_field_value(self._event, target) != value:
+        if self._field_exists(event, target):
+            if self._get_dotted_field_value(event, target) != value:
                 self._conflicting_fields.append(target)
         else:
-            self._add_field(target, value)
+            self._add_field(event, target, value)
 
     def _get_transformed_value(self, target: Union[str, List[str]], value: str) -> Tuple[str, str]:
         if isinstance(target, list):
@@ -183,37 +158,46 @@ class Normalizer(RuleBasedProcessor):
             target = target[0]
         return target, value
 
-    def _add_field(self, dotted_field: str, value: Union[str, int]):
+    def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
         fields = dotted_field.split(".")
         missing_fields = ujson.loads(ujson.dumps(fields))
-        dict_ = self._event
         for field in fields:
-            if isinstance(dict_, dict) and field in dict_:
-                dict_ = dict_[field]
+            if isinstance(event, dict) and field in event:
+                event = event[field]
                 missing_fields.pop(0)
             else:
                 break
-        if not isinstance(dict_, dict):
+        if not isinstance(event, dict):
             self._conflicting_fields.append(dotted_field)
             return
         for field in missing_fields[:-1]:
-            dict_[field] = {}
-            dict_ = dict_[field]
-        dict_[missing_fields[-1]] = value
+            event[field] = {}
+            event = event[field]
+        event[missing_fields[-1]] = value
 
         if self._html_replace_fields and dotted_field in self._html_replace_fields:
             if self._has_html_entity(value):
-                dict_[missing_fields[-1] + "_decodiert"] = html.unescape(value)
+                event[missing_fields[-1] + "_decodiert"] = html.unescape(value)
 
     @staticmethod
     def _has_html_entity(value):
         return re.search("&#[0-9]{2,4};", value)
 
-    def _replace_field(self, dotted_field: str, value: str):
+    def _replace_field(self, event: dict, dotted_field: str, value: str):
         fields = dotted_field.split(".")
-        reduce(lambda dict_, key: dict_[key], fields[:-1], self._event)[fields[-1]] = value
+        reduce(lambda dict_, key: dict_[key], fields[:-1], event)[fields[-1]] = value
 
-    def _apply_rules(self):
+    def process(self, event: dict):
+        self._conflicting_fields.clear()
+        super().process(event)
+        if self._count_grok_pattern_matches:
+            self._write_grok_matches()
+        try:
+            self._raise_warning_if_fields_already_existed()
+        except DuplicationError as error:
+            raise ProcessingWarning(str(error)) from error
+
+    def _apply_rules(self, event, rule):
         """Normalizes Windows Event Logs.
 
         The rules in this function are applied on a first-come, first-serve basis: If a rule copies
@@ -224,35 +208,14 @@ class Normalizer(RuleBasedProcessor):
         be written in a way that no such warnings are produced during normal operation because each
         warning should be an indicator of incorrect rules or unexpected/changed events.
         """
-        for rule in self._generic_tree.get_matching_rules(self._event):
-            begin = time()
-            if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug(f"{self.describe()} processing generic matching event")
-            self._try_add_grok(rule)
-            self._try_add_timestamps(rule)
-            for before, after in rule.substitutions.items():
-                self._try_normalize_event_data_field(before, after)
+        self._try_add_grok(event, rule)
+        self._try_add_timestamps(event, rule)
+        for before, after in rule.substitutions.items():
+            self._try_normalize_event_data_field(event, before, after)
 
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._generic_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-        for rule in self._specific_tree.get_matching_rules(self._event):
-            begin = time()
-            if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug(f"{self.describe()} processing specific matching event")
-            self._try_add_grok(rule)
-            self._try_add_timestamps(rule)
-            for before, after in rule.substitutions.items():
-                self._try_normalize_event_data_field(before, after)
-
-            processing_time = float("{:.10f}".format(time() - begin))
-            idx = self._specific_tree.get_rule_id(rule)
-            self.ps.update_per_rule(idx, processing_time)
-
-    def _try_add_grok(self, rule: NormalizerRule):
+    def _try_add_grok(self, event: dict, rule: NormalizerRule):
         for source_field, grok in rule.grok.items():
-            source_value = self._get_dotted_field_value(self._event, source_field)
+            source_value = self._get_dotted_field_value(event, source_field)
             if source_value is None:
                 continue
 
@@ -262,13 +225,13 @@ class Normalizer(RuleBasedProcessor):
                 matches = grok.match(source_value)
             for normalized_field, field_value in matches.items():
                 if field_value is not None:
-                    self._try_add_field(normalized_field, field_value)
+                    self._try_add_field(event, normalized_field, field_value)
 
-    def _try_add_timestamps(self, rule: NormalizerRule):
+    def _try_add_timestamps(self, event: dict, rule: NormalizerRule):
         for source_field, normalization in rule.timestamps.items():
             timestamp_normalization = normalization["timestamp"]
 
-            source_timestamp = self._get_dotted_field_value(self._event, source_field)
+            source_timestamp = self._get_dotted_field_value(event, source_field)
 
             if source_timestamp is None:
                 continue
@@ -309,8 +272,9 @@ class Normalizer(RuleBasedProcessor):
             if not format_parsed:
                 raise NormalizerError(
                     self._name,
-                    'Could not parse source timestamp "{}" with formats "{}"'.format(
-                        source_timestamp, source_formats
+                    (
+                        f"Could not parse source timestamp "
+                        f"{source_timestamp}' with formats '{source_formats}'"
                     ),
                 )
 
@@ -325,13 +289,14 @@ class Normalizer(RuleBasedProcessor):
             converted_time = converted_time.replace("+00:00", "Z")
 
             if allow_override:
-                self._replace_field(normalization_target, converted_time)
+                self._replace_field(event, normalization_target, converted_time)
             else:
-                self._try_add_field(normalization_target, converted_time)
+                self._try_add_field(event, normalization_target, converted_time)
 
-    def _try_normalize_event_data_field(self, field: str, normalized_field: str):
-        if self._field_exists(self._event, field):
-            self._try_add_field(normalized_field, self._get_dotted_field_value(self._event, field))
+    def _try_normalize_event_data_field(self, event: dict, field: str, normalized_field: str):
+        if self._field_exists(event, field):
+            dotted_field_value = self._get_dotted_field_value(event, field)
+            self._try_add_field(event, normalized_field, dotted_field_value)
 
     def _raise_warning_if_fields_already_existed(self):
         if self._conflicting_fields:

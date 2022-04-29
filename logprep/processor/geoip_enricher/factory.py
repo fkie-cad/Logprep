@@ -14,9 +14,7 @@ class GeoIPEnricherFactory(BaseFactory):
         """Create a generic resolver."""
         GeoIPEnricherFactory._check_configuration(configuration)
 
-        geoip_enricher = GeoIPEnricher(
-            name=name, configuration=configuration, logger=logger
-        )
+        geoip_enricher = GeoIPEnricher(name=name, configuration=configuration, logger=logger)
 
         return geoip_enricher
 

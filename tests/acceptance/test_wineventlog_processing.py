@@ -1,15 +1,19 @@
-#!/usr/bin/python3
+# pylint: disable=missing-docstring
+import logging
+import os
+
 import pytest
-
 from logprep.util.json_handling import dump_config_as_file, parse_jsonl
-from tests.acceptance.util import *
+from tests.acceptance.util import get_difference, get_test_output, store_latest_test_output
 
-basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
-logger = getLogger("Logprep-Test")
+logging.basicConfig(
+    level=logging.DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
+)
+logger = logging.getLogger("Logprep-Test")
 
 
-@pytest.fixture
-def config_template():
+@pytest.fixture(name="config_template")
+def fixture_config_template():
     config_yml = {
         "process_count": 1,
         "print_processed_period": 600,
@@ -58,8 +62,12 @@ def config_template():
         ),
     ],
 )
-def test_events_labeled_correctly(tmp_path, config_template, specific_rules, generic_rules, schema, expected_output):
-    expected_output_path = path.join("tests/testdata/acceptance/expected_result", expected_output)
+def test_events_labeled_correctly(
+    tmp_path, config_template, specific_rules, generic_rules, schema, expected_output
+):  # pylint: disable=too-many-arguments
+    expected_output_path = os.path.join(
+        "tests/testdata/acceptance/expected_result", expected_output
+    )
 
     set_config(config_template, specific_rules, generic_rules, schema)
     config_path = str(tmp_path / "generated_config.yml")
@@ -74,14 +82,14 @@ def test_events_labeled_correctly(tmp_path, config_template, specific_rules, gen
 
     assert (
         result["difference"][0] == result["difference"][1]
-    ), "Missmatch in event at line {}!".format(result["event_line_no"])
+    ), f"Missmatch in event at line {result['event_line_no']}!"
 
 
 def set_config(config_template, specific_rules, generic_rules, schema):
-    config_template["pipeline"][0]["labelername"]["schema"] = path.join("tests/testdata", schema)
+    config_template["pipeline"][0]["labelername"]["schema"] = os.path.join("tests/testdata", schema)
     config_template["pipeline"][0]["labelername"]["specific_rules"] = [
-        path.join("tests/testdata", rule) for rule in specific_rules
+        os.path.join("tests/testdata", rule) for rule in specific_rules
     ]
     config_template["pipeline"][0]["labelername"]["generic_rules"] = [
-        path.join("tests/testdata", rule) for rule in generic_rules
+        os.path.join("tests/testdata", rule) for rule in generic_rules
     ]

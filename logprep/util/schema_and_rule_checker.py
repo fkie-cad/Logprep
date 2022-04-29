@@ -3,7 +3,7 @@
 """Runner for testing schemas and rules"""
 
 from typing import Optional, List
-from collections import Iterable
+from collections.abc import Iterable
 
 from argparse import ArgumentParser
 from logging import Logger
