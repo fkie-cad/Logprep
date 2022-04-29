@@ -6,7 +6,16 @@ from multiprocessing import current_process
 from os import path, makedirs
 from typing import List
 
-from hyperscan import Database, HS_FLAG_SINGLEMATCH, HS_FLAG_CASELESS, loadb, dumpb
+# pylint: disable=no-name-in-module
+from hyperscan import (
+    Database,
+    HS_FLAG_SINGLEMATCH,
+    HS_FLAG_CASELESS,
+    loadb,
+    dumpb,
+)
+
+# pylint: enable=no-name-in-module
 
 from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
