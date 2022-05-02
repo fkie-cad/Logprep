@@ -2,9 +2,13 @@
 import re
 from os import remove
 from typing import Optional, Union
+import json
 
 from colorama import Fore, Back
 from colorama.ansi import AnsiFore, AnsiBack
+from ruamel.yaml import YAML
+
+yaml = YAML(typ="safe", pure=True)
 
 
 def print_color(back: Optional[AnsiBack], fore: Optional[AnsiFore], message: str):
@@ -142,13 +146,20 @@ def remove_file_if_exists(test_output_path):
 
 
 def camel_to_snake(camel: str) -> str:
-    """
-    Is it ironic that this function is written in camel case, yet it
-    converts to snake case? hmm..
-    """
+    """ensures that the input string is snake_case"""
 
     _underscorer1 = re.compile(r"(.)([A-Z][a-z]+)")
     _underscorer2 = re.compile("([a-z0-9])([A-Z])")
 
     subbed = _underscorer1.sub(r"\1_\2", camel)
     return _underscorer2.sub(r"\1_\2", subbed).lower()
+
+
+def is_json(path):
+    """Tests if a filehandle returns valid json"""
+    with open(path, "r", encoding="utf8") as json_file:
+        try:
+            json.load(json_file)
+        except ValueError:
+            return False
+        return True
