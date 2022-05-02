@@ -453,7 +453,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         with pytest.raises(Exception, match="unbalanced parenthesis"):
             self._load_specific_rule(rule)
 
-    def test_resolve_dotted_no_conflict_from_file_and_escaped_parenthesis(
+    def test_resolve_no_conflict_from_file_and_escaped_parenthesis(
         self,
     ):
         rule = {
