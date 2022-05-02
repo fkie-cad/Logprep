@@ -63,7 +63,8 @@ class TestHyperscanResolverRule:
         self,
     ):
         replaced_pattern = HyperscanResolverRule._replace_pattern(
-            "123abc456", r"\d*(?P<mapping>[a-z]+)c)\d*",
+            "123abc456",
+            r"\d*(?P<mapping>[a-z]+)c)\d*",
         )
 
         assert replaced_pattern == "\\d*123abc456c)\\d*"

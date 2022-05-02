@@ -406,7 +406,6 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-
     def _load_specific_rule(self, rule):
         specific_rule = HyperscanResolverRule._create_from_dict(rule)
         specific_rule.file_name = "some_file_name_is_required_for_hyperscan"
