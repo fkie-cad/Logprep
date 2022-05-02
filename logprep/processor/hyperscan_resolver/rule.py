@@ -31,7 +31,7 @@ class HyperscanResolverRule(Rule):
     def __init__(self, filter_rule: FilterExpression, hyperscan_resolver_cfg: dict):
         super().__init__(filter_rule)
 
-        self._field_mapping = hyperscan_resolver_cfg["field_mapping"]
+        self._field_mapping = hyperscan_resolver_cfg.get("field_mapping")
         self._resolve_list = hyperscan_resolver_cfg.get("resolve_list", {})
         self._resolve_from_file = hyperscan_resolver_cfg.get("resolve_from_file", None)
         self._append_to_list = hyperscan_resolver_cfg.get("append_to_list", False)
