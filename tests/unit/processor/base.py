@@ -1,7 +1,6 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
 import json
-import re
 from abc import ABC
 from logging import getLogger
 
@@ -162,6 +161,8 @@ class BaseProcessorTestCase(ABC):
         assert self.object._field_exists(event, "a.b")
 
     def test_add_rules_from_directory(self):
+        self.object._generic_tree = RuleTree()
+        self.object._specific_tree = RuleTree()
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.add_rules_from_directory(
