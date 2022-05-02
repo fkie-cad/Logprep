@@ -91,9 +91,6 @@ class GenericAdderRule(Rule):
             ]
         )
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def add(self) -> dict:

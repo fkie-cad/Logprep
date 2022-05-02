@@ -30,9 +30,6 @@ class PreDetectorRule(Rule):
     def __eq__(self, other: "PreDetectorRule") -> bool:
         return (self._filter == other.filter) and (self._detection_data == other.detection_data)
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def detection_data(self) -> dict:

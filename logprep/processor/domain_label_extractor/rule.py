@@ -53,9 +53,6 @@ class DomainLabelExtractorRule(Rule):
             ]
         )
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     @property
     def target_field(self) -> str:
         return self._target_field

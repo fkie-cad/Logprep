@@ -24,9 +24,6 @@ class TemplateReplacerRule(Rule):
     def __eq__(self, other: "TemplateReplacerRule") -> bool:
         return other.filter == self._filter
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     @staticmethod
     def _create_from_dict(rule: dict) -> "TemplateReplacerRule":
         TemplateReplacerRule._check_rule_validity(rule, "template_replacer")

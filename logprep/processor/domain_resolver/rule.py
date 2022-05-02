@@ -38,9 +38,6 @@ class DomainResolverRule(Rule):
             self._source_url_or_domain == other.source_url_or_domain
         )
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def source_url_or_domain(self) -> str:

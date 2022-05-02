@@ -129,9 +129,6 @@ class NormalizerRule(Rule):
             and (self._grok == other.grok)
         )
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def substitutions(self) -> dict:
