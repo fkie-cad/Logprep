@@ -435,24 +435,6 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_no_conflict_from_file_and_unbalanced_parenthesis(
-        self,
-    ):
-        rule = {
-            "filter": "to_resolve",
-            "hyperscan_resolver": {
-                "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": {
-                    "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
-                    "pattern": r"\d*(?P<mapping>[a-z]+)c)\d*",
-                },
-            },
-        }
-
-        with pytest.raises(Exception, match="unbalanced parenthesis"):
-            self._load_specific_rule(rule)
-
     def test_resolve_no_conflict_from_file_and_escaped_parenthesis(
         self,
     ):

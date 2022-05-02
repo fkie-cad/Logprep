@@ -58,3 +58,21 @@ class TestHyperscanResolverRule:
         assert rule != rule_diff_field_mapping
         assert rule != rule_diff_filter
         assert rule_diff_field_mapping != rule_diff_filter
+
+    def test_replace_pattern_with_parenthesis_after_closing_parenthesis_not_included_in_replacement(
+        self,
+    ):
+        replaced_pattern = HyperscanResolverRule._replace_pattern(
+            "123abc456", r"\d*(?P<mapping>[a-z]+)c)\d*",
+        )
+
+        assert replaced_pattern == "\\d*123abc456c)\\d*"
+
+    def test_replace_pattern_with_escaped_parenthesis_is_included_in_replacement(
+        self,
+    ):
+        replaced_pattern = HyperscanResolverRule._replace_pattern(
+            r"123ab\)c123", r"\d*(?P<mapping>[a-z]+\)c)\d*"
+        )
+
+        assert replaced_pattern == "\\d*123ab\\\\\\)c123\\d*"
