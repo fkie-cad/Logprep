@@ -14,23 +14,22 @@ class InvalidSelectiveExtractorFactoryConfigurationError(InvalidConfigurationErr
 class SelectiveExtractorFactory(BaseFactory):
     """Create selective extractors."""
 
+    mandatory_fields = ["specific_rules", "generic_rules"]
+
     @staticmethod
     def create(name: str, configuration: dict, logger: Logger):
         """Create a selective extractor."""
         SelectiveExtractorFactory._check_configuration(configuration)
 
-        selective_extractor = SelectiveExtractor(
-            name,
-            configuration["selective_extractor_topic"],
-            configuration.get("extractor_list"),
-            logger,
+        return SelectiveExtractor(
+            name=name,
+            configuration=configuration,
+            logger=logger,
         )
-
-        return selective_extractor
 
     @staticmethod
     def _check_configuration(configuration: dict):
         """Check if the processor configuration has the mandatory fields."""
         SelectiveExtractorFactory._check_common_configuration(
-            "selective_extractor", ["extractor_list", "selective_extractor_topic"], configuration
+            "selective_extractor", SelectiveExtractorFactory.mandatory_fields, configuration
         )
