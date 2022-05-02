@@ -15,8 +15,9 @@ from io import StringIO
 from logging import getLogger
 from os import walk, path
 from pprint import pprint
-from typing import Union, Optional
+from typing import Union, Optional, Tuple
 
+from typing.io import TextIO
 import regex as re
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
@@ -265,6 +266,15 @@ class AutoRuleTester:
         """Perform auto-tests."""
         rules_dirs = self._get_rule_dirs_by_processor_name()
         rules_pn = self._get_rules_per_processor_name(rules_dirs)
+        self._run_if_any_rules_exist(rules_pn)
+
+    def _run_if_any_rules_exist(self, rules_pn: dict):
+        if not self._has_rules(rules_pn):
+            print_fcolor(Fore.YELLOW, "\nThere are no rules within any of the rules directories!")
+        else:
+            self._run_tests_for_rules(rules_pn)
+
+    def _run_tests_for_rules(self, rules_pn: dict):
         rule_test_coverage = self._check_which_rule_files_miss_tests(rules_pn)
         self._set_rules_dirs_to_empty()
 
@@ -305,7 +315,14 @@ class AutoRuleTester:
         if not self._success:
             sys.exit(1)
 
-    def _get_processors_split_by_custom_tests_existence(self):
+    @staticmethod
+    def _has_rules(rules_pn: dict) -> bool:
+        for processor_test_cfg in rules_pn.values():
+            if processor_test_cfg["rules"]:
+                return True
+        return False
+
+    def _get_processors_split_by_custom_tests_existence(self) -> Tuple[OrderedDict, OrderedDict]:
         processors_with_custom_test = OrderedDict()
         processors_without_custom_test = OrderedDict()
         for processor_in_pipeline in self._config_yml["pipeline"]:
@@ -317,7 +334,7 @@ class AutoRuleTester:
                 processors_without_custom_test[processor] = name
         return processors_with_custom_test, processors_without_custom_test
 
-    def _get_custom_test_mapping(self):
+    def _get_custom_test_mapping(self) -> dict:
         processor_uses_own_tests = {}
         for processor_in_pipeline in self._config_yml["pipeline"]:
             name, processor_cfg = next(iter(processor_in_pipeline.items()))
@@ -326,7 +343,7 @@ class AutoRuleTester:
         return processor_uses_own_tests
 
     @staticmethod
-    def _get_rules(processor, rule_test):
+    def _get_rules(processor: RuleBasedProcessor, rule_test: dict) -> dict:
         if rule_test.get("rules"):
             return {"rules": rule_test.get("rules", [])}
         if rule_test.get("specific_rules") or rule_test.get("generic_rules"):
@@ -340,7 +357,7 @@ class AutoRuleTester:
             f"No rules provided for processor of type {processor.describe()}"
         )
 
-    def _add_rules_from_directory(self, processor, rule_type):
+    def _add_rules_from_directory(self, processor: RuleBasedProcessor, rule_type: str):
         if rule_type == "rules":
             processor.add_rules_from_directory(self._empty_rules_dirs)
         elif rule_type == "specific_rules":
@@ -348,13 +365,15 @@ class AutoRuleTester:
         elif rule_type == "generic_rules":
             processor.add_rules_from_directory([], self._empty_rules_dirs)
 
-    def _prepare_test_eval(self, processor, rule_dict, rule_type, temp_rule_path):
+    def _prepare_test_eval(
+        self, processor: RuleBasedProcessor, rule_dict: dict, rule_type: str, temp_rule_path: str
+    ):
         self._create_rule_file(rule_dict, temp_rule_path)
         self._reset_trees(processor)
         self._clear_rules(processor)
         self._add_rules_from_directory(processor, rule_type)
 
-    def _run_custom_rule_tests(self, processor, rule_test):
+    def _run_custom_rule_tests(self, processor: RuleBasedProcessor, rule_test: dict):
         temp_rule_path = path.join(self._empty_rules_dirs[0], f"{hashlib.sha256()}.json")
         rules = self._get_rules(processor, rule_test)
 
@@ -364,7 +383,7 @@ class AutoRuleTester:
                 self._eval_custom_rule_test(rule_test, processor)
                 remove_file_if_exists(temp_rule_path)
 
-    def _run_file_rule_tests(self, processor, rule_test):
+    def _run_file_rule_tests(self, processor: RuleBasedProcessor, rule_test: dict):
         temp_rule_path = path.join(self._empty_rules_dirs[0], f"{hashlib.sha256()}.json")
         rules = self._get_rules(processor, rule_test)
 
@@ -375,12 +394,12 @@ class AutoRuleTester:
                 remove_file_if_exists(temp_rule_path)
 
     @staticmethod
-    def _clear_rules(processor):
+    def _clear_rules(processor: RuleBasedProcessor):
         if hasattr(processor, "_rules"):
-            processor._rules.clear()
+            processor._rules.clear()  # pylint: disable=protected-access
 
     @staticmethod
-    def _reset_trees(processor):
+    def _reset_trees(processor: RuleBasedProcessor):
         if hasattr(processor, "_tree"):
             processor._tree = RuleTree()
         if hasattr(processor, "_specific_tree"):
@@ -389,35 +408,35 @@ class AutoRuleTester:
             processor._generic_tree = RuleTree()
 
     @staticmethod
-    def _create_rule_file(rule_dict, rule_path):
+    def _create_rule_file(rule_dict: dict, rule_path: str):
         with open(rule_path, "w", encoding="utf8") as temp_file:
             json.dump([rule_dict], temp_file)
 
-    def _print_error_on_exception(self, error, rule_test, t_idx):
+    def _print_error_on_exception(self, error: BaseException, rule_test: dict, t_idx: int):
         self._print_filename(rule_test)
         print_fcolor(Fore.MAGENTA, f"RULE {t_idx}:")
         print_fcolor(Fore.RED, f"Exception: {error}")
         self._print_stack_trace(error)
 
-    def _print_stack_trace(self, error):
+    def _print_stack_trace(self, error: BaseException):
         if self._enable_print_stack_trace:
             print("Stack Trace:")
             tbk = traceback.format_tb(error.__traceback__)
             for line in tbk:
                 print(line)
 
-    def _print_filename(self, rule_test):
+    def _print_filename(self, rule_test: dict):
         if not self._filename_printed:
             print_fcolor(Fore.LIGHTMAGENTA_EX, f'\nRULE FILE {rule_test["file"]}')
             self._filename_printed = True
 
-    def _eval_custom_rule_test(self, rule_test, processor):
+    def _eval_custom_rule_test(self, rule_test: dict, processor: RuleBasedProcessor):
         self._filename_printed = False
         with StringIO() as buf, redirect_stdout(buf):
             self._run_custom_tests(processor, rule_test)
             self._custom_tests_output += buf.getvalue()
 
-    def _eval_file_rule_test(self, rule_test, processor, r_idx):
+    def _eval_file_rule_test(self, rule_test: dict, processor: RuleBasedProcessor, r_idx: int):
         self._filename_printed = False
 
         for t_idx, test in enumerate(rule_test["tests"]):
@@ -440,7 +459,8 @@ class AutoRuleTester:
             errors = []
             warnings = []
 
-            self._pd_extra.update_errors(processor, extra_output, errors, warnings)
+            if isinstance(processor, PreDetector):
+                self._pd_extra.update_errors(processor, extra_output, errors, warnings)
 
             if print_diff or warnings or errors:
                 self._print_filename(rule_test)
@@ -563,7 +583,7 @@ class AutoRuleTester:
             elif isinstance(value, list):
                 nested_dict[key] = sorted(nested_dict[key])
 
-    def _get_diff_raw_test(self, test):
+    def _get_diff_raw_test(self, test: dict) -> list:
         self._gpl.replace_grok_keywords(test["processed"], test)
 
         self._sort_lists_in_nested_dict(test)
@@ -585,7 +605,7 @@ class AutoRuleTester:
                 processor_cfg["specific_rules"] = self._empty_rules_dirs
 
     @staticmethod
-    def _check_test_validity(errors, rule_tests, test_file):
+    def _check_test_validity(errors: list, rule_tests: list, test_file: TextIO) -> bool:
         has_errors = False
         for rule_test in rule_tests:
             rule_keys = set(rule_test.keys())
@@ -627,7 +647,7 @@ class AutoRuleTester:
             has_errors = has_errors or has_error
         return has_errors
 
-    def _get_rules_per_processor_name(self, rules_dirs):
+    def _get_rules_per_processor_name(self, rules_dirs: dict) -> defaultdict:
         print_fcolor(Fore.YELLOW, "\nRULES DIRECTORIES:")
         rules_pn = defaultdict(dict)
         errors = []
@@ -703,12 +723,12 @@ class AutoRuleTester:
         return multi_rule
 
     @staticmethod
-    def _is_valid_rule_name(file_name):
+    def _is_valid_rule_name(file_name: str) -> bool:
         return (file_name.endswith(".json") or file_name.endswith(".yml")) and not (
             file_name.endswith("_test.json")
         )
 
-    def _get_rule_dirs_by_processor_name(self):
+    def _get_rule_dirs_by_processor_name(self) -> defaultdict:
         rules_dirs = defaultdict(dict)
         for processor in self._config_yml["pipeline"]:
             processor_name, processor_cfg = next(iter(processor.items()))
