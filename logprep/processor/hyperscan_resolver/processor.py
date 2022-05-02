@@ -64,7 +64,6 @@ class HyperscanResolver(RuleBasedProcessor):
             self._hyperscan_database_path = f"{path.dirname(path.abspath(__file__))}/hyperscan_dbs/"
         self.ps = ProcessorStats()
 
-        self._event = None
 
         self._replacements_from_file = {}
 
