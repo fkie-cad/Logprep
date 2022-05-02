@@ -4,7 +4,7 @@ import errno
 from logging import Logger, DEBUG
 from multiprocessing import current_process
 from os import path, makedirs
-from typing import List
+from typing import List, Tuple, Any, Dict
 
 # pylint: disable=no-name-in-module
 from hyperscan import (
@@ -102,62 +102,76 @@ class HyperscanResolver(RuleBasedProcessor):
 
     # pylint: enable=arguments-differ
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: HyperscanResolverRule):
         """Apply the given rule to the current event"""
         conflicting_fields = []
-
         hyperscan_db, pattern_id_to_dest_val_map = self._get_hyperscan_database(rule)
 
         for resolve_source, resolve_target in rule.field_mapping.items():
-            keys = resolve_target.split(".")
             src_val = self._get_dotted_field_value(event, resolve_source)
+            result = self._match_with_hyperscan(hyperscan_db, src_val)
 
-            if src_val:
-                result = []
+            if result:
+                has_conflict = False
+                resolved_value = pattern_id_to_dest_val_map[result[result.index(min(result))]]
+                split_dotted_keys = resolve_target.split(".")
+                dict_ = event
 
-                def on_match(matching_pattern_id: int, _fr, _to, _flags, _context):
-                    result.append(matching_pattern_id)
+                for idx, dotted_key_part in enumerate(split_dotted_keys):
+                    last_idx = len(split_dotted_keys) - 1
+                    key_is_new = dotted_key_part not in dict_
+                    if key_is_new and idx < last_idx:
+                        dict_[dotted_key_part] = {}
 
-                hyperscan_db.scan(src_val, match_event_handler=on_match)
+                    if key_is_new and idx == last_idx:
+                        self._add_new_key_with_value(dict_, dotted_key_part, resolved_value, rule)
+                    elif isinstance(dict_[dotted_key_part], dict):
+                        dict_ = dict_[dotted_key_part]
+                    else:
+                        has_conflict = self._try_adding_value_to_existing_field(
+                            dict_, dotted_key_part, resolved_value, rule
+                        )
 
-                if result:
-                    dict_ = event
-                    for idx, key in enumerate(keys):
-                        if key not in dict_:
-                            if idx == len(keys) - 1:
-                                if rule.append_to_list:
-                                    dict_[key] = dict_.get("key", [])
-                                    dict_[key].append(
-                                        pattern_id_to_dest_val_map[
-                                            result[result.index(min(result))]
-                                        ]
-                                    )
-                                else:
-                                    dict_[key] = pattern_id_to_dest_val_map[
-                                        result[result.index(min(result))]
-                                    ]
-                                break
-                            dict_[key] = {}
-                        if isinstance(dict_[key], dict):
-                            dict_ = dict_[key]
-                        else:
-                            if rule.append_to_list and isinstance(dict_[key], list):
-                                if (
-                                    pattern_id_to_dest_val_map[result[result.index(min(result))]]
-                                    not in dict_[key]
-                                ):
-                                    dict_[key].append(
-                                        pattern_id_to_dest_val_map[
-                                            result[result.index(min(result))]
-                                        ]
-                                    )
-                            else:
-                                conflicting_fields.append(keys[idx])
-
+                    if has_conflict:
+                        conflicting_fields.append(split_dotted_keys[idx])
         if conflicting_fields:
             raise DuplicationError(self._name, conflicting_fields)
 
-    def _get_hyperscan_database(self, rule):
+    @staticmethod
+    def _try_adding_value_to_existing_field(
+        dict_: dict, dotted_key_part: str, resolved_value: str, rule: HyperscanResolverRule
+    ) -> bool:
+        current_value = dict_[dotted_key_part]
+        if rule.append_to_list and isinstance(current_value, list):
+            if resolved_value not in current_value:
+                current_value.append(resolved_value)
+            return False
+        return True
+
+    @staticmethod
+    def _add_new_key_with_value(
+        dict_: dict, dotted_key_part: str, resolved_value: str, rule: HyperscanResolverRule
+    ):
+        if rule.append_to_list:
+            dict_[dotted_key_part] = dict_.get("key", [])
+            dict_[dotted_key_part].append(resolved_value)
+        else:
+            dict_[dotted_key_part] = resolved_value
+
+    @staticmethod
+    def _match_with_hyperscan(hyperscan_db: Database, src_val: str) -> list:
+        if not src_val:
+            return []
+
+        def on_match(matching_pattern_id: int, _fr, _to, _flags, _context):
+            result.append(matching_pattern_id)
+
+        result = []
+
+        hyperscan_db.scan(src_val, match_event_handler=on_match)
+        return result
+
+    def _get_hyperscan_database(self, rule: HyperscanResolverRule):
         database_id = rule.file_name
         resolve_list = rule.resolve_list
 
@@ -179,10 +193,10 @@ class HyperscanResolver(RuleBasedProcessor):
             self._hyperscan_databases[database_id]["value_mapping"],
         )
 
-    def _load_database(self, database_id, resolve_list):
+    def _load_database(self, database_id: int, resolve_list: dict) -> Tuple[Any, Dict[int, Any]]:
         value_mapping = {}
 
-        with open(self._hyperscan_database_path + "/" + database_id + ".db", "rb") as db_file:
+        with open(f"{self._hyperscan_database_path}/{database_id}.db", "rb") as db_file:
             data = db_file.read()
 
         for idx, pattern in enumerate(resolve_list.keys()):
@@ -190,14 +204,14 @@ class HyperscanResolver(RuleBasedProcessor):
 
         return loadb(data), value_mapping
 
-    def _save_database(self, database, database_id):
+    def _save_database(self, database: Database, database_id: int):
         _create_hyperscan_dbs_dir(self._hyperscan_database_path)
         serialized_db = dumpb(database)
 
-        with open(self._hyperscan_database_path + "/" + database_id + ".db", "wb") as db_file:
+        with open(f"{self._hyperscan_database_path}/{database_id}.db", "wb") as db_file:
             db_file.write(serialized_db)
 
-    def _create_database(self, resolve_list):
+    def _create_database(self, resolve_list: dict):
         database = Database()
         value_mapping = {}
         db_patterns = []
@@ -215,7 +229,7 @@ class HyperscanResolver(RuleBasedProcessor):
         return database, value_mapping
 
 
-def _create_hyperscan_dbs_dir(path_):
+def _create_hyperscan_dbs_dir(path_: str):
     try:
         makedirs(path_)
     except OSError as error:
