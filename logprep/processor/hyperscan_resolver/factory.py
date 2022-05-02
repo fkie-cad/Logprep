@@ -12,13 +12,11 @@ class HyperscanResolverFactory(BaseFactory):
         """Create a HyperscanResolver."""
         HyperscanResolverFactory._check_configuration(configuration)
 
-        hyperscan_resolver = HyperscanResolver(
+        return HyperscanResolver(
             name=name,
             configuration=configuration,
             logger=logger,
         )
-
-        return hyperscan_resolver
 
     @staticmethod
     def _check_configuration(configuration: dict):
