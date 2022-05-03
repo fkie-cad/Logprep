@@ -40,7 +40,7 @@ charset-normalizer==2.0.10
     #   requests
 colorama==0.4.4
     # via -r requirements.txt
-confluent-kafka==1.5.0
+confluent-kafka==1.8.2
     # via -r requirements.txt
 coverage[toml]==6.2
     # via pytest-cov
@@ -179,7 +179,7 @@ typing-extensions==4.0.1
     #   importlib-metadata
     #   pylint
     #   yarl
-ujson==3.1.0
+ujson==4.3.0
     # via -r requirements.txt
 uritools==3.0.2
     # via
