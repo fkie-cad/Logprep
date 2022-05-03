@@ -4,15 +4,15 @@ New processors are created by implementing it.
 
 """
 
-from typing import List, Union, Optional
-
 from abc import abstractmethod
-from os import walk, path
 from logging import Logger
+from os import walk, path
+from typing import List, Union, Optional
 
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
+from logprep.util.helper import camel_to_snake
 from logprep.util.time_measurement import TimeMeasurement
 
 
@@ -37,7 +37,17 @@ class ProcessingWarningCollection(ProcessingError):
         self.processing_warnings = processing_warnings
 
 
-class BaseProcessor:
+class SnakeType(type):
+    """
+    If set as a metaclass it rewrites the type(cls) call to return the snake case version
+    of the class
+    """
+
+    def __repr__(cls):
+        return camel_to_snake(cls.__name__)
+
+
+class BaseProcessor(metaclass=SnakeType):
     """Responsible for processing log events."""
 
     def __init__(self, name, logger):

@@ -9,6 +9,7 @@ from unittest import mock
 import numpy as np
 from prometheus_client import REGISTRY
 
+from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.dropper.processor import Dropper
 from logprep.util.processor_stats import ProcessorStats, StatsClassesController, StatusTracker
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -94,7 +95,7 @@ class TestStatusTracker:
     def setup_method(self):
         REGISTRY.__init__()
         StatsClassesController.ENABLED = True
-        logger = logging.getLogger("test-logger")
+        self.logger = logging.getLogger("test-logger")
         stats_logger_config = {
             "period": 10,
             "enabled": True,
@@ -115,14 +116,14 @@ class TestStatusTracker:
             status_logger_config=stats_logger_config,
             status_logger=[
                 logging.getLogger("test-file-metric-logger"),
-                PrometheusStatsExporter(stats_logger_config, logger),
+                PrometheusStatsExporter(stats_logger_config, self.logger),
             ],
             lock=Lock(),
         )
-        first_dropper = Dropper("Dropper1", "tests/testdata/unit/tree_config.json", logger)
-        second_dropper = Dropper("Dropper2", "tests/testdata/unit/tree_config.json", logger)
-        first_dropper.ps.num_rules = 12
-        second_dropper.ps.num_rules = 9
+        first_dropper = Dropper("Dropper1", "tests/testdata/unit/tree_config.json", self.logger)
+        second_dropper = Dropper("Dropper2", "tests/testdata/unit/tree_config.json", self.logger)
+        first_dropper.ps.setup_rules([None] * 12)
+        second_dropper.ps.setup_rules([None] * 9)
 
         self.status_tracker.set_pipeline([first_dropper, second_dropper])
 
@@ -213,3 +214,71 @@ class TestStatusTracker:
         mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(21)])
         mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(22)])
         mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(23)])
+
+    def test_add_per_processor_data_skips_excluded_processors(self):
+        dropper1_expected_zero_matches = 0
+        dropper1_expected_processed = 13
+        dropper2_expected_zero_matches = 0
+        dropper2_expected_processed = 21
+        clusterer_expected_processed = 78
+
+        self.status_tracker._pipeline[0].ps.aggr_data["processed"] = dropper1_expected_processed
+        self.status_tracker._pipeline[1].ps.aggr_data["processed"] = dropper2_expected_processed
+
+        clusterer = Clusterer(
+            "Clusterer1",
+            logger=self.logger,
+            tree_config="",
+            specific_rules="",
+            generic_rules="",
+            output_field_name="",
+        )
+        clusterer.ps.aggr_data["processed"] = clusterer_expected_processed
+
+        self.status_tracker._pipeline.append(clusterer)
+
+        process_data = {}
+        self.status_tracker._add_per_processor_data(process_data=process_data)
+
+        assert (
+            process_data.get("Dropper1", {}).get("matches") == dropper1_expected_zero_matches
+        ), "Should have zero matched rules"
+        assert (
+            process_data.get("Dropper1", {}).get("processed") == dropper1_expected_processed
+        ), "Should contain the previously set processed statistic"
+        assert all(
+            process_data.get("Dropper1", {}).get("matches_per_idx")
+            == np.zeros(self.status_tracker._pipeline[0].ps.num_rules)
+        ), "Should contain a zero initialized numpy array of the length of num_rules"
+        assert all(
+            process_data.get("Dropper1", {}).get("times_per_idx")
+            == np.zeros(self.status_tracker._pipeline[0].ps.num_rules)
+        ), "Should contain a zero initialized numpy array of the length of num_rules"
+
+        assert (
+            process_data.get("Dropper2", {}).get("matches") == dropper2_expected_zero_matches
+        ), "Should have zero matched rules"
+        assert (
+            process_data.get("Dropper2", {}).get("processed") == dropper2_expected_processed
+        ), "Should contain the previously set processed statistic"
+        assert all(
+            process_data.get("Dropper2", {}).get("matches_per_idx")
+            == np.zeros(self.status_tracker._pipeline[1].ps.num_rules)
+        ), "Should contain a zero initialized numpy array of the length of num_rules"
+        assert all(
+            process_data.get("Dropper2", {}).get("times_per_idx")
+            == np.zeros(self.status_tracker._pipeline[1].ps.num_rules)
+        ), "Should contain a zero initialized numpy array of the length of num_rules"
+
+        assert (
+            process_data.get("Clusterer1", {}).get("processed") == clusterer_expected_processed
+        ), "Should contain the previously set processed statistic"
+        assert (
+            process_data.get("Clusterer1", {}).get("matches", None) is None
+        ), "Clusterer is an excluded processor and shouldn't have statistics about rules"
+        assert (
+            process_data.get("Clusterer1", {}).get("matches_per_idx", None) is None
+        ), "Clusterer is an excluded processor and shouldn't have statistics about rules"
+        assert (
+            process_data.get("Clusterer1", {}).get("times_per_idx", None) is None
+        ), "Clusterer is an excluded processor and shouldn't have statistics about rules"

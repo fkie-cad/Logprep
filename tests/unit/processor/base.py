@@ -58,7 +58,6 @@ class BaseProcessorTestCase(ABC):
         assert rules_dirs is not None
         assert isinstance(rules_dirs, list)
         rules = []
-
         for rules_dir in rules_dirs:
             rule_paths = RuleBasedProcessor._list_json_files_in_directory(  # pylint: disable=protected-access
                 rules_dir
@@ -112,6 +111,9 @@ class BaseProcessorTestCase(ABC):
     def test_describe(self):
         describe_string = self.object.describe()
         assert f"{self.object.__class__.__name__} (Test Instance Name)" == describe_string
+
+    def test_snake_type(self):
+        assert str(type(self.object)) == camel_to_snake(self.object.__class__.__name__)
 
     def test_generic_specific_rule_trees(self):
         assert isinstance(self.object._generic_tree, RuleTree)
