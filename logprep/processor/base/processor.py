@@ -39,7 +39,7 @@ class ProcessingWarningCollection(ProcessingError):
 
 class SnakeType(type):
     """
-    If set as a metaclass it rewrites the type(cls) call to return the camel case version
+    If set as a metaclass it rewrites the type(cls) call to return the snake case version
     of the class
     """
 
