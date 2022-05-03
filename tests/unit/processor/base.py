@@ -50,7 +50,8 @@ class BaseProcessorTestCase(ABC):
         """
         return self.CONFIG.get("generic_rules")
 
-    def set_rules(self, rules_dirs):
+    @staticmethod
+    def set_rules(rules_dirs):
         """
         sets the rules from the given rules_dirs
         """
@@ -159,6 +160,14 @@ class BaseProcessorTestCase(ABC):
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
         assert self.object._field_exists(event, "a.b")
+
+    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
+    @mock.patch("logging.Logger.debug")
+    def test_add_rules_from_directory_with_debug(self, mock_debug, _):
+        self.object.add_rules_from_directory(
+            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+        )
+        mock_debug.assert_called()
 
     def test_add_rules_from_directory(self):
         self.object._generic_tree = RuleTree()

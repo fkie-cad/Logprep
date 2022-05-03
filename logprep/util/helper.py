@@ -34,8 +34,8 @@ def print_fcolor(fore: AnsiFore, message: str):
 
 def add_field_to(event, output_field, content, extends_lists=False):
     """
-    Add content to an output_field in the given event. Output_field can be a dotted subfield. In case of missing fields
-    all intermediate fields will be created.
+    Add content to an output_field in the given event. Output_field can be a dotted subfield.
+    In case of missing fields all intermediate fields will be created.
 
     Parameters
     ----------
@@ -50,8 +50,8 @@ def add_field_to(event, output_field, content, extends_lists=False):
 
     Returns
     ------
-    This method returns true if no conflicting fields were found during the process of the creation of the dotted
-    subfields. If conflicting fields were found False is returned.
+    This method returns true if no conflicting fields were found during the process of the creation
+    of the dotted subfields. If conflicting fields were found False is returned.
 
     # code is originally from the generic adder, such that duplicated code could be removed there.
     """
@@ -82,8 +82,8 @@ def add_field_to(event, output_field, content, extends_lists=False):
 
 def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
     """
-    Returns the value of a requested dotted_field by iterating over the event dictionary until the field was found.
-    In case the field could not be found None is returned
+    Returns the value of a requested dotted_field by iterating over the event dictionary until the
+    field was found. In case the field could not be found None is returned.
 
     Parameters
     ----------
@@ -111,6 +111,7 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
 
 
 def recursive_compare(test_output, expected_output):
+    """Recursively compares given test_output against an expected output."""
     result = None
 
     if not isinstance(test_output, type(expected_output)):
@@ -126,8 +127,8 @@ def recursive_compare(test_output, expected_output):
                 return result
 
     elif isinstance(test_output, list) and isinstance(expected_output, list):
-        for x, _ in enumerate(test_output):
-            result = recursive_compare(test_output[x], expected_output[x])
+        for index, _ in enumerate(test_output):
+            result = recursive_compare(test_output[index], expected_output[index])
             if result:
                 return result
 
@@ -139,6 +140,7 @@ def recursive_compare(test_output, expected_output):
 
 
 def remove_file_if_exists(test_output_path):
+    """Remove existing file."""
     try:
         remove(test_output_path)
     except FileNotFoundError:

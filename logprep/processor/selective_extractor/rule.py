@@ -70,8 +70,8 @@ class SelectiveExtractorRule(Rule):
         extract_list = self._extract.get("extracted_field_list")
         if extract_list is None:
             extract_list = []
-        with open(self._extract_from_file, "r", encoding="utf8") as f:
-            lines_from_file = f.read().splitlines()
+        with open(self._extract_from_file, "r", encoding="utf8") as extract_file:
+            lines_from_file = extract_file.read().splitlines()
             extract_list = list(set([*extract_list, *lines_from_file]))
         self._extract["extracted_field_list"] = extract_list
 

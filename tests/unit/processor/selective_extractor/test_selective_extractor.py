@@ -1,17 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-from copy import deepcopy
-from logging import getLogger
-from unittest import mock
 import uuid
-import pytest
-from logprep.framework.rule_tree.rule_tree import RuleTree
+from unittest import mock
+
 from logprep.processor.selective_extractor.factory import SelectiveExtractorFactory
-from logprep.processor.selective_extractor.processor import SelectiveExtractorConfigurationError
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from tests.unit.processor.base import BaseProcessorTestCase
-
-logger = getLogger()
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):

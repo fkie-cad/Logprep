@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=no-self-use
 
 from typing import Hashable
 from unittest import mock
@@ -13,8 +14,8 @@ from logprep.processor.selective_extractor.rule import (
 )
 
 
-@pytest.fixture()
-def specific_rule_definition():
+@pytest.fixture(name="specific_rule_definition")
+def fixture_specific_rule_definition():
     return {
         "filter": "test",
         "selective_extractor": {

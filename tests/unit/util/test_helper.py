@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 from unittest import mock
 import pytest
-from sqlalchemy import false
 from logprep.util.helper import camel_to_snake, is_json
 
 
@@ -20,7 +19,7 @@ class TestCamelToSnake:
         assert camel_to_snake(camel_case) == snake_case
 
 
-class TestIsYaml:
+class TestIsJson:
     @pytest.mark.parametrize(
         "data, expected",
         [

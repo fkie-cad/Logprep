@@ -3,14 +3,13 @@
 from unittest.mock import patch
 
 import pytest
-import ujson
 
 from tests.acceptance.util import mock_kafka_and_run_pipeline, get_default_logprep_config
 from logprep.util.json_handling import dump_config_as_file
 
 
 @pytest.fixture(name="config")
-def config():
+def config_fixture():
     pipeline = [
         {
             "normalizername": {
@@ -29,20 +28,6 @@ def config():
         },
     ]
     return get_default_logprep_config(pipeline)
-
-
-def check_extractions(expected_extraction_event, expected_pipeline_event, kafka_output_file):
-    """read logprep kafka output from mocked kafka file producer"""
-    with open(kafka_output_file, "r") as f:
-        lines = f.readlines()
-        assert len(lines) == 3, "expected default pipeline output and two extracted events"
-        for line in lines:
-            target, event = line.split(" ")
-            event = ujson.loads(event)
-            if target == "selection_target":
-                assert event == expected_extraction_event
-            if target == "test_input_processed":
-                assert event == expected_pipeline_event
 
 
 class TestSelectiveExtractor:

@@ -1,30 +1,17 @@
 """
-This module contains functionality to extract selectively fields from an incoming event. The events will be returned
-and written to a specified kafka topic. As the processor is applied to all events it does not need further filtering by
-rules.
+This module contains functionality to extract selectively fields from an incoming event.
+The events will be returned and written to a specified kafka topic.
+As the processor is applied to all events it does not need further filtering by rules.
 """
 
 from multiprocessing import current_process
-import os.path
 from logging import Logger, DEBUG
 from typing import List
 
-from logprep.processor.base.processor import BaseProcessor, RuleBasedProcessor
+from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.util.helper import add_field_to
 from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
-
-
-class SelectiveExtractorError(BaseException):
-    """Base class for Selective Extractor related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"Selective Extractor ({name}): {message}")
-
-
-class SelectiveExtractorConfigurationError(SelectiveExtractorError):
-    """Generic Selective Extractor configuration error."""
 
 
 class SelectiveExtractor(RuleBasedProcessor):
