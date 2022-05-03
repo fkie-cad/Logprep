@@ -129,4 +129,5 @@ jobs:
         uses: codecov/codecov-action@v2
 
       - name: Check semgrep rules
+        if: steps.changed-files.outputs.all_changed_files
         run: semgrep -c .semgrep_rules --error -l python --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
