@@ -216,10 +216,14 @@ class TestStatusTracker:
         mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(23)])
 
     def test_add_per_processor_data_skips_excluded_processors(self):
-        self.status_tracker._pipeline[0].ps.aggr_data["processed"] = 13
-        self.status_tracker._pipeline[0].ps.aggr_data["warnings"] = 37
-        self.status_tracker._pipeline[1].ps.aggr_data["processed"] = 21
-        self.status_tracker._pipeline[1].ps.aggr_data["warnings"] = 21
+        dropper1_expected_zero_matches = 0
+        dropper1_expected_processed = 13
+        dropper2_expected_zero_matches = 0
+        dropper2_expected_processed = 21
+        clusterer_expected_processed = 78
+
+        self.status_tracker._pipeline[0].ps.aggr_data["processed"] = dropper1_expected_processed
+        self.status_tracker._pipeline[1].ps.aggr_data["processed"] = dropper2_expected_processed
 
         clusterer = Clusterer(
             "Clusterer1",
@@ -229,33 +233,52 @@ class TestStatusTracker:
             generic_rules="",
             output_field_name="",
         )
-        clusterer.ps.aggr_data["processed"] = 78
+        clusterer.ps.aggr_data["processed"] = clusterer_expected_processed
 
         self.status_tracker._pipeline.append(clusterer)
 
         process_data = {}
         self.status_tracker._add_per_processor_data(process_data=process_data)
 
-        assert process_data.get("Dropper1", {}).get("matches") == 0
-        assert process_data.get("Dropper1", {}).get("processed") == 13
+        assert (
+            process_data.get("Dropper1", {}).get("matches") == dropper1_expected_zero_matches
+        ), "Should have zero matched rules"
+        assert (
+            process_data.get("Dropper1", {}).get("processed") == dropper1_expected_processed
+        ), "Should contain the previously set processed statistic"
         assert all(
             process_data.get("Dropper1", {}).get("matches_per_idx")
             == np.zeros(self.status_tracker._pipeline[0].ps.num_rules)
-        )
+        ), "Should contain a zero initialized numpy array of the length of num_rules"
         assert all(
             process_data.get("Dropper1", {}).get("times_per_idx")
             == np.zeros(self.status_tracker._pipeline[0].ps.num_rules)
-        )
+        ), "Should contain a zero initialized numpy array of the length of num_rules"
 
-        assert process_data.get("Dropper2", {}).get("matches") == 0
-        assert process_data.get("Dropper2", {}).get("processed") == 21
+        assert (
+            process_data.get("Dropper2", {}).get("matches") == dropper2_expected_zero_matches
+        ), "Should have zero matched rules"
+        assert (
+            process_data.get("Dropper2", {}).get("processed") == dropper2_expected_processed
+        ), "Should contain the previously set processed statistic"
         assert all(
             process_data.get("Dropper2", {}).get("matches_per_idx")
             == np.zeros(self.status_tracker._pipeline[1].ps.num_rules)
-        )
+        ), "Should contain a zero initialized numpy array of the length of num_rules"
         assert all(
             process_data.get("Dropper2", {}).get("times_per_idx")
             == np.zeros(self.status_tracker._pipeline[1].ps.num_rules)
-        )
+        ), "Should contain a zero initialized numpy array of the length of num_rules"
 
-        assert process_data.get("Clusterer1", {}).get("processed") == 78
+        assert (
+            process_data.get("Clusterer1", {}).get("processed") == clusterer_expected_processed
+        ), "Should contain the previously set processed statistic"
+        assert (
+            process_data.get("Clusterer1", {}).get("matches", None) is None
+        ), "Clusterer is an excluded processor and shouldn't have statistics about rules"
+        assert (
+            process_data.get("Clusterer1", {}).get("matches_per_idx", None) is None
+        ), "Clusterer is an excluded processor and shouldn't have statistics about rules"
+        assert (
+            process_data.get("Clusterer1", {}).get("times_per_idx", None) is None
+        ), "Clusterer is an excluded processor and shouldn't have statistics about rules"
