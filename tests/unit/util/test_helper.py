@@ -1,7 +1,8 @@
 # pylint: disable=missing-docstring
 from unittest import mock
 import pytest
-from logprep.util.helper import camel_to_snake, is_json
+from logprep.util.helper import camel_to_snake
+from logprep.util.json_handling import is_json
 
 
 class TestCamelToSnake:

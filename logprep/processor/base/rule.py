@@ -9,7 +9,7 @@ from ruamel.yaml import YAML
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util.helper import is_json
+from logprep.util.json_handling import is_json
 
 yaml = YAML(typ="safe", pure=True)
 

@@ -58,3 +58,13 @@ def parse_json(json_path):
     """
     with open(json_path, "r") as json_file:
         return json.load(json_file)
+
+
+def is_json(path):
+    """Tests if a filehandle returns valid json"""
+    with open(path, "r", encoding="utf8") as json_file:
+        try:
+            json.load(json_file)
+        except ValueError:
+            return False
+        return True

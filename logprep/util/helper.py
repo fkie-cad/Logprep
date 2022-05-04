@@ -2,7 +2,6 @@
 import re
 from os import remove
 from typing import Optional, Union
-import json
 
 from colorama import Fore, Back
 from colorama.ansi import AnsiFore, AnsiBack
@@ -55,7 +54,7 @@ def add_field_to(event, output_field, content, extends_lists=False):
 
     # code is originally from the generic adder, such that duplicated code could be removed there.
     """
-    conflicting_fields = list()
+    conflicting_fields = []
 
     keys = output_field.split(".")
     dict_ = event
@@ -64,7 +63,7 @@ def add_field_to(event, output_field, content, extends_lists=False):
             if idx == len(keys) - 1:
                 dict_[key] = content
                 break
-            dict_[key] = dict()
+            dict_[key] = {}
 
         if isinstance(dict_[key], dict) and idx < len(keys) - 1:
             dict_ = dict_[key]
@@ -155,13 +154,3 @@ def camel_to_snake(camel: str) -> str:
 
     subbed = _underscorer1.sub(r"\1_\2", camel)
     return _underscorer2.sub(r"\1_\2", subbed).lower()
-
-
-def is_json(path):
-    """Tests if a filehandle returns valid json"""
-    with open(path, "r", encoding="utf8") as json_file:
-        try:
-            json.load(json_file)
-        except ValueError:
-            return False
-        return True
