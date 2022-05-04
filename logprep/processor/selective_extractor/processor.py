@@ -17,8 +17,6 @@ from logprep.util.processor_stats import ProcessorStats
 class SelectiveExtractor(RuleBasedProcessor):
     """Processor used to selectively extract fields from log events."""
 
-    _type: str
-
     _filtered_events: List[tuple] = None
 
     def __init__(
