@@ -121,12 +121,14 @@ class HyperscanResolverRule(Rule):
         return pattern, resolve_file_path
 
     def __eq__(self, other: "HyperscanResolverRule") -> bool:
-        return all([
-            other.filter == self._filter,
-            self._field_mapping == other.field_mapping,
-            self._resolve_list == other.resolve_list,
-            self._append_to_list == other.append_to_list
-        ])
+        return all(
+            [
+                other.filter == self._filter,
+                self._field_mapping == other.field_mapping,
+                self._resolve_list == other.resolve_list,
+                self._append_to_list == other.append_to_list,
+            ]
+        )
 
     def __hash__(self) -> int:
         return hash(repr(self))
