@@ -3,9 +3,9 @@
 import uuid
 from unittest import mock
 
+from tests.unit.processor.base import BaseProcessorTestCase
 from logprep.processor.selective_extractor.factory import SelectiveExtractorFactory
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
-from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
@@ -28,14 +28,6 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document == exp_document
-
-    def test_selective_extractor_events_processed_count(self):
-        assert self.object.ps.processed_count == 0
-        document = {"user": "test_user", "other": "field"}
-
-        self.object.process(document)
-
-        assert self.object.ps.processed_count == 1
 
     def test_process_returns_list_of_tuples(self):
         document = {"message": "test_message", "other": "field"}
@@ -97,7 +89,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         else:
             assert False
 
-    def test_process_returns_none_without_extraction_field(self):
+    def test_process_returns_none_when_no_extraction_field_matches(self):
         document = {"nomessage": "test_message", "other": "field"}
         result = self.object.process(document)
         assert result is None

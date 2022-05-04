@@ -142,7 +142,7 @@ class TestSelectiveExtractorRule:
                 False,
             ),
             (
-                "Should be equal cause file value results in same add values",
+                "Should be equal cause file value results in same extracted values",
                 {
                     "filter": "test",
                     "selective_extractor": {
@@ -155,7 +155,7 @@ class TestSelectiveExtractorRule:
                 True,
             ),
             (
-                "Should not be equal cause file value results in different add values",
+                "Should not be equal cause file value results in different extracted values",
                 {
                     "filter": "test",
                     "selective_extractor": {
@@ -168,7 +168,7 @@ class TestSelectiveExtractorRule:
                 False,
             ),
             (
-                "Should not be equal cause file value results in different add values",
+                "Should not be equal cause file value results in different extracted values",
                 {
                     "filter": "test",
                     "selective_extractor": {
@@ -182,7 +182,7 @@ class TestSelectiveExtractorRule:
                 False,
             ),
             (
-                "Should not be equal cause file value results in different add values",
+                "Should be equal cause file value results in same extracted values",
                 {
                     "filter": "test",
                     "selective_extractor": {
@@ -254,14 +254,6 @@ class TestSelectiveExtractorRule:
             (
                 {
                     "filter": "test",
-                    "selective_extractor": "field1, extract",
-                },
-                InvalidSelectiveExtractorDefinition,
-                "has to be a dict",
-            ),
-            (
-                {
-                    "filter": "test",
                     "selective_extractor": {"extract": "field1", "target_topic": "test_topic"},
                 },
                 InvalidSelectiveExtractorDefinition,
@@ -311,31 +303,6 @@ class TestSelectiveExtractorRule:
                 },
                 None,
                 "extracted field list with target topic",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1", "field2"],
-                            "target_topic": "test_topic",
-                        },
-                    },
-                    "description": "my reference rule",
-                },
-                None,
-                "extracted_field_list and no target topic",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": {
-                        "extract": {"extract_from_file": "mockfile", "target_topic": "test_topic"},
-                    },
-                    "description": "my reference rule",
-                },
-                None,
-                "extract_from_file and no target topic",
             ),
             (
                 {
