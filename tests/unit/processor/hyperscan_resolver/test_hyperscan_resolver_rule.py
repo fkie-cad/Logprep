@@ -24,32 +24,27 @@ def fixture_specific_rule_definition():
 
 class TestHyperscanResolverRule:
     def test_rules_are_equal(self, specific_rule_definition):
-        rule1 = HyperscanResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["hyperscan_resolver"],
+        rule1 = HyperscanResolverRule._create_from_dict(
+            specific_rule_definition,
         )
 
-        rule2 = HyperscanResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["hyperscan_resolver"],
+        rule2 = HyperscanResolverRule._create_from_dict(
+            specific_rule_definition,
         )
 
         assert rule1 == rule2
 
     def test_rules_are_not_equal(self, specific_rule_definition):
-        rule = HyperscanResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["hyperscan_resolver"],
+        rule = HyperscanResolverRule._create_from_dict(
+            specific_rule_definition,
         )
 
-        rule_diff_field_mapping = HyperscanResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["hyperscan_resolver"],
+        rule_diff_field_mapping = HyperscanResolverRule._create_from_dict(
+            specific_rule_definition,
         )
 
-        rule_diff_filter = HyperscanResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["hyperscan_resolver"],
+        rule_diff_filter = HyperscanResolverRule._create_from_dict(
+            specific_rule_definition,
         )
 
         rule_diff_field_mapping._field_mapping = {"different": "mapping"}
