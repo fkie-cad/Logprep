@@ -5,9 +5,6 @@ from typing import Optional, Union
 
 from colorama import Fore, Back
 from colorama.ansi import AnsiFore, AnsiBack
-from ruamel.yaml import YAML
-
-yaml = YAML(typ="safe", pure=True)
 
 
 def print_color(back: Optional[AnsiBack], fore: Optional[AnsiFore], message: str):
