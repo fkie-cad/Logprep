@@ -192,7 +192,7 @@ class RuleBasedProcessor(BaseProcessor):
         return f"{self.__class__.__name__} ({self._name})"
 
     @TimeMeasurement.measure_time()
-    def process(self, event: dict) -> tuple:
+    def process(self, event: dict):
         """Process a log event by calling the implemented `process` method of the
         strategy object set in  `_strategy` attribute.
 
