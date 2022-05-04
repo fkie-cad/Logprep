@@ -7,9 +7,8 @@ Common Configurations
 =====================
 
 Most processors share the following configurations.
-The only exceptions at this point are the
-processors :code:`Domain Resolver`, :code:`Dropper` and :code:`Selective Extractor`.
-These three processors do not yet support generic and specific rules.
+The only exceptions at this point is the :code:`Dropper` as it does not yet support 
+generic and specific rules.
 
 type
 ----
@@ -347,19 +346,6 @@ type
 ~~~~
 
 The value `selective_extractor` chooses the processor type SelectiveExtractor.
-
-selective_extractor_topic
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-This parameter defines the kafka topic the extracted fields should be written to.
-
-extractor_list
-~~~~~~~~~~~~~~
-
-Path to a list of fields which should be extracted and written to the configured Kafka topic.
-These can be dotted fields.
-Fields are only extracted if they are contained in given log messages.
-If fields are provided more than once in the extractor list, they are only extracted once.
 
 --------
 

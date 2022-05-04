@@ -85,7 +85,7 @@ Defines if the metrics should count continuously (true) or if they should be res
 It is enabled by default.
 
 aggregate_processes
-----------
+-------------------
 
 true/false
 
