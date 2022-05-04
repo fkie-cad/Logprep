@@ -29,7 +29,7 @@ getLogger("filelock").setLevel(ERROR)
 
 
 def _get_status_logger(config: dict, application_logger: Logger) -> List:
-    status_logger_cfg = config.get("status_logger", dict())
+    status_logger_cfg = config.get("status_logger", {})
     logging_targets = status_logger_cfg.get("targets", [])
 
     if not logging_targets:
@@ -147,18 +147,14 @@ def main():
     if not args.disable_logging:
         status_logger = _get_status_logger(config, logger)
 
-    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get("measure_time", dict()).get(
-        "enabled", False
-    )
-    TimeMeasurement.APPEND_TO_EVENT = config.get("measure_time", dict()).get(
-        "append_to_event", False
-    )
-    StatsClassesController.ENABLED = config.get("status_logger", dict()).get("enabled", True)
+    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get("measure_time", {}).get("enabled", False)
+    TimeMeasurement.APPEND_TO_EVENT = config.get("measure_time", {}).get("append_to_event", False)
+    StatsClassesController.ENABLED = config.get("status_logger", {}).get("enabled", True)
 
     if logger.isEnabledFor(DEBUG):
-        logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
-        logger.debug(f"Status logger enabled: {StatsClassesController.ENABLED}")
-        logger.debug(f"Config path: {args.config}")
+        logger.debug("Time measurement enabled: %s", TimeMeasurement.TIME_MEASUREMENT_ENABLED)
+        logger.debug("Status logger enabled: %s", StatsClassesController.ENABLED)
+        logger.debug("Config path: %s", args.config)
 
     if args.validate_rules or args.auto_test:
         type_rule_map = get_processor_type_and_rule_class()
@@ -170,9 +166,9 @@ def main():
                 )
             )
         if not all(rules_valid):
-            return exit(1)
-        elif not args.auto_test:
-            return exit(0)
+            sys.exit(1)
+        if not args.auto_test:
+            sys.exit(0)
 
     if args.auto_test:
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
@@ -180,7 +176,7 @@ def main():
         auto_rule_tester = AutoRuleTester(args.config)
         auto_rule_tester.run()
     elif args.dry_run:
-        json_input = True if args.dry_run_input_type == "json" else False
+        json_input = args.dry_run_input_type == "json"
         dry_runner = DryRunner(
             args.dry_run, args.config, args.dry_run_full_output, json_input, logger
         )
