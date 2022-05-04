@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=no-self-use
 import sys
 from unittest import mock
 
