@@ -1,4 +1,4 @@
-"""This module is used to add fields to documents via a list."""
+"""This module is used to extract fields from documents via a given list."""
 
 import os
 from typing import List
@@ -6,7 +6,6 @@ from typing import List
 from ruamel.yaml import YAML
 
 from logprep.filter.expression.filter_expression import FilterExpression
-
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 
 yaml = YAML(typ="safe", pure=True)
@@ -50,7 +49,6 @@ class SelectiveExtractorRule(Rule):
         """
         returns:
         --------
-
         target_topic: the topic where to write the extracted fields to
         """
         return self._target_topic
@@ -79,9 +77,8 @@ class SelectiveExtractorRule(Rule):
         return all(
             [
                 other.filter == self._filter,
-                set(self._extract.get("extracted_field_list"))
-                == set(other._extract.get("extracted_field_list")),
-                self._target_topic == other._target_topic,
+                set(self.extracted_field_list) == set(other.extracted_field_list),
+                self.target_topic == other.target_topic,
             ]
         )
 
