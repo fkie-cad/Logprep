@@ -265,7 +265,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "filter": "to.resolve",
             "hyperscan_resolver": {
                 "field_mapping": {"to.resolve": "resolved"},
-                "resolve_from_file": "foo",
+                "resolve_from_file": "i/do/not/exist",
             },
         }
 
@@ -401,7 +401,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         specific_rule.file_name = "some_file_name_is_required_for_hyperscan"
         self.object._specific_tree.add_rule(specific_rule, self.logger)
 
-    def test_resolve_dotted_no_conflict_from_file(self):
+    def test_resolve_no_conflict_from_file(self):
         rule = {
             "filter": "to_resolve",
             "hyperscan_resolver": {
@@ -518,7 +518,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_no_conflict_no_from_file(self):
+    def test_resolve_no_conflict_no_from_file(self):
         rule = {
             "filter": "to_resolve",
             "hyperscan_resolver": {
@@ -543,7 +543,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_no_conflict_from_file_and_list(
+    def test_resolve_no_conflict_from_file_and_list(
         self,
     ):
         rule = {
@@ -637,7 +637,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         ):
             self.object.process(document)
 
-    def test_resolve_dotted_no_conflict_from_file_and_list_has_conflict(
+    def test_resolve_no_conflict_from_file_and_list_has_conflict(
         self,
     ):
         rule = {
@@ -663,7 +663,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_no_conflict_from_file_and_list_has_conflict_and_diff_inputs(
+    def test_resolve_no_conflict_from_file_and_list_has_conflict_and_diff_inputs(
         self,
     ):
         rule = {
@@ -719,13 +719,13 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             "filter": "to.resolve",
             "hyperscan_resolver": {
                 "field_mapping": {"to.resolve": "resolved"},
-                "resolve_from_file": {"path": "foo", "pattern": "bar"},
+                "resolve_from_file": {"path": "i/do/not/exist", "pattern": "bar"},
             },
         }
 
         with pytest.raises(
             InvalidHyperscanResolverDefinition,
             match=r"The following HyperscanResolver definition is invalid: Additions file '{"
-            r"'path': 'foo', 'pattern': 'bar'}' not found!",
+            r"'path': 'i/do/not/exist', 'pattern': 'bar'}' not found!",
         ):
             self._load_specific_rule(rule)
