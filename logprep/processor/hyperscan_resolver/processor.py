@@ -66,7 +66,9 @@ class HyperscanResolver(RuleBasedProcessor):
 
         self._replacements_from_file = {}
 
-        self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
+        self.add_rules_from_directory(
+            specific_rules_dirs=specific_rules_dirs, generic_rules_dirs=generic_rules_dirs
+        )
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(
