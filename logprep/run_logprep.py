@@ -170,9 +170,9 @@ def main():
                 )
             )
         if not all(rules_valid):
-            exit(1)
+            return exit(1)
         elif not args.auto_test:
-            exit(0)
+            return exit(0)
 
     if args.auto_test:
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
