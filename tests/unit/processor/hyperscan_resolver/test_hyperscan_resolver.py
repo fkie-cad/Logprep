@@ -37,16 +37,6 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    @property
-    def specific_rules_dirs(self):
-        """Return the paths of the specific rules"""
-        return self.CONFIG["specific_rules"]
-
-    @property
-    def generic_rules_dirs(self):
-        """Return the paths of the generic rules"""
-        return self.CONFIG["generic_rules"]
-
     def _load_specific_rule(self, rule):
         specific_rule = HyperscanResolverRule._create_from_dict(rule)
         specific_rule.file_name = "some_file_name_is_required_for_hyperscan"
