@@ -165,7 +165,7 @@ class BaseProcessorTestCase(ABC):
     @mock.patch("logging.Logger.debug")
     def test_add_rules_from_directory_with_debug(self, mock_debug, _):
         self.object.add_rules_from_directory(
-            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
         )
         mock_debug.assert_called()
 
@@ -175,7 +175,7 @@ class BaseProcessorTestCase(ABC):
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.add_rules_from_directory(
-            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
         )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
@@ -189,12 +189,12 @@ class BaseProcessorTestCase(ABC):
         ensures that every rule in rule tree is unique
         """
         self.object.add_rules_from_directory(
-            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
         )
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.add_rules_from_directory(
-            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
         )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
