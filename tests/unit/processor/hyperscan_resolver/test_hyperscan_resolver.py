@@ -132,14 +132,15 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "filter": "to_resolve",
             "hyperscan_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/resolve_mapping.yml",
+                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
+                "resolve_mapping_no_regex.yml",
                 "resolve_list": {"FOO": "BAR"},
             },
         }
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
+        expected = {"to_resolve": "ab", "resolved": "ab_resolved"}
         document = {"to_resolve": "ab"}
 
         self.object.process(document)
@@ -151,8 +152,9 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "filter": "to_resolve_1 AND to_resolve_2",
             "hyperscan_resolver": {
                 "field_mapping": {"to_resolve_1": "resolved_1", "to_resolve_2": "resolved_2"},
-                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/resolve_mapping.yml",
-                "resolve_list": {"fg": "fg_server_type"},
+                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
+                "resolve_mapping_no_regex.yml",
+                "resolve_list": {"fg": "fg_resolved"},
             },
         }
 
@@ -161,8 +163,8 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
         expected = {
             "to_resolve_1": "ab",
             "to_resolve_2": "fg",
-            "resolved_1": "ab_server_type",
-            "resolved_2": "fg_server_type",
+            "resolved_1": "ab_resolved",
+            "resolved_2": "fg_resolved",
         }
         document = {"to_resolve_1": "ab", "to_resolve_2": "fg"}
 
@@ -175,7 +177,8 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "filter": "to_resolve",
             "hyperscan_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/resolve_mapping.yml",
+                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
+                "resolve_mapping_no_regex.yml",
                 "resolve_list": {"FOO": "BAR"},
             },
         }
@@ -198,14 +201,15 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "filter": "to_resolve",
             "hyperscan_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/resolve_mapping.yml",
+                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
+                "resolve_mapping_no_regex.yml",
                 "append_to_list": True,
             },
         }
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
+        expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
 
         self.object.process(document)
@@ -219,14 +223,15 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "filter": "to_resolve",
             "hyperscan_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
-                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/resolve_mapping.yml",
+                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
+                "resolve_mapping_no_regex.yml",
                 "append_to_list": True,
             },
         }
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
+        expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
 
         self.object.process(document)
@@ -241,7 +246,8 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "filter": "to_resolve",
             "hyperscan_resolver": {
                 "field_mapping": {"to_resolve": "resolved", "other_to_resolve": "resolved"},
-                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/resolve_mapping.yml",
+                "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
+                "resolve_mapping_no_regex.yml",
                 "append_to_list": True,
             },
         }
@@ -251,7 +257,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
         expected = {
             "to_resolve": "12ab34",
             "other_to_resolve": "00de11",
-            "resolved": ["ab_server_type", "de_server_type"],
+            "resolved": ["ab_resolved", "de_resolved"],
         }
         document = {"to_resolve": "12ab34", "other_to_resolve": "00de11"}
 
@@ -408,7 +414,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "resolve_list": {"FOO": "BAR"},
@@ -417,7 +423,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "ab", "resolved": "ab_server_type"}
+        expected = {"to_resolve": "ab", "resolved": "ab_resolved"}
         document = {"to_resolve": "ab"}
 
         self.object.process(document)
@@ -433,7 +439,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_with_parenthesis.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\)c)\d*",
                 },
             },
@@ -441,7 +447,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "ab)c", "resolved": "ab)c_server_type"}
+        expected = {"to_resolve": "ab)c", "resolved": "ab)c_resolved"}
         document = {"to_resolve": "ab)c"}
 
         self.object.process(document)
@@ -457,7 +463,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_with_parenthesis.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\\\)c)\d*",
                 },
             },
@@ -465,7 +471,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": r"ab\)c", "resolved": r"ab\)c_server_type"}
+        expected = {"to_resolve": r"ab\)c", "resolved": r"ab\)c_resolved"}
         document = {"to_resolve": r"ab\)c"}
 
         self.object.process(document)
@@ -481,7 +487,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_with_parenthesis.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+\\\\)c)\d*",
                 },
             },
@@ -497,10 +503,10 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve_1": "resolved_1", "to_resolve_2": "resolved_2"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
-                "resolve_list": {"fg": "fg_server_type"},
+                "resolve_list": {"fg": "fg_resolved"},
             },
         }
 
@@ -509,8 +515,8 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         expected = {
             "to_resolve_1": "ab",
             "to_resolve_2": "fg",
-            "resolved_1": "ab_server_type",
-            "resolved_2": "fg_server_type",
+            "resolved_1": "ab_resolved",
+            "resolved_2": "fg_resolved",
         }
         document = {"to_resolve_1": "ab", "to_resolve_2": "fg"}
 
@@ -525,7 +531,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "resolve_list": {"FOO": "BAR"},
@@ -552,7 +558,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -561,7 +567,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
+        expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
 
         self.object.process(document)
@@ -575,7 +581,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_with_parenthesis.yml",
                     "pattern": r"\d*(?P<mapping>(([a-z])+)())\d*",
                 },
                 "append_to_list": True,
@@ -584,7 +590,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
+        expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
 
         self.object.process(document)
@@ -598,7 +604,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -607,7 +613,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "gh", "resolved": ["gh_server_type"]}
+        expected = {"to_resolve": "gh", "resolved": ["gh_resolved"]}
         document = {"to_resolve": "gh"}
 
         self.object.process(document)
@@ -621,7 +627,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[123]+)\d*",
                 },
                 "append_to_list": True,
@@ -646,7 +652,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -655,7 +661,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        expected = {"to_resolve": "12ab34", "resolved": ["ab_server_type"]}
+        expected = {"to_resolve": "12ab34", "resolved": ["ab_resolved"]}
         document = {"to_resolve": "12ab34"}
 
         self.object.process(document)
@@ -672,7 +678,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
                 "field_mapping": {"to_resolve": "resolved", "other_to_resolve": "resolved"},
                 "resolve_from_file": {
                     "path": "tests/testdata/unit/hyperscan_resolver"
-                    "/resolve_mapping_without_patterns.yml",
+                    "/resolve_mapping_no_regex.yml",
                     "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
                 },
                 "append_to_list": True,
@@ -684,7 +690,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         expected = {
             "to_resolve": "12ab34",
             "other_to_resolve": "00de11",
-            "resolved": ["ab_server_type", "de_server_type"],
+            "resolved": ["ab_resolved", "de_resolved"],
         }
         document = {"to_resolve": "12ab34", "other_to_resolve": "00de11"}
 
@@ -701,7 +707,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
             "hyperscan_resolver": {
                 "field_mapping": {"to_resolve": "resolved"},
                 "resolve_from_file": {
-                    "path": "tests/testdata/unit/hyperscan_resolver/resolve_mapping.yml",
+                    "path": "tests/testdata/unit/hyperscan_resolver/resolve_mapping_regex.yml",
                     "pattern": r"\d*(?P<foobar>[a-z]+)\d*",
                 },
                 "resolve_list": {"FOO": "BAR"},
