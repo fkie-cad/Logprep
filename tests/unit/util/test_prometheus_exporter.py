@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import logging
 import os
 from logging import getLogger
 from unittest import mock
@@ -123,3 +124,12 @@ class TestPrometheusStatsExporter:
         mock_multiprocess.assert_not_called()
         mock_makedirs.assert_not_called()
         mock_rmtree.assert_not_called()
+
+    @mock.patch("logprep.util.prometheus_exporter.start_http_server")
+    def test_run_starts_http_server(self, mock_http_server, caplog):
+        with caplog.at_level(logging.INFO):
+            exporter = PrometheusStatsExporter(self.status_logger_config, getLogger("test-logger"))
+            exporter.run()
+
+        mock_http_server.assert_has_calls([mock.call(exporter._port)])
+        assert f"Prometheus Exporter started on port {exporter._port}" in caplog.text
