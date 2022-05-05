@@ -211,24 +211,28 @@ Parameter
 type
 ~~~~
 
-The value `generic_resolver` chooses the processor type GenericResolver, which will be described here in greater detail.
+The value `generic_resolver` chooses the processor type GenericResolver.
 
-rules
-~~~~~
+Hyperscan Resolver
+------------------
 
-List of directory paths with rule files, i.e.:
+Parameter
+^^^^^^^^^
 
-  * /var/git/logprep-rules/generic_resolver_rules/
+type
+~~~~
 
-tree_config
-~~~~~~~~~~~
+The value `hyperscan_resolver` chooses the processor type HyperscanResolver.
 
-Path to JSON file with rule tree matcher config.
+hyperscan_db_path
+~~~~~~~~~~~~~~~~~
 
-generic_resolver.resolve_mapping
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Path to a JSON mapping with abbreviations of network device types.
+Path to a directory where the compiled `Hyperscan <https://python-hyperscan.readthedocs.io/en/latest/>`_ databases will be stored persistently.
+Persistent storage is set to false per default.
+If the specified directory does not exist, it will be created.
+The database will be stored in the directory of the `hyperscan_resolver` if no path has been specified within the pipeline config.
+To update and recompile a persistently stored databases simply delete the whole directory.
+The databases will be compiled again during the next run.
 
 --------
 

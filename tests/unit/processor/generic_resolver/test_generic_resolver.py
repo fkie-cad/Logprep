@@ -1,5 +1,5 @@
 # pylint: disable=protected-access
-# pylint: disable=missing-module-docstring
+# pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 import copy
@@ -54,7 +54,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         assert isinstance(self.object, GenericResolver)
 
-    def test_resolve_generic_existing_not_dotted_field_without_conflict_match(self):
+    def test_resolve_not_dotted_field_no_conflict_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -73,7 +73,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_not_dotted_field_without_conflict_and_to_list_entries_match(
+    def test_resolve_not_dotted_field_no_conflict_and_to_list_entries_match(
         self,
     ):
         rule = {
@@ -98,7 +98,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    def test_resolve_generic_existing_not_dotted_field_without_conflict_no_match(self):
+    def test_resolve_not_dotted_field_no_conflict_no_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -116,7 +116,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match(self):
+    def test_resolve_dotted_field_no_conflict_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -134,7 +134,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file(
+    def test_resolve_dotted_field_no_conflict_match_from_file(
         self,
     ):
         rule = {
@@ -189,7 +189,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_no_match_from_file(
+    def test_resolve_dotted_field_no_conflict_no_match_from_file(
         self,
     ):
         rule = {
@@ -215,7 +215,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list(
+    def test_resolve_dotted_field_no_conflict_match_from_file_and_list(
         self,
     ):
         rule = {
@@ -239,7 +239,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list_has_conflict(
+    def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict(
         self,
     ):
         rule = {
@@ -264,7 +264,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_with_list_has_conflict_and_different_inputs(
+    def test_resolve_dotted_field_no_conflict_match_from_file_and_list_has_conflict_and_diff_inputs(
         self,
     ):
         rule = {
@@ -296,7 +296,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_match_from_file_group_mapping_does_not_exist(
+    def test_resolve_dotted_field_no_conflict_match_from_file_group_mapping_does_not_exist(
         self,
     ):
         rule = {
@@ -315,7 +315,8 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         with pytest.raises(
             GenericResolverError,
-            match=r"GenericResolver \(Test Instance Name\)\: Mapping group is missing in mapping file pattern!",
+            match=r"GenericResolver \(Test Instance Name\)\: Mapping group is missing in mapping "
+            r"file pattern!",
         ):
             self.object.process(document)
 
@@ -337,7 +338,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         ):
             self.object.process(document)
 
-    def test_resolve_generic_existing_dotted_src_field_without_conflict_no_match(self):
+    def test_resolve_dotted_field_no_conflict_no_match(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
@@ -354,7 +355,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_dest_field_without_conflict_match(self):
+    def test_resolve_dotted_dest_field_no_conflict_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -371,7 +372,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_dest_field_without_conflict_no_match(self):
+    def test_resolve_dotted_dest_field_no_conflict_no_match(self):
         rule = {
             "filter": "to_resolve",
             "generic_resolver": {
@@ -388,7 +389,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_and_dest_field_without_conflict_match(
+    def test_resolve_dotted_src_and_dest_field_no_conflict_match(
         self,
     ):
         rule = {
@@ -407,7 +408,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_generic_existing_dotted_src_and_dest_field_with_conflict_match(
+    def test_resolve_dotted_src_and_dest_field_and_conflict_match(
         self,
     ):
         rule = {
@@ -427,7 +428,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         with pytest.raises(DuplicationError):
             self.object.process(document)
 
-    def test_resolve_generic_with_multiple_match_first_only(self):
+    def test_resolve_generic_and_multiple_match_first_only(self):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {
