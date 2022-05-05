@@ -170,7 +170,7 @@ class HyperscanResolver(RuleBasedProcessor):
 
         result = []
 
-        hyperscan_db.scan(src_val, match_event_handler=on_match)
+        hyperscan_db.scan(src_val.encode("utf-8"), match_event_handler=on_match)
         return result
 
     def _get_hyperscan_database(self, rule: HyperscanResolverRule):

@@ -56,7 +56,7 @@ frozenlist==1.2.0
     #   aiosignal
 geoip2==4.5.0
     # via -r requirements.txt
-hyperscan==0.1.5
+hyperscan==0.3.0
     # via -r requirements.txt
 idna==3.3
     # via

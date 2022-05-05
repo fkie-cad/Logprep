@@ -15,4 +15,4 @@ pytz
 numpy
 arrow
 prometheus_client
-hyperscan==0.1.5
+hyperscan==0.3.0
