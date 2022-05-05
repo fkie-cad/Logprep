@@ -966,15 +966,15 @@ Selective Extractor
 
 The selective extractor requires the additional field :code:`selective_extractor`.
 The field :code:`selective_extractor.extract` has to be defined.
-It contains a dictionary of field names and values that should be extracted.
+It contains a dictionary of field names that should be extracted and a target topic to which they should be send to.
 If dot notation is being used, then all fields on the path are being automatically created.
 
-In the following example, the field :code:`extract_test.field.extract` with the value :code:`extracted value` is being extracted
-and send to the topic :code:`topcic_to_send_to`
+In the following example, the field :code:`field.extract` with the value :code:`extracted value` is being extracted
+and send to the topic :code:`topcic_to_send_to`.
 
 ..  code-block:: yaml
     :linenos:
-    :caption: Example with extract from field list
+    :caption: Example rule with extract from field list
 
     filter: extract_test
     selective_extractor:
@@ -1009,7 +1009,7 @@ It contains the path to a text file with a list of fields per line to be extract
 
 ..  code-block:: yaml
     :linenos:
-    :caption: Example with extract from file
+    :caption: Example rule with extract from file
 
     filter: extract_test
     selective_extractor:
@@ -1032,7 +1032,7 @@ It is possible to mix both extraction sources. They will be merged to one list w
 
 ..  code-block:: yaml
     :linenos:
-    :caption: Example with extract from file
+    :caption: Example rule with extract from file
 
     filter: extract_test
     selective_extractor:
