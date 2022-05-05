@@ -26,6 +26,10 @@ class PrometheusStatsExporter:
         if multi_processing_dir:
             if os.path.isdir(multi_processing_dir):
                 shutil.rmtree(multi_processing_dir)
+            if os.path.isfile(multi_processing_dir):
+                raise ValueError(
+                    "Environment variable 'PROMETHEUS_MULTIPROC_DIR' is a file and not a directory"
+                )
             os.makedirs(multi_processing_dir, exist_ok=True)
             multiprocess.MultiProcessCollector(REGISTRY, multi_processing_dir)
 

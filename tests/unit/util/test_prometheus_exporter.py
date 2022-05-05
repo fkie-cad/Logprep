@@ -5,6 +5,7 @@ import os
 from logging import getLogger
 from unittest import mock
 
+import pytest
 from prometheus_client import Gauge, Info, REGISTRY
 
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -96,6 +97,20 @@ class TestPrometheusStatsExporter:
         mock_multiprocess.assert_has_calls(
             [mock.call.MultiProcessCollector(REGISTRY, str(multi_proc_dir))]
         )
+
+    def test_prepare_multiprocessing_fails_if_env_variable_is_file(self, tmp_path):
+        multi_proc_dir = tmp_path / "multi_proc_dir"
+        os.makedirs(multi_proc_dir)
+        test_file = os.path.join(multi_proc_dir, "dummy.txt")
+        open(test_file, "w", encoding="utf-8").close()  # pylint: disable=consider-using-with
+
+        with mock.patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": str(test_file)}):
+            with pytest.raises(
+                ValueError,
+                match="Environment variable 'PROMETHEUS_MULTIPROC_DIR' "
+                "is a file and not a directory",
+            ):
+                _ = PrometheusStatsExporter(self.status_logger_config, getLogger("test-logger"))
 
     @mock.patch("logprep.util.prometheus_exporter.multiprocess")
     @mock.patch("logprep.util.prometheus_exporter.os.makedirs")
