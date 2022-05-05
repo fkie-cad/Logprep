@@ -1,0 +1,10 @@
+filter: "test_pre_detector"
+pre_detector:
+  id: RULE_TWO_ID
+  title: RULE_TWO
+  severity: critical
+  mitre:
+    - attack.test3
+    - attack.test4
+  case_condition: directly
+description: "..."
