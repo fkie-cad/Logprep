@@ -32,9 +32,6 @@ class DropperRule(Rule):
     def __eq__(self, other: "DropperRule") -> bool:
         return (other.filter == self._filter) and (self._fields_to_drop == other.fields_to_drop)
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def fields_to_drop(self) -> List[str]:

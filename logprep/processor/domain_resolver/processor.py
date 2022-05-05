@@ -8,7 +8,6 @@ from typing import List
 
 from tldextract import TLDExtract
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError, InvalidRuleFileError
 from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache

@@ -289,7 +289,7 @@ Valid timezones are defined in the pytz module:
    <details>
    <summary><a>List of all timezones</a></summary>
 
-.. code-block::
+.. code-block:: text
    :linenos:
    :caption: Timezones from the Python pytz module
 
@@ -961,6 +961,95 @@ In the following example two files are being used, but only the first existing f
         - PATH_TO_FILE_WITH_LIST
     description: '...'
 
+Selective Extractor
+===================
+
+The selective extractor requires the additional field :code:`selective_extractor`.
+The field :code:`selective_extractor.extract` has to be defined.
+It contains a dictionary of field names that should be extracted and a target topic to which they should be send to.
+If dot notation is being used, then all fields on the path are being automatically created.
+
+In the following example, the field :code:`field.extract` with the value :code:`extracted value` is being extracted
+and send to the topic :code:`topcic_to_send_to`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from field list
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extracted_field_list: ["field.extract", "field2", "field3"]
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: json
+    :caption: Example event
+
+    {
+      "extract_test": {
+        "field": {
+          "extract": "extracted value" 
+        }
+      }
+    }
+
+..  code-block:: json
+    :caption: Extracted event from Example
+
+    {
+      "extract": "extracted value" 
+    }
+
+
+
+Alternatively, the additional field :code:`selective_extractor.extract.extract_from_file` can be added.
+It contains the path to a text file with a list of fields per line to be extracted.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from file
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extract_from_file: /path/to/file
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: text
+    :caption: Example of file with field list
+
+    field1
+    field2
+    field3
+
+The file has to exist.
+
+It is possible to mix both extraction sources. They will be merged to one list without duplicates.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from file
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extract_from_file: /path/to/file
+        extracted_field_list: ["field1", "field2", "field4"]
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: text
+    :caption: Example of file with field list
+
+    field1
+    field2
+    field3
+
 Datetime Extractor
 ==================
 
@@ -1027,33 +1116,31 @@ registered domain :code:`domain` and lastly it's TLD :code:`de`:
 The example rule applied to the input event
 
 ..  code-block:: json
-    :linenos:
     :caption: Input Event
 
     {
-        'url': {
-            'domain': 'www.sub.domain.de'
+        "url": {
+            "domain": "www.sub.domain.de"
         }
     }
 
 will result in the following output
 
 ..  code-block:: json
-    :linenos:
     :caption: Output Event
 
     {
-        'url': {
-            'domain': 'www.sub.domain.de',
-            'registered_domain': 'domain.de',
-            'top_level_domain': 'de',
-            'subdomain': 'www.sub',
+        "url": {
+            "domain": "www.sub.domain.de",
+            "registered_domain": "domain.de",
+            "top_level_domain": "de",
+            "subdomain": "www.sub"
         }
     }
 
 
 List Comparison Enricher
-======================
+========================
 
 The list comparison enricher requires the additional field :code:`list_comparison`.
 The mandatory keys under :code:`list_comparison` are :code:`check_field` and :code:`output_field`. Former

@@ -5,27 +5,25 @@ They can be multi-processed.
 
 """
 
+from ctypes import c_bool, c_double, c_ulonglong
+from logging import DEBUG, INFO, NOTSET, Handler, Logger
+from multiprocessing import Lock, Process, Value, current_process
+from time import time
 from typing import List
 
 import ujson
-from ctypes import c_bool, c_ulonglong, c_double
-from logging import Logger, Handler, INFO, NOTSET, DEBUG
-from multiprocessing import Process, Value, Lock, current_process
-from time import time
-
 from logprep.connector.connector_factory import ConnectorFactory
 from logprep.input.input import (
-    SourceDisconnectedError,
-    FatalInputError,
-    WarningInputError,
     CriticalInputError,
+    FatalInputError,
+    SourceDisconnectedError,
+    WarningInputError,
 )
-from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
+from logprep.output.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.processor.base.processor import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
-
 from logprep.util.processor_stats import StatusTracker
 from logprep.util.time_measurement import TimeMeasurement
 
@@ -62,7 +60,7 @@ class Pipeline:
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
-        status_logger: [] = None,
+        status_logger: list = None,
     ):
         if not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
@@ -209,7 +207,10 @@ class Pipeline:
             for processor in self._pipeline:
                 try:
                     extra_data = processor.process(event)
-                    if extra_data is not None:
+                    if isinstance(extra_data, list):
+                        for data in extra_data:
+                            self._store_extra_data(data)
+                    if isinstance(extra_data, tuple):
                         self._store_extra_data(extra_data)
                 except ProcessingWarning as error:
                     self._logger.warning(
@@ -237,7 +238,7 @@ class Pipeline:
         except BaseException as error:
             original_error_msg = type(error).__name__
             if str(error):
-                original_error_msg += ": {}".format(str(error))
+                original_error_msg += f": {error}"
             msg = (
                 f"A critical error occurred for processor {processor.describe()} when "
                 f"processing an event, processing was aborted: ({original_error_msg})"
@@ -298,6 +299,7 @@ class SharedCounter(object):
             self._logger = logger
 
     def setup(self, print_processed_period: float, log_handler: Handler):
+        """Setup shared counter for multiprocessing pipeline."""
         self._create_logger(log_handler)
         self._init_timer(print_processed_period)
         self._checking_timer = time() + self.CHECKING_PERIOD

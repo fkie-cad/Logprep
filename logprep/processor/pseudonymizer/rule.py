@@ -37,9 +37,6 @@ class PseudonymizerRule(Rule):
         url_fields_equal = self._url_fields == other.url_fields
         return filter_equal and pseudonyms_equal and url_fields_equal
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def pseudonyms(self) -> dict:

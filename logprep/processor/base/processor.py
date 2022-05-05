@@ -33,7 +33,8 @@ class ProcessingWarning(ProcessingError):
 class ProcessingWarningCollection(ProcessingError):
     """A collection of ProcessingWarnings."""
 
-    def __init__(self, processing_warnings):
+    def __init__(self, name: str, message: str, processing_warnings):
+        super().__init__(name, message)
         self.processing_warnings = processing_warnings
 
 

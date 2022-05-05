@@ -36,9 +36,6 @@ class GeoIPEnricherRule(Rule):
     def __eq__(self, other: "GeoIPEnricherRule") -> bool:
         return (other.filter == self._filter) and (self.source_ip == other.source_ip)
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def source_ip(self) -> dict:

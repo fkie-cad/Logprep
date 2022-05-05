@@ -1,0 +1,15 @@
+[
+    {
+        "filter": "message",
+        "selective_extractor": {
+            "extract": {
+                "extracted_field_list": [
+                    "field1",
+                    "field2"
+                ],
+                "target_topic": "test_topic"
+            }
+        },
+        "description": "my reference rule"
+    }
+]

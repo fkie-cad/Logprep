@@ -77,9 +77,6 @@ class ListComparisonRule(Rule):
     def __eq__(self, other: "ListComparisonRule") -> bool:
         return (other.filter == self._filter) and (self._check_field == other.check_field)
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
         return self._compare_sets

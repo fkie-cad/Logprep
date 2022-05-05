@@ -1,14 +1,15 @@
 """This module is the superclass for all rule classes."""
 
-from json import load
+from abc import abstractmethod
+import json
 from os.path import basename, splitext
 from typing import Set, Optional
-
 from ruamel.yaml import YAML
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.util.json_handling import is_json
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -19,14 +20,19 @@ class Rule:
     special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields"]
 
     def __init__(self, filter_rule: FilterExpression):
+        self.__class__.__hash__ = Rule.__hash__
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
         self._special_fields = None
         self.file_name = None
         self._tests = []
 
+    @abstractmethod
     def __eq__(self, other: "Rule"):
         pass
+
+    def __hash__(self) -> int:  # pylint: disable=function-redefined
+        return hash(repr(self))
 
     # pylint: disable=C0111
     @property
@@ -42,13 +48,17 @@ class Rule:
     @classmethod
     def create_rules_from_file(cls, path: str) -> list:
         """Create a rule from a file."""
-        with open(path, "r") as file:
-            rule_data = list(yaml.load_all(file)) if path.endswith(".yml") else load(file)
-
-        if not isinstance(rule_data, list):
-            raise InvalidRuleDefinitionError(f"Rule file must contain a json or yml list: {path}")
+        is_valid_json = is_json(path)
+        rule_data = None
+        with open(path, "r", encoding="utf8") as file:
+            if is_valid_json:
+                rule_data = json.load(file)
+            else:
+                rule_data = yaml.load_all(file)
 
         rules = [cls._create_from_dict(rule) for rule in rule_data]
+        if len(rules) == 0:
+            raise InvalidRuleDefinitionError("no rules in file")
         for rule in rules:
             rule.file_name = splitext(basename(path))[0]
 

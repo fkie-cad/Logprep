@@ -1,14 +1,15 @@
+# pylint: disable=missing-docstring
+# pylint: disable=line-too-long
 from unittest.mock import patch
 
 import pytest
-import ujson
 
 from tests.acceptance.util import mock_kafka_and_run_pipeline, get_default_logprep_config
 from logprep.util.json_handling import dump_config_as_file
 
 
-@pytest.fixture
-def config():
+@pytest.fixture(name="config")
+def config_fixture():
     pipeline = [
         {
             "normalizername": {
@@ -21,26 +22,12 @@ def config():
         {
             "selective_extractor": {
                 "type": "selective_extractor",
-                "selective_extractor_topic": "selection_target",
-                "extractor_list": "tests/testdata/acceptance/selective_extractor/whitelist.txt",
+                "specific_rules": ["tests/testdata/acceptance/selective_extractor/rules/specific"],
+                "generic_rules": ["tests/testdata/acceptance/selective_extractor/rules/generic"],
             }
         },
     ]
     return get_default_logprep_config(pipeline)
-
-
-def check_extractions(expected_extraction_event, expected_pipeline_event, kafka_output_file):
-    # read logprep kafka output from mocked kafka file producer
-    with open(kafka_output_file, "r") as f:
-        lines = f.readlines()
-        assert len(lines) == 2, "Expected two events: Selected Output and default pipeline output"
-        for line in lines:
-            target, event = line.split(" ")
-            event = ujson.loads(event)
-            if target == "selection_target":
-                assert event == expected_extraction_event
-            if target == "test_input_processed":
-                assert event == expected_pipeline_event
 
 
 class TestSelectiveExtractor:
@@ -55,24 +42,27 @@ class TestSelectiveExtractor:
                 "user": {"agent": "ok_admin", "other": "field"},
                 "event": {"action": "less_evil_action"},
             }
-            expected_extraction_event = {
-                "user": {"agent": "ok_admin"},
-                "event": {"action": "less_evil_action"},
-            }
-            expected_pipeline_event = {
-                "user": {"agent": "ok_admin", "other": "field"},
-                "event": {"action": "less_evil_action"},
-                "hmac": {
-                    "hmac": "18e2a3df8590b6cbab040f7ea4b9df399febbb5f259817459c460b196f42c4ca",
-                    "compressed_base64": "eJwtykEOgCAMBdG7/DUn4DKESNVGLImtbEjvLhq382bgVroQB/JGYohoR8rlZEFAs/01rEy1wAOof8+cF+MmkyqpJupc05/cH589HPw=",
-                },
-            }
 
             kafka_output_file = mock_kafka_and_run_pipeline(
                 config, input_test_event, mock_connector_factory, tmp_path
             )
 
-            check_extractions(expected_extraction_event, expected_pipeline_event, kafka_output_file)
+            with open(kafka_output_file, "r", encoding="utf8") as output_file:
+                lines = output_file.readlines()
+                assert len(lines) == 3, "expected default pipeline output and two extracted events"
+                assert 'test_topic_2 {"event":{"action":"less_evil_action"}}\n' in lines
+                assert 'test_topic_1 {"user":{"agent":"ok_admin"}}\n' in lines
+                assert (
+                    "test_input_processed "
+                    '{"user":'
+                    '{"agent":"ok_admin","other":"field"},'
+                    '"event":'
+                    '{"action":"less_evil_action"},'
+                    '"hmac":'
+                    '{"hmac":"18e2a3df8590b6cbab040f7ea4b9df399febbb5f259817459c460b196f42c4ca",'
+                    '"compressed_base64":'
+                    '"eJwtykEOgCAMBdG7\\/DUn4DKESNVGLImtbEjvLhq382bgVroQB\\/JGYohoR8rlZEFAs\\/01rEy1wAOof8+cF+MmkyqpJupc05\\/cH589HPw="}}\n'
+                ) in lines
 
     def test_extraction_field_not_in_event(self, tmp_path, config):
         # tests behaviour in case a field from the extraction list is not in the provided event
@@ -86,20 +76,20 @@ class TestSelectiveExtractor:
                 "user": {"other": "field"},
                 "event": {"action": "less_evil_action"},
             }
-            expected_extraction_event = {
-                "event": {"action": "less_evil_action"},
-            }
-            expected_pipeline_event = {
-                "user": {"other": "field"},
-                "event": {"action": "less_evil_action"},
-                "hmac": {
-                    "hmac": "cae31468df13e701f46e70bfbea86f29e77ab69f6253ac156ddda5e38fdbed92",
-                    "compressed_base64": "eJyrViotTi1SsqpWyi/JADGU0jJTc1KUanWUUstS80pAMonJJZn5eUCpnNTi4vjUssyceKhQbS0Ay/oWvQ==",
-                },
-            }
 
             kafka_output_file = mock_kafka_and_run_pipeline(
                 config, input_test_event, mock_connector_factory, tmp_path
             )
 
-            check_extractions(expected_extraction_event, expected_pipeline_event, kafka_output_file)
+            with open(kafka_output_file, "r", encoding="utf8") as output_file:
+                lines = output_file.readlines()
+                assert len(lines) == 2, "expected default pipeline output and one extracted event"
+                assert 'test_topic_2 {"event":{"action":"less_evil_action"}}\n' in lines
+                assert (
+                    "test_input_processed "
+                    '{"user":'
+                    '{"other":"field"},"event":{"action":"less_evil_action"},'
+                    '"hmac":{"hmac":"cae31468df13e701f46e70bfbea86f29e77ab69f6253ac156ddda5e38fdbed92",'
+                    '"compressed_base64":'
+                    '"eJyrViotTi1SsqpWyi\\/JADGU0jJTc1KUanWUUstS80pAMonJJZn5eUCpnNTi4vjUssyceKhQbS0Ay\\/oWvQ=="}}\n'
+                ) in lines
