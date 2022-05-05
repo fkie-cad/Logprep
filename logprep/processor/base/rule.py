@@ -55,8 +55,10 @@ class Rule:
                 rule_data = json.load(file)
             else:
                 rule_data = yaml.load_all(file)
-
-        rules = [cls._create_from_dict(rule) for rule in rule_data]
+            # needs to be executed in context manager of open, because
+            # `yaml.load_all` returns a generator and read operation happens in
+            # this list comprehension which leads to an I/O Error otherwise
+            rules = [cls._create_from_dict(rule) for rule in rule_data]
         if len(rules) == 0:
             raise InvalidRuleDefinitionError("no rules in file")
         for rule in rules:
