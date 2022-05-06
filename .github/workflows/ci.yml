@@ -46,7 +46,7 @@ jobs:
           pex . -r requirements.txt -o ./logprep.pex -c logprep --pex-root=tmp_pip_cache
 
       - name: Upload PEX
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: Logprep
           path: logprep.pex
