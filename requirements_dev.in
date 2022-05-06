@@ -2,4 +2,3 @@
 pytest
 pytest-cov
 pylint
-semgrep
