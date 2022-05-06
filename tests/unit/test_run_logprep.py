@@ -17,7 +17,7 @@ class TestRunLogprep:
 
     @mock.patch("logprep.util.schema_and_rule_checker.SchemaAndRuleChecker.validate_rules")
     def test_main_calls_validates_rules(self, mock_validate_rules):
-        """ensures the quickstart config is valid"""
+        """ensures rule validation is called"""
         sys.argv = [
             "logprep",
             "--disable-logging",
@@ -29,7 +29,7 @@ class TestRunLogprep:
         mock_validate_rules.assert_called()
 
     def test_quickstart_rules_are_valid(self):
-        """ensures the quickstart config is valid"""
+        """ensures the quickstart rules are valid"""
         sys.argv = [
             "logprep",
             "--disable-logging",
