@@ -117,7 +117,7 @@ jobs:
       - name: Install semgrep if python version > 3.6
         run: |
           pip install semgrep
-        if: matrix.python-version == '3.7' || matrix.python-version == '3.8' || matrix.python-version == '3.8'
+        if: matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.8
 
       - name: check black formating
         run: |
@@ -136,5 +136,5 @@ jobs:
         uses: codecov/codecov-action@v2
 
       - name: Check semgrep rules
-        if: steps.changed-files.outputs.all_changed_files && (matrix.python-version == '3.7' || matrix.python-version == '3.8' || matrix.python-version == '3.8')
+        if: steps.changed-files.outputs.all_changed_files && (matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.8)
         run: semgrep -c .semgrep_rules --error -l python --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
