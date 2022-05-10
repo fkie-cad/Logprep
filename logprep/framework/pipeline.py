@@ -12,6 +12,7 @@ from time import time
 from typing import List
 
 import ujson
+
 from logprep.connector.connector_factory import ConnectorFactory
 from logprep.input.input import (
     CriticalInputError,
@@ -24,7 +25,7 @@ from logprep.processor.base.processor import ProcessingWarning, ProcessingWarnin
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
-from logprep.util.processor_stats import StatusTracker
+from logprep.util.processor_stats import StatusTracker, StatusLoggerCollection
 from logprep.util.time_measurement import TimeMeasurement
 
 
@@ -60,7 +61,7 @@ class Pipeline:
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
-        status_logger: list = None,
+        status_logger: StatusLoggerCollection = None,
     ):
         if not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
@@ -156,7 +157,7 @@ class Pipeline:
         self._continue_iterating = True
 
     def _retrieve_and_process_data(self):
-        event = dict()
+        event = {}
         try:
             self._tracker.print_aggregate()
             event = self._input.get_next(self._timeout)
@@ -270,7 +271,7 @@ class Pipeline:
         self._continue_iterating = False
 
 
-class SharedCounter(object):
+class SharedCounter:
     """A shared counter for multi-processing pipelines."""
 
     CHECKING_PERIOD = 0.5
@@ -345,7 +346,7 @@ class MultiprocessingPipeline(Process, Pipeline):
         lock: Lock,
         shared_dict: dict,
         profile: bool = False,
-        status_logger: List = None,
+        status_logger: StatusLoggerCollection = None,
     ):
         if not isinstance(log_handler, MultiprocessingLogHandler):
             raise MustProvideAnMPLogHandlerError

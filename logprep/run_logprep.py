@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from os.path import dirname, basename
 import inspect
-from typing import List, Optional
+from typing import Optional
 
 import sys
 
@@ -21,37 +21,37 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.processor_factory import ProcessorFactory
 
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.processor_stats import StatsClassesController
+from logprep.util.processor_stats import StatsClassesController, StatusLoggerCollection
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
 
 
-def _get_status_logger(config: dict, application_logger: Logger) -> List:
+def _get_status_logger(config: dict, application_logger: Logger) -> StatusLoggerCollection:
     status_logger_cfg = config.get("status_logger", {})
     logging_targets = status_logger_cfg.get("targets", [])
 
     if not logging_targets:
         logging_targets.append({"file": {}})
 
-    status_logger = []
+    file_logger = None
+    prometheus_exporter = None
     for target in logging_targets:
         if "file" in target.keys():
             file_config = target.get("file")
-            logger = getLogger("Logprep-JSON-File-Logger")
-            logger.handlers = []
+            file_logger = getLogger("Logprep-JSON-File-Logger")
+            file_logger.handlers = []
 
             log_path = file_config.get("path", "./logprep-status.jsonl")
             Path(dirname(log_path)).mkdir(parents=True, exist_ok=True)
             interval = file_config.get("rollover_interval", 60 * 60 * 24)
             backup_count = file_config.get("backup_count", 10)
-            logger.addHandler(
+            file_logger.addHandler(
                 TimedRotatingFileHandler(
                     log_path, when="S", interval=interval, backupCount=backup_count
                 )
             )
-            status_logger.append(logger)
 
         if "prometheus" in target.keys():
             multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR", "")
@@ -64,8 +64,8 @@ def _get_status_logger(config: dict, application_logger: Logger) -> List:
             else:
                 prometheus_exporter = PrometheusStatsExporter(status_logger_cfg, application_logger)
                 prometheus_exporter.run()
-                status_logger.append(prometheus_exporter)
 
+    status_logger = StatusLoggerCollection(file_logger, prometheus_exporter)
     return status_logger
 
 
@@ -106,7 +106,7 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger, status_logger: Optional[List]):
+def _run_logprep(arguments, logger: Logger, status_logger: Optional[StatusLoggerCollection]):
     runner = None
     try:
         runner = Runner.get_runner()

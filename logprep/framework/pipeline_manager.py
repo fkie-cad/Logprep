@@ -1,14 +1,13 @@
 """This module contains functionality to manage pipelines via multi-processing."""
 
-from queue import Empty
-from multiprocessing import Manager, Lock
 from logging import Logger, DEBUG
-from typing import List
-
-from logprep.util.configuration import Configuration
+from multiprocessing import Manager, Lock
+from queue import Empty
 
 from logprep.framework.pipeline import MultiprocessingPipeline
+from logprep.util.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
+from logprep.util.processor_stats import StatusLoggerCollection
 
 
 class PipelineManagerError(BaseException):
@@ -25,7 +24,7 @@ class MustSetConfigurationFirstError(PipelineManagerError):
 class PipelineManager:
     """Manage pipelines via multi-processing."""
 
-    def __init__(self, logger: Logger, status_logger: List):
+    def __init__(self, logger: Logger, status_logger: StatusLoggerCollection):
         self._logger = logger
         self._status_logger = status_logger
 
@@ -87,7 +86,7 @@ class PipelineManager:
 
     def replace_pipelines(self):
         """Replace one pipeline at a time."""
-        for index in range(len(self._pipelines)):
+        for index, _ in enumerate(self._pipelines):
             old_pipeline = self._pipelines[index]
             old_pipeline.stop()
             old_pipeline.join()
@@ -105,8 +104,13 @@ class PipelineManager:
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
 
+            if self._status_logger.prometheus_exporter is not None:
+                self._status_logger.prometheus_exporter.remove_metrics_from_process(
+                    failed_pipeline.pid
+                )
+
         if failed_pipelines:
-            self._logger.warning("Removed %d failed pipeline(s)" % len(failed_pipelines))
+            self._logger.warning(f"Removed {len(failed_pipelines)} failed pipeline(s)")
 
     def handle_logs_into_logger(self, logger: Logger, timeout: float):
         """Handle logs."""
@@ -129,7 +133,7 @@ class PipelineManager:
         return MultiprocessingPipeline(
             self._configuration["connector"],
             self._configuration["pipeline"],
-            self._configuration.get("status_logger", dict()),
+            self._configuration.get("status_logger", {}),
             self._configuration["timeout"],
             self._log_handler,
             self._configuration.get("print_processed_period", 300),

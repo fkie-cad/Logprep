@@ -91,7 +91,6 @@ true/false
 
 Defines if the metrics of each child process should be aggregated to single values or if the metrics
 of the processes should be exported directly per process.
-The aggregation is enabled by default.
 
 targets
 -------
@@ -127,6 +126,7 @@ Example
       period: 10
       enabled: true
       cumulative: true
+      aggregate_processes: false
       targets:
         - prometheus:
             port: 8000

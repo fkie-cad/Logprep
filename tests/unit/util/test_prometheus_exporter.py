@@ -7,7 +7,7 @@ from logging import getLogger
 from unittest import mock
 
 import pytest
-from prometheus_client import Gauge, Info, REGISTRY
+from prometheus_client import Gauge, REGISTRY
 
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
@@ -29,15 +29,14 @@ class TestPrometheusStatsExporter:
         exporter = PrometheusStatsExporter(self.status_logger_config, getLogger("test-logger"))
 
         expected_metrics = {
-            "processed",
-            "errors",
-            "warnings",
-            "matches",
-            "mean_matches_per_rule",
-            "avg_processing_time",
+            "logprep_processed",
+            "logprep_errors",
+            "logprep_warnings",
+            "logprep_matches",
+            "logprep_avg_processing_time",
         }
 
-        created_metric_names = set(exporter.stats.keys())
+        created_metric_names = set(exporter.metrics.keys())
 
         missing_keys = expected_metrics.difference(created_metric_names)
         unknown_keys = created_metric_names.difference(expected_metrics)
@@ -45,15 +44,14 @@ class TestPrometheusStatsExporter:
         assert len(missing_keys) == 0, f"following metrics are missing: {missing_keys}"
         assert len(unknown_keys) == 0, f"following metrics are unexpected: {unknown_keys}"
 
-        assert all(isinstance(exporter.stats[metric_key], Gauge) for metric_key in exporter.stats)
+        assert all(
+            isinstance(exporter.metrics[metric_key], Gauge)
+            for metric_key in exporter.metrics.keys()
+        )
 
-        assert isinstance(exporter.info_metric, Info)
+        assert isinstance(exporter.tracking_interval, Gauge)
 
         assert exporter._port == self.status_logger_config["targets"][0]["prometheus"]["port"]
-
-        expected_label = {"interval_in_seconds": f"{self.status_logger_config['period']}"}
-        tracked_tracking_interval = REGISTRY.get_sample_value("tracking_info", expected_label)
-        assert tracked_tracking_interval == 1
 
     def test_default_port_if_missing_in_config(self):
         status_logger_config = {
@@ -133,3 +131,24 @@ class TestPrometheusStatsExporter:
 
         mock_http_server.assert_has_calls([mock.call(exporter._port)])
         assert f"Prometheus Exporter started on port {exporter._port}" in caplog.text
+
+    def test_remove_metrics_from_process_removes_database_file_of_given_pid(self, tmp_path, caplog):
+        # pylint: disable=consider-using-with
+        multi_proc_dir = tmp_path / "multi_proc_dir"
+        os.makedirs(multi_proc_dir)
+
+        with mock.patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": str(multi_proc_dir)}):
+            with caplog.at_level(logging.DEBUG):
+                exporter = PrometheusStatsExporter(
+                    self.status_logger_config, getLogger("test-logger")
+                )
+                metric_test_file_1 = os.path.join(multi_proc_dir, "gauge_5416.db")
+                metric_test_file_2 = os.path.join(multi_proc_dir, "gauge_8742.db")
+                open(metric_test_file_1, "a", encoding="utf-8").close()
+                open(metric_test_file_2, "a", encoding="utf-8").close()
+
+                exporter.remove_metrics_from_process(pid=5416)
+
+            assert not os.path.isfile(metric_test_file_1)
+            assert os.path.isfile(metric_test_file_2)
+            assert "Removed stale metric files: ['gauge_5416.db']" in caplog.text

@@ -2,11 +2,14 @@
 import os
 import shutil
 
-from prometheus_client import start_http_server, multiprocess, REGISTRY, Info, Gauge
+from prometheus_client import start_http_server, multiprocess, REGISTRY, Gauge
 
 
 class PrometheusStatsExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
+
+    metric_prefix = "logprep_"
+    multi_processing_dir = ""
 
     def __init__(self, status_logger_config, application_logger):
         self._logger = application_logger
@@ -22,16 +25,38 @@ class PrometheusStatsExporter:
         Sets up the proper metric registry for multiprocessing and handles the necessary
         temporary multiprocessing directory that the prometheus client expects.
         """
-        multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-        if multi_processing_dir:
-            if os.path.isdir(multi_processing_dir):
-                shutil.rmtree(multi_processing_dir)
-            if os.path.isfile(multi_processing_dir):
+        self.multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+        if self.multi_processing_dir:
+            if os.path.isdir(self.multi_processing_dir):
+                shutil.rmtree(self.multi_processing_dir)
+            if os.path.isfile(self.multi_processing_dir):
                 raise ValueError(
                     "Environment variable 'PROMETHEUS_MULTIPROC_DIR' is a file and not a directory"
                 )
-            os.makedirs(multi_processing_dir, exist_ok=True)
-            multiprocess.MultiProcessCollector(REGISTRY, multi_processing_dir)
+            os.makedirs(self.multi_processing_dir, exist_ok=True)
+            multiprocess.MultiProcessCollector(REGISTRY, self.multi_processing_dir)
+
+    def remove_metrics_from_process(self, pid):
+        """
+        Remove the prometheus multiprocessing database file from the multiprocessing directory.
+        This ensures that prometheus won't export stale metrics in case a process has died.
+
+        Parameters
+        ----------
+        pid : int
+            The Id of the process who's metrics should be removed
+        """
+        metric_data_files = [
+            f
+            for f in os.listdir(self.multi_processing_dir)
+            if os.path.isfile(os.path.join(self.multi_processing_dir, f))
+        ]
+        removed_files = []
+        for file in metric_data_files:
+            if str(pid) in file:
+                os.remove(os.path.join(self.multi_processing_dir, file))
+                removed_files.append(file)
+        self._logger.debug(f"Removed stale metric files: {removed_files}")
 
     def _extract_port_from(self, configuration):
         target_configs = configuration.get("targets", [])
@@ -41,24 +66,30 @@ class PrometheusStatsExporter:
 
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""
-        metrics = [
-            "processed",
-            "errors",
-            "warnings",
-            "matches",
-            "mean_matches_per_rule",
-            "avg_processing_time",
+        metric_ids = [
+            f"{self.metric_prefix}processed",
+            f"{self.metric_prefix}errors",
+            f"{self.metric_prefix}warnings",
+            f"{self.metric_prefix}matches",
+            f"{self.metric_prefix}avg_processing_time",
         ]
 
-        self.stats = {
-            stat_key: Gauge(
-                stat_key, "Tracks the overall processing status", labelnames=["of"], registry=None
+        self.metrics = {
+            metric_id: Gauge(
+                metric_id,
+                "Tracks the overall processing status",
+                labelnames=["component"],
+                registry=None,
             )
-            for stat_key in metrics
+            for metric_id in metric_ids
         }
 
-        self.info_metric = Info("tracking", "Gives general information about the tracking")
-        self.info_metric.info({"interval_in_seconds": str(self._configuration.get("period"))})
+        self.tracking_interval = Gauge(
+            f"{self.metric_prefix}tracking_interval_in_seconds",
+            "Tracking interval",
+            labelnames=["component"],
+            registry=None,
+        )
 
     def run(self):
         """Starts the default prometheus http endpoint"""
