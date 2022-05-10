@@ -135,12 +135,8 @@ class TestStatusTracker:
             "tree_config": "tests/testdata/unit/tree_config.json",
         }
 
-        first_dropper = Dropper(
-            "Dropper1", dropper_config, self.logger
-        )
-        second_dropper = Dropper(
-            "Dropper2", dropper_config, self.logger
-        )
+        first_dropper = Dropper("Dropper1", dropper_config, self.logger)
+        second_dropper = Dropper("Dropper2", dropper_config, self.logger)
         first_dropper.ps.setup_rules([None] * 12)
         second_dropper.ps.setup_rules([None] * 9)
 
