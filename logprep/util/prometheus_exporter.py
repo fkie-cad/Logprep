@@ -1,6 +1,8 @@
 """This module contains functionality to start a prometheus exporter and expose metrics with it"""
 import os
 import shutil
+from os import listdir, path
+from os.path import isfile
 
 from prometheus_client import start_http_server, multiprocess, REGISTRY, Gauge
 
@@ -8,17 +10,22 @@ from prometheus_client import start_http_server, multiprocess, REGISTRY, Gauge
 class PrometheusStatsExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
-    metric_prefix = "logprep_"
-    multi_processing_dir = ""
+    metric_prefix: str = "logprep_"
+    multi_processing_dir = None
 
-    def __init__(self, status_logger_config, application_logger):
+    def __init__(self, status_logger_config, application_logger, metrics):
         self._logger = application_logger
         self._configuration = status_logger_config
         self._port = 8000
+        self._metric_ids = [self.get_metric_id_from_name(metric) for metric in metrics]
 
         self._prepare_multiprocessing()
         self._extract_port_from(self._configuration)
         self._set_up_metrics()
+
+    def get_metric_id_from_name(self, metric_name):
+        """Returns the prometheus metric id of a given metric name"""
+        return f"{self.metric_prefix}{metric_name}"
 
     def _prepare_multiprocessing(self):
         """
@@ -44,18 +51,15 @@ class PrometheusStatsExporter:
         Parameters
         ----------
         pid : int
-            The Id of the process who's metrics should be removed
+            The Id of the process whose metrics should be removed
         """
-        metric_data_files = [
-            f
-            for f in os.listdir(self.multi_processing_dir)
-            if os.path.isfile(os.path.join(self.multi_processing_dir, f))
-        ]
+        directory = self.multi_processing_dir
+        metric_files = [file for file in listdir(directory) if isfile(path.join(directory, file))]
         removed_files = []
-        for file in metric_data_files:
-            if str(pid) in file:
-                os.remove(os.path.join(self.multi_processing_dir, file))
-                removed_files.append(file)
+        for filename in metric_files:
+            if str(pid) in filename:
+                os.remove(os.path.join(self.multi_processing_dir, filename))
+                removed_files.append(filename)
         self._logger.debug(f"Removed stale metric files: {removed_files}")
 
     def _extract_port_from(self, configuration):
@@ -66,14 +70,6 @@ class PrometheusStatsExporter:
 
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""
-        metric_ids = [
-            f"{self.metric_prefix}processed",
-            f"{self.metric_prefix}errors",
-            f"{self.metric_prefix}warnings",
-            f"{self.metric_prefix}matches",
-            f"{self.metric_prefix}avg_processing_time",
-        ]
-
         self.metrics = {
             metric_id: Gauge(
                 metric_id,
@@ -81,7 +77,7 @@ class PrometheusStatsExporter:
                 labelnames=["component"],
                 registry=None,
             )
-            for metric_id in metric_ids
+            for metric_id in self._metric_ids
         }
 
         self.tracking_interval = Gauge(

@@ -121,7 +121,9 @@ class TestStatusTracker:
             status_logger_config=stats_logger_config,
             status_logger=StatusLoggerCollection(
                 file_logger=logging.getLogger("test-file-metric-logger"),
-                prometheus_exporter=PrometheusStatsExporter(stats_logger_config, self.logger),
+                prometheus_exporter=PrometheusStatsExporter(
+                    stats_logger_config, self.logger, ProcessorStats.metrics
+                ),
             ),
             lock=Lock(),
         )

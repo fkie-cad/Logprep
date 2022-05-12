@@ -155,9 +155,9 @@ class TestPipeline(ConfigurationForTests):
 
     def test_empty_documents_are_not_forwarded_to_other_processors(self):
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
-        pipeline = self.create_pipeline(input_data, ["donothing", "delete", "donothing"])
+        pipeline = self.create_pipeline(input_data.copy(), ["donothing", "delete", "donothing"])
 
-        for _ in range(len(input_data)):
+        for _ in input_data:
             pipeline._retrieve_and_process_data()
 
         assert pipeline._pipeline[0].ps.processed_count == 3
