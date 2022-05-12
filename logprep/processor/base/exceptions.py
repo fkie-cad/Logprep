@@ -2,7 +2,10 @@
 
 from typing import Any
 
-from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.processor.processor_factory_error import (
+    InvalidConfigurationError,
+    ProcessorFactoryError,
+)
 
 
 class RuleError(BaseException):
@@ -54,3 +57,13 @@ class ValueDoesnotExistInSchemaError(MismatchedRuleDefinitionError):
 
     def __init__(self, key: str, value: Any):
         super().__init__(f"Invalid value '{value}' for key '{key}'.")
+
+
+class SkipImportError(ProcessorFactoryError):
+    """Raise if the processor type can't be imported."""
+
+    def __init__(self, processor_type=None):
+        if processor_type:
+            super().__init__(f"Processor type '{processor_type}' can't be imported")
+        else:
+            super().__init__("Processor can't be imported")
