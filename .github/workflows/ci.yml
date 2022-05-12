@@ -50,6 +50,7 @@ jobs:
         with:
           name: Logprep
           path: logprep.pex
+        if: matrix.python-version == 3.6
 
   test:
     runs-on: ubuntu-latest
