@@ -1,10 +1,15 @@
-# pylint: disable=missing-module-docstring
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=too-many-lines
+import os
+import sys
+from logging import getLogger
 from random import sample
 from string import ascii_letters
-from logging import getLogger
 
 from pytest import raises
 
+import tests.testdata.unit.processor_factory
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.donothing.processor import DoNothing
 from logprep.processor.labeler.processor import Labeler
@@ -129,3 +134,24 @@ class TestProcessorFactory:
         )
 
         assert isinstance(processor, Labeler)
+
+    def test_load_processors_without_skip_error(self):
+        base_path = os.path.dirname(tests.testdata.unit.processor_factory.__file__)
+
+        assert not (
+            "tests.testdata.unit.processor_factory.test_processor.processor" in sys.modules.keys()
+        )
+        assert not (
+            "tests.testdata.unit.processor_factory.test_broken_processor.processor"
+            in sys.modules.keys()
+        )
+
+        ProcessorFactory.load_plugins(base_path)
+
+        assert (
+            "tests.testdata.unit.processor_factory.test_processor.processor" in sys.modules.keys()
+        )
+        assert not (
+            "tests.testdata.unit.processor_factory.test_broken_processor.processor"
+            in sys.modules.keys()
+        )
