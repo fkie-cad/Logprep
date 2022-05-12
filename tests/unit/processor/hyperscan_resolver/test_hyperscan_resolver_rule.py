@@ -8,6 +8,7 @@ from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
 
 pytest.importorskip("hyperscan")
 
+
 @pytest.fixture(name="specific_rule_definition")
 def fixture_specific_rule_definition():
     return {
