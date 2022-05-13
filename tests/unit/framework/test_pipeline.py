@@ -1,8 +1,10 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=attribute-defined-outside-init
+from copy import deepcopy
 from logging import DEBUG, WARNING, ERROR, getLogger
 from multiprocessing import active_children, Lock
 from queue import Empty
-
-from copy import deepcopy
 
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
@@ -25,8 +27,8 @@ from logprep.output.dummy_output import DummyOutput
 from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
 from logprep.processor.base.processor import BaseProcessor, ProcessingWarning
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
+from logprep.util.processor_stats import StatsClassesController, StatusLoggerCollection
 from tests.util.testhelpers import AssertEmitsLogMessage
-from logprep.util.processor_stats import StatsClassesController
 
 
 class ConfigurationForTests:
@@ -40,8 +42,8 @@ class ConfigurationForTests:
     timeout = 0.001
     print_processed_period = 600
     lock = Lock()
-    shared_dict = dict()
-    status_logger = [getLogger("Mock")]
+    shared_dict = {}
+    status_logger = StatusLoggerCollection(file_logger=getLogger("Mock"), prometheus_exporter=None)
     counter = SharedCounter()
 
 
@@ -88,10 +90,10 @@ class TestPipeline(ConfigurationForTests):
         )
         self.clear_log_handler_queue()
 
-    def test_fails_if_log_handler_is_not_a_LogHandler(self):
+    def test_fails_if_log_handler_is_not_of_type_loghandler(self):
         for not_a_log_handler in [None, 123, 45.67, TestPipeline()]:
             with raises(MustProvideALogHandlerError):
-                pipeline = Pipeline(
+                _ = Pipeline(
                     self.connector_config,
                     self.pipeline_config,
                     self.status_logger_config,
@@ -153,9 +155,9 @@ class TestPipeline(ConfigurationForTests):
 
     def test_empty_documents_are_not_forwarded_to_other_processors(self):
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
-        pipeline = self.create_pipeline(input_data, ["donothing", "delete", "donothing"])
+        pipeline = self.create_pipeline(input_data.copy(), ["donothing", "delete", "donothing"])
 
-        for i in range(len(input_data)):
+        for _ in input_data:
             pipeline._retrieve_and_process_data()
 
         assert pipeline._pipeline[0].ps.processed_count == 3
@@ -458,7 +460,7 @@ class TestPipeline(ConfigurationForTests):
                 config = {"type": "delete", "i_really_want_to_delete_all_log_events": "I really do"}
             else:
                 raise ValueError("No template for processor " + item)
-            pipeline_config.append({"pipeline%d" % len(pipeline_config): config})
+            pipeline_config.append({f"pipeline{len(pipeline_config)}": config})
 
         StatsClassesController.ENABLED = True
         pipeline = Pipeline(

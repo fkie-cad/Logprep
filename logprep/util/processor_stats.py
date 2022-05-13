@@ -1,11 +1,9 @@
 """This module contains functionality to log the status of logprep."""
 import json
-import math
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from copy import deepcopy
 from ctypes import c_double
 from datetime import datetime
-from logging import Logger
 from multiprocessing import Lock, Value, current_process
 from time import time
 from typing import List, Union
@@ -14,7 +12,6 @@ import numpy as np
 
 from logprep.processor.base.processor import BaseProcessor
 from logprep.processor.base.rule import Rule
-from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 np.set_printoptions(suppress=True)
 
@@ -52,6 +49,14 @@ class StatsClassesController:
 class ProcessorStats:
     """Used to track processor stats."""
 
+    metrics = [
+        "processed",
+        "matches",
+        "errors",
+        "warnings",
+        "avg_processing_time",
+    ]
+
     def __init__(self):
         self.aggr_data = None
         self._max_time = None
@@ -61,13 +66,7 @@ class ProcessorStats:
 
     def reset_statistics(self):
         """Resets all the processor statistics to the initial zero values."""
-        self.aggr_data = {
-            "processed": 0,
-            "matches": 0,
-            "errors": 0,
-            "warnings": 0,
-            "avg_processing_time": 0,
-        }
+        self.aggr_data = {metric: 0 for metric in self.metrics}
         self._max_time = -1
         self._processing_time_sample_counter = 0
 
@@ -158,15 +157,23 @@ class ProcessorStats:
         del self.aggr_data["matches"]
 
 
+StatusLoggerCollection = namedtuple("StatusLogger", "file_logger prometheus_exporter")
+
+
 @StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)
 class StatusTracker:
     """Used to track logprep stats."""
 
     _instance = None
     rule_based_stats_exclusion = ["clusterer", "selective_extractor"]
+    pipeline_metrics = ["processed", "errors", "warnings"]
 
     def __init__(
-        self, shared_dict: dict, status_logger_config: dict, status_logger: List, lock: Lock
+        self,
+        shared_dict: dict,
+        status_logger_config: dict,
+        status_logger: StatusLoggerCollection,
+        lock: Lock,
     ):
         """
         Initiates a status tracker object that can aggregate metrics from the different pipeline
@@ -189,7 +196,9 @@ class StatusTracker:
         self._file_logger = None
         self._prometheus_logger = None
 
-        self._unpack_status_logger(status_logger)
+        if status_logger is not None:
+            self._file_logger = status_logger.file_logger
+            self._prometheus_logger = status_logger.prometheus_exporter
 
         self._shared_dict = shared_dict
 
@@ -199,7 +208,7 @@ class StatusTracker:
         self._cumulative = self._config.get("cumulative", True)
         self._aggregate_processes = self._config.get("aggregate_processes", True)
 
-        self._pipeline = list()
+        self._pipeline = []
 
         self.aggr_data = {
             "errors": 0,
@@ -212,23 +221,6 @@ class StatusTracker:
         self._timer = Value(c_double, time() + self._print_period)
 
         self.kafka_offset = -1
-
-    def _unpack_status_logger(self, status_logger):
-        """
-        Extracts the configured logger from the given list and assigns them to the proper
-        class attributes.
-
-        Parameters
-        ----------
-        status_logger : List
-            List of different status logger
-        """
-        if status_logger is not None:
-            for logger in status_logger:
-                if isinstance(logger, Logger):
-                    self._file_logger = logger
-                elif isinstance(logger, PrometheusStatsExporter):
-                    self._prometheus_logger = logger
 
     def _reset_statistics(self):
         """Resets the status tracker statistics as well as the statistics of each processor."""
@@ -331,7 +323,7 @@ class StatusTracker:
 
     def _export_logs_only_when_all_processes_published_their_metrics(self):
         with self._lock:
-            if not any([value is None for value in self._shared_dict.values()]):
+            if not any(value is None for value in self._shared_dict.values()):
                 ordered_data = self.prepare_logging_data()
                 self._export_logs(ordered_data)
 
@@ -346,6 +338,24 @@ class StatusTracker:
             self._reset_statistics()
 
     def prepare_logging_data(self, metrics=None):
+        """
+        Initiates the collection and aggregation of all multiprocessing processes as well as
+        logprep processors, and initializes the enrichment and clean up.
+
+        If no metrics were given via the argument then the metrics are aggregated from the
+        pipeline, otherwise the given metrics are enriched and cleaned.
+
+        Parameters
+        ----------
+        metrics : dict
+            Optional metrics that should be used as a starting point for the enrichment and clean
+            up. If omitted then the metrics are aggregated from the pipeline
+
+        Returns
+        -------
+        Cleaned and sorted dictionary with all relevant metrics of the logprep instance in total,
+        each multiprocessing pipeline as well as each logprep processor.
+        """
         if not metrics:
             metrics = self._get_aggregated_data_from_pipeline()
         self._add_derivative_data(metrics)
@@ -382,7 +392,10 @@ class StatusTracker:
                     *self.rule_based_stats_exclusion,
                 ):
                     matches_per_idx = aggr_data[name]["matches_per_idx"]
-                    aggr_data[name]["mean_matches_per_rule"] = f"{np.mean(matches_per_idx):.1f}"
+                    mean_matches_per_idx = np.mean(matches_per_idx)
+                    aggr_data[name]["mean_matches_per_rule"] = 0
+                    if not np.isnan(mean_matches_per_idx):
+                        aggr_data[name]["mean_matches_per_rule"] = f"{mean_matches_per_idx:.1f}"
 
                     times_per_idx = deepcopy(aggr_data[name]["times_per_idx"])
                     times_per_idx = np.divide(
@@ -405,7 +418,7 @@ class StatusTracker:
                 aggregated_data, process
             )
             # Aggregate non-processor specific
-            for key in ("processed", "errors", "warnings"):
+            for key in self.pipeline_metrics:
                 if key not in aggregated_data:
                     aggregated_data[key] = 0
                 aggregated_data[key] += process[key]
@@ -495,17 +508,38 @@ class StatusTracker:
                         del _dict[key_1][key_2]
 
     def increment_aggregation(self, key: str):
+        """Increments a metric, given by key, of the full pipeline"""
         self.aggr_data[key] += 1
 
     def _log_to_prometheus(self, ordered_data):
-        # log general statistics
-        for key in ["processed", "errors", "warnings"]:
-            self._prometheus_logger.stats[key].labels(of="pipeline").set(ordered_data[key])
+        """
+        Forwards the gathered metrics to the prometheus exporter, which will then provide them via
+        a web interface.
 
-        # log statistics per processor
+        Parameters
+        ----------
+        ordered_data dict:
+            An ordered dict containing all metrics for the full pipeline, each multiprocess process
+            as well as each processor.
+        """
+        self._log_general_statistics_to_prometheus(ordered_data)
+        self._log_processor_statistics_to_prometheus(ordered_data)
+
+        metric_interval_tracker = self._prometheus_logger.tracking_interval
+        metric_interval_tracker.labels(component="logprep").set(self._print_period)
+
+    def _log_general_statistics_to_prometheus(self, ordered_data):
+        """Forwards the general pipeline metrics to the prometheus exporter"""
+        for metric_name in self.pipeline_metrics:
+            prometheus_metric_id = self._prometheus_logger.get_metric_id_from_name(metric_name)
+            metric_tracker = self._prometheus_logger.metrics[prometheus_metric_id]
+            metric_tracker.labels(component="pipeline").set(ordered_data[metric_name])
+
+    def _log_processor_statistics_to_prometheus(self, ordered_data):
+        """Forwards the processor metrics to the prometheus exporter"""
         for processor in self._pipeline:
-            for stat_key in self._prometheus_logger.stats.keys():
-                if stat_key in ordered_data[processor.name]:
-                    metric = ordered_data[processor.name][stat_key]
-                    metric = float(metric) if not math.isnan(float(metric)) else 0.0
-                    self._prometheus_logger.stats[stat_key].labels(of=processor.name).set(metric)
+            for metric_name in ProcessorStats.metrics:
+                metric_value = ordered_data[processor.name][metric_name]
+                prometheus_metric_id = self._prometheus_logger.get_metric_id_from_name(metric_name)
+                metric_tracker = self._prometheus_logger.metrics[prometheus_metric_id]
+                metric_tracker.labels(component=processor.name).set(metric_value)
