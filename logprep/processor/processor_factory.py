@@ -89,13 +89,13 @@ class ProcessorFactory:
         if len(configuration) != 1:
             raise NotExactlyOneEntryInConfigurationError
 
-        _, config_section = ProcessorFactory._get_name_and_section(configuration)
+        name, config_section = ProcessorFactory._get_name_and_section(configuration)
 
         if not isinstance(config_section, dict):
             raise InvalidConfigSpecificationError
 
         if "type" not in config_section:
-            raise NoTypeSpecifiedError()
+            raise NoTypeSpecifiedError(processor_name=name)
 
     @staticmethod
     def _get_name_and_section(configuration: dict) -> Tuple[str, dict]:

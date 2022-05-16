@@ -26,8 +26,11 @@ class InvalidConfigSpecificationError(InvalidConfigurationError):
 class NoTypeSpecifiedError(InvalidConfigurationError):
     """Raise if the processor type specification is missing."""
 
-    def __init__(self):
-        super().__init__("The processor type specification is missing")
+    def __init__(self, processor_name=None):
+        message = "The processor type specification is missing"
+        if processor_name:
+            message += f" for processor with name '{processor_name}'"
+        super().__init__(message)
 
 
 class UnknownProcessorTypeError(ProcessorFactoryError):

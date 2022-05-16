@@ -12,6 +12,7 @@ from logprep.util.configuration import (
     Configuration,
     InvalidStatusLoggerConfigurationError,
     RequiredConfigurationKeyMissingError,
+    InvalidConfigurationErrors,
 )
 
 logger = getLogger()
@@ -197,7 +198,11 @@ class TestConfiguration:
         status_logger_config = deepcopy(self.config)
         status_logger_config.update(status_logger_config_dict)
         if raised_error is not None:
-            with pytest.raises(raised_error):
+            try:
                 status_logger_config._verify_status_logger()
+            except InvalidConfigurationErrors as error:
+                assert any(
+                    (type(error) == raised_error for error in error.errors)
+                ), f"No '{raised_error.__name__}' raised for test case '{test_case}'!"
         else:
             status_logger_config._verify_status_logger()
