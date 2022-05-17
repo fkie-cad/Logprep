@@ -135,4 +135,4 @@ jobs:
 
       - name: Check semgrep rules
         if: steps.changed-files.outputs.all_changed_files && (matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.8)
-        run: semgrep -c .semgrep_rules --error -l python --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
+        run: semgrep -c .semgrep_rules -c r/python --error -l python --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
