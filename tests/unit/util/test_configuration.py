@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=max-line-length
 
 from copy import deepcopy
 from logging import getLogger
@@ -208,7 +209,6 @@ class TestConfiguration:
         else:
             status_logger_config._verify_status_logger()
 
-    # nosemgrep: string-concat-in-list
     @pytest.mark.parametrize(
         "test_case, config_dict, raised_errors",
         [
@@ -252,8 +252,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Item generic_rules is missing in 'labeler' "
-                        "configuration",
+                        "Invalid processor config: Item generic_rules is missing in 'labeler' configuration",
                     )
                 ],
             ),
@@ -286,8 +285,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidConfigurationError,
-                        "Invalid Configuration: Process count must be an integer of one or larger, "
-                        "not: 0",
+                        "Invalid Configuration: Process count must be an integer of one or larger, not: 0",
                     ),
                 ],
             ),
@@ -306,7 +304,6 @@ class TestConfiguration:
         else:
             config._verify_status_logger()
 
-    # nosemgrep: string-concat-in-list
     @pytest.mark.parametrize(
         "test_case, config_dict, raised_errors",
         [
@@ -350,8 +347,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Item generic_rules is missing in 'labeler' "
-                        "configuration",
+                        "Invalid processor config: Item generic_rules is missing in 'labeler' configuration",
                     )
                 ],
             ),
@@ -384,13 +380,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidConfigurationError,
-                        "Invalid Configuration: Process count must be an integer of one or larger, "
-                        "not: 0",
+                        "Invalid Configuration: Process count must be an integer of one or larger, not: 0",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: The processor type specification is missing for "
-                        "processor with name 'some_processor_name'",
+                        "Invalid processor config: The processor type specification is missing for processor with name 'some_processor_name'",
                     ),
                 ],
             ),
