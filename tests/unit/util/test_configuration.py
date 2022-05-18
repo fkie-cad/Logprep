@@ -13,6 +13,7 @@ from logprep.util.configuration import (
     InvalidStatusLoggerConfigurationError,
     RequiredConfigurationKeyMissingError,
     InvalidConfigurationErrors,
+    InvalidProcessorConfigurationError,
 )
 
 logger = getLogger()
@@ -206,3 +207,202 @@ class TestConfiguration:
                 ), f"No '{raised_error.__name__}' raised for test case '{test_case}'!"
         else:
             status_logger_config._verify_status_logger()
+
+    @pytest.mark.parametrize(
+        "test_case, config_dict, raised_errors",
+        [
+            (
+                "valid configuration",
+                {},
+                None,
+            ),
+            (
+                "processor does not exist",
+                {
+                    "pipeline": [
+                        {
+                            "some_processor_name": {
+                                "type": "does_not_exist",
+                            }
+                        }
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                    )
+                ],
+            ),
+            (
+                "generic_rules missing from processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                            }
+                        }
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: Item generic_rules is missing in 'labeler' "
+                        "configuration",
+                    )
+                ],
+            ),
+            (
+                "two processor do not exist",
+                {
+                    "pipeline": [
+                        {
+                            "some_processor_name": {
+                                "type": "does_not_exist",
+                            }
+                        },
+                        {"another_processor_name": {"type": "does_not_exist"}},
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                    ),
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                    ),
+                ],
+            ),
+            (
+                "pipeline count invalid and processor type missing",
+                {"process_count": 0, "pipeline": [{"some_processor_name": {}}]},
+                [
+                    (
+                        InvalidConfigurationError,
+                        "Invalid Configuration: Process count must be an integer of one or larger, "
+                        "not: 0",
+                    ),
+                ],
+            ),
+        ],
+    )
+    def test_verify_error(self, config_dict, raised_errors, test_case):
+        config = deepcopy(self.config)
+        config.update(config_dict)
+
+        if raised_errors is not None:
+            try:
+                config.verify(logger)
+            except InvalidConfigurationErrors as error:
+                errors_set = [(type(err), str(err)) for err in error.errors]
+                assert errors_set == raised_errors, f"For test case '{test_case}'!"
+        else:
+            config._verify_status_logger()
+
+    @pytest.mark.parametrize(
+        "test_case, config_dict, raised_errors",
+        [
+            (
+                "valid configuration",
+                {},
+                None,
+            ),
+            (
+                "processor does not exist",
+                {
+                    "pipeline": [
+                        {
+                            "some_processor_name": {
+                                "type": "does_not_exist",
+                            }
+                        }
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                    )
+                ],
+            ),
+            (
+                "generic_rules missing from processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                            }
+                        }
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: Item generic_rules is missing in 'labeler' "
+                        "configuration",
+                    )
+                ],
+            ),
+            (
+                "two processors do not exist",
+                {
+                    "pipeline": [
+                        {
+                            "some_processor_name": {
+                                "type": "does_not_exist",
+                            }
+                        },
+                        {"another_processor_name": {"type": "does_not_exist"}},
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                    ),
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                    ),
+                ],
+            ),
+            (
+                "pipeline count invalid and processor type missing",
+                {"process_count": 0, "pipeline": [{"some_processor_name": {}}]},
+                [
+                    (
+                        InvalidConfigurationError,
+                        "Invalid Configuration: Process count must be an integer of one or larger, "
+                        "not: 0",
+                    ),
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor config: The processor type specification is missing for "
+                        "processor with name 'some_processor_name'",
+                    ),
+                ],
+            ),
+        ],
+    )
+    def test_verify_errors_get_collected(self, config_dict, raised_errors, test_case):
+        config = deepcopy(self.config)
+        config.update(config_dict)
+        if raised_errors is not None:
+            errors = config._perform_verfification_and_get_errors(logger)
+            collected_errors = []
+            for error in errors:
+                collected_errors += error.errors
+            errors_set = [(type(error), str(error)) for error in collected_errors]
+            assert errors_set == raised_errors, f"For test case '{test_case}'!"
+        else:
+            config._verify_status_logger()

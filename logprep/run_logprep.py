@@ -138,21 +138,25 @@ def main():
     """Start the logprep runner."""
     args = _parse_arguments()
     config = Configuration().create_from_yaml(args.config)
-    temporary_logger = getLogger("Temporary Logger")
+
     try:
-        config.verify(temporary_logger)
+        AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
+        logger = AggregatingLogger.create("Logprep")
+    except BaseException as error:
+        getLogger("Logprep").exception(error)
+        sys.exit(1)
+
+    try:
+        config.verify(logger)
     except InvalidConfigurationError:
         sys.exit(1)
     except BaseException as error:
-        temporary_logger.exception(error)
+        logger.exception(error)
         sys.exit(1)
 
     for plugin_dir in config.get("plugin_directories", []):
         sys.path.insert(0, plugin_dir)
         ProcessorFactory.load_plugins(plugin_dir)
-
-    AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
-    logger = AggregatingLogger.create("Logprep")
 
     status_logger = None
     if not args.disable_logging:

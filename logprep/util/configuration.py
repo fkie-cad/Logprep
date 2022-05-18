@@ -105,6 +105,15 @@ class Configuration(dict):
 
     def verify(self, logger: Logger):
         """Verify the configuration."""
+        errors = self._perform_verfification_and_get_errors(logger)
+        self._print_errors(errors)
+
+        for error in errors:
+            raise error
+
+    def _perform_verfification_and_get_errors(
+        self, logger: Logger
+    ) -> List[InvalidConfigurationError]:
         errors = []
         try:
             self._verify_required_keys_exist()
@@ -127,11 +136,7 @@ class Configuration(dict):
                 self._verify_status_logger()
             except InvalidConfigurationError as error:
                 errors.append(error)
-
-        self._print_errors(errors)
-
-        for error in errors:
-            raise error
+        return errors
 
     def _verify_required_keys_exist(self):
         required_keys = ["process_count", "timeout"]
