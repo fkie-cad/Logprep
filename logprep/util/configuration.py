@@ -208,7 +208,7 @@ class Configuration(dict):
                         self._verify_status_logger_file_target(target["file"])
                     else:
                         raise InvalidStatusLoggerConfigurationError(
-                            f"Unknown target " f"'{current_target}'"
+                            f"Unknown target '{current_target}'"
                         )
                 except InvalidConfigurationError as error:
                     errors.append(error)
