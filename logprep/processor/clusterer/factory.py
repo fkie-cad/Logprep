@@ -5,13 +5,7 @@ from logging import Logger
 from logprep.processor.processor_factory_error import UnknownProcessorTypeError
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.clusterer.processor import Clusterer
-from logprep.processor.base.exceptions import (
-    InvalidRuleFileError,
-    NotARulesDirectoryError,
-    KeyDoesnotExistInSchemaError,
-    InvalidRuleConfigurationError,
-    InvalidConfigurationError,
-)
+from logprep.processor.base.exceptions import InvalidConfigurationError
 
 
 class ClustererFactory(BaseFactory):
