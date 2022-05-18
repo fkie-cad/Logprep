@@ -96,7 +96,7 @@ class Configuration(dict):
             Configuration object based on dictionary.
 
         """
-        with open(path, "r") as file:
+        with open(path, "r", encoding="utf-8") as file:
             yaml_configuration = safe_load(file)
         config = Configuration()
         config.update(yaml_configuration)

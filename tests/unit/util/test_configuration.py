@@ -208,6 +208,7 @@ class TestConfiguration:
         else:
             status_logger_config._verify_status_logger()
 
+    # nosemgrep: string-concat-in-list
     @pytest.mark.parametrize(
         "test_case, config_dict, raised_errors",
         [
@@ -305,6 +306,7 @@ class TestConfiguration:
         else:
             config._verify_status_logger()
 
+    # nosemgrep: string-concat-in-list
     @pytest.mark.parametrize(
         "test_case, config_dict, raised_errors",
         [
