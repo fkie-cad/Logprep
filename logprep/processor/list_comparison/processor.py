@@ -2,15 +2,12 @@
 This module contains functionality for checking if values exist or not exist in file lists.
 This processor implements black- and whitelisting capabilities.
 """
-from logging import DEBUG, Logger
-from multiprocessing import current_process
-from typing import List, Optional
+from logging import Logger
+from typing import List
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError, InvalidRuleFileError
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.abc import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to
-from logprep.util.processor_stats import ProcessorStats
 
 
 class ListComparisonError(BaseException):
@@ -33,14 +30,15 @@ class DuplicationError(ListComparisonError):
         super().__init__(name, message)
 
 
-class ListComparison(RuleBasedProcessor):
+class ListComparison(Processor):
     """Resolve values in documents by referencing a mapping list."""
+
+    rule_class = ListComparisonRule
 
     def __init__(
         self,
         name: str,
-        tree_config: str,
-        list_search_base_path: Optional[str],
+        configuration: dict,
         logger: Logger,
     ):
         """
@@ -50,45 +48,13 @@ class ListComparison(RuleBasedProcessor):
         ----------
         name : str
             Name of the list_comparison processor (as referred to in the pipeline).
-        tree_config : str
-            Path to the configuration file which can prioritize fields and add conditional rules.
+        configuration : dict
+            Configuration object containing all necessary parameters
         logger : Logger
             Standard logger.
         """
-        super().__init__(name, tree_config, logger)
-        self._list_search_base_dir = list_search_base_path
-        self.ps = ProcessorStats()
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = ListComparisonRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = ListComparisonRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
+        super().__init__(name=name, configuration=configuration, logger=logger)
+        self._list_search_base_dir = configuration.get("list_search_base_path")
 
     def _apply_rules(self, event, rule):
         """
@@ -112,7 +78,7 @@ class ListComparison(RuleBasedProcessor):
             output_field = f"{ rule.list_comparison_output_field }.{ comparison_key }"
             field_possible = add_field_to(event, output_field, comparison_result, True)
             if not field_possible:
-                raise DuplicationError(self._name, [output_field])
+                raise DuplicationError(self.name, [output_field])
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
         """

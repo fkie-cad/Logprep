@@ -14,17 +14,7 @@ class ListComparisonFactory(BaseFactory):
         specified in a given pipeline.yml
         """
         ListComparisonFactory._check_configuration(configuration)
-
-        list_comparison = ListComparison(
-            name,
-            configuration.get("tree_config"),
-            configuration.get("list_search_base_path"),
-            logger,
-        )
-        list_comparison.add_rules_from_directory(
-            configuration["specific_rules"], configuration["generic_rules"]
-        )
-
+        list_comparison = ListComparison(name, configuration, logger)
         return list_comparison
 
     @staticmethod
