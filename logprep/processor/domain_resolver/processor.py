@@ -1,19 +1,19 @@
 """This module contains functionality for resolving domains."""
 import datetime
 import socket
-from logging import DEBUG, Logger
-from multiprocessing import context, current_process
+from logging import Logger
+from multiprocessing import context
 from multiprocessing.pool import ThreadPool
 from typing import List
 
 from tldextract import TLDExtract
 
-from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
+from logprep.abc import Processor
+from logprep.processor.base.processor import ProcessingWarning
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to
-from logprep.util.processor_stats import ProcessorStats
 
 
 class DomainResolverError(BaseException):
@@ -36,8 +36,10 @@ class DuplicationError(DomainResolverError):
         super().__init__(name, message)
 
 
-class DomainResolver(RuleBasedProcessor):
+class DomainResolver(Processor):
     """Resolve domains."""
+
+    rule_class = DomainResolverRule
 
     def __init__(
         self,
@@ -45,9 +47,7 @@ class DomainResolver(RuleBasedProcessor):
         configuration: dict,
         logger: Logger,
     ):
-        tree_config = configuration.get("tree_config")
-        super().__init__(name, tree_config, logger)
-        self.ps = ProcessorStats()
+        super().__init__(name=name, configuration=configuration, logger=logger)
 
         self._timeout = configuration.get("timeout", 0.5)
         tld_list = configuration.get("tld_list")
@@ -63,43 +63,6 @@ class DomainResolver(RuleBasedProcessor):
         self._debug_cache = configuration.get("debug_cache", False)
 
         self._domain_ip_map = {}
-        self._specific_rules_dirs = configuration.get("specific_rules")
-        self._generic_rules_dirs = configuration.get("generic_rules")
-        self.add_rules_from_directory(
-            specific_rules_dirs=self._specific_rules_dirs,
-            generic_rules_dirs=self._generic_rules_dirs,
-        )
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = DomainResolverRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = DomainResolverRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"generic rules ({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
 
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain
@@ -109,7 +72,7 @@ class DomainResolver(RuleBasedProcessor):
         if domain_or_url_str:
             domain = self._tld_extractor(domain_or_url_str).fqdn
             if domain:
-                self.ps.increment_nested(self._name, "total_urls")
+                self.ps.increment_nested(self.name, "total_urls")
                 if self._cache_enabled:
                     try:
                         hash_string = self._hasher.hash_str(domain, salt=self._salt)
@@ -121,7 +84,7 @@ class DomainResolver(RuleBasedProcessor):
                                 first_hash = next(iter(self._cache.keys()))
                                 del self._domain_ip_map[first_hash]
                             self._domain_ip_map[hash_string] = resolved_ip
-                            self.ps.increment_nested(self._name, "resolved_new")
+                            self.ps.increment_nested(self.name, "resolved_new")
 
                         if self._debug_cache:
                             event["resolved_ip_debug"] = {}
@@ -145,13 +108,13 @@ class DomainResolver(RuleBasedProcessor):
                                     f"{output_field}"
                                 )
                                 raise ProcessingWarning(message=message)
-                            self.ps.increment_nested(self._name, "resolved_cache")
+                            self.ps.increment_nested(self.name, "resolved_cache")
                     except (context.TimeoutError, OSError):
                         self._domain_ip_map[hash_string] = None
-                        self.ps.increment_nested(self._name, "timeouts")
+                        self.ps.increment_nested(self.name, "timeouts")
                     except UnicodeError as error:
                         raise DomainResolverError(
-                            self._name, f"{error} for domain '{domain}'"
+                            self.name, f"{error} for domain '{domain}'"
                         ) from error
                 else:
                     if output_field not in event:
@@ -162,4 +125,4 @@ class DomainResolver(RuleBasedProcessor):
                             pass
                         except UnicodeError as error:
                             error_msg = f"{error} for domain '{domain}'"
-                            raise DomainResolverError(self._name, error_msg) from error
+                            raise DomainResolverError(self.name, error_msg) from error
