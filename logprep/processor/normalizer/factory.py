@@ -15,19 +15,7 @@ class NormalizerFactory(BaseFactory):
         """Create a normalizer."""
         NormalizerFactory._check_configuration(configuration)
 
-        normalizer = Normalizer(
-            name,
-            configuration["specific_rules"],
-            configuration["generic_rules"],
-            configuration.get("tree_config"),
-            logger,
-            configuration["regex_mapping"],
-            configuration.get("html_replace_fields"),
-            configuration.get("grok_patterns"),
-            configuration.get("count_grok_pattern_matches"),
-        )
-
-        return normalizer
+        return Normalizer(name=name, configuration=configuration, logger=logger)
 
     @staticmethod
     def _check_configuration(configuration: dict):

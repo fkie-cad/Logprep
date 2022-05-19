@@ -18,90 +18,47 @@ from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
 from ruamel.yaml import YAML
+from logprep.abc.processor import Processor
 
-from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
+from logprep.processor.base.processor import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
-from logprep.util.processor_stats import ProcessorStats
 
 yaml = YAML(typ="safe", pure=True)
 
 
-class Normalizer(RuleBasedProcessor):
+class Normalizer(Processor):
     """Normalize log events by copying specific values to standardized fields."""
 
-    def __init__(
-        self,
-        name: str,
-        specific_rules_dirs: list,
-        generic_rules_dirs: list,
-        tree_config: Optional[str],
-        logger: Logger,
-        regex_mapping: str = None,
-        html_replace_fields: str = None,
-        grok_patterns: str = None,
-        count_grok_pattern_matches: dict = None,
-    ):
-        super().__init__(name, tree_config, logger)
-        self._logger = logger
-        self.ps = ProcessorStats()
+    rule_class = NormalizerRule
 
-        self._name = name
+    def __init__(self, name: str, configuration: dict, logger: Logger):
         self._event = None
         self._conflicting_fields = []
 
-        self._regex_mapping = regex_mapping
-        self._html_replace_fields = html_replace_fields
+        self._regex_mapping = configuration.get("regex_mapping")
+        self._html_replace_fields = configuration.get("html_replace_fields")
 
-        self._count_grok_pattern_matches = count_grok_pattern_matches
-        if count_grok_pattern_matches:
-            self._grok_matches_path = count_grok_pattern_matches["count_directory_path"]
-            self._file_lock_path = count_grok_pattern_matches.get(
+        self._count_grok_pattern_matches = configuration.get("count_grok_pattern_matches")
+        if self._count_grok_pattern_matches:
+            self._grok_matches_path = self._count_grok_pattern_matches["count_directory_path"]
+            self._file_lock_path = self._count_grok_pattern_matches.get(
                 "lock_file_path", "count_grok_pattern_matches.lock"
             )
-            self._grok_cnt_period = count_grok_pattern_matches["write_period"]
+            self._grok_cnt_period = self._count_grok_pattern_matches["write_period"]
             self._grok_cnt_timer = time()
             self._grok_pattern_matches = {}
 
-        NormalizerRule.additional_grok_patterns = grok_patterns
+        NormalizerRule.additional_grok_patterns = configuration.get("grok_patterns")
 
-        with open(regex_mapping, "r", encoding="utf8") as file:
+        with open(self._regex_mapping, "r", encoding="utf8") as file:
             self._regex_mapping = yaml.load(file)
 
-        if html_replace_fields:
-            with open(html_replace_fields, "r", encoding="utf8") as file:
+        if self._html_replace_fields:
+            with open(self._html_replace_fields, "r", encoding="utf8") as file:
                 self._html_replace_fields = yaml.load(file)
 
-        self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = NormalizerRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = NormalizerRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
+        super().__init__(name=name, configuration=configuration, logger=logger)
 
     # pylint: enable=arguments-differ
 
@@ -271,7 +228,7 @@ class Normalizer(RuleBasedProcessor):
                     pass
             if not format_parsed:
                 raise NormalizerError(
-                    self._name,
+                    self.name,
                     (
                         f"Could not parse source timestamp "
                         f"{source_timestamp}' with formats '{source_formats}'"
@@ -300,7 +257,7 @@ class Normalizer(RuleBasedProcessor):
 
     def _raise_warning_if_fields_already_existed(self):
         if self._conflicting_fields:
-            raise DuplicationError(self._name, self._conflicting_fields)
+            raise DuplicationError(self.name, self._conflicting_fields)
 
     def shut_down(self):
         """Stop processing of this processor and finish outstanding actions.
