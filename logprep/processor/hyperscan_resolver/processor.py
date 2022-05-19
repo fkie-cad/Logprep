@@ -1,11 +1,11 @@
 """This module contains functionality for resolving log event values using regex lists."""
 
 import errno
-from logging import Logger, DEBUG
-from multiprocessing import current_process
+from logging import Logger
 from os import path, makedirs
 from typing import List, Tuple, Any, Dict
 
+from logprep.abc import Processor
 from logprep.processor.base.exceptions import SkipImportError
 
 # pylint: disable=no-name-in-module
@@ -22,9 +22,7 @@ except ModuleNotFoundError as error:
 
 # pylint: enable=no-name-in-module
 
-from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
-from logprep.util.processor_stats import ProcessorStats
 
 
 class HyperscanResolverError(BaseException):
@@ -47,8 +45,10 @@ class DuplicationError(HyperscanResolverError):
         super().__init__(name, message)
 
 
-class HyperscanResolver(RuleBasedProcessor):
+class HyperscanResolver(Processor):
     """Resolve values in documents by referencing a mapping list."""
+
+    rule_class = HyperscanResolverRule
 
     def __init__(
         self,
@@ -56,10 +56,7 @@ class HyperscanResolver(RuleBasedProcessor):
         configuration: dict,
         logger: Logger,
     ):
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        tree_config = configuration.get("tree_config")
-        super().__init__(name, tree_config, logger)
+        super().__init__(name=name, configuration=configuration, logger=logger)
         self._hyperscan_databases = {}
 
         hyperscan_db_path = configuration.get("hyperscan_db_path")
@@ -67,47 +64,8 @@ class HyperscanResolver(RuleBasedProcessor):
             self._hyperscan_database_path = hyperscan_db_path
         else:
             self._hyperscan_database_path = f"{path.dirname(path.abspath(__file__))}/hyperscan_dbs/"
-        self.ps = ProcessorStats()
 
         self._replacements_from_file = {}
-
-        self.add_rules_from_directory(
-            specific_rules_dirs=specific_rules_dirs, generic_rules_dirs=generic_rules_dirs
-        )
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        """Add rules from given directory."""
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = HyperscanResolverRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = HyperscanResolverRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
 
     def _apply_rules(self, event: dict, rule: HyperscanResolverRule):
         """Apply the given rule to the current event"""
@@ -142,7 +100,7 @@ class HyperscanResolver(RuleBasedProcessor):
                     if has_conflict:
                         conflicting_fields.append(split_dotted_keys[idx])
         if conflicting_fields:
-            raise DuplicationError(self._name, conflicting_fields)
+            raise DuplicationError(self.name, conflicting_fields)
 
     @staticmethod
     def _try_adding_value_to_existing_field(
@@ -228,7 +186,7 @@ class HyperscanResolver(RuleBasedProcessor):
             value_mapping[idx] = resolve_list[pattern]
 
         if not db_patterns:
-            raise HyperscanResolverError(self._name, "No patter to compile for hyperscan database!")
+            raise HyperscanResolverError(self.name, "No patter to compile for hyperscan database!")
 
         expressions, ids, flags = zip(*db_patterns)
         database.compile(expressions=expressions, ids=ids, elements=len(db_patterns), flags=flags)
