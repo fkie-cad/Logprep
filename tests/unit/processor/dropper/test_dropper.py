@@ -136,8 +136,9 @@ class TestDropper(BaseProcessorTestCase):
 
 class TestDropperFactory:
     def test_create(self):
-        assert isinstance(DropperFactory.create(
-            "foo", TestDropper.CONFIG, TestDropper.logger), Dropper)
+        assert isinstance(
+            DropperFactory.create("foo", TestDropper.CONFIG, TestDropper.logger), Dropper
+        )
 
     def test_check_configuration(self):
         DropperFactory._check_configuration(TestDropper.CONFIG)
