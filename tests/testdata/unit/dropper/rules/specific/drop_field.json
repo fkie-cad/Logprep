@@ -1,0 +1,4 @@
+[{
+  "filter": "drop_me",
+  "drop":  ["drop_me"]
+}]

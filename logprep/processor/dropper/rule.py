@@ -30,7 +30,11 @@ class DropperRule(Rule):
         self._drop_full = drop_full
 
     def __eq__(self, other: "DropperRule") -> bool:
-        return (other.filter == self._filter) and (self._fields_to_drop == other.fields_to_drop)
+        return (
+            (other.filter == self._filter)
+            and (self._fields_to_drop == other.fields_to_drop)
+            and (self._drop_full == other.drop_full)
+        )
 
     # pylint: disable=C0111
     @property
@@ -54,9 +58,10 @@ class DropperRule(Rule):
     @staticmethod
     def _check_if_drops_valid(rule: dict):
         if not isinstance(rule["drop"], list):
-            raise InvalidDropperDefinition('Drop value "{}" is not a list!'.format(rule["drop"]))
+            raise InvalidDropperDefinition(f'Drop value "{rule["drop"]}" is not a list!')
 
         if not all(isinstance(value, str) for value in rule["drop"]):
-            raise InvalidDropperDefinition(
-                "Drop values {} are not a list of strings!".format(rule["drop"])
-            )
+            raise InvalidDropperDefinition(f'Drop values {rule["drop"]} are not a list of strings!')
+
+        if not isinstance(rule.get("drop_full", True), bool):
+            raise InvalidDropperDefinition(f'drop_full value "{rule["drop_full"]}" is not a bool!')

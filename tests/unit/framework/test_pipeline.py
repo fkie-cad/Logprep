@@ -382,7 +382,8 @@ class TestPipeline(ConfigurationForTests):
         with AssertEmitsLogMessage(
             self.log_handler,
             ERROR,
-            contains="A critical error occurred for processor DoNothing when processing an event, processing was aborted:",
+            contains="A critical error occurred for processor DoNothing when processing an event, "
+            "processing was aborted:",
         ):
             pipeline.run()
 
@@ -415,7 +416,8 @@ class TestPipeline(ConfigurationForTests):
         with AssertEmitsLogMessage(
             self.log_handler,
             ERROR,
-            contains="A critical error occurred for processor DoNothing when processing an event, processing was aborted:",
+            contains="A critical error occurred for processor DoNothing when processing an event, "
+            "processing was aborted:",
         ):
             pipeline.run()
 
