@@ -4,9 +4,6 @@
 #
 #    pip-compile requirements_dev.in
 #
---find-links http://192.168.5.251/pip3
---trusted-host 192.168.5.251
-
 aiohttp==3.8.1
     # via
     #   -r requirements.txt
