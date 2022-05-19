@@ -1,21 +1,12 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
-# pylint: disable=wrong-import-position
-# pylint: disable=wrong-import-order
-import pytest
-
-from tests.unit.processor.base import BaseProcessorTestCase
-
-pytest.importorskip("logprep.processor.dropper")
-
 import copy
-from logging import getLogger
 
+import pytest
 from logprep.processor.dropper.factory import Dropper, DropperFactory
-from logprep.processor.processor_factory_error import ProcessorFactoryError
 from logprep.processor.dropper.rule import DropperRule
-
-logger = getLogger()
+from logprep.processor.processor_factory_error import ProcessorFactoryError
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDropper(BaseProcessorTestCase):
@@ -143,13 +134,14 @@ class TestDropper(BaseProcessorTestCase):
         assert document == expected
 
 
-class TestDropperFactory(TestDropper):
+class TestDropperFactory:
     def test_create(self):
-        assert isinstance(DropperFactory.create("foo", self.CONFIG, logger), Dropper)
+        assert isinstance(DropperFactory.create(
+            "foo", TestDropper.CONFIG, TestDropper.logger), Dropper)
 
     def test_check_configuration(self):
-        DropperFactory._check_configuration(self.CONFIG)
-        cfg = copy.deepcopy(self.CONFIG)
+        DropperFactory._check_configuration(TestDropper.CONFIG)
+        cfg = copy.deepcopy(TestDropper.CONFIG)
         cfg.pop("type")
         with pytest.raises(ProcessorFactoryError):
             DropperFactory._check_configuration(cfg)
