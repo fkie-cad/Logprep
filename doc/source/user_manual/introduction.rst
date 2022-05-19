@@ -111,6 +111,16 @@ Generic Resolver
 The generic resolver is a processor that can resolve fields by using a map of resolve patterns and resolve values.
 The map can be defined within rules or within a file.
 
+Hyperscan Resolver
+----------------
+
+The hyperscan resolver is a processor that can resolve fields by using a map of resolve patterns and resolve values.
+The map can be defined within rules or within a file.
+It uses hyperscan to speedup the pattern matching.
+
+.. WARNING::
+   The hyperscan resolver is only supported for x86_64 linux with python version 3.6-3.8.
+
 Pseudonymizer
 -------------
 

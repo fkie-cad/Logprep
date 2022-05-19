@@ -216,6 +216,9 @@ The value `generic_resolver` chooses the processor type GenericResolver.
 Hyperscan Resolver
 ------------------
 
+.. WARNING::
+   The hyperscan resolver is only supported for x86_64 linux with python version 3.6-3.8.
+
 Parameter
 ^^^^^^^^^
 
