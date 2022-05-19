@@ -6,8 +6,8 @@ import time
 from copy import deepcopy
 
 import pytest
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.processor_factory_error import ProcessorFactoryError
 from logprep.processor.pseudonymizer.factory import Pseudonymizer, PseudonymizerFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
@@ -90,7 +90,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
     def test_recently_stored_pseudonyms_are_not_stored_again(self):
         self.object._cache_max_timedelta = CACHE_MAX_TIMEDELTA
-        self.object.setup()
         event = {"event_id": 1234, "something": "something"}
 
         rule_dict = {
@@ -100,7 +99,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
 
         self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
-        for _ in range(3):
+        for index in range(3):
             copied_event = deepcopy(event)
             self.object.process(copied_event)
             pseudonyms = self.object.pseudonyms
@@ -108,7 +107,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 copied_event["something"]
                 == "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>"
             )
-            assert len(pseudonyms) == 1
+            assert len(pseudonyms) == 1, f"step {index}"
 
             copied_event = deepcopy(event)
             self.object.process(copied_event)
@@ -125,6 +124,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object._load_regex_mapping(regex_mappping_path)
         specific_rule = PseudonymizerRule._create_from_dict(rule)
         self.object._replace_regex_keywords_by_regex_expression(specific_rule)
+        self.object._generic_tree = RuleTree()
+        self.object._specific_tree = RuleTree()
         self.object._specific_tree.add_rule(specific_rule, self.object._logger)
         self.object.ps.setup_rules(
             [None] * self.object._generic_tree.rule_counter

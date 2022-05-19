@@ -3,18 +3,19 @@
 from logging import Logger, DEBUG
 from multiprocessing import current_process
 from typing import List
+from logprep.abc import Processor
 
 
-from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.labeler.labeling_schema import (
     LabelingSchema,
 )
 from logprep.processor.labeler.rule import LabelingRule
-from logprep.util.processor_stats import ProcessorStats
 
 
-class Labeler(RuleBasedProcessor):
+class Labeler(Processor):
     """Processor used to label log events."""
+
+    rule_class = LabelingRule
 
     def __init__(
         self,
@@ -22,22 +23,9 @@ class Labeler(RuleBasedProcessor):
         configuration: dict,
         logger: Logger,
     ):
-        tree_config = configuration.get("tree_config")
-        super().__init__(name, tree_config, logger)
-
-        self._logger = logger
-        self.ps = ProcessorStats()
-
-        self._name = name
-
-        self._include_parent_labels = configuration.get("include_parent_labels", False)
-
         self._schema = LabelingSchema.create_from_file(configuration.get("schema"))
-
-        self.add_rules_from_directory(
-            configuration.get("specific_rules"),
-            configuration.get("generic_rules"),
-        )
+        self._include_parent_labels = configuration.get("include_parent_labels", False)
+        super().__init__(name, configuration=configuration, logger=logger)
 
     # pylint: disable=arguments-differ
     def add_rules_from_directory(

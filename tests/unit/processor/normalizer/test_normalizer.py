@@ -9,6 +9,7 @@ import tempfile
 
 import arrow
 import pytest
+from copy import deepcopy
 from logprep.processor.base.processor import ProcessingWarning
 from logprep.processor.normalizer.exceptions import NormalizerError
 from logprep.processor.normalizer.factory import Normalizer, NormalizerFactory
@@ -1023,16 +1024,13 @@ class TestNormalizer(BaseProcessorTestCase):
     def test_normalization_with_grok_pattern_count(self):
 
         temp_path = tempfile.mkdtemp()
-        self.object = Normalizer(
-            "Test Normalizer Name",
-            self.generic_rules_dirs,
-            self.generic_rules_dirs,
-            None,
-            self.logger,
-            regex_mapping=self.CONFIG["regex_mapping"],
-            html_replace_fields=self.CONFIG["html_replace_fields"],
-            count_grok_pattern_matches={"count_directory_path": temp_path, "write_period": 0},
+        config = deepcopy(self.CONFIG)
+
+        config.update(
+            {"count_grok_pattern_matches": {"count_directory_path": temp_path, "write_period": 0}}
         )
+
+        self.object = Normalizer("Test Normalizer Name", config, self.logger)
 
         event = {
             "winlog": {

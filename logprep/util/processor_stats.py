@@ -308,7 +308,7 @@ class StatusTracker:
             if not process_data.get(processor.name):
                 process_data[processor.name] = {}
 
-            if str(type(processor)) not in self.rule_based_stats_exclusion:
+            if str(processor) not in self.rule_based_stats_exclusion:
                 process_data[processor.name]["matches_per_idx"] = aggr_data["matches_per_idx"]
                 process_data[processor.name]["times_per_idx"] = aggr_data["times_per_idx"]
                 process_data[processor.name]["matches"] = aggr_data["matches"]

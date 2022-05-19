@@ -10,8 +10,7 @@ from urllib.parse import parse_qs
 from ruamel.yaml import YAML
 from tldextract import TLDExtract
 from urlextract import URLExtract
-
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.abc import Processor
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
@@ -21,55 +20,40 @@ from logprep.util.processor_stats import ProcessorStats
 yaml = YAML(typ="safe", pure=True)
 
 
-class Pseudonymizer(RuleBasedProcessor):
+class Pseudonymizer(Processor):
     """Pseudonymize log events to conform to EU privacy laws."""
 
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
 
-    def __init__(
-        self,
-        name: str,
-        pubkey_analyst: str,
-        pubkey_depseudo: str,
-        hash_salt: str,
-        pseudonyms_topic: str,
-        regex_mapping_path: str,
-        cache_max_items: int,
-        cache_max_timedelta: datetime.timedelta,
-        tld_list: str,
-        tree_config: str,
-        logger: Logger,
-    ):
-        super().__init__(name, tree_config, logger)
+    def __init__(self, name: str, configuration: dict, logger: Logger):
         self._logger = logger
         self._name = name
-        self._description = self.describe()
         self.ps = ProcessorStats()
 
-        self._pubkey_analyst = pubkey_analyst
-        self._pubkey_depseudo = pubkey_depseudo
-        self._hash_salt = hash_salt
+        self._pubkey_analyst = configuration.get("pubkey_analyst")
+        self._pubkey_depseudo = configuration.get("pubkey_depseudo")
+        self._hash_salt = configuration.get("hash_salt")
         self._hasher = SHA256Hasher()
         self._encrypter = DualPKCS1HybridEncrypter()
 
-        self._pseudonyms_topic = pseudonyms_topic
+        self._pseudonyms_topic = configuration.get("pseudonyms_topic")
 
-        self._regex_mapping_path = regex_mapping_path
+        self._regex_mapping_path = configuration.get("regex_mapping")
         self._regex_mapping = {}
 
-        self._cache_max_items = cache_max_items
-        self._cache_max_timedelta = cache_max_timedelta
+        self._cache_max_items = configuration.get("max_cached_pseudonyms")
+        self._cache_max_timedelta = datetime.timedelta(days=configuration.get("max_caching_days"))
         self._cache = None
 
-        self._tld_list = tld_list
+        self._tld_list = configuration.get("tld_list")
         self._url_extractor = URLExtract()
-        self._tld_extractor = None
         self.pseudonyms = []
         self.pseudonymized_fields = set()
+        self.setup()
+        super().__init__(name=name, configuration=configuration, logger=logger)
 
     def setup(self):
-        self._description = self.describe()
         self._encrypter.load_public_keys(self._pubkey_analyst, self._pubkey_depseudo)
         self._cache = Cache(
             max_items=self._cache_max_items, max_timedelta=self._cache_max_timedelta

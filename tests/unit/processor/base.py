@@ -5,6 +5,7 @@ from abc import ABC
 from logging import getLogger
 
 from unittest import mock
+from logprep.abc.processor import Processor
 
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -95,7 +96,7 @@ class BaseProcessorTestCase(ABC):
             patcher.stop()
 
     def test_is_a_processor_implementation(self):
-        assert isinstance(self.object, RuleBasedProcessor)
+        assert isinstance(self.object, Processor)
 
     def test_process(self):
         assert self.object.ps.processed_count == 0
@@ -113,7 +114,7 @@ class BaseProcessorTestCase(ABC):
         assert f"{self.object.__class__.__name__} (Test Instance Name)" == describe_string
 
     def test_snake_type(self):
-        assert str(type(self.object)) == camel_to_snake(self.object.__class__.__name__)
+        assert str(self.object) == camel_to_snake(self.object.__class__.__name__)
 
     def test_generic_specific_rule_trees(self):
         assert isinstance(self.object._generic_tree, RuleTree)
