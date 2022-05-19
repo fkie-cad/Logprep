@@ -63,9 +63,6 @@ class Dropper(RuleBasedProcessor):
             [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
         )
 
-    def describe(self) -> str:
-        return f"Dropper ({self._name})"
-
     def _traverse_dict_and_delete(self, dict_: dict, sub_fields, drop_full: bool):
         sub_field = sub_fields[0] if sub_fields else None
         remaining_sub_fields = sub_fields[1:]
