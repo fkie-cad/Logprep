@@ -1,15 +1,13 @@
 """ This module contains functionality to split a domain into it's parts/labels. """
 import ipaddress
-from logging import Logger, DEBUG
-from multiprocessing import current_process
+from logging import Logger
 from typing import List
 
 from tldextract import TLDExtract
 
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.abc import Processor
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to
-from logprep.util.processor_stats import ProcessorStats
 
 
 class DomainLabelExtractorError(BaseException):
@@ -32,8 +30,10 @@ class DuplicationError(DomainLabelExtractorError):
         super().__init__(name, message)
 
 
-class DomainLabelExtractor(RuleBasedProcessor):
+class DomainLabelExtractor(Processor):
     """Splits a domain into it's parts/labels."""
+
+    rule_class = DomainLabelExtractorRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
         """
@@ -43,23 +43,15 @@ class DomainLabelExtractor(RuleBasedProcessor):
         ----------
         name : str
             Name of the DomainLabelExtractor processor (as referred to in the pipeline).
-        configuraiton : dict
+        configuration : dict
             Configuration of the processor
         logger : Logger
             Standard logger.
         """
 
-        tree_config = configuration.get("tree_config")
         tld_lists = configuration.get("tld_lists")
         tagging_field_name = configuration.get("tagging_field_name", "tags")
-        super().__init__(name, tree_config=tree_config, logger=logger)
-        self.ps = ProcessorStats()
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        self.add_rules_from_directory(
-            generic_rules_dirs=generic_rules_dirs,
-            specific_rules_dirs=specific_rules_dirs,
-        )
+        super().__init__(name=name, configuration=configuration, logger=logger)
 
         if tld_lists is not None:
             self._tld_extractor = TLDExtract(suffix_list_urls=tld_lists)
@@ -67,50 +59,6 @@ class DomainLabelExtractor(RuleBasedProcessor):
             self._tld_extractor = TLDExtract()
 
         self._tagging_field_name = tagging_field_name
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        """
-        Collect rules from given directory.
-
-        Parameters
-        ----------
-        specific_rules_dirs : List[str]
-            Path to the directory containing specific DomainLabelExtractor rules.
-        generic_rules_dirs : List[str]
-            Path to the directory containing specific DomainLabelExtractor rules.
-
-        """
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = DomainLabelExtractorRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = DomainLabelExtractorRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
@@ -151,7 +99,7 @@ class DomainLabelExtractor(RuleBasedProcessor):
                 adding_was_successful = add_field_to(event, output_field, labels_dict[label])
 
                 if not adding_was_successful:
-                    raise DuplicationError(self._name, [output_field])
+                    raise DuplicationError(self.name, [output_field])
         else:
             tagging_field.append(f"invalid_domain_in_{rule.target_field.replace('.', '_')}")
             event[self._tagging_field_name] = tagging_field
