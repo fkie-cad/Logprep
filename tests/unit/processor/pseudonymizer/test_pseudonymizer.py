@@ -90,6 +90,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
     def test_recently_stored_pseudonyms_are_not_stored_again(self):
         self.object._cache_max_timedelta = CACHE_MAX_TIMEDELTA
+        self.object.setup()
         event = {"event_id": 1234, "something": "something"}
 
         rule_dict = {
