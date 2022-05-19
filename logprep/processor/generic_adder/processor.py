@@ -5,14 +5,8 @@ from logging import Logger, DEBUG
 
 from multiprocessing import current_process
 
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.abc import Processor
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.processor.base.exceptions import (
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
-
-from logprep.util.processor_stats import ProcessorStats
 
 
 class GenericAdderError(BaseException):
@@ -34,50 +28,13 @@ class DuplicationError(GenericAdderError):
         super().__init__(name, message)
 
 
-class GenericAdder(RuleBasedProcessor):
+class GenericAdder(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
+    rule_class = GenericAdderRule
+
     def __init__(self, name: str, configuration: dict, logger: Logger):
-        tree_config = configuration.get("tree_config")
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        super().__init__(name, tree_config, logger)
-        self.ps = ProcessorStats()
-        self.add_rules_from_directory(
-            generic_rules_dirs=generic_rules_dirs,
-            specific_rules_dirs=specific_rules_dirs,
-        )
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = GenericAdderRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = GenericAdderRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"generic rules ({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
+        super().__init__(name=name, configuration=configuration, logger=logger)
 
     def _apply_rules(self, event, rule):
         conflicting_fields = list()
@@ -98,4 +55,4 @@ class GenericAdder(RuleBasedProcessor):
                     conflicting_fields.append(keys[idx])
 
         if conflicting_fields:
-            raise DuplicationError(self._name, conflicting_fields)
+            raise DuplicationError(self.name, conflicting_fields)
