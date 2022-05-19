@@ -1,15 +1,13 @@
 """This module contains functionality to split timestamps into fields containing their parts."""
 
-from typing import List
-from logging import Logger, DEBUG
-from multiprocessing import current_process
 from datetime import datetime
+from logging import Logger
+
 from dateutil.parser import parse
 from dateutil.tz import tzlocal
 
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.abc import Processor
 from logprep.processor.datetime_extractor.rule import DateTimeExtractorRule
-from logprep.util.processor_stats import ProcessorStats
 
 
 class DateTimeExtractorError(BaseException):
@@ -19,52 +17,15 @@ class DateTimeExtractorError(BaseException):
         super().__init__(f"DateTimeExtractor ({name}): {message}")
 
 
-class DatetimeExtractor(RuleBasedProcessor):
+class DatetimeExtractor(Processor):
     """Split timestamps into fields containing their parts."""
 
+    rule_class = DateTimeExtractorRule
+
     def __init__(self, name: str, configuration: dict, logger: Logger):
-        tree_config = configuration.get("tree_config")
-        super().__init__(name, tree_config=tree_config, logger=logger)
-        self.ps = ProcessorStats()
+        super().__init__(name=name, configuration=configuration, logger=logger)
         self._local_timezone = tzlocal()
         self._local_timezone_name = self._get_timezone_name(self._local_timezone)
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        self.add_rules_from_directory(
-            generic_rules_dirs=generic_rules_dirs,
-            specific_rules_dirs=specific_rules_dirs,
-        )
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = DateTimeExtractorRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = DateTimeExtractorRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
 
     @staticmethod
     def _get_timezone_name(local_timezone):
