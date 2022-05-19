@@ -8,6 +8,7 @@ from copy import deepcopy
 
 import pkgutil
 
+from logprep.processor.base.exceptions import SkipImportError
 from logprep.processor.processor_factory_error import (
     UnknownProcessorTypeError,
     NotExactlyOneEntryInConfigurationError,
@@ -36,13 +37,18 @@ class ProcessorFactory:
                 directories.append(item)
 
         for directory in directories:
+            skip_import = False
             if directory != "base":
                 cls.processors_factory_map[directory] = {}
                 for (importer, name, _) in pkgutil.iter_modules([join(plugin_dir, directory)]):
                     if name == "factory":
                         pre_loading_submodules = deepcopy(BaseFactory.__subclasses__())
                         module = importer.find_module(name)
-                        module.load_module(name)
+                        try:
+                            module.load_module(name)
+                        except SkipImportError:
+                            skip_import = True
+                            break
                         unique_subclasses = []
                         new_subclasses = []
                         for item in BaseFactory.__subclasses__():
@@ -62,7 +68,7 @@ class ProcessorFactory:
                         if len(new_classes) == 1:
                             cls.processors_factory_map[directory] = new_classes[0]
                             cls.already_added_classes.append(new_classes[0])
-                if not cls.processors_factory_map[directory]:
+                if not cls.processors_factory_map[directory] and not skip_import:
                     raise BaseException(f"There exist multiple plugins of the type: {directory}")
 
     @classmethod
@@ -89,13 +95,13 @@ class ProcessorFactory:
         if len(configuration) != 1:
             raise NotExactlyOneEntryInConfigurationError
 
-        _, config_section = ProcessorFactory._get_name_and_section(configuration)
+        name, config_section = ProcessorFactory._get_name_and_section(configuration)
 
         if not isinstance(config_section, dict):
             raise InvalidConfigSpecificationError
 
         if "type" not in config_section:
-            raise NoTypeSpecifiedError()
+            raise NoTypeSpecifiedError(processor_name=name)
 
     @staticmethod
     def _get_name_and_section(configuration: dict) -> Tuple[str, dict]:

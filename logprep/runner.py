@@ -4,11 +4,11 @@ import signal
 from ctypes import c_bool
 from logging import Logger, DEBUG
 from multiprocessing import Value, current_process
-from typing import List
 
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
+from logprep.util.processor_stats import StatusLoggerCollection
 
 
 class RunnerError(BaseException):
@@ -104,7 +104,7 @@ class Runner:
         if not bypass_check_to_obtain_non_singleton_instance:
             raise UseGetRunnerToCreateRunnerSingleton
 
-    def set_logger(self, logger: Logger, status_logger: List = None):
+    def set_logger(self, logger: Logger, status_logger: StatusLoggerCollection = None):
         """Setup logging for any "known" errors from any part of the software.
 
         Parameters

@@ -6,14 +6,19 @@ from multiprocessing import current_process
 from os import path, makedirs
 from typing import List, Tuple, Any, Dict
 
+from logprep.processor.base.exceptions import SkipImportError
+
 # pylint: disable=no-name-in-module
-from hyperscan import (
-    Database,
-    HS_FLAG_SINGLEMATCH,
-    HS_FLAG_CASELESS,
-    loadb,
-    dumpb,
-)
+try:
+    from hyperscan import (
+        Database,
+        HS_FLAG_SINGLEMATCH,
+        HS_FLAG_CASELESS,
+        loadb,
+        dumpb,
+    )
+except ModuleNotFoundError as error:
+    raise SkipImportError("hyperscan_resolver") from error
 
 # pylint: enable=no-name-in-module
 

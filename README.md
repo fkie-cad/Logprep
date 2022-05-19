@@ -271,6 +271,23 @@ In case the requirements change, the test environments must be rebuilt with the 
 tox -e all -r
 ```
 
+### Semgrep
+
+To run the semgrep rules against the semgrep python registry at least python 3.7 is required. 
+Because of that and the default logprep support for python 3.6 semgrep is not part of the 
+requirements_dev.txt. 
+If you want to run semgrep rules use a python environment with version higher than 3.6 and run
+
+```
+pip install semgrep
+```
+
+Afterwards you can just call the tox environment with for example 
+
+```
+tox -e py37-semgrep
+```
+
 ### Running Logprep
 
 Execute the following from within the project root directory: 

@@ -48,6 +48,7 @@ jobs:
         with:
           name: Logprep
           path: logprep.pex
+        if: matrix.python-version == 3.6
 
   test:
     runs-on: ubuntu-latest
@@ -112,6 +113,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements_dev.txt
 
+      - name: Install semgrep if python version > 3.6
+        run: |
+          pip install semgrep
+        if: matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.9
+
       - name: check black formating
         run: |
           pip install black
@@ -127,3 +133,7 @@ jobs:
 
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v2
+
+      - name: Check semgrep rules
+        if: steps.changed-files.outputs.all_changed_files && (matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.9)
+        run: semgrep -c .semgrep_rules -c r/python --error -l python --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}

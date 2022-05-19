@@ -21,8 +21,10 @@ pipeline:
 
   - dropper:
       type: dropper
-      rules:
-        - quickstart/exampledata/rules/dropper/rules
+      specific_rules:
+        - quickstart/exampledata/rules/dropper/specific
+      generic_rules:
+        - quickstart/exampledata/rules/dropper/specific
 
   - pre_detector:
       type: pre_detector

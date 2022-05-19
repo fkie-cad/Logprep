@@ -11,7 +11,12 @@ from prometheus_client import REGISTRY
 
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.dropper.processor import Dropper
-from logprep.util.processor_stats import ProcessorStats, StatsClassesController, StatusTracker
+from logprep.util.processor_stats import (
+    ProcessorStats,
+    StatsClassesController,
+    StatusTracker,
+    StatusLoggerCollection,
+)
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 
@@ -114,14 +119,24 @@ class TestStatusTracker:
         self.status_tracker = StatusTracker(
             shared_dict={},
             status_logger_config=stats_logger_config,
-            status_logger=[
-                logging.getLogger("test-file-metric-logger"),
-                PrometheusStatsExporter(stats_logger_config, self.logger),
-            ],
+            status_logger=StatusLoggerCollection(
+                file_logger=logging.getLogger("test-file-metric-logger"),
+                prometheus_exporter=PrometheusStatsExporter(
+                    stats_logger_config, self.logger, ProcessorStats.metrics
+                ),
+            ),
             lock=Lock(),
         )
-        first_dropper = Dropper("Dropper1", "tests/testdata/unit/tree_config.json", self.logger)
-        second_dropper = Dropper("Dropper2", "tests/testdata/unit/tree_config.json", self.logger)
+
+        dropper_config = {
+            "type": "dropper",
+            "specific_rules": ["tests/testdata/unit/dropper/rules/specific/"],
+            "generic_rules": ["tests/testdata/unit/dropper/rules/generic/"],
+            "tree_config": "tests/testdata/unit/tree_config.json",
+        }
+
+        first_dropper = Dropper("Dropper1", dropper_config, self.logger)
+        second_dropper = Dropper("Dropper2", dropper_config, self.logger)
         first_dropper.ps.setup_rules([None] * 12)
         second_dropper.ps.setup_rules([None] * 9)
 
@@ -203,17 +218,18 @@ class TestStatusTracker:
         }
 
         self.status_tracker._log_to_prometheus(ordered_data=metrics)
-        mock_labels.assert_has_calls([mock.call(of="pipeline"), mock.call().set(12)])
-        mock_labels.assert_has_calls([mock.call(of="pipeline"), mock.call().set(13)])
-        mock_labels.assert_has_calls([mock.call(of="pipeline"), mock.call().set(37)])
-        mock_labels.assert_has_calls([mock.call(of="Dropper1"), mock.call().set(10)])
-        mock_labels.assert_has_calls([mock.call(of="Dropper1"), mock.call().set(11)])
-        mock_labels.assert_has_calls([mock.call(of="Dropper1"), mock.call().set(12)])
-        mock_labels.assert_has_calls([mock.call(of="Dropper1"), mock.call().set(13)])
-        mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(20)])
-        mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(21)])
-        mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(22)])
-        mock_labels.assert_has_calls([mock.call(of="Dropper2"), mock.call().set(23)])
+        mock_labels.assert_has_calls([mock.call(component="pipeline"), mock.call().set(12)])
+        mock_labels.assert_has_calls([mock.call(component="pipeline"), mock.call().set(13)])
+        mock_labels.assert_has_calls([mock.call(component="pipeline"), mock.call().set(37)])
+        mock_labels.assert_has_calls([mock.call(component="Dropper1"), mock.call().set(10)])
+        mock_labels.assert_has_calls([mock.call(component="Dropper1"), mock.call().set(11)])
+        mock_labels.assert_has_calls([mock.call(component="Dropper1"), mock.call().set(12)])
+        mock_labels.assert_has_calls([mock.call(component="Dropper1"), mock.call().set(13)])
+        mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(20)])
+        mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(21)])
+        mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(22)])
+        mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(23)])
+        mock_labels.assert_has_calls([mock.call(component="logprep"), mock.call().set(10)])
 
     def test_add_per_processor_data_skips_excluded_processors(self):
         dropper1_expected_zero_matches = 0

@@ -1,3 +1,6 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+# pylint: disable=attribute-defined-outside-init
 from logging import WARNING, Logger, INFO, ERROR
 from time import time, sleep
 
@@ -5,8 +8,9 @@ from pytest import raises
 
 from logprep.framework.pipeline import MultiprocessingPipeline
 from logprep.framework.pipeline_manager import PipelineManager, MustSetConfigurationFirstError
-from tests.testdata.metadata import path_to_config
 from logprep.util.configuration import Configuration
+from logprep.util.processor_stats import StatusLoggerCollection
+from tests.testdata.metadata import path_to_config
 from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub, AssertEmitsLogMessages
 
 
@@ -23,7 +27,7 @@ class MultiprocessingPipelineMock(MultiprocessingPipeline):
         MultiprocessingPipelineMock.process_count += 1
 
     def __repr__(self):
-        return "MultiprocessingLogprepWrapperMock-%d" % self._id
+        return f"MultiprocessingLogprepWrapperMock-{self._id}"
 
     def start(self):
         self.was_started = True
@@ -50,7 +54,9 @@ class TestPipelineManager:
         self.config = Configuration.create_from_yaml(path_to_config)
         self.handler = HandlerStub()
         self.logger = Logger("test")
-        self.status_logger = self.logger
+        self.status_logger = StatusLoggerCollection(
+            file_logger=self.logger, prometheus_exporter=None
+        )
         self.logger.addHandler(self.handler)
 
         self.manager = PipelineManagerForTesting(self.logger, self.status_logger)

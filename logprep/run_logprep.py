@@ -1,57 +1,59 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
+import inspect
 import os
+import sys
+from argparse import ArgumentParser
 from logging import getLogger, Logger, DEBUG, ERROR
 from logging.handlers import TimedRotatingFileHandler
-from argparse import ArgumentParser
-from pathlib import Path
 from os.path import dirname, basename
-import inspect
-from typing import List, Optional
+from pathlib import Path
+from typing import Optional
 
-import sys
-
-from logprep.runner import Runner
-from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
-from logprep.util.configuration import Configuration
-from logprep.util.rule_dry_runner import DryRunner
-from logprep.util.auto_rule_tester import AutoRuleTester
-from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.processor.base.rule import Rule
 from logprep.processor.processor_factory import ProcessorFactory
-
-from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.processor_stats import StatsClassesController
+from logprep.runner import Runner
+from logprep.util.aggregating_logger import AggregatingLogger
+from logprep.util.auto_rule_tester import AutoRuleTester
+from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.processor_stats import (
+    StatsClassesController,
+    StatusLoggerCollection,
+    ProcessorStats,
+)
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
+from logprep.util.rule_dry_runner import DryRunner
+from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
+from logprep.util.time_measurement import TimeMeasurement
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
 
 
-def _get_status_logger(config: dict, application_logger: Logger) -> List:
+def _get_status_logger(config: dict, application_logger: Logger) -> StatusLoggerCollection:
     status_logger_cfg = config.get("status_logger", {})
     logging_targets = status_logger_cfg.get("targets", [])
 
     if not logging_targets:
         logging_targets.append({"file": {}})
 
-    status_logger = []
+    file_logger = None
+    prometheus_exporter = None
     for target in logging_targets:
         if "file" in target.keys():
             file_config = target.get("file")
-            logger = getLogger("Logprep-JSON-File-Logger")
-            logger.handlers = []
+            file_logger = getLogger("Logprep-JSON-File-Logger")
+            file_logger.handlers = []
 
             log_path = file_config.get("path", "./logprep-status.jsonl")
             Path(dirname(log_path)).mkdir(parents=True, exist_ok=True)
             interval = file_config.get("rollover_interval", 60 * 60 * 24)
             backup_count = file_config.get("backup_count", 10)
-            logger.addHandler(
+            file_logger.addHandler(
                 TimedRotatingFileHandler(
                     log_path, when="S", interval=interval, backupCount=backup_count
                 )
             )
-            status_logger.append(logger)
 
         if "prometheus" in target.keys():
             multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR", "")
@@ -62,10 +64,12 @@ def _get_status_logger(config: dict, application_logger: Logger) -> List:
                     "'PROMETHEUS_MULTIPROC_DIR' is missing."
                 )
             else:
-                prometheus_exporter = PrometheusStatsExporter(status_logger_cfg, application_logger)
+                prometheus_exporter = PrometheusStatsExporter(
+                    status_logger_cfg, application_logger, ProcessorStats.metrics
+                )
                 prometheus_exporter.run()
-                status_logger.append(prometheus_exporter)
 
+    status_logger = StatusLoggerCollection(file_logger, prometheus_exporter)
     return status_logger
 
 
@@ -106,7 +110,7 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger, status_logger: Optional[List]):
+def _run_logprep(arguments, logger: Logger, status_logger: Optional[StatusLoggerCollection]):
     runner = None
     try:
         runner = Runner.get_runner()
@@ -134,14 +138,25 @@ def main():
     """Start the logprep runner."""
     args = _parse_arguments()
     config = Configuration().create_from_yaml(args.config)
-    config.verify(getLogger("Temporary Logger"))
+
+    try:
+        AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
+        logger = AggregatingLogger.create("Logprep")
+    except BaseException as error:
+        getLogger("Logprep").exception(error)
+        sys.exit(1)
+
+    try:
+        config.verify(logger)
+    except InvalidConfigurationError:
+        sys.exit(1)
+    except BaseException as error:
+        logger.exception(error)
+        sys.exit(1)
 
     for plugin_dir in config.get("plugin_directories", []):
         sys.path.insert(0, plugin_dir)
         ProcessorFactory.load_plugins(plugin_dir)
-
-    AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
-    logger = AggregatingLogger.create("Logprep")
 
     status_logger = None
     if not args.disable_logging:
