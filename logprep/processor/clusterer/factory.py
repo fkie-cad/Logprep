@@ -18,7 +18,7 @@ class ClustererFactory(BaseFactory):
         """Create a clusterer."""
         ClustererFactory._check_configuration(configuration)
 
-        return Clusterer(name, logger, **configuration)
+        return Clusterer(name, configuration, logger)
 
     @staticmethod
     def _check_configuration(configuration: dict):

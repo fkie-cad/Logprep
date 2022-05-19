@@ -3,8 +3,8 @@
 from logging import DEBUG, Logger
 from multiprocessing import current_process
 from typing import List
+from logprep.abc.processor import Processor
 
-from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.base.rule import Rule
 from logprep.processor.clusterer.rule import ClustererRule
 from logprep.processor.clusterer.signature_calculation.signature_phase import (
@@ -12,60 +12,20 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
     SignatureEngine,
     SignaturePhaseStreaming,
 )
-from logprep.util.processor_stats import ProcessorStats
 
 
-class Clusterer(RuleBasedProcessor):
+class Clusterer(Processor):
     """Cluster log events using a heuristic."""
 
     matching_rules: List[Rule] = []
 
-    def __init__(self, name: str, logger: Logger, **configuration):
-        tree_config = configuration.get("tree_config")
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        super().__init__(name, tree_config, logger)
-        self.ps = ProcessorStats()
+    rule_class = ClustererRule
 
-        self._name = name
-
+    def __init__(self, name: str, configuration: dict, logger: Logger):
+        super().__init__(name=name, configuration=configuration, logger=logger)
         self.sps = SignaturePhaseStreaming()
         self._output_field_name = configuration.get("output_field_name")
-
         self.has_custom_tests = True
-
-        self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = ClustererRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = ClustererRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=W0221
 
     def process(self, event: dict):
         super().process(event)
