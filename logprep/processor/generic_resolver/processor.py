@@ -1,14 +1,12 @@
 """This module contains functionality for resolving log event values using regex lists."""
 import re
-from logging import Logger, DEBUG
-from multiprocessing import current_process
+from logging import Logger
 from typing import List
 
 from ruamel.yaml import YAML
 
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.abc import Processor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.util.processor_stats import ProcessorStats
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -32,8 +30,10 @@ class DuplicationError(GenericResolverError):
         super().__init__(name, message)
 
 
-class GenericResolver(RuleBasedProcessor):
+class GenericResolver(Processor):
     """Resolve values in documents by referencing a mapping list."""
+
+    rule_class = GenericResolverRule
 
     def __init__(
         self,
@@ -41,51 +41,8 @@ class GenericResolver(RuleBasedProcessor):
         configuration: dict,
         logger: Logger,
     ):
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        tree_config = configuration.get("tree_config")
-        super().__init__(name, tree_config, logger)
-        self.ps = ProcessorStats()
-
-        self._event = None
-
+        super().__init__(name=name, configuration=configuration, logger=logger)
         self._replacements_from_file = {}
-
-        self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        """Add rules from given directory."""
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = GenericResolverRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = GenericResolverRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
 
     def _apply_rules(self, event, rule):
         """Apply the given rule to the current event"""
@@ -105,7 +62,7 @@ class GenericResolver(RuleBasedProcessor):
                     mapping = matches.group("mapping") if "mapping" in matches.groupdict() else None
                     if mapping is None:
                         raise GenericResolverError(
-                            self._name,
+                            self.name,
                             "Mapping group is missing in mapping file pattern!",
                         )
                     dest_val = replacements.get(mapping)
@@ -149,7 +106,7 @@ class GenericResolver(RuleBasedProcessor):
                     break
 
         if conflicting_fields:
-            raise DuplicationError(self._name, conflicting_fields)
+            raise DuplicationError(self.name, conflicting_fields)
 
     def ensure_rules_from_file(self, rule):
         """loads rules from file"""
@@ -164,13 +121,13 @@ class GenericResolver(RuleBasedProcessor):
                             self._replacements_from_file[rule.resolve_from_file["path"]] = add_dict
                         else:
                             raise GenericResolverError(
-                                self._name,
+                                self.name,
                                 f"Additions file "
                                 f'\'{rule.resolve_from_file["path"]}\''
                                 f" must be a dictionary with string values!",
                             )
                 except FileNotFoundError as error:
                     raise GenericResolverError(
-                        self._name,
+                        self.name,
                         f'Additions file \'{rule.resolve_from_file["path"]}' f"' not found!",
                     ) from error
