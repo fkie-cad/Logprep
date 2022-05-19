@@ -1,19 +1,13 @@
 """This module contains functionality for resolving log event values using regex lists."""
-from typing import List
-from logging import Logger, DEBUG
-
-
-from multiprocessing import current_process
-
 from ipaddress import ip_address
+from logging import Logger
+from typing import List
 
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.abc import Processor
 from logprep.processor.geoip_enricher.rule import GeoIPEnricherRule
-
-from logprep.util.processor_stats import ProcessorStats
 from logprep.util.helper import add_field_to
 
 
@@ -37,52 +31,15 @@ class DuplicationError(GeoIPEnricherError):
         super().__init__(name, message)
 
 
-class GeoIPEnricher(RuleBasedProcessor):
+class GeoIPEnricher(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
+    rule_class = GeoIPEnricherRule
+
     def __init__(self, name: str, configuration: dict, logger: Logger):
-        tree_config = configuration.get("tree_config")
-        super().__init__(name, tree_config, logger)
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
+        super().__init__(name=name, configuration=configuration, logger=logger)
         geoip_db_path = configuration.get("db_path")
-        self.ps = ProcessorStats()
-        self.add_rules_from_directory(
-            specific_rules_dirs=specific_rules_dirs,
-            generic_rules_dirs=generic_rules_dirs,
-        )
         self._city_db = database.Reader(geoip_db_path)
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = GeoIPEnricherRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = GeoIPEnricherRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"generic rules ({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
 
     @staticmethod
     def _normalize_empty(db_entry):
@@ -90,7 +47,7 @@ class GeoIPEnricher(RuleBasedProcessor):
 
     def _try_getting_geoip_data(self, ip_string):
         if ip_string is None:
-            return dict()
+            return {}
 
         try:
             geoip = {}
@@ -145,7 +102,7 @@ class GeoIPEnricher(RuleBasedProcessor):
                 return geoip
 
         except (ValueError, AddressNotFoundError):
-            return dict()
+            return {}
 
     def _apply_rules(self, event, rule):
         source_ip = rule.source_ip
@@ -157,4 +114,4 @@ class GeoIPEnricher(RuleBasedProcessor):
                 adding_was_successful = add_field_to(event, output_field, geoip_data)
 
                 if not adding_was_successful:
-                    raise DuplicationError(self._name, [output_field])
+                    raise DuplicationError(self.name, [output_field])
