@@ -6,12 +6,12 @@ import sys
 from logging import getLogger
 from random import sample
 from string import ascii_letters
+from unittest import mock
 
 from pytest import raises
 
 import tests.testdata.unit.processor_factory
 from logprep.processor.clusterer.processor import Clusterer
-from logprep.processor.donothing.processor import DoNothing
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
 from logprep.processor.processor_factory import ProcessorFactory
@@ -55,12 +55,6 @@ def test_create_fails_for_unknown_type():
     ]:
         with raises(UnknownProcessorTypeError):
             ProcessorFactory.create({"processorname": {"type": type_name}}, logger)
-
-
-def test_create_donothing_returns_donothing_processor():
-    processor = ProcessorFactory.create({"nothing": {"type": "donothing"}}, logger)
-
-    assert isinstance(processor, DoNothing)
 
 
 def test_create_pseudonymizer_returns_pseudonymizer_processor():
@@ -123,9 +117,7 @@ def test_fails_when_section_contains_more_than_one_element():
         InvalidConfigurationError,
         match="There must be exactly one processor definition per pipeline entry.",
     ):
-        ProcessorFactory.create(
-            {"first": {"type": "donothing"}, "second": {"type": "donothing"}}, logger
-        )
+        ProcessorFactory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
 
 
 def test_create_labeler_creates_labeler_processor():

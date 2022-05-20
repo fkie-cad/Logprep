@@ -5,9 +5,11 @@ from copy import deepcopy
 from logging import DEBUG, WARNING, ERROR, getLogger
 from multiprocessing import active_children, Lock
 from queue import Empty
+from unittest import mock
 
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
+from logprep.abc.processor import Processor
 
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
@@ -25,15 +27,18 @@ from logprep.input.input import (
 )
 from logprep.output.dummy_output import DummyOutput
 from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
-from logprep.processor.base.processor import BaseProcessor, ProcessingWarning
+from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.delete.processor import Delete
+from logprep.processor.delete.rule import DeleteRule
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.processor_stats import StatsClassesController, StatusLoggerCollection
+from logprep.util.time_measurement import TimeMeasurement
 from tests.util.testhelpers import AssertEmitsLogMessage
 
 
 class ConfigurationForTests:
     connector_config = {"type": "dummy", "input": [{"test": "empty"}]}
-    pipeline_config = [{"donothing1": {"type": "donothing"}}, {"donothing2": {"type": "donothing"}}]
+    pipeline_config = [mock.MagicMock(), mock.MagicMock()]
     status_logger_config = {
         "period": 300,
         "enabled": False,
@@ -104,33 +109,30 @@ class TestPipeline(ConfigurationForTests):
                     self.shared_dict,
                 )
 
-    def test_setup_builds_pipeline(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_setup_builds_pipeline(self, mock_create):
         assert len(self.pipeline._pipeline) == 0
-
         self.pipeline._setup()
+        assert len(self.pipeline._pipeline) == 2
+        assert mock_create.call_count == 2
 
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_setup_calls_setup_on_pipeline_processors(self, mock_create):
+        self.pipeline._setup()
         assert len(self.pipeline._pipeline) == 2
         for processor in self.pipeline._pipeline:
-            assert isinstance(processor, BaseProcessor)
+            processor.setup.assert_called()
 
-    def test_setup_calls_setup_on_pipeline_processors(self):
-        self.pipeline._setup()
-
-        assert len(self.pipeline._pipeline) == 2
-
-        for processor in self.pipeline._pipeline:
-            assert processor.setup_called_count == 1
-
-    def test_shut_down_calls_shut_down_on_pipeline_processors(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_shut_down_calls_shut_down_on_pipeline_processors(self, mock_create):
         self.pipeline._setup()
         processors = list(self.pipeline._pipeline)
-
         self.pipeline._shut_down()
-
         for processor in processors:
-            assert processor.shut_down_called_count == 1
+            processor.shut_down.assert_called()
 
-    def test_setup_creates_connectors(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_setup_creates_connectors(self, mock_create):
         assert self.pipeline._input is None
         assert self.pipeline._output is None
 
@@ -139,13 +141,15 @@ class TestPipeline(ConfigurationForTests):
         assert isinstance(self.pipeline._input, DummyInput)
         assert isinstance(self.pipeline._output, DummyOutput)
 
-    def test_setup_calls_setup_on_input_and_output(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_setup_calls_setup_on_input_and_output(self, mock_create):
         self.pipeline._setup()
 
         assert self.pipeline._input.setup_called_count == 1
         assert self.pipeline._output.setup_called_count == 1
 
-    def test_passes_timeout_parameter_to_inputs_get_next(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_passes_timeout_parameter_to_inputs_get_next(self, mock_create):
         self.pipeline._setup()
         assert self.pipeline._input.last_timeout is None
 
@@ -153,15 +157,30 @@ class TestPipeline(ConfigurationForTests):
 
         assert self.pipeline._input.last_timeout == self.timeout
 
-    def test_empty_documents_are_not_forwarded_to_other_processors(self):
-        input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
-        pipeline = self.create_pipeline(input_data.copy(), ["donothing", "delete", "donothing"])
-
-        for _ in input_data:
-            pipeline._retrieve_and_process_data()
-
-        assert pipeline._pipeline[0].ps.processed_count == 3
-        assert pipeline._pipeline[2].ps.processed_count == 0
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_empty_documents_are_not_forwarded_to_other_processors(self, mock_create):
+        assert len(self.pipeline._pipeline) == 0
+        input_data = [{"do_not_delete": "1"}, {"delete_me": "2"}, {"do_not_delete": "3"}]
+        connector_config = {"type": "dummy", "input": input_data}
+        self.pipeline._connector_config = connector_config
+        self.pipeline._setup()
+        delete_config = {
+            "type": "delete",
+            "specific_rules": [],
+            "generic_rules": [],
+            "i_really_want_to_delete_all_log_events": "I really do",
+        }
+        delete_processor = Delete(name="Test", configuration=delete_config, logger=mock.MagicMock())
+        delete_rule = DeleteRule._create_from_dict({"filter": "delete_me", "delete": True})
+        delete_processor._specific_tree.add_rule(delete_rule)
+        self.pipeline._pipeline = [mock.MagicMock(), delete_processor, mock.MagicMock()]
+        while self.pipeline._input._documents:
+            self.pipeline._retrieve_and_process_data()
+        assert len(input_data) == 0, "all events were processed"
+        assert self.pipeline._pipeline[0].process.call_count == 3, "called for all events"
+        assert self.pipeline._pipeline[2].process.call_count == 2, "not called for deleted event"
+        assert {"delete_me": "2"} not in self.pipeline._output.events
+        assert len(self.pipeline._output.events) == 2
 
     def test_empty_documents_are_not_stored_in_the_output(self):
         pipeline = self.create_pipeline([{"test": "1"}], ["delete"])
@@ -172,49 +191,49 @@ class TestPipeline(ConfigurationForTests):
         assert len(pipeline._output.events) == 0
 
     def test_retrieve_and_process_data_raises_exceptions_that_occur_while_retrieving_data(self):
-        pipeline = self.create_pipeline([ValueError], ["donothing"])
+        pipeline = self.create_pipeline([ValueError], mock.MagicMock())
 
         with raises(ValueError):
             pipeline._retrieve_and_process_data()
 
     def test_stops_processing_after_receiving_source_disconnected_error(self):
         input_data = [{"test": "1"}, SourceDisconnectedError, {"test": "2"}, {"test": "3"}]
-        pipeline = self.create_pipeline(input_data, ["donothing"])
+        pipeline = self.create_pipeline(input_data, mock.MagicMock())
         pipeline.run()
 
         assert len(pipeline._output.events) == 1
 
     def test_calls_setup_and_shut_down_on_input(self):
-        pipeline = self.create_pipeline([], ["donothing"])
+        pipeline = self.create_pipeline([], mock.MagicMock())
         pipeline.run()
 
         assert pipeline._input.setup_called_count == 1
         assert pipeline._input.shut_down_called_count == 1
 
     def test_calls_setup_and_shut_down_on_output(self):
-        pipeline = self.create_pipeline([], ["donothing"])
+        pipeline = self.create_pipeline([], mock.MagicMock())
         pipeline.run()
 
         assert pipeline._output.setup_called_count == 1
         assert pipeline._output.shut_down_called_count == 1
 
     def test_logs_source_disconnected_error_as_warning(self):
-        pipeline = self.create_pipeline([{"order": 0}], ["donothing"])
+        pipeline = self.create_pipeline([{"order": 0}], mock.MagicMock())
 
         with AssertEmitsLogMessage(
             self.log_handler, WARNING, prefix="Lost or failed to establish connection to "
         ):
             pipeline.run()
 
-    def test_all_events_provided_by_input_arrive_at_output(self):
-        event_count = 5
-        pipeline = self.create_pipeline([{"order": i} for i in range(event_count)], ["donothing"])
-
-        pipeline.run()
-
-        assert len(pipeline._output.events) == event_count
-        for i in range(event_count):
-            assert pipeline._output.events[i] == {"order": i}
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_all_events_provided_by_input_arrive_at_output(self, mock_create):
+        input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
+        expected_output_data = deepcopy(input_data)
+        connector_config = {"type": "dummy", "input": input_data}
+        self.pipeline._connector_config = connector_config
+        self.pipeline._setup()
+        self.pipeline.run()
+        assert self.pipeline._output.events == expected_output_data
 
     def test_enable_iteration_sets_iterate_to_true_stop_to_false(self):
         assert not self.pipeline._iterate()
@@ -225,7 +244,8 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.stop()
         assert not self.pipeline._iterate()
 
-    def test_critical_input_error_is_logged_and_stored_as_failed(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_critical_input_error_is_logged_and_stored_as_failed(self, mock_create):
         event = {"does_not_matter": "mock"}
         pipeline = self.create_pipeline([event], ["donothing"])
 
@@ -254,7 +274,8 @@ class TestPipeline(ConfigurationForTests):
         assert pipeline._input.shut_down_called_count == 0
         assert pipeline._output.shut_down_called_count == 0
 
-    def test_critical_output_error_is_logged_and_stored_as_failed(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_critical_output_error_is_logged_and_stored_as_failed(self, mock_create):
         event = {"does_not_matter": "mock"}
         original_event = deepcopy(event)
         pipeline = self.create_pipeline([event], ["donothing"])
@@ -289,7 +310,8 @@ class TestPipeline(ConfigurationForTests):
         assert pipeline._input.shut_down_called_count == 0
         assert pipeline._output.shut_down_called_count == 0
 
-    def test_fatal_input_error_is_logged_and_pipeline_shuts_down(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_fatal_input_error_is_logged_and_pipeline_shuts_down(self, mock_create):
         pipeline = self.create_pipeline(
             [FatalInputError, {"event": "never processed"}], ["donothing"]
         )
@@ -301,7 +323,8 @@ class TestPipeline(ConfigurationForTests):
         assert pipeline._input.shut_down_called_count == 1
         assert pipeline._output.shut_down_called_count == 1
 
-    def test_input_warning_error_is_logged_but_processing_continues(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_input_warning_error_is_logged_but_processing_continues(self, mock_create):
         pipeline = self.create_pipeline(
             [{"order": 0}, WarningInputError, {"order": 1}], ["donothing"]
         )
@@ -313,7 +336,8 @@ class TestPipeline(ConfigurationForTests):
 
         assert pipeline._output.events == [{"order": 0}, {"order": 1}]
 
-    def test_fatal_output_error_is_logged_and_pipeline_shuts_down(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_fatal_output_error_is_logged_and_pipeline_shuts_down(self, mock_create):
         pipeline = self.create_pipeline([{"order": 0}], ["donothing"], [FatalOutputError])
 
         with AssertEmitsLogMessage(self.log_handler, ERROR, contains="Output dummy failed"):
@@ -323,7 +347,8 @@ class TestPipeline(ConfigurationForTests):
         assert pipeline._input.shut_down_called_count == 1
         assert pipeline._output.shut_down_called_count == 1
 
-    def test_output_warning_error_is_logged_but_processing_continues(self):
+    @mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+    def test_output_warning_error_is_logged_but_processing_continues(self, mock_create):
         pipeline = self.create_pipeline(
             [{"order": 0}, {"order": 1}], ["donothing"], [WarningOutputError]
         )
@@ -457,7 +482,7 @@ class TestPipeline(ConfigurationForTests):
         pipeline_config = []
         for item in processors:
             if item == "donothing":
-                config = {"type": "donothing"}
+                config = mock.MagicMock()
             elif item == "delete":
                 config = {
                     "type": "delete",
