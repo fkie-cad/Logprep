@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import copy
+from unittest import mock
 
 import pytest
 from logprep.processor.dropper.factory import Dropper, DropperFactory
@@ -26,10 +27,6 @@ class TestDropper(BaseProcessorTestCase):
     @property
     def generic_rules_dirs(self):
         return self.CONFIG["generic_rules"]
-
-    def _load_specific_rule(self, rule):
-        specific_rule = DropperRule._create_from_dict(rule)
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def test_dropper_instantiates(self):
         rule = {"filter": "drop_me", "drop": ["drop_me"]}
@@ -132,6 +129,16 @@ class TestDropper(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document == expected
+
+    def test_apply_rules_is_called(self):
+        rule = {"filter": "drop.child", "drop": ["drop.child"], "drop_full": False}
+        document = {"drop": {"child": {"grand_child": "foo"}, "neighbour": "bar"}}
+        self._load_specific_rule(rule)
+        with mock.patch(
+            f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"
+        ) as mock_apply_rules:
+            self.object.process(document)
+            mock_apply_rules.assert_called()
 
 
 class TestDropperFactory:

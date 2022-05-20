@@ -1,5 +1,6 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
+
 import json
 from abc import ABC
 from logging import getLogger
@@ -70,6 +71,12 @@ class BaseProcessorTestCase(ABC):
                         rules.append(rule)
 
         return rules
+
+    def _load_specific_rule(self, rule):
+        self.object._generic_tree = RuleTree()
+        self.object._specific_tree = RuleTree()
+        specific_rule = self.object.rule_class._create_from_dict(rule)
+        self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def setup_method(self) -> None:
         """
@@ -250,3 +257,11 @@ class BaseProcessorTestCase(ABC):
         config_name = camel_to_snake(self.object.__class__.__name__)
         assert processing_times[config_name]
         assert isinstance(processing_times[config_name], float)
+
+    @mock.patch("logging.Logger.debug")
+    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
+    def test_process_writes_debug_messages(self, mock_is_enabled, mock_debug):
+        event = {}
+        self.object.process(event)
+        mock_is_enabled.assert_called()
+        mock_debug.assert_called()

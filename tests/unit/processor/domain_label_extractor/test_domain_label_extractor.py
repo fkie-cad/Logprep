@@ -27,10 +27,6 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
 
-    def _load_specific_rule(self, rule):
-        specific_rule = DomainLabelExtractorRule._create_from_dict(rule)
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
-
     def test_events_processed_count(self):
         assert self.object.ps.processed_count == 0
         document = {"foo": "bar"}

@@ -45,10 +45,6 @@ class TestGenericResolver(BaseProcessorTestCase):
         """Return the paths of the generic rules"""
         return self.CONFIG["generic_rules"]
 
-    def _load_specific_rule(self, rule):
-        specific_rule = GenericResolverRule._create_from_dict(rule)
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
-
     def test_resolve_generic_instantiates(self):
         rule = {"filter": "anything", "generic_resolver": {"field_mapping": {}}}
         self._load_specific_rule(rule)

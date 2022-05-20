@@ -39,11 +39,6 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    def _load_specific_rule(self, rule):
-        specific_rule = HyperscanResolverRule._create_from_dict(rule)
-        specific_rule.file_name = "some_file_name_is_required_for_hyperscan"
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
-
     def test_resolve_instantiates(self):
         rule = {"filter": "anything", "hyperscan_resolver": {"field_mapping": {}}}
 
@@ -403,11 +398,6 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         "generic_rules": ["tests/testdata/unit/hyperscan_resolver/rules/generic/"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
-
-    def _load_specific_rule(self, rule):
-        specific_rule = HyperscanResolverRule._create_from_dict(rule)
-        specific_rule.file_name = "some_file_name_is_required_for_hyperscan"
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def test_resolve_no_conflict_from_file(self):
         rule = {
