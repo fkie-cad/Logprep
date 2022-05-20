@@ -106,7 +106,8 @@ class Processor(ABC):
            A dictionary representing a log event.
 
         """
-
+        if self._logger.isEnabledFor(DEBUG):
+            self._logger.debug("%s process event %s", self, event)
         self._strategy.process(
             event,
             generic_tree=self._generic_tree,
