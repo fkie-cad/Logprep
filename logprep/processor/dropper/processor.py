@@ -35,8 +35,6 @@ class Dropper(Processor):
             self._traverse_dict_and_delete(dict_[sub_field], remaining_sub_fields, drop_full)
             if dict_[sub_field] == {} and drop_full:
                 del dict_[sub_field]
-        elif sub_field in dict_.keys():
-            del dict_[sub_field]
 
     def _drop_field(self, event: dict, dotted_field: str, drop_full: bool):
         sub_fields = dotted_field.split(".")
