@@ -9,7 +9,7 @@ from unittest import mock
 import numpy as np
 from prometheus_client import REGISTRY
 
-from logprep.processor.clusterer.processor import Clusterer
+from logprep.processor.clusterer.factory import ClustererFactory
 from logprep.processor.dropper.processor import Dropper
 from logprep.util.processor_stats import (
     ProcessorStats,
@@ -240,15 +240,13 @@ class TestStatusTracker:
 
         self.status_tracker._pipeline[0].ps.aggr_data["processed"] = dropper1_expected_processed
         self.status_tracker._pipeline[1].ps.aggr_data["processed"] = dropper2_expected_processed
-
-        clusterer = Clusterer(
-            "Clusterer1",
-            logger=self.logger,
-            tree_config="",
-            specific_rules="",
-            generic_rules="",
-            output_field_name="",
-        )
+        clusterer_config = {
+            "type": "clusterer",
+            "output_field_name": "cluster_signature",
+            "generic_rules": ["tests/testdata/unit/clusterer/rules/generic"],
+            "specific_rules": ["tests/testdata/unit/clusterer/rules/specific"],
+        }
+        clusterer = ClustererFactory.create("Clusterer1", clusterer_config, self.logger)
         clusterer.ps.aggr_data["processed"] = clusterer_expected_processed
 
         self.status_tracker._pipeline.append(clusterer)

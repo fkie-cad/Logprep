@@ -3,8 +3,8 @@
 from time import time
 from socket import gethostname
 
-from logprep.processor.base import processor
 from logprep.util.helper import camel_to_snake
+from logprep.util.processor_stats import ProcessorStats
 
 
 class TimeMeasurement:
@@ -36,8 +36,9 @@ class TimeMeasurement:
 
                     processing_time = end - begin
 
-                    if isinstance(caller, processor.BaseProcessor):
-                        caller.ps.update_average_processing_time(processing_time)
+                    if hasattr(caller, "ps"):
+                        if isinstance(caller.ps, ProcessorStats):
+                            caller.ps.update_average_processing_time(processing_time)
 
                     if TimeMeasurement.APPEND_TO_EVENT:
                         add_processing_times_to_event(event, processing_time, caller, name)
