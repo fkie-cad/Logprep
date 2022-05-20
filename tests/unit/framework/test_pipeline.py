@@ -459,7 +459,12 @@ class TestPipeline(ConfigurationForTests):
             if item == "donothing":
                 config = {"type": "donothing"}
             elif item == "delete":
-                config = {"type": "delete", "i_really_want_to_delete_all_log_events": "I really do"}
+                config = {
+                    "type": "delete",
+                    "i_really_want_to_delete_all_log_events": "I really do",
+                    "generic_rules": ["tests/testdata/unit/delete/rules/generic"],
+                    "specific_rules": ["tests/testdata/unit/delete/rules/specific"],
+                }
             else:
                 raise ValueError("No template for processor " + item)
             pipeline_config.append({f"pipeline{len(pipeline_config)}": config})

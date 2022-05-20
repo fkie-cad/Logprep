@@ -1,10 +1,11 @@
 """This module contains a delete processor that can be used for testing purposes."""
 
-from logprep.processor.base.processor import BaseProcessor
-from logprep.util.processor_stats import ProcessorStats
+from logging import Logger
+from logprep.abc import Processor
+from logprep.processor.delete.rule import DeleteRule
 
 
-class Delete(BaseProcessor):
+class Delete(Processor):
     """A processor that deletes processed log events.
 
     Notes
@@ -21,15 +22,17 @@ class Delete(BaseProcessor):
 
     """
 
-    def __init__(self, i_really_want_to_delete_all_log_events: str):
+    rule_class = DeleteRule
+
+    def __init__(self, name: str, configuration: dict, logger: Logger):
+        i_really_want_to_delete_all_log_events = configuration.get(
+            "i_really_want_to_delete_all_log_events"
+        )
+
         if i_really_want_to_delete_all_log_events != "I really do":
             raise ValueError("Read the documentation and pass the correct parameter!")
 
-        self.ps = ProcessorStats()
+        super().__init__(name, configuration, logger)
 
-    def describe(self) -> str:
-        return "DELETE"
-
-    def process(self, event: dict):
+    def _apply_rules(self, event, rule):
         event.clear()
-        self.ps.increment_processed_count()
