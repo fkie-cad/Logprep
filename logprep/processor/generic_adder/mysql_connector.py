@@ -82,8 +82,7 @@ class MySQLConnector:
             This value changes if the table or it's contents change.
 
         """
-        statement = f"CHECKSUM TABLE {self.table_name}"
-        self.cur.execute(statement)
+        self.cur.execute(f"CHECKSUM TABLE {self.table_name}")  # nosemgrep
         checksum = next(self.cur)[-1]
         self.con.commit()
         return checksum
@@ -107,16 +106,14 @@ class MySQLConnector:
         target_col = 0
 
         try:
-            statement = f"desc {self.table_name}"
-            self.cur.execute(statement)
+            self.cur.execute(f"desc {self.table_name}")  # nosemgrep
             col_names = []
             for idx, column_desc in enumerate(self.cur):
                 col_names.append(column_desc[0])
                 if column_desc[0] == self.target_column:
                     target_col = idx
 
-            statement = f"SELECT * FROM {self.table_name}"
-            self.cur.execute(statement)
+            self.cur.execute(f"SELECT * FROM {self.table_name}")  # nosemgrep
 
             for row_vals in self.cur:
                 if self._add_target_column:

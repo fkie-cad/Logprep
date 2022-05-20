@@ -9,6 +9,7 @@ import pytest
 from logprep.processor.generic_adder.factory import GenericAdderFactory
 from logprep.processor.generic_adder.processor import DuplicationError
 from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
@@ -321,7 +322,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
         document_2 = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
         self.object.process(document_1)
-        time.sleep(0.2)
+        time.sleep(0.2)  # nosemgrep
         self.object._db_connector.cur.mock_simulate_table_change()
         self.object.process(document_2)
 
@@ -338,7 +339,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
 
         self.object._db_table = {}
         self.object._db_connector.cur.mock_simulate_table_change()
-        time.sleep(0.2)
+        time.sleep(0.2)  # nosemgrep
         self.object.process(document)
 
         assert document == expected
@@ -382,6 +383,16 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document == expected
+
+    def test_sql_table_can_not_have_spaces(self):
+        with pytest.raises(
+            InvalidConfigurationError,
+            match=r"Table in 'sql_config' contains whitespaces!",
+        ):
+            config = deepcopy(self.CONFIG)
+            config["sql_config"]["table"] = "table with spaces"
+
+            GenericAdderFactory.create("test-generic-adder", config, self.logger)
 
 
 class TestGenericAdderProcessorSQLWithAddedTarget(BaseProcessorTestCase):

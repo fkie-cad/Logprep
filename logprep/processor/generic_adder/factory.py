@@ -1,7 +1,9 @@
 """This module contains a factory for GenericAdder processors."""
+import re
 
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.generic_adder.processor import GenericAdder
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class GenericAdderFactory(BaseFactory):
@@ -46,3 +48,7 @@ class GenericAdderFactory(BaseFactory):
         GenericAdderFactory._check_common_configuration(
             "generic_adder", GenericAdderFactory.mandatory_fields, configuration
         )
+
+        table = configuration.get("sql_config", {}).get("table")
+        if table and re.search(r"\s", table):
+            raise InvalidConfigurationError(f"Table in 'sql_config' contains whitespaces!")
