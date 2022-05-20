@@ -91,11 +91,10 @@ class Pipeline:
             self._logger.debug(f"Building '{current_process().name}'")
         self._pipeline = []
         for entry in self._pipeline_config:
-            self._pipeline.append(ProcessorFactory.create(entry, self._logger))
+            processor = ProcessorFactory.create(entry, self._logger)
+            self._pipeline.append(processor)
             if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug(
-                    f"Created '{list(entry.keys())[0]}' processor " f"({current_process().name})"
-                )
+                self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
             self._pipeline[-1].setup()
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Finished building pipeline ({current_process().name})")
@@ -136,12 +135,12 @@ class Pipeline:
         self._enable_iteration()
         try:
             if self._logger.isEnabledFor(DEBUG):
-                self._logger.debug(f"Start iterating ({current_process().name})")
+                self._logger.debug("Start iterating (%s)", current_process().name)
             while self._iterate():
                 self._retrieve_and_process_data()
         except SourceDisconnectedError:
             self._logger.warning(
-                f"Lost or failed to establish connection to " f"{self._input.describe_endpoint()}"
+                f"Lost or failed to establish connection to {self._input.describe_endpoint()}"
             )
         except FatalInputError as error:
             self._logger.error(f"Input {self._input.describe_endpoint()} failed: {error}")
@@ -179,11 +178,11 @@ class Pipeline:
             raise error
         except WarningInputError as error:
             self._logger.warning(
-                f"An error occurred for input {self._input.describe_endpoint()}:" f" {error}"
+                f"An error occurred for input {self._input.describe_endpoint()}: {error}"
             )
         except WarningOutputError as error:
             self._logger.warning(
-                f"An error occurred for output {self._output.describe_endpoint()}:" f" {error}"
+                f"An error occurred for output {self._output.describe_endpoint()}: {error}"
             )
         except CriticalInputError as error:
             msg = f"A critical error occurred for input {self._input.describe_endpoint()}: {error}"
@@ -215,18 +214,16 @@ class Pipeline:
                         self._store_extra_data(extra_data)
                 except ProcessingWarning as error:
                     self._logger.warning(
-                        f"A non-fatal error occurred for processor "
-                        f"{processor.describe()} when processing an event: "
-                        f"{error}"
+                        f"A non-fatal error occurred for processor {processor.describe()} when processing an event: {error}"
                     )
 
                     self._tracker.add_warnings(error, processor)
                 except ProcessingWarningCollection as error:
                     for warning in error.processing_warnings:
                         self._logger.warning(
-                            f"A non-fatal error occurred for processor "
-                            f"{processor.describe()} when processing an event: "
-                            f"{warning}"
+                            "A non-fatal error occurred for processor %s when processing an event: %s",
+                            processor.describe(),
+                            warning,
                         )
 
                         self._tracker.add_warnings(warning, processor)
