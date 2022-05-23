@@ -146,6 +146,8 @@ class TestPipeline(ConfigurationForTests):
         delete_rule = DeleteRule._create_from_dict({"filter": "delete_me", "delete": True})
         delete_processor._specific_tree.add_rule(delete_rule)
         self.pipeline._pipeline = [mock.MagicMock(), delete_processor, mock.MagicMock()]
+        self.pipeline._create_logger()
+        self.pipeline._logger.setLevel(DEBUG)
         while self.pipeline._input._documents:
             self.pipeline._retrieve_and_process_data()
         assert len(input_data) == 0, "all events were processed"

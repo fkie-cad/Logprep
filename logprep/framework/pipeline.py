@@ -230,7 +230,7 @@ class Pipeline:
 
                 if not event:
                     if self._logger.isEnabledFor(DEBUG):
-                        self._logger.debug("Event deleted by processor %s", processor)
+                        self._logger.debug(f"Event deleted by processor {processor}")
                     return
         # pylint: disable=broad-except
         except BaseException as error:
