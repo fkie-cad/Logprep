@@ -67,3 +67,25 @@ class SkipImportError(ProcessorFactoryError):
             super().__init__(f"Processor type '{processor_type}' can't be imported")
         else:
             super().__init__("Processor can't be imported")
+
+
+class ProcessingError(BaseException):
+    """Base class for exceptions related to processing events."""
+
+    def __init__(self, name: str, message: str):
+        super().__init__(f"{name}: ({message})")
+
+
+class ProcessingWarning(ProcessingError):
+    """An minor error occurred - log the error but continue processing the event."""
+
+    def __init__(self, message: str):
+        super().__init__("ProcessingWarning", message)
+
+
+class ProcessingWarningCollection(ProcessingError):
+    """A collection of ProcessingWarnings."""
+
+    def __init__(self, name: str, message: str, processing_warnings):
+        super().__init__(name, message)
+        self.processing_warnings = processing_warnings

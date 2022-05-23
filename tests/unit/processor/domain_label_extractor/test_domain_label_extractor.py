@@ -1,7 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
-from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_label_extractor.factory import DomainLabelExtractorFactory
 from logprep.processor.domain_label_extractor.processor import DuplicationError
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule

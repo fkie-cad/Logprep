@@ -21,7 +21,7 @@ from logprep.input.input import (
     WarningInputError,
 )
 from logprep.output.output import CriticalOutputError, FatalOutputError, WarningOutputError
-from logprep.processor.base.processor import ProcessingWarning, ProcessingWarningCollection
+from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler

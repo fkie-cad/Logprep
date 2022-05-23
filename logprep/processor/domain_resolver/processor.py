@@ -9,7 +9,7 @@ from typing import List
 from tldextract import TLDExtract
 
 from logprep.abc import Processor
-from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher

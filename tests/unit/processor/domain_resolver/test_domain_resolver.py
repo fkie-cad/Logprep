@@ -10,7 +10,7 @@ import pytest
 pytest.importorskip("logprep.processor.domain_resolver")
 
 from logprep.processor.domain_resolver.factory import DomainResolverFactory
-from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 logger = getLogger()

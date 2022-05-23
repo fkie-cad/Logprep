@@ -20,7 +20,7 @@ from pytz import timezone
 from ruamel.yaml import YAML
 from logprep.abc.processor import Processor
 
-from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
 

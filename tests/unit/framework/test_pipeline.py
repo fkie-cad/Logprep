@@ -25,7 +25,7 @@ from logprep.input.input import (
 )
 from logprep.output.dummy_output import DummyOutput
 from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
-from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.delete.processor import Delete
 from logprep.processor.delete.rule import DeleteRule
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
