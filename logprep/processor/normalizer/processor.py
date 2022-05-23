@@ -6,11 +6,10 @@ import os
 import re
 from datetime import datetime
 from functools import reduce
-from logging import DEBUG, Logger
-from multiprocessing import current_process
+from logging import Logger
 from pathlib import Path
 from time import time
-from typing import List, Optional, Tuple, Union
+from typing import List, Tuple, Union
 
 import arrow
 import ujson

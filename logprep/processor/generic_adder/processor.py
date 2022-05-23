@@ -1,9 +1,7 @@
 """This module contains functionality for adding fields using regex lists."""
 from typing import List
-from logging import Logger, DEBUG
+from logging import Logger
 
-
-from multiprocessing import current_process
 
 from logprep.abc import Processor
 from logprep.processor.generic_adder.rule import GenericAdderRule

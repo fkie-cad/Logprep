@@ -1,7 +1,6 @@
 """This module contains a Clusterer that clusters events using a heuristic approach."""
 
-from logging import DEBUG, Logger
-from multiprocessing import current_process
+from logging import Logger
 from typing import List
 from logprep.abc.processor import Processor
 
