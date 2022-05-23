@@ -17,8 +17,7 @@ class ListComparisonFactory(BaseFactory):
 
         list_comparison = ListComparison(
             name,
-            configuration.get("tree_config"),
-            configuration.get("list_search_base_path"),
+            configuration,
             logger,
         )
         list_comparison.add_rules_from_directory(

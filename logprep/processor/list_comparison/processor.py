@@ -39,8 +39,7 @@ class ListComparison(RuleBasedProcessor):
     def __init__(
         self,
         name: str,
-        tree_config: str,
-        list_search_base_path: Optional[str],
+        configuration: dict,
         logger: Logger,
     ):
         """
@@ -50,13 +49,14 @@ class ListComparison(RuleBasedProcessor):
         ----------
         name : str
             Name of the list_comparison processor (as referred to in the pipeline).
-        tree_config : str
-            Path to the configuration file which can prioritize fields and add conditional rules.
+        configuration : dict
+            Configuration for the processor.
         logger : Logger
             Standard logger.
         """
+        tree_config = configuration.get("tree_config")
         super().__init__(name, tree_config, logger)
-        self._list_search_base_dir = list_search_base_path
+        self._list_search_base_dir = configuration.get("list_search_base_path")
         self.ps = ProcessorStats()
 
     # pylint: disable=arguments-differ
