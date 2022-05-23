@@ -8,13 +8,9 @@ from logging import getLogger
 from unittest import mock
 from logprep.abc.processor import Processor
 
-
+from logprep.util.json_handling import list_json_files_in_directory
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import (
-    BaseProcessor,
-    ProcessingWarning,
-    RuleBasedProcessor,
-)
+from logprep.processor.base.processor import ProcessingWarning
 from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.time_measurement import TimeMeasurement
@@ -30,7 +26,7 @@ class BaseProcessorTestCase(ABC):
 
     logger = getLogger()
 
-    object: BaseProcessor = None
+    object: Processor = None
 
     patchers: list = None
 
@@ -61,9 +57,7 @@ class BaseProcessorTestCase(ABC):
         assert isinstance(rules_dirs, list)
         rules = []
         for rules_dir in rules_dirs:
-            rule_paths = RuleBasedProcessor._list_json_files_in_directory(  # pylint: disable=protected-access
-                rules_dir
-            )
+            rule_paths = list_json_files_in_directory(rules_dir)
             for rule_path in rule_paths:
                 with open(rule_path, "r", encoding="utf8") as rule_file:
                     loaded_rules = json.load(rule_file)

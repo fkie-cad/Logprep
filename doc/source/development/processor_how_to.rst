@@ -41,17 +41,15 @@ The following has be be considered when creating a new processor factory:
 Processor
 ---------
 
-Processors must implement the interface :py:class:`~logprep.processor.base.processor.RuleBasedProcessor` if the processor uses rules.
-Otherwise, the interface :py:class:`~logprep.processor.base.processor.BaseProcessor` must be implemented.
+Processors must implement the interface :py:class:`~logprep.abc.processor.Processor`.
 Here information in the docstrings should be noted.
-If the processor implements :py:class:`~logprep.processor.base.processor.RuleBasedProcessor`,
-then its rules must implement the interface :py:class:`~logprep.processor.base.rule.Rule`.
+The rules must implement the interface :py:class:`~logprep.processor.base.rule.Rule`.
 
 setup, shut_down
 ^^^^^^^^^^^^^^^^
 
-The method :py:meth:`~logprep.processor.base.processor.Processor.setup` is called before the first log message will be processed,
-the method :py:meth:`~logprep.processor.base.processor.Processor.shut_down` after the last log message was processed.
+The method :py:meth:`~logprep.abc.processor.Processor.setup` is called before the first log message will be processed,
+the method :py:meth:`~logprep.abc.processor.Processor.shut_down` after the last log message was processed.
 
 Those methods could be implemented to create additional data structures and to release them after processing has finished.
  
