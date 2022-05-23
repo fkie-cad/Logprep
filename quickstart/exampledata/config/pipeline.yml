@@ -5,7 +5,7 @@ pipeline:
   - labelername:
       type: labeler
       schema: quickstart/exampledata/rules/labeler/schema.json
-      include_parent_labels: on
+      include_parent_labels: true
       specific_rules:
         - quickstart/exampledata/rules/labeler/specific
       generic_rules:
