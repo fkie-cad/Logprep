@@ -1,8 +1,6 @@
 """This module contains functionality for labeling log events."""
 
-from logging import Logger, DEBUG
-from multiprocessing import current_process
-from typing import List
+from logging import Logger
 from logprep.abc import Processor
 
 
@@ -26,59 +24,10 @@ class Labeler(Processor):
         self._schema = LabelingSchema.create_from_file(configuration.get("schema"))
         self._include_parent_labels = configuration.get("include_parent_labels", False)
         super().__init__(name, configuration=configuration, logger=logger)
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self,
-        specific_rules_dirs: List[str],
-        generic_rules_dirs: List[str],
-    ):
-
-        for specific_rules_dir in specific_rules_dirs:
-            self.verify_rules_and_add_to(self._specific_tree, specific_rules_dir)
-
-        for generic_rules_dir in generic_rules_dirs:
-            self.verify_rules_and_add_to(self._generic_tree, generic_rules_dir)
-
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
-
-    def verify_rules_and_add_to(self, tree, rules_dir):
-        """
-        Creates LabelingRules, verifies if they conform with the given schema and adds them to
-        the given rule_tree.
-
-        Parameters
-        ----------
-        tree : RuleTree
-            The rule tree to which the new rules should be added to.
-        rules_dir : str
-            The path to the directory with the rule configurations that should be added to the
-            rule tree
-        """
-        rule_paths = self._list_json_files_in_directory(rules_dir)
-        for rule_path in rule_paths:
-            rules = LabelingRule.create_rules_from_file(rule_path)
-            for rule in rules:
-                if self._include_parent_labels:
-                    rule.add_parent_labels_from_schema(self._schema)
-
-                rule.conforms_to_schema(self._schema)
-
-                tree.add_rule(rule, self._logger)
+        for rule in self._generic_rules + self._specific_rules:
+            if self._include_parent_labels:
+                rule.add_parent_labels_from_schema(self._schema)
+            rule.conforms_to_schema(self._schema)
 
     def _apply_rules(self, event, rule):
         """Applies the rule to the current event"""
