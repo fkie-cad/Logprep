@@ -1,15 +1,11 @@
 """This module contains functionality for pre-detecting attacks."""
 
 from logging import DEBUG, Logger
-from multiprocessing import current_process
-from typing import List
 from uuid import uuid4
 from logprep.abc import Processor
 
-from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.util.processor_stats import ProcessorStats
 
 
 class PreDetectorError(BaseException):

@@ -16,7 +16,7 @@ from logprep.processor.processor_factory_error import (
     InvalidConfigSpecificationError,
 )
 from logprep.processor.base.factory import BaseFactory
-from logprep.processor.base.processor import BaseProcessor
+from logprep.abc import Processor
 
 
 class ProcessorFactory:
@@ -72,7 +72,7 @@ class ProcessorFactory:
                     raise BaseException(f"There exist multiple plugins of the type: {directory}")
 
     @classmethod
-    def create(cls, configuration: dict, logger: Logger) -> BaseProcessor:
+    def create(cls, configuration: dict, logger: Logger) -> Processor:
         """Create processor."""
         ProcessorFactory._fail_is_not_a_valid_config_specification(configuration)
         name, section, processor_type = ProcessorFactory._get_name_section_and_type(configuration)

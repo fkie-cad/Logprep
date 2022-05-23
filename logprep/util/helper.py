@@ -93,7 +93,7 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
     dict_: dict, list, str
         The value of the requested dotted field.
 
-    # code is originally from the BaseProcessor, such that duplicated code could be removed there.
+    # code is originally from the Processor, such that duplicated code could be removed there.
     """
 
     fields = dotted_field.split(".")
