@@ -36,6 +36,10 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "tld_list": "tests/testdata/external/public_suffix_list.dat",
     }
 
+    def setup_method(self) -> None:
+        super().setup_method()
+        self.regex_mapping = self.CONFIG.get("regex_mapping")
+
     def test_pseudonymize_event(self):
         event_raw = {"foo": "bar"}
         self.object.process(event_raw)
@@ -77,7 +81,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "description": "description content irrelevant for these tests",
         }
 
-        self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
+        self._load_specific_rule(rule_dict)
 
         self.object.process(event)
         pseudonyms = self.object.pseudonyms
@@ -99,7 +103,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "description": "description content irrelevant for these tests",
         }
 
-        self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
+        self._load_specific_rule(rule_dict)
         for index in range(3):
             copied_event = deepcopy(event)
             self.object.process(copied_event)
@@ -121,27 +125,10 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
             time.sleep(CACHE_MAX_TIMEDELTA.total_seconds())
 
-    def _load_specific_rule(self, rule, regex_mappping_path):
-        self.object._load_regex_mapping(regex_mappping_path)
-        specific_rule = PseudonymizerRule._create_from_dict(rule)
-        self.object._replace_regex_keywords_by_regex_expression(specific_rule)
-        self.object._generic_tree = RuleTree()
-        self.object._specific_tree = RuleTree()
-        self.object._specific_tree.add_rule(specific_rule, self.object._logger)
-        self.object.ps.setup_rules(
-            [None] * self.object._generic_tree.rule_counter
-            + [None] * self.object._specific_tree.rule_counter
-        )
-
-    def _load_generic_rule(self, rule, regex_mappping_path):
-        self.object._load_regex_mapping(regex_mappping_path)
-        generic_rule = PseudonymizerRule._create_from_dict(rule)
-        self.object._replace_regex_keywords_by_regex_expression(generic_rule)
-        self.object._generic_tree.add_rule(generic_rule, self.object._logger)
-        self.object.ps.setup_rules(
-            [None] * self.object._generic_tree.rule_counter
-            + [None] * self.object._specific_tree.rule_counter
-        )
+    def _load_specific_rule(self, rule):
+        self.object._load_regex_mapping(self.regex_mapping)
+        super()._load_specific_rule(rule)
+        self.object._replace_regex_keywords_by_regex_expression()
 
     def test_pseudonymization_of_field_fails_because_filter_does_not_match(self):
         event = {"event_id": 1105, "something": "Not pseudonymized"}
@@ -152,7 +139,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "description": "description content irrelevant for these tests",
         }
 
-        self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
+        self._load_specific_rule(rule_dict)
 
         self.object.process(event)
 
@@ -167,8 +154,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "description": "description content irrelevant for these tests",
         }
 
-        self._load_specific_rule(deepcopy(rule_dict), self.CONFIG["regex_mapping"])
-        self._load_generic_rule(rule_dict, self.CONFIG["regex_mapping"])
+        self._load_specific_rule(deepcopy(rule_dict))
 
         self.object.process(event)
 
@@ -188,7 +174,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "description": "description content irrelevant for these tests",
         }
 
-        self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
+        self._load_specific_rule(rule_dict)
 
         self.object.process(event)
         self.object.process(event_other_id)
@@ -228,7 +214,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "description": "description content irrelevant for these tests",
         }
 
-        self._load_specific_rule(rule_dict, self.CONFIG["regex_mapping"])
+        self._load_specific_rule(rule_dict)
 
         self.object.process(event)
 
@@ -270,7 +256,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
 
         for generic_rule in self.generic_rules:
-            self._load_generic_rule(generic_rule, self.CONFIG["regex_mapping"])
+            self._load_specific_rule(generic_rule)
 
         self.object.process(event)
 
@@ -571,7 +557,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudonymize": {"pseudo_this": regex_pattern},
             "url_fields": ["do_not_pseudo_this"],
         }
-        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
+        self.regex_mapping = CAP_GROUP_REGEX_MAPPING
+        self._load_specific_rule(rule)
         self.object.process(event)
 
         assert event["do_not_pseudo_this"] == url
@@ -596,7 +583,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             },
             "url_fields": ["pseudo_this", "and_pseudo_this"],
         }
-        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
+        self._load_specific_rule(rule)
         self.object.process(event)
 
         assert event["and_pseudo_this"] == pseudonymized_url
@@ -621,7 +608,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudonymize": {"pseudo_this": regex_pattern},
             "url_fields": ["pseudo_this"],
         }
-        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
+        self.regex_mapping = CAP_GROUP_REGEX_MAPPING
+        self._load_specific_rule(rule)
         self.object.process(event)
 
         assert event["pseudo_this"] == pseudonymized
@@ -632,7 +620,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "filter": "filter_this: does_not_matter",
             "pseudonymize": {"pseudo_this": regex_pattern},
         }
-        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
+        self.regex_mapping = CAP_GROUP_REGEX_MAPPING
+        self._load_specific_rule(rule)
         self.object.process(event)
         return event
 
@@ -643,7 +632,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudonymize": {"pseudo_this": regex_pattern},
             "url_fields": ["pseudo_this"],
         }
-        self._load_specific_rule(rule, CAP_GROUP_REGEX_MAPPING)
+        self.regex_mapping = CAP_GROUP_REGEX_MAPPING
+        self._load_specific_rule(rule)
         self.object.process(event)
         return event
 

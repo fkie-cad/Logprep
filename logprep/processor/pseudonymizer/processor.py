@@ -26,6 +26,8 @@ class Pseudonymizer(Processor):
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
 
+    rule_class = PseudonymizerRule
+
     def __init__(self, name: str, configuration: dict, logger: Logger):
         self._logger = logger
         self._name = name
@@ -52,6 +54,7 @@ class Pseudonymizer(Processor):
         self.pseudonymized_fields = set()
         self.setup()
         super().__init__(name=name, configuration=configuration, logger=logger)
+        self._replace_regex_keywords_by_regex_expression()
 
     def setup(self):
         self._encrypter.load_public_keys(self._pubkey_analyst, self._pubkey_depseudo)
@@ -64,52 +67,6 @@ class Pseudonymizer(Processor):
     def _load_regex_mapping(self, regex_mapping_path: str):
         with open(regex_mapping_path, "r", encoding="utf8") as file:
             self._regex_mapping = yaml.load(file)
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            if specific_rules_dir:
-                for rule in self._get_rules_from_directory(specific_rules_dir):
-                    self._specific_tree.add_rule(rule, self._logger)
-
-        for generic_rules_dir in generic_rules_dirs:
-            if generic_rules_dir:
-                for rule in self._get_rules_from_directory(generic_rules_dir):
-                    self._generic_tree.add_rule(rule, self._logger)
-
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                (
-                    f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                    f"specific rules ({current_process().name})"
-                )
-            )
-            self._logger.debug(
-                (
-                    f"{self.describe()} loaded {self._generic_tree.rule_counter} "
-                    f"generic rules ({current_process().name})"
-                )
-            )
-
-    # pylint: enable=arguments-differ
-
-    def shut_down(self):
-        pass
-
-    def _get_rules_from_directory(self, rule_directory: str) -> List[PseudonymizerRule]:
-        rules = []
-        rule_paths = self._list_json_files_in_directory(rule_directory)
-        for rule_path in rule_paths:
-            rules_raw = PseudonymizerRule.create_rules_from_file(rule_path)
-            for rule in rules_raw:
-                self._replace_regex_keywords_by_regex_expression(rule)
-                rules.append(rule)
-        return rules
 
     def process(self, event: dict):
         self.pseudonymized_fields = set()
@@ -279,9 +236,13 @@ class Pseudonymizer(Processor):
             pseudonyms.append({"pseudonym": hash_string, "origin": encrypted_origin})
         return self._wrap_hash(hash_string)
 
-    def _replace_regex_keywords_by_regex_expression(self, rule: PseudonymizerRule):
-        for dotted_field, regex_keyword in rule.pseudonyms.items():
-            rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
+    def _replace_regex_keywords_by_regex_expression(self):
+        for rule in self._specific_rules:
+            for dotted_field, regex_keyword in rule.pseudonyms.items():
+                rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
+        for rule in self._generic_rules:
+            for dotted_field, regex_keyword in rule.pseudonyms.items():
+                rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
 
     def _wrap_hash(self, hash_string: str) -> str:
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX
