@@ -1,8 +1,10 @@
 """ abstract module for processors"""
+import os
 from abc import ABC, abstractmethod
 from logging import DEBUG, Logger
 from multiprocessing import current_process
-from typing import List
+from typing import List, Optional, Union
+
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
@@ -10,12 +12,21 @@ from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
-from typing import List, Union, Optional
-import os
 
 
 class Processor(ABC):
     """Abstract Processor Class to define the Interface"""
+
+    __slots__ = [
+        "name",
+        "rule_class",
+        "ps",
+        "has_custom_tests",
+        "_logger",
+        "_event",
+        "_specific_tree",
+        "_generic_tree",
+    ]
 
     name: str
     rule_class: Rule

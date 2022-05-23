@@ -95,7 +95,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         assert result is None
 
     def test_gets_matching_rules_from_rules_trees(self):
-        rule_trees = [value for key, value in self.object.__dict__.items() if "_tree" in key]
+        rule_trees = [self.object._generic_tree, self.object._specific_tree]
         assert len(rule_trees) > 0
         for tree in rule_trees:
             matching_rules = tree.get_matching_rules({"message": "the message"})
