@@ -185,9 +185,7 @@ class TestPipeline(ConfigurationForTests):
         mock_get_next.side_effect = SourceDisconnectedError
         self.pipeline.run()
         mock_warning.assert_called()
-        assert (
-            "Lost or failed to establish connection to dummy" in mock_warning.mock_calls[0].args[0]
-        )
+        assert "Lost or failed to establish connection to dummy" in mock_warning.call_args[0]
 
     def test_all_events_provided_by_input_arrive_at_output(self, _):
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
@@ -221,8 +219,7 @@ class TestPipeline(ConfigurationForTests):
         assert len(self.pipeline._output.events) == 0
         mock_error.assert_called()
         assert (
-            "A critical error occurred for input dummy: An error message"
-            in mock_error.mock_calls[0].args[0]
+            "A critical error occurred for input dummy: An error message" in mock_error.call_args[0]
         )
         assert len(self.pipeline._output.failed_events) == 1
 
@@ -244,7 +241,7 @@ class TestPipeline(ConfigurationForTests):
         mock_error.assert_called()
         assert (
             "A critical error occurred for output dummy: An error message"
-            in mock_error.mock_calls[0].args[0]
+            in mock_error.call_args[0]
         )
         assert len(self.pipeline._output.failed_events) == 1
 
@@ -300,7 +297,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._retrieve_and_process_data()
         mock_warning.assert_called()
         assert (
-            "ProcessorWarningMockError" in mock_warning.mock_calls[0].args[0]
+            "ProcessorWarningMockError" in mock_warning.call_args[0][0]
         ), "the log message was written"
         assert len(self.pipeline._output.events) == 2, "all events are processed"
 
@@ -326,7 +323,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._retrieve_and_process_data()
         mock_error.assert_called()
         assert (
-            "A critical error occurred for processor" in mock_error.mock_calls[0].args[0]
+            "A critical error occurred for processor" in mock_error.call_args[0][0]
         ), "the log message was written"
         assert len(self.pipeline._output.events) == 0, "no event in output"
         assert (
@@ -347,8 +344,7 @@ class TestPipeline(ConfigurationForTests):
         mock_get_next.assert_called()
         mock_error.assert_called()
         assert (
-            "A critical error occurred for input dummy: mock input error"
-            in mock_error.mock_calls[0].args[0]
+            "A critical error occurred for input dummy: mock input error" in mock_error.call_args[0]
         ), "error message is logged"
         assert len(self.pipeline._output.failed_events) == 1
         assert len(self.pipeline._output.events) == 0
@@ -365,7 +361,7 @@ class TestPipeline(ConfigurationForTests):
         mock_get_next.assert_called()
         mock_warning.assert_called()
         assert (
-            "An error occurred for input dummy:" in mock_warning.mock_calls[0].args[0]
+            "An error occurred for input dummy:" in mock_warning.call_args[0][0]
         ), "error message is logged"
 
     @mock.patch("logprep.input.dummy_input.DummyInput.get_next")
@@ -382,7 +378,7 @@ class TestPipeline(ConfigurationForTests):
         mock_error.assert_called()
         assert (
             "A critical error occurred for output dummy: mock output error"
-            in mock_error.mock_calls[0].args[0]
+            in mock_error.call_args[0]
         ), "error message is logged"
 
     @mock.patch("logprep.input.dummy_input.DummyInput.get_next")
@@ -398,7 +394,7 @@ class TestPipeline(ConfigurationForTests):
         mock_store.assert_called()
         mock_warning.assert_called()
         assert (
-            "An error occurred for output dummy:" in mock_warning.mock_calls[0].args[0]
+            "An error occurred for output dummy:" in mock_warning.call_args[0][0]
         ), "error message is logged"
 
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
@@ -411,7 +407,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.run()
         mock_get_next.assert_called()
         mock_error.assert_called()
-        assert "Input dummy failed:" in mock_error.mock_calls[0].args[0], "error message is logged"
+        assert "Input dummy failed:" in mock_error.call_args[0][0], "error message is logged"
         mock_shut_down.assert_called()
 
     @mock.patch("logprep.input.dummy_input.DummyInput.get_next")
@@ -425,7 +421,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.run()
         mock_store.assert_called()
         mock_error.assert_called()
-        assert "Output dummy failed:" in mock_error.mock_calls[0].args[0], "error message is logged"
+        assert "Output dummy failed:" in mock_error.call_args[0][0], "error message is logged"
         mock_shut_down.assert_called()
 
     @mock.patch("logprep.output.dummy_output.DummyOutput.store_custom")
