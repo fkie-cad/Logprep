@@ -69,6 +69,8 @@ pycryptodome==3.13.0
     # via -r requirements.in
 pygrok==1.0.0
     # via -r requirements.in
+python-configuration==0.8.2
+    # via -r requirements.in
 python-dateutil==2.8.2
     # via
     #   -r requirements.in
