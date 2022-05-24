@@ -15,7 +15,9 @@ from logprep.util.helper import add_field_to, get_dotted_field_value
 class SelectiveExtractor(Processor):
     """Processor used to selectively extract fields from log events."""
 
-    _filtered_events: List[tuple] = None
+    __slots__ = ["_filtered_events"]
+
+    _filtered_events: List[tuple]
 
     rule_class = SelectiveExtractorRule
 

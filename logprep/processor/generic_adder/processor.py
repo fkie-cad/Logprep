@@ -19,7 +19,7 @@ class DuplicationError(GenericAdderError):
 
     def __init__(self, name: str, skipped_fields: List[str]):
         message = (
-            "The following fields already existed and " "were not overwritten by the GenericAdder: "
+            "The following fields already existed and were not overwritten by the GenericAdder: "
         )
         message += " ".join(skipped_fields)
 
@@ -28,6 +28,8 @@ class DuplicationError(GenericAdderError):
 
 class GenericAdder(Processor):
     """Resolve values in documents by referencing a mapping list."""
+
+    __slots__ = []
 
     rule_class = GenericAdderRule
 

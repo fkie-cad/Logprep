@@ -12,7 +12,6 @@ from time import time
 from typing import List, Tuple, Union
 
 import arrow
-import ujson
 from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
@@ -28,6 +27,36 @@ yaml = YAML(typ="safe", pure=True)
 
 class Normalizer(Processor):
     """Normalize log events by copying specific values to standardized fields."""
+
+    __slots__ = [
+        "_conflicting_fields",
+        "_regex_mapping",
+        "_html_replace_fields",
+        "_count_grok_pattern_matches",
+        "_grok_matches_path",
+        "_file_lock_path",
+        "_grok_cnt_period",
+        "_grok_cnt_timer",
+        "_grok_pattern_matches",
+    ]
+
+    _grok_pattern_matches: dict
+
+    _grok_cnt_timer: float
+
+    _grok_cnt_period: str
+
+    _file_lock_path: str
+
+    _grok_matches_path: str
+
+    _count_grok_pattern_matches: str
+
+    _regex_mapping: str
+
+    _html_replace_fields: str
+
+    _conflicting_fields: list
 
     rule_class = NormalizerRule
 
@@ -116,7 +145,7 @@ class Normalizer(Processor):
 
     def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
         fields = dotted_field.split(".")
-        missing_fields = ujson.loads(ujson.dumps(fields))
+        missing_fields = json.loads(json.dumps(fields))
         for field in fields:
             if isinstance(event, dict) and field in event:
                 event = event[field]

@@ -22,17 +22,24 @@ class PreDetectorConfigurationError(PreDetectorError):
 class PreDetector(Processor):
     """Processor used to pre_detect log events."""
 
+    __slots__ = ["detection_results", "_pre_detector_topic", "_ids", "_ip_alerter"]
+
+    _ip_alerter: IPAlerter
+
+    _ids: list
+
+    _pre_detector_topic: str
+
     detection_results: list
 
     rule_class = PreDetectorRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
-        pre_detector_topic = configuration.get("pre_detector_topic")
-        alert_ip_list_path = configuration.get("alert_ip_list_path")
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self._pre_detector_topic = pre_detector_topic
+        self._pre_detector_topic = configuration.get("pre_detector_topic")
         self._event = None
         self._ids = []
+        alert_ip_list_path = configuration.get("alert_ip_list_path")
         self._ip_alerter = IPAlerter(alert_ip_list_path)
 
     def process(self, event: dict) -> tuple:

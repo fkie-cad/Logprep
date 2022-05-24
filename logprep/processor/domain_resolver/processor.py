@@ -39,6 +39,36 @@ class DuplicationError(DomainResolverError):
 class DomainResolver(Processor):
     """Resolve domains."""
 
+    __slots__ = [
+        "_timeout",
+        "_tld_extractor",
+        "_thread_pool",
+        "_hasher",
+        "_salt",
+        "_cache",
+        "_cache_enabled",
+        "_debug_cache",
+        "_domain_ip_map",
+    ]
+
+    _domain_ip_map: dict
+
+    _debug_cache: bool
+
+    _cache_enabled: bool
+
+    _cache: Cache
+
+    _hasher: SHA256Hasher
+
+    _salt: str
+
+    _thread_pool: ThreadPool
+
+    _tld_extractor: TLDExtract
+
+    _timeout: str
+
     rule_class = DomainResolverRule
 
     def __init__(

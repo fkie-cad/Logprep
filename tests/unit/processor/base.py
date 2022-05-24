@@ -6,6 +6,8 @@ from abc import ABC
 from logging import getLogger
 
 from unittest import mock
+
+import pytest
 from logprep.abc.processor import Processor
 
 from logprep.util.json_handling import list_json_files_in_directory
@@ -109,6 +111,12 @@ class BaseProcessorTestCase(ABC):
         self.object.process(document)
 
         assert self.object.ps.processed_count == count + 1
+
+    def test_uses_python_slots(self):
+        # why? see: https://docs.python.org/3.8/reference/datamodel.html#object.__slots__
+        # should lead to a much better performance
+        with pytest.raises(AttributeError):
+            _ = self.object.__dict__
 
     def test_describe(self):
         describe_string = self.object.describe()

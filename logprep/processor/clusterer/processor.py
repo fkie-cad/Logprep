@@ -16,12 +16,19 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
 class Clusterer(Processor):
     """Cluster log events using a heuristic."""
 
-    matching_rules: List[Rule] = []
+    __slots__ = ["matching_rules", "sps", "_output_field_name"]
+
+    matching_rules: List[Rule]
+
+    sps: SignaturePhaseStreaming
 
     rule_class = ClustererRule
 
+    _output_field_name: str
+
     def __init__(self, name: str, configuration: dict, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
+        self.matching_rules = []
         self.sps = SignaturePhaseStreaming()
         self._output_field_name = configuration.get("output_field_name")
         self.has_custom_tests = True

@@ -33,6 +33,16 @@ class DuplicationError(TemplateReplacerError):
 class TemplateReplacer(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
+    __slots__ = ["_target_field", "_target_field_split", "_fields", "_mapping"]
+
+    _target_field: str
+
+    _target_field_split: str
+
+    _fields: list
+
+    _mapping: dict
+
     rule_class = TemplateReplacerRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):

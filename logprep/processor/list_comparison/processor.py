@@ -33,6 +33,10 @@ class DuplicationError(ListComparisonError):
 class ListComparison(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
+    __slots__ = ["_list_search_base_dir"]
+
+    _list_search_base_dir: str
+
     rule_class = ListComparisonRule
 
     def __init__(

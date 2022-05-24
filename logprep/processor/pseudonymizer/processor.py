@@ -2,8 +2,7 @@
 
 import datetime
 import re
-from logging import DEBUG, Logger
-from multiprocessing import current_process
+from logging import Logger
 from typing import Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs
 
@@ -23,16 +22,49 @@ yaml = YAML(typ="safe", pure=True)
 class Pseudonymizer(Processor):
     """Pseudonymize log events to conform to EU privacy laws."""
 
+    __slots__ = [
+        "_pubkey_analyst",
+        "_pubkey_depseudo",
+        "_hash_salt",
+        "_hasher",
+        "_encrypter",
+        "_pseudonyms_topic",
+        "_regex_mapping_path",
+        "_regex_mapping",
+        "_cache_max_items",
+        "_cache_max_timedelta",
+        "_cache",
+        "_tld_list",
+        "_url_extractor",
+        "pseudonyms",
+        "pseudonymized_fields",
+        "_tld_extractor",
+    ]
+
+    _regex_mapping: dict
+    _regex_mapping_path: str
+    _pseudonyms_topic: str
+    _encrypter: DualPKCS1HybridEncrypter
+    _hasher: SHA256Hasher
+    _hash_salt: str
+    _pubkey_analyst: str
+    _pubkey_depseudo: str
+    _cache_max_items: int
+    _cache_max_timedelta: datetime.timedelta
+    _cache: Cache
+    _tld_list: str
+    _url_extractor: URLExtract
+    _tld_extractor: TLDExtract
+
+    pseudonyms: list
+    pseudonymized_fields: set
+
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
 
     rule_class = PseudonymizerRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
-        self._logger = logger
-        self._name = name
-        self.ps = ProcessorStats()
-
         self._pubkey_analyst = configuration.get("pubkey_analyst")
         self._pubkey_depseudo = configuration.get("pubkey_depseudo")
         self._hash_salt = configuration.get("hash_salt")

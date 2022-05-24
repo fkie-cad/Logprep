@@ -16,6 +16,8 @@ class DropperError(BaseException):
 class Dropper(Processor):
     """Normalize log events by copying specific values to standardized fields."""
 
+    __slots__ = []
+
     rule_class = DropperRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):

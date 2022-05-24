@@ -22,6 +22,8 @@ class Delete(Processor):
 
     """
 
+    __slots__ = []
+
     rule_class = DeleteRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):

@@ -33,6 +33,12 @@ class DuplicationError(DomainLabelExtractorError):
 class DomainLabelExtractor(Processor):
     """Splits a domain into it's parts/labels."""
 
+    __slots__ = ["_tld_extractor", "_tagging_field_name"]
+
+    _tld_extractor: TLDExtract
+
+    _tagging_field_name: str
+
     rule_class = DomainLabelExtractorRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
@@ -50,7 +56,6 @@ class DomainLabelExtractor(Processor):
         """
 
         tld_lists = configuration.get("tld_lists")
-        tagging_field_name = configuration.get("tagging_field_name", "tags")
         super().__init__(name=name, configuration=configuration, logger=logger)
 
         if tld_lists is not None:
@@ -58,7 +63,7 @@ class DomainLabelExtractor(Processor):
         else:
             self._tld_extractor = TLDExtract()
 
-        self._tagging_field_name = tagging_field_name
+        self._tagging_field_name = configuration.get("tagging_field_name", "tags")
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """

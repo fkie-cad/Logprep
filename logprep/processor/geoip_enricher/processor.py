@@ -34,6 +34,10 @@ class DuplicationError(GeoIPEnricherError):
 class GeoIPEnricher(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
+    __slots__ = ["_city_db"]
+
+    _city_db: database.Reader
+
     rule_class = GeoIPEnricherRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
@@ -52,8 +56,8 @@ class GeoIPEnricher(Processor):
         try:
             geoip = {}
 
-            ip = str(ip_address(ip_string))
-            ip_data = self._city_db.city(ip)
+            ip_addr = str(ip_address(ip_string))
+            ip_data = self._city_db.city(ip_addr)
 
             if ip_data:
                 geoip["type"] = "Feature"

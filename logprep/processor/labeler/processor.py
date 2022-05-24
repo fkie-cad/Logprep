@@ -1,17 +1,20 @@
 """This module contains functionality for labeling log events."""
 
 from logging import Logger
+
 from logprep.abc import Processor
-
-
-from logprep.processor.labeler.labeling_schema import (
-    LabelingSchema,
-)
+from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelingRule
 
 
 class Labeler(Processor):
     """Processor used to label log events."""
+
+    __slots__ = ["_schema", "_include_parent_labels"]
+
+    _include_parent_labels: bool
+
+    _schema: LabelingSchema
 
     rule_class = LabelingRule
 

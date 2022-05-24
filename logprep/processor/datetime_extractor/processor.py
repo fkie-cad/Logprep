@@ -20,6 +20,10 @@ class DateTimeExtractorError(BaseException):
 class DatetimeExtractor(Processor):
     """Split timestamps into fields containing their parts."""
 
+    __slots__ = ["_local_timezone", "_local_timezone_name"]
+
+    _local_timezone_name: str
+
     rule_class = DateTimeExtractorRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):

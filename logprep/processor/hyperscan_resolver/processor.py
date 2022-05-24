@@ -48,6 +48,14 @@ class DuplicationError(HyperscanResolverError):
 class HyperscanResolver(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
+    __slots__ = ["_hyperscan_database_path", "_hyperscan_databases", "_replacements_from_file"]
+
+    _replacements_from_file: dict
+
+    _hyperscan_database_path: str
+
+    _hyperscan_databases: dict
+
     rule_class = HyperscanResolverRule
 
     def __init__(
@@ -197,6 +205,6 @@ class HyperscanResolver(Processor):
 def _create_hyperscan_dbs_dir(path_: str):
     try:
         makedirs(path_)
-    except OSError as error:
-        if error.errno != errno.EEXIST:
+    except OSError as err:
+        if err.errno != errno.EEXIST:
             raise

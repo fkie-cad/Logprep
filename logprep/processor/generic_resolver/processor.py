@@ -33,6 +33,10 @@ class DuplicationError(GenericResolverError):
 class GenericResolver(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
+    __slots__ = ["_replacements_from_file"]
+
+    _replacements_from_file: dict
+
     rule_class = GenericResolverRule
 
     def __init__(
