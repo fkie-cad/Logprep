@@ -478,7 +478,7 @@ class TestConfluentKafka:
         with raises(
             CriticalOutputError,
             match=r"Error storing output document\: \(TypeError: Object of type "
-            r"'NotJsonSerializableMock' is not JSON serializable\)",
+            r"\'?NotJsonSerializableMock\'? is not JSON serializable\)",
         ):
             self.kafka.store(
                 {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"}
