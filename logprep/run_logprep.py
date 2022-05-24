@@ -207,7 +207,7 @@ def main():
             args.dry_run, args.config, args.dry_run_full_output, json_input, logger
         )
         dry_runner.run()
-    if args.verify_config:
+    elif args.verify_config:
         print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
     else:
         _run_logprep(args, logger, status_logger)
