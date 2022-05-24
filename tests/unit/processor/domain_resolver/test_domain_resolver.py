@@ -1,19 +1,15 @@
-from os.path import exists
-from pathlib import Path
+# pylint: disable=missing-docstring
 import re
 import socket
+from os.path import exists
+from pathlib import Path
 from time import sleep
-from logging import getLogger
 
 import pytest
-
-pytest.importorskip("logprep.processor.domain_resolver")
-
-from logprep.processor.domain_resolver.factory import DomainResolverFactory
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.domain_resolver.factory import DomainResolverFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
-logger = getLogger()
 rel_tld_list_path = "tests/testdata/external/public_suffix_list.dat"
 tld_list = f"file://{Path().absolute().joinpath(rel_tld_list_path).as_posix()}"
 
@@ -93,7 +89,7 @@ class TestDomainResolver(BaseProcessorTestCase):
 
     def test_domain_to_ip_timed_out(self, monkeypatch):
         def mockreturn(_):
-            sleep(0.3)
+            sleep(0.3)  # nosemgrep
             return "1.2.3.4"
 
         monkeypatch.setattr(socket, "gethostbyname", mockreturn)
@@ -140,5 +136,5 @@ class TestDomainResolver(BaseProcessorTestCase):
             match=r"DomainResolver \(.+\): The "
             r"following fields already existed and were not overwritten by the "
             r"DomainResolver: resolved_ip",
-        ) as e_info:
+        ):
             self.object.process(document)
