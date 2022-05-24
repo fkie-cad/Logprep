@@ -73,6 +73,7 @@ class SingleMessageConsumerJsonMock:
     # pylint: disable=unused-argument
     def poll(self, timeout):
         return RecordMock(self.record, None)
+
     # pylint: enable=unused-argument
 
 
