@@ -13,7 +13,6 @@ from time import time
 from typing import List, Optional, Tuple, Union
 
 import arrow
-import ujson
 from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
@@ -160,7 +159,7 @@ class Normalizer(RuleBasedProcessor):
 
     def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
         fields = dotted_field.split(".")
-        missing_fields = ujson.loads(ujson.dumps(fields))
+        missing_fields = json.loads(json.dumps(fields))
         for field in fields:
             if isinstance(event, dict) and field in event:
                 event = event[field]
@@ -183,7 +182,8 @@ class Normalizer(RuleBasedProcessor):
     def _has_html_entity(value):
         return re.search("&#[0-9]{2,4};", value)
 
-    def _replace_field(self, event: dict, dotted_field: str, value: str):
+    @staticmethod
+    def _replace_field(event: dict, dotted_field: str, value: str):
         fields = dotted_field.split(".")
         reduce(lambda dict_, key: dict_[key], fields[:-1], event)[fields[-1]] = value
 
