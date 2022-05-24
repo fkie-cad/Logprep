@@ -17,14 +17,8 @@ class NormalizerFactory(BaseFactory):
 
         normalizer = Normalizer(
             name,
-            configuration["specific_rules"],
-            configuration["generic_rules"],
-            configuration.get("tree_config"),
+            configuration,
             logger,
-            configuration["regex_mapping"],
-            configuration.get("html_replace_fields"),
-            configuration.get("grok_patterns"),
-            configuration.get("count_grok_pattern_matches"),
         )
 
         return normalizer

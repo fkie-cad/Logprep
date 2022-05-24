@@ -63,7 +63,7 @@ def get_test_output(config_path):
 
 
 def assert_result_equal_expected(config, expected_output, tmp_path):
-    pass
+    ...
 
 
 class SingleMessageConsumerJsonMock:

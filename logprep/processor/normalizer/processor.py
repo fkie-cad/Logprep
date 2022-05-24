@@ -32,18 +32,20 @@ class Normalizer(RuleBasedProcessor):
     def __init__(
         self,
         name: str,
-        specific_rules_dirs: list,
-        generic_rules_dirs: list,
-        tree_config: Optional[str],
+        configuration: dict,
         logger: Logger,
-        regex_mapping: str = None,
-        html_replace_fields: str = None,
-        grok_patterns: str = None,
-        count_grok_pattern_matches: dict = None,
     ):
+        tree_config = configuration.get("tree_config")
         super().__init__(name, tree_config, logger)
         self._logger = logger
         self.ps = ProcessorStats()
+
+        specific_rules_dirs = configuration["specific_rules"]
+        generic_rules_dirs = configuration["generic_rules"]
+        regex_mapping = configuration.get("regex_mapping")
+        html_replace_fields = configuration.get("html_replace_fields")
+        grok_patterns = configuration.get("grok_patterns")
+        count_grok_pattern_matches = configuration.get("count_grok_pattern_matches")
 
         self._name = name
         self._event = None

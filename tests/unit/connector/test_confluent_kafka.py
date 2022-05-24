@@ -656,11 +656,6 @@ class TestConfluentKafka:
 
         # set default config
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-        config["consumer"]["hmac"] = {
-            "target": "<RAW_MSG>",
-            "key": "hmac-test-key",
-            "output_field": "Hmac",
-        }
 
         # add additional unknown option and test for error message
         config["consumer"]["hmac"] = {"unknown": "option"}
