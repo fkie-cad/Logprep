@@ -1,3 +1,4 @@
+# pylint: disable=missing-docstring
 import pytest
 from logprep.processor.processor_configuration import (
     ProcessorConfiguration,
@@ -6,14 +7,6 @@ from logprep.processor.processor_configuration import (
 
 
 class TestProcessorConfiguration:
-    def test_sets_attributes(self):
-        config = ProcessorConfiguration({"my_attribute": "my_value"})
-        assert config.my_attribute == "my_value"
-
-    def test_sets_dotted_attributes(self):
-        config = ProcessorConfiguration({"my.attribute": "my_value"})
-        assert config.my.attribute == "my_value"
-
     def test_reads_normalizer_config(self):
         normalizer_config = {
             "type": "normalizer",
