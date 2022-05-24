@@ -111,6 +111,21 @@ class Configuration(dict):
         for error in errors:
             raise error
 
+    def verify_pipeline_only(self, logger: Logger):
+        """Verify the configuration only for the pipeline.
+
+        This is used to check rules where it is not necessary to start the whole framework.
+        """
+        errors = []
+        try:
+            self._verify_pipeline(logger)
+        except InvalidConfigurationError as error:
+            errors.append(error)
+        self._print_errors(errors)
+
+        for error in errors:
+            raise error
+
     def _perform_verfification_and_get_errors(
         self, logger: Logger
     ) -> List[InvalidConfigurationError]:
