@@ -17,19 +17,6 @@ class TemplateReplacerError(BaseException):
         super().__init__(f"TemplateReplacer ({name}): {message}")
 
 
-class DuplicationError(TemplateReplacerError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and "
-            "were not overwritten by the TemplateReplacer: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
-
-
 class TemplateReplacer(Processor):
     """Resolve values in documents by referencing a mapping list."""
 

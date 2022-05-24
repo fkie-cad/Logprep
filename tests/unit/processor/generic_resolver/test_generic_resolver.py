@@ -12,7 +12,6 @@ import pytest
 pytest.importorskip("logprep.processor.generic_resolver")
 
 from tests.unit.processor.base import BaseProcessorTestCase
-from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.processor.generic_resolver.factory import GenericResolverFactory
 from logprep.processor.generic_resolver.processor import (
     GenericResolver,

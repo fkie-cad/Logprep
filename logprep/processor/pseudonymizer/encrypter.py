@@ -33,9 +33,9 @@ class DualPKCS1HybridEncrypter(Encrypter):
         ValueError
             If a key file does not contain a valid key
         """
-        with open(keyfile_analyst) as file:
+        with open(keyfile_analyst, "r", encoding="utf8") as file:
             self._pubkey_analyst = RSA.import_key(file.read())
-        with open(keyfile_depseudo) as file:
+        with open(keyfile_depseudo, "r", encoding="utf8") as file:
             self._pubkey_depseudo = RSA.import_key(file.read())
 
     def encrypt(

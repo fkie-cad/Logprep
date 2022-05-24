@@ -23,19 +23,6 @@ class DomainResolverError(BaseException):
         super().__init__(f"DomainResolver ({name}): {message}")
 
 
-class DuplicationError(DomainResolverError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and "
-            "were not overwritten by the DomainResolver: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
-
-
 class DomainResolver(Processor):
     """Resolve domains."""
 
