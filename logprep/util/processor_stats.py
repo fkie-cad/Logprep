@@ -47,7 +47,7 @@ class StatsClassesController:
         return inner
 
 
-@StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)
+@StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)  # nosemgrep
 class ProcessorStats:
     """Used to track processor stats."""
 
@@ -162,7 +162,7 @@ class ProcessorStats:
 StatusLoggerCollection = namedtuple("StatusLogger", "file_logger prometheus_exporter")
 
 
-@StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)
+@StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)  # nosemgrep
 class StatusTracker:
     """Used to track logprep stats."""
 

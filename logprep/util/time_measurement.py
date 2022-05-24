@@ -26,7 +26,7 @@ class TimeMeasurement:
         """
 
         def inner_decorator(func):
-            def inner(*args, **kwargs):
+            def inner(*args, **kwargs):  # nosemgrep
                 if TimeMeasurement.TIME_MEASUREMENT_ENABLED:
                     caller = args[0]
                     event = args[1]
@@ -45,7 +45,7 @@ class TimeMeasurement:
                     return result
                 return func(*args, **kwargs)
 
-            def add_processing_times_to_event(event, processing_time, caller, name):
+            def add_processing_times_to_event(event, processing_time, caller, name):  # nosemgrep
                 if not event.get("processing_times"):
                     event["processing_times"] = {}
                 if name is None:
