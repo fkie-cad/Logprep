@@ -2,6 +2,8 @@
 
 from logging import Logger
 from typing import List
+
+from attr import define, field, validators
 from logprep.abc.processor import Processor
 
 from logprep.processor.base.rule import Rule
@@ -15,6 +17,12 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
 
 class Clusterer(Processor):
     """Cluster log events using a heuristic."""
+
+    @define
+    class Config(Processor.Config):
+        """clusterer configuration"""
+
+        output_field_name: str = field(validator=validators.instance_of(str))
 
     __slots__ = ["matching_rules", "sps", "_output_field_name"]
 
