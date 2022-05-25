@@ -1,6 +1,7 @@
 """This module contains functionality for labeling log events."""
 
 from logging import Logger
+from typing import Optional
 
 from attr import define, field, validators
 
@@ -17,6 +18,9 @@ class Labeler(Processor):
         """labeler config"""
 
         schema: str = field(validator=validators.instance_of(str))
+        include_parent_labels: Optional[bool] = field(
+            default=False, validator=validators.optional(validator=validators.instance_of(bool))
+        )
 
     __slots__ = ["_schema", "_include_parent_labels"]
 
