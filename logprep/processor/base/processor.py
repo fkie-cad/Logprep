@@ -113,7 +113,7 @@ class BaseProcessor(metaclass=SnakeType):
         fields = dotted_field.split(".")
         dict_ = event
         for field in fields:
-            if field in dict_:
+            if field in dict_ and isinstance(dict_, dict):
                 dict_ = dict_[field]
             else:
                 return None

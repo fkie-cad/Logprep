@@ -107,39 +107,3 @@ class TestIPAlerter:
     def test_field_does_not_exist(self, ip_alerter, rule_with_fields):
         event = {}
         assert not ip_alerter.is_in_alerts_list(rule_with_fields, event)
-
-    def test_get_dotted_field_value_nesting_depth_zero(self, ip_alerter):
-        event = {"ip_field": "127.0.0.1"}
-        dotted_field = "ip_field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value == "127.0.0.1"
-
-    def test_get_dotted_field_value_nesting_depth_one(self, ip_alerter):
-        event = {"ip": {"field": "127.0.0.1"}}
-        dotted_field = "ip.field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value == "127.0.0.1"
-
-    def test_get_dotted_field_value_nesting_depth_two(self, ip_alerter):
-        event = {"some": {"ip": {"field": "127.0.0.1"}}}
-        dotted_field = "some.ip.field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value == "127.0.0.1"
-
-    def test_get_dotted_field_value_that_does_not_exist(self, ip_alerter):
-        event = {}
-        dotted_field = "field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value is None
-
-    def test_get_dotted_field_value_that_does_not_exist_from_nested_dict(self, ip_alerter):
-        event = {"some": {}}
-        dotted_field = "some.ip.field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value is None
-
-    def test_get_dotted_field_value_that_matches_part_of_dotted_field(self, ip_alerter):
-        event = {"some": "do_not_match"}
-        dotted_field = "some.ip"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value is None

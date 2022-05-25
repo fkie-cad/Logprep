@@ -12,6 +12,7 @@ from ruamel.yaml import YAML
 yaml = YAML(typ="safe", pure=True)
 
 from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.util.helper import get_dotted_field_value
 
 
 class IPAlerter:
@@ -81,22 +82,11 @@ class IPAlerter:
             return now < expiration_date
         return True
 
-    @staticmethod
-    def _get_dotted_field_value(dotted_field: str, event: dict) -> Optional[Union[dict, list, str]]:
-        fields = dotted_field.split(".")
-        dict_ = event
-        for field in fields:
-            if field in dict_:
-                dict_ = dict_[field]
-            else:
-                return None
-        return dict_
-
     def is_in_alerts_list(self, rule: PreDetectorRule, event: dict) -> bool:
         """Check if IP is in alerts list and if the alert has expired."""
         in_alerts = False
         for field in rule.ip_fields:
-            ip_string = self._get_dotted_field_value(field, event)
+            ip_string = get_dotted_field_value(event, field)
             if ip_string in self._single_alert_ips:
                 in_alerts = self._single_is_not_expired(ip_string)
                 continue

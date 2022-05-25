@@ -28,7 +28,7 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
-from logprep.util.helper import print_fcolor, remove_file_if_exists
+from logprep.util.helper import print_fcolor, remove_file_if_exists, get_dotted_field_value
 
 logger = getLogger()
 logger.disabled = True
@@ -88,17 +88,6 @@ class GrokPatternReplacer:
         if last_field:
             dict_[last_field] = new_value
 
-    @staticmethod
-    def _get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
-        fields = dotted_field.split(".")
-        dict_ = event
-        for field in fields:
-            if field in dict_:
-                dict_ = dict_[field]
-            else:
-                return None
-        return dict_
-
     def _replace_all_keywords_in_value(self, dotted_value: str) -> str:
         while bool(self._grok_base.search(str(dotted_value))):
             for identifier, grok_value in self._grok_patterns.items():
@@ -123,12 +112,12 @@ class GrokPatternReplacer:
         for processed_field, processed_sub in list(processed.items()):
             dotted_field_tmp = dotted_field
             dotted_field += f".{processed_field}" if dotted_field else processed_field
-            dotted_value = self._get_dotted_field_value(reference_dict["processed"], dotted_field)
+            dotted_value = get_dotted_field_value(reference_dict["processed"], dotted_field)
 
             if isinstance(dotted_value, (str, int, float)):
                 if processed_field.endswith("|re"):
                     new_key = processed_field.replace("|re", "")
-                    dotted_value_raw = self._get_dotted_field_value(
+                    dotted_value_raw = get_dotted_field_value(
                         reference_dict["raw"], dotted_field.replace("|re", "")
                     )
 
