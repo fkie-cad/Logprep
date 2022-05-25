@@ -416,8 +416,8 @@ pre_detector_topic
 A Kafka topic for the detection results of the Predetector.
 Results in this topic can be linked to the original event via a `pre_detector_id`.
 
-alert_ip_list
-~~~~~~~~~~~~~
+alert_ip_list_path
+~~~~~~~~~~~~~~~~~~
 
 Path to a YML file or a list of paths to YML files with dictionaries of IPs.
 It is used by the Predetector to throw alerts if one of the IPs is found
