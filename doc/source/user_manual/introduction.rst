@@ -93,7 +93,7 @@ topic. The output topic is configured via the pipeline yml, while the fields to 
 a list which is also specified in the pipeline configuration as a file path. This processor is applied to all messages,
 because of that it does not need further rules to specify it's behavior.
 
-GeoIP Enricher
+Geoip Enricher
 --------------
 
 The geoip enricher is a processor that can add geoip data to an event based on an IP field.

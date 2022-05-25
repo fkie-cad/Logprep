@@ -141,7 +141,7 @@ By default, this is set to 'count_grok_pattern_matches.lock'.
 
 --------
 
-GeoIP Enricher
+Geoip Enricher
 --------------
 
 Parameter
@@ -150,7 +150,7 @@ Parameter
 type
 ~~~~
 
-The value `geoip_enricher` chooses the processor type GeoIPEnricher.
+The value `geoip_enricher` chooses the processor type GeoipEnricher.
 
 geoip_enricher.db_path
 ~~~~~~~~~~~~~~~~~~~~~~

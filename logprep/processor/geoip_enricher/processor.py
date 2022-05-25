@@ -1,44 +1,53 @@
 """This module contains functionality for resolving log event values using regex lists."""
 from ipaddress import ip_address
 from logging import Logger
+import os
+import sys
 from typing import List
+from attr import define, field, validators
 
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
 from logprep.abc import Processor
-from logprep.processor.geoip_enricher.rule import GeoIPEnricherRule
+from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 from logprep.util.helper import add_field_to
 
 
-class GeoIPEnricherError(BaseException):
-    """Base class for GeoIPEnricher related exceptions."""
+class GeoipEnricherError(BaseException):
+    """Base class for GeoipEnricher related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f"GeoIPEnricher ({name}): {message}")
+        super().__init__(f"GeoipEnricher ({name}): {message}")
 
 
-class DuplicationError(GeoIPEnricherError):
+class DuplicationError(GeoipEnricherError):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
         message = (
             "The following fields already existed and "
-            "were not overwritten by the GeoIPEnricher: "
+            "were not overwritten by the GeoipEnricher: "
         )
         message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
 
-class GeoIPEnricher(Processor):
+class GeoipEnricher(Processor):
     """Resolve values in documents by referencing a mapping list."""
+
+    @define
+    class Config(Processor.Config):
+        """geoip_enricher config"""
+
+        db_path: str = field(validator=[validators.instance_of(str)])
 
     __slots__ = ["_city_db"]
 
     _city_db: database.Reader
 
-    rule_class = GeoIPEnricherRule
+    rule_class = GeoipEnricherRule
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)

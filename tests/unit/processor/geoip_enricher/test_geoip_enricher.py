@@ -3,7 +3,7 @@ from unittest import mock
 
 import pytest
 from geoip2.errors import AddressNotFoundError
-from logprep.processor.geoip_enricher.factory import GeoIPEnricherFactory
+from logprep.processor.geoip_enricher.factory import GeoipEnricherFactory
 from logprep.processor.geoip_enricher.processor import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -40,11 +40,11 @@ class ReaderMock(mock.MagicMock):
         return mock.MagicMock()
 
 
-class TestGeoIPEnricher(BaseProcessorTestCase):
+class TestGeoipEnricher(BaseProcessorTestCase):
 
     mocks = {"geoip2.database.Reader": {"new": ReaderMock()}}
 
-    factory = GeoIPEnricherFactory
+    factory = GeoipEnricherFactory
 
     CONFIG = {
         "type": "geoip_enricher",
@@ -116,8 +116,8 @@ class TestGeoIPEnricher(BaseProcessorTestCase):
 
         with pytest.raises(
             DuplicationError,
-            match=r"GeoIPEnricher \(Test Instance Name\)\: The following fields "
-            r"already existed and were not overwritten by the GeoIPEnricher\:"
+            match=r"GeoipEnricher \(Test Instance Name\)\: The following fields "
+            r"already existed and were not overwritten by the GeoipEnricher\:"
             r" geoip",
         ):
             self.object.process(document)
