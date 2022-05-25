@@ -6,6 +6,7 @@ As the processor is applied to all events it does not need further filtering by 
 
 from logging import Logger
 from typing import List
+
 from logprep.abc.processor import Processor
 
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule

@@ -102,8 +102,8 @@ def test_create_clusterer_returns_clusterer_processor():
             "clusterer": {
                 "type": "clusterer",
                 "output_field_name": "cluster_signature",
-                "specific_rules": "test_rules",
-                "generic_rules": "test_rules",
+                "specific_rules": ["test_rules"],
+                "generic_rules": ["test_rules"],
             }
         },
         logger,

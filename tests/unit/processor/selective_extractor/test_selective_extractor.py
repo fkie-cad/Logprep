@@ -14,8 +14,6 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
 
     CONFIG = {
         "type": "selective_extractor",
-        "selective_extractor_topic": "test_topic",
-        "extractor_list": "tests/testdata/unit/selective_extractor/test_extraction_list.txt",
         "specific_rules": ["tests/testdata/unit/selective_extractor/rules/specific"],
         "generic_rules": ["tests/testdata/unit/selective_extractor/rules/generic"],
     }

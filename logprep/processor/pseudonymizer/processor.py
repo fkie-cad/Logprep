@@ -5,6 +5,7 @@ import re
 from logging import Logger
 from typing import Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs
+from attr import define, field, validators
 
 from ruamel.yaml import YAML
 from tldextract import TLDExtract
@@ -14,13 +15,25 @@ from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.processor_stats import ProcessorStats
 
 yaml = YAML(typ="safe", pure=True)
 
 
 class Pseudonymizer(Processor):
     """Pseudonymize log events to conform to EU privacy laws."""
+
+    @define
+    class Config(Processor.Config):
+        """pseudonymizer config"""
+
+        pseudonyms_topic: str = field(validator=validators.instance_of(str))
+        pubkey_analyst: str = field(validator=validators.instance_of(str))
+        pubkey_depseudo: str = field(validator=validators.instance_of(str))
+        hash_salt: str = field(validator=validators.instance_of(str))
+        regex_mapping: str = field(validator=validators.instance_of(str))
+        max_cached_pseudonyms: int = field(validator=validators.instance_of(int))
+        max_caching_days: int = field(validator=validators.instance_of(int))
+        tld_list: str = field(validator=validators.instance_of(str))
 
     __slots__ = [
         "_pubkey_analyst",

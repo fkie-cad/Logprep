@@ -12,7 +12,7 @@ from time import time
 from typing import List, Optional, Tuple, Union
 
 import arrow
-import attr
+from attr import define, field, validators
 from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
@@ -30,15 +30,19 @@ yaml = YAML(typ="safe", pure=True)
 class Normalizer(Processor):
     """Normalize log events by copying specific values to standardized fields."""
 
-    @attr.define(kw_only=True)
+    @define(kw_only=True)
     class Config(Processor.Config):
         """config description for Normalizer"""
 
-        hash_salt: str = attr.field(validator=attr.validators.instance_of(str))
-        regex_mapping: str = attr.field(validator=attr.validators.instance_of(str))
-        html_replace_fields: str = attr.field(validator=attr.validators.instance_of(str))
-        count_grok_pattern_matches: Optional[dict] = attr.field(
-            default=None, validator=attr.validators.optional(attr.validators.instance_of(dict))
+        hash_salt: Optional[str] = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
+        )
+        regex_mapping: str = field(validator=validators.instance_of(str))
+        html_replace_fields: Optional[str] = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
+        )
+        count_grok_pattern_matches: Optional[dict] = field(
+            default=None, validator=validators.optional(validators.instance_of(dict))
         )
 
     __slots__ = [

@@ -1,7 +1,10 @@
 """This module contains functionality for pre-detecting attacks."""
 
 from logging import DEBUG, Logger
+from typing import Optional
 from uuid import uuid4
+
+from attr import field, define, validators
 from logprep.abc import Processor
 
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
@@ -21,6 +24,15 @@ class PreDetectorConfigurationError(PreDetectorError):
 
 class PreDetector(Processor):
     """Processor used to pre_detect log events."""
+
+    @define
+    class Config(Processor.Config):
+        """pre_detector config"""
+
+        pre_detector_topic: str = field(validator=validators.instance_of(str))
+        alert_ip_list_path: str = field(
+            default=None, validator=validators.optional(validator=validators.instance_of(str))
+        )
 
     __slots__ = ["detection_results", "_pre_detector_topic", "_ids", "_ip_alerter"]
 

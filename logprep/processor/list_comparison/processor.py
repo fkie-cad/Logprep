@@ -5,6 +5,8 @@ This processor implements black- and whitelisting capabilities.
 from logging import Logger
 from typing import List
 
+from attr import define, field, validators
+
 from logprep.abc import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to
@@ -32,6 +34,12 @@ class DuplicationError(ListComparisonError):
 
 class ListComparison(Processor):
     """Resolve values in documents by referencing a mapping list."""
+
+    @define
+    class Config(Processor.Config):
+        """list_comparison config"""
+
+        list_search_base_path: str = field(validator=validators.instance_of(str))
 
     __slots__ = ["_list_search_base_dir"]
 

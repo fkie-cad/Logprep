@@ -1,6 +1,6 @@
 """This module contains functionality replacing a text field using a template."""
 from logging import Logger
-from typing import List
+from attr import define, field, validators
 
 from ruamel.yaml import YAML
 
@@ -19,6 +19,13 @@ class TemplateReplacerError(BaseException):
 
 class TemplateReplacer(Processor):
     """Resolve values in documents by referencing a mapping list."""
+
+    @define
+    class Config(Processor.Config):
+        """template_replacer config"""
+
+        template: str = field(validator=validators.instance_of(str))
+        pattern: dict = field(validator=validators.instance_of(dict))
 
     __slots__ = ["_target_field", "_target_field_split", "_fields", "_mapping"]
 

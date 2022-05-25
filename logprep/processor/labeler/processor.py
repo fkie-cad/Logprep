@@ -2,6 +2,8 @@
 
 from logging import Logger
 
+from attr import define, field, validators
+
 from logprep.abc import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelingRule
@@ -9,6 +11,12 @@ from logprep.processor.labeler.rule import LabelingRule
 
 class Labeler(Processor):
     """Processor used to label log events."""
+
+    @define
+    class Config(Processor.Config):
+        """labeler config"""
+
+        schema: str = field(validator=validators.instance_of(str))
 
     __slots__ = ["_schema", "_include_parent_labels"]
 

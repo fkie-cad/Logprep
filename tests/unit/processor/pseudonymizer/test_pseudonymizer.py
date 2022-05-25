@@ -6,7 +6,6 @@ import time
 from copy import deepcopy
 
 import pytest
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.processor_factory_error import ProcessorFactoryError
 from logprep.processor.pseudonymizer.factory import Pseudonymizer, PseudonymizerFactory
