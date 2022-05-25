@@ -78,21 +78,18 @@ class TestProcessorConfiguration:
     def test_raises_if_multiple_mandatory_field_are_missing(self, _, __):
         test_config = {
             "type": "test_processor",
-            "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
-            "mandatory_attribute": "I am mandatory",
-            "optional_attribute": "I am optional",
         }
         with pytest.raises(
             TypeError,
-            match=r"missing 2 required .* arguments: 'hash_salt' and 'html_replace_fields'",
+            match=r"missing 2 required .* arguments: 'mandatory_attribute' and 'specific_rules'",
         ):
             ProcessorConfiguration.create(test_config)
 
     def test_raises_on_wrong_type_in_config_field(self, _, __):
         test_config = {
             "type": "test_processor",
-            "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
+            "specific_rules": "tests/testdata/unit/normalizer/rules/specific/",
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
@@ -102,12 +99,11 @@ class TestProcessorConfiguration:
 
     def test_raises_on_unknown_field(self, _, __):
         test_config = {
-            "type": "normalizer",
-            "hash_salt": "a_secret_tasty_ingredient",
+            "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
-            "regex_mapping": "tests/testdata/unit/normalizer/normalizer_regex_mapping.yml",
-            "html_replace_fields": "tests/testdata/unit/normalizer/html_replace_fields.yml",
+            "mandatory_attribute": "I am mandatory",
+            "optional_attribute": "I am optional",
             "i_shoul_not_be_here": "does not matter",
         }
         with pytest.raises(TypeError, match=r"unexpected keyword argument 'i_shoul_not_be_here'"):
@@ -115,42 +111,33 @@ class TestProcessorConfiguration:
 
     def test_init_non_mandatory_fields_with_default(self, _, __):
         test_config = {
-            "type": "normalizer",
-            "hash_salt": "a_secret_tasty_ingredient",
+            "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
-            "regex_mapping": "tests/testdata/unit/normalizer/normalizer_regex_mapping.yml",
-            "html_replace_fields": "tests/testdata/unit/normalizer/html_replace_fields.yml",
+            "mandatory_attribute": "I am mandatory",
         }
         config = ProcessorConfiguration.create(test_config)
         assert config.tree_config is None
-        assert config.count_grok_pattern_matches is None
+        assert config.optional_attribute is None
 
     def test_init_optional_field_in_sub_class(self, _, __):
         test_config = {
-            "type": "normalizer",
-            "hash_salt": "a_secret_tasty_ingredient",
+            "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
-            "regex_mapping": "tests/testdata/unit/normalizer/normalizer_regex_mapping.yml",
-            "html_replace_fields": "tests/testdata/unit/normalizer/html_replace_fields.yml",
-            "count_grok_pattern_matches": {"count_directory_path": "/tmp", "write_period": 0},
+            "mandatory_attribute": "I am mandatory",
+            "optional_attribute": "I am optional",
         }
         config = ProcessorConfiguration.create(test_config)
-        assert config.count_grok_pattern_matches == {
-            "count_directory_path": "/tmp",
-            "write_period": 0,
-        }
+        assert config.optional_attribute == "I am optional"
 
     def test_init_optional_field_in_base_class(self, _, __):
         test_config = {
-            "type": "normalizer",
-            "hash_salt": "a_secret_tasty_ingredient",
+            "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
-            "regex_mapping": "tests/testdata/unit/normalizer/normalizer_regex_mapping.yml",
-            "html_replace_fields": "tests/testdata/unit/normalizer/html_replace_fields.yml",
+            "mandatory_attribute": "I am mandatory",
             "tree_config": "/tmp",
         }
         config = ProcessorConfiguration.create(test_config)
-        assert config.type == "normalizer"
+        assert config.tree_config == "/tmp"
