@@ -4,6 +4,7 @@ from logging import Logger
 
 from logprep.processor.base.factory import BaseFactory
 from logprep.processor.normalizer.processor import Normalizer
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class NormalizerFactory(BaseFactory):
