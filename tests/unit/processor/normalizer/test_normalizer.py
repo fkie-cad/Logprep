@@ -1026,7 +1026,7 @@ class TestNormalizer(BaseProcessorTestCase):
             {"count_grok_pattern_matches": {"count_directory_path": temp_path, "write_period": 0}}
         )
 
-        self.object = Normalizer("Test Normalizer Name", config, self.logger)
+        self.object = self.factory.create("Test Normalizer Name", config, self.logger)
 
         event = {
             "winlog": {

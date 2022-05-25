@@ -9,9 +9,10 @@ from functools import reduce
 from logging import Logger
 from pathlib import Path
 from time import time
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import arrow
+import attr
 from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
@@ -21,12 +22,24 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
+from logprep.processor.processor_configuration import ProcessorConfiguration
 
 yaml = YAML(typ="safe", pure=True)
 
 
 class Normalizer(Processor):
     """Normalize log events by copying specific values to standardized fields."""
+
+    @attr.define(kw_only=True)
+    class Config(Processor.Config):
+        """config description for Normalizer"""
+
+        hash_salt: str = attr.field(validator=attr.validators.instance_of(str))
+        regex_mapping: str = attr.field(validator=attr.validators.instance_of(str))
+        html_replace_fields: str = attr.field(validator=attr.validators.instance_of(str))
+        count_grok_pattern_matches: Optional[dict] = attr.field(
+            default=None, validator=attr.validators.optional(attr.validators.instance_of(dict))
+        )
 
     __slots__ = [
         "_conflicting_fields",
@@ -60,7 +73,7 @@ class Normalizer(Processor):
 
     rule_class = NormalizerRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: ProcessorConfiguration, logger: Logger):
         self._event = None
         self._conflicting_fields = []
 
@@ -85,7 +98,6 @@ class Normalizer(Processor):
         if self._html_replace_fields:
             with open(self._html_replace_fields, "r", encoding="utf8") as file:
                 self._html_replace_fields = yaml.load(file)
-
         super().__init__(name=name, configuration=configuration, logger=logger)
 
     # pylint: enable=arguments-differ
