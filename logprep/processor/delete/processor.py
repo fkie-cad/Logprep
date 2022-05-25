@@ -1,6 +1,8 @@
 """This module contains a delete processor that can be used for testing purposes."""
 
 from logging import Logger
+
+from attr import define, field, validators
 from logprep.abc import Processor
 from logprep.processor.delete.rule import DeleteRule
 
@@ -21,6 +23,14 @@ class Delete(Processor):
        Must be set to 'I really do' to avoid to prevent accidental deletion of log events.
 
     """
+
+    @define
+    class Config(Processor.Config):
+        """delete configuration"""
+
+        i_really_want_to_delete_all_log_events: str = field(
+            validator=validators.matches_re(r"I really do")
+        )
 
     __slots__ = []
 
