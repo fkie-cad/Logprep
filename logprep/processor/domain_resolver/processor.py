@@ -4,7 +4,8 @@ import socket
 from logging import Logger
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
-from typing import List
+from async_timeout import timeout
+from attr import define, field, validators
 
 from tldextract import TLDExtract
 
@@ -25,6 +26,16 @@ class DomainResolverError(BaseException):
 
 class DomainResolver(Processor):
     """Resolve domains."""
+
+    @define
+    class Config(Processor.Config):
+        """domain_resolver config"""
+
+        tld_list: str = field(validator=validators.instance_of(str))
+        timeout: float = field(validator=validators.instance_of(float))
+        max_cached_domains: int = field(validator=validators.instance_of(int))
+        max_caching_days: int = field(validator=validators.instance_of(int))
+        hash_salt: str = field(validator=validators.instance_of(str))
 
     __slots__ = [
         "_timeout",
