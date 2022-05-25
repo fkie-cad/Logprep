@@ -2,6 +2,7 @@
 import ipaddress
 from logging import Logger
 from typing import List
+from attr import define, field, validators
 
 from tldextract import TLDExtract
 
@@ -32,6 +33,16 @@ class DuplicationError(DomainLabelExtractorError):
 
 class DomainLabelExtractor(Processor):
     """Splits a domain into it's parts/labels."""
+
+    @define
+    class Config(Processor.Config):
+        """domain_label_extractor config"""
+
+        tagging_field_name: str = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
+        )
+
+        tld_lists: list = field(factory=list, validator=validators.instance_of(list))
 
     __slots__ = ["_tld_extractor", "_tagging_field_name"]
 
