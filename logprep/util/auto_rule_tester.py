@@ -15,7 +15,7 @@ from io import StringIO
 from logging import getLogger
 from os import walk, path
 from pprint import pprint
-from typing import Union, Optional, Tuple
+from typing import Tuple
 
 from typing.io import TextIO
 import regex as re

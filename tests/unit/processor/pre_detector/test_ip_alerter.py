@@ -1,3 +1,7 @@
+# pylint: disable=missing-docstring
+# pylint: disable=no-self-use
+# pylint: disable=protected-access
+# pylint: disable=wrong-import-position
 from ipaddress import IPv4Network
 
 import pytest
@@ -7,25 +11,25 @@ pytest.importorskip("logprep.processor.pre_detector")
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 
-ip_alerts_path = "tests/testdata/unit/pre_detector/alert_ips.yml"
-ip_alerts_paths_list = [
+IP_ALERTS_PATH = "tests/testdata/unit/pre_detector/alert_ips.yml"
+IP_ALERTS_PATHS_LIST = [
     "tests/testdata/unit/pre_detector/alert_ips_1.yml",
     "tests/testdata/unit/pre_detector/alert_ips_2.yml",
 ]
 
 
-@pytest.fixture()
-def ip_alerter():
-    return IPAlerter(ip_alerts_path)
+@pytest.fixture(name="ip_alerter")
+def fixture_ip_alerter():
+    return IPAlerter(IP_ALERTS_PATH)
 
 
-@pytest.fixture()
-def rule_without_fields():
+@pytest.fixture(name="rule_without_fields")
+def fixture_rule_without_fields():
     return PreDetectorRule(None, {"anything": "something"})
 
 
-@pytest.fixture()
-def rule_with_fields():
+@pytest.fixture(name="rule_with_fields")
+def fixture_rule_with_fields():
     return PreDetectorRule(None, {"anything": "something"}, ip_fields_to_check=["ip_field"])
 
 
@@ -56,7 +60,7 @@ class TestIPAlerter:
         expected_single_alert_ips = {"27.0.0.1", "13.12.12.13", "127.0.0.1", "12.12.12.12"}
         expected_alert_networks = {IPv4Network("127.0.0.0/8")}
 
-        ip_alerter = IPAlerter(ip_alerts_paths_list)
+        ip_alerter = IPAlerter(IP_ALERTS_PATHS_LIST)
 
         assert ip_alerter._alert_ips_map == expected_alert_ips
         assert ip_alerter._single_alert_ips == expected_single_alert_ips

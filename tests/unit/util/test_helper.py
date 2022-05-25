@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=no-self-use
 from unittest import mock
 import pytest
 from logprep.util.helper import camel_to_snake, get_dotted_field_value
