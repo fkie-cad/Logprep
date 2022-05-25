@@ -5,8 +5,12 @@ from logging import DEBUG, Logger
 from multiprocessing import current_process
 from typing import List, Optional, Union
 
+import attr
+
+
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
+from logprep.processor.processor_configuration import ProcessorConfiguration
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
@@ -17,6 +21,17 @@ from logprep.util.time_measurement import TimeMeasurement
 class Processor(ABC):
     """Abstract Processor Class to define the Interface"""
 
+    @attr.define(kw_only=True)
+    class Config:
+        """config field description"""
+
+        type: str = attr.field(validator=attr.validators.instance_of(str))
+        specific_rules: List[str] = attr.field(validator=attr.validators.instance_of(list))
+        generic_rules: List[str] = attr.field(validator=attr.validators.instance_of(list))
+        tree_config: Optional[str] = attr.field(
+            default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+        )
+
     __slots__ = [
         "name",
         "rule_class",
@@ -26,12 +41,14 @@ class Processor(ABC):
         "_event",
         "_specific_tree",
         "_generic_tree",
+        "_config",
     ]
 
     name: str
     rule_class: Rule
     ps: ProcessorStats
     has_custom_tests: bool
+    _config: Config
     _logger: Logger
     _event: dict
     _specific_tree: RuleTree
@@ -40,17 +57,16 @@ class Processor(ABC):
     _strategy = SpecificGenericProcessStrategy()
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
+        self._config = ProcessorConfiguration.create(configuration)
         self.has_custom_tests = False
         self.name = name
         self._logger = logger
         self.ps = ProcessorStats()
-        tree_config = configuration.get("tree_config")
-        self._specific_tree = RuleTree(config_path=tree_config)
-        self._generic_tree = RuleTree(config_path=tree_config)
-        generic_rules_dirs = configuration.get("generic_rules")
-        specific_rules_dirs = configuration.get("specific_rules")
+        self._specific_tree = RuleTree(config_path=self._config.tree_config)
+        self._generic_tree = RuleTree(config_path=self._config.tree_config)
         self.add_rules_from_directory(
-            generic_rules_dirs=generic_rules_dirs, specific_rules_dirs=specific_rules_dirs
+            generic_rules_dirs=self._config.generic_rules,
+            specific_rules_dirs=self._config.specific_rules,
         )
 
     def __repr__(self):
