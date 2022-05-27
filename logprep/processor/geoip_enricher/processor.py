@@ -37,7 +37,7 @@ class DuplicationError(GeoipEnricherError):
 class GeoipEnricher(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """geoip_enricher config"""
 

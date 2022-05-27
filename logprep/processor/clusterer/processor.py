@@ -18,7 +18,7 @@ from logprep.processor.clusterer.signature_calculation.signature_phase import (
 class Clusterer(Processor):
     """Cluster log events using a heuristic."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """clusterer configuration"""
 

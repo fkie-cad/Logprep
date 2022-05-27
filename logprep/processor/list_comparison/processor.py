@@ -35,7 +35,7 @@ class DuplicationError(ListComparisonError):
 class ListComparison(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """list_comparison config"""
 

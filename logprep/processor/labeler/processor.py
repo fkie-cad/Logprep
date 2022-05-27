@@ -13,7 +13,7 @@ from logprep.processor.labeler.rule import LabelingRule
 class Labeler(Processor):
     """Processor used to label log events."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """labeler config"""
 

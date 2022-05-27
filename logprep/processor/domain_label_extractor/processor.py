@@ -34,7 +34,7 @@ class DuplicationError(DomainLabelExtractorError):
 class DomainLabelExtractor(Processor):
     """Splits a domain into it's parts/labels."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """domain_label_extractor config"""
 

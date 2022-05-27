@@ -271,3 +271,11 @@ class BaseProcessorTestCase(ABC):
         self.object.process(event)
         mock_is_enabled.assert_called()
         mock_debug.assert_called()
+
+    def test_config_attribute_is_config_object(self):
+        assert isinstance(self.object._config, self.object.Config)
+
+    def test_config_object_is_kw_only(self):
+        attr_attributes = self.object._config.__attrs_attrs__
+        for attr in attr_attributes:
+            assert attr.kw_only

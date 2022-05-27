@@ -27,7 +27,7 @@ class DomainResolverError(BaseException):
 class DomainResolver(Processor):
     """Resolve domains."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """domain_resolver config"""
 

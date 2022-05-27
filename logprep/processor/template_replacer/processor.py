@@ -20,7 +20,7 @@ class TemplateReplacerError(BaseException):
 class TemplateReplacer(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """template_replacer config"""
 

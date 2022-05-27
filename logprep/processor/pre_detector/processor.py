@@ -25,7 +25,7 @@ class PreDetectorConfigurationError(PreDetectorError):
 class PreDetector(Processor):
     """Processor used to pre_detect log events."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """pre_detector config"""
 

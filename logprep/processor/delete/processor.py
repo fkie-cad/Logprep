@@ -24,7 +24,7 @@ class Delete(Processor):
 
     """
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """delete configuration"""
 

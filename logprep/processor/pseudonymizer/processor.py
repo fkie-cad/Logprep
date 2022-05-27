@@ -22,7 +22,7 @@ yaml = YAML(typ="safe", pure=True)
 class Pseudonymizer(Processor):
     """Pseudonymize log events to conform to EU privacy laws."""
 
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
         """pseudonymizer config"""
 
