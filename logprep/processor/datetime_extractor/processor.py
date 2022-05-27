@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from logging import Logger
+from typing import TYPE_CHECKING
 
 from dateutil.parser import parse
 from dateutil.tz import tzlocal
@@ -26,7 +27,7 @@ class DatetimeExtractor(Processor):
 
     rule_class = DateTimeExtractorRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
         self._local_timezone = tzlocal()
         self._local_timezone_name = self._get_timezone_name(self._local_timezone)

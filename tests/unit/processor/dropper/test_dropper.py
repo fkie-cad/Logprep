@@ -1,12 +1,8 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
-import copy
 from unittest import mock
 
-import pytest
-from logprep.processor.dropper.factory import Dropper, DropperFactory
-from logprep.processor.dropper.rule import DropperRule
-from logprep.processor.processor_factory_error import ProcessorFactoryError
+from logprep.processor.dropper.processor import Dropper
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -138,17 +134,3 @@ class TestDropper(BaseProcessorTestCase):
         ) as mock_apply_rules:
             self.object.process(document)
             mock_apply_rules.assert_called()
-
-
-class TestDropperFactory:
-    def test_create(self):
-        assert isinstance(
-            DropperFactory.create("foo", TestDropper.CONFIG, TestDropper.logger), Dropper
-        )
-
-    def test_check_configuration(self):
-        DropperFactory._check_configuration(TestDropper.CONFIG)
-        cfg = copy.deepcopy(TestDropper.CONFIG)
-        cfg.pop("type")
-        with pytest.raises(ProcessorFactoryError):
-            DropperFactory._check_configuration(cfg)

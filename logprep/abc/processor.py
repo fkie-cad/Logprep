@@ -10,7 +10,7 @@ from attr import define, field, validators
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
-from logprep.processor.processor_configuration import ProcessorConfiguration
+
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
@@ -56,8 +56,8 @@ class Processor(ABC):
 
     _strategy = SpecificGenericProcessStrategy()
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
-        self._config = ProcessorConfiguration.create(name, configuration)
+    def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
+        self._config = configuration
         self.has_custom_tests = False
         self.name = name
         self._logger = logger

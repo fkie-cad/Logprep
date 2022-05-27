@@ -1,6 +1,7 @@
 """This module contains a delete processor that can be used for testing purposes."""
 
 from logging import Logger
+from typing import TYPE_CHECKING
 
 from attr import define, field, validators
 from logprep.abc import Processor
@@ -36,9 +37,9 @@ class Delete(Processor):
 
     rule_class = DeleteRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
-        i_really_want_to_delete_all_log_events = configuration.get(
-            "i_really_want_to_delete_all_log_events"
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
+        i_really_want_to_delete_all_log_events = (
+            configuration.i_really_want_to_delete_all_log_events
         )
 
         if i_really_want_to_delete_all_log_events != "I really do":

@@ -4,9 +4,11 @@ import errno
 from logging import Logger
 from os import path, makedirs
 from typing import List, Tuple, Any, Dict
+from attr import define, field, validators
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import SkipImportError
+
 
 # pylint: disable=no-name-in-module
 try:
@@ -48,6 +50,12 @@ class DuplicationError(HyperscanResolverError):
 class HyperscanResolver(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
+    @define(kw_only=True)
+    class Config(Processor.Config):
+        """HyperscanResolver config"""
+
+        hyperscan_db_path: str = field(validator=validators.instance_of(str))
+
     __slots__ = ["_hyperscan_database_path", "_hyperscan_databases", "_replacements_from_file"]
 
     _replacements_from_file: dict
@@ -61,13 +69,13 @@ class HyperscanResolver(Processor):
     def __init__(
         self,
         name: str,
-        configuration: dict,
+        configuration: Processor.Config,
         logger: Logger,
     ):
         super().__init__(name=name, configuration=configuration, logger=logger)
         self._hyperscan_databases = {}
 
-        hyperscan_db_path = configuration.get("hyperscan_db_path")
+        hyperscan_db_path = configuration.hyperscan_db_path
         if hyperscan_db_path:
             self._hyperscan_database_path = hyperscan_db_path
         else:

@@ -1,7 +1,7 @@
 """ This module contains functionality to split a domain into it's parts/labels. """
 import ipaddress
 from logging import Logger
-from typing import List
+from typing import TYPE_CHECKING, List
 from attr import define, field, validators
 
 from tldextract import TLDExtract
@@ -39,7 +39,7 @@ class DomainLabelExtractor(Processor):
         """domain_label_extractor config"""
 
         tagging_field_name: str = field(
-            default=None, validator=validators.optional(validators.instance_of(str))
+            default="tags", validator=validators.optional(validators.instance_of(str))
         )
 
         tld_lists: list = field(factory=list, validator=validators.instance_of(list))
@@ -52,7 +52,7 @@ class DomainLabelExtractor(Processor):
 
     rule_class = DomainLabelExtractorRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         """
         Initializes the DomainLabelExtractor processor.
 
@@ -66,7 +66,7 @@ class DomainLabelExtractor(Processor):
             Standard logger.
         """
 
-        tld_lists = configuration.get("tld_lists")
+        tld_lists = configuration.tld_lists
         super().__init__(name=name, configuration=configuration, logger=logger)
 
         if tld_lists is not None:
@@ -74,7 +74,7 @@ class DomainLabelExtractor(Processor):
         else:
             self._tld_extractor = TLDExtract()
 
-        self._tagging_field_name = configuration.get("tagging_field_name", "tags")
+        self._tagging_field_name = configuration.tagging_field_name
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """

@@ -1,5 +1,5 @@
 """This module contains functionality for adding fields using regex lists."""
-from typing import List
+from typing import TYPE_CHECKING, List
 from logging import Logger
 
 
@@ -33,7 +33,7 @@ class GenericAdder(Processor):
 
     rule_class = GenericAdderRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
 
     def _apply_rules(self, event, rule):

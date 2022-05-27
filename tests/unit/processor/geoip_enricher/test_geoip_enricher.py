@@ -3,7 +3,6 @@ from unittest import mock
 
 import pytest
 from geoip2.errors import AddressNotFoundError
-from logprep.processor.geoip_enricher.factory import GeoipEnricherFactory
 from logprep.processor.geoip_enricher.processor import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 

@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import pytest
-from logprep.processor.list_comparison.factory import ListComparisonFactory
 from logprep.processor.list_comparison.processor import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 

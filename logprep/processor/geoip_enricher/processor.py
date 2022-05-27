@@ -49,9 +49,9 @@ class GeoipEnricher(Processor):
 
     rule_class = GeoipEnricherRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        geoip_db_path = configuration.get("db_path")
+        geoip_db_path = configuration.db_path
         self._city_db = database.Reader(geoip_db_path)
 
     @staticmethod

@@ -1,7 +1,7 @@
 """This module contains a Clusterer that clusters events using a heuristic approach."""
 
 from logging import Logger
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from attr import define, field, validators
 from logprep.abc.processor import Processor
@@ -34,11 +34,11 @@ class Clusterer(Processor):
 
     _output_field_name: str
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
         self.matching_rules = []
         self.sps = SignaturePhaseStreaming()
-        self._output_field_name = configuration.get("output_field_name")
+        self._output_field_name = configuration.output_field_name
         self.has_custom_tests = True
 
     def process(self, event: dict):

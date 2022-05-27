@@ -4,7 +4,7 @@ import socket
 from logging import Logger
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
-from async_timeout import timeout
+from typing import Optional
 from attr import define, field, validators
 
 from tldextract import TLDExtract
@@ -32,10 +32,18 @@ class DomainResolver(Processor):
         """domain_resolver config"""
 
         tld_list: str = field(validator=validators.instance_of(str))
-        timeout: float = field(validator=validators.instance_of(float))
+        timeout: Optional[float] = field(
+            default=0.5, validator=validators.optional(validators.instance_of(float))
+        )
         max_cached_domains: int = field(validator=validators.instance_of(int))
         max_caching_days: int = field(validator=validators.instance_of(int))
         hash_salt: str = field(validator=validators.instance_of(str))
+        cache_enabled: bool = field(
+            default=True, validator=validators.optional(validator=validators.instance_of(bool))
+        )
+        debug_cache: bool = field(
+            default=False, validator=validators.optional(validator=validators.instance_of(bool))
+        )
 
     __slots__ = [
         "_timeout",
@@ -72,23 +80,23 @@ class DomainResolver(Processor):
     def __init__(
         self,
         name: str,
-        configuration: dict,
+        configuration: Processor.Config,
         logger: Logger,
     ):
         super().__init__(name=name, configuration=configuration, logger=logger)
 
-        self._timeout = configuration.get("timeout", 0.5)
-        tld_list = configuration.get("tld_list")
+        self._timeout = configuration.timeout
+        tld_list = configuration.tld_list
         self._tld_extractor = TLDExtract(suffix_list_urls=[tld_list])
         self._thread_pool = ThreadPool(processes=1)
 
         self._hasher = SHA256Hasher()
-        self._salt = configuration.get("hash_salt")
-        cache_max_items = configuration.get("max_cached_domains")
-        cache_max_timedelta = datetime.timedelta(days=configuration["max_caching_days"])
+        self._salt = configuration.hash_salt
+        cache_max_items = configuration.max_cached_domains
+        cache_max_timedelta = datetime.timedelta(days=configuration.max_caching_days)
         self._cache = Cache(max_items=cache_max_items, max_timedelta=cache_max_timedelta)
-        self._cache_enabled = configuration.get("cache_enabled", True)
-        self._debug_cache = configuration.get("debug_cache", False)
+        self._cache_enabled = configuration.cache_enabled
+        self._debug_cache = configuration.debug_cache
 
         self._domain_ip_map = {}
 

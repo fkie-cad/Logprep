@@ -3,7 +3,7 @@ This module contains functionality for checking if values exist or not exist in 
 This processor implements black- and whitelisting capabilities.
 """
 from logging import Logger
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from attr import define, field, validators
 
@@ -50,7 +50,7 @@ class ListComparison(Processor):
     def __init__(
         self,
         name: str,
-        configuration: dict,
+        configuration: Processor.Config,
         logger: Logger,
     ):
         """
@@ -66,7 +66,7 @@ class ListComparison(Processor):
             Standard logger.
         """
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self._list_search_base_dir = configuration.get("list_search_base_path")
+        self._list_search_base_dir = configuration.list_search_base_path
 
     def _apply_rules(self, event, rule):
         """

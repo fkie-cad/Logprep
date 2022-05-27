@@ -1,5 +1,6 @@
 """This module contains a Dropper that deletes specified fields."""
 
+from typing import TYPE_CHECKING
 from logging import Logger, DEBUG
 from logprep.abc.processor import Processor
 
@@ -20,7 +21,7 @@ class Dropper(Processor):
 
     rule_class = DropperRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
 
     def _traverse_dict_and_delete(self, dict_: dict, sub_fields, drop_full: bool):

@@ -25,10 +25,13 @@ class ProcessorFactory:
             raise InvalidConfigurationError(
                 "There must be exactly one processor definition per pipeline entry."
             )
-        for processor_name, processor_configuration in configuration.items():
-            if not isinstance(processor_configuration, dict):
+        for processor_name, processor_configuration_dict in configuration.items():
+            if not isinstance(processor_configuration_dict, dict):
                 raise InvalidConfigSpecificationError()
             processor = ProcessorConfiguration.get_processor_class(
-                processor_name, processor_configuration
+                processor_name, processor_configuration_dict
+            )
+            processor_configuration = ProcessorConfiguration.create(
+                processor_name, processor_configuration_dict
             )
             return processor(processor_name, processor_configuration, logger)

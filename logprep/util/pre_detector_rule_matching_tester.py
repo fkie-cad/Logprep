@@ -16,7 +16,7 @@ from colorama import Fore
 
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.processor.pre_detector.processor import PreDetector
-from logprep.processor.pre_detector.factory import PreDetectorFactory
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 
 from logprep.util.helper import print_fcolor
@@ -133,12 +133,13 @@ class RuleMatchingTester:
         # Only needed so processor starts
         processor_cfg = {
             "type": "pre_detector",
-            "rules": list(),
-            "pre_detector_topic": "",
+            "generic_rules": [],
+            "specific_rules": [],
             "tree_config": "",
+            "pre_detector_topic": "",
         }
 
-        processor = PreDetectorFactory.create("pre_detector_name", processor_cfg, logger)
+        processor = ProcessorFactory.create(processor_cfg, logger)
         return processor
 
     def _print_results(self):

@@ -3,9 +3,6 @@
 import re
 from copy import deepcopy
 
-import pytest
-from logprep.processor.pre_detector.factory import PreDetector, PreDetectorFactory
-from logprep.processor.processor_factory_error import ProcessorFactoryError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -305,19 +302,3 @@ class TestPreDetector(BaseProcessorTestCase):
             assert result_pre_detection_id is not None
             assert pre_detection_id == result_pre_detection_id
         assert detection_results == expected_detection_results
-
-
-class TestPreDetectorFactory:
-    def test_create(self):
-        assert isinstance(
-            PreDetectorFactory.create("foo", TestPreDetector.CONFIG, TestPreDetector.logger),
-            PreDetector,
-        )
-
-    def test_check_configuration(self):
-        PreDetectorFactory._check_configuration(TestPreDetector.CONFIG)
-        for i in range(len(TestPreDetector.CONFIG)):
-            cfg = deepcopy(TestPreDetector.CONFIG)
-            cfg.pop(list(cfg)[i])
-            with pytest.raises(ProcessorFactoryError):
-                PreDetectorFactory._check_configuration(cfg)

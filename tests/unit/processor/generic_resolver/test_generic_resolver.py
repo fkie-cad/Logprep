@@ -1,17 +1,14 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
-import copy
 from collections import OrderedDict
 
 import pytest
-from logprep.processor.generic_resolver.factory import GenericResolverFactory
 from logprep.processor.generic_resolver.processor import (
     DuplicationError,
     GenericResolver,
     GenericResolverError,
 )
-from logprep.processor.processor_factory_error import ProcessorFactoryError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -435,17 +432,3 @@ class TestGenericResolver(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document == expected
-
-
-class TestGenericResolverFactory(TestGenericResolver):
-    def test_create(self):
-        assert isinstance(
-            GenericResolverFactory.create("foo", self.CONFIG, self.logger), GenericResolver
-        )
-
-    def test_check_configuration(self):
-        GenericResolverFactory._check_configuration(self.CONFIG)
-        cfg = copy.deepcopy(self.CONFIG)
-        cfg.pop("type")
-        with pytest.raises(ProcessorFactoryError):
-            GenericResolverFactory._check_configuration(cfg)

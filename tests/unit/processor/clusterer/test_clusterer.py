@@ -1,13 +1,8 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
-import copy
 from unittest import mock
 
-import pytest
-from logprep.processor.clusterer.factory import ClustererFactory
-from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.clusterer.rule import ClustererRule
-from logprep.processor.processor_factory_error import ProcessorFactoryError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -168,21 +163,3 @@ class TestClusterer(BaseProcessorTestCase):
         self.object._cluster(document, [rule])
 
         assert document == expected
-
-
-class TestClustererFactory:
-
-    CONFIG = TestClusterer.CONFIG
-
-    logger = TestClusterer.logger
-
-    def test_create(self):
-        assert isinstance(ClustererFactory.create("foo", self.CONFIG, self.logger), Clusterer)
-
-    def test_check_configuration(self):
-        ClustererFactory._check_configuration(self.CONFIG)
-        for i in range(len(self.CONFIG)):
-            cfg = copy.deepcopy(self.CONFIG)
-            cfg.pop(list(cfg)[i])
-            with pytest.raises(ProcessorFactoryError):
-                ClustererFactory._check_configuration(cfg)

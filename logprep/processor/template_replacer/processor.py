@@ -7,6 +7,7 @@ from ruamel.yaml import YAML
 from logprep.abc import Processor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 
+
 yaml = YAML(typ="safe", pure=True)
 
 
@@ -39,10 +40,10 @@ class TemplateReplacer(Processor):
 
     rule_class = TemplateReplacerRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        pattern = configuration.get("pattern")
-        template_path = configuration.get("template")
+        pattern = configuration.pattern
+        template_path = configuration.template
         self._target_field = pattern["target_field"]
         self._target_field_split = self._target_field.split(".")
         self._fields = pattern["fields"]

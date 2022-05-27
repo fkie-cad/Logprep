@@ -1,12 +1,13 @@
 """This module contains functionality for resolving log event values using regex lists."""
 import re
 from logging import Logger
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from ruamel.yaml import YAML
 
 from logprep.abc import Processor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
+
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -42,7 +43,7 @@ class GenericResolver(Processor):
     def __init__(
         self,
         name: str,
-        configuration: dict,
+        configuration: Processor.Config,
         logger: Logger,
     ):
         super().__init__(name=name, configuration=configuration, logger=logger)

@@ -13,12 +13,10 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 from logprep.processor.hyperscan_resolver.rule import (
     InvalidHyperscanResolverDefinition,
-    HyperscanResolverRule,
 )
 
 pytest.importorskip("logprep.processor.hyperscan_resolver")
 
-from logprep.processor.hyperscan_resolver.factory import HyperscanResolverFactory
 from logprep.processor.hyperscan_resolver.processor import (
     HyperscanResolver,
     DuplicationError,
@@ -35,6 +33,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
         "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
         "generic_rules": ["tests/testdata/unit/hyperscan_resolver/rules/generic/"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+        "hyperscan_db_path": "/tmp/test_db",
     }
 
     def test_resolve_instantiates(self):
@@ -393,6 +392,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
         "generic_rules": ["tests/testdata/unit/hyperscan_resolver/rules/generic/"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+        "hyperscan_db_path": "/tmp/test_db",
     }
 
     def test_resolve_no_conflict_from_file(self):

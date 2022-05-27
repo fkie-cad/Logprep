@@ -3,7 +3,7 @@
 import datetime
 import re
 from logging import Logger
-from typing import Any, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs
 from attr import define, field, validators
 
@@ -15,6 +15,7 @@ from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
+
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -77,23 +78,23 @@ class Pseudonymizer(Processor):
 
     rule_class = PseudonymizerRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
-        self._pubkey_analyst = configuration.get("pubkey_analyst")
-        self._pubkey_depseudo = configuration.get("pubkey_depseudo")
-        self._hash_salt = configuration.get("hash_salt")
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
+        self._pubkey_analyst = configuration.pubkey_analyst
+        self._pubkey_depseudo = configuration.pubkey_depseudo
+        self._hash_salt = configuration.hash_salt
         self._hasher = SHA256Hasher()
         self._encrypter = DualPKCS1HybridEncrypter()
 
-        self._pseudonyms_topic = configuration.get("pseudonyms_topic")
+        self._pseudonyms_topic = configuration.pseudonyms_topic
 
-        self._regex_mapping_path = configuration.get("regex_mapping")
+        self._regex_mapping_path = configuration.regex_mapping
         self._regex_mapping = {}
 
-        self._cache_max_items = configuration.get("max_cached_pseudonyms")
-        self._cache_max_timedelta = datetime.timedelta(days=configuration.get("max_caching_days"))
+        self._cache_max_items = configuration.max_cached_pseudonyms
+        self._cache_max_timedelta = datetime.timedelta(days=configuration.max_caching_days)
         self._cache = None
 
-        self._tld_list = configuration.get("tld_list")
+        self._tld_list = configuration.tld_list
         self._url_extractor = URLExtract()
         self.pseudonyms = []
         self.pseudonymized_fields = set()

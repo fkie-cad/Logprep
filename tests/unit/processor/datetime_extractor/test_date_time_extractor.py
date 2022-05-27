@@ -12,7 +12,6 @@ from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
 from dateutil.parser import parse
 
-from logprep.processor.datetime_extractor.factory import DatetimeExtractorFactory
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 
 

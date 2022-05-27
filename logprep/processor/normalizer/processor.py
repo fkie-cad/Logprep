@@ -9,7 +9,7 @@ from functools import reduce
 from logging import Logger
 from pathlib import Path
 from time import time
-from typing import List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 import arrow
 from attr import define, field, validators
@@ -22,7 +22,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
-from logprep.processor.processor_configuration import ProcessorConfiguration
+
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -43,6 +43,9 @@ class Normalizer(Processor):
         )
         count_grok_pattern_matches: Optional[dict] = field(
             default=None, validator=validators.optional(validators.instance_of(dict))
+        )
+        grok_patterns: Optional[str] = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
         )
 
     __slots__ = [
@@ -77,14 +80,14 @@ class Normalizer(Processor):
 
     rule_class = NormalizerRule
 
-    def __init__(self, name: str, configuration: ProcessorConfiguration, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         self._event = None
         self._conflicting_fields = []
 
-        self._regex_mapping = configuration.get("regex_mapping")
-        self._html_replace_fields = configuration.get("html_replace_fields")
+        self._regex_mapping = configuration.regex_mapping
+        self._html_replace_fields = configuration.html_replace_fields
 
-        self._count_grok_pattern_matches = configuration.get("count_grok_pattern_matches")
+        self._count_grok_pattern_matches = configuration.count_grok_pattern_matches
         if self._count_grok_pattern_matches:
             self._grok_matches_path = self._count_grok_pattern_matches["count_directory_path"]
             self._file_lock_path = self._count_grok_pattern_matches.get(
@@ -94,7 +97,7 @@ class Normalizer(Processor):
             self._grok_cnt_timer = time()
             self._grok_pattern_matches = {}
 
-        NormalizerRule.additional_grok_patterns = configuration.get("grok_patterns")
+        NormalizerRule.additional_grok_patterns = configuration.grok_patterns
 
         with open(self._regex_mapping, "r", encoding="utf8") as file:
             self._regex_mapping = yaml.load(file)

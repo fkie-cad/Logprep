@@ -5,7 +5,7 @@ As the processor is applied to all events it does not need further filtering by 
 """
 
 from logging import Logger
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from logprep.abc.processor import Processor
 
@@ -25,7 +25,7 @@ class SelectiveExtractor(Processor):
     def __init__(
         self,
         name: str,
-        configuration: dict,
+        configuration: Processor.Config,
         logger: Logger,
     ):
         super().__init__(name=name, configuration=configuration, logger=logger)

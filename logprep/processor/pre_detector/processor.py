@@ -1,7 +1,7 @@
 """This module contains functionality for pre-detecting attacks."""
 
 from logging import DEBUG, Logger
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from attr import field, define, validators
@@ -46,12 +46,12 @@ class PreDetector(Processor):
 
     rule_class = PreDetectorRule
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self._pre_detector_topic = configuration.get("pre_detector_topic")
+        self._pre_detector_topic = configuration.pre_detector_topic
         self._event = None
         self._ids = []
-        alert_ip_list_path = configuration.get("alert_ip_list_path")
+        alert_ip_list_path = configuration.alert_ip_list_path
         self._ip_alerter = IPAlerter(alert_ip_list_path)
 
     def process(self, event: dict) -> tuple:

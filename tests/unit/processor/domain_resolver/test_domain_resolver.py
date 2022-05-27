@@ -7,7 +7,6 @@ from time import sleep
 
 import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.domain_resolver.factory import DomainResolverFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 rel_tld_list_path = "tests/testdata/external/public_suffix_list.dat"

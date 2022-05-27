@@ -1,14 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import copy
 import datetime
 import time
 from copy import deepcopy
 
 import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.processor_factory_error import ProcessorFactoryError
-from logprep.processor.pseudonymizer.factory import Pseudonymizer, PseudonymizerFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -633,24 +630,3 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         return event
-
-
-class TestPseudonymizerFactory:
-
-    CONFIG = TestPseudonymizer.CONFIG
-
-    logger = TestPseudonymizer.logger
-
-    def test_create(self):
-        assert isinstance(
-            PseudonymizerFactory.create("foo", self.CONFIG, self.logger), Pseudonymizer
-        )
-
-    def test_check_configuration(self):
-        PseudonymizerFactory._check_configuration(self.CONFIG)
-        for i in range(len(self.CONFIG)):
-            cfg = copy.deepcopy(self.CONFIG)
-            print(list(cfg)[i])
-            cfg.pop(list(cfg)[i])
-            with pytest.raises(ProcessorFactoryError):
-                PseudonymizerFactory._check_configuration(cfg)

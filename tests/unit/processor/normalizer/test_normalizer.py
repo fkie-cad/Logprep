@@ -17,7 +17,6 @@ from logprep.processor.normalizer.rule import (
     InvalidNormalizationDefinition,
     NormalizerRule,
 )
-from logprep.processor.processor_factory import ProcessorFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 

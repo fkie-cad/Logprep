@@ -1,14 +1,11 @@
 """module for processor configuration """
-import importlib
-import os
 from typing import TYPE_CHECKING, Any, Mapping
 
-from logprep import processor
+from logprep.processor.processor_registry import ProcessorRegistry
 from logprep.processor.processor_factory_error import (
     NoTypeSpecifiedError,
     UnknownProcessorTypeError,
 )
-from logprep.util.helper import snake_to_camel
 
 if TYPE_CHECKING:
     from logprep.abc import Processor
@@ -61,11 +58,8 @@ class ProcessorConfiguration:
         """
         if "type" not in config_:
             raise NoTypeSpecifiedError(processor_name)
-        item_filter = lambda file_item: not any([file_item.startswith("_"), file_item == "base"])
-        processors = list(filter(item_filter, os.listdir(processor.__path__[0])))
+        processors = ProcessorRegistry.mapping
         processor_type = config_.get("type")
         if processor_type not in processors:
             raise UnknownProcessorTypeError(processor_type)
-        processor_module = importlib.import_module(f"logprep.processor.{processor_type}.processor")
-        processor_class_name = snake_to_camel(processor_type)
-        return getattr(processor_module, processor_class_name)
+        return ProcessorRegistry.get_processor_class(processor_type)

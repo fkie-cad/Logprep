@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+from copy import deepcopy
 import sys
 from typing import Optional
 from unittest import mock
@@ -11,6 +12,7 @@ from logprep.processor.processor_factory_error import (
     NoTypeSpecifiedError,
     UnknownProcessorTypeError,
 )
+from logprep.processor.processor_registry import ProcessorRegistry
 
 
 class TestProcessor(Processor):
@@ -26,10 +28,17 @@ class TestProcessor(Processor):
         pass
 
 
-@mock.patch("os.listdir", return_value=["test_processor"])
-@mock.patch("importlib.import_module", return_value=sys.modules[__name__])
+original_registry_mapping = deepcopy(ProcessorRegistry.mapping)
+
+
 class TestProcessorConfiguration:
-    def test_reads_test_config(self, _, __):
+    def setup_method(self):
+        ProcessorRegistry.mapping = {"test_processor": TestProcessor}
+
+    def teardown_method(self):
+        ProcessorRegistry.mapping = original_registry_mapping
+
+    def test_reads_test_config(self):
         test_config = {
             "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
@@ -42,7 +51,7 @@ class TestProcessorConfiguration:
         assert config.mandatory_attribute == "I am mandatory"
         assert config.generic_rules == ["tests/testdata/unit/normalizer/rules/generic/"]
 
-    def test_raises_on_missing_type(self, _, __):
+    def test_raises_on_missing_type(self):
         test_config = {
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
@@ -52,7 +61,7 @@ class TestProcessorConfiguration:
         with pytest.raises(NoTypeSpecifiedError):
             ProcessorConfiguration.create("dummy name", test_config)
 
-    def test_raises_on_unknown_processor(self, _, __):
+    def test_raises_on_unknown_processor(self):
         test_config = {
             "type": "unknown_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
@@ -63,7 +72,7 @@ class TestProcessorConfiguration:
         with pytest.raises(UnknownProcessorTypeError):
             ProcessorConfiguration.create("dummy name", test_config)
 
-    def test_raises_if_one_mandatory_field_is_missing(self, _, __):
+    def test_raises_if_one_mandatory_field_is_missing(self):
         test_config = {
             "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
@@ -75,7 +84,7 @@ class TestProcessorConfiguration:
         ):
             ProcessorConfiguration.create("dummy name", test_config)
 
-    def test_raises_if_mandatory_attribute_from_base_is_missing(self, _, __):
+    def test_raises_if_mandatory_attribute_from_base_is_missing(self):
         test_config = {
             "type": "test_processor",
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
@@ -87,7 +96,7 @@ class TestProcessorConfiguration:
         ):
             ProcessorConfiguration.create("dummy name", test_config)
 
-    def test_raises_if_multiple_mandatory_field_are_missing(self, _, __):
+    def test_raises_if_multiple_mandatory_field_are_missing(self):
         test_config = {
             "type": "test_processor",
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
@@ -98,7 +107,7 @@ class TestProcessorConfiguration:
         ):
             ProcessorConfiguration.create("dummy name", test_config)
 
-    def test_raises_on_wrong_type_in_config_field(self, _, __):
+    def test_raises_on_wrong_type_in_config_field(self):
         test_config = {
             "type": "test_processor",
             "specific_rules": "tests/testdata/unit/normalizer/rules/specific/",
@@ -109,7 +118,7 @@ class TestProcessorConfiguration:
         with pytest.raises(TypeError, match=r"'specific_rules' must be <class 'list'>"):
             ProcessorConfiguration.create("dummy name", test_config)
 
-    def test_raises_on_unknown_field(self, _, __):
+    def test_raises_on_unknown_field(self):
         test_config = {
             "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
@@ -121,7 +130,7 @@ class TestProcessorConfiguration:
         with pytest.raises(TypeError, match=r"unexpected keyword argument 'i_shoul_not_be_here'"):
             ProcessorConfiguration.create("dummy name", test_config)
 
-    def test_init_non_mandatory_fields_with_default(self, _, __):
+    def test_init_non_mandatory_fields_with_default(self):
         test_config = {
             "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
@@ -132,7 +141,7 @@ class TestProcessorConfiguration:
         assert config.tree_config is None
         assert config.optional_attribute is None
 
-    def test_init_optional_field_in_sub_class(self, _, __):
+    def test_init_optional_field_in_sub_class(self):
         test_config = {
             "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
@@ -143,7 +152,7 @@ class TestProcessorConfiguration:
         config = ProcessorConfiguration.create("dummy name", test_config)
         assert config.optional_attribute == "I am optional"
 
-    def test_init_optional_field_in_base_class(self, _, __):
+    def test_init_optional_field_in_base_class(self):
         test_config = {
             "type": "test_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
