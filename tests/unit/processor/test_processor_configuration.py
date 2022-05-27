@@ -12,7 +12,7 @@ from logprep.processor.processor_configuration import (
 
 
 class TestProcessor(Processor):
-    @define
+    @define(kw_only=True)
     class Config(Processor.Config):
 
         mandatory_attribute: str = field(validator=validators.instance_of(str))
@@ -75,6 +75,18 @@ class TestProcessorConfiguration:
         ):
             ProcessorConfiguration.create(test_config)
 
+    def test_raises_if_mandatory_attribute_from_base_is_missing(self, _, __):
+        test_config = {
+            "type": "test_processor",
+            "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
+            "mandatory_attribute": "does not matter",
+        }
+        with pytest.raises(
+            TypeError,
+            match=r"missing 1 required .* argument: 'specific_rules'",
+        ):
+            ProcessorConfiguration.create(test_config)
+
     def test_raises_if_multiple_mandatory_field_are_missing(self, _, __):
         test_config = {
             "type": "test_processor",
@@ -82,7 +94,7 @@ class TestProcessorConfiguration:
         }
         with pytest.raises(
             TypeError,
-            match=r"missing 2 required .* arguments: 'mandatory_attribute' and 'specific_rules'",
+            match=r"missing 2 required .* arguments: .*'specific_rules' and 'mandatory_attribute'",
         ):
             ProcessorConfiguration.create(test_config)
 
