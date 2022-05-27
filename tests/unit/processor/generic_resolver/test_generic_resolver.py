@@ -1,26 +1,18 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
-# pylint: disable=wrong-import-order
 import copy
 from collections import OrderedDict
-from logging import getLogger
 
 import pytest
-
-
-pytest.importorskip("logprep.processor.generic_resolver")
-
-from tests.unit.processor.base import BaseProcessorTestCase
 from logprep.processor.generic_resolver.factory import GenericResolverFactory
 from logprep.processor.generic_resolver.processor import (
-    GenericResolver,
     DuplicationError,
+    GenericResolver,
     GenericResolverError,
 )
 from logprep.processor.processor_factory_error import ProcessorFactoryError
-
-logger = getLogger()
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestGenericResolver(BaseProcessorTestCase):
