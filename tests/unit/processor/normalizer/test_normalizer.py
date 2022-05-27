@@ -12,7 +12,6 @@ import pytest
 from copy import deepcopy
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import NormalizerError
-from logprep.processor.normalizer.factory import Normalizer, NormalizerFactory
 from logprep.processor.normalizer.rule import (
     InvalidGrokDefinition,
     InvalidNormalizationDefinition,

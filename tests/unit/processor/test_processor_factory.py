@@ -134,19 +134,3 @@ def test_create_labeler_creates_labeler_processor():
     )
 
     assert isinstance(processor, Labeler)
-
-
-def test_load_processors_without_skip_error():
-    base_path = os.path.dirname(tests.testdata.unit.processor_factory.__file__)
-
-    assert "tests.testdata.unit.processor_factory.test_processor.processor" not in sys.modules
-    assert (
-        "tests.testdata.unit.processor_factory.test_broken_processor.processor" not in sys.modules
-    )
-
-    ProcessorFactory.load_plugins(base_path)
-
-    assert "tests.testdata.unit.processor_factory.test_processor.processor" in sys.modules
-    assert (
-        "tests.testdata.unit.processor_factory.test_broken_processor.processor" not in sys.modules
-    )

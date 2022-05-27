@@ -57,7 +57,7 @@ class Processor(ABC):
     _strategy = SpecificGenericProcessStrategy()
 
     def __init__(self, name: str, configuration: dict, logger: Logger):
-        self._config = ProcessorConfiguration.create(configuration)
+        self._config = ProcessorConfiguration.create(name, configuration)
         self.has_custom_tests = False
         self.name = name
         self._logger = logger
