@@ -6,7 +6,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDelete(BaseProcessorTestCase):
-    factory = DeleteFactory
 
     CONFIG = {
         "type": "delete",

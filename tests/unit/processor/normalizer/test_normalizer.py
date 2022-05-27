@@ -18,13 +18,11 @@ from logprep.processor.normalizer.rule import (
     InvalidNormalizationDefinition,
     NormalizerRule,
 )
-from logprep.processor.processor_factory_error import ProcessorFactoryError
+from logprep.processor.processor_factory import ProcessorFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestNormalizer(BaseProcessorTestCase):
-
-    factory = NormalizerFactory
 
     CONFIG = {
         "type": "normalizer",
@@ -1025,8 +1023,8 @@ class TestNormalizer(BaseProcessorTestCase):
         config.update(
             {"count_grok_pattern_matches": {"count_directory_path": temp_path, "write_period": 0}}
         )
-
-        self.object = self.factory.create("Test Normalizer Name", config, self.logger)
+        processor_config = {"Test Normalizer Name": config}
+        self.object = ProcessorFactory.create(processor_config, self.logger)
 
         event = {
             "winlog": {
@@ -1086,20 +1084,3 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert event.get("some_ip") == "123.123.123.123"
         assert event.get("port") == 1234
-
-
-class TestNormalizerFactory:
-
-    CONFIG = TestNormalizer.CONFIG
-
-    logger = TestNormalizer.logger
-
-    def test_create(self):
-        assert isinstance(NormalizerFactory.create("foo", self.CONFIG, self.logger), Normalizer)
-
-    def test_check_configuration(self):
-        NormalizerFactory._check_configuration(self.CONFIG)
-        cfg = copy.deepcopy(self.CONFIG)
-        cfg.pop("type")
-        with pytest.raises(ProcessorFactoryError):
-            NormalizerFactory._check_configuration(cfg)

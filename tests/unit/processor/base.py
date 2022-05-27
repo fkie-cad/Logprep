@@ -10,6 +10,7 @@ from unittest import mock
 
 import pytest
 from logprep.abc.processor import Processor
+from logprep.processor.processor_factory import ProcessorFactory
 
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -22,8 +23,6 @@ from logprep.util.time_measurement import TimeMeasurement
 class BaseProcessorTestCase(ABC):
 
     mocks: dict = {}
-
-    factory = None
 
     CONFIG: dict = {}
 
@@ -86,12 +85,10 @@ class BaseProcessorTestCase(ABC):
             patcher = mock.patch(name, **kwargs)
             patcher.start()
             self.patchers.append(patcher)
-        if self.factory is not None:
-            self.object = self.factory.create(
-                name="Test Instance Name", configuration=self.CONFIG, logger=self.logger
-            )
-            self.specific_rules = self.set_rules(self.specific_rules_dirs)
-            self.generic_rules = self.set_rules(self.generic_rules_dirs)
+        config = {"Test Instance Name": self.CONFIG}
+        self.object = ProcessorFactory.create(configuration=config, logger=self.logger)
+        self.specific_rules = self.set_rules(self.specific_rules_dirs)
+        self.generic_rules = self.set_rules(self.generic_rules_dirs)
 
     def teardown_method(self) -> None:
         """teardown for all methods"""

@@ -14,8 +14,6 @@ RULES_DIR_FIRST_EXISTING = "tests/testdata/unit/generic_adder/rules_first_existi
 
 class TestGenericAdder(BaseProcessorTestCase):
 
-    factory = GenericAdderFactory
-
     CONFIG = {
         "type": "generic_adder",
         "generic_rules": ["tests/testdata/unit/generic_adder/rules/generic"],

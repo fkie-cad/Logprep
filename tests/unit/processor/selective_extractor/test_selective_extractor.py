@@ -10,8 +10,6 @@ from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
 
-    factory = SelectiveExtractorFactory
-
     CONFIG = {
         "type": "selective_extractor",
         "specific_rules": ["tests/testdata/unit/selective_extractor/rules/specific"],

@@ -14,7 +14,6 @@ class TestListComparison(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
         "list_search_base_path": "./",
     }
-    factory = ListComparisonFactory
 
     @property
     def generic_rules_dirs(self):

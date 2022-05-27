@@ -18,8 +18,6 @@ from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 
 class TestDatetimeExtractor(BaseProcessorTestCase):
 
-    factory = DatetimeExtractorFactory
-
     CONFIG = {
         "type": "datetime_extractor",
         "specific_rules": ["tests/testdata/unit/datetime_extractor/rules/specific"],

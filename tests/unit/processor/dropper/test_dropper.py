@@ -11,7 +11,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDropper(BaseProcessorTestCase):
-    factory = DropperFactory
 
     CONFIG = {
         "type": "dropper",

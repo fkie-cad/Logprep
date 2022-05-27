@@ -25,8 +25,6 @@ logger = getLogger()
 
 class TestGenericResolver(BaseProcessorTestCase):
 
-    factory = GenericResolverFactory
-
     CONFIG = {
         "type": "generic_resolver",
         "specific_rules": ["tests/testdata/unit/generic_resolver/rules/specific/"],

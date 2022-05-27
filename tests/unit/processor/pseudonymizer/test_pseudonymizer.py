@@ -19,8 +19,6 @@ CACHE_MAX_TIMEDELTA = datetime.timedelta(milliseconds=100)
 
 class TestPseudonymizer(BaseProcessorTestCase):
 
-    factory = PseudonymizerFactory
-
     CONFIG = {
         "type": "pseudonymizer",
         "pseudonyms_topic": "pseudonyms",

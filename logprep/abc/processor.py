@@ -5,7 +5,7 @@ from logging import DEBUG, Logger
 from multiprocessing import current_process
 from typing import List, Optional, Union
 
-import attr
+from attr import define, field, validators
 
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -21,15 +21,15 @@ from logprep.util.time_measurement import TimeMeasurement
 class Processor(ABC):
     """Abstract Processor Class to define the Interface"""
 
-    @attr.define(kw_only=True)
+    @define(kw_only=True)
     class Config:
         """config field description"""
 
-        type: str = attr.field(validator=attr.validators.instance_of(str))
-        specific_rules: List[str] = attr.field(validator=attr.validators.instance_of(list))
-        generic_rules: List[str] = attr.field(validator=attr.validators.instance_of(list))
-        tree_config: Optional[str] = attr.field(
-            default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+        type: str = field(validator=validators.instance_of(str))
+        specific_rules: List[str] = field(validator=validators.instance_of(list))
+        generic_rules: List[str] = field(validator=validators.instance_of(list))
+        tree_config: Optional[str] = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
         )
 
     __slots__ = [

@@ -44,8 +44,6 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
     mocks = {"geoip2.database.Reader": {"new": ReaderMock()}}
 
-    factory = GeoipEnricherFactory
-
     CONFIG = {
         "type": "geoip_enricher",
         "specific_rules": ["tests/testdata/unit/geoip_enricher/rules/specific"],

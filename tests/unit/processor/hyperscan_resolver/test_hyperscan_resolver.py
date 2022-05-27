@@ -30,8 +30,6 @@ logger = getLogger()
 
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
 
-    factory = HyperscanResolverFactory
-
     CONFIG = {
         "type": "hyperscan_resolver",
         "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
@@ -389,8 +387,6 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
 
 
 class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
-
-    factory = HyperscanResolverFactory
 
     CONFIG = {
         "type": "hyperscan_resolver",

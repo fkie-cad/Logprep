@@ -75,8 +75,6 @@ def empty_schema():
 class TestLabeler(BaseProcessorTestCase):
     timeout = 0.01
 
-    factory = LabelerFactory
-
     CONFIG = {
         "type": "labeler",
         "schema": "tests/testdata/unit/labeler/schemas/schema.json",

@@ -9,8 +9,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 class TestWinMessageReplacer(BaseProcessorTestCase):
 
-    factory = TemplateReplacerFactory
-
     CONFIG = {
         "type": "template_replacer",
         "generic_rules": ["tests/testdata/unit/template_replacer/rules/generic"],

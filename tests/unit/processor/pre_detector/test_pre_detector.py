@@ -11,8 +11,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 class TestPreDetector(BaseProcessorTestCase):
 
-    factory = PreDetectorFactory
-
     CONFIG = {
         "type": "pre_detector",
         "generic_rules": ["tests/testdata/unit/pre_detector/rules/generic"],

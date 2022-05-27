@@ -16,8 +16,6 @@ tld_list = f"file://{Path().absolute().joinpath(rel_tld_list_path).as_posix()}"
 
 class TestDomainResolver(BaseProcessorTestCase):
 
-    factory = DomainResolverFactory
-
     CONFIG = {
         "type": "domain_resolver",
         "generic_rules": ["tests/testdata/unit/domain_resolver/rules/generic"],

@@ -17,22 +17,12 @@ from logprep.processor.processor_factory_error import ProcessorFactoryError
 
 class TestClusterer(BaseProcessorTestCase):
 
-    factory = ClustererFactory
-
     CONFIG = {
         "type": "clusterer",
         "output_field_name": "cluster_signature",
         "generic_rules": ["tests/testdata/unit/clusterer/rules/generic"],
         "specific_rules": ["tests/testdata/unit/clusterer/rules/specific"],
     }
-
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG.get("generic_rules")
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG.get("specific_rules")
 
     def test_has_tag_clusterable(self):
         # Sample without PRI, since PRI makes a log clusterable irrespective of the tag
