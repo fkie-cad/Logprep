@@ -34,7 +34,7 @@ class TestCache:
         for _ in range(3):
             assert cache.requires_storing("foo")
             assert not cache.requires_storing("foo")
-            time.sleep(0.1)
+            time.sleep(0.1)  # nosemgrep
 
     def test_requires_storing_zero_deltatime(self, cache):
         cache._max_timedelta = datetime.timedelta(days=0)
