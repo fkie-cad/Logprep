@@ -37,7 +37,9 @@ class PreDetector(Processor):
             default=None, validator=validators.optional(validator=validators.instance_of(str))
         )
 
-    __slots__ = ["detection_results", "_pre_detector_topic", "_ids", "__dict__"]
+    __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
+    if not sys.version_info.minor < 7:
+        __slots__.append("__dict__")
 
     _ids: list
 

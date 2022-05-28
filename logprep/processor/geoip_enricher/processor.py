@@ -46,7 +46,10 @@ class GeoipEnricher(Processor):
 
         db_path: str = field(validator=[validators.instance_of(str)])
 
-    __slots__ = ["__dict__"]
+    __slots__ = []
+
+    if not sys.version_info.minor < 7:
+        __slots__.append("__dict__")
 
     rule_class = GeoipEnricherRule
 

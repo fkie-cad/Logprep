@@ -51,10 +51,9 @@ class DomainResolver(Processor):
             default=False, validator=validators.optional(validator=validators.instance_of(bool))
         )
 
-    __slots__ = [
-        "_domain_ip_map",
-        "__dict__",
-    ]
+    __slots__ = ["_domain_ip_map"]
+    if not sys.version_info.minor < 7:
+        __slots__.append("__dict__")
 
     _domain_ip_map: dict
 
