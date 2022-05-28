@@ -2,8 +2,7 @@
 This module contains functionality for checking if values exist or not exist in file lists.
 This processor implements black- and whitelisting capabilities.
 """
-from logging import Logger
-from typing import TYPE_CHECKING, List
+from typing import List
 
 from attr import define, field, validators
 
@@ -41,32 +40,7 @@ class ListComparison(Processor):
 
         list_search_base_path: str = field(validator=validators.instance_of(str))
 
-    __slots__ = ["_list_search_base_dir"]
-
-    _list_search_base_dir: str
-
     rule_class = ListComparisonRule
-
-    def __init__(
-        self,
-        name: str,
-        configuration: Processor.Config,
-        logger: Logger,
-    ):
-        """
-        Initializes the list_comparison processor.
-
-        Parameters
-        ----------
-        name : str
-            Name of the list_comparison processor (as referred to in the pipeline).
-        configuration : dict
-            Configuration object containing all necessary parameters
-        logger : Logger
-            Standard logger.
-        """
-        super().__init__(name=name, configuration=configuration, logger=logger)
-        self._list_search_base_dir = configuration.list_search_base_path
 
     def _apply_rules(self, event, rule):
         """

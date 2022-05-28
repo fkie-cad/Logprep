@@ -1,7 +1,7 @@
 """This module contains functionality for resolving log event values using regex lists."""
 import re
 from logging import Logger
-from typing import TYPE_CHECKING, List
+from typing import List
 
 from ruamel.yaml import YAML
 

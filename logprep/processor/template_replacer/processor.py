@@ -88,8 +88,8 @@ class TemplateReplacer(Processor):
 
     def _apply_rules(self, event, rule):
         _dict = self._mapping
-        for field in self._fields:
-            dotted_field_value = self._get_dotted_field_value(event, field)
+        for field_ in self._fields:
+            dotted_field_value = self._get_dotted_field_value(event, field_)
             if dotted_field_value is None:
                 return
 
@@ -109,9 +109,9 @@ class TemplateReplacer(Processor):
     def _field_exists(event: dict, dotted_field: str) -> bool:
         fields = dotted_field.split(".")
         dict_ = event
-        for field in fields:
-            if field in dict_:
-                dict_ = dict_[field]
+        for field_ in fields:
+            if field_ in dict_:
+                dict_ = dict_[field_]
             else:
                 return False
         return True
