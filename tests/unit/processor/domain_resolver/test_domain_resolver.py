@@ -9,8 +9,8 @@ import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
-rel_tld_list_path = "tests/testdata/external/public_suffix_list.dat"
-tld_list = f"file://{Path().absolute().joinpath(rel_tld_list_path).as_posix()}"
+REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
+TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 
 
 class TestDomainResolver(BaseProcessorTestCase):
@@ -19,7 +19,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         "type": "domain_resolver",
         "generic_rules": ["tests/testdata/unit/domain_resolver/rules/generic"],
         "specific_rules": ["tests/testdata/unit/domain_resolver/rules/specific"],
-        "tld_list": tld_list,
+        "tld_list": TLD_LIST,
         "timeout": 0.25,
         "max_cached_domains": 1000000,
         "max_caching_days": 1,
@@ -43,7 +43,7 @@ class TestDomainResolver(BaseProcessorTestCase):
 
         assert re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", document.get("resolved_ip", ""))
 
-    @pytest.mark.skipif(not exists(tld_list.split("file://")[-1]), reason="Tld-list required.")
+    @pytest.mark.skipif(not exists(TLD_LIST.split("file://")[-1]), reason="Tld-list required.")
     def test_invalid_dots_domain_to_ip_produces_warning(self):
         assert self.object.ps.processed_count == 0
         document = {"url": "google..invalid.de"}

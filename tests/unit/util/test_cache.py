@@ -1,3 +1,5 @@
+#pylint: disable=missing-docstring
+#pylint: disable=protected-access
 import datetime
 import time
 from collections import OrderedDict
@@ -7,8 +9,8 @@ import pytest
 from logprep.util.cache import Cache
 
 
-@pytest.fixture
-def cache():
+@pytest.fixture(name="cache")
+def cache_fixture():
     return Cache(max_items=3, max_timedelta=datetime.timedelta(milliseconds=100))
 
 

@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-# pylint: disable=max-line-length
+# pylint: disable=line-too-long
 
 from copy import deepcopy
 from logging import getLogger
@@ -204,7 +204,7 @@ class TestConfiguration:
                 status_logger_config._verify_status_logger()
             except InvalidConfigurationErrors as error:
                 assert any(
-                    (type(error) == raised_error for error in error.errors)
+                    (isinstance(error, raised_error) for error in error.errors)
                 ), f"No '{raised_error.__name__}' raised for test case '{test_case}'!"
         else:
             status_logger_config._verify_status_logger()

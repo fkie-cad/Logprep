@@ -1,8 +1,6 @@
 # pylint: disable=missing-docstring
 from copy import deepcopy
-import sys
 from typing import Optional
-from unittest import mock
 
 import pytest
 from attr import define, field, validators
