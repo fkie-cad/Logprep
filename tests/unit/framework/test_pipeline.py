@@ -26,6 +26,7 @@ from logprep.input.input import (
 from logprep.output.dummy_output import DummyOutput
 from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.processor_configuration import ProcessorConfiguration
 from logprep.processor.delete.processor import Delete
 from logprep.processor.delete.rule import DeleteRule
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
@@ -142,7 +143,8 @@ class TestPipeline(ConfigurationForTests):
             "generic_rules": [],
             "i_really_want_to_delete_all_log_events": "I really do",
         }
-        delete_processor = Delete(name="Test", configuration=delete_config, logger=mock.MagicMock())
+        processor_configuration = ProcessorConfiguration.create("delete processor", delete_config)
+        delete_processor = Delete("delete processor", processor_configuration, mock.MagicMock())
         delete_rule = DeleteRule._create_from_dict({"filter": "delete_me", "delete": True})
         delete_processor._specific_tree.add_rule(delete_rule)
         self.pipeline._pipeline = [mock.MagicMock(), delete_processor, mock.MagicMock()]

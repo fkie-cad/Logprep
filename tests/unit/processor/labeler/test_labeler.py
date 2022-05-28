@@ -244,22 +244,22 @@ class TestLabeler(BaseProcessorTestCase):
             InvalidLabelingSchemaFileError,
             match="Not a valid schema file: File not found: '.*'.",
         ):
-            ProcessorFactory.create(config, self.logger)
+            ProcessorFactory.create({"test instance": config}, self.logger)
 
     def test_create_fails_when_schema_config_points_to_directory(self):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_testdata
         with raises(InvalidLabelingSchemaFileError, match="Is a directory: .*"):
-            ProcessorFactory.create(config, self.logger)
+            ProcessorFactory.create({"test instance": config}, self.logger)
 
     def test_create_fails_when_include_parent_labels_is_not_boolean(self):
         config = copy.deepcopy(self.CONFIG)
         config["include_parent_labels"] = "this is a string"
         with raises(
-            InvalidConfigurationError,
-            match="'include_parent_labels' is not a boolean",
+            TypeError,
+            match="'include_parent_labels' must be <class 'bool'>",
         ):
-            ProcessorFactory.create(config, self.logger)
+            ProcessorFactory.create({"test instance": config}, self.logger)
 
     def test_create_fails_when_rules_do_not_conform_to_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
@@ -267,12 +267,12 @@ class TestLabeler(BaseProcessorTestCase):
         with raises(
             ValueDoesnotExistInSchemaError, match="Invalid value 'windows' for key 'reporter'."
         ):
-            ProcessorFactory.create(config, self.logger)
+            ProcessorFactory.create({"test instance": config}, self.logger)
 
     def test_create_loads_the_specified_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_schema
         expected_schema = LabelingSchema.create_from_file(path_to_schema)
-        labeler = ProcessorFactory.create(config, self.logger)
+        labeler = ProcessorFactory.create({"test instance": config}, self.logger)
 
         assert labeler._schema == expected_schema

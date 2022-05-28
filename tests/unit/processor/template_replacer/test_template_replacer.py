@@ -54,7 +54,7 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
     def test_replace_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = ProcessorFactory.create(config, self.logger)
+        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
         assert self.object.ps.processed_count == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
@@ -102,4 +102,4 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
             {"template": "tests/testdata/unit/template_replacer/replacer_template_invalid.yml"}
         )
         with pytest.raises(TemplateReplacerError, match="Not enough delimiters"):
-            ProcessorFactory.create(config, self.logger)
+            ProcessorFactory.create({"test instance": config}, self.logger)
