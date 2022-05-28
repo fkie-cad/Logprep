@@ -15,7 +15,7 @@ from logprep.processor.processor_factory_error import (
 from logprep.processor.processor_registry import ProcessorRegistry
 
 
-class TestProcessor(Processor):
+class MockProcessor(Processor):
     @define(kw_only=True)
     class Config(Processor.Config):
 
@@ -33,21 +33,21 @@ original_registry_mapping = deepcopy(ProcessorRegistry.mapping)
 
 class TestProcessorConfiguration:
     def setup_method(self):
-        ProcessorRegistry.mapping = {"test_processor": TestProcessor}
+        ProcessorRegistry.mapping = {"mock_processor": MockProcessor}
 
     def teardown_method(self):
         ProcessorRegistry.mapping = original_registry_mapping
 
     def test_reads_test_config(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
         config = ProcessorConfiguration.create("dummy name", test_config)
-        assert config.type == "test_processor"
+        assert config.type == "mock_processor"
         assert config.mandatory_attribute == "I am mandatory"
         assert config.generic_rules == ["tests/testdata/unit/normalizer/rules/generic/"]
 
@@ -74,7 +74,7 @@ class TestProcessorConfiguration:
 
     def test_raises_if_one_mandatory_field_is_missing(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "optional_attribute": "I am optional",
@@ -86,7 +86,7 @@ class TestProcessorConfiguration:
 
     def test_raises_if_mandatory_attribute_from_base_is_missing(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "does not matter",
         }
@@ -98,7 +98,7 @@ class TestProcessorConfiguration:
 
     def test_raises_if_multiple_mandatory_field_are_missing(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
         }
         with pytest.raises(
@@ -109,7 +109,7 @@ class TestProcessorConfiguration:
 
     def test_raises_on_wrong_type_in_config_field(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "specific_rules": "tests/testdata/unit/normalizer/rules/specific/",
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",
@@ -120,7 +120,7 @@ class TestProcessorConfiguration:
 
     def test_raises_on_unknown_field(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",
@@ -132,7 +132,7 @@ class TestProcessorConfiguration:
 
     def test_init_non_mandatory_fields_with_default(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",
@@ -143,7 +143,7 @@ class TestProcessorConfiguration:
 
     def test_init_optional_field_in_sub_class(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",
@@ -154,7 +154,7 @@ class TestProcessorConfiguration:
 
     def test_init_optional_field_in_base_class(self):
         test_config = {
-            "type": "test_processor",
+            "type": "mock_processor",
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",

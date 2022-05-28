@@ -1,8 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=too-many-lines
-import os
-import sys
 from logging import getLogger
 from random import sample
 from string import ascii_letters
@@ -10,7 +8,6 @@ from unittest import mock
 
 from pytest import raises
 
-import tests.testdata.unit.processor_factory
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
