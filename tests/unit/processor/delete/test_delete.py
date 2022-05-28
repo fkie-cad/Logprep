@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-from copy import deepcopy
 import pytest
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -10,7 +9,6 @@ class TestDelete(BaseProcessorTestCase):
         "type": "delete",
         "specific_rules": ["tests/testdata/unit/delete/rules/specific/"],
         "generic_rules": ["tests/testdata/unit/delete/rules/generic/"],
-        "i_really_want_to_delete_all_log_events": "I really do",
     }
 
     @pytest.mark.parametrize(

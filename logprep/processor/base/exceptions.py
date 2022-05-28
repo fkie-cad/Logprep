@@ -5,7 +5,6 @@ from typing import Any
 from logprep.processor.processor_factory_error import ProcessorFactoryError
 
 
-
 class RuleError(BaseException):
     """Base class for Rule related exceptions."""
 

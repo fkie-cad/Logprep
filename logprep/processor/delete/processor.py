@@ -1,51 +1,16 @@
 """This module contains a delete processor that can be used for testing purposes."""
 
-from logging import Logger
-from typing import TYPE_CHECKING
-
 from attr import define, field, validators
 from logprep.abc import Processor
 from logprep.processor.delete.rule import DeleteRule
 
 
 class Delete(Processor):
-    """A processor that deletes processed log events.
-
-    Notes
-    -----
-    WARNING: This processor deletes any log event it processes.
-    Do not use it for any purpose other than testing.
-    You must set the initializer's parameter to 'I really do' to create
-    an instance of this processor!
-
-    Parameters
-    ----------
-    i_really_want_to_delete_all_log_events : str
-       Must be set to 'I really do' to avoid to prevent accidental deletion of log events.
-
-    """
-
-    @define(kw_only=True)
-    class Config(Processor.Config):
-        """delete configuration"""
-
-        i_really_want_to_delete_all_log_events: str = field(
-            validator=validators.matches_re(r"I really do")
-        )
+    """A processor that deletes processed log events from further pipeline process"""
 
     __slots__ = []
 
     rule_class = DeleteRule
-
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        i_really_want_to_delete_all_log_events = (
-            configuration.i_really_want_to_delete_all_log_events
-        )
-
-        if i_really_want_to_delete_all_log_events != "I really do":
-            raise ValueError("Read the documentation and pass the correct parameter!")
-
-        super().__init__(name, configuration, logger)
 
     def _apply_rules(self, event, rule):
         event.clear()

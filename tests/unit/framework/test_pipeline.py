@@ -141,7 +141,6 @@ class TestPipeline(ConfigurationForTests):
             "type": "delete",
             "specific_rules": [],
             "generic_rules": [],
-            "i_really_want_to_delete_all_log_events": "I really do",
         }
         processor_configuration = ProcessorConfiguration.create("delete processor", delete_config)
         delete_processor = Delete("delete processor", processor_configuration, mock.MagicMock())
