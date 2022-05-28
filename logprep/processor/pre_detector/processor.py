@@ -1,6 +1,5 @@
 """This module contains functionality for pre-detecting attacks."""
-
-from functools import cached_property
+import sys
 from logging import DEBUG, Logger
 from uuid import uuid4
 
@@ -8,6 +7,11 @@ from attr import define, field, validators
 from logprep.abc import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
+
+if sys.version_info.minor < 8:
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class PreDetectorError(BaseException):

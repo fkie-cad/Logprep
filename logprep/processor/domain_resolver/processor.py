@@ -1,6 +1,6 @@
 """This module contains functionality for resolving domains."""
 import datetime
-from functools import cached_property
+import sys
 import socket
 from logging import Logger
 from multiprocessing import context
@@ -16,6 +16,11 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to
+
+if sys.version_info.minor < 8:
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class DomainResolverError(BaseException):

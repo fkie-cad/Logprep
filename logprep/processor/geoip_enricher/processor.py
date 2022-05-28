@@ -1,9 +1,6 @@
 """This module contains functionality for resolving log event values using regex lists."""
-from functools import cached_property
-from ipaddress import ip_address
-from logging import Logger
-import os
 import sys
+from ipaddress import ip_address
 from typing import List
 from attr import define, field, validators
 
@@ -13,6 +10,11 @@ from geoip2.errors import AddressNotFoundError
 from logprep.abc import Processor
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 from logprep.util.helper import add_field_to
+
+if sys.version_info.minor < 8:
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class GeoipEnricherError(BaseException):

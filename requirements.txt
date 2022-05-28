@@ -16,6 +16,8 @@ asynctest==0.13.0
     # via aiohttp
 attrs==21.4.0
     # via aiohttp
+backports.cached-property==1.0.1 ; python_version < "3.8"
+    # via -r requirements.in
 certifi==2021.10.8
     # via requests
 charset-normalizer==2.0.10
@@ -97,6 +99,8 @@ six==1.16.0
     #   requests-file
 tldextract==3.1.2
     # via -r requirements.in
+typing==3.7.4.3
+    # via backports.cached-property
 typing-extensions==4.0.1
     # via
     #   aiohttp
