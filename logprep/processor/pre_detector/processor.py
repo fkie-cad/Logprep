@@ -1,12 +1,11 @@
 """This module contains functionality for pre-detecting attacks."""
 
+from functools import cached_property
 from logging import DEBUG, Logger
-from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
-from attr import field, define, validators
+from attr import define, field, validators
 from logprep.abc import Processor
-
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
@@ -34,13 +33,9 @@ class PreDetector(Processor):
             default=None, validator=validators.optional(validator=validators.instance_of(str))
         )
 
-    __slots__ = ["detection_results", "_pre_detector_topic", "_ids", "_ip_alerter"]
-
-    _ip_alerter: IPAlerter
+    __slots__ = ["detection_results", "_pre_detector_topic", "_ids", "__dict__"]
 
     _ids: list
-
-    _pre_detector_topic: str
 
     detection_results: list
 
@@ -48,18 +43,20 @@ class PreDetector(Processor):
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self._pre_detector_topic = configuration.pre_detector_topic
-        self._event = None
         self._ids = []
-        alert_ip_list_path = configuration.alert_ip_list_path
-        self._ip_alerter = IPAlerter(alert_ip_list_path)
+
+    @cached_property
+    def _ip_alerter(self):
+        return IPAlerter(self._config.alert_ip_list_path)
 
     def process(self, event: dict) -> tuple:
         self._event = event
         self.detection_results = []
         super().process(event)
         return (
-            (self.detection_results, self._pre_detector_topic) if self.detection_results else None
+            (self.detection_results, self._config.pre_detector_topic)
+            if self.detection_results
+            else None
         )
 
     def _apply_rules(self, event, rule):

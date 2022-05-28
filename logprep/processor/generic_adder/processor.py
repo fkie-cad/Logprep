@@ -29,12 +29,7 @@ class DuplicationError(GenericAdderError):
 class GenericAdder(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
-    __slots__ = []
-
     rule_class = GenericAdderRule
-
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
 
     def _apply_rules(self, event, rule):
         conflicting_fields = list()

@@ -1,7 +1,7 @@
 """This module contains functionality for labeling log events."""
 
 from logging import Logger
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from attr import define, field, validators
 
@@ -24,8 +24,6 @@ class Labeler(Processor):
 
     __slots__ = ["_schema", "_include_parent_labels"]
 
-    _include_parent_labels: bool
-
     _schema: LabelingSchema
 
     rule_class = LabelingRule
@@ -37,10 +35,9 @@ class Labeler(Processor):
         logger: Logger,
     ):
         self._schema = LabelingSchema.create_from_file(configuration.schema)
-        self._include_parent_labels = configuration.include_parent_labels
         super().__init__(name, configuration=configuration, logger=logger)
         for rule in self._generic_rules + self._specific_rules:
-            if self._include_parent_labels:
+            if self._config.include_parent_labels:
                 rule.add_parent_labels_from_schema(self._schema)
             rule.conforms_to_schema(self._schema)
 

@@ -1,5 +1,6 @@
 """This module contains functionality for resolving domains."""
 import datetime
+from functools import cached_property
 import socket
 from logging import Logger
 from multiprocessing import context
@@ -46,34 +47,11 @@ class DomainResolver(Processor):
         )
 
     __slots__ = [
-        "_timeout",
-        "_tld_extractor",
-        "_thread_pool",
-        "_hasher",
-        "_salt",
-        "_cache",
-        "_cache_enabled",
-        "_debug_cache",
         "_domain_ip_map",
+        "__dict__",
     ]
 
     _domain_ip_map: dict
-
-    _debug_cache: bool
-
-    _cache_enabled: bool
-
-    _cache: Cache
-
-    _hasher: SHA256Hasher
-
-    _salt: str
-
-    _thread_pool: ThreadPool
-
-    _tld_extractor: TLDExtract
-
-    _timeout: str
 
     rule_class = DomainResolverRule
 
@@ -85,20 +63,29 @@ class DomainResolver(Processor):
     ):
         super().__init__(name=name, configuration=configuration, logger=logger)
 
-        self._timeout = configuration.timeout
-        tld_list = configuration.tld_list
-        self._tld_extractor = TLDExtract(suffix_list_urls=[tld_list])
-        self._thread_pool = ThreadPool(processes=1)
-
-        self._hasher = SHA256Hasher()
-        self._salt = configuration.hash_salt
-        cache_max_items = configuration.max_cached_domains
-        cache_max_timedelta = datetime.timedelta(days=configuration.max_caching_days)
-        self._cache = Cache(max_items=cache_max_items, max_timedelta=cache_max_timedelta)
-        self._cache_enabled = configuration.cache_enabled
-        self._debug_cache = configuration.debug_cache
-
         self._domain_ip_map = {}
+
+    @cached_property
+    def _cache(self):
+        cache_max_timedelta = datetime.timedelta(days=self._config.max_caching_days)
+        return Cache(max_items=self._config.max_cached_domains, max_timedelta=cache_max_timedelta)
+
+    @cached_property
+    def _hasher(self):
+        return SHA256Hasher()
+
+    @cached_property
+    def _thread_pool(self):
+        return ThreadPool(processes=1)
+
+    @cached_property
+    def _tld_extractor(self):
+        tld_list = self._config.tld_list
+        return TLDExtract(suffix_list_urls=[tld_list])
+
+    @property
+    def _timeout(self):
+        return self._config.timeout
 
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain
@@ -109,20 +96,20 @@ class DomainResolver(Processor):
             domain = self._tld_extractor(domain_or_url_str).fqdn
             if domain:
                 self.ps.increment_nested(self.name, "total_urls")
-                if self._cache_enabled:
+                if self._config.cache_enabled:
                     try:
-                        hash_string = self._hasher.hash_str(domain, salt=self._salt)
+                        hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
                         requires_storing = self._cache.requires_storing(hash_string)
                         if requires_storing:
                             result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
-                            resolved_ip = result.get(timeout=self._timeout)
+                            resolved_ip = result.get(timeout=self._config.timeout)
                             if len(self._domain_ip_map) >= len(self._cache):
                                 first_hash = next(iter(self._cache.keys()))
                                 del self._domain_ip_map[first_hash]
                             self._domain_ip_map[hash_string] = resolved_ip
                             self.ps.increment_nested(self.name, "resolved_new")
 
-                        if self._debug_cache:
+                        if self._config.debug_cache:
                             event["resolved_ip_debug"] = {}
                             event_dbg = event["resolved_ip_debug"]
                             if requires_storing:
@@ -156,7 +143,7 @@ class DomainResolver(Processor):
                     if output_field not in event:
                         try:
                             result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
-                            event[output_field] = result.get(timeout=self._timeout)
+                            event[output_field] = result.get(timeout=self._config.timeout)
                         except (context.TimeoutError, OSError):
                             pass
                         except UnicodeError as error:

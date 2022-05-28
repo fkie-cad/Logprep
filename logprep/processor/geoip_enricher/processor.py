@@ -1,4 +1,5 @@
 """This module contains functionality for resolving log event values using regex lists."""
+from functools import cached_property
 from ipaddress import ip_address
 from logging import Logger
 import os
@@ -43,16 +44,13 @@ class GeoipEnricher(Processor):
 
         db_path: str = field(validator=[validators.instance_of(str)])
 
-    __slots__ = ["_city_db"]
-
-    _city_db: database.Reader
+    __slots__ = ["__dict__"]
 
     rule_class = GeoipEnricherRule
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
-        geoip_db_path = configuration.db_path
-        self._city_db = database.Reader(geoip_db_path)
+    @cached_property
+    def _city_db(self):
+        return database.Reader(self._config.db_path)
 
     @staticmethod
     def _normalize_empty(db_entry):

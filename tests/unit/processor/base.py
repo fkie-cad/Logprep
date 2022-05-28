@@ -5,6 +5,7 @@ import json
 import sys
 from abc import ABC
 from logging import getLogger
+from typing import Iterable
 
 from unittest import mock
 
@@ -111,13 +112,7 @@ class BaseProcessorTestCase(ABC):
         assert self.object.ps.processed_count == count + 1
 
     def test_uses_python_slots(self):
-        # why? see: https://docs.python.org/3.8/reference/datamodel.html#object.__slots__
-        # should lead to a much better performance
-        if sys.version_info.major >= 3 and sys.version_info.minor > 6:
-            with pytest.raises(AttributeError):
-                _ = self.object.__dict__
-        else:
-            assert not self.object.__dict__, "dict should be empty in python 3.6"
+        assert isinstance(self.object.__slots__, Iterable)
 
     def test_describe(self):
         describe_string = self.object.describe()

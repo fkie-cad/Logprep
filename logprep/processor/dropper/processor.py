@@ -1,7 +1,6 @@
 """This module contains a Dropper that deletes specified fields."""
 
-from typing import TYPE_CHECKING
-from logging import Logger, DEBUG
+from logging import DEBUG
 from logprep.abc.processor import Processor
 
 from logprep.processor.dropper.rule import DropperRule
@@ -17,12 +16,7 @@ class DropperError(BaseException):
 class Dropper(Processor):
     """Normalize log events by copying specific values to standardized fields."""
 
-    __slots__ = []
-
     rule_class = DropperRule
-
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
 
     def _traverse_dict_and_delete(self, dict_: dict, sub_fields, drop_full: bool):
         sub_field = sub_fields[0] if sub_fields else None
