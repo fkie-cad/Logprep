@@ -72,6 +72,18 @@ This :py:class:`Config` class has to inherit from :py:class:`Processor.Config` a
             new_config_parameter: str = field(...)
             """the new processor specific config parameter"""
 
+        __slots__ = ["processor_attribute"]
+
+        processor_attribute: list
+
+        def __init__(self, name, configuration, logger):
+            super().__init__(name, configuration, logger)
+            self.processor_attribute = []
+
+        def _apply_rules(self, event, rule):
+            """your implemented workload"""
+            ...
+
 The rules must implement the interface :py:class:`~logprep.processor.base.rule.Rule`.
 
 setup, shut_down
