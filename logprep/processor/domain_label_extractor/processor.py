@@ -77,8 +77,7 @@ class DomainLabelExtractor(Processor):
         )
         """Optional configuration field that defines into which field in the event the
         informational tags should be written to. If this field is not present it defaults
-        to :code:`tags`. More about the tags can be found in the introduction of the
-        :ref:`intro_domain_label_extractor`."""
+        to :code:`tags`."""
         tld_lists: list = field(factory=list, validator=validators.instance_of(list))
         """Optional list of path to files with top-level domain lists
         (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,

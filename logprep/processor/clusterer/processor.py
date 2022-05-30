@@ -1,6 +1,7 @@
 """
 Clusterer
 ---------
+
 The log clustering is mainly developed for Syslogs, unstructured and semi-structured logs.
 The clusterer calculates a log signature based on the message field.
 The log signature is calculated with heuristic and deterministic rules.

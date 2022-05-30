@@ -1,7 +1,8 @@
 """
 GenericAdder
 ------------
-The `generic_adder` adds fields to log events based on rules or/and external field lists.
+The `generic_adder` is a processor that adds new fields and values to documents based on a list.
+The list can reside inside a rule or inside a file.
 
 
 Example
