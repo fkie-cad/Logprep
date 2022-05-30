@@ -69,9 +69,6 @@ class GeoipEnricher(Processor):
 
     __slots__ = []
 
-    if not sys.version_info.minor < 7:
-        __slots__.append("__dict__")
-
     rule_class = GeoipEnricherRule
 
     @cached_property

@@ -87,8 +87,6 @@ class DomainLabelExtractor(Processor):
     rule_class = DomainLabelExtractorRule
 
     __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
-    if not sys.version_info.minor < 7:
-        __slots__.append("__dict__")
 
     @cached_property
     def _tld_extractor(self):

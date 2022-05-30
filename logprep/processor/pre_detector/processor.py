@@ -75,8 +75,6 @@ class PreDetector(Processor):
         """
 
     __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
-    if not sys.version_info.minor < 7:
-        __slots__.append("__dict__")
 
     _ids: list
 

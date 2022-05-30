@@ -112,9 +112,6 @@ class Pseudonymizer(Processor):
         "_tld_extractor",
     ]
 
-    if not sys.version_info.minor < 7:
-        __slots__.append("__dict__")
-
     _regex_mapping: dict
     _cache: Cache
     _tld_list: str

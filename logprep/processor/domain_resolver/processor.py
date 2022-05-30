@@ -96,8 +96,6 @@ class DomainResolver(Processor):
         was retrieved from the cache or newly resolved, as well as the cache size."""
 
     __slots__ = ["_domain_ip_map"]
-    if not sys.version_info.minor < 7:
-        __slots__.append("__dict__")
 
     _domain_ip_map: dict
 

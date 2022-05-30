@@ -1,5 +1,6 @@
 """ abstract module for processors"""
 import os
+import sys
 from abc import ABC, abstractmethod
 from logging import DEBUG, Logger
 from multiprocessing import current_process
@@ -47,6 +48,9 @@ class Processor(ABC):
         "_generic_tree",
         "_config",
     ]
+
+    if not sys.version_info.minor < 7:
+        __slots__.append("__dict__")
 
     name: str
     rule_class: Rule
@@ -200,9 +204,9 @@ class Processor(ABC):
     def _field_exists(event: dict, dotted_field: str) -> bool:
         fields = dotted_field.split(".")
         dict_ = event
-        for field in fields:
-            if field in dict_ and isinstance(dict_, dict):
-                dict_ = dict_[field]
+        for field_ in fields:
+            if field_ in dict_ and isinstance(dict_, dict):
+                dict_ = dict_[field_]
             else:
                 return False
         return True
@@ -211,9 +215,9 @@ class Processor(ABC):
     def _get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
         fields = dotted_field.split(".")
         dict_ = event
-        for field in fields:
-            if field in dict_:
-                dict_ = dict_[field]
+        for field_ in fields:
+            if field_ in dict_:
+                dict_ = dict_[field_]
             else:
                 return None
         return dict_
