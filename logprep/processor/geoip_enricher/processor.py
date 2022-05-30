@@ -1,4 +1,21 @@
-"""This module contains functionality for resolving log event values using regex lists."""
+"""
+GeoipEnricher
+-------------
+Processor to enrich log messages with geolocalization information
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - geoipenrichername:
+        type: geoip_enricher
+        specific_rules:
+            - tests/testdata/geoip_enricher/rules/
+        generic_rules:
+            - tests/testdata/geoip_enricher/rules/
+        db_path: /path/to/GeoLite2-City.mmdb
+"""
 import sys
 from ipaddress import ip_address
 from typing import List
@@ -45,6 +62,10 @@ class GeoipEnricher(Processor):
         """geoip_enricher config"""
 
         db_path: str = field(validator=[validators.instance_of(str)])
+        """Path to a `Geo2Lite` city database by `Maxmind` in binary format.
+            This must be downloaded separately.
+            This product includes GeoLite2 data created by MaxMind, available from
+            https://www.maxmind.com."""
 
     __slots__ = []
 

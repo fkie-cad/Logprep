@@ -1,9 +1,36 @@
-"""This module contains a Pseudonymizer that must be used to conform to EU privacy laws."""
+"""
+Pseudonymizer
+-------------
 
+The `pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
+privacy regulations can be adhered to.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - pseudonymizername:
+        type: pseudonymizer
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        pseudonyms_topic: pseudonyms_topic
+        pubkey_analyst: /path/to/analyst_pubkey.pem
+        pubkey_depseudo: /path/to/depseudo_pubkey.pem
+        hash_salt: secret_salt
+        regex_mapping: /path/to/regex_mapping.json
+        max_cached_pseudonyms: 1000000
+        max_caching_days: 1
+        tld_list: /path/to/tld_list.dat
+"""
+import sys
 import datetime
 import re
 from logging import Logger
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs
 from attr import define, field, validators
 
@@ -17,6 +44,11 @@ from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 
 
+if sys.version_info.minor < 8:
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
+
 yaml = YAML(typ="safe", pure=True)
 
 
@@ -25,50 +57,67 @@ class Pseudonymizer(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """pseudonymizer config"""
+        """Pseudonymizer config"""
 
         pseudonyms_topic: str = field(validator=validators.instance_of(str))
+        """
+        A Kafka-topic for pseudonyms.
+        These are not the pseudonymized events, but just the pseudonyms with the encrypted real
+        values.
+        """
         pubkey_analyst: str = field(validator=validators.instance_of(str))
+        """
+        Path to the public key of an analyst.
+
+        * /var/git/analyst_pub.pem"""
         pubkey_depseudo: str = field(validator=validators.instance_of(str))
+        """
+        Path to the public key for depseudonymization
+
+        * /var/git/depseudo_pub.pem
+        """
         hash_salt: str = field(validator=validators.instance_of(str))
+        """A salt that is used for hashing."""
         regex_mapping: str = field(validator=validators.instance_of(str))
+        """
+        Path to a file with a regex mapping for pseudonymization, i.e.:
+
+        * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
+        """
         max_cached_pseudonyms: int = field(validator=validators.instance_of(int))
+        """
+        The maximum number of cached pseudonyms. One cache entry requires ~250 Byte, thus 10
+        million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting
+        Logprep does therefore clear the cache.
+        """
         max_caching_days: int = field(validator=validators.instance_of(int))
+        """
+        Number of days a pseudonym is cached after the last time it appeared.
+        This caching reduces the CPU load of Logprep (no demanding encryption must be performed
+        repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
+        Setting the caching days to Null deactivates the caching. In case the cache size has been
+        exceeded (see max_cached_pseudonyms), the oldest cached pseudonyms will be discarded first.
+        Thus, it is possible that a pseudonym is re-added to the cache before max_caching_days has
+        elapsed if it was discarded due to the size limit.
+        """
         tld_list: str = field(validator=validators.instance_of(str))
+        """Path to a file with a list of top-level domains (i.e.
+        https://publicsuffix.org/list/public_suffix_list.dat)."""
 
     __slots__ = [
-        "_pubkey_analyst",
-        "_pubkey_depseudo",
-        "_hash_salt",
-        "_hasher",
-        "_encrypter",
-        "_pseudonyms_topic",
-        "_regex_mapping_path",
         "_regex_mapping",
-        "_cache_max_items",
-        "_cache_max_timedelta",
         "_cache",
-        "_tld_list",
-        "_url_extractor",
         "pseudonyms",
         "pseudonymized_fields",
         "_tld_extractor",
     ]
 
+    if not sys.version_info.minor < 7:
+        __slots__.append("__dict__")
+
     _regex_mapping: dict
-    _regex_mapping_path: str
-    _pseudonyms_topic: str
-    _encrypter: DualPKCS1HybridEncrypter
-    _hasher: SHA256Hasher
-    _hash_salt: str
-    _pubkey_analyst: str
-    _pubkey_depseudo: str
-    _cache_max_items: int
-    _cache_max_timedelta: datetime.timedelta
     _cache: Cache
     _tld_list: str
-    _url_extractor: URLExtract
-    _tld_extractor: TLDExtract
 
     pseudonyms: list
     pseudonymized_fields: set
@@ -79,36 +128,37 @@ class Pseudonymizer(Processor):
     rule_class = PseudonymizerRule
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        self._pubkey_analyst = configuration.pubkey_analyst
-        self._pubkey_depseudo = configuration.pubkey_depseudo
-        self._hash_salt = configuration.hash_salt
-        self._hasher = SHA256Hasher()
-        self._encrypter = DualPKCS1HybridEncrypter()
-
-        self._pseudonyms_topic = configuration.pseudonyms_topic
-
-        self._regex_mapping_path = configuration.regex_mapping
+        super().__init__(name=name, configuration=configuration, logger=logger)
         self._regex_mapping = {}
-
-        self._cache_max_items = configuration.max_cached_pseudonyms
-        self._cache_max_timedelta = datetime.timedelta(days=configuration.max_caching_days)
         self._cache = None
-
-        self._tld_list = configuration.tld_list
-        self._url_extractor = URLExtract()
         self.pseudonyms = []
         self.pseudonymized_fields = set()
         self.setup()
-        super().__init__(name=name, configuration=configuration, logger=logger)
         self._replace_regex_keywords_by_regex_expression()
 
+    @cached_property
+    def _url_extractor(self):
+        return URLExtract()
+
+    @cached_property
+    def _cache_max_timedelta(self):
+        return datetime.timedelta(days=self._config.max_caching_days)
+
+    @cached_property
+    def _hasher(self):
+        return SHA256Hasher()
+
+    @cached_property
+    def _encrypter(self):
+        return DualPKCS1HybridEncrypter()
+
     def setup(self):
-        self._encrypter.load_public_keys(self._pubkey_analyst, self._pubkey_depseudo)
+        self._encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
         self._cache = Cache(
-            max_items=self._cache_max_items, max_timedelta=self._cache_max_timedelta
+            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
         )
-        self._tld_extractor = TLDExtract(suffix_list_urls=[self._tld_list])
-        self._load_regex_mapping(self._regex_mapping_path)
+        self._tld_extractor = TLDExtract(suffix_list_urls=[self._config.tld_list])
+        self._load_regex_mapping(self._config.regex_mapping)
 
     def _load_regex_mapping(self, regex_mapping_path: str):
         with open(regex_mapping_path, "r", encoding="utf8") as file:
@@ -118,7 +168,7 @@ class Pseudonymizer(Processor):
         self.pseudonymized_fields = set()
         self.pseudonyms = []
         super().process(event)
-        return (self.pseudonyms, self._pseudonyms_topic) if self.pseudonyms != [] else None
+        return (self.pseudonyms, self._config.pseudonyms_topic) if self.pseudonyms != [] else None
 
     def _apply_rules(self, event: dict, rule: PseudonymizerRule):
         for dotted_field, regex in rule.pseudonyms.items():
@@ -152,35 +202,35 @@ class Pseudonymizer(Processor):
             event = event[keys[i]]
         return event, keys[-1]
 
-    def _pseudonymize_field(self, pattern: str, field: str) -> Tuple[str, Optional[list], bool]:
-        matches = re.match(pattern, field)
+    def _pseudonymize_field(self, pattern: str, field_: str) -> Tuple[str, Optional[list], bool]:
+        matches = re.match(pattern, field_)
 
         # No matches, no change
         if matches is None:
-            return field, None, False
+            return field_, None, False
 
         new_pseudonyms = []
 
         # Replace capture groups if there are any, else pseudonymize whole match (group(0))
         if any(matches.groups()):
-            field = self._get_field_with_pseudonymized_capture_groups(matches, new_pseudonyms)
+            field_ = self._get_field_with_pseudonymized_capture_groups(matches, new_pseudonyms)
 
-        return field, new_pseudonyms if new_pseudonyms else None, True
+        return field_, new_pseudonyms if new_pseudonyms else None, True
 
     def _get_field_with_pseudonymized_capture_groups(self, matches, pseudonyms: List[dict]) -> str:
-        field = ""
+        field_ = ""
         unprocessed = matches.group(0)
         for capture_group in matches.groups():
             if capture_group:
                 pseudonym = self._pseudonymize_value(capture_group, pseudonyms)
                 processed, unprocessed = self._process_field(capture_group, unprocessed)
-                field += processed + pseudonym
-        field += unprocessed
-        return field
+                field_ += processed + pseudonym
+        field_ += unprocessed
+        return field_
 
-    def _get_field_with_pseudonymized_urls(self, field: str, pseudonyms: List[dict]) -> str:
+    def _get_field_with_pseudonymized_urls(self, field_: str, pseudonyms: List[dict]) -> str:
         pseudonyms = pseudonyms if pseudonyms else []
-        for url_string in self._url_extractor.gen_urls(field):
+        for url_string in self._url_extractor.gen_urls(field_):
             url_parts = self._parse_url_parts(self._tld_extractor, url_string)
             pseudonym_map = self._get_pseudonym_map(pseudonyms, url_parts)
             url_split = re.split("(://)", url_string)
@@ -202,11 +252,11 @@ class Pseudonymizer(Processor):
                 url_split[-1] = "".join(parts_to_replace)
 
             pseudonymized_url = "".join(url_split)
-            field = field.replace(url_string, pseudonymized_url)
+            field_ = field_.replace(url_string, pseudonymized_url)
 
             self.ps.increment_aggregation("urls")
 
-        return field
+        return field_
 
     def _parse_url_parts(self, tld_extractor: TLDExtract, url_str: str) -> dict:
         url = tld_extractor(url_str)
@@ -276,7 +326,7 @@ class Pseudonymizer(Processor):
         return processed_but_not_pseudonymized, unprocessed
 
     def _pseudonymize_value(self, value: str, pseudonyms: List[dict]) -> str:
-        hash_string = self._hasher.hash_str(value, salt=self._hash_salt)
+        hash_string = self._hasher.hash_str(value, salt=self._config.hash_salt)
         if self._cache.requires_storing(hash_string):
             encrypted_origin = self._encrypter.encrypt(value)
             pseudonyms.append({"pseudonym": hash_string, "origin": encrypted_origin})

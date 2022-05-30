@@ -6,10 +6,10 @@ import copy
 import json
 import os
 import tempfile
+from copy import deepcopy
 
 import arrow
 import pytest
-from copy import deepcopy
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import NormalizerError
 from logprep.processor.normalizer.rule import (
@@ -25,7 +25,6 @@ class TestNormalizer(BaseProcessorTestCase):
 
     CONFIG = {
         "type": "normalizer",
-        "hash_salt": "a_secret_tasty_ingredient",
         "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
         "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
         "regex_mapping": "tests/testdata/unit/normalizer/normalizer_regex_mapping.yml",

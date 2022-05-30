@@ -1,4 +1,31 @@
-"""This module contains functionality replacing a text field using a template."""
+"""
+TemplateReplacer
+----------------
+
+The `template_replacer` is a processor that can replace parts of a text field to anonymize those
+parts. The replacement is based on a template file.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - templatereplacername:
+        type: template_replacer
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        template: /tmp/template.yml
+        pattern:
+            delimiter: ","
+            fields:
+                - field.name.a
+                - field.name.b
+            allowed_delimiter_field: field.name.b
+            target_field: target.field
+"""
 from logging import Logger
 from attr import define, field, validators
 
@@ -23,10 +50,24 @@ class TemplateReplacer(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """template_replacer config"""
+        """TemplateReplacer config"""
 
         template: str = field(validator=validators.instance_of(str))
+        """
+        Path to a YML file with a list of replacements in the format
+        `%{provider_name}-%{event_id}: %{new_message}`.
+        """
+
         pattern: dict = field(validator=validators.instance_of(dict))
+        """
+        Configures how to use the template file by specifying the following subfields:
+
+        - `delimiter` - Delimiter to use to split the template
+        - `fields` - A list of dotted fields that are being checked by the template.
+        - `allowed_delimiter_field` - One of the fields in the fields list can contain the
+          delimiter. This must be specified here.
+        - `target_field` - The field that gets replaced by the template.
+        """
 
     __slots__ = ["_target_field", "_target_field_split", "_fields", "_mapping"]
 

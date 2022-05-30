@@ -1,4 +1,22 @@
-"""This module contains a Clusterer that clusters events using a heuristic approach."""
+"""
+Clusterer
+---------
+The log clustering is mainly developed for Syslogs, unstructured and semi-structured logs.
+The clusterer calculates a log signature based on the message field.
+The log signature is calculated with heuristic and deterministic rules.
+The idea of a log signature is to extract a subset of the constant parts of a log and
+to delete the dynamic parts.
+If the fields syslog.facility and event.severity are in the log, then they are prefixed
+to the log signature.
+
+Logs are only clustered if at least one of the following criteria is fulfilled:
+
+..  code-block:: yaml
+
+    Criteria 1: { "message": "A sample message", "tags": ["clusterable", ...], ... }
+    Criteria 2: { "message": "A sample message", "clusterable": true, ... }
+    Criteria 3: { "message": "A sample message", "syslog": { "facility": <number> }, "event": { "severity": <string> }, ... }
+"""
 
 from logging import Logger
 from typing import List
@@ -20,9 +38,10 @@ class Clusterer(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """clusterer configuration"""
+        """Clusterer Configuration"""
 
         output_field_name: str = field(validator=validators.instance_of(str))
+        """defines in which field results of the clustering should be stored."""
 
     __slots__ = ["matching_rules", "sps", "_output_field_name"]
 

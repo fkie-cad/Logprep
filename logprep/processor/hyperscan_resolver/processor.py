@@ -1,4 +1,25 @@
-"""This module contains functionality for resolving log event values using regex lists."""
+"""
+HyperscanResolver
+-----------------
+
+The `hyperscan_resolver` is a processor that can resolve fields by using a map of resolve patterns
+and resolve values. The map can be defined within rules or within a file. It uses pythion hyperscan
+to speedup the pattern matching.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - hyperscanresolvername:
+        type: hyperscan_resolver
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        hyperscan_db_path: tmp/path/scan.db
+"""
 
 import errno
 from logging import Logger
@@ -55,6 +76,15 @@ class HyperscanResolver(Processor):
         """HyperscanResolver config"""
 
         hyperscan_db_path: str = field(validator=validators.instance_of(str))
+        """Path to a directory where the compiled
+        `Hyperscan <https://python-hyperscan.readthedocs.io/en/latest/>`_
+        databases will be stored persistently.
+        Persistent storage is set to false per default.
+        If the specified directory does not exist, it will be created.
+        The database will be stored in the directory of the `hyperscan_resolver` if no path has
+        been specified within the pipeline config.
+        To update and recompile a persistently stored databases simply delete the whole directory.
+        The databases will be compiled again during the next run."""
 
     __slots__ = ["_hyperscan_database_path", "_hyperscan_databases", "_replacements_from_file"]
 

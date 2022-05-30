@@ -23,14 +23,18 @@ class Processor(ABC):
 
     @define(kw_only=True)
     class Config:
-        """config field description"""
+        """Common Configurations"""
 
         type: str = field(validator=validators.instance_of(str))
+        """ The type value defines the processor type that is being configured. """
         specific_rules: List[str] = field(validator=validators.instance_of(list))
+        """List of directory paths with generic rule files that can match multiple event types"""
         generic_rules: List[str] = field(validator=validators.instance_of(list))
+        """List of directory paths with generic rule files that can match multiple event types"""
         tree_config: Optional[str] = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
+        """ Path to a JSON file with a valid rule tree configuration. """
 
     __slots__ = [
         "name",

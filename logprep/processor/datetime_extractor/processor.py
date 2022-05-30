@@ -1,8 +1,26 @@
-"""This module contains functionality to split timestamps into fields containing their parts."""
+"""
+DatetimeExtractor
+-----------------
+
+The `datetime_extractor` is a processor that can extract timestamps from a field and
+split it into its parts.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - datetimeextractorname:
+        type: datetime_extractor
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
 
 from datetime import datetime
 from logging import Logger
-from typing import TYPE_CHECKING
 
 from dateutil.parser import parse
 from dateutil.tz import tzlocal

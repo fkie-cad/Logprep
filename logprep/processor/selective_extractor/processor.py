@@ -1,7 +1,25 @@
 """
-This module contains functionality to extract selectively fields from an incoming event.
-The events will be returned and written to a specified kafka topic.
-As the processor is applied to all events it does not need further filtering by rules.
+SelectiveExtractor
+------------------
+
+The `selective_extractor` is a processor that allows to write field values of a given log message to
+a different Kafka topic. The output topic is configured via the pipeline yml, while the fields to
+be extracted are specified by means of a list which is also specified in the pipeline configuration
+as a file path. This processor is applied to all messages, because of that it does not need further
+rules to specify it's behavior.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - selectiveextractorname:
+        type: selective_extractor
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
 """
 
 from logging import Logger

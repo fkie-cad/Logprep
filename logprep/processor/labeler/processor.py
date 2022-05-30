@@ -1,4 +1,34 @@
-"""This module contains functionality for labeling log events."""
+"""
+Labeler
+-------
+Labeling-Schema and validating Rules
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The validation of schemata and rules can be started separately by executing:
+
+..  code-block:: bash
+
+    PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py $LABELING_SCHEMA $RULES
+
+Where :code:`$LABELING_SCHEMA` is the path to a labeling schema file and :code:`$RULES` is the path 
+to a directory with rule files.
+
+Example
+^^^^^^^
+
+..  code-block:: yaml
+    :linenos:
+
+    - labelername:
+        type: labeler
+        schema: tests/testdata/labeler_rules/labeling/schema.json
+        include_parent_labels: true
+        generic_rules:
+            - tests/testdata/labeler_rules/rules/
+        specific_rules:
+            - tests/testdata/labeler_rules/rules/
+
+"""
 
 from logging import Logger
 from typing import Optional
@@ -15,12 +45,18 @@ class Labeler(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """labeler config"""
+        """Labeler Configurations"""
 
         schema: str = field(validator=validators.instance_of(str))
+        """Path to a labeling schema file"""
         include_parent_labels: Optional[bool] = field(
             default=False, validator=validators.optional(validator=validators.instance_of(bool))
         )
+        """If the option is deactivated only labels defined in a rule will be activated.
+        Otherwise, also allowed labels in the path to the *root* of the corresponding category 
+        of a label will be added.
+        This allows to search for higher level labels if this option was activated in the rule.
+        """
 
     __slots__ = ["_schema", "_include_parent_labels"]
 

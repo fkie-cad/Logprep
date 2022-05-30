@@ -1,4 +1,22 @@
-"""This module contains a delete processor that can be used for testing purposes."""
+"""
+Delete
+-------
+
+The `delete` is a processor that removes an entire event from further pipeline processing.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - deletename:
+        type: delete
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
 
 from logprep.abc import Processor
 from logprep.processor.delete.rule import DeleteRule

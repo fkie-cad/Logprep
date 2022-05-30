@@ -1,4 +1,21 @@
-"""This module contains functionality for resolving log event values using regex lists."""
+"""
+GenericResolver
+---------------
+
+The `generic_resolver` resolves log event values using regex lists.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - genericresolvername:
+        type: generic_resolver
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
 import re
 from logging import Logger
 from typing import List

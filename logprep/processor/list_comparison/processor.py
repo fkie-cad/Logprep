@@ -1,6 +1,23 @@
 """
-This module contains functionality for checking if values exist or not exist in file lists.
-This processor implements black- and whitelisting capabilities.
+ListComparison
+--------------
+
+The `list_comparison` processor allows to compare values of a target field against lists provided
+as files.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - listcomparisonname:
+        type: list_comparison
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        list_search_base_path: /path/to/list/dir
 """
 from typing import List
 
@@ -36,9 +53,11 @@ class ListComparison(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """list_comparison config"""
+        """ListComparison config"""
 
         list_search_base_path: str = field(validator=validators.instance_of(str))
+        """Relative list paths in rules will be relative to this path if this is set.
+        This parameter is optional."""
 
     rule_class = ListComparisonRule
 

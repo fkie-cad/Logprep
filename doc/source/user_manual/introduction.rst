@@ -112,7 +112,7 @@ The generic resolver is a processor that can resolve fields by using a map of re
 The map can be defined within rules or within a file.
 
 Hyperscan Resolver
-----------------
+------------------
 
 The hyperscan resolver is a processor that can resolve fields by using a map of resolve patterns and resolve values.
 The map can be defined within rules or within a file.

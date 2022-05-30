@@ -1,4 +1,23 @@
-"""This module contains a Dropper that deletes specified fields."""
+"""
+Dropper
+-------
+
+The `dropper` is a processor that removes fields from log messages. Which fields are deleted is
+determined within each rule.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - pseudonymizername:
+        type: dropper
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
 
 from logging import DEBUG
 from logprep.abc.processor import Processor

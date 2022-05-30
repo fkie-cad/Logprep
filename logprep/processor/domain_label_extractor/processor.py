@@ -1,14 +1,48 @@
-""" This module contains functionality to split a domain into it's parts/labels. """
+"""
+DomainLabelExtractor
+--------------------
+
+The `domain_label_extractor` is a processor that splits a domain into it's corresponding labels
+like :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`. If instead an IP
+is given in the target field an informational tag is added to the configured tags field. If
+neither a domain nor an ip address can be recognized an invalid error tag will be be added to the
+tag field in the event. The added tags contain each the target field name that was checked by the
+configured rule, such that it is possible to distinguish between different domain fields in one
+event. For example for the target field :code:`url.domain` following tags could be added:
+:code:`invalid_domain_in_url_domain` and :code:`ip_in_url_domain`
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - domainlabelextractorname:
+        type: domain_label_extractor
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        tld_lists: /path/to/list/file
+        tagging_field_name: resolved
+"""
+import sys
 import ipaddress
-from logging import Logger
-from typing import TYPE_CHECKING, List
+
+from typing import List
 from attr import define, field, validators
 
 from tldextract import TLDExtract
 
+
 from logprep.abc import Processor
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to
+
+if sys.version_info.minor < 8:
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class DomainLabelExtractorError(BaseException):
@@ -36,45 +70,34 @@ class DomainLabelExtractor(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """domain_label_extractor config"""
+        """DomainLabelExtractor config"""
 
         tagging_field_name: str = field(
             default="tags", validator=validators.optional(validators.instance_of(str))
         )
-
+        """Optional configuration field that defines into which field in the event the
+        informational tags should be written to. If this field is not present it defaults
+        to :code:`tags`. More about the tags can be found in the introduction of the
+        :ref:`intro_domain_label_extractor`."""
         tld_lists: list = field(factory=list, validator=validators.instance_of(list))
-
-    __slots__ = ["_tld_extractor", "_tagging_field_name"]
-
-    _tld_extractor: TLDExtract
-
-    _tagging_field_name: str
+        """Optional list of path to files with top-level domain lists
+        (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
+        a default list will be retrieved online and cached in a local directory. For local
+        files the path has to be given with :code:`file:///path/to/file.dat`."""
 
     rule_class = DomainLabelExtractorRule
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        """
-        Initializes the DomainLabelExtractor processor.
+    __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
+    if not sys.version_info.minor < 7:
+        __slots__.append("__dict__")
 
-        Parameters
-        ----------
-        name : str
-            Name of the DomainLabelExtractor processor (as referred to in the pipeline).
-        configuration : dict
-            Configuration of the processor
-        logger : Logger
-            Standard logger.
-        """
-
-        tld_lists = configuration.tld_lists
-        super().__init__(name=name, configuration=configuration, logger=logger)
-
-        if tld_lists is not None:
-            self._tld_extractor = TLDExtract(suffix_list_urls=tld_lists)
+    @cached_property
+    def _tld_extractor(self):
+        if self._config.tld_lists is not None:
+            _tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_lists)
         else:
-            self._tld_extractor = TLDExtract()
-
-        self._tagging_field_name = configuration.tagging_field_name
+            _tld_extractor = TLDExtract()
+        return _tld_extractor
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
@@ -96,11 +119,11 @@ class DomainLabelExtractor(Processor):
         if not self._field_exists:
             return
         domain = self._get_dotted_field_value(event, rule.target_field)
-        tagging_field = event.get(self._tagging_field_name, [])
+        tagging_field = event.get(self._config.tagging_field_name, [])
 
         if self._is_valid_ip(domain):
             tagging_field.append(f"ip_in_{rule.target_field.replace('.', '_')}")
-            event[self._tagging_field_name] = tagging_field
+            event[self._config.tagging_field_name] = tagging_field
             return
 
         labels = self._tld_extractor(domain)
@@ -118,7 +141,7 @@ class DomainLabelExtractor(Processor):
                     raise DuplicationError(self.name, [output_field])
         else:
             tagging_field.append(f"invalid_domain_in_{rule.target_field.replace('.', '_')}")
-            event[self._tagging_field_name] = tagging_field
+            event[self._config.tagging_field_name] = tagging_field
 
     @staticmethod
     def _is_valid_ip(domain):

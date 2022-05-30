@@ -2,14 +2,12 @@
 # pylint: disable=protected-access
 
 import json
-import sys
 from abc import ABC
 from logging import getLogger
 from typing import Iterable
 
 from unittest import mock
 
-import pytest
 from logprep.abc.processor import Processor
 from logprep.processor.processor_factory import ProcessorFactory
 

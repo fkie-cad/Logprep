@@ -1,4 +1,25 @@
-"""This module contains functionality for pre-detecting attacks."""
+"""
+PreDetector
+-----------
+
+The `pre_detector` is a processor that creates alerts for matching events. It adds MITRE ATT&CK
+data to the alerts.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - predetectorname:
+        type: pre_detector
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        pre_detector_topic: sre_topic
+        alert_ip_list_path: /tmp/ip_list.yml
+"""
 import sys
 from logging import DEBUG, Logger
 from uuid import uuid4
@@ -30,12 +51,28 @@ class PreDetector(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """pre_detector config"""
+        """PreDetector config"""
 
         pre_detector_topic: str = field(validator=validators.instance_of(str))
+        """
+        A Kafka topic for the detection results of the Predetector.
+        Results in this topic can be linked to the original event via a `pre_detector_id`.
+        """
         alert_ip_list_path: str = field(
             default=None, validator=validators.optional(validator=validators.instance_of(str))
         )
+        """
+        Path to a YML file or a list of paths to YML files with dictionaries of IPs.
+        It is used by the Predetector to throw alerts if one of the IPs is found
+        in fields that were defined in a rule.
+
+        It uses IPs or networks in the CIDR format as keys and can contain expiration
+        dates in the ISO format as values.
+        If a value is empty, then there is no expiration date for the IP check.
+        If a checked IP is covered by an IP and a network in the dictionary
+        (i.e. IP 127.0.0.1 and network 127.0.0.0/24 when checking 127.0.0.1),
+        then the expiration date of the IP is being used.
+        """
 
     __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
     if not sys.version_info.minor < 7:

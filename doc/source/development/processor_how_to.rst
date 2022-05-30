@@ -66,8 +66,7 @@ The log message is being passed as a dictionary and modified 'in place', meaning
 
 **Important**: It is possible to cancel processing of a log message and to discard it by deleting all of its fields.
 This could be used if a large amounts of useless logs are being generated, but it does not conform to the goal of Logprep and should be avoided.
-The processor :py:class:`~logprep.processor.do_nothing.processor.Delete` demonstrates this.
-It deletes all log messages and should be only used for testing purposes.
+
 
 Exceptions/Error Handling
 ~~~~~~~~~~~~~~~~~~~~~~~~~

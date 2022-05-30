@@ -1,4 +1,29 @@
-"""This module contains a Normalizer that copies specific values to standardized fields."""
+"""
+Normalizer
+----------
+The Normalizer copies specific values to configurable fields.
+
+Example
+^^^^^^^
+
+..  code-block:: yaml
+    :linenos:
+
+    - normalizername:
+        type: normalizer
+        generic_rules:
+            - tests/testdata/labeler_rules/rules/
+        specific_rules:
+            - tests/testdata/labeler_rules/rules/
+        hash_salt: a_secret_tasty_ingredient
+        regex_mapping: tests/testdata/unit/normalizer/normalizer_regex_mapping.yml
+        html_replace_fields: tests/testdata/unit/normalizer/html_replace_fields.yml
+        count_grok_pattern_matches:
+            count_directory_path: "path/to/directory"
+            write_period: 0.1
+            lock_file_path: "path/to/lock/file"
+
+"""
 import calendar
 import html
 import json
@@ -9,7 +34,7 @@ from functools import reduce
 from logging import Logger
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import arrow
 from attr import define, field, validators
@@ -34,19 +59,22 @@ class Normalizer(Processor):
     class Config(Processor.Config):
         """config description for Normalizer"""
 
-        hash_salt: Optional[str] = field(
-            default=None, validator=validators.optional(validators.instance_of(str))
-        )
         regex_mapping: str = field(validator=validators.instance_of(str))
+        """Path to regex mapping file with regex keywords that are replaced with regex expressions 
+            by the normalizer."""
         html_replace_fields: Optional[str] = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
+        """Path to yaml file with html replace fields"""
         count_grok_pattern_matches: Optional[dict] = field(
             default=None, validator=validators.optional(validators.instance_of(dict))
         )
+        """Optional configuration to count matches of grok patterns.
+            Counting will be disabled if this value is omitted."""
         grok_patterns: Optional[str] = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
+        """Optional path to a directory with grok patterns."""
 
     __slots__ = [
         "_conflicting_fields",

@@ -1,4 +1,30 @@
-"""This module contains functionality for resolving domains."""
+"""
+DomainResolver
+--------------
+
+The `domain_resolver` is a processor that can resolve domains inside a defined field.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - domainresolvername:
+        type: domain_resolver
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        hyperscan_db_path: tmp/path/scan.db
+        tld_list: tmp/path/tld.dat
+        timeout: 0.5
+        max_cached_domains: 20000
+        max_caching_days: 1
+        hash_salt: secure_salt
+        cache_enabled: true
+        debug_cache: false
+"""
 import datetime
 import sys
 import socket
@@ -35,21 +61,39 @@ class DomainResolver(Processor):
 
     @define(kw_only=True)
     class Config(Processor.Config):
-        """domain_resolver config"""
+        """DomainResolver config"""
 
         tld_list: str = field(validator=validators.instance_of(str))
+        """Path to a file with a list of top-level domains
+        (like https://publicsuffix.org/list/public_suffix_list.dat)."""
         timeout: Optional[float] = field(
             default=0.5, validator=validators.optional(validators.instance_of(float))
         )
+        """Timeout for resolving of domains."""
         max_cached_domains: int = field(validator=validators.instance_of(int))
+        """The maximum number of cached domains. One cache entry requires ~250 Byte, thus 10
+        million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting
+        Logprep does therefore clear the cache."""
         max_caching_days: int = field(validator=validators.instance_of(int))
+        """Number of days a domains is cached after the last time it appeared.
+        This caching reduces the CPU load of Logprep (no demanding encryption must be performed
+        repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
+        Setting the caching days to Null deactivates the caching. In case the cache size has been
+        exceeded (see `domain_resolver.max_cached_domains`),the oldest cached pseudonyms will
+        be discarded first.Thus, it is possible that a domain is re-added to the cache before
+        max_caching_days has elapsed if it was discarded due to the size limit."""
         hash_salt: str = field(validator=validators.instance_of(str))
+        """A salt that is used for hashing."""
         cache_enabled: bool = field(
             default=True, validator=validators.optional(validator=validators.instance_of(bool))
         )
+        """If enabled activates a cache such that already seen domains do not need to be resolved
+        again."""
         debug_cache: bool = field(
             default=False, validator=validators.optional(validator=validators.instance_of(bool))
         )
+        """If enabled adds debug information to the current event, for example if the event
+        was retrieved from the cache or newly resolved, as well as the cache size."""
 
     __slots__ = ["_domain_ip_map"]
     if not sys.version_info.minor < 7:

@@ -192,3 +192,5 @@ epub_exclude_files = ["search.html"]
 # -- Extension configuration -------------------------------------------------
 modindex_common_prefix = ["logprep."]
 html_style = "css/custom_theme.css"
+autodoc_class_signature = "separated"
+autodoc_member_order = "bysource"

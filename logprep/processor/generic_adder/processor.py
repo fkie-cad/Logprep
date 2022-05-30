@@ -1,6 +1,22 @@
-"""This module contains functionality for adding fields using regex lists."""
-from typing import TYPE_CHECKING, List
-from logging import Logger
+"""
+GenericAdder
+------------
+The `generic_adder` adds fields to log events based on rules or/and external field lists.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - genericaddername:
+        type: generic_adder
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
+from typing import List
 
 
 from logprep.abc import Processor

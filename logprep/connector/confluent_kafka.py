@@ -48,7 +48,7 @@ class ConfluentKafkaFactory:
 
         Raises
         ------
-        InvalidConfigurationError
+        logprep.connector.connector_factory_error.InvalidConfigurationError
             If ConfluentKafka configuration is invalid.
 
         """
