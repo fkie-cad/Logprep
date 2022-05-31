@@ -278,13 +278,3 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             match=r"tld_lists file '\/non\/existent' does not exist",
         ):
             ProcessorFactory.create({"test instance": config}, self.logger)
-
-    @mock.patch("os.path.exists", return_value=True)
-    def test_validation_raises_if_tld_lists_path_element_is_not_a_dat_file(self, _):
-        config = deepcopy(self.CONFIG)
-        config.update({"tld_lists": ["/non/a/correct/file.type"]})
-        with pytest.raises(
-            InvalidConfigurationError,
-            match=r"tld_lists '\/non\/a\/correct\/file.type' is not a '.dat' file",
-        ):
-            ProcessorFactory.create({"test instance": config}, self.logger)

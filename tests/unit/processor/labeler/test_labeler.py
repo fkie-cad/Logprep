@@ -12,7 +12,6 @@ from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import InvalidLabelingSchemaFileError, LabelingSchema
 from logprep.processor.labeler.rule import LabelingRule
 from logprep.processor.processor_factory import ProcessorFactory
-from logprep.processor.processor_factory_error import InvalidConfigurationError
 from pytest import raises
 from tests.testdata.metadata import path_to_schema, path_to_schema2, path_to_testdata
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -236,21 +235,6 @@ class TestLabeler(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document == expected
-
-    def test_create_fails_when_schema_config_points_to_non_existing_file(self):
-        config = copy.deepcopy(self.CONFIG)
-        config["schema"] = join("path", "to", "non-existing", "file")
-        with raises(
-            InvalidLabelingSchemaFileError,
-            match="Not a valid schema file: File not found: '.*'.",
-        ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
-
-    def test_create_fails_when_schema_config_points_to_directory(self):
-        config = copy.deepcopy(self.CONFIG)
-        config["schema"] = path_to_testdata
-        with raises(InvalidLabelingSchemaFileError, match="Is a directory: .*"):
-            ProcessorFactory.create({"test instance": config}, self.logger)
 
     def test_create_fails_when_include_parent_labels_is_not_boolean(self):
         config = copy.deepcopy(self.CONFIG)

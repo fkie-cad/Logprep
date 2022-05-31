@@ -36,6 +36,7 @@ from typing import Optional
 from attr import define, field, validators
 
 from logprep.abc import Processor
+from logprep.util.validators import file_validator, json_validator
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelingRule
 
@@ -47,7 +48,7 @@ class Labeler(Processor):
     class Config(Processor.Config):
         """Labeler Configurations"""
 
-        schema: str = field(validator=validators.instance_of(str))
+        schema: str = field(validator=[file_validator, json_validator])
         """Path to a labeling schema file"""
         include_parent_labels: Optional[bool] = field(
             default=False, validator=validators.optional(validator=validators.instance_of(bool))

@@ -285,7 +285,7 @@ class BaseProcessorTestCase(ABC):
     def test_validation_raises_on_empty_rules_list(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: []})
-        with pytest.raises(InvalidConfigurationError, match=r"rule list is empty"):
+        with pytest.raises(InvalidConfigurationError, match=rf"{rule_list} is empty"):
             ProcessorFactory.create({"test instance": config}, self.logger)
 
     @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
@@ -320,16 +320,5 @@ class BaseProcessorTestCase(ABC):
         with pytest.raises(
             InvalidConfigurationError,
             match=r"tree_config file '\/i\/am\/not\/a\/file\/path' does not exist",
-        ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
-
-    @mock.patch("os.path.exists", return_value=True)
-    @mock.patch("os.path.isfile", return_value=False)
-    def test_validation_raises_if_tree_config_is_not_a_json_file(self, _, __):
-        config = deepcopy(self.CONFIG)
-        config.update({"tree_config": "/i/am/not/a/file/path"})
-        with pytest.raises(
-            InvalidConfigurationError,
-            match=r"tree_config '\/i\/am\/not\/a\/file\/path' is not a '.json' file",
         ):
             ProcessorFactory.create({"test instance": config}, self.logger)

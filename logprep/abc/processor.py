@@ -17,33 +17,7 @@ from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.processor.processor_factory_error import InvalidConfigurationError
-
-
-def file_validator(_, attribute, value):  # pylint: disable=no-self-use
-    """validate if a attribute is a valid file"""
-    if attribute.default is None and value is None:
-        return
-    if not isinstance(value, str):
-        raise InvalidConfigurationError(f"{attribute.name} is not a str")
-    if not os.path.exists(value):
-        raise InvalidConfigurationError(f"{attribute.name} file '{value}' does not exist")
-    if not value.endswith(attribute.metadata["file_extension"]) or not os.path.isfile(value):
-        raise InvalidConfigurationError(
-            f"{attribute.name} '{value}' is not a '{attribute.metadata['file_extension']}' file"
-        )
-
-
-def list_of_files_validator(_, attribute, value):  # pylint: disable=no-self-use
-    """validate if a list has valid files is a valid file"""
-    if attribute.default is None and value is None:
-        return
-    if not isinstance(value, list):
-        raise InvalidConfigurationError(f"{attribute.name} is not a list")
-    if len(value) == 0:
-        raise InvalidConfigurationError(f"{attribute.name} is empty list")
-    for list_element in value:
-        file_validator(_, attribute, list_element)
+from logprep.util.validators import file_validator, list_of_dirs_validator
 
 
 class Processor(ABC):
@@ -55,28 +29,14 @@ class Processor(ABC):
 
         type: str = field(validator=validators.instance_of(str))
         """ The type value defines the processor type that is being configured. """
-        specific_rules: List[str] = field()
+        specific_rules: List[str] = field(validator=list_of_dirs_validator)
         """List of directory paths with generic rule files that can match multiple event types"""
-        generic_rules: List[str] = field()
+        generic_rules: List[str] = field(validator=list_of_dirs_validator)
         """List of directory paths with generic rule files that can match multiple event types"""
         tree_config: Optional[str] = field(
-            default=None, validator=file_validator, metadata={"file_extension": ".json"}
+            default=None, validator=[file_validator], metadata={"file_extension": ".json"}
         )
         """ Path to a JSON file with a valid rule tree configuration. """
-
-        @generic_rules.validator
-        @specific_rules.validator
-        def validate_rules_directories(self, attribute, value):  # pylint: disable=no-self-use
-            """validate rule dirs"""
-            if not isinstance(value, list):
-                raise InvalidConfigurationError("not a list")
-            if len(value) == 0:
-                raise InvalidConfigurationError(f"{attribute}: rule list is empty")
-            for rule_dir in value:
-                if not os.path.exists(rule_dir):
-                    raise InvalidConfigurationError(f"'{rule_dir}' does not exist")
-                if not os.path.isdir(rule_dir):
-                    raise InvalidConfigurationError(f"'{rule_dir}' is not a directory")
 
     __slots__ = [
         "name",
