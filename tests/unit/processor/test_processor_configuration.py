@@ -145,7 +145,7 @@ class TestProcessorConfiguration:
             "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",
-            "tree_config": "/tmp",
+            "tree_config": "tests/testdata/unit/tree_config.json",
         }
         config = ProcessorConfiguration.create("dummy name", test_config)
-        assert config.tree_config == "/tmp"
+        assert config.tree_config == "tests/testdata/unit/tree_config.json"

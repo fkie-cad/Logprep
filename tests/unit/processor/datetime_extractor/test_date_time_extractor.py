@@ -21,7 +21,6 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         "type": "datetime_extractor",
         "specific_rules": ["tests/testdata/unit/datetime_extractor/rules/specific"],
         "generic_rules": ["tests/testdata/unit/datetime_extractor/rules/generic"],
-        "tree_config": "",
     }
 
     @property

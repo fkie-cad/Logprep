@@ -33,14 +33,12 @@ class Processor(ABC):
         """List of directory paths with generic rule files that can match multiple event types"""
         generic_rules: List[str] = field()
         """List of directory paths with generic rule files that can match multiple event types"""
-        tree_config: Optional[str] = field(
-            default=None, validator=validators.optional(validators.instance_of(str))
-        )
+        tree_config: Optional[str] = field(default=None)
         """ Path to a JSON file with a valid rule tree configuration. """
 
         @generic_rules.validator
         @specific_rules.validator
-        def validate_rules_directories(self, attribute, value):
+        def validate_rules_directories(self, attribute, value):  # pylint: disable=no-self-use
             """validate rule dirs"""
             if not isinstance(value, list):
                 raise InvalidConfigurationError("not a list")
@@ -51,6 +49,18 @@ class Processor(ABC):
                     raise InvalidConfigurationError(f"'{rule_dir}' does not exist")
                 if not os.path.isdir(rule_dir):
                     raise InvalidConfigurationError(f"'{rule_dir}' is not a directory")
+
+        @tree_config.validator
+        def validate_tree_config(self, _, value):  # pylint: disable=no-self-use
+            """validate if tree_config is a valid file"""
+            if value is None:
+                return
+            if not isinstance(value, str):
+                raise InvalidConfigurationError("tree_config is not a str")
+            if not os.path.exists(value):
+                raise InvalidConfigurationError(f"tree_config file '{value}' does not exist")
+            if not value.endswith(".json") or not os.path.isfile(value):
+                raise InvalidConfigurationError(f"tree_config '{value}' is not a json file")
 
     __slots__ = [
         "name",
