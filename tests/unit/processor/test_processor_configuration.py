@@ -105,17 +105,6 @@ class TestProcessorConfiguration:
         ):
             ProcessorConfiguration.create("dummy name", test_config)
 
-    def test_raises_on_wrong_type_in_config_field(self):
-        test_config = {
-            "type": "mock_processor",
-            "specific_rules": "tests/testdata/unit/normalizer/rules/specific/",
-            "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
-            "mandatory_attribute": "I am mandatory",
-            "optional_attribute": "I am optional",
-        }
-        with pytest.raises(TypeError, match=r"'specific_rules' must be <class 'list'>"):
-            ProcessorConfiguration.create("dummy name", test_config)
-
     def test_raises_on_unknown_field(self):
         test_config = {
             "type": "mock_processor",

@@ -1,12 +1,15 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
 
+from copy import deepcopy
 import json
 from abc import ABC
 from logging import getLogger
 from typing import Iterable
 
 from unittest import mock
+
+import pytest
 
 from logprep.abc.processor import Processor
 from logprep.processor.processor_factory import ProcessorFactory
@@ -17,6 +20,7 @@ from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.time_measurement import TimeMeasurement
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class BaseProcessorTestCase(ABC):
@@ -269,3 +273,37 @@ class BaseProcessorTestCase(ABC):
         attr_attributes = self.object._config.__attrs_attrs__
         for attr in attr_attributes:
             assert attr.kw_only
+
+    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
+    def test_validation_raises_if_not_a_list(self, rule_list):
+        config = deepcopy(self.CONFIG)
+        config.update({rule_list: "i am not a list"})
+        with pytest.raises(InvalidConfigurationError, match=r"not a list"):
+            ProcessorFactory.create({"test instance": config}, self.logger)
+
+    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
+    def test_validation_raises_on_empty_rules_list(self, rule_list):
+        config = deepcopy(self.CONFIG)
+        config.update({rule_list: []})
+        with pytest.raises(InvalidConfigurationError, match=r"rule list is empty"):
+            ProcessorFactory.create({"test instance": config}, self.logger)
+
+    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
+    def test_validation_raises_if_elements_does_not_exist(self, rule_list):
+        config = deepcopy(self.CONFIG)
+        config.update({rule_list: ["/i/do/not/exist"]})
+        with pytest.raises(
+            InvalidConfigurationError, match=r"'\/i\/do\/not\/exist' does not exist"
+        ):
+            ProcessorFactory.create({"test instance": config}, self.logger)
+
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.path.isdir", return_value=False)
+    def test_validation_raises_if_element_is_not_a_directory(self, _, __):
+        config = deepcopy(self.CONFIG)
+        config.update({"specific_rules": ["/i/am/not/a/directory"]})
+        config.update({"generic_rules": ["/i/am/not/a/directory"]})
+        with pytest.raises(
+            InvalidConfigurationError, match=r"'\/i\/am\/not\/a\/directory' is not a directory"
+        ):
+            ProcessorFactory.create({"test instance": config}, self.logger)

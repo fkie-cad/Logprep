@@ -139,8 +139,8 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         delete_config = {
             "type": "delete",
-            "specific_rules": [],
-            "generic_rules": [],
+            "specific_rules": ["tests/testdata/unit/delete/rules/specific"],
+            "generic_rules": ["tests/testdata/unit/delete/rules/generic"],
         }
         processor_configuration = ProcessorConfiguration.create("delete processor", delete_config)
         delete_processor = Delete("delete processor", processor_configuration, mock.MagicMock())

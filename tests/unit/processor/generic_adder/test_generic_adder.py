@@ -92,7 +92,6 @@ class TestGenericAdder(BaseProcessorTestCase):
     def test_add_generic_fields_from_file_first_existing(self):
         config = deepcopy(self.CONFIG)
         config["generic_rules"] = [RULES_DIR_FIRST_EXISTING]
-        config["specific_rules"] = []
         configuration = {"test processor": config}
         generic_adder = ProcessorFactory.create(configuration, self.logger)
 
@@ -113,7 +112,6 @@ class TestGenericAdder(BaseProcessorTestCase):
     def test_add_generic_fields_from_file_first_existing_with_missing(self):
         config = deepcopy(self.CONFIG)
         config["specific_rules"] = [RULES_DIR_FIRST_EXISTING]
-        config["generic_rules"] = []
         configuration = {"test_instance_name": config}
         generic_adder = ProcessorFactory.create(configuration, self.logger)
 

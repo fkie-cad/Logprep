@@ -17,6 +17,7 @@ from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class Processor(ABC):
@@ -28,14 +29,28 @@ class Processor(ABC):
 
         type: str = field(validator=validators.instance_of(str))
         """ The type value defines the processor type that is being configured. """
-        specific_rules: List[str] = field(validator=validators.instance_of(list))
+        specific_rules: List[str] = field()
         """List of directory paths with generic rule files that can match multiple event types"""
-        generic_rules: List[str] = field(validator=validators.instance_of(list))
+        generic_rules: List[str] = field()
         """List of directory paths with generic rule files that can match multiple event types"""
         tree_config: Optional[str] = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
         """ Path to a JSON file with a valid rule tree configuration. """
+
+        @generic_rules.validator
+        @specific_rules.validator
+        def validate_rules_directories(self, attribute, value):
+            """validate rule dirs"""
+            if not isinstance(value, list):
+                raise InvalidConfigurationError("not a list")
+            if len(value) == 0:
+                raise InvalidConfigurationError(f"{attribute}: rule list is empty")
+            for rule_dir in value:
+                if not os.path.exists(rule_dir):
+                    raise InvalidConfigurationError(f"'{rule_dir}' does not exist")
+                if not os.path.isdir(rule_dir):
+                    raise InvalidConfigurationError(f"'{rule_dir}' is not a directory")
 
     __slots__ = [
         "name",
