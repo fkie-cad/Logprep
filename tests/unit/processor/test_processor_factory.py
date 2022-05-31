@@ -62,8 +62,8 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
                 "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
                 "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
                 "hash_salt": "a_secret_tasty_ingredient",
-                "specific_rules": ["some specific rules"],
-                "generic_rules": ["some generic rules"],
+                "specific_rules": ["tests/testdata/unit/pseudonymizer/rules/specific"],
+                "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic"],
                 "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
                 "pseudonyms_topic": "pseudonyms",
                 "max_cached_pseudonyms": 1000000,
@@ -99,8 +99,8 @@ def test_create_clusterer_returns_clusterer_processor():
             "clusterer": {
                 "type": "clusterer",
                 "output_field_name": "cluster_signature",
-                "specific_rules": ["test_rules"],
-                "generic_rules": ["test_rules"],
+                "specific_rules": ["tests/testdata/unit/clusterer/rules/specific"],
+                "generic_rules": ["tests/testdata/unit/clusterer/rules/generic"],
             }
         },
         logger,
