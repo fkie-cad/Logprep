@@ -20,6 +20,32 @@ from logprep.util.time_measurement import TimeMeasurement
 from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
+def file_validator(_, attribute, value):  # pylint: disable=no-self-use
+    """validate if a attribute is a valid file"""
+    if attribute.default is None and value is None:
+        return
+    if not isinstance(value, str):
+        raise InvalidConfigurationError(f"{attribute.name} is not a str")
+    if not os.path.exists(value):
+        raise InvalidConfigurationError(f"{attribute.name} file '{value}' does not exist")
+    if not value.endswith(attribute.metadata["file_extension"]) or not os.path.isfile(value):
+        raise InvalidConfigurationError(
+            f"{attribute.name} '{value}' is not a '{attribute.metadata['file_extension']}' file"
+        )
+
+
+def list_of_files_validator(_, attribute, value):  # pylint: disable=no-self-use
+    """validate if a list has valid files is a valid file"""
+    if attribute.default is None and value is None:
+        return
+    if not isinstance(value, list):
+        raise InvalidConfigurationError(f"{attribute.name} is not a list")
+    if len(value) == 0:
+        raise InvalidConfigurationError(f"{attribute.name} is empty list")
+    for list_element in value:
+        file_validator(_, attribute, list_element)
+
+
 class Processor(ABC):
     """Abstract Processor Class to define the Interface"""
 
@@ -33,7 +59,9 @@ class Processor(ABC):
         """List of directory paths with generic rule files that can match multiple event types"""
         generic_rules: List[str] = field()
         """List of directory paths with generic rule files that can match multiple event types"""
-        tree_config: Optional[str] = field(default=None)
+        tree_config: Optional[str] = field(
+            default=None, validator=file_validator, metadata={"file_extension": ".json"}
+        )
         """ Path to a JSON file with a valid rule tree configuration. """
 
         @generic_rules.validator
@@ -49,18 +77,6 @@ class Processor(ABC):
                     raise InvalidConfigurationError(f"'{rule_dir}' does not exist")
                 if not os.path.isdir(rule_dir):
                     raise InvalidConfigurationError(f"'{rule_dir}' is not a directory")
-
-        @tree_config.validator
-        def validate_tree_config(self, _, value):  # pylint: disable=no-self-use
-            """validate if tree_config is a valid file"""
-            if value is None:
-                return
-            if not isinstance(value, str):
-                raise InvalidConfigurationError("tree_config is not a str")
-            if not os.path.exists(value):
-                raise InvalidConfigurationError(f"tree_config file '{value}' does not exist")
-            if not value.endswith(".json") or not os.path.isfile(value):
-                raise InvalidConfigurationError(f"tree_config '{value}' is not a json file")
 
     __slots__ = [
         "name",

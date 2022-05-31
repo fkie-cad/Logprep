@@ -330,6 +330,6 @@ class BaseProcessorTestCase(ABC):
         config.update({"tree_config": "/i/am/not/a/file/path"})
         with pytest.raises(
             InvalidConfigurationError,
-            match=r"tree_config '\/i\/am\/not\/a\/file\/path' is not a json file",
+            match=r"tree_config '\/i\/am\/not\/a\/file\/path' is not a '.json' file",
         ):
             ProcessorFactory.create({"test instance": config}, self.logger)
