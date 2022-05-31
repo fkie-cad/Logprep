@@ -42,6 +42,7 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to
+from logprep.util.validators import file_validator
 
 if sys.version_info.minor < 8:
     from backports.cached_property import cached_property  # pylint: disable=import-error
@@ -63,7 +64,7 @@ class DomainResolver(Processor):
     class Config(Processor.Config):
         """DomainResolver config"""
 
-        tld_list: str = field(validator=validators.instance_of(str))
+        tld_list: str = field(validator=file_validator)
         """Path to a file with a list of top-level domains
         (like https://publicsuffix.org/list/public_suffix_list.dat)."""
         timeout: Optional[float] = field(

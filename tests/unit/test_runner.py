@@ -12,7 +12,6 @@ from pytest import raises
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.labeler.labeling_schema import (
-    InvalidLabelingSchemaFileError,
     LabelingSchemaError,
 )
 from logprep.runner import (
@@ -33,7 +32,6 @@ from tests.testdata.metadata import (
     path_to_invalid_config,
     path_to_invalid_rules,
     path_to_schema2,
-    path_to_testdata,
 )
 from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
 from tests.util.testhelpers import HandlerStub, AssertEmitsLogMessage
