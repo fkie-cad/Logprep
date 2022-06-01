@@ -15,7 +15,7 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description="Logprep allows to collect, process and forward log messages from various data "
-                "sources.",
+    "sources.",
     long_description=readme,
     url="https://github.com/fkie-cad/Logprep",
     author="Logprep Team",
