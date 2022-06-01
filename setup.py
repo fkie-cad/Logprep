@@ -1,12 +1,13 @@
 # pylint: disable=missing-module-docstring
 from setuptools import setup, find_packages
+
 import versioneer
 
-with open("requirements.txt") as f:
+with open("requirements.txt", encoding="utf-8") as f:
     requirements = f.read().splitlines()
     requirements = [requirement for requirement in requirements if not requirement.startswith("#")]
 
-with open("README.md") as f:
+with open("README.md", encoding="utf-8") as f:
     readme = f.read()
 
 setup(
@@ -39,4 +40,3 @@ setup(
         ]
     },
 )
-
