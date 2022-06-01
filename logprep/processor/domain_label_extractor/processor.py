@@ -29,14 +29,14 @@ Example
 import sys
 import ipaddress
 
-from typing import List
+from typing import List, Optional
 from attr import define, field, validators
 
 from tldextract import TLDExtract
 
 
 from logprep.abc import Processor
-from logprep.util.validators import list_of_files_validator
+from logprep.util.validators import list_of_files_validator, list_of_urls_validator
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to
 
@@ -79,7 +79,7 @@ class DomainLabelExtractor(Processor):
         """Optional configuration field that defines into which field in the event the
         informational tags should be written to. If this field is not present it defaults
         to :code:`tags`."""
-        tld_lists: list = field(default=None, validator=[list_of_files_validator])
+        tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
         """Optional list of path to files with top-level domain lists
         (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
         a default list will be retrieved online and cached in a local directory. For local

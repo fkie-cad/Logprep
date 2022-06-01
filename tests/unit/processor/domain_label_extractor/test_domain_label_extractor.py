@@ -1,13 +1,11 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
-from copy import deepcopy
-from unittest import mock
 
 import pytest
+
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_label_extractor.processor import DuplicationError
 from logprep.processor.processor_factory import ProcessorFactory
-from logprep.processor.processor_factory_error import InvalidConfigurationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -251,30 +249,3 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             r"DomainLabelExtractor: url\.subdomain",
         ):
             self.object.process(document)
-
-    def test_validation_raises_if_tld_lists_is_not_a_list(self):
-        config = deepcopy(self.CONFIG)
-        config.update({"tld_lists": "not a list"})
-        with pytest.raises(
-            InvalidConfigurationError,
-            match=r"tld_lists is not a list",
-        ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
-
-    def test_validation_raises_if_tld_lists_is_empty(self):
-        config = deepcopy(self.CONFIG)
-        config.update({"tld_lists": []})
-        with pytest.raises(
-            InvalidConfigurationError,
-            match=r"tld_lists is empty list",
-        ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
-
-    def test_validation_raises_if_tld_lists_path_element_does_not_exist(self):
-        config = deepcopy(self.CONFIG)
-        config.update({"tld_lists": ["/non/existent"]})
-        with pytest.raises(
-            InvalidConfigurationError,
-            match=r"tld_lists file '\/non\/existent' does not exist",
-        ):
-            ProcessorFactory.create({"test instance": config}, self.logger)

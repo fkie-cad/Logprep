@@ -42,7 +42,7 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to
-from logprep.util.validators import file_validator
+from logprep.util.validators import file_validator, url_validator, list_of_urls_validator
 
 if sys.version_info.minor < 8:
     from backports.cached_property import cached_property  # pylint: disable=import-error
@@ -64,9 +64,11 @@ class DomainResolver(Processor):
     class Config(Processor.Config):
         """DomainResolver config"""
 
-        tld_list: str = field(validator=file_validator)
-        """Path to a file with a list of top-level domains
-        (like https://publicsuffix.org/list/public_suffix_list.dat)."""
+        tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
+        """Optional list of path to files with top-level domain lists
+        (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
+        a default list will be retrieved online and cached in a local directory. For local
+        files the path has to be given with :code:`file:///path/to/file.dat`."""
         timeout: Optional[float] = field(
             default=0.5, validator=validators.optional(validators.instance_of(float))
         )
@@ -127,8 +129,10 @@ class DomainResolver(Processor):
 
     @cached_property
     def _tld_extractor(self):
-        tld_list = self._config.tld_list
-        return TLDExtract(suffix_list_urls=[tld_list])
+        if self._config.tld_lists is not None:
+            return TLDExtract(suffix_list_urls=self._config.tld_lists)
+        else:
+            return TLDExtract()
 
     @property
     def _timeout(self):

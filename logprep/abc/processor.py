@@ -33,9 +33,7 @@ class Processor(ABC):
         """List of directory paths with generic rule files that can match multiple event types"""
         generic_rules: List[str] = field(validator=list_of_dirs_validator)
         """List of directory paths with generic rule files that can match multiple event types"""
-        tree_config: Optional[str] = field(
-            default=None, validator=[file_validator], metadata={"file_extension": ".json"}
-        )
+        tree_config: Optional[str] = field(default=None, validator=[file_validator])
         """ Path to a JSON file with a valid rule tree configuration. """
 
     __slots__ = [

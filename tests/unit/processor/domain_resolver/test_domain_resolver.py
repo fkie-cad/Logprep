@@ -1,12 +1,14 @@
 # pylint: disable=missing-docstring
 import re
 import socket
+from copy import deepcopy
 from os.path import exists
 from pathlib import Path
 from time import sleep
 
 import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.processor_factory import ProcessorFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -19,7 +21,6 @@ class TestDomainResolver(BaseProcessorTestCase):
         "type": "domain_resolver",
         "generic_rules": ["tests/testdata/unit/domain_resolver/rules/generic"],
         "specific_rules": ["tests/testdata/unit/domain_resolver/rules/specific"],
-        "tld_list": TLD_LIST,
         "timeout": 0.25,
         "max_cached_domains": 1000000,
         "max_caching_days": 1,
@@ -45,6 +46,10 @@ class TestDomainResolver(BaseProcessorTestCase):
 
     @pytest.mark.skipif(not exists(TLD_LIST.split("file://")[-1]), reason="Tld-list required.")
     def test_invalid_dots_domain_to_ip_produces_warning(self):
+        config = deepcopy(self.CONFIG)
+        config.update({"tld_list": TLD_LIST})
+        domain_resolver = ProcessorFactory.create({"test instance": config}, self.logger)
+
         assert self.object.ps.processed_count == 0
         document = {"url": "google..invalid.de"}
 
@@ -53,7 +58,7 @@ class TestDomainResolver(BaseProcessorTestCase):
             match=r"DomainResolver \(test-domain-resolver\)\: encoding with \'idna\' codec failed "
             r"\(UnicodeError\: label empty or too long\) for domain \'google..invalid.de\'",
         ):
-            self.object.process(document)
+            domain_resolver.process(document)
 
     def test_url_to_ip_resolved_and_added(self, monkeypatch):
         def mockreturn(domain):
