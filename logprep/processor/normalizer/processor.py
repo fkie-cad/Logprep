@@ -47,7 +47,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
-
+from logprep.util.validators import file_validator, directory_validator
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -59,21 +59,17 @@ class Normalizer(Processor):
     class Config(Processor.Config):
         """config description for Normalizer"""
 
-        regex_mapping: str = field(validator=validators.instance_of(str))
-        """Path to regex mapping file with regex keywords that are replaced with regex expressions 
+        regex_mapping: str = field(validator=file_validator)
+        """Path to regex mapping file with regex keywords that are replaced with regex expressions
             by the normalizer."""
-        html_replace_fields: Optional[str] = field(
-            default=None, validator=validators.optional(validators.instance_of(str))
-        )
+        html_replace_fields: Optional[str] = field(default=None, validator=file_validator)
         """Path to yaml file with html replace fields"""
         count_grok_pattern_matches: Optional[dict] = field(
             default=None, validator=validators.optional(validators.instance_of(dict))
         )
         """Optional configuration to count matches of grok patterns.
             Counting will be disabled if this value is omitted."""
-        grok_patterns: Optional[str] = field(
-            default=None, validator=validators.optional(validators.instance_of(str))
-        )
+        grok_patterns: Optional[str] = field(default=None, validator=directory_validator)
         """Optional path to a directory with grok patterns."""
 
     __slots__ = [

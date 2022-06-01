@@ -27,7 +27,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
         "max_cached_pseudonyms": 1000000,
         "max_caching_days": 1,
-        "tld_list": "tests/testdata/external/public_suffix_list.dat",
     }
 
     def setup_method(self) -> None:

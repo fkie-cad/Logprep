@@ -5,7 +5,7 @@ pipeline:
   - labelername:
       type: labeler
       schema: quickstart/exampledata/rules/labeler/schema.json
-      include_parent_labels: on
+      include_parent_labels: true
       specific_rules:
         - quickstart/exampledata/rules/labeler/specific
       generic_rules:
@@ -49,7 +49,6 @@ pipeline:
         - quickstart/exampledata/rules/pseudonymizer/generic/
       max_cached_pseudonyms: 1000000
       max_caching_days: 1
-      tld_list: "-"
 
 connector:
   type: confluentkafka

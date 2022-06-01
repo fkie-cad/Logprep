@@ -21,11 +21,12 @@ Example
 """
 from typing import List
 
-from attr import define, field, validators
+from attr import define, field
 
 from logprep.abc import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to
+from logprep.util.validators import directory_validator
 
 
 class ListComparisonError(BaseException):
@@ -55,7 +56,7 @@ class ListComparison(Processor):
     class Config(Processor.Config):
         """ListComparison config"""
 
-        list_search_base_path: str = field(validator=validators.instance_of(str))
+        list_search_base_path: str = field(validator=directory_validator)
         """Relative list paths in rules will be relative to this path if this is set.
         This parameter is optional."""
 

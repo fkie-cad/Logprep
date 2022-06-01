@@ -10,7 +10,7 @@ The validation of schemata and rules can be started separately by executing:
 
     PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py $LABELING_SCHEMA $RULES
 
-Where :code:`$LABELING_SCHEMA` is the path to a labeling schema file and :code:`$RULES` is the path 
+Where :code:`$LABELING_SCHEMA` is the path to a labeling schema file and :code:`$RULES` is the path
 to a directory with rule files.
 
 Example
@@ -54,7 +54,7 @@ class Labeler(Processor):
             default=False, validator=validators.optional(validator=validators.instance_of(bool))
         )
         """If the option is deactivated only labels defined in a rule will be activated.
-        Otherwise, also allowed labels in the path to the *root* of the corresponding category 
+        Otherwise, also allowed labels in the path to the *root* of the corresponding category
         of a label will be added.
         This allows to search for higher level labels if this option was activated in the rule.
         """

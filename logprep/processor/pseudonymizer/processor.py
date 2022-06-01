@@ -42,7 +42,7 @@ from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
-
+from logprep.util.validators import file_validator, list_of_urls_validator
 
 if sys.version_info.minor < 8:
     from backports.cached_property import cached_property  # pylint: disable=import-error
@@ -65,12 +65,12 @@ class Pseudonymizer(Processor):
         These are not the pseudonymized events, but just the pseudonyms with the encrypted real
         values.
         """
-        pubkey_analyst: str = field(validator=validators.instance_of(str))
+        pubkey_analyst: str = field(validator=file_validator)
         """
         Path to the public key of an analyst.
 
         * /var/git/analyst_pub.pem"""
-        pubkey_depseudo: str = field(validator=validators.instance_of(str))
+        pubkey_depseudo: str = field(validator=file_validator)
         """
         Path to the public key for depseudonymization
 
@@ -78,7 +78,7 @@ class Pseudonymizer(Processor):
         """
         hash_salt: str = field(validator=validators.instance_of(str))
         """A salt that is used for hashing."""
-        regex_mapping: str = field(validator=validators.instance_of(str))
+        regex_mapping: str = field(validator=file_validator)
         """
         Path to a file with a regex mapping for pseudonymization, i.e.:
 
@@ -100,9 +100,11 @@ class Pseudonymizer(Processor):
         Thus, it is possible that a pseudonym is re-added to the cache before max_caching_days has
         elapsed if it was discarded due to the size limit.
         """
-        tld_list: str = field(validator=validators.instance_of(str))
-        """Path to a file with a list of top-level domains (i.e.
-        https://publicsuffix.org/list/public_suffix_list.dat)."""
+        tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
+        """Optional list of path to files with top-level domain lists
+        (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
+        a default list will be retrieved online and cached in a local directory. For local
+        files the path has to be given with :code:`file:///path/to/file.dat`."""
 
     __slots__ = [
         "_regex_mapping",
@@ -154,7 +156,10 @@ class Pseudonymizer(Processor):
         self._cache = Cache(
             max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
         )
-        self._tld_extractor = TLDExtract(suffix_list_urls=[self._config.tld_list])
+        if self._config.tld_lists is not None:
+            self._tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_list)
+        else:
+            self._tld_extractor = TLDExtract()
         self._load_regex_mapping(self._config.regex_mapping)
 
     def _load_regex_mapping(self, regex_mapping_path: str):
@@ -289,7 +294,7 @@ class Pseudonymizer(Processor):
                 replacements.append(key)
             else:
                 for index in reversed(range(len(replacements))):
-                    if not any([key in replacement for replacement in replacements[:index]]):
+                    if not any(key in replacement for replacement in replacements[:index]):
                         replacements.insert(index + 1, key)
                         break
         replacements.reverse()

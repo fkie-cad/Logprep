@@ -11,7 +11,7 @@ from logprep.util.validators import (
     list_of_dirs_validator,
     list_of_files_validator,
     url_validator,
-    list_of_urls_validator,
+    list_of_urls_validator, directory_validator,
 )
 
 
@@ -57,6 +57,30 @@ class TestFileValidator:
         attribute = type("myclass", (), {"name": "testname", "default": None})
         with pytest.raises(InvalidConfigurationError, match=r"is not a file"):
             file_validator(None, attribute(), "i/am/no.file")
+
+
+class TestDirValidator:
+    def test_validator_passes_on_not_set_optional_attribute(self):
+        attribute = type("myclass", (), {"name": "testname", "default": None})
+        assert not directory_validator(None, attribute(), None)
+
+    def test_raises_if_dir_is_no_string(self):
+        attribute = type("myclass", (), {"name": "testname", "default": None})
+        with pytest.raises(InvalidConfigurationError, match=r"is not a str"):
+            directory_validator(None, attribute(), 8472)
+
+    def test_raises_if_file_does_not_exist(self):
+        attribute = type("myclass", (), {"name": "testname", "default": None})
+        with pytest.raises(InvalidConfigurationError, match=r"does not exist"):
+            with mock.patch("os.path.exists", return_value=False):
+                directory_validator(None, attribute(), "i/do/not/exist")
+
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.path.isfile", return_value=False)
+    def test_raises_if_path_is_no_file(self, _, __):
+        attribute = type("myclass", (), {"name": "testname", "default": None})
+        with pytest.raises(InvalidConfigurationError, match=r"is not a directory"):
+            directory_validator(None, attribute(), "i/am/not/a.directory")
 
 
 class TestURLValidator:
