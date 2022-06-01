@@ -3,15 +3,16 @@
 from unittest import mock
 
 import pytest
-from logprep.processor.processor_factory_error import InvalidConfigurationError
 
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 from logprep.util.validators import (
     json_validator,
     file_validator,
     list_of_dirs_validator,
     list_of_files_validator,
     url_validator,
-    list_of_urls_validator, directory_validator,
+    list_of_urls_validator,
+    directory_validator,
 )
 
 
