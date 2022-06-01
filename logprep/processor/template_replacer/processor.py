@@ -33,7 +33,7 @@ from ruamel.yaml import YAML
 
 from logprep.abc import Processor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
-
+from logprep.util.validators import file_validator
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -52,7 +52,7 @@ class TemplateReplacer(Processor):
     class Config(Processor.Config):
         """TemplateReplacer config"""
 
-        template: str = field(validator=validators.instance_of(str))
+        template: str = field(validator=file_validator)
         """
         Path to a YML file with a list of replacements in the format
         `%{provider_name}-%{event_id}: %{new_message}`.
