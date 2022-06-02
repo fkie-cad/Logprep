@@ -19,6 +19,7 @@ Example
             - tests/testdata/rules/generic/
         list_search_base_path: /path/to/list/dir
 """
+from logging import Logger
 from typing import List
 
 from attr import define, field
@@ -61,6 +62,11 @@ class ListComparison(Processor):
         This parameter is optional."""
 
     rule_class = ListComparisonRule
+
+    def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        for rule in [*self._specific_rules, *self._generic_rules]:
+            rule.init_list_comparison(self._config.list_search_base_path)
 
     def _apply_rules(self, event, rule):
         """

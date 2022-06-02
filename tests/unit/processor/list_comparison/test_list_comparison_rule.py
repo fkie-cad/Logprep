@@ -15,7 +15,7 @@ def fixture_specific_rule_definition():
         "list_comparison": {
             "check_field": "user",
             "output_field": "user_results",
-            "list_file_paths": ["tests/testdata/unit/list_comparison/lists/user_list.txt"],
+            "list_file_paths": ["../lists/user_list.txt"],
         },
         "description": "",
     }
@@ -58,20 +58,16 @@ class TestListComparisonRule:
         assert rule != rule_diff_filter
         assert rule_diff_check_field != rule_diff_filter
 
-    def test_compare_set_not_empty_for_valid_rule_def(self, specific_rule_definition):
+    def test_compare_set_not_empty_for_valid_rule_def_after_init_list_comparison(
+        self, specific_rule_definition
+    ):
         rule = ListComparisonRule(
             LuceneFilter.create(specific_rule_definition["filter"]),
             specific_rule_definition["list_comparison"],
         )
 
+        rule.init_list_comparison("tests/testdata/unit/list_comparison/rules")
+
         assert rule._compare_sets is not None
         assert isinstance(rule._compare_sets, dict)
         assert len(rule._compare_sets.keys()) > 0
-
-    @mock.patch("logprep.processor.list_comparison.rule.ListComparisonRule.init_list_comparison")
-    def test_init_compare_sets_is_called(self, mock_method, specific_rule_definition):
-        _ = ListComparisonRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["list_comparison"],
-        )
-        mock_method.assert_called()
