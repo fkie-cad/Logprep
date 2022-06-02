@@ -165,6 +165,12 @@ class BaseProcessorTestCase(ABC):
         value = self.object._get_dotted_field_value(event, dotted_field)
         assert value == "Normalize me!"
 
+    def test_get_dotted_field_value_key_matches_value(self):
+        event = {"get": "dotted"}
+        dotted_field = "get.dotted"
+        value = self.object._get_dotted_field_value(event, dotted_field)
+        assert value is None
+
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
         assert self.object._field_exists(event, "a.b")
