@@ -1,4 +1,4 @@
-name: Publish latest dev release to PyPi
+name: Publish latest dev release on Github
 
 on:
   pull_request:
@@ -6,36 +6,16 @@ on:
     branches: [main]
 
 jobs:
-  move-dev-tag-of-latest-release:
+  move-latest-release-tag:
     runs-on: ubuntu-latest
-    name: Move dev tag
+    name: Move latest release tag
     # if: github.event.pull_request.merged == true
-    outputs:
-      dev-release-tag: ${{ steps.dev-tag-name.outputs.DEV_TAG }}
 
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions-ecosystem/action-get-latest-tag@v1
-        id: get-latest-tag
-        with:
-          semver_only: true
-
-      - name: Output latest semver tag
-        run: |
-          echo "The latest version tag is: ${{ steps.get-latest-tag.outputs.tag }}"
-
-      - name: Set dev tag name
-        id: dev-tag-name
-        run: echo "::set-output name=DEV_TAG::${{ steps.get-latest-tag.outputs.tag }}.dev0"
-
-      - name: Output dev tag name
-        run: |
-          echo "The release dev tag is: ${{ steps.dev-tag-name.outputs.DEV_TAG }}"
-
-      - name: update dev tag
+      - name: update latest release tag
         uses: actions/github-script@v3
-        if: ${{ steps.get-latest-tag.outputs.tag != null }}
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
@@ -43,32 +23,28 @@ jobs:
                 await github.git.deleteRef({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  ref: "tags/${{ steps.dev-tag-name.outputs.DEV_TAG }}"
+                  ref: "tags/latest"
                 })
             } catch (e) {
-              console.log("The latest dev tag doesn't exist yet: " + e)
+              console.log("The latest release tag doesn't exist yet: " + e)
             }
             await github.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: "refs/tags/${{ steps.dev-tag-name.outputs.DEV_TAG }}",
+              ref: "refs/tags/latest",
               sha: context.sha
             })
 
-  publish-to-pypi:
+  create-github-release:
     runs-on: ubuntu-latest
-    name: Publish latest dev release to PyPi
+    name: Create github release
     # if: github.event.pull_request.merged == true
-    needs: move-dev-tag-of-latest-release
+    needs: move-latest-release-tag
 
     steps:
-      - name: Output dev tag name from previous job
-        run: |
-          echo "The release dev tag is: ${{ needs.move-dev-tag-of-latest-release.outputs.dev-release-tag }}"
-
       - uses: actions/checkout@v1
         with:
-          ref: ${{ needs.move-dev-tag-of-latest-release.outputs.dev-release-tag }}
+          ref: latest
 
       - name: Initialize Python
         uses: actions/setup-python@v1
@@ -84,10 +60,12 @@ jobs:
       - name: Build binary wheel and a source tarball
         run: python setup.py sdist bdist_wheel
 
-      - name: Publish distribution to Test PyPI
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          user: __token__
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-          repository_url: https://test.pypi.org/legacy/
+          files: dist/*
+          body: |
+            This is an automatic release of the latest changes in the main branch. With every every
+            merge into to main branch this will be updated. Use this version only for testing.
+          fail_on_unmatched_files: true
