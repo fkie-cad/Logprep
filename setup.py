@@ -7,16 +7,12 @@ with open("requirements.txt", encoding="utf-8") as f:
     requirements = f.read().splitlines()
     requirements = [requirement for requirement in requirements if not requirement.startswith("#")]
 
-with open("README.md", encoding="utf-8") as f:
-    readme = f.read()
-
 setup(
     name="logprep",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description="Logprep allows to collect, process and forward log messages from various data "
     "sources.",
-    long_description=readme,
     url="https://github.com/fkie-cad/Logprep",
     author="Logprep Team",
     license="LGPL-2.1 license",
