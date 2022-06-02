@@ -9,7 +9,6 @@ from unittest import mock
 import numpy as np
 from prometheus_client import REGISTRY
 
-from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.dropper.processor import Dropper
 from logprep.util.processor_stats import (
     ProcessorStats,
@@ -18,6 +17,7 @@ from logprep.util.processor_stats import (
     StatusLoggerCollection,
 )
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
+from logprep.processor.processor_factory import ProcessorFactory
 
 
 def validify_mean_proc_time_calculation(processor_stats, time_samples):
@@ -135,8 +135,8 @@ class TestStatusTracker:
             "tree_config": "tests/testdata/unit/tree_config.json",
         }
 
-        first_dropper = Dropper("Dropper1", dropper_config, self.logger)
-        second_dropper = Dropper("Dropper2", dropper_config, self.logger)
+        first_dropper = ProcessorFactory.create({"Dropper1": dropper_config}, self.logger)
+        second_dropper = ProcessorFactory.create({"Dropper2": dropper_config}, self.logger)
         first_dropper.ps.setup_rules([None] * 12)
         second_dropper.ps.setup_rules([None] * 9)
 
@@ -240,15 +240,15 @@ class TestStatusTracker:
 
         self.status_tracker._pipeline[0].ps.aggr_data["processed"] = dropper1_expected_processed
         self.status_tracker._pipeline[1].ps.aggr_data["processed"] = dropper2_expected_processed
-
-        clusterer = Clusterer(
-            "Clusterer1",
-            logger=self.logger,
-            tree_config="",
-            specific_rules="",
-            generic_rules="",
-            output_field_name="",
-        )
+        clusterer_config = {
+            "Clusterer1": {
+                "type": "clusterer",
+                "output_field_name": "cluster_signature",
+                "generic_rules": ["tests/testdata/unit/clusterer/rules/generic"],
+                "specific_rules": ["tests/testdata/unit/clusterer/rules/specific"],
+            }
+        }
+        clusterer = ProcessorFactory.create(clusterer_config, self.logger)
         clusterer.ps.aggr_data["processed"] = clusterer_expected_processed
 
         self.status_tracker._pipeline.append(clusterer)

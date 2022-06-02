@@ -1,18 +1,27 @@
-"""This module contains functionality for adding fields using regex lists."""
+"""
+GenericAdder
+------------
+The `generic_adder` is a processor that adds new fields and values to documents based on a list.
+The list can reside inside a rule or inside a file.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - genericaddername:
+        type: generic_adder
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
 from typing import List
-from logging import Logger, DEBUG
 
 
-from multiprocessing import current_process
-
-from logprep.processor.base.processor import RuleBasedProcessor
+from logprep.abc import Processor
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.processor.base.exceptions import (
-    InvalidRuleDefinitionError,
-    InvalidRuleFileError,
-)
-
-from logprep.util.processor_stats import ProcessorStats
 
 
 class GenericAdderError(BaseException):
@@ -27,57 +36,17 @@ class DuplicationError(GenericAdderError):
 
     def __init__(self, name: str, skipped_fields: List[str]):
         message = (
-            "The following fields already existed and " "were not overwritten by the GenericAdder: "
+            "The following fields already existed and were not overwritten by the GenericAdder: "
         )
         message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
 
-class GenericAdder(RuleBasedProcessor):
+class GenericAdder(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
-        tree_config = configuration.get("tree_config")
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        super().__init__(name, tree_config, logger)
-        self.ps = ProcessorStats()
-        self.add_rules_from_directory(
-            generic_rules_dirs=generic_rules_dirs,
-            specific_rules_dirs=specific_rules_dirs,
-        )
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = GenericAdderRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = GenericAdderRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"generic rules ({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
+    rule_class = GenericAdderRule
 
     def _apply_rules(self, event, rule):
         conflicting_fields = list()
@@ -98,4 +67,4 @@ class GenericAdder(RuleBasedProcessor):
                     conflicting_fields.append(keys[idx])
 
         if conflicting_fields:
-            raise DuplicationError(self._name, conflicting_fields)
+            raise DuplicationError(self.name, conflicting_fields)

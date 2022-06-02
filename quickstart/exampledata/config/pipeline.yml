@@ -34,7 +34,7 @@ pipeline:
         - quickstart/exampledata/rules/pre_detector/generic
       pre_detector_topic: sre
       tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
-      alert_ip_list: quickstart/exampledata/rules/pre_detector/alert_ips.yml
+      alert_ip_list_path: quickstart/exampledata/rules/pre_detector/alert_ips.yml
 
   - pseudonymizer:
       type: pseudonymizer
@@ -49,7 +49,6 @@ pipeline:
         - quickstart/exampledata/rules/pseudonymizer/generic/
       max_cached_pseudonyms: 1000000
       max_caching_days: 1
-      tld_list: "-"
 
 connector:
   type: confluentkafka

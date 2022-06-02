@@ -48,6 +48,8 @@ They should return a helpful message when calling `str(exception)`.
 Exceptions that require a restart of Logprep should inherit from `FatalInputError`.
 Exceptions that inherit from `WarningInputError` will be logged, but they do not require any error handling.
 
+.. _connector_output:
+
 Output
 ------
 
@@ -55,7 +57,7 @@ An output connector must implement the interface :py:class:`~logprep.output.outp
 Please consider the doc strings within the interface!
 
 :py:meth:`~logprep.output.output.Output.store`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This method is called to send log messages to a storage location.
 
@@ -66,7 +68,7 @@ Analogous to the input, exceptions that require a restart of Logprep should inhe
 Exceptions that inherit from `WarningOutputError` will be logged, but they do not require any error handling.
 
 :py:meth:`~logprep.output.output.Output.store_failed`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This method is being called if an error occurred during the processing of a log message.
 The original log message, the partially processed log message and the error message are being passed to this method.

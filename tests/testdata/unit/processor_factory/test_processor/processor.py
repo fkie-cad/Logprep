@@ -1,9 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=abstract-method
+from logprep.abc import Processor
 from logprep.processor.base.rule import Rule
-from logprep.processor.base.processor import RuleBasedProcessor
 
 
-class TestProcessor(RuleBasedProcessor):
+class TestProcessor(Processor):
     def _apply_rules(self, event: dict, rule: Rule):
         pass

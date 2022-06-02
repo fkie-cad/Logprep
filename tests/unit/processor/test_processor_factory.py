@@ -1,17 +1,14 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=too-many-lines
-import os
-import sys
 from logging import getLogger
 from random import sample
 from string import ascii_letters
+from unittest import mock
 
 from pytest import raises
 
-import tests.testdata.unit.processor_factory
 from logprep.processor.clusterer.processor import Clusterer
-from logprep.processor.donothing.processor import DoNothing
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
 from logprep.processor.processor_factory import ProcessorFactory
@@ -57,12 +54,6 @@ def test_create_fails_for_unknown_type():
             ProcessorFactory.create({"processorname": {"type": type_name}}, logger)
 
 
-def test_create_donothing_returns_donothing_processor():
-    processor = ProcessorFactory.create({"nothing": {"type": "donothing"}}, logger)
-
-    assert isinstance(processor, DoNothing)
-
-
 def test_create_pseudonymizer_returns_pseudonymizer_processor():
     processor = ProcessorFactory.create(
         {
@@ -71,13 +62,12 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
                 "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
                 "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
                 "hash_salt": "a_secret_tasty_ingredient",
-                "specific_rules": ["some specific rules"],
-                "generic_rules": ["some generic rules"],
+                "specific_rules": ["tests/testdata/unit/pseudonymizer/rules/specific"],
+                "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic"],
                 "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
                 "pseudonyms_topic": "pseudonyms",
                 "max_cached_pseudonyms": 1000000,
                 "max_caching_days": 1,
-                "tld_list": "-",
             }
         },
         logger,
@@ -108,8 +98,8 @@ def test_create_clusterer_returns_clusterer_processor():
             "clusterer": {
                 "type": "clusterer",
                 "output_field_name": "cluster_signature",
-                "specific_rules": "test_rules",
-                "generic_rules": "test_rules",
+                "specific_rules": ["tests/testdata/unit/clusterer/rules/specific"],
+                "generic_rules": ["tests/testdata/unit/clusterer/rules/generic"],
             }
         },
         logger,
@@ -123,9 +113,7 @@ def test_fails_when_section_contains_more_than_one_element():
         InvalidConfigurationError,
         match="There must be exactly one processor definition per pipeline entry.",
     ):
-        ProcessorFactory.create(
-            {"first": {"type": "donothing"}, "second": {"type": "donothing"}}, logger
-        )
+        ProcessorFactory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
 
 
 def test_create_labeler_creates_labeler_processor():
@@ -142,19 +130,3 @@ def test_create_labeler_creates_labeler_processor():
     )
 
     assert isinstance(processor, Labeler)
-
-
-def test_load_processors_without_skip_error():
-    base_path = os.path.dirname(tests.testdata.unit.processor_factory.__file__)
-
-    assert "tests.testdata.unit.processor_factory.test_processor.processor" not in sys.modules
-    assert (
-        "tests.testdata.unit.processor_factory.test_broken_processor.processor" not in sys.modules
-    )
-
-    ProcessorFactory.load_plugins(base_path)
-
-    assert "tests.testdata.unit.processor_factory.test_processor.processor" in sys.modules
-    assert (
-        "tests.testdata.unit.processor_factory.test_broken_processor.processor" not in sys.modules
-    )

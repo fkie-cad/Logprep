@@ -11,6 +11,7 @@ logger = getLogger("Logprep-Test")
 
 @pytest.fixture
 def config():
+    """Default logprep configuration"""
     config_yml = {
         "process_count": 1,
         "timeout": 0.1,
@@ -20,8 +21,8 @@ def config():
                 "pre_detector": {
                     "type": "pre_detector",
                     "pre_detector_topic": "pre_detector_topic",
-                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/generic/"],
-                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/specific/"],
+                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
+                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
                     "tree_config": "tests/testdata/acceptance/pre_detector/tree_config.json",
                 }
             }

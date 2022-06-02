@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-# pylint: disable=max-line-length
+# pylint: disable=line-too-long
 
 from copy import deepcopy
 from logging import getLogger
@@ -221,7 +221,7 @@ class TestConfiguration:
                 status_logger_config._verify_status_logger()
             except InvalidConfigurationErrors as error:
                 assert any(
-                    (type(error) == raised_error for error in error.errors)
+                    (isinstance(error, raised_error) for error in error.errors)
                 ), f"No '{raised_error.__name__}' raised for test case '{test_case}'!"
         else:
             status_logger_config._verify_status_logger()
@@ -269,7 +269,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Item generic_rules is missing in 'labeler' configuration",
+                        "Invalid processor config: __init__() missing 1 required keyword-only argument: 'generic_rules'",
                     )
                 ],
             ),
@@ -311,15 +311,11 @@ class TestConfiguration:
     def test_verify_error(self, config_dict, raised_errors, test_case):
         config = deepcopy(self.config)
         config.update(config_dict)
-
         if raised_errors is not None:
-            try:
+            with pytest.raises(InvalidConfigurationErrors) as e_info:
                 config.verify(logger)
-            except InvalidConfigurationErrors as error:
-                errors_set = [(type(err), str(err)) for err in error.errors]
-                assert errors_set == raised_errors, f"For test case '{test_case}'!"
-        else:
-            config._verify_status_logger()
+            errors_set = [(type(err), str(err)) for err in e_info.value.errors]
+            assert errors_set == raised_errors, f"For test case '{test_case}'!"
 
     @pytest.mark.parametrize(
         "test_case, config_dict, raised_errors",
@@ -364,7 +360,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Item generic_rules is missing in 'labeler' configuration",
+                        "Invalid processor config: __init__() missing 1 required keyword-only argument: 'generic_rules'",
                     )
                 ],
             ),

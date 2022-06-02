@@ -6,28 +6,25 @@ import copy
 import json
 import os
 import tempfile
+from copy import deepcopy
 
 import arrow
 import pytest
-from logprep.processor.base.processor import ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import NormalizerError
-from logprep.processor.normalizer.factory import Normalizer, NormalizerFactory
 from logprep.processor.normalizer.rule import (
     InvalidGrokDefinition,
     InvalidNormalizationDefinition,
     NormalizerRule,
 )
-from logprep.processor.processor_factory_error import ProcessorFactoryError
+from logprep.processor.processor_factory import ProcessorFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestNormalizer(BaseProcessorTestCase):
 
-    factory = NormalizerFactory
-
     CONFIG = {
         "type": "normalizer",
-        "hash_salt": "a_secret_tasty_ingredient",
         "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],
         "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
         "regex_mapping": "tests/testdata/unit/normalizer/normalizer_regex_mapping.yml",
@@ -41,10 +38,6 @@ class TestNormalizer(BaseProcessorTestCase):
     @property
     def generic_rules_dirs(self):
         return self.CONFIG["generic_rules"]
-
-    def _load_specific_rule(self, rule):
-        specific_rule = NormalizerRule._create_from_dict(rule)
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def test_process_normalized_field_already_exists_with_same_content(self):
         document = {
@@ -1023,15 +1016,13 @@ class TestNormalizer(BaseProcessorTestCase):
     def test_normalization_with_grok_pattern_count(self):
         config = copy.deepcopy(self.CONFIG)
         temp_path = tempfile.mkdtemp()
-        config["count_grok_pattern_matches"] = {
-            "count_directory_path": temp_path,
-            "write_period": 0,
-        }
-        self.object = Normalizer(
-            "Test Normalizer Name",
-            config,
-            self.logger,
+        config = deepcopy(self.CONFIG)
+
+        config.update(
+            {"count_grok_pattern_matches": {"count_directory_path": temp_path, "write_period": 0}}
         )
+        processor_config = {"Test Normalizer Name": config}
+        self.object = ProcessorFactory.create(processor_config, self.logger)
 
         event = {
             "winlog": {
@@ -1091,20 +1082,3 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert event.get("some_ip") == "123.123.123.123"
         assert event.get("port") == 1234
-
-
-class TestNormalizerFactory:
-
-    CONFIG = TestNormalizer.CONFIG
-
-    logger = TestNormalizer.logger
-
-    def test_create(self):
-        assert isinstance(NormalizerFactory.create("foo", self.CONFIG, self.logger), Normalizer)
-
-    def test_check_configuration(self):
-        NormalizerFactory._check_configuration(self.CONFIG)
-        cfg = copy.deepcopy(self.CONFIG)
-        cfg.pop("type")
-        with pytest.raises(ProcessorFactoryError):
-            NormalizerFactory._check_configuration(cfg)

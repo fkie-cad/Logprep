@@ -93,7 +93,7 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
     dict_: dict, list, str
         The value of the requested dotted field.
 
-    # code is originally from the BaseProcessor, such that duplicated code could be removed there.
+    # code is originally from the Processor, such that duplicated code could be removed there.
     """
 
     fields = dotted_field.split(".")
@@ -151,3 +151,15 @@ def camel_to_snake(camel: str) -> str:
 
     subbed = _underscorer1.sub(r"\1_\2", camel)
     return _underscorer2.sub(r"\1_\2", subbed).lower()
+
+
+def snake_to_camel(snake: str) -> str:
+    """ensures that the input string is CamelCase"""
+
+    components = snake.split("_")
+    if len(components) == 1:
+        camel = components[0]
+        return f"{camel[0].upper()}{camel[1:]}"
+
+    camel = "".join(component.title() for component in components)
+    return camel

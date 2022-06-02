@@ -165,10 +165,6 @@ def main():
         logger.exception(error)
         sys.exit(1)
 
-    for plugin_dir in config.get("plugin_directories", []):
-        sys.path.insert(0, plugin_dir)
-        ProcessorFactory.load_plugins(plugin_dir)
-
     status_logger = None
     if not args.disable_logging:
         status_logger = _get_status_logger(config, logger)

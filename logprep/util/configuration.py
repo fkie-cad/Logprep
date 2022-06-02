@@ -146,7 +146,7 @@ class Configuration(dict):
             self._verify_pipeline(logger)
         except InvalidConfigurationError as error:
             errors.append(error)
-        if self.get("status_logger", dict()):
+        if self.get("status_logger", {}):
             try:
                 self._verify_status_logger()
             except InvalidConfigurationError as error:
@@ -189,17 +189,21 @@ class Configuration(dict):
             raise RequiredConfigurationKeyMissingError("connector") from error
 
     def _verify_pipeline(self, logger: Logger):
-        try:
-            errors = []
-            for processor_config in self["pipeline"]:
-                try:
-                    ProcessorFactory.create(processor_config, logger)
-                except (FactoryInvalidConfigurationError, UnknownProcessorTypeError) as error:
-                    errors.append(InvalidProcessorConfigurationError(str(error)))
-            if errors:
-                raise InvalidConfigurationErrors(errors)
-        except KeyError as error:
-            raise RequiredConfigurationKeyMissingError("pipeline") from error
+        if not self.get("pipeline"):
+            raise RequiredConfigurationKeyMissingError("pipeline")
+
+        errors = []
+        for processor_config in self["pipeline"]:
+            try:
+                ProcessorFactory.create(processor_config, logger)
+            except (
+                FactoryInvalidConfigurationError,
+                UnknownProcessorTypeError,
+                TypeError,
+            ) as error:
+                errors.append(InvalidProcessorConfigurationError(str(error)))
+        if errors:
+            raise InvalidConfigurationErrors(errors)
 
     def _verify_status_logger(self):
         if self.get("status_logger"):

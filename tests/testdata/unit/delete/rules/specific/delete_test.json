@@ -1,0 +1,7 @@
+[
+    {
+        "filter": "test",
+        "delete": true,
+        "description": "some text"
+    }
+]

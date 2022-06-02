@@ -2,14 +2,12 @@
 from copy import deepcopy
 import pytest
 
-from logprep.processor.template_replacer.factory import TemplateReplacerFactory
 from logprep.processor.template_replacer.processor import TemplateReplacerError
 from tests.unit.processor.base import BaseProcessorTestCase
+from logprep.processor.processor_factory import ProcessorFactory
 
 
 class TestWinMessageReplacer(BaseProcessorTestCase):
-
-    factory = TemplateReplacerFactory
 
     CONFIG = {
         "type": "template_replacer",
@@ -56,7 +54,7 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
     def test_replace_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = TemplateReplacerFactory.create("test_instance", config, self.logger)
+        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
         assert self.object.ps.processed_count == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
@@ -104,4 +102,4 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
             {"template": "tests/testdata/unit/template_replacer/replacer_template_invalid.yml"}
         )
         with pytest.raises(TemplateReplacerError, match="Not enough delimiters"):
-            TemplateReplacerFactory.create("test-template-replacer", config, self.logger)
+            ProcessorFactory.create({"test instance": config}, self.logger)

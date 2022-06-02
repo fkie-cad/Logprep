@@ -20,7 +20,7 @@ from logprep.processor.base.exceptions import (
     MismatchedRuleDefinitionError,
 )
 from logprep.processor.base.rule import Rule
-from logprep.processor.base.processor import BaseProcessor
+from logprep.abc import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema, InvalidLabelingSchemaFileError
 from logprep.filter.lucene_filter import LuceneFilterError
 
@@ -67,9 +67,7 @@ class SchemaAndRuleChecker:
         pipeline = config_path["pipeline"]
         return pipeline
 
-    def _get_rule_and_schema_paths_from_config(
-        self, config_path: str, processor_type: BaseProcessor
-    ):
+    def _get_rule_and_schema_paths_from_config(self, config_path: str, processor_type: Processor):
         pipeline = self._get_pipeline(config_path)
         for processor in pipeline:
             options = next(iter(processor.values()))
@@ -95,7 +93,7 @@ class SchemaAndRuleChecker:
         )
 
     def validate_rules(
-        self, config_path: str, processor_type: BaseProcessor, rule_class: Rule, logger: Logger
+        self, config_path: str, processor_type: Processor, rule_class: Rule, logger: Logger
     ) -> bool:
         """Validate rule for processor.
 
@@ -103,7 +101,7 @@ class SchemaAndRuleChecker:
         ----------
         config_path : dict
             Path to configuration file
-        processor_type : BaseProcessor
+        processor_type : Processor
             Type of processor to validate rules for.
         rule_class : Rule
             Type of rule to validate rules for.
@@ -135,7 +133,7 @@ class SchemaAndRuleChecker:
     def _validate_rules_in_path(
         self,
         path_rules: str,
-        processor_type: BaseProcessor,
+        processor_type: Processor,
         rule_class: Rule,
         path_schema: str = None,
     ):

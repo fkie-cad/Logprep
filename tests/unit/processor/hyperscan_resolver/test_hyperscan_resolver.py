@@ -3,7 +3,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 from collections import OrderedDict
-from logging import getLogger
+from copy import deepcopy
 
 import pytest
 
@@ -13,36 +13,26 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 from logprep.processor.hyperscan_resolver.rule import (
     InvalidHyperscanResolverDefinition,
-    HyperscanResolverRule,
 )
 
 pytest.importorskip("logprep.processor.hyperscan_resolver")
 
-from logprep.processor.hyperscan_resolver.factory import HyperscanResolverFactory
 from logprep.processor.hyperscan_resolver.processor import (
     HyperscanResolver,
     DuplicationError,
     HyperscanResolverError,
 )
 
-logger = getLogger()
-
 
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
-
-    factory = HyperscanResolverFactory
 
     CONFIG = {
         "type": "hyperscan_resolver",
         "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
         "generic_rules": ["tests/testdata/unit/hyperscan_resolver/rules/generic/"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+        "hyperscan_db_path": "/tmp",
     }
-
-    def _load_specific_rule(self, rule):
-        specific_rule = HyperscanResolverRule._create_from_dict(rule)
-        specific_rule.file_name = "some_file_name_is_required_for_hyperscan"
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def test_resolve_instantiates(self):
         rule = {"filter": "anything", "hyperscan_resolver": {"field_mapping": {}}}
@@ -395,19 +385,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
 
 class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
-    factory = HyperscanResolverFactory
-
-    CONFIG = {
-        "type": "hyperscan_resolver",
-        "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/hyperscan_resolver/rules/generic/"],
-        "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-    }
-
-    def _load_specific_rule(self, rule):
-        specific_rule = HyperscanResolverRule._create_from_dict(rule)
-        specific_rule.file_name = "some_file_name_is_required_for_hyperscan"
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
+    CONFIG = deepcopy(TestHyperscanResolverProcessor.CONFIG)
 
     def test_resolve_no_conflict_from_file(self):
         rule = {

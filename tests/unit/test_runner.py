@@ -12,7 +12,6 @@ from pytest import raises
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.labeler.labeling_schema import (
-    InvalidLabelingSchemaFileError,
     LabelingSchemaError,
 )
 from logprep.runner import (
@@ -33,7 +32,6 @@ from tests.testdata.metadata import (
     path_to_invalid_config,
     path_to_invalid_rules,
     path_to_schema2,
-    path_to_testdata,
 )
 from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
 from tests.util.testhelpers import HandlerStub, AssertEmitsLogMessage
@@ -101,46 +99,6 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
         with raises(MustConfigureALoggerError):
             self.runner.start()
-
-    def test_fails_when_schema_is_invalid(self):
-        with raises(
-            InvalidLabelingSchemaFileError, match="Not a valid schema file: File not found: '.*'."
-        ):
-            with ConfigurationForTest(
-                inject_changes=[
-                    {
-                        "pipeline": {
-                            1: {
-                                "labelername": {
-                                    "schema": join("path", "to", "non-existing", "file")
-                                }
-                            }
-                        }
-                    }
-                ]
-            ) as path:
-                self.runner.load_configuration(path)
-
-        with raises(
-            InvalidLabelingSchemaFileError,
-            match=r"Not a valid schema file: \[Errno 21\] Is a directory: .*",
-        ):
-            with ConfigurationForTest(
-                inject_changes=[{"pipeline": {1: {"labelername": {"schema": path_to_testdata}}}}]
-            ) as path:
-                self.runner.load_configuration(path)
-
-        with raises(
-            InvalidLabelingSchemaFileError,
-            match=(
-                r"Not a valid schema file: JSON decoder error: "
-                r"Expecting value: line 1 column 1 \(char 0\): '.*'."
-            ),
-        ):
-            with ConfigurationForTest(
-                inject_changes=[{"pipeline": {1: {"labelername": {"schema": path_to_config}}}}]
-            ) as path:
-                self.runner.load_configuration(path)
 
     def test_fails_when_rules_are_invalid(self):
         with raises(InvalidRuleDefinitionError, match=r"Keys \[\] must be \['filter', 'label'\]"):

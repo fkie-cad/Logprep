@@ -39,7 +39,7 @@ class ConnectorFactory:
         ------
         UnknownConnectorTypeError
             If 'configuration['type']' is set to an unknown type.
-        InvalidConfigurationError
+        logprep.connector.connector_factory_error.InvalidConfigurationError
             If 'configuration['type']' is not specified.
 
         """

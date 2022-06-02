@@ -1,4 +1,29 @@
-"""This module contains a Normalizer that copies specific values to standardized fields."""
+"""
+Normalizer
+----------
+The Normalizer copies specific values to configurable fields.
+
+Example
+^^^^^^^
+
+..  code-block:: yaml
+    :linenos:
+
+    - normalizername:
+        type: normalizer
+        generic_rules:
+            - tests/testdata/labeler_rules/rules/
+        specific_rules:
+            - tests/testdata/labeler_rules/rules/
+        hash_salt: a_secret_tasty_ingredient
+        regex_mapping: tests/testdata/unit/normalizer/normalizer_regex_mapping.yml
+        html_replace_fields: tests/testdata/unit/normalizer/html_replace_fields.yml
+        count_grok_pattern_matches:
+            count_directory_path: "path/to/directory"
+            write_period: 0.1
+            lock_file_path: "path/to/lock/file"
+
+"""
 import calendar
 import html
 import json
@@ -6,103 +31,105 @@ import os
 import re
 from datetime import datetime
 from functools import reduce
-from logging import DEBUG, Logger
-from multiprocessing import current_process
+from logging import Logger
 from pathlib import Path
 from time import time
 from typing import List, Optional, Tuple, Union
 
 import arrow
+from attr import define, field, validators
 from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
 from ruamel.yaml import YAML
+from logprep.abc.processor import Processor
 
-from logprep.processor.base.processor import ProcessingWarning, RuleBasedProcessor
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
-from logprep.util.processor_stats import ProcessorStats
+from logprep.util.validators import file_validator, directory_validator
 
 yaml = YAML(typ="safe", pure=True)
 
 
-class Normalizer(RuleBasedProcessor):
+class Normalizer(Processor):
     """Normalize log events by copying specific values to standardized fields."""
 
-    def __init__(
-        self,
-        name: str,
-        configuration: dict,
-        logger: Logger,
-    ):
-        tree_config = configuration.get("tree_config")
-        super().__init__(name, tree_config, logger)
-        self._logger = logger
-        self.ps = ProcessorStats()
+    @define(kw_only=True)
+    class Config(Processor.Config):
+        """config description for Normalizer"""
 
-        specific_rules_dirs = configuration["specific_rules"]
-        generic_rules_dirs = configuration["generic_rules"]
-        regex_mapping = configuration.get("regex_mapping")
-        html_replace_fields = configuration.get("html_replace_fields")
-        grok_patterns = configuration.get("grok_patterns")
-        count_grok_pattern_matches = configuration.get("count_grok_pattern_matches")
+        regex_mapping: str = field(validator=file_validator)
+        """Path to regex mapping file with regex keywords that are replaced with regex expressions
+            by the normalizer."""
+        html_replace_fields: Optional[str] = field(default=None, validator=file_validator)
+        """Path to yaml file with html replace fields"""
+        count_grok_pattern_matches: Optional[dict] = field(
+            default=None, validator=validators.optional(validators.instance_of(dict))
+        )
+        """Optional configuration to count matches of grok patterns.
+            Counting will be disabled if this value is omitted."""
+        grok_patterns: Optional[str] = field(default=None, validator=directory_validator)
+        """Optional path to a directory with grok patterns."""
 
-        self._name = name
+    __slots__ = [
+        "_conflicting_fields",
+        "_regex_mapping",
+        "_html_replace_fields",
+        "_count_grok_pattern_matches",
+        "_grok_matches_path",
+        "_file_lock_path",
+        "_grok_cnt_period",
+        "_grok_cnt_timer",
+        "_grok_pattern_matches",
+    ]
+
+    _grok_pattern_matches: dict
+
+    _grok_cnt_timer: float
+
+    _grok_cnt_period: str
+
+    _file_lock_path: str
+
+    _grok_matches_path: str
+
+    _count_grok_pattern_matches: str
+
+    _regex_mapping: str
+
+    _html_replace_fields: str
+
+    _conflicting_fields: list
+
+    rule_class = NormalizerRule
+
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         self._event = None
         self._conflicting_fields = []
 
-        self._regex_mapping = regex_mapping
-        self._html_replace_fields = html_replace_fields
+        self._regex_mapping = configuration.regex_mapping
+        self._html_replace_fields = configuration.html_replace_fields
 
-        self._count_grok_pattern_matches = count_grok_pattern_matches
-        if count_grok_pattern_matches:
-            self._grok_matches_path = count_grok_pattern_matches["count_directory_path"]
-            self._file_lock_path = count_grok_pattern_matches.get(
+        self._count_grok_pattern_matches = configuration.count_grok_pattern_matches
+        if self._count_grok_pattern_matches:
+            self._grok_matches_path = self._count_grok_pattern_matches["count_directory_path"]
+            self._file_lock_path = self._count_grok_pattern_matches.get(
                 "lock_file_path", "count_grok_pattern_matches.lock"
             )
-            self._grok_cnt_period = count_grok_pattern_matches["write_period"]
+            self._grok_cnt_period = self._count_grok_pattern_matches["write_period"]
             self._grok_cnt_timer = time()
             self._grok_pattern_matches = {}
 
-        NormalizerRule.additional_grok_patterns = grok_patterns
+        NormalizerRule.additional_grok_patterns = configuration.grok_patterns
 
-        with open(regex_mapping, "r", encoding="utf8") as file:
+        with open(self._regex_mapping, "r", encoding="utf8") as file:
             self._regex_mapping = yaml.load(file)
 
-        if html_replace_fields:
-            with open(html_replace_fields, "r", encoding="utf8") as file:
+        if self._html_replace_fields:
+            with open(self._html_replace_fields, "r", encoding="utf8") as file:
                 self._html_replace_fields = yaml.load(file)
-
-        self.add_rules_from_directory(specific_rules_dirs, generic_rules_dirs)
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = NormalizerRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = NormalizerRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
+        super().__init__(name=name, configuration=configuration, logger=logger)
 
     # pylint: enable=arguments-differ
 
@@ -273,7 +300,7 @@ class Normalizer(RuleBasedProcessor):
                     pass
             if not format_parsed:
                 raise NormalizerError(
-                    self._name,
+                    self.name,
                     (
                         f"Could not parse source timestamp "
                         f"{source_timestamp}' with formats '{source_formats}'"
@@ -302,7 +329,7 @@ class Normalizer(RuleBasedProcessor):
 
     def _raise_warning_if_fields_already_existed(self):
         if self._conflicting_fields:
-            raise DuplicationError(self._name, self._conflicting_fields)
+            raise DuplicationError(self.name, self._conflicting_fields)
 
     def shut_down(self):
         """Stop processing of this processor and finish outstanding actions.
