@@ -215,7 +215,7 @@ class Processor(ABC):
         fields = dotted_field.split(".")
         dict_ = event
         for field_ in fields:
-            if field_ in dict_:
+            if field_ in dict_ and isinstance(dict_, dict):
                 dict_ = dict_[field_]
             else:
                 return None
