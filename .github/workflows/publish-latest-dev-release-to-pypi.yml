@@ -69,6 +69,7 @@ jobs:
 #        if: ${{ github.ref == 'refs/tags/latest' }}
         with:
           files: dist/*
+          tag_name: latest
           body: |
             This is an automatic release of the latest changes in the main branch. With every every
             merge into to main branch this will be updated. Use this version only for testing.
