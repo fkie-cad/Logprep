@@ -42,9 +42,6 @@ jobs:
     needs: move-latest-release-tag
 
     steps:
-      - uses: actions/checkout@v3
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-
       - name: checkout latest tag
         uses: actions/checkout@v3
         with:
@@ -69,7 +66,7 @@ jobs:
 
       - name: Release
         uses: softprops/action-gh-release@v1
-        if: ${{ github.ref == 'refs/tags/latest' }}
+#        if: ${{ github.ref == 'refs/tags/latest' }}
         with:
           files: dist/*
           body: |
