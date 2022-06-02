@@ -10,6 +10,8 @@ from os.path import dirname, basename
 from pathlib import Path
 from typing import Optional
 
+from colorama import Fore
+
 from logprep.processor.base.rule import Rule
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.runner import Runner
@@ -25,6 +27,7 @@ from logprep.util.prometheus_exporter import PrometheusStatsExporter
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement
+from logprep.util.helper import print_fcolor
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
@@ -82,6 +85,11 @@ def _parse_arguments():
     argument_parser.add_argument(
         "--validate-rules",
         help="Validate Labeler Rules (if well-formed" " and valid against given schema)",
+        action="store_true",
+    )
+    argument_parser.add_argument(
+        "--verify-config",
+        help="Verify the configuration file",
         action="store_true",
     )
     argument_parser.add_argument(
@@ -147,7 +155,10 @@ def main():
         sys.exit(1)
 
     try:
-        config.verify(logger)
+        if args.validate_rules or args.auto_test:
+            config.verify_pipeline_only(logger)
+        else:
+            config.verify(logger)
     except InvalidConfigurationError:
         sys.exit(1)
     except BaseException as error:
@@ -192,6 +203,8 @@ def main():
             args.dry_run, args.config, args.dry_run_full_output, json_input, logger
         )
         dry_runner.run()
+    elif args.verify_config:
+        print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
     else:
         _run_logprep(args, logger, status_logger)
 

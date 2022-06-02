@@ -299,6 +299,17 @@ PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
+### Verifying Configuration
+
+The following command can be executed to verify the configuration file without having to run Logprep:
+
+```
+PYTHONPATH="." python3 logprep/run_logprep.py --verify-config $CONFIG
+```
+
+Where `$CONFIG` is the path to a configuration file (see the documentation about the 
+[configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
+
 ### Validating Labeling-Schema and Rules
 
 The following command can be executed to validate the schema and the rules:
@@ -321,6 +332,8 @@ the path to a directory with rule files (JSON/YML files, see Rules.md, subdirect
 are permitted)
 
 Analogously, `--normalization-rules` and `--pseudonymizer-rules` can be used.
+
+Validation does also perform a verification of the pipeline section of the Logprep configuration.
 
 ### Reload the Configuration
 
