@@ -35,7 +35,7 @@ from logprep.util.processor_stats import StatusLoggerCollection
 
 class ConfigurationForTests:
     connector_config = {"type": "dummy", "input": [{"test": "empty"}]}
-    pipeline_config = [mock.MagicMock(), mock.MagicMock()]
+    pipeline_config = ["mock_processor", "mock_processor"]
     status_logger_config = {
         "period": 300,
         "enabled": False,
@@ -367,7 +367,7 @@ class TestPipeline(ConfigurationForTests):
             "An error occurred for input dummy:" in mock_warning.call_args[0][0]
         ), "error message is logged"
 
-    @mock.patch("logprep.input.dummy_input.DummyInput.get_next")
+    @mock.patch("logprep.input.dummy_input.DummyInput.get_next", return_value={"mock": "event"})
     @mock.patch("logprep.output.dummy_output.DummyOutput.store")
     @mock.patch("logging.Logger.error")
     def test_critical_output_error_is_logged(self, mock_error, mock_store, mock_get_next, _):
@@ -384,7 +384,7 @@ class TestPipeline(ConfigurationForTests):
             in mock_error.call_args[0]
         ), "error message is logged"
 
-    @mock.patch("logprep.input.dummy_input.DummyInput.get_next")
+    @mock.patch("logprep.input.dummy_input.DummyInput.get_next", return_value={"mock": "event"})
     @mock.patch("logprep.output.dummy_output.DummyOutput.store")
     @mock.patch("logging.Logger.warning")
     def test_warning_output_error_is_logged(self, mock_warning, mock_store, mock_get_next, _):
@@ -413,7 +413,7 @@ class TestPipeline(ConfigurationForTests):
         assert "Input dummy failed:" in mock_error.call_args[0][0], "error message is logged"
         mock_shut_down.assert_called()
 
-    @mock.patch("logprep.input.dummy_input.DummyInput.get_next")
+    @mock.patch("logprep.input.dummy_input.DummyInput.get_next", return_value={"mock": "event"})
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
     @mock.patch("logprep.output.dummy_output.DummyOutput.store")
     @mock.patch("logging.Logger.error")
@@ -428,7 +428,7 @@ class TestPipeline(ConfigurationForTests):
         mock_shut_down.assert_called()
 
     @mock.patch("logprep.output.dummy_output.DummyOutput.store_custom")
-    @mock.patch("logprep.input.dummy_input.DummyInput.get_next")
+    @mock.patch("logprep.input.dummy_input.DummyInput.get_next", return_value={"mock": "event"})
     def test_extra_dat_tuple_is_passed_to_store_custom(self, mock_get_next, mock_store_custom, _):
         self.pipeline._setup()
         processor_with_exta_data = mock.MagicMock()
@@ -441,7 +441,7 @@ class TestPipeline(ConfigurationForTests):
         mock_store_custom.assert_called_with({"foo": "bar"}, "target")
 
     @mock.patch("logprep.output.dummy_output.DummyOutput.store_custom")
-    @mock.patch("logprep.input.dummy_input.DummyInput.get_next")
+    @mock.patch("logprep.input.dummy_input.DummyInput.get_next", return_value={"mock": "event"})
     def test_extra_dat_list_is_passed_to_store_custom(self, mock_get_next, mock_store_custom, _):
         self.pipeline._setup()
         processor_with_exta_data = mock.MagicMock()
