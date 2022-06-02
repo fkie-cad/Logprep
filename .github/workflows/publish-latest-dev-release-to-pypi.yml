@@ -31,7 +31,7 @@ jobs:
 
       - name: Output dev tag name
         run: |
-          echo "The latest version tag is: ${{ steps.dev-tag-name.outputs.DEV_TAG }}"
+          echo "The release dev tag is: ${{ steps.dev-tag-name.outputs.DEV_TAG }}"
 
       - name: update dev tag
         uses: actions/github-script@v3
@@ -64,7 +64,7 @@ jobs:
     steps:
       - name: Output dev tag name from previous job
         run: |
-          echo "The latest version tag is: ${{ needs.move-dev-tag-of-latest-release.outputs.dev-release-tag }}"
+          echo "The release dev tag is: ${{ needs.move-dev-tag-of-latest-release.outputs.dev-release-tag }}"
 
       - uses: actions/checkout@v1
         with:
