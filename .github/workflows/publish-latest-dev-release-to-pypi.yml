@@ -12,6 +12,8 @@ jobs:
     # if: github.event.pull_request.merged == true
 
     steps:
+      - uses: actions/checkout@v3
+
       - name: Initialize Python
         uses: actions/setup-python@v1
         with:
