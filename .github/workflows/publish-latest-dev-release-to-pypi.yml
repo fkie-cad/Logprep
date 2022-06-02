@@ -2,29 +2,30 @@ name: Publish latest dev release to PyPi
 
 on:
   pull_request:
-    types: [synchronize]
+    types: [closed, synchronize]
     branches: [main]
 
 jobs:
   publish-latest-dev-version-to-pypi:
     runs-on: ubuntu-latest
-    name: Update dev tag, build logprep and publish to PyPI
-
-    strategy:
-      matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+    name: Publish latest dev release to PyPi
+    # if: github.event.pull_request.merged == true
 
     steps:
       - uses: actions/checkout@v3
 
       - uses: actions-ecosystem/action-get-latest-tag@v1
         id: get-latest-tag
-        if: ${{ github.event.pull_request.merged == true }}
         with:
           semver_only: true
 
+      - name: Output latest semver tag
+        run: |
+          echo "The latest version tag is: ${{ steps.get-latest-tag.outputs.tag }}"
+
       - name: update dev tag
         uses: actions/github-script@v3
+        if: ${{ steps.get-latest-tag.outputs.tag != null }}
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
@@ -47,7 +48,7 @@ jobs:
       - name: Initialize Python
         uses: actions/setup-python@v1
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.6
           cache: 'pip'
 
       - name: Install dependencies

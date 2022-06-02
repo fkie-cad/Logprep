@@ -7,7 +7,7 @@ on:
 jobs:
   publish-latest-release-to-pypi:
     runs-on: ubuntu-latest
-    name: Build latest release and publish to PyPI
+    name: Publish release to PyPi
     strategy:
       matrix:
         python-version: [ '3.6', '3.7', '3.8', '3.9' ]
