@@ -47,6 +47,12 @@ class TestConfiguration:
         except InvalidConfigurationError:
             pytest.fail("The verification should pass for a valid configuration.")
 
+    def test_verify_pipeline_only_passes_for_valid_configuration(self):
+        try:
+            self.config.verify_pipeline_only(logger)
+        except InvalidConfigurationError:
+            pytest.fail("The verification should pass for a valid configuration.")
+
     def test_verify_fails_on_missing_required_value(self):
         for key in list(self.config.keys()):
             config = deepcopy(self.config)
@@ -54,6 +60,17 @@ class TestConfiguration:
 
             with pytest.raises(InvalidConfigurationError):
                 config.verify(logger)
+
+    def test_verify_pipeline_only_fails_on_missing_pipeline_value(self):
+        for key in list(key for key in self.config.keys() if key != "pipeline"):
+            config = deepcopy(self.config)
+            del config[key]
+            config.verify_pipeline_only(logger)
+
+        config = deepcopy(self.config)
+        del config["pipeline"]
+        with pytest.raises(InvalidConfigurationError):
+            config.verify(logger)
 
     def test_verify_fails_on_low_process_count(self):
         for i in range(0, -10, -1):
