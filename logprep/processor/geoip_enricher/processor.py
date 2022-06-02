@@ -29,7 +29,7 @@ from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 from logprep.util.helper import add_field_to
 from logprep.util.validators import url_validator
 
-if sys.version_info.minor < 8:
+if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property

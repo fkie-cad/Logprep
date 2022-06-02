@@ -30,7 +30,7 @@ from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.util.validators import file_validator
 
-if sys.version_info.minor < 8:
+if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property

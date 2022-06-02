@@ -9,7 +9,7 @@ from logprep.processor.processor_factory_error import (
     NotExactlyOneEntryInConfigurationError,
 )
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from logging import Logger
 
 

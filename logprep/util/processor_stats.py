@@ -11,7 +11,7 @@ import numpy as np
 
 from typing import List, Union, TYPE_CHECKING
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc import Processor
     from logprep.processor.base.rule import Rule
 

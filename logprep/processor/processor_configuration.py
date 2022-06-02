@@ -7,7 +7,7 @@ from logprep.processor.processor_factory_error import (
     UnknownProcessorTypeError,
 )
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc import Processor
 
 

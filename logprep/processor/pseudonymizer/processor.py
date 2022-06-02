@@ -44,7 +44,7 @@ from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.validators import file_validator, list_of_urls_validator
 
-if sys.version_info.minor < 8:
+if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property

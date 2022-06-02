@@ -42,7 +42,7 @@ from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to
-from logprep.util.validators import file_validator, url_validator, list_of_urls_validator
+from logprep.util.validators import list_of_urls_validator
 
 if sys.version_info.minor < 8:
     from backports.cached_property import cached_property  # pylint: disable=import-error
@@ -139,6 +139,7 @@ class DomainResolver(Processor):
         return self._config.timeout
 
     def _apply_rules(self, event, rule):
+        # TODO rewrite and tests this method
         domain_or_url = rule.source_url_or_domain
         # new variable: output field
         output_field = rule.output_field

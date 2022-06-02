@@ -36,11 +36,11 @@ from tldextract import TLDExtract
 
 
 from logprep.abc import Processor
-from logprep.util.validators import list_of_files_validator, list_of_urls_validator
+from logprep.util.validators import list_of_urls_validator
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to
 
-if sys.version_info.minor < 8:
+if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property

@@ -38,7 +38,7 @@ class ValueDoesnotExistInSchemaError(MismatchedRuleDefinitionError):
 class SkipImportError(ProcessorFactoryError):
     """Raise if the processor type can't be imported."""
 
-    def __init__(self, processor_type=None):
+    def __init__(self, processor_type=None):  # pragma: no cover
         if processor_type:
             super().__init__(f"Processor type '{processor_type}' can't be imported")
         else:

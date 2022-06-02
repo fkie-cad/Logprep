@@ -29,7 +29,7 @@ from attr import define, field
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import SkipImportError
-from logprep.util.validators import directory_validator, url_validator
+from logprep.util.validators import directory_validator
 
 
 # pylint: disable=no-name-in-module
@@ -41,7 +41,7 @@ try:
         loadb,
         dumpb,
     )
-except ModuleNotFoundError as error:
+except ModuleNotFoundError as error:  # pragma: no cover
     raise SkipImportError("hyperscan_resolver") from error
 
 # pylint: enable=no-name-in-module
