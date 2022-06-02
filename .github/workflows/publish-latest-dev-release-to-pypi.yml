@@ -1,0 +1,93 @@
+name: Publish latest dev release to PyPi
+
+on:
+  pull_request:
+    types: [closed, synchronize]
+    branches: [main]
+
+jobs:
+  move-dev-tag-of-latest-release:
+    runs-on: ubuntu-latest
+    name: Move dev tag
+    # if: github.event.pull_request.merged == true
+    outputs:
+      dev-release-tag: ${{ steps.dev-tag-name.outputs.DEV_TAG }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-ecosystem/action-get-latest-tag@v1
+        id: get-latest-tag
+        with:
+          semver_only: true
+
+      - name: Output latest semver tag
+        run: |
+          echo "The latest version tag is: ${{ steps.get-latest-tag.outputs.tag }}"
+
+      - name: Set dev tag name
+        id: dev-tag-name
+        run: echo "::set-output name=DEV_TAG::${{ steps.get-latest-tag.outputs.tag }}.dev0"
+
+      - name: Output dev tag name
+        run: |
+          echo "The release dev tag is: ${{ steps.dev-tag-name.outputs.DEV_TAG }}"
+
+      - name: update dev tag
+        uses: actions/github-script@v3
+        if: ${{ steps.get-latest-tag.outputs.tag != null }}
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            try {
+                await github.git.deleteRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref: "tags/${{ steps.dev-tag-name.outputs.DEV_TAG }}"
+                })
+            } catch (e) {
+              console.log("The latest dev tag doesn't exist yet: " + e)
+            }
+            await github.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: "refs/tags/${{ steps.dev-tag-name.outputs.DEV_TAG }}",
+              sha: context.sha
+            })
+
+  publish-to-pypi:
+    runs-on: ubuntu-latest
+    name: Publish latest dev release to PyPi
+    # if: github.event.pull_request.merged == true
+    needs: move-dev-tag-of-latest-release
+
+    steps:
+      - name: Output dev tag name from previous job
+        run: |
+          echo "The release dev tag is: ${{ needs.move-dev-tag-of-latest-release.outputs.dev-release-tag }}"
+
+      - uses: actions/checkout@v1
+        with:
+          ref: ${{ needs.move-dev-tag-of-latest-release.outputs.dev-release-tag }}
+
+      - name: Initialize Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install wheel
+
+      - name: Build binary wheel and a source tarball
+        run: python setup.py sdist bdist_wheel
+
+      - name: Publish distribution to Test PyPI
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/
