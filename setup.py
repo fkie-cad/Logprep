@@ -1,4 +1,6 @@
 # pylint: disable=missing-module-docstring
+from pathlib import Path
+
 from setuptools import setup, find_packages
 
 import versioneer
@@ -7,12 +9,19 @@ with open("requirements.txt", encoding="utf-8") as f:
     requirements = f.read().splitlines()
     requirements = [requirement for requirement in requirements if not requirement.startswith("#")]
 
+
+# read the contents of your README file
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 setup(
     name="logprep",
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description="Logprep allows to collect, process and forward log messages from various data "
     "sources.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     url="https://github.com/fkie-cad/Logprep",
     author="Logprep Team",
     license="LGPL-2.1 license",
