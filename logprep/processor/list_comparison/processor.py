@@ -39,8 +39,7 @@ class ListComparison(RuleBasedProcessor):
     def __init__(
         self,
         name: str,
-        tree_config: str,
-        list_search_base_path: Optional[str],
+        configuration: dict,
         logger: Logger,
     ):
         """
@@ -50,13 +49,14 @@ class ListComparison(RuleBasedProcessor):
         ----------
         name : str
             Name of the list_comparison processor (as referred to in the pipeline).
-        tree_config : str
-            Path to the configuration file which can prioritize fields and add conditional rules.
+        configuration : dict
+            Configuration for the processor.
         logger : Logger
             Standard logger.
         """
+        tree_config = configuration.get("tree_config")
         super().__init__(name, tree_config, logger)
-        self._list_search_base_dir = list_search_base_path
+        self._list_search_base_dir = configuration.get("list_search_base_path")
         self.ps = ProcessorStats()
 
     # pylint: disable=arguments-differ
@@ -68,12 +68,14 @@ class ListComparison(RuleBasedProcessor):
             for rule_path in rule_paths:
                 rules = ListComparisonRule.create_rules_from_file(rule_path)
                 for rule in rules:
+                    rule.init_list_comparison(self._list_search_base_dir)
                     self._specific_tree.add_rule(rule, self._logger)
         for generic_rules_dir in generic_rules_dirs:
             rule_paths = self._list_json_files_in_directory(generic_rules_dir)
             for rule_path in rule_paths:
                 rules = ListComparisonRule.create_rules_from_file(rule_path)
                 for rule in rules:
+                    rule.init_list_comparison(self._list_search_base_dir)
                     self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
