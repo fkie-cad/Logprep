@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: latest
+          ref: refs/tags/latest
 
       - name: Initialize Python
         uses: actions/setup-python@v1
