@@ -61,7 +61,7 @@ class TestSelectiveExtractor:
                     '"hmac":'
                     '{"hmac":"18e2a3df8590b6cbab040f7ea4b9df399febbb5f259817459c460b196f42c4ca",'
                     '"compressed_base64":'
-                    '"eJwtykEOgCAMBdG7\\/DUn4DKESNVGLImtbEjvLhq382bgVroQB\\/JGYohoR8rlZEFAs\\/01rEy1wAOof8+cF+MmkyqpJupc05\\/cH589HPw="}}\n'
+                    '"eJwtykEOgCAMBdG7/DUn4DKESNVGLImtbEjvLhq382bgVroQB/JGYohoR8rlZEFAs/01rEy1wAOof8+cF+MmkyqpJupc05/cH589HPw="}}\n'
                 ) in lines
 
     def test_extraction_field_not_in_event(self, tmp_path, config):
@@ -91,5 +91,5 @@ class TestSelectiveExtractor:
                     '{"other":"field"},"event":{"action":"less_evil_action"},'
                     '"hmac":{"hmac":"cae31468df13e701f46e70bfbea86f29e77ab69f6253ac156ddda5e38fdbed92",'
                     '"compressed_base64":'
-                    '"eJyrViotTi1SsqpWyi\\/JADGU0jJTc1KUanWUUstS80pAMonJJZn5eUCpnNTi4vjUssyceKhQbS0Ay\\/oWvQ=="}}\n'
+                    '"eJyrViotTi1SsqpWyi/JADGU0jJTc1KUanWUUstS80pAMonJJZn5eUCpnNTi4vjUssyceKhQbS0Ay/oWvQ=="}}\n'
                 ) in lines

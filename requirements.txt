@@ -107,8 +107,6 @@ typing-extensions==4.0.1
     #   arrow
     #   async-timeout
     #   yarl
-ujson==4.3.0
-    # via -r requirements.in
 uritools==3.0.2
     # via urlextract
 urlextract==1.5.0

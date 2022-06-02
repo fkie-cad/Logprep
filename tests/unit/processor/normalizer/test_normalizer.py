@@ -1014,7 +1014,7 @@ class TestNormalizer(BaseProcessorTestCase):
         assert event == expected
 
     def test_normalization_with_grok_pattern_count(self):
-
+        config = copy.deepcopy(self.CONFIG)
         temp_path = tempfile.mkdtemp()
         config = deepcopy(self.CONFIG)
 

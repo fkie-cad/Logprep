@@ -4,14 +4,14 @@ Pipelines contain a list of processors that can be executed in order to process 
 They can be multi-processed.
 
 """
-
+# pylint: disable=logging-fstring-interpolation
 from ctypes import c_bool, c_double, c_ulonglong
 from logging import DEBUG, INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 from time import time
 from typing import List
 
-import ujson
+import json
 
 from logprep.connector.connector_factory import ConnectorFactory
 from logprep.input.input import (
@@ -202,7 +202,7 @@ class Pipeline:
     def _process_event(self, event: dict):
         self._tracker.increment_aggregation("processed")
 
-        event_received = ujson.dumps(event)
+        event_received = json.dumps(event, separators=(",", ":"))
         try:
             for processor in self._pipeline:
                 try:
@@ -242,7 +242,7 @@ class Pipeline:
                 f"processing an event, processing was aborted: ({original_error_msg})"
             )
             self._logger.error(msg)
-            self._output.store_failed(msg, ujson.loads(event_received), event)
+            self._output.store_failed(msg, json.loads(event_received), event)
             event.clear()  # 'delete' the event, i.e. no regular output
 
             self._tracker.add_errors(error, processor)
