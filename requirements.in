@@ -7,7 +7,6 @@ pycryptodome
 urlextract
 tldextract
 geoip2
-ujson==4.3.0
 pygrok
 colorama
 python-dateutil

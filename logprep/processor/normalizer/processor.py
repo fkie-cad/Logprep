@@ -13,7 +13,6 @@ from time import time
 from typing import List, Optional, Tuple, Union
 
 import arrow
-import ujson
 from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
@@ -33,18 +32,20 @@ class Normalizer(RuleBasedProcessor):
     def __init__(
         self,
         name: str,
-        specific_rules_dirs: list,
-        generic_rules_dirs: list,
-        tree_config: Optional[str],
+        configuration: dict,
         logger: Logger,
-        regex_mapping: str = None,
-        html_replace_fields: str = None,
-        grok_patterns: str = None,
-        count_grok_pattern_matches: dict = None,
     ):
+        tree_config = configuration.get("tree_config")
         super().__init__(name, tree_config, logger)
         self._logger = logger
         self.ps = ProcessorStats()
+
+        specific_rules_dirs = configuration["specific_rules"]
+        generic_rules_dirs = configuration["generic_rules"]
+        regex_mapping = configuration.get("regex_mapping")
+        html_replace_fields = configuration.get("html_replace_fields")
+        grok_patterns = configuration.get("grok_patterns")
+        count_grok_pattern_matches = configuration.get("count_grok_pattern_matches")
 
         self._name = name
         self._event = None
@@ -160,7 +161,7 @@ class Normalizer(RuleBasedProcessor):
 
     def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
         fields = dotted_field.split(".")
-        missing_fields = ujson.loads(ujson.dumps(fields))
+        missing_fields = json.loads(json.dumps(fields))
         for field in fields:
             if isinstance(event, dict) and field in event:
                 event = event[field]
@@ -183,7 +184,8 @@ class Normalizer(RuleBasedProcessor):
     def _has_html_entity(value):
         return re.search("&#[0-9]{2,4};", value)
 
-    def _replace_field(self, event: dict, dotted_field: str, value: str):
+    @staticmethod
+    def _replace_field(event: dict, dotted_field: str, value: str):
         fields = dotted_field.split(".")
         reduce(lambda dict_, key: dict_[key], fields[:-1], event)[fields[-1]] = value
 

@@ -1021,17 +1021,16 @@ class TestNormalizer(BaseProcessorTestCase):
         assert event == expected
 
     def test_normalization_with_grok_pattern_count(self):
-
+        config = copy.deepcopy(self.CONFIG)
         temp_path = tempfile.mkdtemp()
+        config["count_grok_pattern_matches"] = {
+            "count_directory_path": temp_path,
+            "write_period": 0,
+        }
         self.object = Normalizer(
             "Test Normalizer Name",
-            self.generic_rules_dirs,
-            self.generic_rules_dirs,
-            None,
+            config,
             self.logger,
-            regex_mapping=self.CONFIG["regex_mapping"],
-            html_replace_fields=self.CONFIG["html_replace_fields"],
-            count_grok_pattern_matches={"count_directory_path": temp_path, "write_period": 0},
         )
 
         event = {
