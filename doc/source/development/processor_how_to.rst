@@ -3,10 +3,72 @@ Implementing a new Processor
 
 .. mermaid::
 
-    graph LR
-    A[register processor]-->B[add processor rule]
-    B-->C[add processor class]
-    C-->D[add processor tests]
+    classDiagram
+        Processor <-- Normalizer : implements
+        Processor <-- Pseudonymizer : implements
+        ProcessorConfiguration
+        Rule <-- NormalizerRule : inherit
+        Rule <-- PseudonymizerRule : inherit
+        BaseProcessorTestCase <-- NormalizerTestCase : implements
+        BaseProcessorTestCase <-- PseudonymizerTestCase : implements
+        class Processor{
+            <<interface>>
+            +rule_class
+            +Config
+            +String name
+            +Processor.Config _config
+            +String describe()
+            +add_rules_from_directories()
+            +process()
+            +apply_rules()*
+        }
+        class Normalizer{
+            +Config
+            +rule_class = NormalizerRule
+            +_config: Normalizer.Config
+            +apply_rules()
+        }
+
+        class Pseudonymizer{
+            +Config
+            +rule_class = PseudonymizerRule
+            +_config: Pseudonymizer.Config
+            +apply_rules()
+        }
+
+        class ProcessorConfiguration{
+            <<adapter>>
+            +create
+        }
+        class ProcessorRegistry{
+            +mapping : dict
+        }
+
+        class ProcessorFactory{
+            +create()
+        }
+
+
+        class TestProcessorFactory{
+            +test_check()
+            +test_create_normalizer()
+            +test_create_pseudonymizer()
+        }
+
+        class BaseProcessorTestCase{
+            +test_describe()
+            +test_add_rules_from_diretories()
+            +test_process()
+            +test_apply_rules()*
+        }
+
+        class NormalizerTestCase{
+            +test_apply_rules()
+        }
+
+        class PseudonymizerTestCase{
+            +test_apply_rules()
+        }
 
 
 A processor is used to process log messages.
@@ -15,6 +77,9 @@ For this, some directions have to be considered.
 
 Firstly, you have to register your processor in the :py:class:`ProcessorRegistry` by importing it and adding it to the `mapping` attribute.
 This exposes your processor to the :py:class:`ProcessorFactory` and you can reference it as the processor type in your processor config.
+
+Then you have to create a test class unter `tests.unit.processor.yourprocessor_package.processor`. Your test class has to inherit from `BaseProcessorTestCase`.
+It will help you, implement the necessary methods the right way. Make all test green and you are ready to implement your specific processor in `apply_rules` method.
 
 
 Concurrency/IPC
@@ -29,7 +94,7 @@ In those cases it should be reconsidered if it is necessary that information is 
 Factory
 -------
 
-Processors are being created by the factory :py:class:`~logprep.processor.processor_factory.ProcessorFactory`.
+Processors are being created by the factory :py:class:`~logprep.processor.processor_factory.ProcessorFactory`. There is no need to implement anything here after registering your processor in the :py:class:`ProcessorRegistry`
 
 Processor
 ---------
