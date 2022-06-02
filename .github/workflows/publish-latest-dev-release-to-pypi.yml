@@ -6,10 +6,12 @@ on:
     branches: [main]
 
 jobs:
-  publish-latest-dev-version-to-pypi:
+  move-dev-tag-of-latest-release:
     runs-on: ubuntu-latest
-    name: Publish latest dev release to PyPi
+    name: Move dev tag
     # if: github.event.pull_request.merged == true
+    outputs:
+      dev-release-tag: ${{ steps.dev-tag-name.outputs.DEV_TAG }}
 
     steps:
       - uses: actions/checkout@v3
@@ -23,6 +25,14 @@ jobs:
         run: |
           echo "The latest version tag is: ${{ steps.get-latest-tag.outputs.tag }}"
 
+      - name: Set dev tag name
+        id: dev-tag-name
+        run: echo "::set-output name=DEV_TAG::${{ steps.get-latest-tag.outputs.tag }}.dev0"
+
+      - name: Output dev tag name
+        run: |
+          echo "The latest version tag is: ${{ steps.dev-tag-name.outputs.DEV_TAG }}"
+
       - name: update dev tag
         uses: actions/github-script@v3
         if: ${{ steps.get-latest-tag.outputs.tag != null }}
@@ -33,7 +43,7 @@ jobs:
                 await github.git.deleteRef({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  ref: "tags/${{ steps.get-latest-tag.outputs.tag }}.dev0"
+                  ref: "tags/${{ steps.dev-tag-name.outputs.DEV_TAG }}"
                 })
             } catch (e) {
               console.log("The latest dev tag doesn't exist yet: " + e)
@@ -41,9 +51,24 @@ jobs:
             await github.git.createRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              ref: "refs/tags/${{ steps.get-latest-tag.outputs.tag }}.dev0",
+              ref: "refs/tags/${{ steps.dev-tag-name.outputs.DEV_TAG }}",
               sha: context.sha
             })
+
+  publish-to-pypi:
+    runs-on: ubuntu-latest
+    name: Publish latest dev release to PyPi
+    # if: github.event.pull_request.merged == true
+    needs: move-dev-tag-of-latest-release
+
+    steps:
+      - name: Output dev tag name from previous job
+        run: |
+          echo "The latest version tag is: ${{ needs.move-dev-tag-of-latest-release.outputs.dev-release-tag }}"
+
+      - uses: actions/checkout@v1
+        with:
+          ref: ${{ needs.move-dev-tag-of-latest-release.outputs.dev-release-tag }}
 
       - name: Initialize Python
         uses: actions/setup-python@v1
