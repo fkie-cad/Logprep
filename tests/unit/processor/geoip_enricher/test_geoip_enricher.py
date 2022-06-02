@@ -47,7 +47,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         "type": "geoip_enricher",
         "specific_rules": ["tests/testdata/unit/geoip_enricher/rules/specific"],
         "generic_rules": ["tests/testdata/unit/geoip_enricher/rules/generic"],
-        "db_path": "tests/testdata/external/GeoLite2-City.mmdb",
+        "db_path": "tests/testdata/mock_external/MockGeoLite2-City.mmdb",
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 

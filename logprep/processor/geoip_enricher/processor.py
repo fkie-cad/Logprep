@@ -27,6 +27,7 @@ from geoip2.errors import AddressNotFoundError
 from logprep.abc import Processor
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 from logprep.util.helper import add_field_to
+from logprep.util.validators import url_validator
 
 if sys.version_info.minor < 8:
     from backports.cached_property import cached_property  # pylint: disable=import-error
@@ -61,7 +62,7 @@ class GeoipEnricher(Processor):
     class Config(Processor.Config):
         """geoip_enricher config"""
 
-        db_path: str = field(validator=[validators.instance_of(str)])
+        db_path: str = field(validator=url_validator)
         """Path to a `Geo2Lite` city database by `Maxmind` in binary format.
             This must be downloaded separately.
             This product includes GeoLite2 data created by MaxMind, available from

@@ -25,10 +25,11 @@ import errno
 from logging import Logger
 from os import path, makedirs
 from typing import List, Tuple, Any, Dict
-from attr import define, field, validators
+from attr import define, field
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import SkipImportError
+from logprep.util.validators import directory_validator, url_validator
 
 
 # pylint: disable=no-name-in-module
@@ -75,7 +76,7 @@ class HyperscanResolver(Processor):
     class Config(Processor.Config):
         """HyperscanResolver config"""
 
-        hyperscan_db_path: str = field(validator=validators.instance_of(str))
+        hyperscan_db_path: str = field(validator=directory_validator)
         """Path to a directory where the compiled
         `Hyperscan <https://python-hyperscan.readthedocs.io/en/latest/>`_
         databases will be stored persistently.

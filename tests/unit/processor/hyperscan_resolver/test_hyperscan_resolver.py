@@ -3,6 +3,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 from collections import OrderedDict
+from copy import deepcopy
 from logging import getLogger
 
 import pytest
@@ -33,7 +34,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
         "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
         "generic_rules": ["tests/testdata/unit/hyperscan_resolver/rules/generic/"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        "hyperscan_db_path": "/tmp/test_db",
+        "hyperscan_db_path": "/tmp",
     }
 
     def test_resolve_instantiates(self):
@@ -387,13 +388,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
 
 class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
 
-    CONFIG = {
-        "type": "hyperscan_resolver",
-        "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/hyperscan_resolver/rules/generic/"],
-        "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        "hyperscan_db_path": "/tmp/test_db",
-    }
+    CONFIG = deepcopy(TestHyperscanResolverProcessor.CONFIG)
 
     def test_resolve_no_conflict_from_file(self):
         rule = {
