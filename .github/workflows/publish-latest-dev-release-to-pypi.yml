@@ -1,4 +1,4 @@
-name: Publish latest dev release on Github
+name: Publish Development Build
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
 jobs:
   create-github-prerelease:
     runs-on: ubuntu-latest
-    name: Create github release
+    name: create and publish
     # if: github.event.pull_request.merged == true
 
     steps:
