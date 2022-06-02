@@ -4,7 +4,6 @@
 # pylint: disable=wrong-import-order
 from collections import OrderedDict
 from copy import deepcopy
-from logging import getLogger
 
 import pytest
 
@@ -23,8 +22,6 @@ from logprep.processor.hyperscan_resolver.processor import (
     DuplicationError,
     HyperscanResolverError,
 )
-
-logger = getLogger()
 
 
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
