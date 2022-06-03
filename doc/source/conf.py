@@ -14,6 +14,7 @@
 #
 import os
 import sys
+from datetime import date
 
 sys.path.insert(0, os.path.abspath("../.."))
 
@@ -32,7 +33,7 @@ def setup(app):
 # -- Project information -----------------------------------------------------
 
 project = "Logprep"
-copyright = "2021, FKIE"
+copyright = f"2021 - {date.today().year}, FKIE"
 author = "FKIE"
 
 # The short X.Y version
