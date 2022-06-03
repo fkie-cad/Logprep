@@ -16,6 +16,8 @@ import os
 import sys
 from datetime import date
 
+from logprep._version import get_versions
+
 sys.path.insert(0, os.path.abspath("../.."))
 
 
@@ -37,9 +39,10 @@ copyright = f"2021 - {date.today().year}, FKIE"
 author = "FKIE"
 
 # The short X.Y version
-version = ""
+full_version = get_versions()["version"].split(".")
+version = f"{full_version[0]}.{full_version[1]}"
 # The full version, including alpha/beta/rc tags
-release = ""
+release = get_versions()["version"]
 
 
 # -- General configuration ---------------------------------------------------
