@@ -2,14 +2,14 @@ name: Publish Development Build
 
 on:
   pull_request:
-    types: [closed, synchronize]
+    types: [closed]
     branches: [main]
 
 jobs:
   create-github-prerelease:
     runs-on: ubuntu-latest
     name: create and publish
-    # if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
 
     steps:
       - uses: actions/checkout@v3
