@@ -41,10 +41,10 @@ from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
-if sys.version_info.minor < 8:
+if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property
@@ -54,7 +54,7 @@ class DomainResolverError(BaseException):
     """Base class for DomainResolver related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f"DomainResolver ({name}): {message}")
+        super().__init__(f"DomainResolver ({name}): {message}")  # pragma: no cover
 
 
 class DomainResolver(Processor):
@@ -134,14 +134,10 @@ class DomainResolver(Processor):
         else:
             return TLDExtract()
 
-    @property
-    def _timeout(self):
-        return self._config.timeout
-
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain
         output_field = rule.output_field
-        domain_or_url_str = self._get_dotted_field_value(event, domain_or_url)
+        domain_or_url_str = get_dotted_field_value(event, domain_or_url)
         if not domain_or_url_str:
             return
         domain = self._tld_extractor(domain_or_url_str).fqdn
@@ -149,53 +145,53 @@ class DomainResolver(Processor):
             return
         self.ps.increment_nested(self.name, "total_urls")
         if self._config.cache_enabled:
-            try:
-                hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
-                requires_storing = self._cache.requires_storing(hash_string)
-                if requires_storing:
-                    result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
-                    resolved_ip = result.get(timeout=self._config.timeout)
-                    if len(self._domain_ip_map) >= len(self._cache):
-                        first_hash = next(iter(self._cache.keys()))
-                        del self._domain_ip_map[first_hash]
-                    self._domain_ip_map[hash_string] = resolved_ip
-                    self.ps.increment_nested(self.name, "resolved_new")
-
-                if self._config.debug_cache:
-                    event["resolved_ip_debug"] = {}
-                    event_dbg = event["resolved_ip_debug"]
-                    if requires_storing:
-                        event_dbg["obtained_from_cache"] = False
-                    else:
-                        event_dbg["obtained_from_cache"] = True
-                    event_dbg["cache_size"] = len(self._domain_ip_map.keys())
-
-                if self._domain_ip_map[hash_string] is not None:
-                    adding_was_successful = add_field_to(
-                        event, output_field, self._domain_ip_map[hash_string]
-                    )
-
-                    if not adding_was_successful:
-                        message = (
-                            f"DomainResolver ({self.name}): The following "
-                            f"fields already existed and "
-                            f"were not overwritten by the DomainResolver: "
-                            f"{output_field}"
-                        )
-                        raise ProcessingWarning(message=message)
-                    self.ps.increment_nested(self.name, "resolved_cache")
-            except (context.TimeoutError, OSError):
-                self._domain_ip_map[hash_string] = None
-                self.ps.increment_nested(self.name, "timeouts")
-            except UnicodeError as error:
-                raise DomainResolverError(self.name, f"{error} for domain '{domain}'") from error
+            hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
+            requires_storing = self._cache.requires_storing(hash_string)
+            resolved_ip = None
+            if requires_storing:
+                resolved_ip = self._resolve_ip(domain, hash_string)
+                self._domain_ip_map.update({hash_string: resolved_ip})
+                self.ps.increment_nested(self.name, "resolved_new")
+            else:
+                resolved_ip = self._domain_ip_map.get(hash_string)
+                self.ps.increment_nested(self.name, "resolved_cache")
+            self._add_resolve_infos_to_event(event, output_field, resolved_ip)
+            if self._config.debug_cache:
+                self._store_debug_infos(event, requires_storing)
         else:
-            if output_field not in event:
-                try:
-                    result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
-                    event[output_field] = result.get(timeout=self._config.timeout)
-                except (context.TimeoutError, OSError):
-                    pass
-                except UnicodeError as error:
-                    error_msg = f"{error} for domain '{domain}'"
-                    raise DomainResolverError(self.name, error_msg) from error
+            resolved_ip = self._resolve_ip(domain)
+            self._add_resolve_infos_to_event(event, output_field, resolved_ip)
+
+    def _add_resolve_infos_to_event(self, event, output_field, resolved_ip):
+        if resolved_ip:
+            adding_was_successful = add_field_to(event, output_field, resolved_ip)
+
+            if not adding_was_successful:
+                message = (
+                    f"DomainResolver ({self.name}): The following "
+                    f"fields already existed and "
+                    f"were not overwritten by the DomainResolver: "
+                    f"{output_field}"
+                )
+                raise ProcessingWarning(message=message)
+
+    def _resolve_ip(self, domain, hash_string=None):
+        try:
+            result = self._thread_pool.apply_async(socket.gethostbyname, (domain,))
+            resolved_ip = result.get(timeout=self._config.timeout)
+            return resolved_ip
+        except (context.TimeoutError, OSError):
+            if hash_string:
+                self._domain_ip_map[hash_string] = None
+            self.ps.increment_nested(self.name, "timeouts")
+        except UnicodeError as error:  # pragma: no cover
+            raise DomainResolverError(self.name, f"{error} for domain '{domain}'") from error
+
+    def _store_debug_infos(self, event, requires_storing):
+        event["resolved_ip_debug"] = {}
+        event_dbg = event["resolved_ip_debug"]
+        if requires_storing:
+            event_dbg["obtained_from_cache"] = False
+        else:
+            event_dbg["obtained_from_cache"] = True
+        event_dbg["cache_size"] = len(self._domain_ip_map.keys())
