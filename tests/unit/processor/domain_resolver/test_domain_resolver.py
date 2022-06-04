@@ -1,10 +1,12 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
 import re
 import socket
 from copy import deepcopy
 from os.path import exists
 from pathlib import Path
 from time import sleep
+from unittest import mock
 
 import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
@@ -28,21 +30,67 @@ class TestDomainResolver(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
-    def test_domain_to_ip_resolved_and_added(self, monkeypatch):
-        def mockreturn(domain):
-            if domain == "google.de":
-                return "1.2.3.4"
-            else:
-                return None
-
-        monkeypatch.setattr(socket, "gethostbyname", mockreturn)
-
-        assert self.object.ps.processed_count == 0
-        document = {"url": "google.de"}
-
+    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
+    def test_domain_to_ip_resolved_and_added(self, _):
+        rule = {
+            "filter": "fqdn",
+            "domain_resolver": {"source_url_or_domain": "fqdn"},
+            "description": "",
+        }
+        self._load_specific_rule(rule)
+        document = {"fqdn": "google.de"}
+        expected = {"fqdn": "google.de", "resolved_ip": "1.2.3.4"}
         self.object.process(document)
+        assert document == expected
 
-        assert re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", document.get("resolved_ip", ""))
+    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
+    def test_url_to_ip_resolved_and_added(self, _):
+        rule = {
+            "filter": "url",
+            "domain_resolver": {"source_url_or_domain": "url"},
+            "description": "",
+        }
+        self._load_specific_rule(rule)
+        document = {"url": "https://www.google.de/something"}
+        expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
+        self.object.process(document)
+        assert document == expected
+
+    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
+    def test_url_to_ip_resolved_and_added_with_debug_cache(self, _):
+        config = deepcopy(self.CONFIG)
+        config.update({"debug_cache": True})
+        self.object = ProcessorFactory.create({"resolver": config}, self.logger)
+        rule = {
+            "filter": "url",
+            "domain_resolver": {"source_url_or_domain": "url"},
+            "description": "",
+        }
+        self._load_specific_rule(rule)
+        document = {"url": "https://www.google.de/something"}
+        expected = {
+            "url": "https://www.google.de/something",
+            "resolved_ip_debug": {"obtained_from_cache": False, "cache_size": 1},
+            "resolved_ip": "1.2.3.4",
+        }
+        self.object.process(document)
+        assert document == expected
+
+    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
+    def test_url_to_ip_resolved_and_added_with_cache_disabled(self, _):
+        config = deepcopy(self.CONFIG)
+        config.update({"cache_enabled": False})
+        self.object = ProcessorFactory.create({"resolver": config}, self.logger)
+        rule = {
+            "filter": "url",
+            "domain_resolver": {"source_url_or_domain": "url"},
+            "description": "",
+        }
+        self._load_specific_rule(rule)
+        document = {"url": "https://www.google.de/something"}
+        expected = {"url": "https://www.google.de/something", "resolved_ip": "1.2.3.4"}
+        self.object.process(document)
+        assert document == expected
 
     @pytest.mark.skipif(not exists(TLD_LIST.split("file://")[-1]), reason="Tld-list required.")
     def test_invalid_dots_domain_to_ip_produces_warning(self):
@@ -59,22 +107,6 @@ class TestDomainResolver(BaseProcessorTestCase):
             r"\(UnicodeError\: label empty or too long\) for domain \'google..invalid.de\'",
         ):
             domain_resolver.process(document)
-
-    def test_url_to_ip_resolved_and_added(self, monkeypatch):
-        def mockreturn(domain):
-            if domain == "www.google.de":
-                return "1.2.3.4"
-            else:
-                return None
-
-        monkeypatch.setattr(socket, "gethostbyname", mockreturn)
-
-        assert self.object.ps.processed_count == 0
-        document = {"url": "https://www.google.de/something"}
-
-        self.object.process(document)
-
-        assert re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", document.get("resolved_ip", ""))
 
     def test_domain_to_ip_not_resolved(self, monkeypatch):
         def mockreturn(_):
