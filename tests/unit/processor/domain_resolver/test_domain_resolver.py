@@ -56,6 +56,18 @@ class TestDomainResolver(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
+    def test_do_nothing_if_source_not_in_event(self):
+        rule = {
+            "filter": "url",
+            "domain_resolver": {"source_url_or_domain": "not_available"},
+            "description": "",
+        }
+        self._load_specific_rule(rule)
+        document = {"url": "https://www.google.de/something"}
+        expected = {"url": "https://www.google.de/something"}
+        self.object.process(document)
+        assert document == expected
+
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_url_to_ip_resolved_and_added_with_debug_cache(self, _):
         config = deepcopy(self.CONFIG)
