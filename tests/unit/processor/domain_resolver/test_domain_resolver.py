@@ -84,8 +84,10 @@ class TestDomainResolver(BaseProcessorTestCase):
         with mock.patch("socket.gethostbyname", return_value="1.2.3.4"):
             self.object.process(document)
         document = {"url": "https://www.google.de/something_else"}
+        expected = {"url": "https://www.google.de/something_else", "resolved_ip": "1.2.3.4"}
         with mock.patch("socket.gethostbyname", return_value="1.2.3.4"):
             self.object.process(document)
+        assert document == expected
 
     def test_do_nothing_if_source_not_in_event(self):
         rule = {
