@@ -50,13 +50,6 @@ else:
     from functools import cached_property
 
 
-class DomainResolverError(BaseException):
-    """Base class for DomainResolver related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"DomainResolver ({name}): {message}")  # pragma: no cover
-
-
 class DomainResolver(Processor):
     """Resolve domains."""
 
@@ -183,8 +176,6 @@ class DomainResolver(Processor):
             if hash_string:
                 self._domain_ip_map[hash_string] = None
             self.ps.increment_nested(self.name, "timeouts")
-        except UnicodeError as error:  # pragma: no cover
-            raise DomainResolverError(self.name, f"{error} for domain '{domain}'") from error
 
     def _store_debug_infos(self, event, requires_storing):
         event["resolved_ip_debug"] = {}
