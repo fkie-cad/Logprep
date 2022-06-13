@@ -147,7 +147,6 @@ class DomainResolver(Processor):
         if self._config.cache_enabled:
             hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
             requires_storing = self._cache.requires_storing(hash_string)
-            resolved_ip = None
             if requires_storing:
                 resolved_ip = self._resolve_ip(domain, hash_string)
                 self._domain_ip_map.update({hash_string: resolved_ip})
