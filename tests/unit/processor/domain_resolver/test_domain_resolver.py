@@ -28,7 +28,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     }
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    def test_domain_to_ip_resolved_and_added(self, _):
+    def test_domain_to_ip_resolved_and_added(self, mock_gethostbyname):
         rule = {
             "filter": "fqdn",
             "domain_resolver": {"source_url_or_domain": "fqdn"},
@@ -38,10 +38,11 @@ class TestDomainResolver(BaseProcessorTestCase):
         document = {"fqdn": "google.de"}
         expected = {"fqdn": "google.de", "resolved_ip": "1.2.3.4"}
         self.object.process(document)
+        mock_gethostbyname.assert_called_once()
         assert document == expected
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    def test_domain_to_ip_resolved_and_added_from_cache(self, _):
+    def test_domain_to_ip_resolved_and_added_from_cache(self, mock_gethostbyname):
         rule = {
             "filter": "fqdn",
             "domain_resolver": {"source_url_or_domain": "fqdn"},
@@ -49,8 +50,11 @@ class TestDomainResolver(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"fqdn": "google.de"}
+        self.object.process(document)
+        document = {"fqdn": "google.de"}
         expected = {"fqdn": "google.de", "resolved_ip": "1.2.3.4"}
         self.object.process(document)
+        mock_gethostbyname.assert_called_once()
         assert document == expected
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
