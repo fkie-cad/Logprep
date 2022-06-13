@@ -159,7 +159,6 @@ class TestDomainResolver(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    # @pytest.mark.skipif(not exists(TLD_LIST.split("file://")[-1]), reason="Tld-list required.")
     @mock.patch("requests.sessions.Session.get")
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.path.isfile", return_value=True)
