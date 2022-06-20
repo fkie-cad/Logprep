@@ -332,11 +332,20 @@ class Exists(FilterExpression):
         if not self.split_field:
             return False
 
-        current = document
-        for sub_field in self.split_field:
-            if sub_field not in current:
-                return False
-            current = current[sub_field]
+        try:
+            current = document
+            for sub_field in self.split_field:
+                if (
+                    sub_field not in current.keys()
+                ):  # .keys() is important as it is used to "check" for dict
+                    return False
+                current = current[sub_field]
+            # Don't check for dict instance, instead just "try" for better performance
+        except AttributeError as error:
+            if "has no attribute 'keys'" not in error.args[0]:
+                raise error
+            return False
+
         return True
 
 

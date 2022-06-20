@@ -18,6 +18,7 @@ from logprep.filter.expression.filter_expression import (
     Always,
     WildcardStringFilterExpression,
     SigmaFilterExpression,
+    Exists,
 )
 
 
@@ -298,6 +299,26 @@ class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
                     }
                 }
             )
+
+
+class TestExistsFilterExpression(ValueBasedFilterExpressionTest):
+    def setup_method(self, name):
+        self.split_field = ["key1", "key2"]
+        self.filter = Exists(["key1", "key2"])
+        self.filter_identical = Exists(["key1", "key2"])
+
+    def test_string_representation(self):
+        assert str(self.filter) == '"key1.key2"'
+
+    def test_matches_any_value(self):
+        filter = Exists(["key1", "key2"])
+        assert filter.matches({"key1": {"key2": ""}})
+        assert filter.matches({"key1": {"key2": "foo"}})
+        assert filter.matches({"key1": {"key2": "bar"}})
+
+    def test_does_not_match_if_value_matches_key(self):
+        filter = Exists(["key1", "key2"])
+        assert filter.matches({"key1": "key2"}) is False
 
 
 class TestWildcardFilterExpression(ValueBasedFilterExpressionTest):
