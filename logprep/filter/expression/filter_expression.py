@@ -43,13 +43,24 @@ class FilterExpression(metaclass=ABCMeta):
         except KeyDoesNotExistError:
             return False
 
-    # Receives a dictionary and must return True/False
-    # based on whether the document matches the
-    # given expression.
-    # The method MUST NOT modify the document.
     @abstractmethod
-    def does_match(self, document: dict):
-        pass
+    def does_match(self, document: dict) -> bool:
+        """Receives a dictionary and must return True/False
+
+        Based on whether the document matches the given expression.
+        The method MUST NOT modify the document.
+
+        Parameters
+        ----------
+        document : dict
+            Document to match.
+
+        Returns
+        -------
+        bool
+            Returns if document matches or not.
+
+        """
 
     # Return the value for the given key from
     # the document.
@@ -74,7 +85,7 @@ class FilterExpression(metaclass=ABCMeta):
         if type(self) != type(other):
             return False
 
-        for key in self.__dict__:
+        for key in self.__dict__:  # pylint: disable=consider-using-dict-items
             if self.__dict__[key] != other.__dict__[key]:
                 return False
         return True
@@ -106,7 +117,7 @@ class Not(FilterExpression):
         self.expression = expression
 
     def __repr__(self) -> str:
-        return "NOT({})".format(str(self.expression))
+        return f"NOT({str(self.expression)})"
 
     def does_match(self, document: dict) -> bool:
         return not self.expression.matches(document)
@@ -126,7 +137,7 @@ class And(CompoundFilterExpression):
     """Compound filter expression that is a logical conjunction."""
 
     def __repr__(self) -> str:
-        return "AND({})".format(", ".join([str(i) for i in self.expressions]))
+        return f'AND({", ".join([str(i) for i in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
         for expression in self.expressions:
@@ -140,7 +151,7 @@ class Or(CompoundFilterExpression):
     """Compound filter expression that is a logical disjunction."""
 
     def __repr__(self) -> str:
-        return "OR({})".format(", ".join([str(i) for i in self.expressions]))
+        return f'OR({", ".join([str(i) for i in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
         for expression in self.expressions:
@@ -158,7 +169,7 @@ class KeyValueBasedFilterExpression(FilterExpression):
         self._expected_value = expected_value
 
     def __repr__(self) -> str:
-        return "{}:{}".format(self._as_dotted_string(self._key), str(self._expected_value))
+        return f"{self._as_dotted_string(self._key)}:{str(self._expected_value)}"
 
     def does_match(self, document):
         raise NotImplementedError
@@ -175,7 +186,7 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
         return str(value) == self._expected_value
 
     def __repr__(self) -> str:
-        return '{}:"{}"'.format(self._as_dotted_string(self._key), str(self._expected_value))
+        return f'{self._as_dotted_string(self._key)}:"{str(self._expected_value)}"'
 
 
 class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
@@ -201,7 +212,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
-        return "^{}$".format(regex)
+        return f"^{regex}$"
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self._key, document)
@@ -227,7 +238,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         return "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
     def __repr__(self) -> str:
-        return '{}:"{}"'.format(self._as_dotted_string(self._key), self._expected_value)
+        return f'{self._as_dotted_string(self._key)}:"{self._expected_value}"'
 
 
 class SigmaFilterExpression(WildcardStringFilterExpression):
@@ -263,9 +274,7 @@ class RangeBasedFilterExpression(FilterExpression):
         self._upper_bound = upper_bound
 
     def __repr__(self) -> str:
-        return "{}:[{} TO {}]".format(
-            self._as_dotted_string(self._key), self._lower_bound, self._upper_bound
-        )
+        return f"{self._as_dotted_string(self._key)}:[{self._lower_bound} TO {self._upper_bound}]"
 
     def does_match(self, document: dict):
         raise NotImplementedError
@@ -298,7 +307,7 @@ class RegExFilterExpression(FilterExpression):
         self._matcher = re.compile(self._regex)
 
     def __repr__(self) -> str:
-        return "{}:r/{}/".format(self._as_dotted_string(self._key), self._regex)
+        return f"{self._as_dotted_string(self._key)}:r/{self._regex}/"
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
@@ -326,7 +335,7 @@ class Exists(FilterExpression):
         self.split_field = value
 
     def __repr__(self) -> str:
-        return '"{}"'.format(self._as_dotted_string(self.split_field))
+        return f'"{self._as_dotted_string(self.split_field)}"'
 
     def does_match(self, document: dict) -> bool:
         if not self.split_field:
@@ -356,7 +365,7 @@ class Null(FilterExpression):
         self._key = key
 
     def __repr__(self) -> str:
-        return "{}:{}".format(self._as_dotted_string(self._key), None)
+        return f"{self._as_dotted_string(self._key)}:{None}"
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self._key, document)
