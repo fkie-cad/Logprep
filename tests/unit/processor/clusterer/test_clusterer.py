@@ -83,6 +83,14 @@ class TestClusterer(BaseProcessorTestCase):
         mock_is_clusterable.assert_called()
         mock_cluster.assert_called_once()
 
+    def test_matching_rules_cleared_before_processing(self):
+        assert len(self.object.matching_rules) == 0
+        self.object.process({"message": "test_message"})
+        assert len(self.object.matching_rules) == 2
+
+        self.object.process({"message": "test_message"})
+        assert len(self.object.matching_rules) == 2
+
     def test_syslog_has_severity_and_facility(self):
         valid_syslog_with_facility_and_severity = {
             "syslog": {"facility": 3},
