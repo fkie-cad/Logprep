@@ -3,7 +3,7 @@
 from typing import List
 from copy import deepcopy
 from datetime import datetime
-import ujson
+import json
 from socket import getfqdn
 
 from confluent_kafka import Producer
@@ -155,7 +155,9 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
             self._create_producer()
 
         try:
-            self._producer.produce(target, value=ujson.dumps(document).encode("utf-8"))
+            self._producer.produce(
+                target, value=json.dumps(document, separators=(",", ":")).encode("utf-8")
+            )
             self._producer.poll(0)
         except BufferError:
             # block program until buffer is empty
@@ -189,7 +191,8 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
         }
         try:
             self._producer.produce(
-                self._producer_error_topic, value=ujson.dumps(value).encode("utf-8")
+                self._producer_error_topic,
+                value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
             )
             self._producer.poll(0)
         except BufferError:

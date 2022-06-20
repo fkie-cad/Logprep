@@ -6,7 +6,7 @@ from base64 import b64encode
 from hmac import HMAC
 from copy import deepcopy
 from zlib import compress
-import ujson
+import json
 from socket import getfqdn
 
 from confluent_kafka import Consumer
@@ -223,7 +223,7 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             )
         try:
             raw_event = self._record.value()
-            event_dict = ujson.loads(raw_event.decode("utf-8"))
+            event_dict = json.loads(raw_event.decode("utf-8"))
 
             if self._add_hmac:
                 hmac_target_field_name = self._config["consumer"]["hmac"]["target"]
