@@ -56,7 +56,6 @@ class ListComparisonRule(Rule):
 
         self._compare_sets = {}
         self._config = list_comparison_cfg
-        self.init_list_comparison(self._config.get("list_search_base_path"))
 
     def init_list_comparison(self, list_search_base_path: Optional[str]):
         """init method for list_comparision"""
@@ -76,9 +75,6 @@ class ListComparisonRule(Rule):
 
     def __eq__(self, other: "ListComparisonRule") -> bool:
         return (other.filter == self._filter) and (self._check_field == other.check_field)
-
-    def __hash__(self) -> int:
-        return hash(repr(self))
 
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring

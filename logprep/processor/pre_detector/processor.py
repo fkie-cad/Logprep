@@ -1,14 +1,39 @@
-"""This module contains functionality for pre-detecting attacks."""
+"""
+PreDetector
+-----------
 
+The `pre_detector` is a processor that creates alerts for matching events. It adds MITRE ATT&CK
+data to the alerts.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - predetectorname:
+        type: pre_detector
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        pre_detector_topic: sre_topic
+        alert_ip_list_path: /tmp/ip_list.yml
+"""
+import sys
 from logging import DEBUG, Logger
-from multiprocessing import current_process
-from typing import List
 from uuid import uuid4
 
-from logprep.processor.base.processor import RuleBasedProcessor
+from attr import define, field, validators
+from logprep.abc import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.util.processor_stats import ProcessorStats
+from logprep.util.validators import file_validator
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class PreDetectorError(BaseException):
@@ -22,72 +47,56 @@ class PreDetectorConfigurationError(PreDetectorError):
     """Generic PreDetector configuration error."""
 
 
-class PreDetector(RuleBasedProcessor):
+class PreDetector(Processor):
     """Processor used to pre_detect log events."""
+
+    @define(kw_only=True)
+    class Config(Processor.Config):
+        """PreDetector config"""
+
+        pre_detector_topic: str = field(validator=validators.instance_of(str))
+        """
+        A Kafka topic for the detection results of the Predetector.
+        Results in this topic can be linked to the original event via a `pre_detector_id`.
+        """
+        alert_ip_list_path: str = field(default=None, validator=file_validator)
+        """
+        Path to a YML file or a list of paths to YML files with dictionaries of IPs.
+        It is used by the Predetector to throw alerts if one of the IPs is found
+        in fields that were defined in a rule.
+
+        It uses IPs or networks in the CIDR format as keys and can contain expiration
+        dates in the ISO format as values.
+        If a value is empty, then there is no expiration date for the IP check.
+        If a checked IP is covered by an IP and a network in the dictionary
+        (i.e. IP 127.0.0.1 and network 127.0.0.0/24 when checking 127.0.0.1),
+        then the expiration date of the IP is being used.
+        """
+
+    __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
+
+    _ids: list
 
     detection_results: list
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
-        tree_config = configuration.get("tree_config")
-        pre_detector_topic = configuration.get("pre_detector_topic")
-        alert_ip_list_path = configuration.get("alert_ip_list_path")
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        super().__init__(name, tree_config, logger)
-        self._logger = logger
-        self.ps = ProcessorStats()
+    rule_class = PreDetectorRule
 
-        self._name = name
-        self._pre_detector_topic = pre_detector_topic
-        self._event = None
-
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
+        super().__init__(name=name, configuration=configuration, logger=logger)
         self._ids = []
 
-        self._ip_alerter = IPAlerter(alert_ip_list_path)
-        self.add_rules_from_directory(
-            specific_rules_dirs=specific_rules_dirs, generic_rules_dirs=generic_rules_dirs
-        )
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = PreDetectorRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = PreDetectorRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
-
-    def setup(self):
-        pass
+    @cached_property
+    def _ip_alerter(self):
+        return IPAlerter(self._config.alert_ip_list_path)
 
     def process(self, event: dict) -> tuple:
         self._event = event
         self.detection_results = []
         super().process(event)
         return (
-            (self.detection_results, self._pre_detector_topic) if self.detection_results else None
+            (self.detection_results, self._config.pre_detector_topic)
+            if self.detection_results
+            else None
         )
 
     def _apply_rules(self, event, rule):

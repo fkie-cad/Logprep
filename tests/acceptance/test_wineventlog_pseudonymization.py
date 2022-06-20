@@ -35,7 +35,6 @@ def config():
                     "regex_mapping": "tests/testdata/acceptance/pseudonymizer/rules_static/regex_mapping.yml",
                     "max_cached_pseudonyms": 1000000,
                     "max_caching_days": 1,
-                    "tld_list": "-",
                 }
             }
         ],

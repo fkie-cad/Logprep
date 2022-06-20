@@ -1,0 +1,39 @@
+rules:
+  - id: processor-implements-apply-rules-method
+    message: Processor must implement apply_rules method
+    severity: INFO
+    languages: [python]
+    patterns:
+      - pattern: |
+          class $X(Processor):
+            ...
+      - pattern-not: |
+          class $X(Processor):
+            def _apply_rules(...):
+              ...
+
+  - id: processor-iterates-over-rules-in-apply-rules-method
+    message: Processor should use the process method to iterate over rules
+    severity: INFO
+    languages: [python]
+    patterns:
+      - pattern: |
+          class $X(Processor):
+            def _apply_rules(...):
+              ...
+              for rule in ...:
+                ...
+
+  - id: processor-initialized-without-configuration-dict
+    message: Processor should be initialized with name, configuration and logger
+    severity: INFO
+    languages: [python]
+    patterns:
+      - pattern: |
+          class $X(Processor):
+            def __init__(self,...):
+              ...
+      - pattern-not: |
+          class $X(Processor):
+            def __init__(self, name, configuration, logger):
+              ...

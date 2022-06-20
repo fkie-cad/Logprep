@@ -1,88 +1,80 @@
-"""This module contains functionality for resolving log event values using regex lists."""
-from typing import List
-from logging import Logger, DEBUG
+"""
+GeoipEnricher
+-------------
+Processor to enrich log messages with geolocalization information
 
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
 
-from multiprocessing import current_process
-
+    - geoipenrichername:
+        type: geoip_enricher
+        specific_rules:
+            - tests/testdata/geoip_enricher/rules/
+        generic_rules:
+            - tests/testdata/geoip_enricher/rules/
+        db_path: /path/to/GeoLite2-City.mmdb
+"""
+import sys
 from ipaddress import ip_address
+from typing import List
+from attr import define, field, validators
 
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
-from logprep.processor.base.processor import RuleBasedProcessor
-from logprep.processor.geoip_enricher.rule import GeoIPEnricherRule
-
-from logprep.util.processor_stats import ProcessorStats
+from logprep.abc import Processor
+from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 from logprep.util.helper import add_field_to
+from logprep.util.validators import url_validator
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
-class GeoIPEnricherError(BaseException):
-    """Base class for GeoIPEnricher related exceptions."""
+class GeoipEnricherError(BaseException):
+    """Base class for GeoipEnricher related exceptions."""
 
     def __init__(self, name: str, message: str):
-        super().__init__(f"GeoIPEnricher ({name}): {message}")
+        super().__init__(f"GeoipEnricher ({name}): {message}")
 
 
-class DuplicationError(GeoIPEnricherError):
+class DuplicationError(GeoipEnricherError):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
         message = (
             "The following fields already existed and "
-            "were not overwritten by the GeoIPEnricher: "
+            "were not overwritten by the GeoipEnricher: "
         )
         message += " ".join(skipped_fields)
 
         super().__init__(name, message)
 
 
-class GeoIPEnricher(RuleBasedProcessor):
+class GeoipEnricher(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
-        tree_config = configuration.get("tree_config")
-        super().__init__(name, tree_config, logger)
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        geoip_db_path = configuration.get("db_path")
-        self.ps = ProcessorStats()
-        self.add_rules_from_directory(
-            specific_rules_dirs=specific_rules_dirs,
-            generic_rules_dirs=generic_rules_dirs,
-        )
-        self._city_db = database.Reader(geoip_db_path)
+    @define(kw_only=True)
+    class Config(Processor.Config):
+        """geoip_enricher config"""
 
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = GeoIPEnricherRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = GeoIPEnricherRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"generic rules ({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
+        db_path: str = field(validator=url_validator)
+        """Path to a `Geo2Lite` city database by `Maxmind` in binary format.
+            This must be downloaded separately.
+            This product includes GeoLite2 data created by MaxMind, available from
+            https://www.maxmind.com."""
 
-    # pylint: enable=arguments-differ
+    __slots__ = []
+
+    rule_class = GeoipEnricherRule
+
+    @cached_property
+    def _city_db(self):
+        return database.Reader(self._config.db_path)
 
     @staticmethod
     def _normalize_empty(db_entry):
@@ -90,13 +82,13 @@ class GeoIPEnricher(RuleBasedProcessor):
 
     def _try_getting_geoip_data(self, ip_string):
         if ip_string is None:
-            return dict()
+            return {}
 
         try:
             geoip = {}
 
-            ip = str(ip_address(ip_string))
-            ip_data = self._city_db.city(ip)
+            ip_addr = str(ip_address(ip_string))
+            ip_data = self._city_db.city(ip_addr)
 
             if ip_data:
                 geoip["type"] = "Feature"
@@ -145,7 +137,7 @@ class GeoIPEnricher(RuleBasedProcessor):
                 return geoip
 
         except (ValueError, AddressNotFoundError):
-            return dict()
+            return {}
 
     def _apply_rules(self, event, rule):
         source_ip = rule.source_ip
@@ -157,4 +149,4 @@ class GeoIPEnricher(RuleBasedProcessor):
                 adding_was_successful = add_field_to(event, output_field, geoip_data)
 
                 if not adding_was_successful:
-                    raise DuplicationError(self._name, [output_field])
+                    raise DuplicationError(self.name, [output_field])

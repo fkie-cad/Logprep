@@ -50,7 +50,7 @@ release = ""
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.napoleon"]
+extensions = ["sphinx.ext.napoleon", "sphinxcontrib.mermaid", "sphinx.ext.autosummary"]
 
 extensions.append("sphinx.ext.todo")
 todo_include_todos = True
@@ -192,3 +192,5 @@ epub_exclude_files = ["search.html"]
 # -- Extension configuration -------------------------------------------------
 modindex_common_prefix = ["logprep."]
 html_style = "css/custom_theme.css"
+autodoc_class_signature = "separated"
+autodoc_member_order = "bysource"

@@ -17,10 +17,6 @@ pipeline:
         - tests/testdata/unit/labeler/rules/specific/
       generic_rules:
         - tests/testdata/unit/labeler/rules/generic/
-  - donothingbla:
-      type: donothing
-  - donothingbla - make these names unique!:
-      type: donothing
   - pseudonymizer:
       type: pseudonymizer
       pubkey_analyst: tests/testdata/unit/pseudonymizer/example_analyst_pub.pem
@@ -34,7 +30,6 @@ pipeline:
         - tests/testdata/unit/pseudonymizer/rules/generic/
       max_cached_pseudonyms: 1000000
       max_caching_days: 1
-      tld_list: "-"
 
 connector:
   type: confluentkafka

@@ -77,6 +77,8 @@ The output is printed to the console, highlighting differences between `raw` and
 
 Where :code:`$CONFIG` is the path to a configuration file (see :doc:`configuration/configurationdata`).
 
+Auto-testing does also perform a verification of the pipeline section of the Logprep configuration.
+
 Custom Tests
 ------------
 

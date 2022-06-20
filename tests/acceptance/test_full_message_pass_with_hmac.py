@@ -1,21 +1,25 @@
+# pylint: disable=missing-docstring
+# pylint: disable=wrong-import-order
+# pylint: disable=no-self-use
 from unittest.mock import patch
 
 import pytest
-import ujson
+import json
 
 from tests.acceptance.util import mock_kafka_and_run_pipeline, get_default_logprep_config
 from logprep.util.json_handling import dump_config_as_file
 
 
-@pytest.fixture
-def config():
+@pytest.fixture(name="config")
+def fixture_config():
     pipeline = [
         {
             "normalizername": {
                 "type": "normalizer",
                 "specific_rules": ["tests/testdata/acceptance/normalizer/rules_static/specific"],
                 "generic_rules": ["tests/testdata/acceptance/normalizer/rules_static/generic"],
-                "regex_mapping": "tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml",
+                "regex_mapping": "tests/testdata/acceptance/normalizer/rules_static/"
+                "regex_mapping.yml",
             }
         }
     ]
@@ -44,11 +48,11 @@ class TestFullHMACPassTest:
             )
 
             # read logprep kafka output from mocked kafka file producer
-            with open(kafka_output_file, "r") as f:
-                outputs = f.readlines()
+            with open(kafka_output_file, "r", encoding="utf-8") as output_file:
+                outputs = output_file.readlines()
                 assert len(outputs) == 1, "Expected only one default kafka output"
 
-                target, event = outputs[0].split(" ")
-                event = ujson.loads(event)
+                target, event = outputs[0].split(" ", maxsplit=1)
+                event = json.loads(event)
                 assert target == "test_input_processed"
                 assert event == expected_output_event

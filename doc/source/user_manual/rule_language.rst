@@ -289,7 +289,7 @@ Valid timezones are defined in the pytz module:
    <details>
    <summary><a>List of all timezones</a></summary>
 
-.. code-block::
+.. code-block:: text
    :linenos:
    :caption: Timezones from the Python pytz module
 
@@ -961,6 +961,95 @@ In the following example two files are being used, but only the first existing f
         - PATH_TO_FILE_WITH_LIST
     description: '...'
 
+Selective Extractor
+===================
+
+The selective extractor requires the additional field :code:`selective_extractor`.
+The field :code:`selective_extractor.extract` has to be defined.
+It contains a dictionary of field names that should be extracted and a target topic to which they should be send to.
+If dot notation is being used, then all fields on the path are being automatically created.
+
+In the following example, the field :code:`field.extract` with the value :code:`extracted value` is being extracted
+and send to the topic :code:`topcic_to_send_to`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from field list
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extracted_field_list: ["field.extract", "field2", "field3"]
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: json
+    :caption: Example event
+
+    {
+      "extract_test": {
+        "field": {
+          "extract": "extracted value" 
+        }
+      }
+    }
+
+..  code-block:: json
+    :caption: Extracted event from Example
+
+    {
+      "extract": "extracted value" 
+    }
+
+
+
+Alternatively, the additional field :code:`selective_extractor.extract.extract_from_file` can be added.
+It contains the path to a text file with a list of fields per line to be extracted.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from file
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extract_from_file: /path/to/file
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: text
+    :caption: Example of file with field list
+
+    field1
+    field2
+    field3
+
+The file has to exist.
+
+It is possible to mix both extraction sources. They will be merged to one list without duplicates.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from file
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extract_from_file: /path/to/file
+        extracted_field_list: ["field1", "field2", "field4"]
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: text
+    :caption: Example of file with field list
+
+    field1
+    field2
+    field3
+
 Datetime Extractor
 ==================
 
@@ -986,8 +1075,8 @@ Domain Resolver
 The domain resolver requires the additional field :code:`domain_resolver`.
 The additional field :code:`domain_resolver.source_url_or_domain` must be defined.
 It contains the field from which an URL should be parsed and then written to :code:`resolved_ip`.
-The URL can be located in continuous text insofar the URL is valid.  
-  
+The URL can be located in continuous text insofar the URL is valid.
+
 Optionally, the output field can be configured (overriding the default :code:`resolved_ip`) using the parameter :code:`output_field`.
 This can be a dotted subfield.
 
@@ -1027,33 +1116,31 @@ registered domain :code:`domain` and lastly it's TLD :code:`de`:
 The example rule applied to the input event
 
 ..  code-block:: json
-    :linenos:
     :caption: Input Event
 
     {
-        'url': {
-            'domain': 'www.sub.domain.de'
+        "url": {
+            "domain": "www.sub.domain.de"
         }
     }
 
 will result in the following output
 
 ..  code-block:: json
-    :linenos:
     :caption: Output Event
 
     {
-        'url': {
-            'domain': 'www.sub.domain.de',
-            'registered_domain': 'domain.de',
-            'top_level_domain': 'de',
-            'subdomain': 'www.sub',
+        "url": {
+            "domain": "www.sub.domain.de",
+            "registered_domain": "domain.de",
+            "top_level_domain": "de",
+            "subdomain": "www.sub"
         }
     }
 
 
 List Comparison Enricher
-======================
+========================
 
 The list comparison enricher requires the additional field :code:`list_comparison`.
 The mandatory keys under :code:`list_comparison` are :code:`check_field` and :code:`output_field`. Former
@@ -1079,7 +1166,7 @@ Assuming that the value :code:`non_privileged_user` will match the provided list
         -   lists/privileged_users.txt
     description: '...'
 
-GeoIP Enricher
+Geoip Enricher
 ==============
 
 The geoip enricher requires the additional field :code:`geoip`.
@@ -1101,7 +1188,7 @@ In the following example the IP in :code:`client.ip` will be enriched with geoip
 Template Replacer
 =================
 
-The generic adder requires the additional field :code:`template_replacer`.
+The template replacer requires the additional field :code:`template_replacer`.
 No additional configuration parameters are required for the rules.
 The module is completely configured over the pipeline configuration.
 
@@ -1119,6 +1206,7 @@ Generic Resolver
 ================
 
 The generic adder requires the additional field :code:`generic_resolver`.
+It works similarly to the hyperscan resolver, which utilizes hyperscan to process resolve lists.
 Configurable fields are being checked by regex patterns and a configurable value will be added if a pattern matches.
 The parameters within :code:`generic_resolver` must be of the form
 :code:`field_mapping: {SOURCE_FIELD: DESTINATION_FIELD}, resolve_list: {REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`.
@@ -1168,6 +1256,92 @@ Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if th
 
     foo: resolved foo
     bar: resolved bar
+
+Hyperscan Resolver
+==================
+
+The hyperscan resolver requires the additional field :code:`hyperscan_resolver`.
+It works similarly to the generic resolver, but utilized hyperscan to process resolve lists.
+Configurable fields are being checked by regex patterns and a configurable value will be added if a pattern matches.
+The parameters within :code:`hyperscan_resolver` must be of the form
+:code:`field_mapping: {SOURCE_FIELD: DESTINATION_FIELD}, resolve_list: {REGEX_PATTERN_0: ADDED_VALUE_0, ..., REGEX_PATTERN_N: ADDED_VALUE_N}`.
+SOURCE_FIELD will be checked by the regex patterns REGEX_PATTERN_[0-N] and a new field DESTINATION_FIELD with the value ADDED_VALUE_[0-N] will be added if there is a match.
+Adding the option :code:`"append_to_list": True` makes the hyperscan resolver write resolved values into a list so that multiple different values can be written into the same field.
+
+In the following example :code:`to_resolve` will be checked by the regex pattern :code:`.*Hello.*`.
+:code:`"resolved": "Greeting"` will be added to the event if the pattern matches the value in :code:`to_resolve`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: to_resolve
+    hyperscan_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_list:
+        .*Hello.*: Greeting
+
+Alternatively, a YML file with a resolve list and an optional regex pattern can be used to resolve values.
+For this, either a field :code:`resolve_from_file` with a path to a resolve list file must be added
+or dictionary field :code:`resolve_from_file` with the subfields :code:`path` and :code:`pattern`.
+Using the :code:`pattern` option allows to define one regex pattern that can be used on all entries within a
+resolve list instead of having to write a regex pattern for each entry in the list.
+The resolve list in the file at :code:`path` is then used in conjunction with the regex pattern in :code:`pattern`.
+:code:`pattern` must be a regex pattern with a capture group that is named :code:`mapping`.
+The entries in the resolve list are then transformed by the pattern.
+At first, the pattern is matched with each list entry in the resolve list.
+If the capture group :code:`mapping` matches, then the capture group in the pattern is replaced with the matching result.
+This replaced pattern is then used instead of the original mapping within the resolve list file.
+This effectively wraps the list entries with the regex pattern.
+
+In the following example :code:`to_resolve` will be checked by the list in :code:`path/to/resolve_mapping.yml`.
+:code:`"resolved": "resolved foo"` will be added to the event if the value in :code:`to_resolve` matches a pattern in the file.
+Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains bar.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example resolving with list from file
+
+    filter: to_resolve
+    hyperscan_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_from_file: path/to/resolve_mapping.yml
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example file with resolve list
+
+    \d*foo\d*: resolved foo
+    \d*bar\d*: resolved bar
+
+In the following example :code:`to_resolve` will be checked with the regex pattern :code:`\d*(?P<mapping>[a-z]+)\d*` and the list in :code:`path/to/resolve_mapping.yml` will be used to add new fields.
+:code:`"resolved": "resolved foo"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains foo.
+Furthermore, :code:`"resolved": "resolved bar"` will be added to the event if the value in :code:`to_resolve` begins with number, ends with numbers and contains bar.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example resolving with list from file
+
+    filter: to_resolve
+    hyperscan_resolver:
+      field_mapping:
+        to_resolve: resolved
+      resolve_from_file:
+        path: path/to/resolve_mapping.yml
+        pattern: \d*(?P<mapping>[a-z]+)\d*
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example file with resolve list
+
+    foo: resolved foo
+    bar: resolved bar
+
+The hyperscan resolver uses the `Python Hyperscan library <https://python-hyperscan.readthedocs.io/en/latest/>`_ to check regex patterns.
+By default, the compiled Hyperscan databases will be stored persistently in the directory specified in the :code:`pipeline.yml`.
+The field :code:`store_db_persistent` can be used to configure if a database compiled from a rule's :code:`resolve_list` should be stored persistently.
 
 PreDetector
 ===========

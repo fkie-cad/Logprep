@@ -1,16 +1,15 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+
 import pytest
-from logprep.processor.base.processor import ProcessingWarning
-from logprep.processor.domain_label_extractor.factory import DomainLabelExtractorFactory
+
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_label_extractor.processor import DuplicationError
-from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
+from logprep.processor.processor_factory import ProcessorFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDomainLabelExtractor(BaseProcessorTestCase):
-
-    factory = DomainLabelExtractorFactory
 
     CONFIG = {
         "type": "domain_label_extractor",
@@ -26,10 +25,6 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     @property
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
-
-    def _load_specific_rule(self, rule):
-        specific_rule = DomainLabelExtractorRule._create_from_dict(rule)
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def test_events_processed_count(self):
         assert self.object.ps.processed_count == 0
@@ -173,16 +168,16 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
     def test_new_non_default_tagging_field(self):
         config = {
-            "type": "domain_label_extractor",
-            "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
-            "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
-            "tagging_field_name": "special_tags",
-            "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+            "Test DomainLabelExtractor Name": {
+                "type": "domain_label_extractor",
+                "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
+                "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
+                "tagging_field_name": "special_tags",
+                "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+            }
         }
 
-        domain_label_extractor = DomainLabelExtractorFactory.create(
-            name="Test DomainLabelExtractor Name", configuration=config, logger=self.logger
-        )
+        domain_label_extractor = ProcessorFactory.create(configuration=config, logger=self.logger)
         document = {"url": {"domain": "domain.fubarbo"}}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -194,16 +189,16 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
     def test_append_to_non_default_tagging_field(self):
         config = {
-            "type": "domain_label_extractor",
-            "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
-            "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
-            "tagging_field_name": "special_tags",
-            "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+            "Test DomainLabelExtractor Name": {
+                "type": "domain_label_extractor",
+                "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],
+                "specific_rules": ["tests/testdata/unit/domain_label_extractor/rules/specific"],
+                "tagging_field_name": "special_tags",
+                "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
+            }
         }
 
-        domain_label_extractor = DomainLabelExtractorFactory.create(
-            "Test DomainLabelExtractor Name", config, self.logger
-        )
+        domain_label_extractor = ProcessorFactory.create(config, self.logger)
         document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},

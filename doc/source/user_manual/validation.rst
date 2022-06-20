@@ -15,3 +15,5 @@ The following command can be used to validate the rules:
 
 The paths to the rules that will be validated are found in :code:`$CONFIG` under each processor entry.
 Where :code:`$CONFIG` is the path to a configuration file (see :doc:`configuration/configurationdata`).
+
+Validation does also perform a verification of the pipeline section of the Logprep configuration.

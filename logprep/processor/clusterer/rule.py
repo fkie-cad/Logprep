@@ -51,9 +51,6 @@ class ClustererRule(Rule):
         repl_equal = self._repl == other.repl
         return filter_equal and target_equal and pattern_equal and repl_equal
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def target(self) -> str:

@@ -1,35 +1,37 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
+
+from copy import deepcopy
 import json
-import re
 from abc import ABC
 from logging import getLogger
+from typing import Iterable
 
 from unittest import mock
 
+import pytest
 
+from logprep.abc.processor import Processor
+from logprep.processor.processor_factory import ProcessorFactory
+
+from logprep.util.json_handling import list_json_files_in_directory
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import (
-    BaseProcessor,
-    ProcessingWarning,
-    RuleBasedProcessor,
-)
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.time_measurement import TimeMeasurement
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class BaseProcessorTestCase(ABC):
 
     mocks: dict = {}
 
-    factory = None
-
     CONFIG: dict = {}
 
     logger = getLogger()
 
-    object: BaseProcessor = None
+    object: Processor = None
 
     patchers: list = None
 
@@ -51,18 +53,16 @@ class BaseProcessorTestCase(ABC):
         """
         return self.CONFIG.get("generic_rules")
 
-    def set_rules(self, rules_dirs):
+    @staticmethod
+    def set_rules(rules_dirs):
         """
         sets the rules from the given rules_dirs
         """
         assert rules_dirs is not None
         assert isinstance(rules_dirs, list)
         rules = []
-
         for rules_dir in rules_dirs:
-            rule_paths = RuleBasedProcessor._list_json_files_in_directory(  # pylint: disable=protected-access
-                rules_dir
-            )
+            rule_paths = list_json_files_in_directory(rules_dir)
             for rule_path in rule_paths:
                 with open(rule_path, "r", encoding="utf8") as rule_file:
                     loaded_rules = json.load(rule_file)
@@ -70,6 +70,12 @@ class BaseProcessorTestCase(ABC):
                         rules.append(rule)
 
         return rules
+
+    def _load_specific_rule(self, rule):
+        self.object._generic_tree = RuleTree()
+        self.object._specific_tree = RuleTree()
+        specific_rule = self.object.rule_class._create_from_dict(rule)
+        self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def setup_method(self) -> None:
         """
@@ -82,12 +88,10 @@ class BaseProcessorTestCase(ABC):
             patcher = mock.patch(name, **kwargs)
             patcher.start()
             self.patchers.append(patcher)
-        if self.factory is not None:
-            self.object = self.factory.create(
-                name="Test Instance Name", configuration=self.CONFIG, logger=self.logger
-            )
-            self.specific_rules = self.set_rules(self.specific_rules_dirs)
-            self.generic_rules = self.set_rules(self.generic_rules_dirs)
+        config = {"Test Instance Name": self.CONFIG}
+        self.object = ProcessorFactory.create(configuration=config, logger=self.logger)
+        self.specific_rules = self.set_rules(self.specific_rules_dirs)
+        self.generic_rules = self.set_rules(self.generic_rules_dirs)
 
     def teardown_method(self) -> None:
         """teardown for all methods"""
@@ -96,7 +100,7 @@ class BaseProcessorTestCase(ABC):
             patcher.stop()
 
     def test_is_a_processor_implementation(self):
-        assert isinstance(self.object, RuleBasedProcessor)
+        assert isinstance(self.object, Processor)
 
     def test_process(self):
         assert self.object.ps.processed_count == 0
@@ -109,9 +113,15 @@ class BaseProcessorTestCase(ABC):
 
         assert self.object.ps.processed_count == count + 1
 
+    def test_uses_python_slots(self):
+        assert isinstance(self.object.__slots__, Iterable)
+
     def test_describe(self):
         describe_string = self.object.describe()
         assert f"{self.object.__class__.__name__} (Test Instance Name)" == describe_string
+
+    def test_snake_type(self):
+        assert str(self.object) == camel_to_snake(self.object.__class__.__name__)
 
     def test_generic_specific_rule_trees(self):
         assert isinstance(self.object._generic_tree, RuleTree)
@@ -155,15 +165,31 @@ class BaseProcessorTestCase(ABC):
         value = self.object._get_dotted_field_value(event, dotted_field)
         assert value == "Normalize me!"
 
+    def test_get_dotted_field_value_key_matches_value(self):
+        event = {"get": "dotted"}
+        dotted_field = "get.dotted"
+        value = self.object._get_dotted_field_value(event, dotted_field)
+        assert value is None
+
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
         assert self.object._field_exists(event, "a.b")
 
+    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
+    @mock.patch("logging.Logger.debug")
+    def test_add_rules_from_directory_with_debug(self, mock_debug, _):
+        self.object.add_rules_from_directory(
+            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
+        )
+        mock_debug.assert_called()
+
     def test_add_rules_from_directory(self):
+        self.object._generic_tree = RuleTree()
+        self.object._specific_tree = RuleTree()
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.add_rules_from_directory(
-            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
         )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
@@ -177,12 +203,12 @@ class BaseProcessorTestCase(ABC):
         ensures that every rule in rule tree is unique
         """
         self.object.add_rules_from_directory(
-            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
         )
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.add_rules_from_directory(
-            specific_rules_dirs=self.generic_rules_dirs, generic_rules_dirs=self.specific_rules_dirs
+            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
         )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
@@ -237,3 +263,68 @@ class BaseProcessorTestCase(ABC):
         config_name = camel_to_snake(self.object.__class__.__name__)
         assert processing_times[config_name]
         assert isinstance(processing_times[config_name], float)
+
+    @mock.patch("logging.Logger.debug")
+    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
+    def test_process_writes_debug_messages(self, mock_is_enabled, mock_debug):
+        event = {}
+        self.object.process(event)
+        mock_is_enabled.assert_called()
+        mock_debug.assert_called()
+
+    def test_config_attribute_is_config_object(self):
+        assert isinstance(self.object._config, self.object.Config)
+
+    def test_config_object_is_kw_only(self):
+        attr_attributes = self.object._config.__attrs_attrs__
+        for attr in attr_attributes:
+            assert attr.kw_only
+
+    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
+    def test_validation_raises_if_not_a_list(self, rule_list):
+        config = deepcopy(self.CONFIG)
+        config.update({rule_list: "i am not a list"})
+        with pytest.raises(InvalidConfigurationError, match=r"not a list"):
+            ProcessorFactory.create({"test instance": config}, self.logger)
+
+    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
+    def test_validation_raises_on_empty_rules_list(self, rule_list):
+        config = deepcopy(self.CONFIG)
+        config.update({rule_list: []})
+        with pytest.raises(InvalidConfigurationError, match=rf"{rule_list} is empty"):
+            ProcessorFactory.create({"test instance": config}, self.logger)
+
+    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
+    def test_validation_raises_if_elements_does_not_exist(self, rule_list):
+        config = deepcopy(self.CONFIG)
+        config.update({rule_list: ["/i/do/not/exist"]})
+        with pytest.raises(
+            InvalidConfigurationError, match=r"'\/i\/do\/not\/exist' does not exist"
+        ):
+            ProcessorFactory.create({"test instance": config}, self.logger)
+
+    @mock.patch("os.path.exists", return_value=True)
+    @mock.patch("os.path.isdir", return_value=False)
+    def test_validation_raises_if_element_is_not_a_directory(self, _, __):
+        config = deepcopy(self.CONFIG)
+        config.update({"specific_rules": ["/i/am/not/a/directory"]})
+        config.update({"generic_rules": ["/i/am/not/a/directory"]})
+        with pytest.raises(
+            InvalidConfigurationError, match=r"'\/i\/am\/not\/a\/directory' is not a directory"
+        ):
+            ProcessorFactory.create({"test instance": config}, self.logger)
+
+    def test_validation_raises_if_tree_config_is_not_a_str(self):
+        config = deepcopy(self.CONFIG)
+        config.update({"tree_config": 12})
+        with pytest.raises(InvalidConfigurationError, match=r"tree_config is not a str"):
+            ProcessorFactory.create({"test instance": config}, self.logger)
+
+    def test_validation_raises_if_tree_config_is_not_exist(self):
+        config = deepcopy(self.CONFIG)
+        config.update({"tree_config": "/i/am/not/a/file/path"})
+        with pytest.raises(
+            InvalidConfigurationError,
+            match=r"tree_config file '\/i\/am\/not\/a\/file\/path' does not exist",
+        ):
+            ProcessorFactory.create({"test instance": config}, self.logger)

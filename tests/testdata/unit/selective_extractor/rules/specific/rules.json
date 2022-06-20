@@ -1,0 +1,26 @@
+[
+    {
+        "filter": "message",
+        "selective_extractor": {
+            "extract": {
+                "extracted_field_list": [
+                    "field1",
+                    "field2",
+                    "specific"
+                ],
+                "target_topic": "test_specific_topic"
+            }
+        },
+        "description": "my reference rule"
+    },
+    {
+        "filter": "message",
+        "selective_extractor": {
+            "extract": {
+                "extract_from_file": "tests/testdata/unit/selective_extractor/test_extraction_list.txt",
+                "target_topic": "test_specific_topic"
+            }
+        },
+        "description": "my reference rule"
+    }
+]

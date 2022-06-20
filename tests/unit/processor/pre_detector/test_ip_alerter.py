@@ -1,3 +1,7 @@
+# pylint: disable=missing-docstring
+# pylint: disable=no-self-use
+# pylint: disable=protected-access
+# pylint: disable=wrong-import-position
 from ipaddress import IPv4Network
 
 import pytest
@@ -7,25 +11,25 @@ pytest.importorskip("logprep.processor.pre_detector")
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 
-ip_alerts_path = "tests/testdata/unit/pre_detector/alert_ips.yml"
-ip_alerts_paths_list = [
+IP_ALERTS_PATH = "tests/testdata/unit/pre_detector/alert_ips.yml"
+IP_ALERTS_PATHS_LIST = [
     "tests/testdata/unit/pre_detector/alert_ips_1.yml",
     "tests/testdata/unit/pre_detector/alert_ips_2.yml",
 ]
 
 
-@pytest.fixture()
-def ip_alerter():
-    return IPAlerter(ip_alerts_path)
+@pytest.fixture(name="ip_alerter")
+def fixture_ip_alerter():
+    return IPAlerter(IP_ALERTS_PATH)
 
 
-@pytest.fixture()
-def rule_without_fields():
+@pytest.fixture(name="rule_without_fields")
+def fixture_rule_without_fields():
     return PreDetectorRule(None, {"anything": "something"})
 
 
-@pytest.fixture()
-def rule_with_fields():
+@pytest.fixture(name="rule_with_fields")
+def fixture_rule_with_fields():
     return PreDetectorRule(None, {"anything": "something"}, ip_fields_to_check=["ip_field"])
 
 
@@ -56,7 +60,7 @@ class TestIPAlerter:
         expected_single_alert_ips = {"27.0.0.1", "13.12.12.13", "127.0.0.1", "12.12.12.12"}
         expected_alert_networks = {IPv4Network("127.0.0.0/8")}
 
-        ip_alerter = IPAlerter(ip_alerts_paths_list)
+        ip_alerter = IPAlerter(IP_ALERTS_PATHS_LIST)
 
         assert ip_alerter._alert_ips_map == expected_alert_ips
         assert ip_alerter._single_alert_ips == expected_single_alert_ips
@@ -107,39 +111,3 @@ class TestIPAlerter:
     def test_field_does_not_exist(self, ip_alerter, rule_with_fields):
         event = {}
         assert not ip_alerter.is_in_alerts_list(rule_with_fields, event)
-
-    def test_get_dotted_field_value_nesting_depth_zero(self, ip_alerter):
-        event = {"ip_field": "127.0.0.1"}
-        dotted_field = "ip_field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value == "127.0.0.1"
-
-    def test_get_dotted_field_value_nesting_depth_one(self, ip_alerter):
-        event = {"ip": {"field": "127.0.0.1"}}
-        dotted_field = "ip.field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value == "127.0.0.1"
-
-    def test_get_dotted_field_value_nesting_depth_two(self, ip_alerter):
-        event = {"some": {"ip": {"field": "127.0.0.1"}}}
-        dotted_field = "some.ip.field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value == "127.0.0.1"
-
-    def test_get_dotted_field_value_that_does_not_exist(self, ip_alerter):
-        event = {}
-        dotted_field = "field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value is None
-
-    def test_get_dotted_field_value_that_does_not_exist_from_nested_dict(self, ip_alerter):
-        event = {"some": {}}
-        dotted_field = "some.ip.field"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value is None
-
-    def test_get_dotted_field_value_that_matches_part_of_dotted_field(self, ip_alerter):
-        event = {"some": "do_not_match"}
-        dotted_field = "some.ip"
-        value = ip_alerter._get_dotted_field_value(dotted_field, event)
-        assert value is None

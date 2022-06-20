@@ -5,33 +5,16 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 import copy
-from logging import getLogger
 from os.path import join
 
 import pytest
-from pytest import raises, importorskip
-
-from logprep.processor.base.exceptions import (
-    ValueDoesnotExistInSchemaError,
-)
-from tests.unit.processor.base import BaseProcessorTestCase
-
-importorskip("logprep.processor.labeler")
-
-from logprep.processor.labeler.factory import Labeler, LabelerFactory
-from logprep.processor.processor_factory_error import (
-    ProcessorFactoryError,
-    InvalidConfigurationError,
-)
+from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
+from logprep.processor.labeler.labeling_schema import InvalidLabelingSchemaFileError, LabelingSchema
 from logprep.processor.labeler.rule import LabelingRule
-from logprep.processor.labeler.labeling_schema import LabelingSchema, InvalidLabelingSchemaFileError
-from tests.testdata.metadata import (
-    path_to_testdata,
-    path_to_schema2,
-    path_to_schema,
-)
-
-logger = getLogger()
+from logprep.processor.processor_factory import ProcessorFactory
+from pytest import raises
+from tests.testdata.metadata import path_to_schema, path_to_schema2, path_to_testdata
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 @pytest.fixture()
@@ -74,8 +57,6 @@ def empty_schema():
 
 class TestLabeler(BaseProcessorTestCase):
     timeout = 0.01
-
-    factory = LabelerFactory
 
     CONFIG = {
         "type": "labeler",
@@ -255,41 +236,14 @@ class TestLabeler(BaseProcessorTestCase):
 
         assert document == expected
 
-
-class TestLabelerFactory(TestLabeler):
-    def test_create(self):
-        assert isinstance(LabelerFactory.create("foo", self.CONFIG, self.logger), Labeler)
-
-    def test_check_configuration(self):
-        LabelerFactory._check_configuration(self.CONFIG)
-        cfg = copy.deepcopy(self.CONFIG)
-        cfg.pop("type")
-        with pytest.raises(ProcessorFactoryError):
-            LabelerFactory._check_configuration(cfg)
-
-    def test_create_fails_when_schema_config_points_to_non_existing_file(self):
-        config = copy.deepcopy(self.CONFIG)
-        config["schema"] = join("path", "to", "non-existing", "file")
-        with raises(
-            InvalidLabelingSchemaFileError,
-            match="Not a valid schema file: File not found: '.*'.",
-        ):
-            LabelerFactory.create("name", config, logger)
-
-    def test_create_fails_when_schema_config_points_to_directory(self):
-        config = copy.deepcopy(self.CONFIG)
-        config["schema"] = path_to_testdata
-        with raises(InvalidLabelingSchemaFileError, match="Is a directory: .*"):
-            LabelerFactory.create("name", config, logger)
-
     def test_create_fails_when_include_parent_labels_is_not_boolean(self):
         config = copy.deepcopy(self.CONFIG)
         config["include_parent_labels"] = "this is a string"
         with raises(
-            InvalidConfigurationError,
-            match="'include_parent_labels' is not a boolean",
+            TypeError,
+            match="'include_parent_labels' must be <class 'bool'>",
         ):
-            LabelerFactory.create("name", config, logger)
+            ProcessorFactory.create({"test instance": config}, self.logger)
 
     def test_create_fails_when_rules_do_not_conform_to_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
@@ -297,12 +251,12 @@ class TestLabelerFactory(TestLabeler):
         with raises(
             ValueDoesnotExistInSchemaError, match="Invalid value 'windows' for key 'reporter'."
         ):
-            LabelerFactory.create("name", config, logger)
+            ProcessorFactory.create({"test instance": config}, self.logger)
 
     def test_create_loads_the_specified_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_schema
         expected_schema = LabelingSchema.create_from_file(path_to_schema)
-        labeler = LabelerFactory.create("name", config, logger)
+        labeler = ProcessorFactory.create({"test instance": config}, self.logger)
 
         assert labeler._schema == expected_schema

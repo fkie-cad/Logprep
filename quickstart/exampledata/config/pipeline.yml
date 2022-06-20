@@ -3,47 +3,52 @@ timeout: 0.1
 
 pipeline:
   - labelername:
-        type: labeler
-        schema: quickstart/exampledata/rules/labeler/schema.json
-        include_parent_labels: on
-        rules:
-            - quickstart/exampledata/rules/labeler/rules
+      type: labeler
+      schema: quickstart/exampledata/rules/labeler/schema.json
+      include_parent_labels: true
+      specific_rules:
+        - quickstart/exampledata/rules/labeler/specific
+      generic_rules:
+        - quickstart/exampledata/rules/labeler/generic
 
   - normalizer:
-     type: normalizer
-     specific_rules:
-       - quickstart/exampledata/rules/normalizer/specific/
-     generic_rules:
-       - quickstart/exampledata/rules/normalizer/generic/
-     regex_mapping: quickstart/exampledata/rules/normalizer/normalizer_regex_mapping.yml
+      type: normalizer
+      specific_rules:
+        - quickstart/exampledata/rules/normalizer/specific/
+      generic_rules:
+        - quickstart/exampledata/rules/normalizer/generic/
+      regex_mapping: quickstart/exampledata/rules/normalizer/normalizer_regex_mapping.yml
 
   - dropper:
-        type: dropper
-        rules:
-            - quickstart/exampledata/rules/dropper/rules
+      type: dropper
+      specific_rules:
+        - quickstart/exampledata/rules/dropper/specific
+      generic_rules:
+        - quickstart/exampledata/rules/dropper/specific
 
   - pre_detector:
-     type: pre_detector
-     rules:
-       - quickstart/exampledata/rules/pre_detector/rules
-     pre_detector_topic: sre
-     tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
-     alert_ip_list: quickstart/exampledata/rules/pre_detector/alert_ips.yml
+      type: pre_detector
+      specific_rules:
+        - quickstart/exampledata/rules/pre_detector/specific
+      generic_rules:
+        - quickstart/exampledata/rules/pre_detector/generic
+      pre_detector_topic: sre
+      tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
+      alert_ip_list_path: quickstart/exampledata/rules/pre_detector/alert_ips.yml
 
   - pseudonymizer:
-     type: pseudonymizer
-     pubkey_analyst: quickstart/exampledata/rules/pseudonymizer/example_analyst_pub.pem
-     pubkey_depseudo: quickstart/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
-     regex_mapping: quickstart/exampledata/rules/pseudonymizer/regex_mapping.yml
-     hash_salt: a_secret_tasty_ingredient
-     pseudonyms_topic: pseudonyms
-     specific_rules:
-       - quickstart/exampledata/rules/pseudonymizer/specific/
-     generic_rules:
-       - quickstart/exampledata/rules/pseudonymizer/generic/
-     max_cached_pseudonyms: 1000000
-     max_caching_days: 1
-     tld_list: '-'
+      type: pseudonymizer
+      pubkey_analyst: quickstart/exampledata/rules/pseudonymizer/example_analyst_pub.pem
+      pubkey_depseudo: quickstart/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
+      regex_mapping: quickstart/exampledata/rules/pseudonymizer/regex_mapping.yml
+      hash_salt: a_secret_tasty_ingredient
+      pseudonyms_topic: pseudonyms
+      specific_rules:
+        - quickstart/exampledata/rules/pseudonymizer/specific/
+      generic_rules:
+        - quickstart/exampledata/rules/pseudonymizer/generic/
+      max_cached_pseudonyms: 1000000
+      max_caching_days: 1
 
 connector:
   type: confluentkafka

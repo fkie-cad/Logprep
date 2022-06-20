@@ -1,28 +1,33 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
+import inspect
 import os
+import sys
+from argparse import ArgumentParser
 from logging import getLogger, Logger, DEBUG, ERROR
 from logging.handlers import TimedRotatingFileHandler
-from argparse import ArgumentParser
-from pathlib import Path
 from os.path import dirname, basename
-import inspect
-from typing import List, Optional
+from pathlib import Path
+from typing import Optional
 
-import sys
+from colorama import Fore
 
-from logprep.runner import Runner
-from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
-from logprep.util.configuration import Configuration
-from logprep.util.rule_dry_runner import DryRunner
-from logprep.util.auto_rule_tester import AutoRuleTester
-from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.processor.base.rule import Rule
 from logprep.processor.processor_factory import ProcessorFactory
-
-from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.processor_stats import StatsClassesController
+from logprep.runner import Runner
+from logprep.util.aggregating_logger import AggregatingLogger
+from logprep.util.auto_rule_tester import AutoRuleTester
+from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.processor_stats import (
+    StatsClassesController,
+    StatusLoggerCollection,
+    ProcessorStats,
+)
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
+from logprep.util.rule_dry_runner import DryRunner
+from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
+from logprep.util.time_measurement import TimeMeasurement
+from logprep.util.helper import print_fcolor
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
@@ -30,30 +35,30 @@ getLogger("urllib3.connectionpool").setLevel(ERROR)
 getLogger("elasticsearch").setLevel(ERROR)
 
 
-def _get_status_logger(config: dict, application_logger: Logger) -> List:
-    status_logger_cfg = config.get("status_logger", dict())
+def _get_status_logger(config: dict, application_logger: Logger) -> StatusLoggerCollection:
+    status_logger_cfg = config.get("status_logger", {})
     logging_targets = status_logger_cfg.get("targets", [])
 
     if not logging_targets:
         logging_targets.append({"file": {}})
 
-    status_logger = []
+    file_logger = None
+    prometheus_exporter = None
     for target in logging_targets:
         if "file" in target.keys():
             file_config = target.get("file")
-            logger = getLogger("Logprep-JSON-File-Logger")
-            logger.handlers = []
+            file_logger = getLogger("Logprep-JSON-File-Logger")
+            file_logger.handlers = []
 
             log_path = file_config.get("path", "./logprep-status.jsonl")
             Path(dirname(log_path)).mkdir(parents=True, exist_ok=True)
             interval = file_config.get("rollover_interval", 60 * 60 * 24)
             backup_count = file_config.get("backup_count", 10)
-            logger.addHandler(
+            file_logger.addHandler(
                 TimedRotatingFileHandler(
                     log_path, when="S", interval=interval, backupCount=backup_count
                 )
             )
-            status_logger.append(logger)
 
         if "prometheus" in target.keys():
             multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR", "")
@@ -64,10 +69,12 @@ def _get_status_logger(config: dict, application_logger: Logger) -> List:
                     "'PROMETHEUS_MULTIPROC_DIR' is missing."
                 )
             else:
-                prometheus_exporter = PrometheusStatsExporter(status_logger_cfg, application_logger)
+                prometheus_exporter = PrometheusStatsExporter(
+                    status_logger_cfg, application_logger, ProcessorStats.metrics
+                )
                 prometheus_exporter.run()
-                status_logger.append(prometheus_exporter)
 
+    status_logger = StatusLoggerCollection(file_logger, prometheus_exporter)
     return status_logger
 
 
@@ -80,6 +87,11 @@ def _parse_arguments():
     argument_parser.add_argument(
         "--validate-rules",
         help="Validate Labeler Rules (if well-formed" " and valid against given schema)",
+        action="store_true",
+    )
+    argument_parser.add_argument(
+        "--verify-config",
+        help="Verify the configuration file",
         action="store_true",
     )
     argument_parser.add_argument(
@@ -108,7 +120,7 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger, status_logger: Optional[List]):
+def _run_logprep(arguments, logger: Logger, status_logger: Optional[StatusLoggerCollection]):
     runner = None
     try:
         runner = Runner.get_runner()
@@ -136,31 +148,37 @@ def main():
     """Start the logprep runner."""
     args = _parse_arguments()
     config = Configuration().create_from_yaml(args.config)
-    config.verify(getLogger("Temporary Logger"))
 
-    for plugin_dir in config.get("plugin_directories", []):
-        sys.path.insert(0, plugin_dir)
-        ProcessorFactory.load_plugins(plugin_dir)
+    try:
+        AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
+        logger = AggregatingLogger.create("Logprep")
+    except BaseException as error:
+        getLogger("Logprep").exception(error)
+        sys.exit(1)
 
-    AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
-    logger = AggregatingLogger.create("Logprep")
+    try:
+        if args.validate_rules or args.auto_test:
+            config.verify_pipeline_only(logger)
+        else:
+            config.verify(logger)
+    except InvalidConfigurationError:
+        sys.exit(1)
+    except BaseException as error:
+        logger.exception(error)
+        sys.exit(1)
 
     status_logger = None
     if not args.disable_logging:
         status_logger = _get_status_logger(config, logger)
 
-    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get("measure_time", dict()).get(
-        "enabled", False
-    )
-    TimeMeasurement.APPEND_TO_EVENT = config.get("measure_time", dict()).get(
-        "append_to_event", False
-    )
-    StatsClassesController.ENABLED = config.get("status_logger", dict()).get("enabled", True)
+    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get("measure_time", {}).get("enabled", False)
+    TimeMeasurement.APPEND_TO_EVENT = config.get("measure_time", {}).get("append_to_event", False)
+    StatsClassesController.ENABLED = config.get("status_logger", {}).get("enabled", True)
 
     if logger.isEnabledFor(DEBUG):
-        logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
-        logger.debug(f"Status logger enabled: {StatsClassesController.ENABLED}")
-        logger.debug(f"Config path: {args.config}")
+        logger.debug("Time measurement enabled: %s", TimeMeasurement.TIME_MEASUREMENT_ENABLED)
+        logger.debug("Status logger enabled: %s", StatsClassesController.ENABLED)
+        logger.debug("Config path: %s", args.config)
 
     if args.validate_rules or args.auto_test:
         type_rule_map = get_processor_type_and_rule_class()
@@ -172,9 +190,9 @@ def main():
                 )
             )
         if not all(rules_valid):
-            exit(1)
-        elif not args.auto_test:
-            exit(0)
+            sys.exit(1)
+        if not args.auto_test:
+            sys.exit(0)
 
     if args.auto_test:
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
@@ -182,11 +200,13 @@ def main():
         auto_rule_tester = AutoRuleTester(args.config)
         auto_rule_tester.run()
     elif args.dry_run:
-        json_input = True if args.dry_run_input_type == "json" else False
+        json_input = args.dry_run_input_type == "json"
         dry_runner = DryRunner(
             args.dry_run, args.config, args.dry_run_full_output, json_input, logger
         )
         dry_runner.run()
+    elif args.verify_config:
+        print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
     else:
         _run_logprep(args, logger, status_logger)
 

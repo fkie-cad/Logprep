@@ -1,0 +1,7 @@
+[
+    {
+        "filter": "delete_event_specific",
+        "delete": true,
+        "description": "some text"
+    }
+]

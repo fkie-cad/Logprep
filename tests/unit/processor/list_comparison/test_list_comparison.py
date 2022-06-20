@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import pytest
-from logprep.processor.list_comparison.factory import ListComparisonFactory
 from logprep.processor.list_comparison.processor import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -12,9 +11,8 @@ class TestListComparison(BaseProcessorTestCase):
         "specific_rules": ["tests/testdata/unit/list_comparison/rules/specific"],
         "generic_rules": ["tests/testdata/unit/list_comparison/rules/generic"],
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
-        "list_search_base_path": "./",
+        "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
     }
-    factory = ListComparisonFactory
 
     @property
     def generic_rules_dirs(self):
@@ -90,11 +88,6 @@ class TestListComparison(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
-        assert len(document.get("dotted", {}).get("user_results", {}).get("in_list")) != 0
-
-    def test_deep_dotted_output_field(self):
-        # tests if outputting list_comparison results to dotted fields works
-        assert self.object.ps.processed_count == 0
         document = {"dot_channel": "test", "user": "Franz"}
 
         self.object.process(document)

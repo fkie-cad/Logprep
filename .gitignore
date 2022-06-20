@@ -16,3 +16,4 @@ tests/testdata/external/
 .venv
 *.lock
 coverage.xml
+-

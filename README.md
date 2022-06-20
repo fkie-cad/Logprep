@@ -224,7 +224,7 @@ Details about the rule language and how to write rules for the processors can be
 
 ### Installation
 
-Python 3.6 should be present on the system.
+Python should be present on the system, currently supported are the versions 3.6 - 3.9.
 All packages required for Logprep must be installed.
 For this, the following command can be executed from within the project root directory: 
   
@@ -239,11 +239,25 @@ Tests are started by executing `tox` in the project root directory.
 This creates a virtual test environment and executes tests within it.
 
 Multiple different test environments were defined for tox.
-Those can be executed via:
+Those can be executed via: `tox -e [name of the test environment]`.
+For Example:
 
 ```
-tox -e [name of the test environment]
+tox -e py36-all
 ```
+
+This runs all tests, calculates the test coverage and evaluates the code quality for the python 
+3.6 version.
+
+Multiple environments can be tested within one call: 
+
+```
+tox -e py36-all -e py37-all -e py38-all -e py39-all
+```
+
+If you want to run them in parallel attach the option `-p`.
+This can lead to side effects in I/O operations though, like concurrences in writing or reading
+files.
  
 An overview of the test environments can be obtained by executing:
 
@@ -251,18 +265,27 @@ An overview of the test environments can be obtained by executing:
 tox -av
 ```
 
-Example:
-
-```
-tox -e all
-```
-
-This runs all tests, calculates the test coverage and evaluates the code quality.
-
 In case the requirements change, the test environments must be rebuilt with the parameter `-r`:
 
 ```
 tox -e all -r
+```
+
+### Semgrep
+
+To run the semgrep rules against the semgrep python registry at least python 3.7 is required. 
+Because of that and the default logprep support for python 3.6 semgrep is not part of the 
+requirements_dev.txt. 
+If you want to run semgrep rules use a python environment with version higher than 3.6 and run
+
+```
+pip install semgrep
+```
+
+Afterwards you can just call the tox environment with for example 
+
+```
+tox -e py37-semgrep
 ```
 
 ### Running Logprep
@@ -271,6 +294,17 @@ Execute the following from within the project root directory:
 
 ```
 PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
+```
+
+Where `$CONFIG` is the path to a configuration file (see the documentation about the 
+[configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
+
+### Verifying Configuration
+
+The following command can be executed to verify the configuration file without having to run Logprep:
+
+```
+PYTHONPATH="." python3 logprep/run_logprep.py --verify-config $CONFIG
 ```
 
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 
@@ -298,6 +332,8 @@ the path to a directory with rule files (JSON/YML files, see Rules.md, subdirect
 are permitted)
 
 Analogously, `--normalization-rules` and `--pseudonymizer-rules` can be used.
+
+Validation does also perform a verification of the pipeline section of the Logprep configuration.
 
 ### Reload the Configuration
 
@@ -370,7 +406,7 @@ Building the documentation is done by executing the following command from withi
 the project root directory:
 
 ```
-tox -e docs
+tox -e py36-docs
 ```
 
 A HTML documentation can be then found in `doc/_build/html/index.html`.

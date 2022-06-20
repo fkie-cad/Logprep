@@ -1,0 +1,11 @@
+[{
+  "filter": "anything",
+  "hyperscan_resolver": {
+    "field_mapping": {
+      "to_resolve": "resolved"
+    },
+    "resolve_list": {
+      "to_resolve": "resolved_value"
+    }
+  }
+}]

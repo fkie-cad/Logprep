@@ -26,28 +26,15 @@ class InvalidConfigSpecificationError(InvalidConfigurationError):
 class NoTypeSpecifiedError(InvalidConfigurationError):
     """Raise if the processor type specification is missing."""
 
-    def __init__(self):
-        super().__init__("The processor type specification is missing")
+    def __init__(self, processor_name=None):
+        message = "The processor type specification is missing"
+        if processor_name:
+            message += f" for processor with name '{processor_name}'"
+        super().__init__(message)
 
 
 class UnknownProcessorTypeError(ProcessorFactoryError):
     """Raise if the processor type is unknown."""
 
-    def __init__(self, processor_type=None):
-        if processor_type:
-            super().__init__(f"Unknown processor type '{processor_type}'")
-        else:
-            super().__init__("Unknown processor type")
-
-
-class InvalidProcessorClassError(ProcessorFactoryError):
-    """Raise if the processor type is not valid."""
-
-    def __init__(self, processor_class):
-        if processor_class:
-            if len(processor_class) == 1:
-                super().__init__(f"Processor class {processor_class} has no 'identifier' field")
-            else:
-                super().__init__(
-                    f"Processor classes {processor_class} have no 'identifier'" f" field"
-                )
+    def __init__(self, processor_type):
+        super().__init__(f"Unknown processor type '{processor_type}'")

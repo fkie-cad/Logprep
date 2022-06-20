@@ -38,9 +38,6 @@ class GenericResolverRule(Rule):
             and (self._append_to_list == other.append_to_list)
         )
 
-    def __hash__(self) -> int:
-        return hash(repr(self))
-
     # pylint: disable=C0111
     @property
     def field_mapping(self) -> dict:

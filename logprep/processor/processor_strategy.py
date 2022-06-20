@@ -9,7 +9,7 @@ from time import time
 from typing import Callable, TYPE_CHECKING
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from logprep.util.processor_stats import ProcessorStats
     from logprep.framework.rule_tree.rule_tree import RuleTree
 
@@ -22,7 +22,7 @@ class ProcessStrategy(ABC):
     @abstractmethod
     def process(self, event: dict, **kwargs):
         """abstract method for processing rules"""
-        ...
+        ...  # pragma: no cover
 
 
 class SpecificGenericProcessStrategy(ProcessStrategy):

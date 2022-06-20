@@ -4,6 +4,7 @@
 import logging
 
 from logprep.processor.dropper.processor import Dropper
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.processor_stats import StatsClassesController
 from logprep.util.time_measurement import TimeMeasurement
 
@@ -63,8 +64,19 @@ class TestTimeMeasurement:
         StatsClassesController.ENABLED = True
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
         TimeMeasurement.APPEND_TO_EVENT = False
-        dropper = Dropper(
-            "Dropper1", "tests/testdata/unit/tree_config.json", logging.getLogger("test-logger")
+
+        dropper_config = {
+            "Dropper1": {
+                "type": "dropper",
+                "specific_rules": ["tests/testdata/unit/dropper/rules/specific/"],
+                "generic_rules": ["tests/testdata/unit/dropper/rules/generic/"],
+                "tree_config": "tests/testdata/unit/tree_config.json",
+            }
+        }
+
+        dropper = ProcessorFactory.create(
+            dropper_config,
+            logging.getLogger("test-logger"),
         )
         assert dropper.ps.aggr_data.get("avg_processing_time") == 0
         assert dropper.ps._processing_time_sample_counter == 0

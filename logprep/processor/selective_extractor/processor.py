@@ -1,96 +1,82 @@
 """
-This module contains functionality to extract selectively fields from an incoming event. The events will be returned
-and written to a specified kafka topic. As the processor is applied to all events it does not need further filtering by
-rules.
+SelectiveExtractor
+------------------
+
+The `selective_extractor` is a processor that allows to write field values of a given log message to
+a different Kafka topic. The output topic is configured via the pipeline yml, while the fields to
+be extracted are specified by means of a list which is also specified in the pipeline configuration
+as a file path. This processor is applied to all messages, because of that it does not need further
+rules to specify it's behavior.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - selectiveextractorname:
+        type: selective_extractor
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
 """
 
-import os.path
-from logging import Logger, DEBUG
+from logging import Logger
+from typing import List
 
-from logprep.processor.base.processor import BaseProcessor
-from logprep.util.helper import add_field_to
-from logprep.util.processor_stats import ProcessorStats
-from logprep.util.time_measurement import TimeMeasurement
+from logprep.abc.processor import Processor
 
-
-class SelectiveExtractorError(BaseException):
-    """Base class for Selective Extractor related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"Selective Extractor ({name}): {message}")
+from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class SelectiveExtractorConfigurationError(SelectiveExtractorError):
-    """Generic Selective Extractor configuration error."""
-
-
-class SelectiveExtractor(BaseProcessor):
+class SelectiveExtractor(Processor):
     """Processor used to selectively extract fields from log events."""
+
+    __slots__ = ["_filtered_events"]
+
+    _filtered_events: List[tuple]
+
+    rule_class = SelectiveExtractorRule
 
     def __init__(
         self,
         name: str,
-        selective_extractor_topic: str,
-        extractor_list_file_path: str,
+        configuration: Processor.Config,
         logger: Logger,
     ):
-        super().__init__(name, logger)
-        self._logger = logger
-        self.ps = ProcessorStats()
+        super().__init__(name=name, configuration=configuration, logger=logger)
+        self._filtered_events = []
 
-        self._name = name
-        self._selective_extractor_topic = selective_extractor_topic
-        self._event = None
-
-        if os.path.isfile(extractor_list_file_path) and extractor_list_file_path.endswith(".txt"):
-            with open(extractor_list_file_path) as f:
-                extraction_fields = f.read().splitlines()
-                self.extraction_fields = [
-                    field for field in extraction_fields if not field.startswith("#")
-                ]
-        else:
-            raise SelectiveExtractorConfigurationError(
-                self._name,
-                "The given extraction_list file does not exist or " "is not a valid '.txt' file.",
-            )
-
-    def describe(self) -> str:
-        return f"Selective Extractor ({self._name})"
-
-    @TimeMeasurement.measure_time("selective_extractor")
     def process(self, event: dict) -> tuple:
-        self._event = event
+        super().process(event)
+        if self._filtered_events:
+            return self._filtered_events
+        return None
 
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug("{} processing matching event".format(self.describe()))
-
-        filtered_event = self._generate_filtered_event(event)
-
-        self.ps.increment_processed_count()
-        return ([filtered_event], self._selective_extractor_topic) if filtered_event else None
-
-    def _generate_filtered_event(self, event):
+    def _apply_rules(self, event, rule):
         """
-        Generates a filtered event based on the incoming event and the configured extraction_fields list. The filtered
-        fields are written to a new document that will be returned.
+        Generates a filtered event based on the incoming event and the configured
+        extraction_fields list in processor configuration or from rule.
+        The filtered fields and the target_topic are written to `self._filtered_events` list.
 
         Parameters
         ----------
         event: dict
             The incoming event that is currently being processed by logprep.
 
-        Returns
-        -------
-        dict
-            A filtered event containing only the fields from the original incoming event that were specified by the
-            'extraction_fields' list.
-        """
+        rule: SelectiveExtractorRule
+            The rule to apply
 
+        """
+        # filtered events has to be a tuple of (events, target)
         filtered_event = {}
 
-        for field in self.extraction_fields:
-            field_value = self._get_dotted_field_value(event, field)
+        for field in rule.extracted_field_list:
+            field_value = get_dotted_field_value(event, field)
             if field_value is not None:
                 add_field_to(filtered_event, field, field_value)
 
-        return filtered_event
+        if filtered_event:
+            self._filtered_events.append(([filtered_event], rule.target_topic))

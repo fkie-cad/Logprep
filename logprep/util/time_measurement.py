@@ -3,8 +3,8 @@
 from time import time
 from socket import gethostname
 
-from logprep.processor.base import processor
 from logprep.util.helper import camel_to_snake
+from logprep.util.processor_stats import ProcessorStats
 
 
 class TimeMeasurement:
@@ -26,7 +26,7 @@ class TimeMeasurement:
         """
 
         def inner_decorator(func):
-            def inner(*args, **kwargs):
+            def inner(*args, **kwargs):  # nosemgrep
                 if TimeMeasurement.TIME_MEASUREMENT_ENABLED:
                     caller = args[0]
                     event = args[1]
@@ -36,15 +36,16 @@ class TimeMeasurement:
 
                     processing_time = end - begin
 
-                    if isinstance(caller, processor.BaseProcessor):
-                        caller.ps.update_average_processing_time(processing_time)
+                    if hasattr(caller, "ps"):
+                        if isinstance(caller.ps, ProcessorStats):
+                            caller.ps.update_average_processing_time(processing_time)
 
                     if TimeMeasurement.APPEND_TO_EVENT:
                         add_processing_times_to_event(event, processing_time, caller, name)
                     return result
                 return func(*args, **kwargs)
 
-            def add_processing_times_to_event(event, processing_time, caller, name):
+            def add_processing_times_to_event(event, processing_time, caller, name):  # nosemgrep
                 if not event.get("processing_times"):
                     event["processing_times"] = {}
                 if name is None:
