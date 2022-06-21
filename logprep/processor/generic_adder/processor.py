@@ -16,6 +16,15 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+        sql_config:
+            user: example_user
+            password: example_password
+            host: "127.0.0.1
+            database: example_db
+            table: example_table
+            target_column: example_column
+            add_target_column: True
+            timer: 0.1
 """
 import re
 from typing import List, Optional
