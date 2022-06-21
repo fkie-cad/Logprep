@@ -110,7 +110,7 @@ class ElasticsearchOutput(Output):
             Acts as output connector for Elasticsearch.
 
         """
-        return f"Elasticsearch Output: {self._host}{self._port}"
+        return f"Elasticsearch Output: {self._host}:{self._port}"
 
     def _write_to_es(self, document):
         """Writes documents from a buffer into Elasticsearch indices.
