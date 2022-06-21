@@ -19,7 +19,7 @@ from logprep.output.output import Output, CriticalOutputError
 
 
 class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
-    """Create ConfluentKafka connectors for logprep and input/output communication."""
+    """Create ConfluentKafka connector for output communication."""
 
     @staticmethod
     def create_from_configuration(configuration: dict) -> "ConfluentKafkaOutput":
