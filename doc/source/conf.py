@@ -17,9 +17,9 @@ import os
 import sys
 from datetime import date
 
-from logprep._version import get_versions
-
 sys.path.insert(0, os.path.abspath("../.."))
+
+from logprep._version import get_versions
 
 
 # -- Handlers ----------------------------------------------------------------
