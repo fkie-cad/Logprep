@@ -27,7 +27,7 @@ class MySQLConnector:
         """
         self._logger = logger
 
-        self.con = db.connect(
+        self.connection = db.connect(
             user=sql_config["user"],
             password=sql_config["password"],
             host=sql_config["host"],
@@ -35,7 +35,7 @@ class MySQLConnector:
             port=sql_config.get("port", 3306),
         )
 
-        self.cur = self.con.cursor()
+        self.cursor = self.connection.cursor()
 
         self.target_column = sql_config["target_column"]
         self._add_target_column = sql_config.get("add_target_column", False)
@@ -82,9 +82,9 @@ class MySQLConnector:
             This value changes if the table or it's contents change.
 
         """
-        self.cur.execute(f"CHECKSUM TABLE {self.table_name}")  # nosemgrep
-        checksum = next(self.cur)[-1]
-        self.con.commit()
+        self.cursor.execute(f"CHECKSUM TABLE {self.table_name}")  # nosemgrep
+        checksum = next(self.cursor)[-1]
+        self.connection.commit()
         return checksum
 
     def get_data(self) -> dict:
@@ -106,16 +106,16 @@ class MySQLConnector:
         target_col = 0
 
         try:
-            self.cur.execute(f"desc {self.table_name}")  # nosemgrep
+            self.cursor.execute(f"desc {self.table_name}")  # nosemgrep
             col_names = []
-            for idx, column_desc in enumerate(self.cur):
+            for idx, column_desc in enumerate(self.cursor):
                 col_names.append(column_desc[0])
                 if column_desc[0] == self.target_column:
                     target_col = idx
 
-            self.cur.execute(f"SELECT * FROM {self.table_name}")  # nosemgrep
+            self.cursor.execute(f"SELECT * FROM {self.table_name}")  # nosemgrep
 
-            for row_vals in self.cur:
+            for row_vals in self.cursor:
                 if self._add_target_column:
                     column_dict = tuple(
                         (
