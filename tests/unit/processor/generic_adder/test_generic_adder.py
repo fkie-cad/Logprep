@@ -318,7 +318,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
 
         self.object.process(document_1)
         time.sleep(0.2)  # nosemgrep
-        self.object._db_connector.cur.mock_simulate_table_change()
+        self.object._db_connector.cursor.mock_simulate_table_change()
         self.object.process(document_2)
 
         assert document_1 == expected_1
@@ -333,7 +333,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
         document = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
         self.object._db_table = {}
-        self.object._db_connector.cur.mock_simulate_table_change()
+        self.object._db_connector.cursor.mock_simulate_table_change()
         time.sleep(0.2)  # nosemgrep
         self.object.process(document)
 
@@ -349,7 +349,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
         document_2 = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
         self.object.process(document_1)
-        self.object._db_connector.cur.mock_simulate_table_change()
+        self.object._db_connector.cursor.mock_simulate_table_change()
         self.object.process(document_2)
 
         assert document_1 == expected
@@ -373,7 +373,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
         expected = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
         document = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
-        self.object._db_connector.cur.mock_clear_all()
+        self.object._db_connector.cursor.mock_clear_all()
         self.object._db_table = {}
         self.object.process(document)
 
