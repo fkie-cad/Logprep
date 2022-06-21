@@ -86,7 +86,7 @@ class GenericAdder(Processor):
           the event.
         - `add_target_column` - Determines if the target column itself will be added to the event.
           This is set to false per default.
-        - `timer` - Period how long to (wait in seconds) before the database table is being checked
+        - `timer` - Period how long to wait (in seconds) before the database table is being checked
           for changes.
           If there is a change, the table is reloaded by Logprep.
         """
