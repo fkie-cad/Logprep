@@ -49,7 +49,7 @@ class TestElasticsearchOutput:
             fail(f"Must implement abstract methods: {str(err)}")
 
     def test_describe_endpoint_returns_elasticsearch_output(self):
-        assert self.es_output.describe_endpoint() == "Elasticsearch Output: host123"
+        assert self.es_output.describe_endpoint() == "Elasticsearch Output: host:123"
 
     def test_store_sends_event_to_expected_index(self):
         default_index = "target_index"

@@ -292,7 +292,6 @@ class TestConfluentKafka:
             "consumer_group",
             "consumer_topic",
         ]:
-            print("1", i)
             with raises(UnknownOptionError):
                 self.kafka_input.set_option({"consumer": {i: True}}, "consumer")
         for i in [
@@ -302,7 +301,6 @@ class TestConfluentKafka:
             "producer_topic",
             "producer_error_topic",
         ]:
-            print("2", i)
             with raises(UnknownOptionError):
                 self.kafka_output.set_option({"producer": {i: True}}, "producer")
 
