@@ -56,7 +56,6 @@ class ListComparisonRule(Rule):
 
         self._compare_sets = {}
         self._config = list_comparison_cfg
-        self.init_list_comparison(self._config.get("list_search_base_path"))
 
     def init_list_comparison(self, list_search_base_path: Optional[str]):
         """init method for list_comparision"""

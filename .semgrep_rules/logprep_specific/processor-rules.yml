@@ -5,10 +5,10 @@ rules:
     languages: [python]
     patterns:
       - pattern: |
-          class $X(RuleBasedProcessor):
+          class $X(Processor):
             ...
       - pattern-not: |
-          class $X(RuleBasedProcessor):
+          class $X(Processor):
             def _apply_rules(...):
               ...
 
@@ -18,7 +18,7 @@ rules:
     languages: [python]
     patterns:
       - pattern: |
-          class $X(RuleBasedProcessor):
+          class $X(Processor):
             def _apply_rules(...):
               ...
               for rule in ...:
@@ -30,10 +30,10 @@ rules:
     languages: [python]
     patterns:
       - pattern: |
-          class $X(RuleBasedProcessor):
+          class $X(Processor):
             def __init__(self,...):
               ...
       - pattern-not: |
-          class $X(RuleBasedProcessor):
+          class $X(Processor):
             def __init__(self, name, configuration, logger):
               ...

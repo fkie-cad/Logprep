@@ -1197,7 +1197,7 @@ Assuming that the value :code:`non_privileged_user` will match the provided list
         -   lists/privileged_users.txt
     description: '...'
 
-GeoIP Enricher
+Geoip Enricher
 ==============
 
 The geoip enricher requires the additional field :code:`geoip`.

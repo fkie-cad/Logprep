@@ -1,6 +1,6 @@
 """This module is used to generate alerts if an IP matches a pattern in a list."""
 
-from typing import Union, List, Optional
+from typing import Union, List
 
 from ipaddress import ip_network, ip_address, IPv4Network
 from datetime import datetime
@@ -9,9 +9,10 @@ from os.path import isfile
 from dateutil import parser, tz
 from ruamel.yaml import YAML
 
-yaml = YAML(typ="safe", pure=True)
-
 from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.util.helper import get_dotted_field_value
+
+yaml = YAML(typ="safe", pure=True)
 
 
 class IPAlerter:
@@ -36,20 +37,16 @@ class IPAlerter:
     def _init_alert_ip_list(self, alert_ip_lists: List):
         for alert_ip_list in alert_ip_lists:
             if alert_ip_list and isfile(alert_ip_list):
-                with open(alert_ip_list, "r") as alert_ip_list_file:
+                with open(alert_ip_list, "r", encoding="utf8") as alert_ip_list_file:
                     full_alert_ip_list = yaml.load(alert_ip_list_file)
                     self._filter_non_expired_alert_ips(full_alert_ip_list)
                     self._single_alert_ips.update(
-                        set(
-                            ip_string
-                            for ip_string in self._alert_ips_map.keys()
-                            if "/" not in ip_string
-                        )
+                        set(ip_string for ip_string in self._alert_ips_map if "/" not in ip_string)
                     )
                     self._alert_network.update(
                         set(
                             ip_network(ip_string)
-                            for ip_string in self._alert_ips_map.keys()
+                            for ip_string in self._alert_ips_map
                             if "/" in ip_string
                         )
                     )
@@ -81,22 +78,11 @@ class IPAlerter:
             return now < expiration_date
         return True
 
-    @staticmethod
-    def _get_dotted_field_value(dotted_field: str, event: dict) -> Optional[Union[dict, list, str]]:
-        fields = dotted_field.split(".")
-        dict_ = event
-        for field in fields:
-            if field in dict_:
-                dict_ = dict_[field]
-            else:
-                return None
-        return dict_
-
     def is_in_alerts_list(self, rule: PreDetectorRule, event: dict) -> bool:
         """Check if IP is in alerts list and if the alert has expired."""
         in_alerts = False
         for field in rule.ip_fields:
-            ip_string = self._get_dotted_field_value(field, event)
+            ip_string = get_dotted_field_value(event, field)
             if ip_string in self._single_alert_ips:
                 in_alerts = self._single_is_not_expired(ip_string)
                 continue

@@ -1,35 +1,31 @@
-"""This module contains a delete processor that can be used for testing purposes."""
+"""
+Delete
+-------
 
-from logprep.processor.base.processor import BaseProcessor
-from logprep.util.processor_stats import ProcessorStats
+The `delete` is a processor that removes an entire event from further pipeline processing.
 
 
-class Delete(BaseProcessor):
-    """A processor that deletes processed log events.
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
 
-    Notes
-    -----
-    WARNING: This processor deletes any log event it processes.
-    Do not use it for any purpose other than testing.
-    You must set the initializer's parameter to 'I really do' to create
-    an instance of this processor!
+    - deletename:
+        type: delete
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
 
-    Parameters
-    ----------
-    i_really_want_to_delete_all_log_events : str
-       Must be set to 'I really do' to avoid to prevent accidental deletion of log events.
+from logprep.abc import Processor
+from logprep.processor.delete.rule import DeleteRule
 
-    """
 
-    def __init__(self, i_really_want_to_delete_all_log_events: str):
-        if i_really_want_to_delete_all_log_events != "I really do":
-            raise ValueError("Read the documentation and pass the correct parameter!")
+class Delete(Processor):
+    """A processor that deletes processed log events from further pipeline process"""
 
-        self.ps = ProcessorStats()
+    rule_class = DeleteRule
 
-    def describe(self) -> str:
-        return "DELETE"
-
-    def process(self, event: dict):
+    def _apply_rules(self, event, rule):
         event.clear()
-        self.ps.increment_processed_count()

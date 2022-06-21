@@ -15,7 +15,7 @@ from io import StringIO
 from logging import getLogger
 from os import walk, path
 from pprint import pprint
-from typing import Union, Optional, Tuple
+from typing import Tuple
 
 from typing.io import TextIO
 import regex as re
@@ -23,12 +23,12 @@ from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.processor import RuleBasedProcessor
 from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
-from logprep.util.helper import print_fcolor, remove_file_if_exists
+from logprep.abc import Processor
+from logprep.util.helper import print_fcolor, remove_file_if_exists, get_dotted_field_value
 
 logger = getLogger()
 logger.disabled = True
@@ -88,17 +88,6 @@ class GrokPatternReplacer:
         if last_field:
             dict_[last_field] = new_value
 
-    @staticmethod
-    def _get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
-        fields = dotted_field.split(".")
-        dict_ = event
-        for field in fields:
-            if field in dict_:
-                dict_ = dict_[field]
-            else:
-                return None
-        return dict_
-
     def _replace_all_keywords_in_value(self, dotted_value: str) -> str:
         while bool(self._grok_base.search(str(dotted_value))):
             for identifier, grok_value in self._grok_patterns.items():
@@ -123,12 +112,12 @@ class GrokPatternReplacer:
         for processed_field, processed_sub in list(processed.items()):
             dotted_field_tmp = dotted_field
             dotted_field += f".{processed_field}" if dotted_field else processed_field
-            dotted_value = self._get_dotted_field_value(reference_dict["processed"], dotted_field)
+            dotted_value = get_dotted_field_value(reference_dict["processed"], dotted_field)
 
             if isinstance(dotted_value, (str, int, float)):
                 if processed_field.endswith("|re"):
                     new_key = processed_field.replace("|re", "")
-                    dotted_value_raw = self._get_dotted_field_value(
+                    dotted_value_raw = get_dotted_field_value(
                         reference_dict["raw"], dotted_field.replace("|re", "")
                     )
 
@@ -178,7 +167,7 @@ class PreDetectionExtraHandler:
     """Used to handle special demands for PreDetector auto-tests."""
 
     @staticmethod
-    def _get_errors(processor: RuleBasedProcessor, extra_output: tuple):
+    def _get_errors(processor: Processor, extra_output: tuple):
         pd_errors = []
         pd_warnings = []
         if isinstance(processor, PreDetector):
@@ -343,7 +332,7 @@ class AutoRuleTester:
         return processor_uses_own_tests
 
     @staticmethod
-    def _get_rules(processor: RuleBasedProcessor, rule_test: dict) -> dict:
+    def _get_rules(processor: Processor, rule_test: dict) -> dict:
         if rule_test.get("rules"):
             return {"rules": rule_test.get("rules", [])}
         if rule_test.get("specific_rules") or rule_test.get("generic_rules"):
@@ -357,7 +346,7 @@ class AutoRuleTester:
             f"No rules provided for processor of type {processor.describe()}"
         )
 
-    def _add_rules_from_directory(self, processor: RuleBasedProcessor, rule_type: str):
+    def _add_rules_from_directory(self, processor: Processor, rule_type: str):
         if rule_type == "rules":
             processor.add_rules_from_directory(self._empty_rules_dirs)
         elif rule_type == "specific_rules":
@@ -366,14 +355,14 @@ class AutoRuleTester:
             processor.add_rules_from_directory([], self._empty_rules_dirs)
 
     def _prepare_test_eval(
-        self, processor: RuleBasedProcessor, rule_dict: dict, rule_type: str, temp_rule_path: str
+        self, processor: Processor, rule_dict: dict, rule_type: str, temp_rule_path: str
     ):
         self._create_rule_file(rule_dict, temp_rule_path)
         self._reset_trees(processor)
         self._clear_rules(processor)
         self._add_rules_from_directory(processor, rule_type)
 
-    def _run_custom_rule_tests(self, processor: RuleBasedProcessor, rule_test: dict):
+    def _run_custom_rule_tests(self, processor: Processor, rule_test: dict):
         temp_rule_path = path.join(self._empty_rules_dirs[0], f"{hashlib.sha256()}.json")
         rules = self._get_rules(processor, rule_test)
 
@@ -383,7 +372,7 @@ class AutoRuleTester:
                 self._eval_custom_rule_test(rule_test, processor)
                 remove_file_if_exists(temp_rule_path)
 
-    def _run_file_rule_tests(self, processor: RuleBasedProcessor, rule_test: dict):
+    def _run_file_rule_tests(self, processor: Processor, rule_test: dict):
         temp_rule_path = path.join(self._empty_rules_dirs[0], f"{hashlib.sha256()}.json")
         rules = self._get_rules(processor, rule_test)
 
@@ -394,12 +383,12 @@ class AutoRuleTester:
                 remove_file_if_exists(temp_rule_path)
 
     @staticmethod
-    def _clear_rules(processor: RuleBasedProcessor):
+    def _clear_rules(processor: Processor):
         if hasattr(processor, "_rules"):
             processor._rules.clear()  # pylint: disable=protected-access
 
     @staticmethod
-    def _reset_trees(processor: RuleBasedProcessor):
+    def _reset_trees(processor: Processor):
         if hasattr(processor, "_tree"):
             processor._tree = RuleTree()
         if hasattr(processor, "_specific_tree"):
@@ -430,13 +419,13 @@ class AutoRuleTester:
             print_fcolor(Fore.LIGHTMAGENTA_EX, f'\nRULE FILE {rule_test["file"]}')
             self._filename_printed = True
 
-    def _eval_custom_rule_test(self, rule_test: dict, processor: RuleBasedProcessor):
+    def _eval_custom_rule_test(self, rule_test: dict, processor: Processor):
         self._filename_printed = False
         with StringIO() as buf, redirect_stdout(buf):
             self._run_custom_tests(processor, rule_test)
             self._custom_tests_output += buf.getvalue()
 
-    def _eval_file_rule_test(self, rule_test: dict, processor: RuleBasedProcessor, r_idx: int):
+    def _eval_file_rule_test(self, rule_test: dict, processor: Processor, r_idx: int):
         self._filename_printed = False
 
         for t_idx, test in enumerate(rule_test["tests"]):
@@ -557,7 +546,7 @@ class AutoRuleTester:
             inspect.getfile(rule_class): rule_class for rule_class in Rule.__subclasses__()
         }
         rule_class = loaded_rule_classes_map.get(rule_class_path)
-        if rule_class is None and isinstance(processor, RuleBasedProcessor):
+        if rule_class is None and isinstance(processor, Processor):
             raise AutoRuleTesterException(
                 f"Rule class missing for processor: " f"{processor.describe()}"
             )

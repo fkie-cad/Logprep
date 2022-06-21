@@ -7,6 +7,7 @@ User Manual
 
    introduction
    execution
+   verification
    validation
    dry_run
    configuration/index

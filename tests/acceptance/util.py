@@ -1,12 +1,12 @@
 #!/usr/bin/python3
+# pylint: disable=protected-access
+# pylint: disable=missing-docstring
 import json
 from copy import deepcopy
 from logging import getLogger, DEBUG, basicConfig, Handler
 from multiprocessing import Lock
 from os import path, makedirs
 from os.path import join
-
-import ujson
 
 from logprep.connector.confluent_kafka import ConfluentKafkaFactory
 from logprep.framework.pipeline import Pipeline, SharedCounter
@@ -20,12 +20,12 @@ logger = getLogger("Logprep-Test")
 
 
 def get_difference(test_output, expected_output):
-    for x, _ in enumerate(test_output):
-        test_event = deepcopy(test_output[x])
-        expected_event = deepcopy(expected_output[x])
+    for idx, _ in enumerate(test_output):
+        test_event = deepcopy(test_output[idx])
+        expected_event = deepcopy(expected_output[idx])
         difference = recursive_compare(test_event, expected_event)
         if difference:
-            return {"event_line_no": x, "difference": difference}
+            return {"event_line_no": idx, "difference": difference}
     return {"event_line_no": None, "difference": (None, None)}
 
 
@@ -38,12 +38,12 @@ def store_latest_test_output(target_output_identifier, output_of_test):
     """
 
     output_dir = "tests/testdata/out"
-    latest_output_path = path.join(output_dir, "latest_{}.out".format(target_output_identifier))
+    latest_output_path = path.join(output_dir, f"latest_{target_output_identifier}.out")
 
     if not path.exists(output_dir):
         makedirs(output_dir)
 
-    with open(latest_output_path, "w") as latest_output:
+    with open(latest_output_path, "w", encoding="utf-8") as latest_output:
         for test_output_line in output_of_test:
             latest_output.write(json.dumps(test_output_line) + "\n")
 
@@ -63,15 +63,18 @@ def get_test_output(config_path):
 
 
 def assert_result_equal_expected(config, expected_output, tmp_path):
-    pass
+    ...
 
 
 class SingleMessageConsumerJsonMock:
     def __init__(self, record):
-        self.record = ujson.encode(record)
+        self.record = json.dumps(record, separators=(",", ":"))
 
+    # pylint: disable=unused-argument
     def poll(self, timeout):
         return RecordMock(self.record, None)
+
+    # pylint: enable=unused-argument
 
 
 class TmpFileProducerMock:
@@ -79,8 +82,8 @@ class TmpFileProducerMock:
         self.tmp_path = tmp_path
 
     def produce(self, target, value):
-        with open(self.tmp_path, "a") as f:
-            f.write(f"{target} {value.decode()}\n")
+        with open(self.tmp_path, "a", encoding="utf-8") as tmp_file:
+            tmp_file.write(f"{target} {value.decode()}\n")
 
     def poll(self, _):
         ...
@@ -98,12 +101,12 @@ def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory
     pipeline = Pipeline(
         config["connector"],
         config["pipeline"],
-        dict(),
+        {},
         config["timeout"],
         SharedCounter(),
         Handler(),
         Lock(),
-        dict(),
+        {},
     )
     pipeline._setup()
     pipeline._retrieve_and_process_data()

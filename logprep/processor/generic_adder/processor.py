@@ -1,12 +1,31 @@
-"""This module contains functionality for adding fields using regex lists."""
-from logging import Logger, DEBUG
-from multiprocessing import current_process
-from typing import List
+"""
+GenericAdder
+------------
+The `generic_adder` is a processor that adds new fields and values to documents based on a list.
+The list can reside inside a rule or inside a file.
 
-from logprep.processor.base.processor import RuleBasedProcessor
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - genericaddername:
+        type: generic_adder
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
+import re
+from typing import List, Optional
+from attr import define, field, validators
+from logging import Logger
+
+from logprep.abc import Processor
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.util.processor_stats import ProcessorStats
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class GenericAdderError(BaseException):
@@ -28,114 +47,97 @@ class DuplicationError(GenericAdderError):
         super().__init__(name, message)
 
 
-class GenericAdder(RuleBasedProcessor):
-    """Add arbitrary fields and values to a processed events.
+def sql_config_validator(_, attribute, value):
+    """validate if a subfield of a dict is valid"""
+    if attribute.name == "sql_config" and isinstance(value, dict):
+        table = value.get("table")
+        if table and re.search(r"\s", table):
+            raise InvalidConfigurationError(f"Table in 'sql_config' contains whitespaces!")
 
-    Fields and values can be added directly from the rule definition or from a file specified within
-    a rule. Furthermore, a SQL table can be used to to add multiple keys and values if a specified
-    field's value within the SQL table matches a specified field's value withing the rule
-    definition.
 
-    The generic adder can not overwrite existing values.
+class GenericAdder(Processor):
+    """Resolve values in documents by referencing a mapping list."""
 
-    """
+    @define(kw_only=True)
+    class Config(Processor.Config):
+        """GenericAdder config"""
 
+        sql_config: Optional[dict] = field(
+            default=None,
+            validator=[
+                validators.optional(validator=validators.instance_of(dict)),
+                sql_config_validator,
+            ],
+        )
+        """
+        Configuration of the connection to a MySQL database and settings on how to add data from
+        the database.
+        This field is optional. The database feature will not be used if `sql_config` is omitted.
+        Has following subfields:
+
+        - `user` - The user to use when connecting to the MySQL database.
+        - `password` - The password to use when connecting to the MySQL database.
+        - `host` - The host to use when connecting to the MySQL database.
+        - `database` - The database name to use when connecting to the MySQL database.
+        - `table` - The table name to use when connecting to the MySQL database.
+        - `target_column` - The name of the column whose values are being matched against a value
+          from an event.
+          If a value matches, the remaining values of the row with the match are being added to
+          the event.
+        - `add_target_column` - Determines if the target column itself will be added to the event.
+          This is set to false per default.
+        - `timer` - Period how long to (wait in seconds) before the database table is being checked
+          for changes.
+          If there is a change, the table is reloaded by Logprep.
+        """
+
+    rule_class = GenericAdderRule
     db_table = None
 
-    def __init__(self, name: str, configuration: dict, logger: Logger):
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         """Initialize a generic adder instance.
-
         Performs a basic processor initialization. Furthermore, a SQL database and a SQL table are
         being initialized if a SQL configuration exists.
-
         Parameters
         ----------
         name : str
            Name for the generic adder.
-        configuration : dict
+        configuration : Processor.Config
            Configuration for SQL adding and rule loading.
         logger : logging.Logger
            Logger to use.
-
         """
-        tree_config = configuration.get("tree_config")
-        specific_rules_dirs = configuration.get("specific_rules")
-        generic_rules_dirs = configuration.get("generic_rules")
-        sql_config = configuration.get("sql_config")
-        super().__init__(name, tree_config, logger)
+        super().__init__(name, configuration, logger)
 
+        sql_config = configuration.sql_config
         self._db_connector = MySQLConnector(sql_config, logger) if sql_config else None
 
         if GenericAdder.db_table is None:
             GenericAdder.db_table = self._db_connector.get_data() if self._db_connector else None
         self._db_table = GenericAdder.db_table
 
-        self.ps = ProcessorStats()
-        self.add_rules_from_directory(
-            generic_rules_dirs=generic_rules_dirs,
-            specific_rules_dirs=specific_rules_dirs,
-        )
-
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = GenericAdderRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = GenericAdderRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"generic rules ({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
-
-    # pylint: enable=arguments-differ
-
     def _apply_rules(self, event: dict, rule: GenericAdderRule):
         """Apply a matching generic adder rule to the event.
-
          Add fields and values to the event according to the rules it matches for.
         Additions can come from the rule definition, from a file or from a SQL table.
-
         The SQL table is initially loaded from the database and then reloaded if it changes.
-
         At first it checks if a SQL table exists and if it will be used. If it does, it adds all
         values from a matching row in the table to the event. To determine if a row matches, a
         pattern is used on a defined value of the event to extract a subvalue that is then matched
         against a value in a defined column of the SQL table. A dotted path prefix can be applied to
         add the new fields into a shared nested location.
-
         If no table exists, fields defined withing the rule itself or in a rule file are being added
         to the event.
-
         Parameters
         ----------
         event : dict
            Name of the event to add keys and values to.
         rule : GenericAdderRule
            A matching generic adder rule.
-
         Raises
         ------
         DuplicationError
             Raises if an addition would overwrite an existing field or value.
-
         """
 
         if self._db_connector and self._db_connector.check_change():
@@ -181,4 +183,4 @@ class GenericAdder(RuleBasedProcessor):
                     conflicting_fields.append(keys[idx])
 
         if conflicting_fields:
-            raise DuplicationError(self._name, conflicting_fields)
+            raise DuplicationError(self.name, conflicting_fields)

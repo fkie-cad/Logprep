@@ -6,12 +6,14 @@ from ctypes import c_double
 from datetime import datetime
 from multiprocessing import Lock, Value, current_process
 from time import time
-from typing import List, Union
 
 import numpy as np
 
-from logprep.processor.base.processor import BaseProcessor
-from logprep.processor.base.rule import Rule
+from typing import List, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover
+    from logprep.abc import Processor
+    from logprep.processor.base.rule import Rule
 
 np.set_printoptions(suppress=True)
 
@@ -45,7 +47,7 @@ class StatsClassesController:
         return inner
 
 
-@StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)
+@StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)  # nosemgrep
 class ProcessorStats:
     """Used to track processor stats."""
 
@@ -70,7 +72,7 @@ class ProcessorStats:
         self._max_time = -1
         self._processing_time_sample_counter = 0
 
-    def setup_rules(self, rules: List[Rule]):
+    def setup_rules(self, rules: List["Rule"]):
         """Setup aggregation data for rules."""
         self.num_rules = len(rules)
         self.aggr_data["matches_per_idx"] = np.zeros(self.num_rules, dtype=int)
@@ -160,7 +162,7 @@ class ProcessorStats:
 StatusLoggerCollection = namedtuple("StatusLogger", "file_logger prometheus_exporter")
 
 
-@StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)
+@StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)  # nosemgrep
 class StatusTracker:
     """Used to track logprep stats."""
 
@@ -252,7 +254,7 @@ class StatusTracker:
         """Set pipeline."""
         self._pipeline = pipeline
 
-    def add_warnings(self, error: BaseException, processor: BaseProcessor):
+    def add_warnings(self, error: BaseException, processor: "Processor"):
         """Add warnings to aggregated data."""
         self.aggr_data["warnings"] += 1
         processor.ps.aggr_data["warnings"] += 1
@@ -262,7 +264,7 @@ class StatusTracker:
         else:
             warning_types[str(error)] = 1
 
-    def add_errors(self, error: BaseException, processor: BaseProcessor):
+    def add_errors(self, error: BaseException, processor: "Processor"):
         """Add errors to aggregated data."""
         self.aggr_data["errors"] += 1
         processor.ps.aggr_data["errors"] += 1
@@ -308,7 +310,7 @@ class StatusTracker:
             if not process_data.get(processor.name):
                 process_data[processor.name] = {}
 
-            if str(type(processor)) not in self.rule_based_stats_exclusion:
+            if str(processor) not in self.rule_based_stats_exclusion:
                 process_data[processor.name]["matches_per_idx"] = aggr_data["matches_per_idx"]
                 process_data[processor.name]["times_per_idx"] = aggr_data["times_per_idx"]
                 process_data[processor.name]["matches"] = aggr_data["matches"]

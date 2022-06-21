@@ -1,31 +1,27 @@
 #!/usr/bin/python3
 """This module is used to test if PreDetector rules match depending on a naming scheme."""
 
-from typing import Tuple, List, Any
-
+import json
 import logging
+import sys
 import tempfile
 from argparse import ArgumentParser
-from ruamel.yaml import YAML, YAMLError
-from os import walk, sep, path
+from os import path, sep, walk
+from typing import Any, List, Tuple
+
 import regex as re
-import json
-
-from ruamel.yaml import load_all, YAMLError
 from colorama import Fore
-
-from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.processor.pre_detector.processor import PreDetector
-from logprep.processor.pre_detector.factory import PreDetectorFactory
+from ruamel.yaml import YAML, YAMLError
 from logprep.framework.rule_tree.rule_tree import RuleTree
-
+from logprep.processor.pre_detector.processor import PreDetector
+from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.helper import print_fcolor
-
 
 logger = logging.getLogger()
 logger.disabled = True
 
-yaml = YAML(typ="unsafe", pure=True)
+yaml = YAML(typ="safe", pure=True)
 
 
 # pylint: disable=protected-access
@@ -126,19 +122,20 @@ class RuleMatchingTester:
             print_fcolor(Fore.RED, str(error))
 
         if not self._success:
-            exit(1)
+            sys.exit(1)
 
     @staticmethod
     def _get_pre_detector() -> PreDetector:
         # Only needed so processor starts
         processor_cfg = {
             "type": "pre_detector",
-            "rules": list(),
-            "pre_detector_topic": "",
+            "generic_rules": [],
+            "specific_rules": [],
             "tree_config": "",
+            "pre_detector_topic": "",
         }
 
-        processor = PreDetectorFactory.create("pre_detector_name", processor_cfg, logger)
+        processor = ProcessorFactory.create(processor_cfg, logger)
         return processor
 
     def _print_results(self):
@@ -230,7 +227,7 @@ class RuleMatchingTester:
                 failed = False
 
             if failed:
-                if rule_test["file"] not in self._failed_tests.keys():
+                if rule_test["file"] not in self._failed_tests:
                     self._failed_tests[rule_test["file"]] = {"match": {}, "evasion": {}}
                 if name not in self._failed_tests[rule_test["file"]][event_type]:
                     self._failed_tests[rule_test["file"]][event_type][name] = []
@@ -271,12 +268,12 @@ class RuleMatchingTester:
         if self._errors:
             for error in self._errors:
                 print_fcolor(Fore.RED, error)
-            exit(1)
+            sys.exit(1)
         return rules
 
     @staticmethod
     def _get_multi_rule(test: dict) -> List[dict]:
-        with open(test["rule"], "r") as rules_file:
+        with open(test["rule"], "r", encoding="utf8") as rules_file:
             try:
                 if test["rule"].endswith(".yml"):
                     multi_rule = list(yaml.load_all(rules_file))
@@ -284,11 +281,11 @@ class RuleMatchingTester:
                     multi_rule = json.load(rules_file)
             except json.decoder.JSONDecodeError as error:
                 raise MatchingRuleTesterException(
-                    'JSON decoder error in rule "{}": "{}"'.format(rules_file.name, str(error))
+                    f'JSON decoder error in rule "{rules_file.name}": "{str(error)}"'
                 ) from error
             except YAMLError as error:
                 raise MatchingRuleTesterException(
-                    'YAML error in rule "{}": "{}"'.format(rules_file.name, str(error))
+                    'YAML error in rule "{rules_file.name}": "{str(error)}"'
                 ) from error
         return multi_rule
 
@@ -296,7 +293,7 @@ class RuleMatchingTester:
         match_events = []
         for match_event in test[event_type]:
             if path.isfile(match_event):
-                with open(match_event, "r") as test_file:
+                with open(match_event, "r", encoding="utf8") as test_file:
                     try:
                         if match_event.endswith(".json"):
                             match_events.append((json.load(test_file), match_event, "json"))

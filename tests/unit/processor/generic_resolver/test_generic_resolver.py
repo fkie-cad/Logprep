@@ -1,32 +1,18 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
-# pylint: disable=wrong-import-order
-import copy
 from collections import OrderedDict
-from logging import getLogger
 
 import pytest
-
-
-pytest.importorskip("logprep.processor.generic_resolver")
-
-from tests.unit.processor.base import BaseProcessorTestCase
-from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.processor.generic_resolver.factory import GenericResolverFactory
 from logprep.processor.generic_resolver.processor import (
-    GenericResolver,
     DuplicationError,
+    GenericResolver,
     GenericResolverError,
 )
-from logprep.processor.processor_factory_error import ProcessorFactoryError
-
-logger = getLogger()
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestGenericResolver(BaseProcessorTestCase):
-
-    factory = GenericResolverFactory
 
     CONFIG = {
         "type": "generic_resolver",
@@ -44,10 +30,6 @@ class TestGenericResolver(BaseProcessorTestCase):
     def generic_rules_dirs(self):
         """Return the paths of the generic rules"""
         return self.CONFIG["generic_rules"]
-
-    def _load_specific_rule(self, rule):
-        specific_rule = GenericResolverRule._create_from_dict(rule)
-        self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def test_resolve_generic_instantiates(self):
         rule = {"filter": "anything", "generic_resolver": {"field_mapping": {}}}
@@ -450,17 +432,3 @@ class TestGenericResolver(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document == expected
-
-
-class TestGenericResolverFactory(TestGenericResolver):
-    def test_create(self):
-        assert isinstance(
-            GenericResolverFactory.create("foo", self.CONFIG, self.logger), GenericResolver
-        )
-
-    def test_check_configuration(self):
-        GenericResolverFactory._check_configuration(self.CONFIG)
-        cfg = copy.deepcopy(self.CONFIG)
-        cfg.pop("type")
-        with pytest.raises(ProcessorFactoryError):
-            GenericResolverFactory._check_configuration(cfg)

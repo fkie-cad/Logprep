@@ -1,16 +1,33 @@
 """
-This module contains functionality for checking if values exist or not exist in file lists.
-This processor implements black- and whitelisting capabilities.
-"""
-from logging import DEBUG, Logger
-from multiprocessing import current_process
-from typing import List, Optional
+ListComparison
+--------------
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError, InvalidRuleFileError
-from logprep.processor.base.processor import RuleBasedProcessor
+The `list_comparison` processor allows to compare values of a target field against lists provided
+as files.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - listcomparisonname:
+        type: list_comparison
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        list_search_base_path: /path/to/list/dir
+"""
+from logging import Logger
+from typing import List
+
+from attr import define, field
+
+from logprep.abc import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to
-from logprep.util.processor_stats import ProcessorStats
+from logprep.util.validators import directory_validator
 
 
 class ListComparisonError(BaseException):
@@ -33,62 +50,23 @@ class DuplicationError(ListComparisonError):
         super().__init__(name, message)
 
 
-class ListComparison(RuleBasedProcessor):
+class ListComparison(Processor):
     """Resolve values in documents by referencing a mapping list."""
 
-    def __init__(
-        self,
-        name: str,
-        tree_config: str,
-        list_search_base_path: Optional[str],
-        logger: Logger,
-    ):
-        """
-        Initializes the list_comparison processor.
+    @define(kw_only=True)
+    class Config(Processor.Config):
+        """ListComparison config"""
 
-        Parameters
-        ----------
-        name : str
-            Name of the list_comparison processor (as referred to in the pipeline).
-        tree_config : str
-            Path to the configuration file which can prioritize fields and add conditional rules.
-        logger : Logger
-            Standard logger.
-        """
-        super().__init__(name, tree_config, logger)
-        self._list_search_base_dir = list_search_base_path
-        self.ps = ProcessorStats()
+        list_search_base_path: str = field(validator=directory_validator)
+        """Relative list paths in rules will be relative to this path if this is set.
+        This parameter is optional."""
 
-    # pylint: disable=arguments-differ
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = ListComparisonRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = self._list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = ListComparisonRule.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
-            self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
-                f"specific rules ({current_process().name})"
-            )
-            self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
-                f"({current_process().name})"
-            )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
-        )
+    rule_class = ListComparisonRule
 
-    # pylint: enable=arguments-differ
+    def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        for rule in [*self._specific_rules, *self._generic_rules]:
+            rule.init_list_comparison(self._config.list_search_base_path)
 
     def _apply_rules(self, event, rule):
         """
@@ -112,7 +90,7 @@ class ListComparison(RuleBasedProcessor):
             output_field = f"{ rule.list_comparison_output_field }.{ comparison_key }"
             field_possible = add_field_to(event, output_field, comparison_result, True)
             if not field_possible:
-                raise DuplicationError(self._name, [output_field])
+                raise DuplicationError(self.name, [output_field])
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
         """

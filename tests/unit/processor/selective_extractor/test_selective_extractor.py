@@ -4,18 +4,13 @@ import uuid
 from unittest import mock
 
 from tests.unit.processor.base import BaseProcessorTestCase
-from logprep.processor.selective_extractor.factory import SelectiveExtractorFactory
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
 
-    factory = SelectiveExtractorFactory
-
     CONFIG = {
         "type": "selective_extractor",
-        "selective_extractor_topic": "test_topic",
-        "extractor_list": "tests/testdata/unit/selective_extractor/test_extraction_list.txt",
         "specific_rules": ["tests/testdata/unit/selective_extractor/rules/specific"],
         "generic_rules": ["tests/testdata/unit/selective_extractor/rules/generic"],
     }
@@ -95,7 +90,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         assert result is None
 
     def test_gets_matching_rules_from_rules_trees(self):
-        rule_trees = [value for key, value in self.object.__dict__.items() if "_tree" in key]
+        rule_trees = [self.object._generic_tree, self.object._specific_tree]
         assert len(rule_trees) > 0
         for tree in rule_trees:
             matching_rules = tree.get_matching_rules({"message": "the message"})
