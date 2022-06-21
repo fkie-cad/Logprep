@@ -53,6 +53,10 @@ def sql_config_validator(_, attribute, value):
         table = value.get("table")
         if table and re.search(r"\s", table):
             raise InvalidConfigurationError(f"Table in 'sql_config' contains whitespaces!")
+        if table and not re.search(r"^[a-zA-Z0-9_]+$", table):
+            raise InvalidConfigurationError(
+                f"Table in 'sql_config' may only contain alphanumeric characters and underscores!"
+            )
 
 
 class GenericAdder(Processor):

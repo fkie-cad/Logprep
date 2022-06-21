@@ -379,13 +379,66 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_sql_table_can_not_have_spaces(self):
-        with pytest.raises(
-            InvalidConfigurationError,
-            match=r"Table in 'sql_config' contains whitespaces!",
-        ):
-            config = deepcopy(self.CONFIG)
-            config["sql_config"]["table"] = "table with spaces"
+    @pytest.mark.parametrize(
+        "test_case, table, raised_error",
+        [
+            (
+                "valid table name only alpha",
+                "table",
+                None,
+            ),
+            (
+                "valid table name only numeric",
+                "0",
+                None,
+            ),
+            (
+                "valid table name only alphanumeric",
+                "0a1b",
+                None,
+            ),
+            (
+                "valid table name alphanumeric and underscore",
+                "0a_1b",
+                None,
+            ),
+            (
+                "not alphanumeric",
+                "table!",
+                (
+                    InvalidConfigurationError,
+                    "Table in 'sql_config' may only contain "
+                    "alphanumeric characters and underscores!",
+                ),
+            ),
+            (
+                "whitespace",
+                "tab le",
+                (
+                    InvalidConfigurationError,
+                    "Table in 'sql_config' contains whitespaces!",
+                ),
+            ),
+            (
+                "not alphanumeric and whitespace",
+                "tab le!",
+                (
+                    InvalidConfigurationError,
+                    "Table in 'sql_config' contains whitespaces!",
+                ),
+            ),
+        ],
+    )
+    def test_sql_table_must_contain_only_alphanumeric_or_underscore(
+        self, test_case, table, raised_error
+    ):
+        config = deepcopy(self.CONFIG)
+        config["sql_config"]["table"] = table
+
+        if raised_error:
+            with pytest.raises(raised_error[0], match=raised_error[1]):
+                ProcessorFactory.create({"Test Instance Name": config}, self.logger)
+        else:
             ProcessorFactory.create({"Test Instance Name": config}, self.logger)
 
 
