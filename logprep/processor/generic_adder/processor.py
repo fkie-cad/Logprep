@@ -2,7 +2,7 @@
 GenericAdder
 ------------
 The `generic_adder` is a processor that adds new fields and values to documents based on a list.
-The list can reside inside a rule or inside a file.
+The list can reside inside a rule, inside a file or retrieved from an sql database.
 
 
 Example
