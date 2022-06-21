@@ -408,7 +408,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
                 (
                     InvalidConfigurationError,
                     "Table in 'sql_config' may only contain "
-                    "alphanumeric characters and underscores!",
+                    + "alphanumeric characters and underscores!",
                 ),
             ),
             (
