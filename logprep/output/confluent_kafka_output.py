@@ -78,7 +78,7 @@ class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
 
 
 class ConfluentKafkaOutput(Output, ConfluentKafka):
-    """A kafka connector that serves as both input and output connector."""
+    """A kafka connector that serves as output connector."""
 
     def __init__(
         self, bootstrap_servers: List[str], producer_topic: str, producer_error_topic: str
