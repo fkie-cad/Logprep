@@ -53,6 +53,8 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
             begin = time()
             callback(event, rule)
             processing_time = time() - begin
+            rule.metrics.number_of_matches += 1
+            rule.metrics.update_mean_processing_time(processing_time)
             idx = specific_tree.get_rule_id(rule)
             processor_stats.update_per_rule(idx, processing_time)
 
@@ -68,5 +70,7 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
             begin = time()
             callback(event, rule)
             processing_time = time() - begin
+            rule.metrics.number_of_matches += 1
+            rule.metrics.update_mean_processing_time(processing_time)
             idx = generic_tree.get_rule_id(rule)
             processor_stats.update_per_rule(idx, processing_time)
