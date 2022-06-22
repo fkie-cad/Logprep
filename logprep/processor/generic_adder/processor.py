@@ -108,35 +108,23 @@ class GenericAdder(Processor):
 
     rule_class = GenericAdderRule
 
-    __slots__ = ["_db_connector"]
+    __slots__ = ["_db_connector", "_db_table"]
 
-    db_table: dict = None
+    _db_table: dict
     """Dict containing table from SQL database"""
 
     _db_connector: MySQLConnector
     """Connector for MySQL database"""
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        """Initialize a generic adder instance.
-        Performs a basic processor initialization. Furthermore, a SQL database and a SQL table are
-        being initialized if a SQL configuration exists.
-        Parameters
-        ----------
-        name : str
-           Name for the generic adder.
-        configuration : Processor.Config
-           Configuration for SQL adding and rule loading.
-        logger : logging.Logger
-           Logger to use.
-        """
-        super().__init__(name, configuration, logger)
+    def setup(self):
+        # has to be done during setup to not break initialization
+        super().setup()
+        sql_config = self._config.sql_config
+        self._db_connector = MySQLConnector(sql_config, self._logger) if sql_config else None
 
-        sql_config = configuration.sql_config
-        self._db_connector = MySQLConnector(sql_config, logger) if sql_config else None
-
-        if GenericAdder.db_table is None:
-            GenericAdder.db_table = self._db_connector.get_data() if self._db_connector else None
-        self._db_table = GenericAdder.db_table
+        if GenericAdder._db_table is None:
+            GenericAdder._db_table = self._db_connector.get_data() if self._db_connector else None
+        self._db_table = GenericAdder._db_table
 
     def _apply_rules(self, event: dict, rule: GenericAdderRule):
         """Apply a matching generic adder rule to the event.
@@ -162,7 +150,7 @@ class GenericAdder(Processor):
             Raises if an addition would overwrite an existing field or value.
         """
 
-        if self._db_connector and self._db_connector.check_change():
+        if self._db_connector and self._db_connector.has_changed():
             self._db_table = self._db_connector.get_data()
 
         conflicting_fields = []

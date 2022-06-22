@@ -177,7 +177,7 @@ class BaseProcessorTestCase(ABC):
 
     @mock.patch("logging.Logger.isEnabledFor", return_value=True)
     @mock.patch("logging.Logger.debug")
-    def test_add_rules_from_directory_with_debug(self, mock_debug, _):
+    def test_add_rules_from_directory_with_debug(self, mock_debug, _, __):
         self.object.add_rules_from_directory(
             specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
         )
