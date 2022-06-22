@@ -11,7 +11,7 @@ This option is recommended if you just want to use the latest release of logprep
 
 ..  code-block:: bash
 
-    pip install -i https://test.pypi.org/simple/ logprep
+    pip install logprep
 
 **2. Option:** Installation via Git Repository:
 
