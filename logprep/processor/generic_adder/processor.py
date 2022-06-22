@@ -27,14 +27,16 @@ Example
             timer: 0.1
 """
 import re
-from typing import List, Optional
-from attr import define, field, validators
 from logging import Logger
+from typing import List, Optional
+
+from attr import define, field, validators
 
 from logprep.abc import Processor
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.util.helper import get_dotted_field_value
 
 
 class GenericAdderError(BaseException):
@@ -105,7 +107,14 @@ class GenericAdder(Processor):
         """
 
     rule_class = GenericAdderRule
-    db_table = None
+
+    __slots__ = ["_db_connector"]
+
+    db_table: dict = None
+    """Dict containing table from SQL database"""
+
+    _db_connector: MySQLConnector
+    """Connector for MySQL database"""
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         """Initialize a generic adder instance.
@@ -158,26 +167,10 @@ class GenericAdder(Processor):
 
         conflicting_fields = []
 
-        # Either add items from a sql db table or from the rule definition and/or a file
-        if rule.db_target and self._db_table:
-            # Create items to add from a db table
-            items_to_add = []
-            if rule.db_pattern:
-                # Get the sub part of the value from the event using a regex pattern
-                value_to_check_in_db = self._get_dotted_field_value(event, rule.db_target)
-                match_with_value_in_db = rule.db_pattern.match(value_to_check_in_db)
-                if match_with_value_in_db:
-                    # Get values to add from db table using the sub part
-                    value_to_map = match_with_value_in_db.group(1).upper()
-                    to_add_from_db = self._db_table.get(value_to_map, [])
-                    for item in to_add_from_db:
-                        if rule.db_destination_prefix:
-                            if not item[0].startswith(rule.db_destination_prefix):
-                                item[0] = f"{rule.db_destination_prefix}.{item[0]}"
-                        items_to_add.append(item)
-        else:
-            # Use items from rule definition and/or file
-            items_to_add = rule.add.items()
+        use_db = rule.db_target and self._db_table
+        items_to_add = [] if use_db else rule.add.items()
+        if use_db and rule.db_pattern:
+            self._try_adding_from_db(event, items_to_add, rule)
 
         # Add the items to the event
         for dotted_field, value in items_to_add:
@@ -197,3 +190,21 @@ class GenericAdder(Processor):
 
         if conflicting_fields:
             raise DuplicationError(self.name, conflicting_fields)
+
+    def _try_adding_from_db(self, event: dict, items_to_add: list, rule: GenericAdderRule):
+        """Get the sub part of the value from the event using a regex pattern"""
+
+        value_to_check_in_db = get_dotted_field_value(event, rule.db_target)
+        match_with_value_in_db = rule.db_pattern.match(value_to_check_in_db)
+        if match_with_value_in_db:
+            # Get values to add from db table using the sub part
+            value_to_map = match_with_value_in_db.group(1).upper()
+            add_from_db = self._db_table.get(value_to_map, [])
+
+            if rule.db_destination_prefix:
+                for idx in range(len(add_from_db)):
+                    if not add_from_db[idx][0].startswith(rule.db_destination_prefix):
+                        add_from_db[idx][0] = f"{rule.db_destination_prefix}.{add_from_db[idx][0]}"
+
+            for item in add_from_db:
+                items_to_add.append(item)

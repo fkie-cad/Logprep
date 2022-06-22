@@ -214,6 +214,7 @@ class GenericAdderRule(Rule):
                 )
                 if not isinstance(generic_adder_cfg[field], (str, list)):
                     raise InvalidGenericAdderDefinition(error_msg)
-                if isinstance(generic_adder_cfg[field], list):
-                    if not all(isinstance(item, str) for item in generic_adder_cfg[field]):
-                        raise InvalidGenericAdderDefinition(error_msg)
+                if isinstance(generic_adder_cfg[field], list) and not all(
+                    isinstance(item, str) for item in generic_adder_cfg[field]
+                ):
+                    raise InvalidGenericAdderDefinition(error_msg)
