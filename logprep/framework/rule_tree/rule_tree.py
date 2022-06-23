@@ -28,12 +28,12 @@ class RuleTree:
         @property
         def number_of_matches(self):
             """Returns the sum of all rule matches"""
-            return np.sum([rule.number_of_matches for rule in self.rules])  # pylint: disable=not-an-iterable
+            return np.sum([rule.number_of_matches for rule in self.rules])
 
         @property
         def mean_processing_time(self):
             """Returns the mean of all rule mean processing times"""
-            return np.mean([rule.mean_processing_time for rule in self.rules])  # pylint: disable=not-an-iterable
+            return np.mean([rule.mean_processing_time for rule in self.rules])
 
     def __init__(self, root: Node = None, config_path: str = None):
         """Rule tree initialization function.

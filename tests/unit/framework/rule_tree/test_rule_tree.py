@@ -394,7 +394,8 @@ class TestRuleTree:
     def test_rule_tree_metrics_counts_number_of_rules(self):
         rule_tree = RuleTree()
         assert rule_tree.metrics.number_of_rules == 0
-        rule_tree.add_rule(PreDetectorRule._create_from_dict(
+        rule_tree.add_rule(
+            PreDetectorRule._create_from_dict(
                 {
                     "filter": "winlog: 123",
                     "pre_detector": {
@@ -405,7 +406,8 @@ class TestRuleTree:
                         "mitre": [],
                     },
                 }
-            ))
+            )
+        )
         assert rule_tree.metrics.number_of_rules == 1
 
     def test_rule_tree_metrics_number_of_matches_returns_number_of_all_rule_matches(self):
@@ -440,7 +442,9 @@ class TestRuleTree:
         rule_tree.add_rule(rule_two)
         assert rule_tree.metrics.number_of_matches == 1 + 2
 
-    def test_rule_tree_metrics_mean_processing_time_returns_mean_of_all_rule_mean_processing_times(self):
+    def test_rule_tree_metrics_mean_processing_time_returns_mean_of_all_rule_mean_processing_times(
+        self,
+    ):
         rule_tree = RuleTree()
         rule_one = PreDetectorRule._create_from_dict(
             {
