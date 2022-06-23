@@ -4,7 +4,7 @@ from typing import List
 
 from attr import define
 
-from logprep.abc.metric import Metric
+from logprep.framework.metric import Metric
 
 
 @define(kw_only=True)

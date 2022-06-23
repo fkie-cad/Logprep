@@ -8,7 +8,7 @@ from typing import Set, Optional
 from attr import define
 from ruamel.yaml import YAML
 
-from logprep.abc.metric import Metric, calculate_new_average
+from logprep.framework.metric import Metric, calculate_new_average
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
@@ -27,7 +27,6 @@ class Rule:
         number_of_matches: int = 0
         mean_processing_time: float = 0.0
         _mean_processing_time_sample_counter: int = 0
-        _do_not_expose = ["expose", "reset_statistics", "update_mean_processing_time"]
 
         def update_mean_processing_time(self, new_sample):
             """Updates the mean processing time of this rule"""
