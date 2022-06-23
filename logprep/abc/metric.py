@@ -1,44 +1,71 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
 import functools
 import operator
-from attr import define
+
+from attr import define, asdict
+
+
+def is_public(attribute, _):
+    """If a attribute name starts with an underscore it is considered private"""
+    return not attribute.name.startswith("_")
+
+
+def is_writable(attribute):
+    """Checks if an attribute is of type property and has a setter method"""
+    return isinstance(attribute, property) and attribute.fset is not None
+
+
+def get_exposable_metrics(metric_object):
+    """Retrieves exposable attributes by checking if they are public"""
+    dic = asdict(metric_object, filter=is_public)
+    all_attributes = vars(type(metric_object)).items()
+    # include properties as they are not part of asdict
+    dic.update({n: p.__get__(metric_object) for n, p in all_attributes if isinstance(p, property)})
+    return dic
+
+
+def get_settable_metrics(metric_object):
+    """Retrieves writable attributes by checking if they are public and have a setter method"""
+    dic = asdict(metric_object, filter=is_public)
+    all_attributes = vars(type(metric_object)).items()
+    # include properties as they are not part of asdict
+    dic.update({n: p.__get__(metric_object) for n, p in all_attributes if is_writable(p)})
+    return dic
 
 
 @define(kw_only=True)
 class Metric:
     """Base Metric class to track and expose statistics about logprep"""
+
     _labels: dict
     _prefix: str = "logprep_"
-    _do_not_expose = ["expose", "reset_statistics"]
 
     def expose(self):
         """Iterates and collects all metrics and linked metrics in a common list."""
         exp = []
-        for attribute in dir(self):
-            if not attribute.startswith("_") and attribute not in self._do_not_expose:
-                attribute_value = self.__getattribute__(attribute)
-                if isinstance(attribute_value, list):
-                    child_metrics = [value.expose() for value in attribute_value]
-                    exp.extend(functools.reduce(operator.iconcat, child_metrics, []))
-                else:
-                    labels = [":".join(item) for item in self._labels.items()]
-                    labels = ','.join(labels)
-                    metric_key = f"{self._prefix}{attribute}"
-                    exp.append(f"{metric_key} {labels} {attribute_value}")
+        for attribute in get_exposable_metrics(self):
+            attribute_value = self.__getattribute__(attribute)
+            if isinstance(attribute_value, list):
+                child_metrics = [value.expose() for value in attribute_value]
+                exp.extend(functools.reduce(operator.iconcat, child_metrics, []))
+            else:
+                labels = [":".join(item) for item in self._labels.items()]
+                labels = ",".join(labels)
+                metric_key = f"{self._prefix}{attribute}"
+                exp.append(f"{metric_key} {labels} {attribute_value}")
         return exp
 
     def reset_statistics(self):
         """Resets the statistics of self and children to 0"""
-        for attribute in dir(self):
-            if not attribute.startswith("_"):
-                attribute_value = self.__getattribute__(attribute)
-                if isinstance(attribute_value, list):
-                    attribute_value = [child.reset_statistics() for child in attribute_value]
-                if isinstance(attribute_value, int):
-                    attribute_value = 0
-                if isinstance(attribute_value, float):
-                    attribute_value = 0.0
-                self.__setattr__(attribute, attribute_value)
+        for attribute in get_settable_metrics(self):
+            attribute_value = self.__getattribute__(attribute)
+            if isinstance(attribute_value, list):
+                attribute_value = [child.reset_statistics() for child in attribute_value]
+            if isinstance(attribute_value, int):
+                attribute_value = 0
+            if isinstance(attribute_value, float):
+                attribute_value = 0.0
+            self.__setattr__(attribute, attribute_value)
         return self
 
 

@@ -45,7 +45,7 @@ class Rule:
         self._special_fields = None
         self.file_name = None
         self._tests = []
-        self.metrics = self.RuleMetrics(_labels={"type": "rule"})
+        self.metrics = self.RuleMetrics(labels={"type": "rule"})
 
     @abstractmethod
     def __eq__(self, other: "Rule"):
