@@ -81,8 +81,8 @@ class TestLabeler(BaseProcessorTestCase):
             specific_rule.add_parent_labels_from_schema(schema)
         self.object._specific_tree.add_rule(specific_rule, self.logger)
         self.object.ps.setup_rules(
-            [None] * self.object._generic_tree.rule_counter
-            + [None] * self.object._specific_tree.rule_counter
+            [None] * self.object._generic_tree.metrics.number_of_rules
+            + [None] * self.object._specific_tree.metrics.number_of_rules
         )
 
     def test_process_adds_labels_to_event(self):

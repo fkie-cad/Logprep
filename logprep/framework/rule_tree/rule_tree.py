@@ -5,6 +5,10 @@ from json import load
 
 from logging import Logger
 
+import numpy as np
+from attr import define, Factory
+
+from logprep.framework.metric import Metric
 from logprep.processor.base.rule import Rule
 
 from logprep.framework.rule_tree.node import Node
@@ -13,6 +17,23 @@ from logprep.framework.rule_tree.rule_parser import RuleParser
 
 class RuleTree:
     """Represent a set of rules using a rule tree model."""
+
+    @define(kw_only=True)
+    class RuleTreeMetrics(Metric):
+        """Tracks statistics about the current rule"""
+
+        number_of_rules: int = 0
+        rules: List[Rule.RuleMetrics] = Factory(list)
+
+        @property
+        def number_of_matches(self):
+            """Returns the sum of all rule matches"""
+            return np.sum([rule.number_of_matches for rule in self.rules])
+
+        @property
+        def mean_processing_time(self):
+            """Returns the mean of all rule mean processing times"""
+            return np.mean([rule.mean_processing_time for rule in self.rules])
 
     def __init__(self, root: Node = None, config_path: str = None):
         """Rule tree initialization function.
@@ -29,10 +50,10 @@ class RuleTree:
             Path to the optional configuration file that contains the new rule tree's configuration.
 
         """
-        self.rule_counter = 0
         self._rule_mapping = {}
         self._config_path = config_path
         self._setup()
+        self.metrics = self.RuleTreeMetrics(labels={"type": "rule"})
 
         if root:
             self._root = root
@@ -82,13 +103,14 @@ class RuleTree:
             )
             return
 
-        self.rule_counter += 1
+        self.metrics.number_of_rules += 1
 
         for parsed_rule in parsed_rule_list:
             end_node = self._add_parsed_rule(parsed_rule)
             end_node.matching_rules.append(rule)
 
-        self._rule_mapping[rule] = self.rule_counter - 1
+        self._rule_mapping[rule] = self.metrics.number_of_rules - 1
+        self.metrics.rules.append(rule.metrics)
 
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.

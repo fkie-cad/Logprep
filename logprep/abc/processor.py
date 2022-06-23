@@ -187,16 +187,19 @@ class Processor(ABC):
                 for rule in rules:
                     self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):
+            number_specific_rules = self._specific_tree.metrics.number_of_rules
             self._logger.debug(
-                f"{self.describe()} loaded {self._specific_tree.rule_counter} "
+                f"{self.describe()} loaded {number_specific_rules} "
                 f"specific rules ({current_process().name})"
             )
+            number_generic_rules = self._generic_tree.metrics.number_of_rules
             self._logger.debug(
-                f"{self.describe()} loaded {self._generic_tree.rule_counter} generic rules "
+                f"{self.describe()} loaded {number_generic_rules} generic rules "
                 f"generic rules ({current_process().name})"
             )
         self.ps.setup_rules(
-            [None] * self._generic_tree.rule_counter + [None] * self._specific_tree.rule_counter
+            [None] * self._generic_tree.metrics.number_of_rules
+            + [None] * self._specific_tree.metrics.number_of_rules
         )
 
     @staticmethod
