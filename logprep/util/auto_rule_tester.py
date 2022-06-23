@@ -25,6 +25,8 @@ from ruamel.yaml import YAML, YAMLError
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.processor import PreDetector
+from logprep.processor.pseudonymizer.processor import Pseudonymizer
+from logprep.processor.list_comparison.processor import ListComparison
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
 from logprep.abc import Processor
@@ -353,6 +355,13 @@ class AutoRuleTester:
             processor.add_rules_from_directory(self._empty_rules_dirs, [])
         elif rule_type == "generic_rules":
             processor.add_rules_from_directory([], self._empty_rules_dirs)
+        self._do_processor_specific_setup(processor)
+
+    def _do_processor_specific_setup(self, processor: Processor):
+        if isinstance(processor, Pseudonymizer):
+            processor._replace_regex_keywords_by_regex_expression()
+        elif isinstance(processor, ListComparison):
+            processor._init_rules_list_comparison()
 
     def _prepare_test_eval(
         self, processor: Processor, rule_dict: dict, rule_type: str, temp_rule_path: str
