@@ -157,7 +157,7 @@ class Pseudonymizer(Processor):
             max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
         )
         if self._config.tld_lists is not None:
-            self._tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_list)
+            self._tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_lists)
         else:
             self._tld_extractor = TLDExtract()
         self._load_regex_mapping(self._config.regex_mapping)
