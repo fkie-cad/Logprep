@@ -20,7 +20,7 @@ class RuleTree:
 
     @define(kw_only=True)
     class RuleTreeMetrics(Metric):
-        """Tracks statistics about the current rule"""
+        """Tracks statistics about the current rule tree"""
 
         number_of_rules: int = 0
         rules: List[Rule.RuleMetrics] = Factory(list)
@@ -28,12 +28,12 @@ class RuleTree:
         @property
         def number_of_matches(self):
             """Returns the sum of all rule matches"""
-            return np.sum([rule.number_of_matches for rule in self.rules])
+            return np.sum([rule.number_of_matches for rule in self.rules])  # pylint: disable=not-an-iterable
 
         @property
         def mean_processing_time(self):
             """Returns the mean of all rule mean processing times"""
-            return np.mean([rule.mean_processing_time for rule in self.rules])
+            return np.mean([rule.mean_processing_time for rule in self.rules])  # pylint: disable=not-an-iterable
 
     def __init__(self, root: Node = None, config_path: str = None):
         """Rule tree initialization function.
@@ -110,7 +110,7 @@ class RuleTree:
             end_node.matching_rules.append(rule)
 
         self._rule_mapping[rule] = self.metrics.number_of_rules - 1
-        self.metrics.rules.append(rule.metrics)
+        self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member
 
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.
@@ -140,10 +140,9 @@ class RuleTree:
             if current_node.has_child_with_expression(expression):
                 current_node = current_node.get_child_with_expression(expression)
                 continue
-            else:
-                new_node = Node(expression)
-                current_node.add_child(new_node)
-                current_node = new_node
+            new_node = Node(expression)
+            current_node.add_child(new_node)
+            current_node = new_node
 
         return current_node
 
@@ -273,7 +272,7 @@ class RuleTree:
         rules: List[Rule]
         """
 
-        return [rule for rule in self._rule_mapping]
+        return list(self._rule_mapping)
 
     @property
     def rules(self):  # pylint: disable=missing-docstring

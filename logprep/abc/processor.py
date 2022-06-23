@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 
 from attr import define, field, validators
 
-
+from logprep.framework.metric import Metric, calculate_new_average
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
 
@@ -36,11 +36,43 @@ class Processor(ABC):
         tree_config: Optional[str] = field(default=None, validator=[file_validator])
         """ Path to a JSON file with a valid rule tree configuration. """
 
+    @define(kw_only=True)
+    class ProcessorMetrics(Metric):
+        """Tracks statistics about this processor"""
+
+        number_of_processed_events: int = 0
+        mean_processing_time_per_event: float = 0.0
+        _mean_processing_time_sample_counter: int = 0
+        number_of_warnings: int = 0
+        number_of_errors: int = 0
+        generic_rule_tree: RuleTree.RuleTreeMetrics
+        specific_rule_tree: RuleTree.RuleTreeMetrics
+
+        def update_mean_processing_time_per_event(self, new_sample):
+            """Updates the mean processing time per event"""
+            new_avg = calculate_new_average(
+                self.mean_processing_time_per_event,
+                new_sample,
+                self._mean_processing_time_sample_counter,
+            )
+            self.mean_processing_time_per_event = new_avg
+
+        @property
+        def number_of_generic_rule_matches(self):
+            """Returns the number of matches of the generic rule tree"""
+            return self.generic_rule_tree.number_of_matches
+
+        @property
+        def number_of_specific_rule_matches(self):
+            """Returns the number of matches of the specific rule tree"""
+            return self.specific_rule_tree.number_of_matches
+
     __slots__ = [
         "name",
         "rule_class",
         "ps",
         "has_custom_tests",
+        "metrics",
         "_logger",
         "_event",
         "_specific_tree",
@@ -74,6 +106,11 @@ class Processor(ABC):
         self.add_rules_from_directory(
             generic_rules_dirs=self._config.generic_rules,
             specific_rules_dirs=self._config.specific_rules,
+        )
+        self.metrics = self.ProcessorMetrics(
+            labels={"type": "processor"},
+            generic_rule_tree=self._generic_tree.metrics,
+            specific_rule_tree=self._specific_tree.metrics,
         )
 
     def __repr__(self):
@@ -148,6 +185,7 @@ class Processor(ABC):
             specific_tree=self._specific_tree,
             callback=self._apply_rules,
             processor_stats=self.ps,
+            processor_metrics=self.metrics,
         )
 
     @abstractmethod

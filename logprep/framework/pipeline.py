@@ -214,19 +214,23 @@ class Pipeline:
                         self._store_extra_data(extra_data)
                 except ProcessingWarning as error:
                     self._logger.warning(
-                        f"A non-fatal error occurred for processor {processor.describe()} when processing an event: {error}"
+                        f"A non-fatal error occurred for processor {processor.describe()} "
+                        f"when processing an event: {error}"
                     )
 
                     self._tracker.add_warnings(error, processor)
+                    processor.metrics.number_of_warnings += 1
                 except ProcessingWarningCollection as error:
                     for warning in error.processing_warnings:
                         self._logger.warning(
-                            "A non-fatal error occurred for processor %s when processing an event: %s",
+                            "A non-fatal error occurred for processor %s "
+                            "when processing an event: %s",
                             processor.describe(),
                             warning,
                         )
 
                         self._tracker.add_warnings(warning, processor)
+                        processor.metrics.number_of_warnings += 1
 
                 if not event:
                     if self._logger.isEnabledFor(DEBUG):
@@ -246,6 +250,7 @@ class Pipeline:
             event.clear()  # 'delete' the event, i.e. no regular output
 
             self._tracker.add_errors(error, processor)
+            processor.metrics.number_of_errors += 1
         # pylint: enable=broad-except
 
     def _store_extra_data(self, extra_data: tuple):

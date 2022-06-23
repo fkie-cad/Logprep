@@ -328,3 +328,19 @@ class BaseProcessorTestCase(ABC):
             match=r"tree_config file '\/i\/am\/not\/a\/file\/path' does not exist",
         ):
             ProcessorFactory.create({"test instance": config}, self.logger)
+
+    def test_processor_metrics_counts_processed_events(self):
+        assert self.object.metrics.number_of_processed_events == 0
+        event = {}
+        self.object.process(event)
+        assert self.object.metrics.number_of_processed_events == 1
+
+    def test_processor_metrics_number_of_generic_rule_matches_returns_correct_number(self):
+        assert self.object.metrics.number_of_generic_rule_matches == 0
+        self.object.metrics.generic_rule_tree.rules[0].number_of_matches = 1
+        assert self.object.metrics.number_of_generic_rule_matches == 1
+
+    def test_processor_metrics_number_of_specific_rule_matches_returns_correct_number(self):
+        assert self.object.metrics.number_of_specific_rule_matches == 0
+        self.object.metrics.specific_rule_tree.rules[0].number_of_matches = 1
+        assert self.object.metrics.number_of_specific_rule_matches == 1
