@@ -2,9 +2,10 @@
 # pylint: disable=no-self-use
 from typing import List
 
+import numpy as np
 from attr import define
 
-from logprep.framework.metric import Metric
+from logprep.framework.metric import Metric, calculate_new_average
 
 
 @define(kw_only=True)
@@ -94,3 +95,12 @@ class TestMetric:
         assert mock_child_metric.combined_metric == 0
         assert mock_child_metric.calculated_metric == 0
         assert mock_parent_metric.more_data == 0
+
+    def test_calculate_new_average_returns_correct_result(self):
+        samples = [2, 4, 6, 8, 1, 3, 9]
+        current_average = 0
+        for i, next_sample in enumerate(samples):
+            current_average = calculate_new_average(current_average, next_sample, i)
+
+            real_mean = np.mean(samples[: i + 1])
+            assert current_average == real_mean

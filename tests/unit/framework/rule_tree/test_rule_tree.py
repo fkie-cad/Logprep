@@ -1,5 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+# pylint: disable=no-self-use
+# pylint: disable=line-too-long
 from logprep.filter.expression.filter_expression import Exists, StringFilterExpression
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -388,3 +390,84 @@ class TestRuleTree:
         assert len(rules_from_rule_tree) == 3
         for rule in rules:
             assert rule in rules_from_rule_tree
+
+    def test_rule_tree_metrics_counts_number_of_rules(self):
+        rule_tree = RuleTree()
+        assert rule_tree.metrics.number_of_rules == 0
+        rule_tree.add_rule(PreDetectorRule._create_from_dict(
+                {
+                    "filter": "winlog: 123",
+                    "pre_detector": {
+                        "id": 1,
+                        "title": "1",
+                        "severity": "0",
+                        "case_condition": "directly",
+                        "mitre": [],
+                    },
+                }
+            ))
+        assert rule_tree.metrics.number_of_rules == 1
+
+    def test_rule_tree_metrics_number_of_matches_returns_number_of_all_rule_matches(self):
+        rule_tree = RuleTree()
+        rule_one = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 123",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        rule_one.metrics.number_of_matches = 1
+        rule_two = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 123 AND xfoo: bar",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        rule_two.metrics.number_of_matches = 2
+        rule_tree.add_rule(rule_one)
+        rule_tree.add_rule(rule_two)
+        assert rule_tree.metrics.number_of_matches == 1 + 2
+
+    def test_rule_tree_metrics_mean_processing_time_returns_mean_of_all_rule_mean_processing_times(self):
+        rule_tree = RuleTree()
+        rule_one = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 123",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        rule_one.metrics.update_mean_processing_time(1)
+        rule_two = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 123 AND xfoo: bar",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        rule_two.metrics.update_mean_processing_time(2)
+        rule_tree.add_rule(rule_one)
+        rule_tree.add_rule(rule_two)
+        assert rule_tree.metrics.mean_processing_time == 1.5
