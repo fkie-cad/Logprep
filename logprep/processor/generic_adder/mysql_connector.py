@@ -2,12 +2,32 @@
 
 import time
 from logging import Logger
+from typing import Optional
 
+import mysql
 import mysql.connector as db
 
 
 class MySQLConnector:
     """Used to connect to a MySQL database and to retrieve data from a table if it has changed."""
+
+    connection: mysql.connector.MySQLConnection
+
+    target_column: str
+
+    _add_target_column: bool
+
+    table_name: str
+
+    _timer: int
+
+    _last_check: float
+
+    _last_table_checksum: Optional[int]
+
+    _logger: Logger
+
+    _cursor: mysql.connector.connection.CursorBase
 
     def __init__(self, sql_config: dict, logger: Logger):
         """Initialize the MySQLConnector.
@@ -46,7 +66,7 @@ class MySQLConnector:
         self._last_check = 0
         self._last_table_checksum = None
 
-    def check_change(self) -> bool:
+    def has_changed(self) -> bool:
         """Check if a configured SQL table has changed.
 
         The checksum of the table is used to check if a table has changed. The check is only

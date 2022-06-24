@@ -108,9 +108,9 @@ class GenericAdder(Processor):
 
     rule_class = GenericAdderRule
 
-    __slots__ = ["_db_connector"]
+    __slots__ = ["_db_connector", "_db_table"]
 
-    db_table: dict = None
+    _db_table: dict
     """Dict containing table from SQL database"""
 
     _db_connector: MySQLConnector
@@ -134,9 +134,9 @@ class GenericAdder(Processor):
         sql_config = configuration.sql_config
         self._db_connector = MySQLConnector(sql_config, logger) if sql_config else None
 
-        if GenericAdder.db_table is None:
-            GenericAdder.db_table = self._db_connector.get_data() if self._db_connector else None
-        self._db_table = GenericAdder.db_table
+        if GenericAdder._db_table is None:
+            GenericAdder._db_table = self._db_connector.get_data() if self._db_connector else None
+        self._db_table = GenericAdder._db_table
 
     def _apply_rules(self, event: dict, rule: GenericAdderRule):
         """Apply a matching generic adder rule to the event.
@@ -162,7 +162,7 @@ class GenericAdder(Processor):
             Raises if an addition would overwrite an existing field or value.
         """
 
-        if self._db_connector and self._db_connector.check_change():
+        if self._db_connector and self._db_connector.has_changed():
             self._db_table = self._db_connector.get_data()
 
         conflicting_fields = []
