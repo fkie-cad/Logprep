@@ -5,6 +5,7 @@ They can be multi-processed.
 
 """
 import json
+
 # pylint: disable=logging-fstring-interpolation
 from ctypes import c_bool, c_double, c_ulonglong
 from logging import DEBUG, INFO, NOTSET, Handler, Logger
