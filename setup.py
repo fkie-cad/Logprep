@@ -5,12 +5,9 @@ from setuptools import setup, find_packages
 
 import versioneer
 
-with open("requirements.txt", encoding="utf-8") as f:
+with open("requirements.in", encoding="utf-8") as f:
     requirements = f.read().splitlines()
-    requirements = [requirement for requirement in requirements if not requirement.startswith("#")]
 
-
-# read the contents of your README file
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
