@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -32,7 +33,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
         "max_cached_pseudonyms": 1000000,
         "max_caching_days": 1,
-        "tld_lists": [TLD_LIST],
     }
 
     def setup_method(self) -> None:
@@ -92,9 +92,12 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert len(pseudonyms) == 1 and set(pseudonyms[0]) == {"pseudonym", "origin"}
 
     def test_init_tld_extractor_uses_file(self):
-        self.object._init_tld_extractor()
-        assert len(self.object._tld_extractor.suffix_list_urls) == 1
-        assert self.object._tld_extractor.suffix_list_urls[0].endswith(
+        config = deepcopy(self.CONFIG)
+        config["tld_lists"] = [TLD_LIST]
+        object_with_tld_list = ProcessorFactory.create({"pseudonymizer": config}, self.logger)
+        object_with_tld_list._init_tld_extractor()
+        assert len(object_with_tld_list._tld_extractor.suffix_list_urls) == 1
+        assert object_with_tld_list._tld_extractor.suffix_list_urls[0].endswith(
             "tests/testdata/mock_external/tld_list.dat",
         )
 
