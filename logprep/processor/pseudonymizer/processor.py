@@ -24,7 +24,8 @@ Example
         regex_mapping: /path/to/regex_mapping.json
         max_cached_pseudonyms: 1000000
         max_caching_days: 1
-        tld_list: /path/to/tld_list.dat
+        tld_lists:
+            -/path/to/tld_list.dat
 """
 import sys
 import datetime
@@ -116,7 +117,7 @@ class Pseudonymizer(Processor):
 
     _regex_mapping: dict
     _cache: Cache
-    _tld_list: str
+    _tld_lists: List[str]
 
     pseudonyms: list
     pseudonymized_fields: set
@@ -156,11 +157,14 @@ class Pseudonymizer(Processor):
         self._cache = Cache(
             max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
         )
+        self._init_tld_extractor()
+        self._load_regex_mapping(self._config.regex_mapping)
+
+    def _init_tld_extractor(self):
         if self._config.tld_lists is not None:
-            self._tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_list)
+            self._tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_lists)
         else:
             self._tld_extractor = TLDExtract()
-        self._load_regex_mapping(self._config.regex_mapping)
 
     def _load_regex_mapping(self, regex_mapping_path: str):
         with open(regex_mapping_path, "r", encoding="utf8") as file:
