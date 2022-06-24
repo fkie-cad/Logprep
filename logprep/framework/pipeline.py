@@ -4,16 +4,19 @@ Pipelines contain a list of processors that can be executed in order to process 
 They can be multi-processed.
 
 """
+import json
 # pylint: disable=logging-fstring-interpolation
 from ctypes import c_bool, c_double, c_ulonglong
 from logging import DEBUG, INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 from time import time
-from typing import List
+from typing import List, TYPE_CHECKING
 
-import json
+import numpy as np
+from attr import define, Factory
 
 from logprep.connector.connector_factory import ConnectorFactory
+from logprep.framework.metric import Metric
 from logprep.input.input import (
     CriticalInputError,
     FatalInputError,
@@ -27,6 +30,9 @@ from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.processor_stats import StatusTracker, StatusLoggerCollection
 from logprep.util.time_measurement import TimeMeasurement
+
+if TYPE_CHECKING:
+    from logprep.abc import Processor
 
 
 class PipelineError(BaseException):
@@ -50,6 +56,27 @@ class Pipeline:
 
     # pylint: disable=logging-not-lazy
     # Would require too much change in the tests.
+
+    @define(kw_only=True)
+    class PipelineMetrics(Metric):
+        """Tracks statistics about this pipeline"""
+
+        pipeline: List["Processor.ProcessorMetrics"] = Factory(list)
+
+        @property
+        def number_of_processed_events(self):
+            """Returns the sum of all processed events of all processors"""
+            return np.sum([processor.number_of_processed_events for processor in self.pipeline])
+
+        @property
+        def number_of_warnings(self):
+            """Returns the sum of all warnings of all processors"""
+            return np.sum([processor.number_of_warnings for processor in self.pipeline])
+
+        @property
+        def number_of_errors(self):
+            """Returns the sum of all errors of all processors"""
+            return np.sum([processor.number_of_errors for processor in self.pipeline])
 
     def __init__(
         self,
@@ -79,6 +106,7 @@ class Pipeline:
         self._processing_counter = counter
 
         self._tracker = StatusTracker(shared_dict, status_logger_config, status_logger, lock)
+        self.metrics = self.PipelineMetrics(labels={"type": "pipeline"})
 
     def _setup(self):
         self._create_logger()
@@ -93,6 +121,7 @@ class Pipeline:
         for entry in self._pipeline_config:
             processor = ProcessorFactory.create(entry, self._logger)
             self._pipeline.append(processor)
+            self.metrics.pipeline.append(processor.metrics)
             if self._logger.isEnabledFor(DEBUG):
                 self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
             self._pipeline[-1].setup()
