@@ -357,7 +357,8 @@ class AutoRuleTester:
             processor.add_rules_from_directory([], self._empty_rules_dirs)
         self._do_processor_specific_setup(processor)
 
-    def _do_processor_specific_setup(self, processor: Processor):
+    @staticmethod
+    def _do_processor_specific_setup(processor: Processor):
         if isinstance(processor, Pseudonymizer):
             processor._replace_regex_keywords_by_regex_expression()
         elif isinstance(processor, ListComparison):

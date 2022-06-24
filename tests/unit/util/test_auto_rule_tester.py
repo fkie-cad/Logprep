@@ -1,6 +1,8 @@
-# pylint: disable=missing-module-docstring
+# pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=protected-access
+# pylint: disable=no-self-use
+# pylint: disable=broad-except
 import logging
 from unittest import mock
 
@@ -12,8 +14,8 @@ from logprep.util.auto_rule_tester import AutoRuleTester
 LOGGER = logging.getLogger()
 
 
-@pytest.fixture
-def auto_rule_tester(tmp_path):
+@pytest.fixture(name="auto_rule_tester")
+def fixture_auto_rule_tester(tmp_path):
     config = {
         "process_count": 1,
         "timeout": 0.1,
@@ -34,7 +36,7 @@ def auto_rule_tester(tmp_path):
         ],
     }
     config_path = str(tmp_path / "logprep_config.yml")
-    with open(config_path, "w") as config_file:
+    with open(config_path, "w", encoding="utf-8") as config_file:
         safe_dump(config, config_file)
     return AutoRuleTester(config_path)
 
@@ -143,7 +145,8 @@ class TestAutoRuleTester:
             assert False, f"test_does_run_if_rules_exist has raised an exception: {error}"
 
     @mock.patch(
-        "logprep.processor.pseudonymizer.processor.Pseudonymizer._replace_regex_keywords_by_regex_expression"
+        "logprep.processor.pseudonymizer.processor.Pseudonymizer."
+        "_replace_regex_keywords_by_regex_expression"
     )
     def test_pseudonymizer_specific_setup_called_on_add_rules_from_directory(
         self, mock_replace_regex_keywords_by_regex_expression, auto_rule_tester
@@ -166,7 +169,7 @@ class TestAutoRuleTester:
         )
         auto_rule_tester._reset_trees(
             processor
-        )  # Called every time by auto tester before adding rules instead of creating a new processor
+        )  # Called every time by auto tester before adding rules
         mock_replace_regex_keywords_by_regex_expression.assert_called_once()
         auto_rule_tester._add_rules_from_directory(processor, "specific_rules")
         assert mock_replace_regex_keywords_by_regex_expression.call_count == 2
@@ -190,7 +193,7 @@ class TestAutoRuleTester:
         )
         auto_rule_tester._reset_trees(
             processor
-        )  # Called every time by auto tester before adding rules instead of creating a new processor
+        )  # Called every time by auto tester before adding rules instead
         mock_init_rules_list_comparison.assert_called_once()
         auto_rule_tester._add_rules_from_directory(processor, "specific_rules")
         assert mock_init_rules_list_comparison.call_count == 2
