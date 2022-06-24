@@ -231,7 +231,7 @@ To install Logprep you have three options:
 
 This option is recommended if you just want to use the latest release of logprep.
 ```
-pip install -i https://test.pypi.org/simple/ logprep
+pip install logprep
 ```
 
 **2. Option:** Installation via Git Repository:
@@ -324,13 +324,14 @@ PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
 
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
+The next sections all assume an installation via pip
 
 ### Verifying Configuration
 
 The following command can be executed to verify the configuration file without having to run Logprep:
 
 ```
-PYTHONPATH="." python3 logprep/run_logprep.py --verify-config $CONFIG
+logprep --verify-config $CONFIG
 ```
 
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 
@@ -341,13 +342,14 @@ Where `$CONFIG` is the path to a configuration file (see the documentation about
 The following command can be executed to validate the schema and the rules:
 
 ```
-PYTHONPATH="." python3 logprep/run_logprep.py --validate-rules $CONFIG
+logprep --validate-rules $CONFIG
 ```
 
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
-Alternatively, the validation can be performed directly:
+Alternatively, the validation can be performed directly. Assuming you have cloned the repository 
+from git. 
 
 ```
 PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py --labeling-schema $LABELING_SCHEMA --labeling-rules $LABELING_RULES

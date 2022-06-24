@@ -16,6 +16,7 @@
 * Automate processor configuration documentation
 * generalize config parameter for using tld lists to `tld_lists` for `domain_resolver`, `domain_label_extractor`, `pseudonymizer`
 * Add functionality to generic adder to add data from MySQL tables
+* refactor `domain_resolver` to make code cleaner and increase test coverage
 
 ## Bugfixes
 
