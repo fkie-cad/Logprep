@@ -1,12 +1,10 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
-import functools
-import operator
 
 from attr import define, asdict
 
 
 def is_public(attribute, _):
-    """If a attribute name starts with an underscore it is considered private"""
+    """If an attribute name starts with an underscore it is considered private"""
     return not attribute.name.startswith("_")
 
 
@@ -42,17 +40,17 @@ class Metric:
 
     def expose(self):
         """Iterates and collects all metrics and linked metrics in a common list."""
-        exp = []
+        exp = {}
         for attribute in get_exposable_metrics(self):
             attribute_value = self.__getattribute__(attribute)
             if isinstance(attribute_value, list):
-                child_metrics = [value.expose() for value in attribute_value]
-                exp.extend(functools.reduce(operator.iconcat, child_metrics, []))
+                for value in attribute_value:
+                    exp.update(value.expose())
             else:
                 labels = [":".join(item) for item in self._labels.items()]
                 labels = ",".join(labels)
                 metric_key = f"{self._prefix}{attribute}"
-                exp.append(f"{metric_key} {labels} {attribute_value}")
+                exp[f"{metric_key};{labels}"] = attribute_value
         return exp
 
     def reset_statistics(self):

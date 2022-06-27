@@ -41,12 +41,12 @@ class TestMetric:
         mock_metric.metric_b += 1
         mock_metric.calculated_metric += 2
         exposed_metrics = mock_metric.expose()
-        expected_metrics = [
-            "logprep_metric_a test:label 1",
-            "logprep_metric_b test:label 1.0",
-            "logprep_combined_metric test:label 2.0",
-            "logprep_calculated_metric test:label 4",
-        ]
+        expected_metrics = {
+            "logprep_metric_a;test:label": 1,
+            "logprep_metric_b;test:label": 1.0,
+            "logprep_combined_metric;test:label": 2.0,
+            "logprep_calculated_metric;test:label": 4,
+        }
         assert exposed_metrics == expected_metrics
 
     def test_expose_metric_ignores_private_attributes(self):
@@ -65,13 +65,13 @@ class TestMetric:
         mock_child_metric.calculated_metric += 2
 
         exposed_metrics = mock_parent_metric.expose()
-        expected_metrics = [
-            "logprep_metric_a type:child 1",
-            "logprep_metric_b type:child 1.0",
-            "logprep_combined_metric type:child 2.0",
-            "logprep_calculated_metric type:child 4",
-            "logprep_more_data type:parent 1",
-        ]
+        expected_metrics = {
+            "logprep_metric_a;type:child": 1,
+            "logprep_metric_b;type:child": 1.0,
+            "logprep_combined_metric;type:child": 2.0,
+            "logprep_calculated_metric;type:child": 4,
+            "logprep_more_data;type:parent": 1,
+        }
         assert exposed_metrics == expected_metrics
 
     def test_resets_statistic_sets_everything_to_zero(self):
