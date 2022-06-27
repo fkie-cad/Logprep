@@ -18,6 +18,7 @@ from attr import define, Factory
 
 from logprep.connector.connector_factory import ConnectorFactory
 from logprep.framework.metric import Metric
+from logprep.framework.metric_exposer import MetricExposer
 from logprep.input.input import (
     CriticalInputError,
     FatalInputError,
@@ -63,6 +64,7 @@ class Pipeline:
         """Tracks statistics about this pipeline"""
 
         pipeline: List["Processor.ProcessorMetrics"] = Factory(list)
+        kafka_offset: int = 0
 
         @property
         def number_of_processed_events(self):
@@ -107,6 +109,9 @@ class Pipeline:
         self._processing_counter = counter
 
         self._tracker = StatusTracker(shared_dict, status_logger_config, status_logger, lock)
+        self._metrics_exposer = MetricExposer(
+            status_logger_config, status_logger, shared_dict, lock
+        )
         self.metrics = self.PipelineMetrics(labels={"type": "pipeline"})
 
     def _setup(self):
@@ -189,10 +194,12 @@ class Pipeline:
         event = {}
         try:
             self._tracker.print_aggregate()
+            self._metrics_exposer.expose(self.metrics)
             event = self._input.get_next(self._timeout)
 
             try:
                 self._tracker.kafka_offset = self._input.current_offset
+                self.metrics = self._input.current_offset
             except AttributeError:
                 pass
 

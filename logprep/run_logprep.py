@@ -13,7 +13,6 @@ from typing import Optional
 from colorama import Fore
 
 from logprep.processor.base.rule import Rule
-from logprep.processor.processor_factory import ProcessorFactory
 from logprep.runner import Runner
 from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.util.auto_rule_tester import AutoRuleTester
