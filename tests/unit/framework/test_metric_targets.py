@@ -182,7 +182,9 @@ class TestMetricFileTarget:
         metric_json = self.target._add_timestamp(metric_json)
         assert "meta" in metric_json
         assert "timestamp" in metric_json["meta"].keys()
-        assert isinstance(datetime.fromisoformat(metric_json["meta"]["timestamp"]), datetime)
+        assert isinstance(
+            datetime.strptime(metric_json["meta"]["timestamp"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
+        )
 
     def test_expose_preprocesses_metrics_and_prints_them_to_the_logger(self, caplog):
         metrics = Rule.RuleMetrics(labels={"type": "generic"})
