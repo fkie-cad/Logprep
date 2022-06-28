@@ -96,9 +96,13 @@ class DomainResolver(Processor):
         """Tracks statistics about the DomainResolver"""
 
         total_urls: int = 0
+        """Number of all resolved urls"""
         resolved_new: int = 0
+        """Number of urls that had to be resolved newly"""
         resolved_cached: int = 0
+        """Number of urls that were resolved from cache"""
         timeouts: int = 0
+        """Number of timeouts that occurred while resolving a url"""
 
     __slots__ = ["_domain_ip_map"]
 

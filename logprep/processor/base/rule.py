@@ -25,6 +25,7 @@ class Rule:
         """Tracks statistics about the current rule"""
 
         _number_of_matches: int = 0
+        """Tracks how often this rule matched regarding an event."""
         _mean_processing_time: float = 0.0
         _mean_processing_time_sample_counter: int = 0
 

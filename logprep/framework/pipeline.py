@@ -61,24 +61,26 @@ class Pipeline:
 
     @define(kw_only=True)
     class PipelineMetrics(Metric):
-        """Tracks statistics about this pipeline"""
+        """Tracks statistics about a pipeline"""
 
         pipeline: List["Processor.ProcessorMetrics"] = Factory(list)
+        """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
+        """The current offset of the kafka input reader"""
 
         @property
         def number_of_processed_events(self):
-            """Returns the sum of all processed events of all processors"""
+            """Sum of all processed events of all processors"""
             return np.sum([processor.number_of_processed_events for processor in self.pipeline])
 
         @property
         def number_of_warnings(self):
-            """Returns the sum of all warnings of all processors"""
+            """Sum of all warnings of all processors"""
             return np.sum([processor.number_of_warnings for processor in self.pipeline])
 
         @property
         def number_of_errors(self):
-            """Returns the sum of all errors of all processors"""
+            """Sum of all errors of all processors"""
             return np.sum([processor.number_of_errors for processor in self.pipeline])
 
     def __init__(

@@ -41,12 +41,18 @@ class Processor(ABC):
         """Tracks statistics about this processor"""
 
         number_of_processed_events: int = 0
+        """Number of events that were processed by the processor"""
         mean_processing_time_per_event: float = 0.0
+        """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
         number_of_warnings: int = 0
+        """Number of warnings that occurred while processing events"""
         number_of_errors: int = 0
+        """Number of errors that occurred while processing events"""
         generic_rule_tree: RuleTree.RuleTreeMetrics
+        """Tracker of the generic rule tree metrics"""
         specific_rule_tree: RuleTree.RuleTreeMetrics
+        """Tracker of the specific rule tree metrics"""
 
         def update_mean_processing_time_per_event(self, new_sample):
             """Updates the mean processing time per event"""

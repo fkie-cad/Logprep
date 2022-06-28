@@ -23,18 +23,20 @@ class RuleTree:
         """Tracks statistics about the current rule tree"""
 
         number_of_rules: int = 0
+        """Number of rules configured in the current rule tree"""
         rules: List[Rule.RuleMetrics] = Factory(list)
+        """List of rule metrics"""
 
         # pylint: disable=not-an-iterable
         # pylint: disable=protected-access
         @property
         def number_of_matches(self):
-            """Returns the sum of all rule matches"""
+            """Sum of all rule matches"""
             return np.sum([rule._number_of_matches for rule in self.rules])
 
         @property
         def mean_processing_time(self):
-            """Returns the mean of all rule mean processing times"""
+            """Mean of all rule mean processing times"""
             return np.mean([rule._mean_processing_time for rule in self.rules])
 
         # pylint: enable=not-an-iterable
