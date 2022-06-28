@@ -116,7 +116,7 @@ class DomainResolver(Processor):
         self.metrics = self.DomainResolverMetrics(
             labels={"type": "processor"},
             generic_rule_tree=self._generic_tree.metrics,
-            specific_rule_tree=self._specific_tree.metrics
+            specific_rule_tree=self._specific_tree.metrics,
         )
         self._domain_ip_map = {}
 
