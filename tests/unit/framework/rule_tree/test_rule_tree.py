@@ -424,7 +424,7 @@ class TestRuleTree:
                 },
             }
         )
-        rule_one.metrics.number_of_matches = 1
+        rule_one.metrics._number_of_matches = 1
         rule_two = PreDetectorRule._create_from_dict(
             {
                 "filter": "winlog: 123 AND xfoo: bar",
@@ -437,7 +437,7 @@ class TestRuleTree:
                 },
             }
         )
-        rule_two.metrics.number_of_matches = 2
+        rule_two.metrics._number_of_matches = 2
         rule_tree.add_rule(rule_one)
         rule_tree.add_rule(rule_two)
         assert rule_tree.metrics.number_of_matches == 1 + 2

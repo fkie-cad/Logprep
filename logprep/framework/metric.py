@@ -46,6 +46,8 @@ class Metric:
             if isinstance(attribute_value, list):
                 for value in attribute_value:
                     exp.update(value.expose())
+            elif isinstance(attribute_value, Metric):
+                exp.update(attribute_value.expose())
             else:
                 labels = [":".join(item) for item in self._labels.items()]
                 labels = ",".join(labels)

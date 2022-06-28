@@ -15,11 +15,11 @@ class PrometheusStatsExporter:
 
     def __init__(self, status_logger_config, application_logger):
         self._logger = application_logger
-        self._configuration = status_logger_config
+        self.configuration = status_logger_config
         self._port = 8000
 
         self._prepare_multiprocessing()
-        self._extract_port_from(self._configuration)
+        self._extract_port_from(self.configuration)
         self._set_up_metrics()
 
     def _prepare_multiprocessing(self):

@@ -24,16 +24,16 @@ class Rule:
     class RuleMetrics(Metric):
         """Tracks statistics about the current rule"""
 
-        number_of_matches: int = 0
-        mean_processing_time: float = 0.0
+        _number_of_matches: int = 0
+        _mean_processing_time: float = 0.0
         _mean_processing_time_sample_counter: int = 0
 
         def update_mean_processing_time(self, new_sample):
             """Updates the mean processing time of this rule"""
             new_avg = calculate_new_average(
-                self.mean_processing_time, new_sample, self._mean_processing_time_sample_counter
+                self._mean_processing_time, new_sample, self._mean_processing_time_sample_counter
             )
-            self.mean_processing_time = new_avg
+            self._mean_processing_time = new_avg
 
     special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields"]
 

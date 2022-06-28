@@ -8,6 +8,7 @@ from time import time
 from unittest import mock
 
 from logprep.framework.metric_exposer import MetricExposer
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
 from logprep.util.processor_stats import StatusLoggerCollection
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -83,18 +84,22 @@ class TestMetricExposer:
 
     def test_aggregate_metrics_combines_list_of_metrics_to_one(self):
         rule_metrics_one = Rule.RuleMetrics(labels={"type": "generic"})
-        rule_metrics_one.number_of_matches = 1
+        rule_metrics_one._number_of_matches = 1
         rule_metrics_one.update_mean_processing_time(1)
+        rule_tree_one = RuleTree.RuleTreeMetrics(labels={"type": "tree"}, rules=[rule_metrics_one])
         rule_metrics_two = Rule.RuleMetrics(labels={"type": "generic"})
-        rule_metrics_two.number_of_matches = 2
+        rule_metrics_two._number_of_matches = 2
         rule_metrics_two.update_mean_processing_time(2)
-        self.exposer._store_metrics(rule_metrics_one)
-        self.exposer._store_metrics(rule_metrics_two)
+        rule_tree_two = RuleTree.RuleTreeMetrics(labels={"type": "tree"}, rules=[rule_metrics_two])
+        self.exposer._store_metrics(rule_tree_one)
+        self.exposer._store_metrics(rule_tree_two)
         metrics = self.exposer._aggregate_metrics()
         expected_metrics = {
-            "logprep_number_of_matches;type:generic": 3,
-            "logprep_mean_processing_time;type:generic": 1.5,
+            "logprep_number_of_rules;type:tree": 0,
+            "logprep_number_of_matches;type:tree": 3,
+            "logprep_mean_processing_time;type:tree": 1.5,
         }
+
         assert metrics == expected_metrics
 
     def test_send_to_output_calls_expose_of_configured_targets(self):

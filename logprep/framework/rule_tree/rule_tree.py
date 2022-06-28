@@ -25,15 +25,19 @@ class RuleTree:
         number_of_rules: int = 0
         rules: List[Rule.RuleMetrics] = Factory(list)
 
+        # pylint: disable=not-an-iterable
+        # pylint: disable=protected-access
         @property
         def number_of_matches(self):
             """Returns the sum of all rule matches"""
-            return np.sum([rule.number_of_matches for rule in self.rules])
+            return np.sum([rule._number_of_matches for rule in self.rules])
 
         @property
         def mean_processing_time(self):
             """Returns the mean of all rule mean processing times"""
-            return np.mean([rule.mean_processing_time for rule in self.rules])
+            return np.mean([rule._mean_processing_time for rule in self.rules])
+        # pylint: enable=not-an-iterable
+        # pylint: enable=protected-access
 
     def __init__(self, root: Node = None, config_path: str = None):
         """Rule tree initialization function.

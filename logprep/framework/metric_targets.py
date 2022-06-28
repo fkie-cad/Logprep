@@ -1,4 +1,5 @@
 """This module implements different targets for the logprep metrics"""
+import datetime
 import json
 
 from logprep.util.helper import add_field_to
@@ -28,17 +29,26 @@ class MetricFileTarget(MetricTarget):
         self._file_logger = file_logger
 
     def expose(self, metrics):
-        # TODO: add timestamp to file target
-        metrics = self._convert_metrics_to_pretty_json(metrics)
-        self._file_logger.info(json.dumps(metrics))
+        metric_json = self._convert_metrics_to_pretty_json(metrics)
+        metric_json = self._add_timestamp(metric_json)
+        self._file_logger.info(json.dumps(metric_json))
 
-    def _convert_metrics_to_pretty_json(self, metrics):
+    @staticmethod
+    def _convert_metrics_to_pretty_json(metrics):
         metric_data = {}
         for key_labels, value in metrics.items():
             metric_name, labels = split_key_label_string(key_labels)
-            dotted_path = ".".join(labels.values()) + f".{metric_name}"
+            dotted_path = ".".join([f"{l[0]}.{l[1]}" for l in labels.items()]) + f".{metric_name}"
             add_field_to(metric_data, dotted_path, value)
         return metric_data
+
+    @staticmethod
+    def _add_timestamp(metric_json):
+        """Adds a timestamp to the metric data"""
+        if "meta" not in metric_json.keys():
+            metric_json["meta"] = {}
+        metric_json["meta"]["timestamp"] = datetime.datetime.now().isoformat()
+        return metric_json
 
 
 class PrometheusMetricTarget(MetricTarget):
@@ -56,3 +66,6 @@ class PrometheusMetricTarget(MetricTarget):
             if key not in self._prometheus_exporter.metrics.keys():
                 self._prometheus_exporter.create_new_metric_exporter(key, labels.keys())
             self._prometheus_exporter.metrics[key].labels(**labels).set(value)
+
+        interval = self._prometheus_exporter.configuration["period"]
+        self._prometheus_exporter.tracking_interval.labels(component="logprep").set(interval)

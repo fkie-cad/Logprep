@@ -4,12 +4,11 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 from multiprocessing import Lock
-from unittest import mock
 
 import numpy as np
 from prometheus_client import REGISTRY
 
-from logprep.processor.dropper.processor import Dropper
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.processor_stats import (
     ProcessorStats,
     StatsClassesController,
@@ -17,7 +16,6 @@ from logprep.util.processor_stats import (
     StatusLoggerCollection,
 )
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
-from logprep.processor.processor_factory import ProcessorFactory
 
 
 def validify_mean_proc_time_calculation(processor_stats, time_samples):
@@ -121,9 +119,7 @@ class TestStatusTracker:
             status_logger_config=stats_logger_config,
             status_logger=StatusLoggerCollection(
                 file_logger=logging.getLogger("test-file-metric-logger"),
-                prometheus_exporter=PrometheusStatsExporter(
-                    stats_logger_config, self.logger, ProcessorStats.metrics
-                ),
+                prometheus_exporter=PrometheusStatsExporter(stats_logger_config, self.logger),
             ),
             lock=Lock(),
         )
@@ -187,49 +183,6 @@ class TestStatusTracker:
             assert np.sum(processor.ps.aggr_data["matches_per_idx"]) == 0
             assert len(processor.ps.aggr_data["times_per_idx"]) == processor.ps.num_rules
             assert np.sum(processor.ps.aggr_data["times_per_idx"]) == 0
-
-    @mock.patch("prometheus_client.Gauge.labels")
-    def test_log_to_prometheus_exports_calls_gauge_labels(self, mock_labels):
-        metrics = {
-            "MultiprocessingPipeline-1": {"kafka_offset": 1, "processed": 123},
-            "MultiprocessingPipeline-2": {"kafka_offset": 3, "processed": 50},
-            "errors": 12,
-            "warnings": 13,
-            "processed": 37,
-            "error_types": {"A": 2, "B": 2},
-            "warning_types": {"A": 2, "B": 2},
-            "Dropper1": {
-                "processed": 10,
-                "matches": 11,
-                "errors": 12,
-                "warnings": 13,
-                "mean_matches_per_rule": 1,
-                "avg_processing_time": 1,
-            },
-            "Dropper2": {
-                "processed": 20,
-                "matches": 21,
-                "errors": 22,
-                "warnings": 23,
-                "mean_matches_per_rule": 2,
-                "avg_processing_time": 2,
-            },
-            "timestamp": "2022-01-01T01:01:01.000001",
-        }
-
-        self.status_tracker._log_to_prometheus(ordered_data=metrics)
-        mock_labels.assert_has_calls([mock.call(component="pipeline"), mock.call().set(12)])
-        mock_labels.assert_has_calls([mock.call(component="pipeline"), mock.call().set(13)])
-        mock_labels.assert_has_calls([mock.call(component="pipeline"), mock.call().set(37)])
-        mock_labels.assert_has_calls([mock.call(component="Dropper1"), mock.call().set(10)])
-        mock_labels.assert_has_calls([mock.call(component="Dropper1"), mock.call().set(11)])
-        mock_labels.assert_has_calls([mock.call(component="Dropper1"), mock.call().set(12)])
-        mock_labels.assert_has_calls([mock.call(component="Dropper1"), mock.call().set(13)])
-        mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(20)])
-        mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(21)])
-        mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(22)])
-        mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(23)])
-        mock_labels.assert_has_calls([mock.call(component="logprep"), mock.call().set(10)])
 
     def test_add_per_processor_data_skips_excluded_processors(self):
         dropper1_expected_zero_matches = 0

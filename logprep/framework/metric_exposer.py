@@ -20,14 +20,24 @@ class MetricExposer:
         self._timer = Value(c_double, time() + self._print_period)
 
         self.output_targets = []
-        if status_logger_collection.file_logger:
+        if status_logger_collection and status_logger_collection.file_logger:
             target = MetricFileTarget(status_logger_collection.file_logger)
             self.output_targets.append(target)
-        if status_logger_collection.prometheus_exporter:
+        if status_logger_collection and status_logger_collection.prometheus_exporter:
             target = PrometheusMetricTarget(status_logger_collection.prometheus_exporter)
             self.output_targets.append(target)
 
     def expose(self, metrics):
+        """
+        Exposes the given metrics to the configured outputs. This is only done though once the
+        tracking interval has passed. Depending on the configuration the metrics will be either
+        exposed in an aggregated form, all multiprocessing pipelines will be combined to one
+        pipeline, or in an independent form, where each multiprocessing pipeline will be exposed
+        directly.
+        """
+        if not self.output_targets:
+            return
+
         self._store_metrics(metrics)
         if self._time_to_expose():
             if self._aggregate_processes:

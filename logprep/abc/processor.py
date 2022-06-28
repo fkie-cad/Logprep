@@ -57,16 +57,6 @@ class Processor(ABC):
             )
             self.mean_processing_time_per_event = new_avg
 
-        @property
-        def number_of_generic_rule_matches(self):
-            """Returns the number of matches of the generic rule tree"""
-            return self.generic_rule_tree.number_of_matches
-
-        @property
-        def number_of_specific_rule_matches(self):
-            """Returns the number of matches of the specific rule tree"""
-            return self.specific_rule_tree.number_of_matches
-
     __slots__ = [
         "name",
         "rule_class",
