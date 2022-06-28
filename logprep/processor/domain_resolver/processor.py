@@ -91,6 +91,15 @@ class DomainResolver(Processor):
         """If enabled adds debug information to the current event, for example if the event
         was retrieved from the cache or newly resolved, as well as the cache size."""
 
+    @define(kw_only=True)
+    class DomainResolverMetrics(Processor.ProcessorMetrics):
+        """Tracks statistics about the DomainResolver"""
+
+        total_urls: int = 0
+        resolved_new: int = 0
+        resolved_cached: int = 0
+        timeouts: int = 0
+
     __slots__ = ["_domain_ip_map"]
 
     _domain_ip_map: dict
@@ -104,7 +113,11 @@ class DomainResolver(Processor):
         logger: Logger,
     ):
         super().__init__(name=name, configuration=configuration, logger=logger)
-
+        self.metrics = self.DomainResolverMetrics(
+            labels={"type": "processor"},
+            generic_rule_tree=self._generic_tree.metrics,
+            specific_rule_tree=self._specific_tree.metrics
+        )
         self._domain_ip_map = {}
 
     @cached_property
@@ -124,8 +137,7 @@ class DomainResolver(Processor):
     def _tld_extractor(self):
         if self._config.tld_lists is not None:
             return TLDExtract(suffix_list_urls=self._config.tld_lists)
-        else:
-            return TLDExtract()
+        return TLDExtract()
 
     def _apply_rules(self, event, rule):
         domain_or_url = rule.source_url_or_domain
@@ -136,17 +148,17 @@ class DomainResolver(Processor):
         domain = self._tld_extractor(domain_or_url_str).fqdn
         if not domain:
             return
-        self.ps.increment_nested(self.name, "total_urls")
+        self.metrics.total_urls += 1
         if self._config.cache_enabled:
             hash_string = self._hasher.hash_str(domain, salt=self._config.hash_salt)
             requires_storing = self._cache.requires_storing(hash_string)
             if requires_storing:
                 resolved_ip = self._resolve_ip(domain, hash_string)
                 self._domain_ip_map.update({hash_string: resolved_ip})
-                self.ps.increment_nested(self.name, "resolved_new")
+                self.metrics.resolved_new += 1
             else:
                 resolved_ip = self._domain_ip_map.get(hash_string)
-                self.ps.increment_nested(self.name, "resolved_cache")
+                self.metrics.resolved_cached += 1
             self._add_resolve_infos_to_event(event, output_field, resolved_ip)
             if self._config.debug_cache:
                 self._store_debug_infos(event, requires_storing)
@@ -175,7 +187,7 @@ class DomainResolver(Processor):
         except (context.TimeoutError, OSError):
             if hash_string:
                 self._domain_ip_map[hash_string] = None
-            self.ps.increment_nested(self.name, "timeouts")
+            self.metrics.timeouts += 1
 
     def _store_debug_infos(self, event, requires_storing):
         event["resolved_ip_debug"] = {}
