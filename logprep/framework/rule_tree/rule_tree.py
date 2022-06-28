@@ -36,6 +36,7 @@ class RuleTree:
         def mean_processing_time(self):
             """Returns the mean of all rule mean processing times"""
             return np.mean([rule._mean_processing_time for rule in self.rules])
+
         # pylint: enable=not-an-iterable
         # pylint: enable=protected-access
 
