@@ -4,7 +4,6 @@
 import logging
 
 from logprep.processor.processor_factory import ProcessorFactory
-from logprep.util.processor_stats import StatsClassesController
 from logprep.util.time_measurement import TimeMeasurement
 
 
@@ -60,7 +59,6 @@ class TestTimeMeasurement:
         assert self.event.get("processing_times").get("pipeline") is not None
 
     def test_time_measurement_decorator_updates_processors_processing_time_statistic(self):
-        StatsClassesController.ENABLED = True
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
         TimeMeasurement.APPEND_TO_EVENT = False
 

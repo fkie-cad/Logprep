@@ -31,7 +31,7 @@ from logprep.processor.delete.processor import Delete
 from logprep.processor.delete.rule import DeleteRule
 from logprep.processor.processor_configuration import ProcessorConfiguration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.util.processor_stats import MetricTargets
+from logprep.framework.metrics.metric import MetricTargets
 
 
 class ConfigurationForTests:

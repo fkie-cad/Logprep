@@ -17,7 +17,7 @@ import numpy as np
 from attr import define, Factory
 
 from logprep.connector.connector_factory import ConnectorFactory
-from logprep.framework.metrics.metric import Metric
+from logprep.framework.metrics.metric import Metric, MetricTargets
 from logprep.framework.metrics.metric_exposer import MetricExposer
 from logprep.input.input import (
     CriticalInputError,
@@ -30,7 +30,6 @@ from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarni
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
-from logprep.util.processor_stats import MetricTargets
 from logprep.util.time_measurement import TimeMeasurement
 
 if TYPE_CHECKING:

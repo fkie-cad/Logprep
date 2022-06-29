@@ -1,4 +1,5 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
+from collections import namedtuple
 
 from attr import define, asdict
 
@@ -76,3 +77,6 @@ def calculate_new_average(current_average, next_sample, sample_counter):
     sample_counter += 1
     new_average = extended_average_multiple / sample_counter
     return new_average, sample_counter
+
+
+MetricTargets = namedtuple("MetricTargets", "file_exporter prometheus_exporter")

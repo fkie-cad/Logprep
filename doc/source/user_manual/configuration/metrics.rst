@@ -119,8 +119,8 @@ Example
     :linenos:
 
     metrics:
-      period: 10
       enabled: true
+      period: 10
       cumulative: true
       aggregate_processes: false
       measure_time:

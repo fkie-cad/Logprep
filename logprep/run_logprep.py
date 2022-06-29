@@ -12,17 +12,14 @@ from typing import Optional
 
 from colorama import Fore
 
+from logprep.framework.metrics.metric_targets import MetricFileTarget, PrometheusMetricTarget
 from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
 from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.util.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import print_fcolor
-from logprep.util.processor_stats import (
-    StatsClassesController,
-    MetricTargets,
-)
-from logprep.util.prometheus_exporter import PrometheusStatsExporter
+from logprep.framework.metrics.metric import MetricTargets
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement
@@ -31,45 +28,21 @@ DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
 
 
-def _get_metric_targets(config: dict, application_logger: Logger) -> MetricTargets:
+def _get_metric_targets(config: dict, logger: Logger) -> MetricTargets:
     metric_configs = config.get("metrics", {})
+
+    if not metric_configs.get("enabled", False):
+        return MetricTargets(None, None)
+
     target_configs = metric_configs.get("targets", [])
-
-    if not target_configs:
-        target_configs.append({"file": {}})
-
     file_exporter = None
     prometheus_exporter = None
     for target in target_configs:
         if "file" in target.keys():
-            file_config = target.get("file")
-            file_exporter = getLogger("Logprep-JSON-File-Logger")
-            file_exporter.handlers = []
-
-            log_path = file_config.get("path", "./logprep-metrics.jsonl")
-            Path(dirname(log_path)).mkdir(parents=True, exist_ok=True)
-            interval = file_config.get("rollover_interval", 60 * 60 * 24)
-            backup_count = file_config.get("backup_count", 10)
-            file_exporter.addHandler(
-                TimedRotatingFileHandler(
-                    log_path, when="S", interval=interval, backupCount=backup_count
-                )
-            )
-
+            file_exporter = MetricFileTarget.create(target.get("file"))
         if "prometheus" in target.keys():
-            multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR", "")
-            if multi_processing_dir == "":
-                application_logger.warning(
-                    "Prometheus Exporter was is deactivated because the"
-                    "mandatory environment variable "
-                    "'PROMETHEUS_MULTIPROC_DIR' is missing."
-                )
-            else:
-                prometheus_exporter = PrometheusStatsExporter(metric_configs, application_logger)
-                prometheus_exporter.run()
-
-    status_logger = MetricTargets(file_exporter, prometheus_exporter)
-    return status_logger
+            prometheus_exporter = PrometheusMetricTarget.create(metric_configs, logger)
+    return MetricTargets(file_exporter, prometheus_exporter)
 
 
 def _parse_arguments():
@@ -165,14 +138,12 @@ def main():
     if not args.disable_logging:
         metric_targets = _get_metric_targets(config, logger)
 
-    metric_config = config.get("metrics", {})
-    measure_time_config = metric_config.get("measure_time", {})
+    measure_time_config = config.get("metrics", {}).get("measure_time", {})
     TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)
     TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
-    StatsClassesController.ENABLED = metric_config.get("enabled", True)
 
     if logger.isEnabledFor(DEBUG):
-        logger.debug("Metric tracking enabled: %s", StatsClassesController.ENABLED)
+        logger.debug("Metric export enabled: %s", config.get("metrics", {}).get("enabled", False))
         logger.debug("Time measurement enabled: %s", TimeMeasurement.TIME_MEASUREMENT_ENABLED)
         logger.debug("Config path: %s", args.config)
 
@@ -192,7 +163,6 @@ def main():
 
     if args.auto_test:
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
-        StatsClassesController.ENABLED = False
         auto_rule_tester = AutoRuleTester(args.config)
         auto_rule_tester.run()
     elif args.dry_run:

@@ -9,7 +9,7 @@ from pytest import raises
 from logprep.framework.pipeline import MultiprocessingPipeline
 from logprep.framework.pipeline_manager import PipelineManager, MustSetConfigurationFirstError
 from logprep.util.configuration import Configuration
-from logprep.util.processor_stats import MetricTargets
+from logprep.framework.metrics.metric import MetricTargets
 from tests.testdata.metadata import path_to_config
 from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub, AssertEmitsLogMessages
 

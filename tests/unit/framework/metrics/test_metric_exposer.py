@@ -11,7 +11,7 @@ from unittest import mock
 from logprep.framework.metrics.metric_exposer import MetricExposer
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
-from logprep.util.processor_stats import MetricTargets
+from logprep.framework.metrics.metric import MetricTargets
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 
