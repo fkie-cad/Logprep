@@ -5,20 +5,20 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 import copy
-from os.path import join
 
 import pytest
+from pytest import raises
+
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
-from logprep.processor.labeler.labeling_schema import InvalidLabelingSchemaFileError, LabelingSchema
+from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelingRule
 from logprep.processor.processor_factory import ProcessorFactory
-from pytest import raises
-from tests.testdata.metadata import path_to_schema, path_to_schema2, path_to_testdata
+from tests.testdata.metadata import path_to_schema, path_to_schema2
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
-@pytest.fixture()
-def reporter_schema():
+@pytest.fixture(name="reporter_schema")
+def create_reporter_schema():
     schema = LabelingSchema()
     schema.ingest_schema(
         {
@@ -31,8 +31,8 @@ def reporter_schema():
     return schema
 
 
-@pytest.fixture()
-def reporter_schema_expanded():
+@pytest.fixture(name="reporter_schema_expanded")
+def create_reporter_schema_expanded():
     expanded_schema = LabelingSchema()
     expanded_schema.ingest_schema(
         {
@@ -48,8 +48,8 @@ def reporter_schema_expanded():
     return expanded_schema
 
 
-@pytest.fixture()
-def empty_schema():
+@pytest.fixture(name="empty_schema")
+def create_empty_schema():
     empty_schema = LabelingSchema()
     empty_schema.ingest_schema({})
     return empty_schema
@@ -80,10 +80,6 @@ class TestLabeler(BaseProcessorTestCase):
         if schema:
             specific_rule.add_parent_labels_from_schema(schema)
         self.object._specific_tree.add_rule(specific_rule, self.logger)
-        self.object.ps.setup_rules(
-            [None] * self.object._generic_tree.metrics.number_of_rules
-            + [None] * self.object._specific_tree.metrics.number_of_rules
-        )
 
     def test_process_adds_labels_to_event(self):
         rule = {"filter": "applyrule", "label": {"reporter": ["windows"]}}

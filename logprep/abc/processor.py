@@ -11,11 +11,9 @@ from attr import define, field, validators
 from logprep.framework.metrics.metric import Metric, calculate_new_average
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
-
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
-from logprep.util.processor_stats import ProcessorStats
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import file_validator, list_of_dirs_validator
 
@@ -82,7 +80,6 @@ class Processor(ABC):
 
     name: str
     rule_class: Rule
-    ps: ProcessorStats
     has_custom_tests: bool
     _config: Config
     _logger: Logger
@@ -97,7 +94,6 @@ class Processor(ABC):
         self.has_custom_tests = False
         self.name = name
         self._logger = logger
-        self.ps = ProcessorStats()
         self._specific_tree = RuleTree(config_path=self._config.tree_config)
         self._generic_tree = RuleTree(config_path=self._config.tree_config)
         self.add_rules_from_directory(
@@ -181,7 +177,6 @@ class Processor(ABC):
             generic_tree=self._generic_tree,
             specific_tree=self._specific_tree,
             callback=self._apply_rules,
-            processor_stats=self.ps,
             processor_metrics=self.metrics,
         )
 
@@ -232,10 +227,6 @@ class Processor(ABC):
                 f"{self.describe()} loaded {number_generic_rules} generic rules "
                 f"generic rules ({current_process().name})"
             )
-        self.ps.setup_rules(
-            [None] * self._generic_tree.metrics.number_of_rules
-            + [None] * self._specific_tree.metrics.number_of_rules
-        )
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:

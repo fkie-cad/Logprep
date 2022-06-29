@@ -1,26 +1,24 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=protected-access
 
-from copy import deepcopy
 import json
 from abc import ABC
+from copy import deepcopy
 from logging import getLogger
 from typing import Iterable
-
 from unittest import mock
 
 import pytest
 
 from logprep.abc.processor import Processor
-from logprep.processor.processor_factory import ProcessorFactory
-
-from logprep.util.json_handling import list_json_files_in_directory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.processor_factory import ProcessorFactory
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
+from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.processor.processor_factory_error import InvalidConfigurationError
 
 
 class BaseProcessorTestCase(ABC):
@@ -103,15 +101,15 @@ class BaseProcessorTestCase(ABC):
         assert isinstance(self.object, Processor)
 
     def test_process(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "event_id": "1234",
             "message": "user root logged in",
         }
-        count = self.object.ps.processed_count
+        count = self.object.metrics.number_of_processed_events
         self.object.process(document)
 
-        assert self.object.ps.processed_count == count + 1
+        assert self.object.metrics.number_of_processed_events == count + 1
 
     def test_uses_python_slots(self):
         assert isinstance(self.object.__slots__, Iterable)
@@ -132,17 +130,17 @@ class BaseProcessorTestCase(ABC):
         assert self.object._specific_tree.get_size() > 0
 
     def test_event_processed_count(self):
-        assert isinstance(self.object.ps.processed_count, int)
+        assert isinstance(self.object.metrics.number_of_processed_events, int)
 
     def test_events_processed_count_counts(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"foo": "bar"}
         for i in range(1, 11):
             try:
                 self.object.process(document)
             except ProcessingWarning:
                 pass
-            assert self.object.ps.processed_count == i
+            assert self.object.metrics.number_of_processed_events == i
 
     def test_get_dotted_field_value_returns_none_if_not_found(self):
         event = {"some": "i do not matter"}
@@ -335,7 +333,7 @@ class BaseProcessorTestCase(ABC):
         self.object.process(event)
         assert self.object.metrics.number_of_processed_events == 1
 
-    @mock.patch('logprep.framework.rule_tree.rule_tree.RuleTree.get_matching_rules')
+    @mock.patch("logprep.framework.rule_tree.rule_tree.RuleTree.get_matching_rules")
     def test_metrics_update_mean_processing_times_and_sample_counter(self, get_matching_rules_mock):
         get_matching_rules_mock.return_value = [mock.MagicMock()]
         self.object._apply_rules = mock.MagicMock()

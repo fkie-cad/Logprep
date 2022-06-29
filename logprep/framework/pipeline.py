@@ -30,7 +30,7 @@ from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarni
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
-from logprep.util.processor_stats import StatusTracker, MetricTargets
+from logprep.util.processor_stats import MetricTargets
 from logprep.util.time_measurement import TimeMeasurement
 
 if TYPE_CHECKING:
@@ -110,14 +110,12 @@ class Pipeline:
 
         self._processing_counter = counter
 
-        self._tracker = StatusTracker(shared_dict, metrics_config, metric_targets, lock)
         self._metrics_exposer = MetricExposer(metrics_config, metric_targets, shared_dict, lock)
         self.metrics = self.PipelineMetrics(labels={"type": "pipeline"})
 
     def _setup(self):
         self._create_logger()
         self._build_pipeline()
-        self._tracker.set_pipeline(self._pipeline)
         self._create_connectors()
 
     def _build_pipeline(self):
@@ -193,12 +191,10 @@ class Pipeline:
     def _retrieve_and_process_data(self):
         event = {}
         try:
-            self._tracker.print_aggregate()
             self._metrics_exposer.expose(self.metrics)
             event = self._input.get_next(self._timeout)
 
             try:
-                self._tracker.kafka_offset = self._input.current_offset
                 self.metrics = self._input.current_offset
             except AttributeError:
                 pass
@@ -237,8 +233,6 @@ class Pipeline:
 
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):
-        self._tracker.increment_aggregation("processed")
-
         event_received = json.dumps(event, separators=(",", ":"))
         try:
             for processor in self._pipeline:
@@ -255,7 +249,6 @@ class Pipeline:
                         f"when processing an event: {error}"
                     )
 
-                    self._tracker.add_warnings(error, processor)
                     processor.metrics.number_of_warnings += 1
                 except ProcessingWarningCollection as error:
                     for warning in error.processing_warnings:
@@ -266,7 +259,6 @@ class Pipeline:
                             warning,
                         )
 
-                        self._tracker.add_warnings(warning, processor)
                         processor.metrics.number_of_warnings += 1
 
                 if not event:
@@ -286,7 +278,6 @@ class Pipeline:
             self._output.store_failed(msg, json.loads(event_received), event)
             event.clear()  # 'delete' the event, i.e. no regular output
 
-            self._tracker.add_errors(error, processor)
             processor.metrics.number_of_errors += 1
         # pylint: enable=broad-except
 

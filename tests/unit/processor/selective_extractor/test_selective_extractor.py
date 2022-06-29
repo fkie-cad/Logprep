@@ -3,8 +3,8 @@
 import uuid
 from unittest import mock
 
-from tests.unit.processor.base import BaseProcessorTestCase
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
@@ -16,7 +16,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     }
 
     def test_selective_extractor_does_not_change_orig_doc(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"user": "test_user", "other": "field"}
         exp_document = {"user": "test_user", "other": "field"}
 

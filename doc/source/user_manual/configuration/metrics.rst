@@ -156,6 +156,12 @@ Metrics Overview
    :private-members:
    :inherited-members:
 
+.. autoclass:: logprep.processor.pseudonymizer.processor.Pseudonymizer.PseudonymizerMetrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
 .. autoclass:: logprep.framework.pipeline.Pipeline.PipelineMetrics
    :members:
    :undoc-members:

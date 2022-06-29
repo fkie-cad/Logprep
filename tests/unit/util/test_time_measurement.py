@@ -3,7 +3,6 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 
-from logprep.processor.dropper.processor import Dropper
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.processor_stats import StatsClassesController
 from logprep.util.time_measurement import TimeMeasurement
@@ -78,9 +77,9 @@ class TestTimeMeasurement:
             dropper_config,
             logging.getLogger("test-logger"),
         )
-        assert dropper.ps.aggr_data.get("avg_processing_time") == 0
-        assert dropper.ps._processing_time_sample_counter == 0
+        assert dropper.metrics.mean_processing_time_per_event == 0
+        assert dropper.metrics._mean_processing_time_sample_counter == 0
         event = {"test": "event"}
         dropper.process(event)
-        assert dropper.ps.aggr_data.get("avg_processing_time") > 0
-        assert dropper.ps._processing_time_sample_counter == 1
+        assert dropper.metrics.mean_processing_time_per_event > 0
+        assert dropper.metrics._mean_processing_time_sample_counter == 1

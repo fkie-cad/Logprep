@@ -11,7 +11,6 @@ from typing import Callable, TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc import Processor
-    from logprep.util.processor_stats import ProcessorStats
     from logprep.framework.rule_tree.rule_tree import RuleTree
 
 
@@ -36,11 +35,9 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
         specific_tree = kwargs.get("specific_tree")
         generic_tree = kwargs.get("generic_tree")
         callback = kwargs.get("callback")
-        processor_stats = kwargs.get("processor_stats")
         processor_metrics = kwargs.get("processor_metrics")
-        self._process_specific(event, specific_tree, callback, processor_stats, processor_metrics)
-        self._process_generic(event, generic_tree, callback, processor_stats, processor_metrics)
-        processor_stats.increment_processed_count()
+        self._process_specific(event, specific_tree, callback, processor_metrics)
+        self._process_generic(event, generic_tree, callback, processor_metrics)
         processor_metrics.number_of_processed_events += 1
 
     def _process_specific(
@@ -48,7 +45,6 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
         event: dict,
         specific_tree: "RuleTree",
         callback: Callable,
-        processor_stats: "ProcessorStats",
         processor_metrics: "Processor.ProcessorMetrics",
     ):
         """method for processing specific rules"""
@@ -60,15 +56,12 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
             rule.metrics._number_of_matches += 1
             rule.metrics.update_mean_processing_time(processing_time)
             processor_metrics.update_mean_processing_time_per_event(processing_time)
-            idx = specific_tree.get_rule_id(rule)
-            processor_stats.update_per_rule(idx, processing_time)
 
     def _process_generic(
         self,
         event: dict,
         generic_tree: "RuleTree",
         callback: Callable,
-        processor_stats: "ProcessorStats",
         processor_metrics: "Processor.ProcessorMetrics",
     ):
         """method for processing generic rules"""
@@ -79,5 +72,3 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
             rule.metrics._number_of_matches += 1
             rule.metrics.update_mean_processing_time(processing_time)
             processor_metrics.update_mean_processing_time_per_event(processing_time)
-            idx = generic_tree.get_rule_id(rule)
-            processor_stats.update_per_rule(idx, processing_time)

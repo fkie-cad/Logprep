@@ -1,10 +1,11 @@
 # pylint: disable=missing-module-docstring
 from copy import deepcopy
+
 import pytest
 
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.processor.template_replacer.processor import TemplateReplacerError
 from tests.unit.processor.base import BaseProcessorTestCase
-from logprep.processor.processor_factory import ProcessorFactory
 
 
 class TestWinMessageReplacer(BaseProcessorTestCase):
@@ -32,7 +33,7 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
         return self.CONFIG.get("specific_rules")
 
     def test_replace_message_via_template(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "message": "foo",
@@ -44,7 +45,7 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
         assert document["message"] == "Test %1 Test %2"
 
     def test_replace_non_existing_message_via_template(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
 
         self.object.process(document)
@@ -55,7 +56,7 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
         self.object = ProcessorFactory.create({"test instance": config}, self.logger)
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": "foo"},
@@ -68,7 +69,7 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
         assert document["dotted"]["message"] == "Test %1 Test %2"
 
     def test_replace_with_additional_hyphen(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test-Test", "event_id": 123},
             "message": "foo",
@@ -80,7 +81,7 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
         assert document["message"] == "Test %1 Test %2 Test %3"
 
     def test_replace_fails_because_it_does_not_map_to_anything(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
 
         document = {
             "winlog": {"channel": "System", "provider_name": "Test-Test", "event_id": 923},
