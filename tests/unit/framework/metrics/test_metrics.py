@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 from attr import define
 
-from logprep.framework.metrics.metric import Metric, calculate_new_average
+from logprep.metrics.metric import Metric, calculate_new_average
 
 
 @define(kw_only=True)

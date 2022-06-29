@@ -8,7 +8,7 @@ from multiprocessing import Value, current_process
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.framework.metrics.metric import MetricTargets
+from logprep.metrics.metric import MetricTargets
 
 
 class RunnerError(BaseException):

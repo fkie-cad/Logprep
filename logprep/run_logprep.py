@@ -1,25 +1,23 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
 import inspect
-import os
 import sys
 from argparse import ArgumentParser
 from logging import getLogger, Logger, DEBUG, ERROR
-from logging.handlers import TimedRotatingFileHandler
-from os.path import dirname, basename
+from os.path import basename
 from pathlib import Path
 from typing import Optional
 
 from colorama import Fore
 
-from logprep.framework.metrics.metric_targets import MetricFileTarget, PrometheusMetricTarget
+from logprep.metrics.metric_targets import MetricFileTarget, PrometheusMetricTarget
 from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
 from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.util.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import print_fcolor
-from logprep.framework.metrics.metric import MetricTargets
+from logprep.metrics.metric import MetricTargets
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement

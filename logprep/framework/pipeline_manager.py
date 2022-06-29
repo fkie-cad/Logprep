@@ -7,7 +7,7 @@ from queue import Empty
 from logprep.framework.pipeline import MultiprocessingPipeline
 from logprep.util.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.framework.metrics.metric import MetricTargets
+from logprep.metrics.metric import MetricTargets
 
 
 class PipelineManagerError(BaseException):

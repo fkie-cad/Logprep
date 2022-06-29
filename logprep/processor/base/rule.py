@@ -8,7 +8,7 @@ from typing import Set, Optional
 from attr import define
 from ruamel.yaml import YAML
 
-from logprep.framework.metrics.metric import Metric, calculate_new_average
+from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
