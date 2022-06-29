@@ -1,3 +1,4 @@
+# pylint: disable-all
 # -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.
@@ -14,8 +15,11 @@
 #
 import os
 import sys
+from datetime import date
 
 sys.path.insert(0, os.path.abspath("../.."))
+
+from logprep._version import get_versions
 
 
 # -- Handlers ----------------------------------------------------------------
@@ -32,13 +36,14 @@ def setup(app):
 # -- Project information -----------------------------------------------------
 
 project = "Logprep"
-copyright = "2021, FKIE"
+copyright = f"2021 - {date.today().year}, FKIE"
 author = "FKIE"
 
 # The short X.Y version
-version = ""
+full_version = get_versions()["version"].split(".")
+version = f"{full_version[0]}.{full_version[1]}"
 # The full version, including alpha/beta/rc tags
-release = ""
+release = get_versions()["version"]
 
 
 # -- General configuration ---------------------------------------------------

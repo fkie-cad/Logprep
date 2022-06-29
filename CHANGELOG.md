@@ -1,6 +1,36 @@
-## next release
+## Next Release
 
-## Features
+---
+
+### Features
+
+* Add ability to add fields from SQL Database via in GenericAdder
+
+### Improvements
+
+* Automatically release logprep on pypi
+* Configure abstract dependencies for pypi releases
+* Refactor domain resolver
+
+### Bugfixes
+
+* Fix processor initialization in auto rule tester
+* Fix generation of RST-Docs
+
+## v2.0.1
+
+---
+
+### Bugfixes
+
+* Clear matching rules before processing in clusterer
+* Add missing sphinxcontrib-mermaid in tox.ini
+
+## v2.0.0
+
+---
+
+### Features
 
 * Add generic processor interface `logprep.abc.processor.Processor`
 * Add `delete` processor to be used with rules.
@@ -15,8 +45,10 @@
 * Rewrite `ProcessorFactory`
 * Automate processor configuration documentation
 * generalize config parameter for using tld lists to `tld_lists` for `domain_resolver`, `domain_label_extractor`, `pseudonymizer`
+* Add functionality to generic adder to add data from MySQL tables
+* refactor `domain_resolver` to make code cleaner and increase test coverage
 
-## Bugfixes
+### Bugfixes
 
 * remove `ujson` dependency because of CVE
 

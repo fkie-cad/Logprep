@@ -1,0 +1,38 @@
+name: Publish Development Build
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  create-github-prerelease:
+    runs-on: ubuntu-latest
+    name: create and publish
+    if: github.event.pull_request.merged == true
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Initialize Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install wheel
+
+      - name: Build binary wheel and a source tarball
+        run: python setup.py sdist bdist_wheel
+
+      - uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          automatic_release_tag: latest
+          prerelease: true
+          title: Development Build
+          files: |
+            dist/*
+            LICENSE

@@ -24,4 +24,15 @@
     "tests/testdata/unit/generic_adder/additions_file_2.yml"
   ]},
   "description": ""
+},
+{
+  "filter": "add_from_sql_db_table",
+  "generic_adder": {
+    "sql_table": {
+      "event_source_field": "source",
+      "pattern": "([a-zA-Z0-9_]+)\\.\\S+",
+      "destination_field_prefix": "db.test"
+    }
+  },
+  "description": ""
 }]
