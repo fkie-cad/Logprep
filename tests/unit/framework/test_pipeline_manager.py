@@ -198,7 +198,7 @@ class TestPipelineManager:
         logger_out.addHandler(handler)
         # NOTE: This test failed once in a while (fewer messages received than expected),
         # this sleep seems to have fixed it, try adjusting, if the test fails randomly.
-        sleep(0.01)
+        sleep(0.01)  # nosemgrep
 
         with AssertEmitsLogMessages(handler, [ERROR, WARNING, INFO], ["msg1", "msg2", "msg3"]):
             self.manager.handle_logs_into_logger(logger_out, timeout=timeout)
