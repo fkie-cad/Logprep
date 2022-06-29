@@ -80,7 +80,7 @@ class PrometheusMetricTarget(MetricTarget):
     """
 
     def __init__(self, prometheus_exporter: PrometheusStatsExporter):
-        self._prometheus_exporter = prometheus_exporter
+        self.prometheus_exporter = prometheus_exporter
 
     @classmethod
     def create(cls, metric_configs, logger):
@@ -100,9 +100,9 @@ class PrometheusMetricTarget(MetricTarget):
     def expose(self, metrics):
         for key_labels, value in metrics.items():
             key, labels = split_key_label_string(key_labels)
-            if key not in self._prometheus_exporter.metrics.keys():
-                self._prometheus_exporter.create_new_metric_exporter(key, labels.keys())
-            self._prometheus_exporter.metrics[key].labels(**labels).set(value)
+            if key not in self.prometheus_exporter.metrics.keys():
+                self.prometheus_exporter.create_new_metric_exporter(key, labels.keys())
+            self.prometheus_exporter.metrics[key].labels(**labels).set(value)
 
-        interval = self._prometheus_exporter.configuration["period"]
-        self._prometheus_exporter.tracking_interval.labels(component="logprep").set(interval)
+        interval = self.prometheus_exporter.configuration["period"]
+        self.prometheus_exporter.tracking_interval.labels(component="logprep").set(interval)

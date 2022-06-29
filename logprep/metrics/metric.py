@@ -3,6 +3,8 @@ from collections import namedtuple
 
 from attr import define, asdict
 
+MetricTargets = namedtuple("MetricTargets", "file_target prometheus_target")
+
 
 def is_public(attribute, _):
     """If an attribute name starts with an underscore it is considered private"""
@@ -53,7 +55,7 @@ class Metric:
                 labels = [":".join(item) for item in self._labels.items()]
                 labels = ",".join(labels)
                 metric_key = f"{self._prefix}{attribute}"
-                exp[f"{metric_key};{labels}"] = attribute_value
+                exp[f"{metric_key};{labels}"] = float(attribute_value)
         return exp
 
     def reset_statistics(self):
@@ -77,6 +79,3 @@ def calculate_new_average(current_average, next_sample, sample_counter):
     sample_counter += 1
     new_average = extended_average_multiple / sample_counter
     return new_average, sample_counter
-
-
-MetricTargets = namedtuple("MetricTargets", "file_exporter prometheus_exporter")

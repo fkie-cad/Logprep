@@ -33,14 +33,14 @@ def _get_metric_targets(config: dict, logger: Logger) -> MetricTargets:
         return MetricTargets(None, None)
 
     target_configs = metric_configs.get("targets", [])
-    file_exporter = None
-    prometheus_exporter = None
+    file_target = None
+    prometheus_target = None
     for target in target_configs:
         if "file" in target.keys():
-            file_exporter = MetricFileTarget.create(target.get("file"))
+            file_target = MetricFileTarget.create(target.get("file"))
         if "prometheus" in target.keys():
-            prometheus_exporter = PrometheusMetricTarget.create(metric_configs, logger)
-    return MetricTargets(file_exporter, prometheus_exporter)
+            prometheus_target = PrometheusMetricTarget.create(metric_configs, logger)
+    return MetricTargets(file_target, prometheus_target)
 
 
 def _parse_arguments():

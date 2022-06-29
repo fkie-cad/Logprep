@@ -46,7 +46,7 @@ class ConfigurationForTests:
     print_processed_period = 600
     lock = Lock()
     shared_dict = {}
-    metric_targets = MetricTargets(file_exporter=getLogger("Mock"), prometheus_exporter=None)
+    metric_targets = MetricTargets(file_target=getLogger("Mock"), prometheus_target=None)
     counter = SharedCounter()
 
 

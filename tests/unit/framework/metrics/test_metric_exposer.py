@@ -41,8 +41,8 @@ class TestMetricExposer:
 
         logger = logging.getLogger("test-file-metric-logger")
         self.metric_targets = MetricTargets(
-            file_exporter=logger,
-            prometheus_exporter=PrometheusStatsExporter(self.config, logger),
+            file_target=logger,
+            prometheus_target=PrometheusStatsExporter(self.config, logger),
         )
         self.exposer = MetricExposer(self.config, self.metric_targets, self.shared_dict, Lock())
 

@@ -20,12 +20,10 @@ class MetricExposer:
         self._timer = Value(c_double, time() + self._print_period)
 
         self.output_targets = []
-        if metric_targets and metric_targets.file_exporter:
-            target = MetricFileTarget(metric_targets.file_exporter)
-            self.output_targets.append(target)
-        if metric_targets and metric_targets.prometheus_exporter:
-            target = PrometheusMetricTarget(metric_targets.prometheus_exporter)
-            self.output_targets.append(target)
+        if metric_targets and metric_targets.file_target:
+            self.output_targets.append(metric_targets.file_target)
+        if metric_targets and metric_targets.prometheus_target:
+            self.output_targets.append(metric_targets.prometheus_target)
 
     def expose(self, metrics):
         """

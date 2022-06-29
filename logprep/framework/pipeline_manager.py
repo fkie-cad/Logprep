@@ -104,8 +104,8 @@ class PipelineManager:
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
 
-            if self.metric_targets.prometheus_exporter is not None:
-                self.metric_targets.prometheus_exporter.remove_metrics_from_process(
+            if self.metric_targets.prometheus_target is not None:
+                self.metric_targets.prometheus_target.prometheus_exporter.remove_metrics_from_process(
                     failed_pipeline.pid
                 )
 
@@ -133,7 +133,7 @@ class PipelineManager:
         return MultiprocessingPipeline(
             self._configuration["connector"],
             self._configuration["pipeline"],
-            self._configuration.get("status_logger", {}),
+            self._configuration.get("metrics", {}),
             self._configuration["timeout"],
             self._log_handler,
             self._configuration.get("print_processed_period", 300),

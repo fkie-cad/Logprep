@@ -215,11 +215,11 @@ class TestPrometheusMetricTarget:
 
     def test_expose_creates_new_metric_exporter_if_it_does_not_exist_yet(self):
         metrics = Rule.RuleMetrics(labels={"type": "generic"})
-        assert self.target._prometheus_exporter.metrics == {}
+        assert self.target.prometheus_exporter.metrics == {}
         exposed_metrics = metrics.expose()
         self.target.expose(exposed_metrics)
-        assert len(self.target._prometheus_exporter.metrics) == len(exposed_metrics)
-        for metric in self.target._prometheus_exporter.metrics.values():
+        assert len(self.target.prometheus_exporter.metrics) == len(exposed_metrics)
+        for metric in self.target.prometheus_exporter.metrics.values():
             assert isinstance(metric, Gauge)
 
     @mock.patch("prometheus_client.Gauge.labels")

@@ -54,7 +54,7 @@ class TestPipelineManager:
         self.config = Configuration.create_from_yaml(path_to_config)
         self.handler = HandlerStub()
         self.logger = Logger("test")
-        self.metric_targets = MetricTargets(file_exporter=self.logger, prometheus_exporter=None)
+        self.metric_targets = MetricTargets(file_target=self.logger, prometheus_target=None)
         self.logger.addHandler(self.handler)
 
         self.manager = PipelineManagerForTesting(self.logger, self.metric_targets)

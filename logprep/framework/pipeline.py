@@ -5,7 +5,6 @@ They can be multi-processed.
 
 """
 import json
-
 # pylint: disable=logging-fstring-interpolation
 from ctypes import c_bool, c_double, c_ulonglong
 from logging import DEBUG, INFO, NOTSET, Handler, Logger
@@ -17,14 +16,14 @@ import numpy as np
 from attr import define, Factory
 
 from logprep.connector.connector_factory import ConnectorFactory
-from logprep.metrics.metric import Metric, MetricTargets
-from logprep.metrics.metric_exposer import MetricExposer
 from logprep.input.input import (
     CriticalInputError,
     FatalInputError,
     SourceDisconnectedError,
     WarningInputError,
 )
+from logprep.metrics.metric import Metric, MetricTargets
+from logprep.metrics.metric_exposer import MetricExposer
 from logprep.output.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.processor_factory import ProcessorFactory
@@ -194,7 +193,7 @@ class Pipeline:
             event = self._input.get_next(self._timeout)
 
             try:
-                self.metrics = self._input.current_offset
+                self.metrics.kafka_offset = self._input.current_offset
             except AttributeError:
                 pass
 
