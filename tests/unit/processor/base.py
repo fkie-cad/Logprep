@@ -334,3 +334,14 @@ class BaseProcessorTestCase(ABC):
         event = {}
         self.object.process(event)
         assert self.object.metrics.number_of_processed_events == 1
+
+    @mock.patch('logprep.framework.rule_tree.rule_tree.RuleTree.get_matching_rules')
+    def test_metrics_update_mean_processing_times_and_sample_counter(self, get_matching_rules_mock):
+        get_matching_rules_mock.return_value = [mock.MagicMock()]
+        self.object._apply_rules = mock.MagicMock()
+        assert self.object.metrics.mean_processing_time_per_event == 0
+        assert self.object.metrics._mean_processing_time_sample_counter == 0
+        event = {"test": "event"}
+        self.object.process(event)
+        assert self.object.metrics.mean_processing_time_per_event > 0
+        assert self.object.metrics._mean_processing_time_sample_counter == 2

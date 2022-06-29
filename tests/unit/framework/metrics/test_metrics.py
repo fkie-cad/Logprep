@@ -100,7 +100,7 @@ class TestMetric:
         samples = [2, 4, 6, 8, 1, 3, 9]
         current_average = 0
         for i, next_sample in enumerate(samples):
-            current_average = calculate_new_average(current_average, next_sample, i)
+            current_average, _ = calculate_new_average(current_average, next_sample, i)
 
             real_mean = np.mean(samples[: i + 1])
             assert current_average == real_mean

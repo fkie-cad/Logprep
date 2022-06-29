@@ -75,4 +75,4 @@ def calculate_new_average(current_average, next_sample, sample_counter):
     extended_average_multiple = average_multiple + next_sample
     sample_counter += 1
     new_average = extended_average_multiple / sample_counter
-    return new_average
+    return new_average, sample_counter

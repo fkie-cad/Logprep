@@ -56,12 +56,13 @@ class Processor(ABC):
 
         def update_mean_processing_time_per_event(self, new_sample):
             """Updates the mean processing time per event"""
-            new_avg = calculate_new_average(
+            new_avg, new_sample_counter = calculate_new_average(
                 self.mean_processing_time_per_event,
                 new_sample,
                 self._mean_processing_time_sample_counter,
             )
             self.mean_processing_time_per_event = new_avg
+            self._mean_processing_time_sample_counter = new_sample_counter
 
     __slots__ = [
         "name",

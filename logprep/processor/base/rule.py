@@ -31,10 +31,11 @@ class Rule:
 
         def update_mean_processing_time(self, new_sample):
             """Updates the mean processing time of this rule"""
-            new_avg = calculate_new_average(
+            new_avg, new_sample_counter = calculate_new_average(
                 self._mean_processing_time, new_sample, self._mean_processing_time_sample_counter
             )
             self._mean_processing_time = new_avg
+            self._mean_processing_time_sample_counter = new_sample_counter
 
     special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields"]
 
