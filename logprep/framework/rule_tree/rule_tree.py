@@ -8,7 +8,7 @@ from logging import Logger
 import numpy as np
 from attr import define, Factory
 
-from logprep.framework.metric import Metric
+from logprep.framework.metrics.metric import Metric
 from logprep.processor.base.rule import Rule
 
 from logprep.framework.rule_tree.node import Node

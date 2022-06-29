@@ -8,7 +8,7 @@ from typing import List, Optional, Union
 
 from attr import define, field, validators
 
-from logprep.framework.metric import Metric, calculate_new_average
+from logprep.framework.metrics.metric import Metric, calculate_new_average
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
 

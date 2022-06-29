@@ -10,7 +10,7 @@ import pytest
 from prometheus_client import Gauge
 
 from logprep.abc import Processor
-from logprep.framework.metric_targets import (
+from logprep.framework.metrics.metric_targets import (
     PrometheusMetricTarget,
     MetricFileTarget,
     split_key_label_string,

@@ -7,7 +7,7 @@ from multiprocessing import Manager, Lock, Value
 from time import time
 from unittest import mock
 
-from logprep.framework.metric_exposer import MetricExposer
+from logprep.framework.metrics.metric_exposer import MetricExposer
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
 from logprep.util.processor_stats import StatusLoggerCollection
@@ -71,9 +71,9 @@ class TestMetricExposer:
         self.exposer._clear_storage()
         assert all(value is None for value in self.exposer._shared_dict.values())
 
-    @mock.patch("logprep.framework.metric_exposer.MetricExposer._send_to_output")
-    @mock.patch("logprep.framework.metric_exposer.MetricExposer._clear_storage")
-    @mock.patch("logprep.framework.metric_exposer.MetricExposer._aggregate_metrics")
+    @mock.patch("logprep.framework.metrics.metric_exposer.MetricExposer._send_to_output")
+    @mock.patch("logprep.framework.metrics.metric_exposer.MetricExposer._clear_storage")
+    @mock.patch("logprep.framework.metrics.metric_exposer.MetricExposer._aggregate_metrics")
     def test_expose_aggregated_metrics(
         self, send_to_output_mock, clear_storage_mock, aggregate_metrics_mock
     ):
@@ -111,9 +111,9 @@ class TestMetricExposer:
         self.exposer.output_targets[0].expose.assert_called_with(metrics)
         self.exposer.output_targets[1].expose.assert_called_with(metrics)
 
-    @mock.patch("logprep.framework.metric_exposer.MetricExposer._store_metrics")
+    @mock.patch("logprep.framework.metrics.metric_exposer.MetricExposer._store_metrics")
     @mock.patch(
-        "logprep.framework.metric_exposer.MetricExposer._expose_aggregated_metrics_from_shared_dict"
+        "logprep.framework.metrics.metric_exposer.MetricExposer._expose_aggregated_metrics_from_shared_dict"
     )
     def test_expose_calls_expose_aggregate_if_configured(
         self, store_metrics_mock, expose_aggregate_mock
@@ -124,8 +124,8 @@ class TestMetricExposer:
         store_metrics_mock.assert_called()
         expose_aggregate_mock.assert_called()
 
-    @mock.patch("logprep.framework.metric_exposer.MetricExposer._store_metrics")
-    @mock.patch("logprep.framework.metric_exposer.MetricExposer._send_to_output")
+    @mock.patch("logprep.framework.metrics.metric_exposer.MetricExposer._store_metrics")
+    @mock.patch("logprep.framework.metrics.metric_exposer.MetricExposer._send_to_output")
     def test_expose_calls_send_to_output_if_no_aggregation_is_configured(
         self, store_metrics_mock, send_to_output_mock
     ):

@@ -17,8 +17,8 @@ import numpy as np
 from attr import define, Factory
 
 from logprep.connector.connector_factory import ConnectorFactory
-from logprep.framework.metric import Metric
-from logprep.framework.metric_exposer import MetricExposer
+from logprep.framework.metrics.metric import Metric
+from logprep.framework.metrics.metric_exposer import MetricExposer
 from logprep.input.input import (
     CriticalInputError,
     FatalInputError,

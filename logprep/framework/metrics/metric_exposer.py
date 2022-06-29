@@ -5,7 +5,7 @@ from time import time
 
 import numpy as np
 
-from logprep.framework.metric_targets import MetricFileTarget, PrometheusMetricTarget
+from logprep.framework.metrics.metric_targets import MetricFileTarget, PrometheusMetricTarget
 
 
 class MetricExposer:
