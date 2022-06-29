@@ -9,7 +9,7 @@ from pytest import raises
 from logprep.framework.pipeline import MultiprocessingPipeline
 from logprep.framework.pipeline_manager import PipelineManager, MustSetConfigurationFirstError
 from logprep.util.configuration import Configuration
-from logprep.util.processor_stats import StatusLoggerCollection
+from logprep.util.processor_stats import MetricTargets
 from tests.testdata.metadata import path_to_config
 from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub, AssertEmitsLogMessages
 
@@ -54,16 +54,14 @@ class TestPipelineManager:
         self.config = Configuration.create_from_yaml(path_to_config)
         self.handler = HandlerStub()
         self.logger = Logger("test")
-        self.status_logger = StatusLoggerCollection(
-            file_logger=self.logger, prometheus_exporter=None
-        )
+        self.metric_targets = MetricTargets(file_exporter=self.logger, prometheus_exporter=None)
         self.logger.addHandler(self.handler)
 
-        self.manager = PipelineManagerForTesting(self.logger, self.status_logger)
+        self.manager = PipelineManagerForTesting(self.logger, self.metric_targets)
         self.manager.set_configuration(self.config)
 
     def test_create_pipeline_fails_if_config_is_unset(self):
-        manager = PipelineManager(self.logger, self.status_logger)
+        manager = PipelineManager(self.logger, self.metric_targets)
 
         with raises(
             MustSetConfigurationFirstError,

@@ -30,7 +30,7 @@ from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarni
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
-from logprep.util.processor_stats import StatusTracker, StatusLoggerCollection
+from logprep.util.processor_stats import StatusTracker, MetricTargets
 from logprep.util.time_measurement import TimeMeasurement
 
 if TYPE_CHECKING:
@@ -87,13 +87,13 @@ class Pipeline:
         self,
         connector_config: dict,
         pipeline_config: List[dict],
-        status_logger_config: dict,
+        metrics_config: dict,
         timeout: float,
         counter: "SharedCounter",
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
-        status_logger: StatusLoggerCollection = None,
+        metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
@@ -110,10 +110,8 @@ class Pipeline:
 
         self._processing_counter = counter
 
-        self._tracker = StatusTracker(shared_dict, status_logger_config, status_logger, lock)
-        self._metrics_exposer = MetricExposer(
-            status_logger_config, status_logger, shared_dict, lock
-        )
+        self._tracker = StatusTracker(shared_dict, metrics_config, metric_targets, lock)
+        self._metrics_exposer = MetricExposer(metrics_config, metric_targets, shared_dict, lock)
         self.metrics = self.PipelineMetrics(labels={"type": "pipeline"})
 
     def _setup(self):
@@ -380,14 +378,14 @@ class MultiprocessingPipeline(Process, Pipeline):
         self,
         connector_config: dict,
         pipeline_config: List[dict],
-        status_logger_config: dict,
+        metrics_config: dict,
         timeout: float,
         log_handler: Handler,
         print_processed_period: float,
         lock: Lock,
         shared_dict: dict,
         profile: bool = False,
-        status_logger: StatusLoggerCollection = None,
+        metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, MultiprocessingLogHandler):
             raise MustProvideAnMPLogHandlerError
@@ -399,13 +397,13 @@ class MultiprocessingPipeline(Process, Pipeline):
             self,
             connector_config,
             pipeline_config,
-            status_logger_config,
+            metrics_config,
             timeout,
             self.processed_counter,
             log_handler,
             lock,
             shared_dict,
-            status_logger=status_logger,
+            metric_targets=metric_targets,
         )
 
         self._continue_iterating = Value(c_bool)

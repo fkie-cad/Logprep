@@ -6,10 +6,9 @@ from ctypes import c_double
 from datetime import datetime
 from multiprocessing import Lock, Value, current_process
 from time import time
+from typing import List, Union, TYPE_CHECKING
 
 import numpy as np
-
-from typing import List, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc import Processor
@@ -159,7 +158,7 @@ class ProcessorStats:
         del self.aggr_data["matches"]
 
 
-StatusLoggerCollection = namedtuple("StatusLogger", "file_logger prometheus_exporter")
+MetricTargets = namedtuple("MetricTargets", "file_exporter prometheus_exporter")
 
 
 @StatsClassesController.decorate_all_methods(StatsClassesController.is_enabled)  # nosemgrep
@@ -173,8 +172,8 @@ class StatusTracker:
     def __init__(
         self,
         shared_dict: dict,
-        status_logger_config: dict,
-        status_logger: StatusLoggerCollection,
+        metrics_config: dict,
+        metric_targets: MetricTargets,
         lock: Lock,
     ):
         """
@@ -186,10 +185,10 @@ class StatusTracker:
         shared_dict : dict
             A common data structure shared between the multiprocessing processes. It contains the
             metrics for each pipeline.
-        status_logger_config : dict
+        metrics_config : dict
             The status tracker configuration defining for example the aggregation period or the
             export targets.
-        status_logger : List
+        metric_targets : List
             This list contains the configured logger. Can contain an actual python Logger or an
             PrometheusStatsExporter.
         lock : Lock
@@ -198,13 +197,13 @@ class StatusTracker:
         self._file_logger = None
         self._prometheus_logger = None
 
-        if status_logger is not None:
-            self._file_logger = status_logger.file_logger
-            self._prometheus_logger = status_logger.prometheus_exporter
+        if metric_targets is not None:
+            self._file_logger = metric_targets.file_exporter
+            self._prometheus_logger = metric_targets.prometheus_exporter
 
         self._shared_dict = shared_dict
 
-        self._config = status_logger_config
+        self._config = metrics_config
 
         self._print_period = self._config.get("period", 180)
         self._cumulative = self._config.get("cumulative", True)

@@ -7,15 +7,15 @@ from logging import getLogger
 
 import pytest
 
-from tests.testdata.metadata import path_to_config
 from logprep.util.configuration import (
     InvalidConfigurationError,
     Configuration,
-    InvalidStatusLoggerConfigurationError,
+    IncalidMetricsConfigurationError,
     RequiredConfigurationKeyMissingError,
     InvalidConfigurationErrors,
     InvalidProcessorConfigurationError,
 )
+from tests.testdata.metadata import path_to_config
 
 logger = getLogger()
 
@@ -89,16 +89,17 @@ class TestConfiguration:
         )
 
     @pytest.mark.parametrize(
-        "test_case, status_logger_config_dict, raised_error",
+        "test_case, metrics_config_dict, raised_error",
         [
             (
                 "valid configuration",
                 {
-                    "status_logger": {
+                    "metrics": {
                         "period": 10,
                         "enabled": True,
                         "cumulative": True,
                         "aggregate_processes": True,
+                        "measure_time": {"enabled": True, "append_to_event": False},
                         "targets": [
                             {"prometheus": {"port": 8000}},
                             {
@@ -116,10 +117,11 @@ class TestConfiguration:
             (
                 "key period is missing",
                 {
-                    "status_logger": {
+                    "metrics": {
                         "enabled": True,
                         "cumulative": True,
                         "aggregate_processes": True,
+                        "measure_time": {"enabled": True, "append_to_event": False},
                         "targets": [
                             {"prometheus": {"port": 8000}},
                             {
@@ -137,37 +139,40 @@ class TestConfiguration:
             (
                 "empty target",
                 {
-                    "status_logger": {
+                    "metrics": {
                         "period": 10,
                         "enabled": True,
                         "cumulative": True,
                         "aggregate_processes": True,
+                        "measure_time": {"enabled": True, "append_to_event": False},
                         "targets": [],
                     }
                 },
-                InvalidStatusLoggerConfigurationError,
+                IncalidMetricsConfigurationError,
             ),
             (
                 "unkown target",
                 {
-                    "status_logger": {
+                    "metrics": {
                         "period": 10,
                         "enabled": True,
                         "cumulative": True,
                         "aggregate_processes": True,
+                        "measure_time": {"enabled": True, "append_to_event": False},
                         "targets": [{"webserver": {"does-not": "exist"}}],
                     }
                 },
-                InvalidStatusLoggerConfigurationError,
+                IncalidMetricsConfigurationError,
             ),
             (
                 "missing key in prometheus target config",
                 {
-                    "status_logger": {
+                    "metrics": {
                         "period": 10,
                         "enabled": True,
                         "cumulative": True,
                         "aggregate_processes": True,
+                        "measure_time": {"enabled": True, "append_to_event": False},
                         "targets": [{"prometheus": {"wrong": "key"}}],
                     }
                 },
@@ -176,11 +181,12 @@ class TestConfiguration:
             (
                 "missing key in file target config",
                 {
-                    "status_logger": {
+                    "metrics": {
                         "period": 10,
                         "enabled": True,
                         "cumulative": True,
                         "aggregate_processes": True,
+                        "measure_time": {"enabled": True, "append_to_event": False},
                         "targets": [
                             {
                                 "file": {
@@ -196,11 +202,12 @@ class TestConfiguration:
             (
                 "valid configuration",
                 {
-                    "status_logger": {
+                    "metrics": {
                         "period": 10,
                         "enabled": True,
                         "cumulative": True,
                         "aggregate_processes": True,
+                        "measure_time": {"enabled": True, "append_to_event": False},
                         "targets": [
                             {"prometheus": {"port": 8000}},
                             {"file": {}},
@@ -209,22 +216,45 @@ class TestConfiguration:
                 },
                 RequiredConfigurationKeyMissingError,
             ),
+            (
+                "measure_time enabled key is missing",
+                {
+                    "metrics": {
+                        "period": 10,
+                        "enabled": True,
+                        "cumulative": True,
+                        "aggregate_processes": True,
+                        "measure_time": {"append_to_event": False},
+                        "targets": [
+                            {"prometheus": {"port": 8000}},
+                            {
+                                "file": {
+                                    "path": "./logs/status.json",
+                                    "rollover_interval": 86400,
+                                    "backup_count": 10,
+                                }
+                            },
+                        ],
+                    }
+                },
+                RequiredConfigurationKeyMissingError,
+            ),
         ],
     )
-    def test_verify_status_logger(
-        self, status_logger_config_dict, raised_error, test_case
+    def test_verify_metrics_config(
+        self, metrics_config_dict, raised_error, test_case
     ):  # pylint: disable=unused-argument
-        status_logger_config = deepcopy(self.config)
-        status_logger_config.update(status_logger_config_dict)
+        metrics_config = deepcopy(self.config)
+        metrics_config.update(metrics_config_dict)
         if raised_error is not None:
             try:
-                status_logger_config._verify_status_logger()
+                metrics_config._verify_metrics_config()
             except InvalidConfigurationErrors as error:
                 assert any(
                     (isinstance(error, raised_error) for error in error.errors)
                 ), f"No '{raised_error.__name__}' raised for test case '{test_case}'!"
         else:
-            status_logger_config._verify_status_logger()
+            metrics_config._verify_metrics_config()
 
     @pytest.mark.parametrize(
         "test_case, config_dict, raised_errors",
@@ -414,4 +444,4 @@ class TestConfiguration:
             errors_set = [(type(error), str(error)) for error in collected_errors]
             assert errors_set == raised_errors, f"For test case '{test_case}'!"
         else:
-            config._verify_status_logger()
+            config._verify_metrics_config()

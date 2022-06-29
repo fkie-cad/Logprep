@@ -11,7 +11,7 @@ from logprep.framework.metrics.metric_targets import MetricFileTarget, Prometheu
 class MetricExposer:
     """The MetricExposer collects all metrics and exposes them via configured outputs"""
 
-    def __init__(self, config, status_logger_collection, shared_dict, lock):
+    def __init__(self, config, metric_targets, shared_dict, lock):
         self._shared_dict = shared_dict
         self._print_period = config.get("period", 180)
         self._cumulative = config.get("cumulative", True)
@@ -20,11 +20,11 @@ class MetricExposer:
         self._timer = Value(c_double, time() + self._print_period)
 
         self.output_targets = []
-        if status_logger_collection and status_logger_collection.file_logger:
-            target = MetricFileTarget(status_logger_collection.file_logger)
+        if metric_targets and metric_targets.file_exporter:
+            target = MetricFileTarget(metric_targets.file_exporter)
             self.output_targets.append(target)
-        if status_logger_collection and status_logger_collection.prometheus_exporter:
-            target = PrometheusMetricTarget(status_logger_collection.prometheus_exporter)
+        if metric_targets and metric_targets.prometheus_exporter:
+            target = PrometheusMetricTarget(metric_targets.prometheus_exporter)
             self.output_targets.append(target)
 
     def expose(self, metrics):

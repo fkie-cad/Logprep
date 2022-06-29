@@ -8,7 +8,7 @@ from multiprocessing import Value, current_process
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.util.processor_stats import StatusLoggerCollection
+from logprep.util.processor_stats import MetricTargets
 
 
 class RunnerError(BaseException):
@@ -92,7 +92,7 @@ class Runner:
         self._configuration = None
         self._yaml_path = None
         self._logger = None
-        self._status_logger = None
+        self._metric_targets = None
         self._log_handler = None
 
         self._manager = None
@@ -104,7 +104,7 @@ class Runner:
         if not bypass_check_to_obtain_non_singleton_instance:
             raise UseGetRunnerToCreateRunnerSingleton
 
-    def set_logger(self, logger: Logger, status_logger: StatusLoggerCollection = None):
+    def set_logger(self, logger: Logger, status_logger: MetricTargets = None):
         """Setup logging for any "known" errors from any part of the software.
 
         Parameters
@@ -129,7 +129,7 @@ class Runner:
             raise MustNotSetLoggerTwiceError
 
         self._logger = logger
-        self._status_logger = status_logger
+        self._metric_targets = status_logger
         self._log_handler = MultiprocessingLogHandler(logger.level)
 
     def load_configuration(self, yaml_file: str):
@@ -238,7 +238,7 @@ class Runner:
     def _create_manager(self):
         if self._manager is not None:
             raise MustNotCreateMoreThanOneManagerError
-        self._manager = PipelineManager(self._logger, self._status_logger)
+        self._manager = PipelineManager(self._logger, self._metric_targets)
 
     def stop(self):
         """Stop the current process"""

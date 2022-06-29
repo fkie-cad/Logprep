@@ -71,11 +71,11 @@ class InvalidConnectorConfigurationError(InvalidConfigurationError):
         super().__init__(f"Invalid connector configuration: {message}")
 
 
-class InvalidStatusLoggerConfigurationError(InvalidConfigurationError):
+class IncalidMetricsConfigurationError(InvalidConfigurationError):
     """Raise if status_logger configuration is invalid."""
 
     def __init__(self, message: str):
-        super().__init__(f"Invalid status_logger configuration: {message}")
+        super().__init__(f"Invalid metrics configuration: {message}")
 
 
 class Configuration(dict):
@@ -146,9 +146,9 @@ class Configuration(dict):
             self._verify_pipeline(logger)
         except InvalidConfigurationError as error:
             errors.append(error)
-        if self.get("status_logger", {}):
+        if self.get("metrics", {}):
             try:
-                self._verify_status_logger()
+                self._verify_metrics_config()
             except InvalidConfigurationError as error:
                 errors.append(error)
         return errors
@@ -205,22 +205,27 @@ class Configuration(dict):
         if errors:
             raise InvalidConfigurationErrors(errors)
 
-    def _verify_status_logger(self):
-        if self.get("status_logger"):
+    def _verify_metrics_config(self):
+        if self.get("metrics"):
             errors = []
-            required_keys = ["enabled", "period", "cumulative", "aggregate_processes", "targets"]
+            required_keys = [
+                "enabled",
+                "period",
+                "cumulative",
+                "aggregate_processes",
+                "measure_time",
+                "targets",
+            ]
 
             for key in required_keys:
-                if key not in self["status_logger"]:
-                    errors.append(RequiredConfigurationKeyMissingError(f"status_logger > {key}"))
+                if key not in self["metrics"]:
+                    errors.append(RequiredConfigurationKeyMissingError(f"metrics > {key}"))
 
-            targets = self.get("status_logger").get("targets", [])
+            targets = self.get("metrics").get("targets", [])
 
             if not targets:
                 errors.append(
-                    InvalidStatusLoggerConfigurationError(
-                        "At least one target has to be configured"
-                    )
+                    IncalidMetricsConfigurationError("At least one target has to be configured")
                 )
 
             for target in targets:
@@ -231,11 +236,14 @@ class Configuration(dict):
                     elif current_target == "file":
                         self._verify_status_logger_file_target(target["file"])
                     else:
-                        raise InvalidStatusLoggerConfigurationError(
-                            f"Unknown target '{current_target}'"
-                        )
+                        raise IncalidMetricsConfigurationError(f"Unknown target '{current_target}'")
                 except InvalidConfigurationError as error:
                     errors.append(error)
+
+            try:
+                self._verify_measure_time_config(self.get("metrics").get("measure_time"))
+            except InvalidConfigurationError as error:
+                errors.append(error)
 
             if errors:
                 raise InvalidConfigurationErrors(errors)
@@ -243,9 +251,7 @@ class Configuration(dict):
     @staticmethod
     def _verify_status_logger_prometheus_target(target_config):
         if target_config is None or not target_config.get("port"):
-            raise RequiredConfigurationKeyMissingError(
-                "status_logger > targets > " "prometheus > port"
-            )
+            raise RequiredConfigurationKeyMissingError("metrics > targets > " "prometheus > port")
 
     @staticmethod
     def _verify_status_logger_file_target(target_config):
@@ -256,7 +262,20 @@ class Configuration(dict):
         if missing_keys:
             raise RequiredConfigurationKeyMissingError(
                 f"The following option keys for the "
-                f"status_logger file target are missing: "
+                f"metrics file target are missing: "
+                f"{missing_keys}"
+            )
+
+    @staticmethod
+    def _verify_measure_time_config(measure_time_config):
+        required_keys = {"enabled", "append_to_event"}
+        given_keys = set(measure_time_config.keys())
+        missing_keys = required_keys.difference(given_keys)
+
+        if missing_keys:
+            raise RequiredConfigurationKeyMissingError(
+                f"The following option keys for the "
+                f"measure time configs are missing: "
                 f"{missing_keys}"
             )
 

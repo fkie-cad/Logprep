@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+# pylint: disable=line-too-long
 import logging
 from ctypes import c_double
 from multiprocessing import Manager, Lock, Value
@@ -10,7 +11,7 @@ from unittest import mock
 from logprep.framework.metrics.metric_exposer import MetricExposer
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
-from logprep.util.processor_stats import StatusLoggerCollection
+from logprep.util.processor_stats import MetricTargets
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 
@@ -39,11 +40,11 @@ class TestMetricExposer:
             self.shared_dict[idx] = None
 
         logger = logging.getLogger("test-file-metric-logger")
-        self.logger_collection = StatusLoggerCollection(
-            file_logger=logger,
+        self.metric_targets = MetricTargets(
+            file_exporter=logger,
             prometheus_exporter=PrometheusStatsExporter(self.config, logger),
         )
-        self.exposer = MetricExposer(self.config, self.logger_collection, self.shared_dict, Lock())
+        self.exposer = MetricExposer(self.config, self.metric_targets, self.shared_dict, Lock())
 
     def test_time_to_expose_returns_true_after_enough_time_has_passed(self):
         self.exposer._timer = Value(c_double, time() - self.config["period"])
@@ -131,7 +132,7 @@ class TestMetricExposer:
     ):
         config = self.config.copy()
         config["aggregate_processes"] = False
-        self.exposer = MetricExposer(config, self.logger_collection, self.shared_dict, Lock())
+        self.exposer = MetricExposer(config, self.metric_targets, self.shared_dict, Lock())
         self.exposer._timer = Value(c_double, time() - self.config["period"])
         mock_metrics = mock.MagicMock()
         self.exposer.expose(mock_metrics)

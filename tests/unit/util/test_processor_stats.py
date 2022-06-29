@@ -13,7 +13,7 @@ from logprep.util.processor_stats import (
     ProcessorStats,
     StatsClassesController,
     StatusTracker,
-    StatusLoggerCollection,
+    MetricTargets,
 )
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
@@ -116,9 +116,9 @@ class TestStatusTracker:
         }
         self.status_tracker = StatusTracker(
             shared_dict={},
-            status_logger_config=stats_logger_config,
-            status_logger=StatusLoggerCollection(
-                file_logger=logging.getLogger("test-file-metric-logger"),
+            metrics_config=stats_logger_config,
+            metric_targets=MetricTargets(
+                file_exporter=logging.getLogger("test-file-metric-logger"),
                 prometheus_exporter=PrometheusStatsExporter(stats_logger_config, self.logger),
             ),
             lock=Lock(),

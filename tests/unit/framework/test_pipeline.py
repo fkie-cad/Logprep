@@ -31,13 +31,13 @@ from logprep.processor.delete.processor import Delete
 from logprep.processor.delete.rule import DeleteRule
 from logprep.processor.processor_configuration import ProcessorConfiguration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.util.processor_stats import StatusLoggerCollection
+from logprep.util.processor_stats import MetricTargets
 
 
 class ConfigurationForTests:
     connector_config = {"type": "dummy", "input": [{"test": "empty"}]}
     pipeline_config = ["mock_processor", "mock_processor"]
-    status_logger_config = {
+    metrics_config = {
         "period": 300,
         "enabled": False,
     }
@@ -46,7 +46,7 @@ class ConfigurationForTests:
     print_processed_period = 600
     lock = Lock()
     shared_dict = {}
-    status_logger = StatusLoggerCollection(file_logger=getLogger("Mock"), prometheus_exporter=None)
+    metric_targets = MetricTargets(file_exporter=getLogger("Mock"), prometheus_exporter=None)
     counter = SharedCounter()
 
 
@@ -67,13 +67,13 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline = Pipeline(
             self.connector_config,
             self.pipeline_config,
-            self.status_logger_config,
+            self.metrics_config,
             self.timeout,
             self.counter,
             self.log_handler,
             self.lock,
             self.shared_dict,
-            self.status_logger,
+            self.metric_targets,
         )
 
     def test_fails_if_log_handler_is_not_of_type_loghandler(self, _):
@@ -82,7 +82,7 @@ class TestPipeline(ConfigurationForTests):
                 _ = Pipeline(
                     self.connector_config,
                     self.pipeline_config,
-                    self.status_logger_config,
+                    self.metrics_config,
                     self.timeout,
                     self.counter,
                     not_a_log_handler,
@@ -525,7 +525,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 MultiprocessingPipeline(
                     {},
                     [{}],
-                    self.status_logger_config,
+                    self.metrics_config,
                     self.timeout,
                     not_a_log_handler,
                     self.print_processed_period,
@@ -538,7 +538,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             MultiprocessingPipeline(
                 self.connector_config,
                 self.pipeline_config,
-                self.status_logger_config,
+                self.metrics_config,
                 self.timeout,
                 self.log_handler,
                 self.print_processed_period,
@@ -554,7 +554,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             MultiprocessingPipeline(
                 self.connector_config,
                 self.pipeline_config,
-                self.status_logger_config,
+                self.metrics_config,
                 self.timeout,
                 self.log_handler,
                 self.print_processed_period,
@@ -570,7 +570,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             MultiprocessingPipeline(
                 self.connector_config,
                 self.pipeline_config,
-                self.status_logger_config,
+                self.metrics_config,
                 self.timeout,
                 self.log_handler,
                 self.print_processed_period,
@@ -586,7 +586,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         pipeline = MultiprocessingPipeline(
             self.connector_config,
             self.pipeline_config,
-            self.status_logger_config,
+            self.metrics_config,
             self.timeout,
             self.log_handler,
             self.print_processed_period,

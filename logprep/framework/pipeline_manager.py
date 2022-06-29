@@ -7,7 +7,7 @@ from queue import Empty
 from logprep.framework.pipeline import MultiprocessingPipeline
 from logprep.util.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.util.processor_stats import StatusLoggerCollection
+from logprep.util.processor_stats import MetricTargets
 
 
 class PipelineManagerError(BaseException):
@@ -24,9 +24,9 @@ class MustSetConfigurationFirstError(PipelineManagerError):
 class PipelineManager:
     """Manage pipelines via multi-processing."""
 
-    def __init__(self, logger: Logger, status_logger: StatusLoggerCollection):
+    def __init__(self, logger: Logger, metric_targets: MetricTargets):
         self._logger = logger
-        self._status_logger = status_logger
+        self.metric_targets = metric_targets
 
         self._log_handler = MultiprocessingLogHandler(self._logger.level)
 
@@ -104,8 +104,8 @@ class PipelineManager:
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
 
-            if self._status_logger.prometheus_exporter is not None:
-                self._status_logger.prometheus_exporter.remove_metrics_from_process(
+            if self.metric_targets.prometheus_exporter is not None:
+                self.metric_targets.prometheus_exporter.remove_metrics_from_process(
                     failed_pipeline.pid
                 )
 
@@ -140,5 +140,5 @@ class PipelineManager:
             self._lock,
             self._shared_dict,
             profile=self._configuration.get("profile_pipelines", False),
-            status_logger=self._status_logger,
+            metric_targets=self.metric_targets,
         )

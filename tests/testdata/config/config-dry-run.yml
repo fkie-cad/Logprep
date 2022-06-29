@@ -1,6 +1,14 @@
 process_count: 1
 timeout: 0.1
-measure_time: true
+
+metrics:
+  period: 10
+  enabled: true
+  cumulative: true
+  aggregate_processes: false
+  measure_time:
+    enabled: true
+    append_to_event: false
 
 pipeline:
   - normalizer:
