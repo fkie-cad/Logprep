@@ -10,37 +10,20 @@ from typing import Optional
 
 from colorama import Fore
 
-from logprep.metrics.metric_targets import MetricFileTarget, PrometheusMetricTarget
+from logprep.metrics.metric import MetricTargets
+from logprep.metrics.metric_targets import get_metric_targets
 from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
 from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.util.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import print_fcolor
-from logprep.metrics.metric import MetricTargets
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
-
-
-def _get_metric_targets(config: dict, logger: Logger) -> MetricTargets:
-    metric_configs = config.get("metrics", {})
-
-    if not metric_configs.get("enabled", False):
-        return MetricTargets(None, None)
-
-    target_configs = metric_configs.get("targets", [])
-    file_target = None
-    prometheus_target = None
-    for target in target_configs:
-        if "file" in target.keys():
-            file_target = MetricFileTarget.create(target.get("file"))
-        if "prometheus" in target.keys():
-            prometheus_target = PrometheusMetricTarget.create(metric_configs, logger)
-    return MetricTargets(file_target, prometheus_target)
 
 
 def _parse_arguments():
@@ -134,7 +117,7 @@ def main():
 
     metric_targets = None
     if not args.disable_logging:
-        metric_targets = _get_metric_targets(config, logger)
+        metric_targets = get_metric_targets(config, logger)
 
     measure_time_config = config.get("metrics", {}).get("measure_time", {})
     TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)

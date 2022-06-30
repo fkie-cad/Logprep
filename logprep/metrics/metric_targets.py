@@ -2,11 +2,12 @@
 import datetime
 import json
 import os
-from logging import getLogger
+from logging import getLogger, Logger
 from logging.handlers import TimedRotatingFileHandler
 from os.path import dirname
 from pathlib import Path
 
+from logprep.metrics.metric import MetricTargets
 from logprep.util.helper import add_field_to
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
@@ -19,6 +20,24 @@ def split_key_label_string(key_label_string):
     labels = labels.split(",")
     labels = [label.split(":") for label in labels]
     return key, dict(labels)
+
+
+def get_metric_targets(config: dict, logger: Logger) -> MetricTargets:
+    """Checks the given configuration and creates the proper metric targets"""
+    metric_configs = config.get("metrics", {})
+
+    if not metric_configs.get("enabled", False):
+        return MetricTargets(None, None)
+
+    target_configs = metric_configs.get("targets", [])
+    file_target = None
+    prometheus_target = None
+    for target in target_configs:
+        if "file" in target.keys():
+            file_target = MetricFileTarget.create(target.get("file"))
+        if "prometheus" in target.keys():
+            prometheus_target = PrometheusMetricTarget.create(metric_configs, logger)
+    return MetricTargets(file_target, prometheus_target)
 
 
 class MetricTarget:

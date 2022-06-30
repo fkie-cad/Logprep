@@ -8,6 +8,7 @@ import os
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from unittest import mock
+from unittest.mock import MagicMock
 
 import pytest
 from prometheus_client import Gauge
@@ -20,6 +21,7 @@ from logprep.metrics.metric_targets import (
     PrometheusMetricTarget,
     MetricFileTarget,
     split_key_label_string,
+    get_metric_targets,
 )
 from logprep.processor.base.rule import Rule
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -120,6 +122,55 @@ def test_split_key_label_string():
     expected_labels = {"label_one": "1", "label_two": "2"}
     assert expected_key == key
     assert expected_labels == labels
+
+
+class TestGetMetricTargets:
+    def test_get_metric_targets_return_no_targets_with_empty_config(self):
+        empty_config = {}
+        targets = get_metric_targets(empty_config, logging.getLogger("test-logger"))
+        assert targets.file_target is None
+        assert targets.prometheus_target is None
+
+    def test_get_metric_targets_returns_no_targets_if_disabled(self):
+        empty_config = {"metrics": {"enabled": False}}
+        targets = get_metric_targets(empty_config, logging.getLogger("test-logger"))
+        assert targets.file_target is None
+        assert targets.prometheus_target is None
+
+    @mock.patch("logprep.metrics.metric_targets.MetricFileTarget.create")
+    def test_get_metric_target_returns_only_file_target(self, create_file_target_mock):
+        create_file_target_mock.return_value = mock.MagicMock()
+        empty_config = {"metrics": {"enabled": True, "targets": [{"file": {"some": "thing"}}]}}
+        targets = get_metric_targets(empty_config, logging.getLogger("test-logger"))
+        assert isinstance(targets.file_target, MagicMock)
+        assert targets.prometheus_target is None
+
+    @mock.patch("logprep.metrics.metric_targets.PrometheusMetricTarget.create")
+    def test_get_metric_target_returns_only_prometheus_target(self, create_prometheus_target_mock):
+        create_prometheus_target_mock.return_value = mock.MagicMock()
+        empty_config = {
+            "metrics": {"enabled": True, "targets": [{"prometheus": {"some": "thing"}}]}
+        }
+        targets = get_metric_targets(empty_config, logging.getLogger("test-logger"))
+        assert isinstance(targets.prometheus_target, MagicMock)
+        assert targets.file_target is None
+
+    @mock.patch("logprep.metrics.metric_targets.MetricFileTarget.create")
+    @mock.patch("logprep.metrics.metric_targets.PrometheusMetricTarget.create")
+    def test_get_metric_target_returns_both_targets(
+        self, create_file_target_mock, create_prometheus_target_mock
+    ):
+        create_file_target_mock.return_value = mock.MagicMock()
+        create_prometheus_target_mock.return_value = mock.MagicMock()
+        empty_config = {
+            "metrics": {
+                "enabled": True,
+                "targets": [{"prometheus": {"some": "thing"}}, {"file": {"some": "thing"}}],
+            }
+        }
+        targets = get_metric_targets(empty_config, logging.getLogger("test-logger"))
+        assert isinstance(targets.prometheus_target, MagicMock)
+        assert isinstance(targets.file_target, MagicMock)
 
 
 class TestMetricFileTarget:
