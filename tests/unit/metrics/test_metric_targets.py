@@ -14,6 +14,7 @@ from prometheus_client import Gauge
 from logprep.abc import Processor
 from logprep.framework.pipeline import Pipeline
 from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.metrics.metric_exposer import MetricExposer
 from logprep.metrics.metric_targets import (
     PrometheusMetricTarget,
     MetricFileTarget,
@@ -184,6 +185,26 @@ class TestMetricFileTarget:
                     "logprep_pipeline_number_of_errors": 0.0,
                 }
             }
+        }
+
+        assert exposed_json == expected_json
+
+    def test_convert_metrics_to_pretty_json_with_empty_labels(self):
+        rule_metrics_one = Rule.RuleMetrics(labels={"foo": "bar"})
+        specific_rule_tree_metrics = RuleTree.RuleTreeMetrics(
+            labels={"foo": "bar"},
+            rules=[rule_metrics_one],
+        )
+        exposed_metrics = specific_rule_tree_metrics.expose()
+        stripped_metrics = dict(
+            (MetricExposer._strip_key(key, label_name="foo"), value)
+            for key, value in exposed_metrics.items()
+        )
+        exposed_json = self.target._convert_metrics_to_pretty_json(stripped_metrics)
+        expected_json = {
+            "logprep_number_of_rules": 0.0,
+            "logprep_number_of_matches": 0.0,
+            "logprep_mean_processing_time": 0.0,
         }
 
         assert exposed_json == expected_json
