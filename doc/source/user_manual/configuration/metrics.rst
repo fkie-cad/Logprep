@@ -5,32 +5,30 @@ Metrics
 Configuration
 =============
 
-.. _status_logger_configuration:
+metrics
+-------
 
-status_logger
--------------
-
-The status logger exports metrics like counts of processed events, errors or warnings, for all
-processors and multiprocessing pipelines. The metrics can be exported as a rotating log file with
-JSON lines and/or via a Prometheus Exporter. The log file format has additional information like
-warning and error types. Those are not available for the Prometheus Exporter. Both can be activated
-at the same time. By default only the file target is activated. To activate the prometheus exporter
-the required target has to be configured. Furthermore the utilized `prometheus python
-client <https://github.com/prometheus/client_python>`_ requires the configuration of the environment
-variable :code:`PROMETHEUS_MULTIPROC_DIR`, a directory to save temporary files needed for in-between
-process communication.
+This configuration allows the export of certain metrics like counts of processed events, errors or
+warnings, for all processors and multiprocessing pipelines.
+The metrics can be exported as a rotating log file with JSON lines and/or via a Prometheus Exporter.
+Both can be activated at the same time.
+By default only the file target is activated.
+To activate the prometheus exporter the required target has to be configured.
+Furthermore the utilized `prometheus python client <https://github.com/prometheus/client_python>`_
+requires the configuration of the environment variable :code:`PROMETHEUS_MULTIPROC_DIR`, a
+directory to save temporary files needed for in-between process communication.
 
 .. WARNING::
-   The configured directory :code:`PROMETHEUS_MULTIPROC_DIR` will be cleared on every startup. Make
-   sure it does not contain any other files as they will be lost afterwards.
+   The configured directory :code:`PROMETHEUS_MULTIPROC_DIR` will be cleared on every startup.
+   Make sure it does not contain any other files as they will be lost afterwards.
 
-The status_logger can export it's metrics as an aggregation of all child processes or independently,
+It is also possible to export the metrics as an aggregation of all child processes or independently,
 without any aggregation.
 
 .. hint::
    To achieve the best results for the prometheus exporter it is suggested to deactivate
-   `cumulative` metrics as well as the process aggregation `aggregate_processes`. This ensures that
-   each process is exported as it's own metrics giving full transparency.
+   `cumulative` metrics as well as the process aggregation `aggregate_processes`.
+   This ensures that each process is exported as it's own metrics giving full transparency.
    And deactivating `cumulative` will result in exporting only the statistics of the past period
    instead of counting endlessly.
 
@@ -121,7 +119,7 @@ Example
     metrics:
       enabled: true
       period: 10
-      cumulative: true
+      cumulative: false
       aggregate_processes: false
       measure_time:
         enabled: true

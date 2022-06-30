@@ -43,6 +43,9 @@ class MetricExposer:
             else:
                 self._send_to_output(metrics.expose())
 
+            if not self._cumulative:
+                metrics.reset_statistics()
+
     def _store_metrics(self, metrics):
         with self._lock:
             empty_keys = [key for key, value in self._shared_dict.items() if value is None]

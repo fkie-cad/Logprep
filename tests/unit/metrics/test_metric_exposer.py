@@ -144,6 +144,19 @@ class TestMetricExposer:
         send_to_output_mock.assert_called()
         mock_metrics.expose.assert_called()
 
+    def test_expose_resets_statistics_if_cumulative_config_is_false(self):
+        config = self.config.copy()
+        config["cumulative"] = False
+        self.exposer = MetricExposer(config, self.metric_targets, self.shared_dict, Lock())
+        self.exposer._timer = Value(c_double, time() - self.config["period"])
+        metrics = Rule.RuleMetrics(labels={"type": "generic"})
+        metrics._number_of_matches = 3
+        metrics.update_mean_processing_time(3)
+        self.exposer.expose(metrics)
+        assert metrics._number_of_matches == 0
+        assert metrics._mean_processing_time == 0
+        assert metrics._mean_processing_time_sample_counter == 0
+
     @pytest.mark.parametrize(
         "key, expected_stripped_key",
         [

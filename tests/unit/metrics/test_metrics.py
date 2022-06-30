@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 from attr import define
 
-from logprep.metrics.metric import Metric, calculate_new_average
+from logprep.metrics.metric import Metric, calculate_new_average, get_settable_metrics
 
 
 @define(kw_only=True)
@@ -104,3 +104,17 @@ class TestMetric:
 
             real_mean = np.mean(samples[: i + 1])
             assert current_average == real_mean
+
+    def test_get_settable_metrics(self):
+        mock_child_metric = MockChildMetric(labels={"type": "child"})
+        metrics = get_settable_metrics(mock_child_metric)
+        expected_metrics = {
+            "_labels": {"type": "child"},
+            "_prefix": "logprep_",
+            "metric_a": 0,
+            "metric_b": 0.0,
+            "_calculated_metric": 0,
+            "_private_ignore_metric": 0,
+            "calculated_metric": 0,
+        }
+        assert metrics == expected_metrics

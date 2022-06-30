@@ -26,8 +26,8 @@ def get_exposable_metrics(metric_object):
 
 
 def get_settable_metrics(metric_object):
-    """Retrieves writable attributes by checking if they are public and have a setter method"""
-    dic = asdict(metric_object, filter=is_public)
+    """Retrieves writable attributes by checking have a setter method"""
+    dic = asdict(metric_object)
     all_attributes = vars(type(metric_object)).items()
     # include properties as they are not part of asdict
     dic.update({n: p.__get__(metric_object) for n, p in all_attributes if is_writable(p)})
