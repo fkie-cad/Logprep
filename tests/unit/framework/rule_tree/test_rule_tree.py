@@ -475,3 +475,7 @@ class TestRuleTree:
         rule_tree.add_rule(rule_one)
         rule_tree.add_rule(rule_two)
         assert rule_tree.metrics.mean_processing_time == 1.5
+
+    def test_rule_tree_metrics_mean_processing_time_returns_zero_if_no_times_available(self):
+        rule_tree = RuleTree()
+        assert rule_tree.metrics.mean_processing_time == 0.0
