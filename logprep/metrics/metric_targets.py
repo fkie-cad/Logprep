@@ -94,7 +94,7 @@ class PrometheusMetricTarget(MetricTarget):
         """Creates a PrometheusMetricTarget"""
         if not os.environ.get("PROMETHEUS_MULTIPROC_DIR", False):
             logger.warning(
-                "Prometheus Exporter was is deactivated because the"
+                "Prometheus Exporter was deactivated because the "
                 "mandatory environment variable "
                 "'PROMETHEUS_MULTIPROC_DIR' is missing."
             )

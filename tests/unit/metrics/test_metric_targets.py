@@ -4,6 +4,7 @@
 # pylint: disable=no-self-use
 import json
 import logging
+import os
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from unittest import mock
@@ -244,6 +245,29 @@ class TestPrometheusMetricTarget:
         logger = logging.getLogger("test-file-metric-logger")
         prometheus_exporter = PrometheusStatsExporter(config, logger)
         self.target = PrometheusMetricTarget(prometheus_exporter)
+
+    def test_create_method(self, tmpdir):
+        with mock.patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": f"{tmpdir}/some/dir"}):
+            config = {"port": 8000}
+            created_target = PrometheusMetricTarget.create(config, logging.getLogger("test-logger"))
+            assert isinstance(created_target, PrometheusMetricTarget)
+            assert isinstance(created_target.prometheus_exporter, PrometheusStatsExporter)
+            assert not created_target.prometheus_exporter.metrics
+            assert created_target.prometheus_exporter._port == config["port"]
+            assert created_target.prometheus_exporter._logger.name == "test-logger"
+
+    def test_create_method_without_env_variable(self, caplog):
+        with caplog.at_level(logging.WARNING):
+            with mock.patch.dict(os.environ, {}):
+                config = {"port": 8000}
+                created_target = PrometheusMetricTarget.create(
+                    config, logging.getLogger("test-logger")
+                )
+                assert created_target is None
+                assert (
+                    caplog.messages[0] == "Prometheus Exporter was deactivated because "
+                    "the mandatory environment variable 'PROMETHEUS_MULTIPROC_DIR' is missing."
+                )
 
     def test_expose_creates_new_metric_exporter_if_it_does_not_exist_yet(self):
         metrics = Rule.RuleMetrics(labels={"type": "generic"})
