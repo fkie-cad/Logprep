@@ -5,7 +5,7 @@ from time import time
 
 import numpy as np
 
-from logprep.metrics.metric_targets import MetricFileTarget, PrometheusMetricTarget
+from logprep.metrics.metric_targets import split_key_label_string
 
 
 class MetricExposer:
@@ -40,7 +40,7 @@ class MetricExposer:
         if self._time_to_expose():
             if self._aggregate_processes:
                 self._expose_aggregated_metrics_from_shared_dict()
-            if not self._aggregate_processes:
+            else:
                 self._send_to_output(metrics.expose())
 
     def _store_metrics(self, metrics):
@@ -65,21 +65,43 @@ class MetricExposer:
             return True
 
     def _expose_aggregated_metrics_from_shared_dict(self):
-        aggregated_metrics = self._aggregate_metrics()
-        self._send_to_output(aggregated_metrics)
-        self._clear_storage()
+        with self._lock:
+            if not any(value is None for value in self._shared_dict.values()):
+                aggregated_metrics = self._aggregate_metrics()
+                self._send_to_output(aggregated_metrics)
+                self._clear_storage()
 
     def _aggregate_metrics(self):
-        metrics = [metric.expose() for metric in self._shared_dict.values() if metric is not None]
-        metric_keys = metrics[0].keys()
+        metrics_per_pipeline = [
+            metric.expose() for metric in self._shared_dict.values() if metric is not None
+        ]
+        metrics_per_pipeline = self._strip_pipeline_metric_label(metrics_per_pipeline)
+        metric_reference_keys = metrics_per_pipeline[0].keys()
         aggregated_metrics = {}
-        for key in metric_keys:
-            key_values = [m[key] for m in metrics]
+        for key in metric_reference_keys:
+            key_values = [m[key] for m in metrics_per_pipeline]
             if "mean" in key:
                 aggregated_metrics[key] = np.mean(key_values)
             else:
                 aggregated_metrics[key] = np.sum(key_values)
         return aggregated_metrics
+
+    def _strip_pipeline_metric_label(self, metrics_per_pipeline):
+        stripped_metrics = []
+        for metrics in metrics_per_pipeline:
+            stripped_dict = dict((self._strip_key(key), value) for key, value in metrics.items())
+            stripped_metrics.append(stripped_dict)
+        return stripped_metrics
+
+    @staticmethod
+    def _strip_key(key, label_name="pipeline"):
+        key, label = split_key_label_string(key)
+        label.pop(label_name, None)
+        if not label:
+            return key
+        label = [":".join(item) for item in label.items()]
+        label = ",".join(label)
+        return f"{key};{label}"
 
     def _send_to_output(self, metrics):
         """

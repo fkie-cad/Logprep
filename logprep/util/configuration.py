@@ -201,7 +201,11 @@ class Configuration(dict):
                 UnknownProcessorTypeError,
                 TypeError,
             ) as error:
-                errors.append(InvalidProcessorConfigurationError(str(error)))
+                errors.append(
+                    InvalidProcessorConfigurationError(
+                        f"{list(processor_config.keys())[0]} - {error}"
+                    )
+                )
         if errors:
             raise InvalidConfigurationErrors(errors)
 

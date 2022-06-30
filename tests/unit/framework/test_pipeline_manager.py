@@ -8,8 +8,8 @@ from pytest import raises
 
 from logprep.framework.pipeline import MultiprocessingPipeline
 from logprep.framework.pipeline_manager import PipelineManager, MustSetConfigurationFirstError
-from logprep.util.configuration import Configuration
 from logprep.metrics.metric import MetricTargets
+from logprep.util.configuration import Configuration
 from tests.testdata.metadata import path_to_config
 from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub, AssertEmitsLogMessages
 
@@ -45,7 +45,7 @@ class MultiprocessingPipelineMock(MultiprocessingPipeline):
 
 
 class PipelineManagerForTesting(PipelineManager):
-    def _create_pipeline(self):
+    def _create_pipeline(self, index):
         return MultiprocessingPipelineMock()
 
 
@@ -67,7 +67,8 @@ class TestPipelineManager:
             MustSetConfigurationFirstError,
             match="Failed to create new pipeline: Configuration is unset",
         ):
-            manager._create_pipeline()
+            pipeline_index = 1
+            manager._create_pipeline(pipeline_index)
 
     def test_get_count_returns_count_of_pipelines(self):
         for count in range(5):

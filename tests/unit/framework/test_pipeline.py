@@ -24,6 +24,7 @@ from logprep.input.input import (
     WarningInputError,
     CriticalInputError,
 )
+from logprep.metrics.metric import MetricTargets
 from logprep.output.dummy_output import DummyOutput
 from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
 from logprep.processor.base.exceptions import ProcessingWarning
@@ -31,12 +32,11 @@ from logprep.processor.delete.processor import Delete
 from logprep.processor.delete.rule import DeleteRule
 from logprep.processor.processor_configuration import ProcessorConfiguration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.metrics.metric import MetricTargets
 
 
 class ConfigurationForTests:
     connector_config = {"type": "dummy", "input": [{"test": "empty"}]}
-    pipeline_config = ["mock_processor", "mock_processor"]
+    pipeline_config = [{"mock_processor1": {"proc": "conf"}}, {"mock_processor2": {"proc": "conf"}}]
     metrics_config = {
         "period": 300,
         "enabled": False,
@@ -64,7 +64,9 @@ class TestPipeline(ConfigurationForTests):
     def setup_method(self):
         self._check_failed_stored = None
 
+        pipeline_index = 1
         self.pipeline = Pipeline(
+            pipeline_index,
             self.connector_config,
             self.pipeline_config,
             self.metrics_config,
@@ -79,7 +81,9 @@ class TestPipeline(ConfigurationForTests):
     def test_fails_if_log_handler_is_not_of_type_loghandler(self, _):
         for not_a_log_handler in [None, 123, 45.67, TestPipeline()]:
             with raises(MustProvideALogHandlerError):
+                pipeline_index = 1
                 _ = Pipeline(
+                    pipeline_index,
                     self.connector_config,
                     self.pipeline_config,
                     self.metrics_config,
@@ -144,6 +148,7 @@ class TestPipeline(ConfigurationForTests):
             "generic_rules": ["tests/testdata/unit/delete/rules/generic"],
         }
         processor_configuration = ProcessorConfiguration.create("delete processor", delete_config)
+        processor_configuration.metric_labels = {}
         delete_processor = Delete("delete processor", processor_configuration, mock.MagicMock())
         delete_rule = DeleteRule._create_from_dict({"filter": "delete_me", "delete": True})
         delete_processor._specific_tree.add_rule(delete_rule)
@@ -522,7 +527,9 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
     def test_fails_if_log_handler_is_not_a_multiprocessing_log_handler(self):
         for not_a_log_handler in [None, 123, 45.67, TestMultiprocessingPipeline()]:
             with raises(MustProvideAnMPLogHandlerError):
+                pipeline_index = 1
                 MultiprocessingPipeline(
+                    pipeline_index,
                     {},
                     [{}],
                     self.metrics_config,
@@ -535,7 +542,9 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
 
     def test_does_not_fail_if_log_handler_is_a_multiprocessing_log_handler(self):
         try:
+            pipeline_index = 1
             MultiprocessingPipeline(
+                pipeline_index,
                 self.connector_config,
                 self.pipeline_config,
                 self.metrics_config,
@@ -550,8 +559,10 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
 
     def test_creates_a_new_process(self):
         children_before = active_children()
+        pipeline_index = 1
         children_running = self.start_and_stop_pipeline(
             MultiprocessingPipeline(
+                pipeline_index,
                 self.connector_config,
                 self.pipeline_config,
                 self.metrics_config,
@@ -566,8 +577,10 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         assert len(children_running) == (len(children_before) + 1)
 
     def test_stop_terminates_the_process(self):
+        pipeline_index = 1
         children_running = self.start_and_stop_pipeline(
             MultiprocessingPipeline(
+                pipeline_index,
                 self.connector_config,
                 self.pipeline_config,
                 self.metrics_config,
@@ -583,7 +596,9 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         assert len(children_after) == (len(children_running) - 1)
 
     def test_enable_iteration_sets_iterate_to_true_stop_to_false(self):
+        pipeline_index = 1
         pipeline = MultiprocessingPipeline(
+            pipeline_index,
             self.connector_config,
             self.pipeline_config,
             self.metrics_config,

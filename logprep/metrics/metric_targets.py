@@ -13,6 +13,8 @@ from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 def split_key_label_string(key_label_string):
     """Splits the key label string into separate variables"""
+    if ";" not in key_label_string:
+        return key_label_string, None
     key, labels = key_label_string.split(";")
     labels = labels.split(",")
     labels = [label.split(":") for label in labels]
@@ -60,7 +62,12 @@ class MetricFileTarget(MetricTarget):
         metric_data = {}
         for key_labels, value in metrics.items():
             metric_name, labels = split_key_label_string(key_labels)
-            dotted_path = ".".join([f"{l[0]}.{l[1]}" for l in labels.items()]) + f".{metric_name}"
+            if labels:
+                dotted_path = (
+                    ".".join([f"{l[0]}.{l[1]}" for l in labels.items()]) + f".{metric_name}"
+                )
+            else:
+                dotted_path = f"{metric_name}"
             add_field_to(metric_data, dotted_path, value)
         return metric_data
 
@@ -101,8 +108,15 @@ class PrometheusMetricTarget(MetricTarget):
         for key_labels, value in metrics.items():
             key, labels = split_key_label_string(key_labels)
             if key not in self.prometheus_exporter.metrics.keys():
-                self.prometheus_exporter.create_new_metric_exporter(key, labels.keys())
-            self.prometheus_exporter.metrics[key].labels(**labels).set(value)
+                label_names = []
+                if labels:
+                    label_names = labels.keys()
+                self.prometheus_exporter.create_new_metric_exporter(key, label_names)
+
+            if labels:
+                self.prometheus_exporter.metrics[key].labels(**labels).set(value)
+            else:
+                self.prometheus_exporter.metrics[key].set(value)
 
         interval = self.prometheus_exporter.configuration["period"]
         self.prometheus_exporter.tracking_interval.labels(component="logprep").set(interval)

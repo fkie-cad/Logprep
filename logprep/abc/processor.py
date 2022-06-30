@@ -1,4 +1,5 @@
 """ abstract module for processors"""
+import copy
 import os
 import sys
 from abc import ABC, abstractmethod
@@ -8,8 +9,8 @@ from typing import List, Optional, Union
 
 from attr import define, field, validators
 
-from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.processor.base.rule import Rule
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util.helper import camel_to_snake
@@ -21,7 +22,7 @@ from logprep.util.validators import file_validator, list_of_dirs_validator
 class Processor(ABC):
     """Abstract Processor Class to define the Interface"""
 
-    @define(kw_only=True)
+    @define(kw_only=True, slots=False)
     class Config:
         """Common Configurations"""
 
@@ -37,6 +38,8 @@ class Processor(ABC):
     @define(kw_only=True)
     class ProcessorMetrics(Metric):
         """Tracks statistics about this processor"""
+
+        _prefix: str = "logprep_processor_"
 
         number_of_processed_events: int = 0
         """Number of events that were processed by the processor"""
@@ -68,6 +71,7 @@ class Processor(ABC):
         "ps",
         "has_custom_tests",
         "metrics",
+        "metric_labels",
         "_logger",
         "_event",
         "_specific_tree",
@@ -90,21 +94,26 @@ class Processor(ABC):
     _strategy = SpecificGenericProcessStrategy()
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
-        self._config = configuration
-        self.has_custom_tests = False
-        self.name = name
         self._logger = logger
-        self._specific_tree = RuleTree(config_path=self._config.tree_config)
-        self._generic_tree = RuleTree(config_path=self._config.tree_config)
+        self._config = configuration
+        self.name = name
+        self.metric_labels, specific_tree_labels, generic_tree_labels = self._create_metric_labels()
+        self._specific_tree = RuleTree(
+            config_path=self._config.tree_config, metric_labels=specific_tree_labels
+        )
+        self._generic_tree = RuleTree(
+            config_path=self._config.tree_config, metric_labels=generic_tree_labels
+        )
         self.add_rules_from_directory(
             generic_rules_dirs=self._config.generic_rules,
             specific_rules_dirs=self._config.specific_rules,
         )
         self.metrics = self.ProcessorMetrics(
-            labels={"type": "processor"},
+            labels=self.metric_labels,
             generic_rule_tree=self._generic_tree.metrics,
             specific_rule_tree=self._specific_tree.metrics,
         )
+        self.has_custom_tests = False
 
     def __repr__(self):
         return camel_to_snake(self.__class__.__name__)
@@ -115,6 +124,16 @@ class Processor(ABC):
         Optional: Called before processing starts.
 
         """
+
+    def _create_metric_labels(self):
+        """Reads out the metrics from the configuration and sets up labels for the rule trees"""
+        metric_labels = self._config.metric_labels
+        metric_labels.update({"processor": self.name})
+        specif_tree_labels = copy.deepcopy(metric_labels)
+        specif_tree_labels.update({"rule_tree": "specific"})
+        generic_tree_labels = copy.deepcopy(metric_labels)
+        generic_tree_labels.update({"rule_tree": "generic"})
+        return metric_labels, specif_tree_labels, generic_tree_labels
 
     @property
     def _specific_rules(self):
@@ -182,7 +201,7 @@ class Processor(ABC):
 
     @abstractmethod
     def _apply_rules(self, event, rule):
-        ...
+        ...  # pragma: no cover
 
     def shut_down(self):
         """Stop processing of this processor.

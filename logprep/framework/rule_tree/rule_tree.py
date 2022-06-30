@@ -1,18 +1,16 @@
 """This module contains the rule tree functionality."""
 
-from typing import List
 from json import load
-
 from logging import Logger
+from typing import List
 
 import numpy as np
 from attr import define, Factory
 
-from logprep.metrics.metric import Metric
-from logprep.processor.base.rule import Rule
-
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
+from logprep.metrics.metric import Metric
+from logprep.processor.base.rule import Rule
 
 
 class RuleTree:
@@ -37,12 +35,15 @@ class RuleTree:
         @property
         def mean_processing_time(self):
             """Mean of all rule mean processing times"""
-            return np.mean([rule._mean_processing_time for rule in self.rules])
+            times = [rule._mean_processing_time for rule in self.rules]
+            if times:
+                return np.mean(times)
+            return 0.0
 
         # pylint: enable=not-an-iterable
         # pylint: enable=protected-access
 
-    def __init__(self, root: Node = None, config_path: str = None):
+    def __init__(self, root: Node = None, config_path: str = None, metric_labels: dict = None):
         """Rule tree initialization function.
 
         Initializes a new rule tree with a given root node and a path to the tree's optional config
@@ -60,7 +61,9 @@ class RuleTree:
         self._rule_mapping = {}
         self._config_path = config_path
         self._setup()
-        self.metrics = self.RuleTreeMetrics(labels={"type": "rule"})
+        if not metric_labels:
+            metric_labels = {"component": "rule_tree"}
+        self.metrics = self.RuleTreeMetrics(labels=metric_labels)
 
         if root:
             self._root = root

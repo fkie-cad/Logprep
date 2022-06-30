@@ -278,7 +278,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: some_processor_name - Unknown processor type 'does_not_exist'",
                     )
                 ],
             ),
@@ -299,7 +299,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: __init__() missing 1 required keyword-only argument: 'generic_rules'",
+                        "Invalid processor config: labelername - __init__() missing 1 required keyword-only argument: 'generic_rules'",
                     )
                 ],
             ),
@@ -318,11 +318,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: some_processor_name - Unknown processor type 'does_not_exist'",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: another_processor_name - Unknown processor type 'does_not_exist'",
                     ),
                 ],
             ),
@@ -369,7 +369,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: some_processor_name - Unknown processor type 'does_not_exist'",
                     )
                 ],
             ),
@@ -390,7 +390,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: __init__() missing 1 required keyword-only argument: 'generic_rules'",
+                        "Invalid processor config: labelername - __init__() missing 1 required keyword-only argument: 'generic_rules'",
                     )
                 ],
             ),
@@ -409,11 +409,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: some_processor_name - Unknown processor type 'does_not_exist'",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: another_processor_name - Unknown processor type 'does_not_exist'",
                     ),
                 ],
             ),
@@ -427,7 +427,7 @@ class TestConfiguration:
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: The processor type specification is missing for processor with name 'some_processor_name'",
+                        "Invalid processor config: some_processor_name - The processor type specification is missing for processor with name 'some_processor_name'",
                     ),
                 ],
             ),

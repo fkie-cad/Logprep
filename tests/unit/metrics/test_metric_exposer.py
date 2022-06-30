@@ -78,6 +78,8 @@ class TestMetricExposer:
     def test_expose_aggregated_metrics(
         self, send_to_output_mock, clear_storage_mock, aggregate_metrics_mock
     ):
+        for _ in range(len(self.exposer._shared_dict)):
+            self.exposer._store_metrics({"metrics": "metrics"})
         self.exposer._expose_aggregated_metrics_from_shared_dict()
         send_to_output_mock.assert_called()
         clear_storage_mock.assert_called()

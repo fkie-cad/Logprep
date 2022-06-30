@@ -10,13 +10,13 @@ import pytest
 from prometheus_client import Gauge
 
 from logprep.abc import Processor
+from logprep.framework.pipeline import Pipeline
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric_targets import (
     PrometheusMetricTarget,
     MetricFileTarget,
     split_key_label_string,
 )
-from logprep.framework.pipeline import Pipeline
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.rule import Rule
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
@@ -131,46 +131,46 @@ class TestMetricFileTarget:
                 "pipeline-01": {
                     "processor": {
                         "generic_adder": {
-                            "logprep_number_of_processed_events": 0,
-                            "logprep_mean_processing_time_per_event": 0.0,
-                            "logprep_number_of_warnings": 0,
-                            "logprep_number_of_errors": 0,
+                            "logprep_processor_number_of_processed_events": 0.0,
+                            "logprep_processor_mean_processing_time_per_event": 0.0,
+                            "logprep_processor_number_of_warnings": 0.0,
+                            "logprep_processor_number_of_errors": 0.0,
                             "rule_tree": {
                                 "generic": {
-                                    "logprep_number_of_rules": 0,
-                                    "logprep_number_of_matches": 5,
+                                    "logprep_number_of_rules": 0.0,
+                                    "logprep_number_of_matches": 5.0,
                                     "logprep_mean_processing_time": 0.0,
                                 },
                                 "specific": {
-                                    "logprep_number_of_rules": 0,
-                                    "logprep_number_of_matches": 0,
+                                    "logprep_number_of_rules": 0.0,
+                                    "logprep_number_of_matches": 0.0,
                                     "logprep_mean_processing_time": 0.0,
                                 },
                             },
                         },
                         "normalizer": {
-                            "logprep_number_of_processed_events": 0,
-                            "logprep_mean_processing_time_per_event": 0.0,
-                            "logprep_number_of_warnings": 0,
-                            "logprep_number_of_errors": 0,
+                            "logprep_processor_number_of_processed_events": 0.0,
+                            "logprep_processor_mean_processing_time_per_event": 0.0,
+                            "logprep_processor_number_of_warnings": 0.0,
+                            "logprep_processor_number_of_errors": 0.0,
                             "rule_tree": {
                                 "generic": {
-                                    "logprep_number_of_rules": 0,
-                                    "logprep_number_of_matches": 0,
+                                    "logprep_number_of_rules": 0.0,
+                                    "logprep_number_of_matches": 0.0,
                                     "logprep_mean_processing_time": 0.0,
                                 },
                                 "specific": {
-                                    "logprep_number_of_rules": 0,
-                                    "logprep_number_of_matches": 0,
+                                    "logprep_number_of_rules": 0.0,
+                                    "logprep_number_of_matches": 0.0,
                                     "logprep_mean_processing_time": 0.0,
                                 },
                             },
                         },
                     },
-                    "logprep_kafka_offset": 0,
-                    "logprep_number_of_processed_events": 0,
-                    "logprep_number_of_warnings": 0,
-                    "logprep_number_of_errors": 0,
+                    "logprep_pipeline_kafka_offset": 0.0,
+                    "logprep_pipeline_number_of_processed_events": 0.0,
+                    "logprep_pipeline_number_of_warnings": 0.0,
+                    "logprep_pipeline_number_of_errors": 0.0,
                 }
             }
         }

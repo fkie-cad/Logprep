@@ -5,9 +5,9 @@ from multiprocessing import Manager, Lock
 from queue import Empty
 
 from logprep.framework.pipeline import MultiprocessingPipeline
+from logprep.metrics.metric import MetricTargets
 from logprep.util.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.metrics.metric import MetricTargets
 
 
 class PipelineManagerError(BaseException):
@@ -75,7 +75,8 @@ class PipelineManager:
 
     def _increase_to_count(self, count: int):
         while len(self._pipelines) < count:
-            self._pipelines.append(self._create_pipeline())
+            new_pipeline_index = len(self._pipelines) + 1
+            self._pipelines.append(self._create_pipeline(new_pipeline_index))
             self._pipelines[-1].start()
 
     def _decrease_to_count(self, count: int):
@@ -91,7 +92,7 @@ class PipelineManager:
             old_pipeline.stop()
             old_pipeline.join()
 
-            self._pipelines[index] = self._create_pipeline()
+            self._pipelines[index] = self._create_pipeline(index)
             self._pipelines[index].start()
 
     def remove_failed_pipeline(self):
@@ -125,12 +126,13 @@ class PipelineManager:
         """Stop processing any pipelines by reducing the pipeline count to zero."""
         self._decrease_to_count(0)
 
-    def _create_pipeline(self) -> MultiprocessingPipeline:
+    def _create_pipeline(self, index) -> MultiprocessingPipeline:
         if self._configuration is None:
             raise MustSetConfigurationFirstError("create new pipeline")
 
         self._logger.info("Created new pipeline")
         return MultiprocessingPipeline(
+            index,
             self._configuration["connector"],
             self._configuration["pipeline"],
             self._configuration.get("metrics", {}),

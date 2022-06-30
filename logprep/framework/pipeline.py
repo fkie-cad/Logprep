@@ -61,6 +61,8 @@ class Pipeline:
     class PipelineMetrics(Metric):
         """Tracks statistics about a pipeline"""
 
+        _prefix: str = "logprep_pipeline_"
+
         pipeline: List["Processor.ProcessorMetrics"] = Factory(list)
         """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
@@ -83,6 +85,7 @@ class Pipeline:
 
     def __init__(
         self,
+        pipeline_index: int,
         connector_config: dict,
         pipeline_config: List[dict],
         metrics_config: dict,
@@ -109,7 +112,8 @@ class Pipeline:
         self._processing_counter = counter
 
         self._metrics_exposer = MetricExposer(metrics_config, metric_targets, shared_dict, lock)
-        self.metrics = self.PipelineMetrics(labels={"type": "pipeline"})
+        self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
+        self.metrics = self.PipelineMetrics(labels=self._metric_labels)
 
     def _setup(self):
         self._create_logger()
@@ -121,6 +125,8 @@ class Pipeline:
             self._logger.debug(f"Building '{current_process().name}'")
         self._pipeline = []
         for entry in self._pipeline_config:
+            processor_name = list(entry.keys())[0]
+            entry[processor_name]["metric_labels"] = self._metric_labels
             processor = ProcessorFactory.create(entry, self._logger)
             self._pipeline.append(processor)
             self.metrics.pipeline.append(processor.metrics)
@@ -365,6 +371,7 @@ class MultiprocessingPipeline(Process, Pipeline):
 
     def __init__(
         self,
+        pipeline_index: int,
         connector_config: dict,
         pipeline_config: List[dict],
         metrics_config: dict,
@@ -384,6 +391,7 @@ class MultiprocessingPipeline(Process, Pipeline):
 
         Pipeline.__init__(
             self,
+            pipeline_index,
             connector_config,
             pipeline_config,
             metrics_config,
