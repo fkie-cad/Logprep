@@ -1,9 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+# pylint: disable=no-self-use
 import json
 import logging
 from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
 from unittest import mock
 
 import pytest
@@ -122,6 +124,15 @@ class TestMetricFileTarget:
     def setup_method(self):
         logger = logging.getLogger("test-file-metric-logger")
         self.target = MetricFileTarget(logger)
+
+    def test_create_method(self):
+        config = {"path": "./logs/status.json", "rollover_interval": 86400, "backup_count": 10}
+        created_target = MetricFileTarget.create(config)
+        assert isinstance(created_target._file_logger, logging.Logger)
+        assert isinstance(created_target._file_logger.handlers[0], TimedRotatingFileHandler)
+        assert created_target._file_logger.handlers[0].interval == config["rollover_interval"]
+        assert created_target._file_logger.handlers[0].backupCount == config["backup_count"]
+        assert created_target._file_logger.handlers[0].baseFilename.endswith(config["path"][1:])
 
     def test_convert_metrics_to_pretty_json(self, pipeline_metrics):
         exposed_metrics = pipeline_metrics.expose()
