@@ -97,11 +97,11 @@ class MetricExposer:
     def _strip_key(key, label_name="pipeline"):
         key, label = split_key_label_string(key)
         label.pop(label_name, None)
-        if not label:
-            return key
-        label = [":".join(item) for item in label.items()]
-        label = ",".join(label)
-        return f"{key};{label}"
+        if label:
+            label = [":".join(item) for item in label.items()]
+            label = ",".join(label)
+            return f"{key};{label}"
+        return key
 
     def _send_to_output(self, metrics):
         """

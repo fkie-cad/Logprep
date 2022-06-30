@@ -8,6 +8,8 @@ from multiprocessing import Manager, Lock, Value
 from time import time
 from unittest import mock
 
+import pytest
+
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import MetricTargets
 from logprep.metrics.metric_exposer import MetricExposer
@@ -141,3 +143,38 @@ class TestMetricExposer:
         store_metrics_mock.assert_called()
         send_to_output_mock.assert_called()
         mock_metrics.expose.assert_called()
+
+    @pytest.mark.parametrize(
+        "key, expected_stripped_key",
+        [
+            (
+                "logprep_metrics;label:value,pipeline:pipval,foo:bar,muh:bi",
+                "logprep_metrics;label:value,foo:bar,muh:bi",
+            ),
+            (
+                "logprep_metrics;label:value,pipeline:pipval-1",
+                "logprep_metrics;label:value",
+            ),
+            (
+                "logprep_metrics;pipeline:pipval-1",
+                "logprep_metrics",
+            ),
+            (
+                "logprep_metrics;pipeline:pipval-1,foo:bar",
+                "logprep_metrics;foo:bar",
+            ),
+            (
+                "logprep_metrics;foo:bar,bi:bo",
+                "logprep_metrics;foo:bar,bi:bo",
+            ),
+            (
+                "logprep_metrics",
+                "logprep_metrics",
+            ),
+        ],
+    )
+    def test_strip_key_removes_given_label_name_from_metric_identifyer(
+        self, key, expected_stripped_key
+    ):
+        stripped_key = self.exposer._strip_key(key)
+        assert stripped_key == expected_stripped_key

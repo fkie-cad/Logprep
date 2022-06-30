@@ -32,7 +32,7 @@ from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.time_measurement import TimeMeasurement
 
 if TYPE_CHECKING:
-    from logprep.abc import Processor
+    from logprep.abc import Processor  # pragma: no cover
 
 
 class PipelineError(BaseException):

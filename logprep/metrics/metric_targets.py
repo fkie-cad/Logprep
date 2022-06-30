@@ -14,7 +14,7 @@ from logprep.util.prometheus_exporter import PrometheusStatsExporter
 def split_key_label_string(key_label_string):
     """Splits the key label string into separate variables"""
     if ";" not in key_label_string:
-        return key_label_string, None
+        return key_label_string, {}
     key, labels = key_label_string.split(";")
     labels = labels.split(",")
     labels = [label.split(":") for label in labels]
