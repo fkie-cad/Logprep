@@ -335,3 +335,27 @@ class TestPrometheusMetricTarget:
                 mock.call().set(0),
             ]
         )
+
+    @mock.patch("prometheus_client.Gauge.set")
+    def test_expose_calls_prometheus_exporter_without_labels(self, mock_labels):
+        rule_metrics_one = Rule.RuleMetrics(labels={"foo": "bar"})
+        rule_metrics_one._number_of_matches = 3
+        specific_rule_tree_metrics = RuleTree.RuleTreeMetrics(
+            labels={"foo": "bar"},
+            rules=[rule_metrics_one],
+        )
+        specific_rule_tree_metrics.number_of_rules = 3
+        exposed_metrics = specific_rule_tree_metrics.expose()
+        stripped_metrics = dict(
+            (MetricExposer._strip_key(key, label_name="foo"), value)
+            for key, value in exposed_metrics.items()
+        )
+        self.target.expose(stripped_metrics)
+        mock_labels.assert_has_calls(
+            [
+                mock.call(3.0),
+                mock.call(3.0),
+                mock.call(0.0),
+                mock.call(10),
+            ]
+        )
