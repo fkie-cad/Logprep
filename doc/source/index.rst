@@ -6,7 +6,7 @@ Welcome to the Documentation of Logprep!
    :maxdepth: 2
    :caption: Content:
 
-   installation
+   getting_started
    user_manual/index
    development/index
 

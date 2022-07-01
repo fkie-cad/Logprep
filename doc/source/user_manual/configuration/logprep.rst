@@ -2,6 +2,13 @@
 Logprep
 =======
 
+version
+=======
+
+It is optionally possible to set a version to your configuration file which can be printed via
+:code:`logprep --version --config config/pipeline.yml`.
+This has no effect on the execution of logprep and is merely used for documentation purposes.
+
 process_count
 =============
 
