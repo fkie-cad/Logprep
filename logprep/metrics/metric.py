@@ -21,7 +21,8 @@ def get_exposable_metrics(metric_object):
     metric_dict = asdict(metric_object, filter=is_public)
     all_attributes = vars(type(metric_object)).items()
     # include properties as they are not part of asdict
-    metric_dict.update({n: p.__get__(metric_object) for n, p in all_attributes if isinstance(p, property)})
+    properties = {n: p.__get__(metric_object) for n, p in all_attributes if isinstance(p, property)}
+    metric_dict.update(properties)
     return metric_dict
 
 
