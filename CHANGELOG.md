@@ -1,25 +1,32 @@
 ## Next Release
 
----
-
 ### Features
 
 * Add ability to add fields from SQL Database via in GenericAdder
+* Prometheus Exporter now exports also processor specific metrics
 
 ### Improvements
 
 * Automatically release logprep on pypi
 * Configure abstract dependencies for pypi releases
 * Refactor domain resolver
+* Refactor `processor_stats` to `metrics`. Metrics are now collected in separate dataclasses
 
 ### Bugfixes
 
 * Fix processor initialization in auto rule tester
 * Fix generation of RST-Docs
 
-## v2.0.1
+### Breaking 
 
----
+* Metrics refactoring: 
+  * The json output format of the previously known status_logger has changed
+  * The configuration key word is now `metrics` instead of `status_logger`
+  * The configuration for the time measurement is now part of the metrics configuration
+  * The metrics tracking still includes values about how many warnings and errors happened, but 
+  not of what type. For that the regular logprep logging should be consolidated.
+
+## v2.0.1
 
 ### Bugfixes
 
