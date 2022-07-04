@@ -1,5 +1,6 @@
 # pylint: disable=missing-module-docstring
 from copy import deepcopy
+
 import pytest
 
 from logprep.processor.template_replacer.processor import TemplateReplacerError
@@ -7,7 +8,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 from logprep.processor.processor_factory import ProcessorFactory
 
 
-class TestWinMessageReplacer(BaseProcessorTestCase):
+class TestTemplateReplacer(BaseProcessorTestCase):
 
     CONFIG = {
         "type": "template_replacer",
@@ -49,23 +50,8 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        assert document.get("message") is None
-
-    def test_replace_dotted_message_via_template(self):
-        config = deepcopy(self.CONFIG)
-        config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
-        assert self.object.ps.processed_count == 0
-        document = {
-            "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
-            "dotted": {"message": "foo"},
-        }
-
-        self.object.process(document)
-
-        assert document.get("dotted")
-        assert document["dotted"].get("message")
-        assert document["dotted"]["message"] == "Test %1 Test %2"
+        assert document.get("message")
+        assert document["message"] == "Test %1 Test %2"
 
     def test_replace_with_additional_hyphen(self):
         assert self.object.ps.processed_count == 0
@@ -95,6 +81,85 @@ class TestWinMessageReplacer(BaseProcessorTestCase):
         }
         self.object.process(document)
         assert document.get("message") == "foo"
+
+    def test_replace_dotted_message_via_template(self):
+        config = deepcopy(self.CONFIG)
+        config.get("pattern").update({"target_field": "dotted.message"})
+        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        assert self.object.ps.processed_count == 0
+        document = {
+            "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
+            "dotted": {"message": "foo"},
+        }
+
+        self.object.process(document)
+
+        assert document.get("dotted")
+        assert document["dotted"].get("message")
+        assert document["dotted"]["message"] == "Test %1 Test %2"
+
+    def test_replace_non_existing_dotted_message_via_template(self):
+        config = deepcopy(self.CONFIG)
+        config.get("pattern").update({"target_field": "dotted.message"})
+        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        assert self.object.ps.processed_count == 0
+        document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
+
+        self.object.process(document)
+
+        assert document.get("dotted")
+        assert document["dotted"].get("message")
+        assert document["dotted"]["message"] == "Test %1 Test %2"
+
+    def test_replace_partly_existing_dotted_message_via_template(self):
+        config = deepcopy(self.CONFIG)
+        config.get("pattern").update({"target_field": "dotted.message"})
+        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        assert self.object.ps.processed_count == 0
+        document = {
+            "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
+            "dotted": {"bar": "foo"},
+        }
+
+        self.object.process(document)
+
+        assert document.get("dotted")
+        assert document["dotted"].get("message")
+        assert document["dotted"]["message"] == "Test %1 Test %2"
+        assert document["dotted"]["bar"] == "foo"
+
+    def test_replace_existing_dotted_message_dict_via_template(self):
+        config = deepcopy(self.CONFIG)
+        config.get("pattern").update({"target_field": "dotted.message"})
+        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        assert self.object.ps.processed_count == 0
+        document = {
+            "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
+            "dotted": {"message": {"foo": "bar"}},
+        }
+
+        self.object.process(document)
+
+        assert document.get("dotted")
+        assert document["dotted"].get("message")
+        assert document["dotted"]["message"] == "Test %1 Test %2"
+
+    def test_replace_incompatible_existing_dotted_message_parent_via_template(self):
+        config = deepcopy(self.CONFIG)
+        config.get("pattern").update({"target_field": "dotted.message"})
+        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        assert self.object.ps.processed_count == 0
+        document = {
+            "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
+            "dotted": "foo",
+        }
+
+        with pytest.raises(
+            TemplateReplacerError,
+            match="Parent field 'dotted' of target field 'dotted.message' exists "
+            "and is not a dict!",
+        ):
+            self.object.process(document)
 
     def test_replace_fails_with_invalid_template(self):
         config = deepcopy(self.CONFIG)
