@@ -6,10 +6,11 @@ from ctypes import c_double
 from datetime import datetime
 from multiprocessing import Lock, Value, current_process
 from time import time
+from typing import List, Union, TYPE_CHECKING
 
 import numpy as np
 
-from typing import List, Union, TYPE_CHECKING
+from logprep._version import get_versions
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc import Processor
@@ -528,7 +529,8 @@ class StatusTracker:
         self._log_processor_statistics_to_prometheus(ordered_data)
 
         metric_interval_tracker = self._prometheus_logger.tracking_interval
-        metric_interval_tracker.labels(component="logprep").set(self._print_period)
+        labels = {"component": "logprep", "version": get_versions()["version"]}
+        metric_interval_tracker.labels(**labels).set(self._print_period)
 
     def _log_general_statistics_to_prometheus(self, ordered_data):
         """Forwards the general pipeline metrics to the prometheus exporter"""

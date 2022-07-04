@@ -9,7 +9,8 @@ from unittest import mock
 import numpy as np
 from prometheus_client import REGISTRY
 
-from logprep.processor.dropper.processor import Dropper
+from logprep._version import get_versions
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.processor_stats import (
     ProcessorStats,
     StatsClassesController,
@@ -17,7 +18,6 @@ from logprep.util.processor_stats import (
     StatusLoggerCollection,
 )
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
-from logprep.processor.processor_factory import ProcessorFactory
 
 
 def validify_mean_proc_time_calculation(processor_stats, time_samples):
@@ -229,7 +229,10 @@ class TestStatusTracker:
         mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(21)])
         mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(22)])
         mock_labels.assert_has_calls([mock.call(component="Dropper2"), mock.call().set(23)])
-        mock_labels.assert_has_calls([mock.call(component="logprep"), mock.call().set(10)])
+        logprep_version = get_versions()["version"]
+        mock_labels.assert_has_calls(
+            [mock.call(component="logprep", version=logprep_version), mock.call().set(10)]
+        )
 
     def test_add_per_processor_data_skips_excluded_processors(self):
         dropper1_expected_zero_matches = 0

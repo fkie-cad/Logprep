@@ -83,7 +83,7 @@ class PrometheusStatsExporter:
         self.tracking_interval = Gauge(
             f"{self.metric_prefix}tracking_interval_in_seconds",
             "Tracking interval",
-            labelnames=["component"],
+            labelnames=["component", "version"],
             registry=None,
         )
 
