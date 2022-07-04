@@ -5,6 +5,8 @@
 ### Features
 
 * Add ability to add fields from SQL Database via in GenericAdder
+* Add `--version` cli argument to print the current logprep version, as well as the configuration
+version if found
 
 ### Improvements
 
@@ -16,6 +18,11 @@
 
 * Fix processor initialization in auto rule tester
 * Fix generation of RST-Docs
+
+### Breaking
+
+* The configuration argument `--config` is not a positional argument anymore. 
+With that it has to be used when passing a configuration to logprep
 
 ## v2.0.1
 
