@@ -68,7 +68,6 @@ class Processor(ABC):
     __slots__ = [
         "name",
         "rule_class",
-        "ps",
         "has_custom_tests",
         "metrics",
         "metric_labels",
