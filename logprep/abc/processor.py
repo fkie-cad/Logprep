@@ -85,6 +85,8 @@ class Processor(ABC):
     name: str
     rule_class: Rule
     has_custom_tests: bool
+    metrics: ProcessorMetrics
+    metric_labels: dict
     _config: Config
     _logger: Logger
     _event: dict
