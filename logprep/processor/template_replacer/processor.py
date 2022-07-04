@@ -27,6 +27,8 @@ Example
             target_field: target.field
 """
 from logging import Logger
+from typing import Optional
+
 from attr import define, field, validators
 
 from ruamel.yaml import YAML
@@ -113,14 +115,14 @@ class TemplateReplacer(Processor):
                 )
 
             try:
-                _dict = self._mapping
+                mapping = self._mapping
                 for idx, recombined_key in enumerate(recombined_keys):
                     if idx < len(self._fields) - 1:
-                        if not _dict.get(recombined_key):
-                            _dict[recombined_key] = {}
-                        _dict = _dict[recombined_key]
+                        if not mapping.get(recombined_key):
+                            mapping[recombined_key] = {}
+                        mapping = mapping[recombined_key]
                     else:
-                        _dict[recombined_key] = value
+                        mapping[recombined_key] = value
 
             except ValueError as error:
                 raise TemplateReplacerError(
@@ -128,31 +130,36 @@ class TemplateReplacer(Processor):
                 ) from error
 
     def _apply_rules(self, event, rule):
-        _dict = self._mapping
+        replacement = self._get_replacement_value(event)
+        if replacement is not None:
+            self._perform_replacement(event, replacement)
+
+    def _get_replacement_value(self, event: dict) -> Optional[str]:
+        replacement = self._mapping
         for field_ in self._fields:
             dotted_field_value = self._get_dotted_field_value(event, field_)
             if dotted_field_value is None:
-                return
+                return None
 
             value = str(dotted_field_value)
-            _dict = _dict.get(value, None)
-            if _dict is None:
-                return
+            replacement = replacement.get(value, None)
+            if replacement is None:
+                return None
+        return replacement
 
-        if _dict is not None:
-            if self._field_exists(event, self._target_field):
-                _event = event
-                for subfield in self._target_field_split[:-1]:
-                    _event = _event[subfield]
-                _event[self._target_field_split[-1]] = _dict
-
-    @staticmethod
-    def _field_exists(event: dict, dotted_field: str) -> bool:
-        fields = dotted_field.split(".")
-        dict_ = event
-        for field_ in fields:
-            if field_ in dict_:
-                dict_ = dict_[field_]
+    def _perform_replacement(self, event: dict, replacement: str):
+        _event = event
+        for subfield in self._target_field_split[:-1]:
+            event_sub = _event.get(subfield)
+            if isinstance(event_sub, dict):
+                _event = event_sub
+            elif event_sub is None:
+                _event[subfield] = {}
+                _event = _event[subfield]
             else:
-                return False
-        return True
+                raise TemplateReplacerError(
+                    self.name,
+                    f"Parent field '{subfield}' of target field '{self._target_field}' "
+                    f"exists and is not a dict!",
+                )
+        _event[self._target_field_split[-1]] = replacement

@@ -3,15 +3,21 @@
 import datetime
 import time
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.processor_factory import ProcessorFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
 CAP_GROUP_REGEX_MAPPING = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
 
 CACHE_MAX_TIMEDELTA = datetime.timedelta(milliseconds=100)
+
+REL_TLD_LIST_PATH = "tests/testdata/mock_external/tld_list.dat"
+
+TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 
 
 class TestPseudonymizer(BaseProcessorTestCase):
@@ -84,6 +90,16 @@ class TestPseudonymizer(BaseProcessorTestCase):
             == "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>"
         )
         assert len(pseudonyms) == 1 and set(pseudonyms[0]) == {"pseudonym", "origin"}
+
+    def test_init_tld_extractor_uses_file(self):
+        config = deepcopy(self.CONFIG)
+        config["tld_lists"] = [TLD_LIST]
+        object_with_tld_list = ProcessorFactory.create({"pseudonymizer": config}, self.logger)
+        object_with_tld_list._init_tld_extractor()
+        assert len(object_with_tld_list._tld_extractor.suffix_list_urls) == 1
+        assert object_with_tld_list._tld_extractor.suffix_list_urls[0].endswith(
+            "tests/testdata/mock_external/tld_list.dat",
+        )
 
     def test_recently_stored_pseudonyms_are_not_stored_again(self):
         self.object._cache_max_timedelta = CACHE_MAX_TIMEDELTA

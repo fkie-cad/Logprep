@@ -1,15 +1,14 @@
 # pylint: disable=missing-docstring
-from logprep.filter.lucene_filter import LuceneFilter
-
 import pytest
+
+from logprep.processor.generic_adder.rule import GenericAdderRule
+from logprep.filter.lucene_filter import LuceneFilter
 
 pytest.importorskip("logprep.processor.normalizer")
 
-from logprep.processor.generic_adder.rule import GenericAdderRule
 
-
-@pytest.fixture()
-def specific_rule_definition():
+@pytest.fixture(name="specific_rule_definition")
+def fixture_specific_rule_definition():
     return {
         "filter": "add_generic_test",
         "generic_adder": {
