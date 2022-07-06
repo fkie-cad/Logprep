@@ -52,7 +52,7 @@ class TestRunLogprep:
             run_logprep.main()
         assert e_info.value.code == 0
 
-    def test_version_arg_prints_logprep(self, capsys):
+    def test_version_arg_prints_logprep_version_without_config_argument(self, capsys):
         sys.argv = ["logprep", "--version"]
         with pytest.raises(SystemExit):
             run_logprep.main()
