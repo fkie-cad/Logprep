@@ -22,7 +22,7 @@ version if found
 ### Breaking
 
 * The configuration argument `--config` is not a positional argument anymore. 
-With that it has to be used when passing a configuration to logprep
+This makes it necessary to explicitly use it when a config is to be passed to logprep.
 
 ## v2.0.1
 
