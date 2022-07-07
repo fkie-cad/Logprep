@@ -76,6 +76,9 @@ class TestGenericAdder(BaseProcessorTestCase):
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
 
+    def test_db_table_is_none(self):
+        assert self.object._db_table is None
+
     def test_add_generic_fields(self):
         assert self.object.metrics.number_of_processed_events == 0
         expected = {
@@ -468,6 +471,9 @@ class TestGenericAdderProcessorSQLWithAddedTarget(BaseProcessorTestCase):
     @property
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
+
+    def test_db_table_is_not_none(self):
+        assert self.object._db_table is not None
 
     def test_sql_database_adds_target_field(self):
         expected = {

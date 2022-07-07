@@ -108,9 +108,9 @@ class GenericAdder(Processor):
 
     rule_class = GenericAdderRule
 
-    __slots__ = ["_db_connector", "_db_table"]
+    __slots__ = ["_db_connector"]
 
-    _db_table: dict
+    _db_table: dict = None
     """Dict containing table from SQL database"""
 
     _db_connector: MySQLConnector
