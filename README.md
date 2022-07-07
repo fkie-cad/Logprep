@@ -313,13 +313,13 @@ Depending on how you have installed Logprep you have different choices to run Lo
 If you have installed it via PyPI or the Github Development release just run:
 
 ```
-logprep --config $CONFIG
+logprep $CONFIG
 ```
 
 If you have installed Logprep via cloning the repository then you should run it via:
 
 ```
-PYTHONPATH="." python3 logprep/run_logprep.py --config $CONFIG
+PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
 ```
 
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 

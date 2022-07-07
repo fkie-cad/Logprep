@@ -51,13 +51,13 @@ If you have installed it via PyPI or the Github Development release just run:
 
 ..  code-block:: bash
 
-    logprep --config $CONFIG
+    logprep $CONFIG
 
 If you have installed Logprep via cloning the repository then you should run it via:
 
 ..  code-block:: bash
 
-    PYTHONPATH="." python3 logprep/run_logprep.py --config $CONFIG
+    PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
 
 Where :code:`$CONFIG` is the path to a configuration file.
 For more information see the :ref:`configuration` section.
