@@ -1,79 +1,29 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
 import inspect
-import os
 import sys
 from argparse import ArgumentParser
 from logging import getLogger, Logger, DEBUG, ERROR
-from logging.handlers import TimedRotatingFileHandler
-from os.path import dirname, basename
+from os.path import basename
 from pathlib import Path
 from typing import Optional
 
 from colorama import Fore
 
+from logprep.metrics.metric import MetricTargets
+from logprep.metrics.metric_targets import get_metric_targets
 from logprep.processor.base.rule import Rule
-from logprep.processor.processor_factory import ProcessorFactory
 from logprep.runner import Runner
 from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.util.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.processor_stats import (
-    StatsClassesController,
-    StatusLoggerCollection,
-    ProcessorStats,
-)
-from logprep.util.prometheus_exporter import PrometheusStatsExporter
+from logprep.util.helper import print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.helper import print_fcolor
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
-
-
-def _get_status_logger(config: dict, application_logger: Logger) -> StatusLoggerCollection:
-    status_logger_cfg = config.get("status_logger", {})
-    logging_targets = status_logger_cfg.get("targets", [])
-
-    if not logging_targets:
-        logging_targets.append({"file": {}})
-
-    file_logger = None
-    prometheus_exporter = None
-    for target in logging_targets:
-        if "file" in target.keys():
-            file_config = target.get("file")
-            file_logger = getLogger("Logprep-JSON-File-Logger")
-            file_logger.handlers = []
-
-            log_path = file_config.get("path", "./logprep-status.jsonl")
-            Path(dirname(log_path)).mkdir(parents=True, exist_ok=True)
-            interval = file_config.get("rollover_interval", 60 * 60 * 24)
-            backup_count = file_config.get("backup_count", 10)
-            file_logger.addHandler(
-                TimedRotatingFileHandler(
-                    log_path, when="S", interval=interval, backupCount=backup_count
-                )
-            )
-
-        if "prometheus" in target.keys():
-            multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR", "")
-            if multi_processing_dir == "":
-                application_logger.warning(
-                    "Prometheus Exporter was is deactivated because the"
-                    "mandatory environment variable "
-                    "'PROMETHEUS_MULTIPROC_DIR' is missing."
-                )
-            else:
-                prometheus_exporter = PrometheusStatsExporter(
-                    status_logger_cfg, application_logger, ProcessorStats.metrics
-                )
-                prometheus_exporter.run()
-
-    status_logger = StatusLoggerCollection(file_logger, prometheus_exporter)
-    return status_logger
 
 
 def _parse_arguments():
@@ -118,7 +68,7 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger, status_logger: Optional[StatusLoggerCollection]):
+def _run_logprep(arguments, logger: Logger, status_logger: Optional[MetricTargets]):
     runner = None
     try:
         runner = Runner.get_runner()
@@ -165,17 +115,17 @@ def main():
         logger.exception(error)
         sys.exit(1)
 
-    status_logger = None
+    metric_targets = None
     if not args.disable_logging:
-        status_logger = _get_status_logger(config, logger)
+        metric_targets = get_metric_targets(config, logger)
 
-    TimeMeasurement.TIME_MEASUREMENT_ENABLED = config.get("measure_time", {}).get("enabled", False)
-    TimeMeasurement.APPEND_TO_EVENT = config.get("measure_time", {}).get("append_to_event", False)
-    StatsClassesController.ENABLED = config.get("status_logger", {}).get("enabled", True)
+    measure_time_config = config.get("metrics", {}).get("measure_time", {})
+    TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)
+    TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
 
     if logger.isEnabledFor(DEBUG):
+        logger.debug("Metric export enabled: %s", config.get("metrics", {}).get("enabled", False))
         logger.debug("Time measurement enabled: %s", TimeMeasurement.TIME_MEASUREMENT_ENABLED)
-        logger.debug("Status logger enabled: %s", StatsClassesController.ENABLED)
         logger.debug("Config path: %s", args.config)
 
     if args.validate_rules or args.auto_test:
@@ -194,7 +144,6 @@ def main():
 
     if args.auto_test:
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
-        StatsClassesController.ENABLED = False
         auto_rule_tester = AutoRuleTester(args.config)
         auto_rule_tester.run()
     elif args.dry_run:
@@ -206,7 +155,7 @@ def main():
     elif args.verify_config:
         print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
     else:
-        _run_logprep(args, logger, status_logger)
+        _run_logprep(args, logger, metric_targets)
 
 
 if __name__ == "__main__":

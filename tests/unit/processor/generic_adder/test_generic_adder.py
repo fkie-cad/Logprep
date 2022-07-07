@@ -77,7 +77,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         return self.CONFIG.get("specific_rules")
 
     def test_add_generic_fields(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         expected = {
             "add_generic_test": "Test",
             "event_id": 123,
@@ -92,7 +92,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert document == expected
 
     def test_add_generic_fields_from_file(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         expected = {
             "add_list_generic_test": "Test",
             "event_id": 123,
@@ -107,7 +107,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert document == expected
 
     def test_add_generic_fields_from_file_list_one_element(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         expected = {
             "add_lists_one_generic_test": "Test",
             "event_id": 123,
@@ -122,7 +122,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert document == expected
 
     def test_add_generic_fields_from_file_list_two_elements(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         expected = {
             "add_lists_two_generic_test": "Test",
             "event_id": 123,
@@ -143,7 +143,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         configuration = {"test processor": config}
         generic_adder = ProcessorFactory.create(configuration, self.logger)
 
-        assert generic_adder.ps.processed_count == 0
+        assert generic_adder.metrics.number_of_processed_events == 0
         expected = {
             "add_first_existing_generic_test": "Test",
             "event_id": 123,
@@ -163,7 +163,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         configuration = {"test_instance_name": config}
         generic_adder = ProcessorFactory.create(configuration, self.logger)
 
-        assert generic_adder.ps.processed_count == 0
+        assert generic_adder.metrics.number_of_processed_events == 0
         expected = {
             "add_first_existing_with_missing_generic_test": "Test",
             "event_id": 123,

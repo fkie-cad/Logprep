@@ -13,19 +13,14 @@ class PrometheusStatsExporter:
     metric_prefix: str = "logprep_"
     multi_processing_dir = None
 
-    def __init__(self, status_logger_config, application_logger, metrics):
+    def __init__(self, status_logger_config, application_logger):
         self._logger = application_logger
-        self._configuration = status_logger_config
+        self.configuration = status_logger_config
         self._port = 8000
-        self._metric_ids = [self.get_metric_id_from_name(metric) for metric in metrics]
 
         self._prepare_multiprocessing()
-        self._extract_port_from(self._configuration)
+        self._extract_port_from(self.configuration)
         self._set_up_metrics()
-
-    def get_metric_id_from_name(self, metric_name):
-        """Returns the prometheus metric id of a given metric name"""
-        return f"{self.metric_prefix}{metric_name}"
 
     def _prepare_multiprocessing(self):
         """
@@ -70,22 +65,23 @@ class PrometheusStatsExporter:
 
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""
-        self.metrics = {
-            metric_id: Gauge(
-                metric_id,
-                "Tracks the overall processing status",
-                labelnames=["component"],
-                registry=None,
-            )
-            for metric_id in self._metric_ids
-        }
-
+        self.metrics = {}
         self.tracking_interval = Gauge(
             f"{self.metric_prefix}tracking_interval_in_seconds",
             "Tracking interval",
             labelnames=["component"],
             registry=None,
         )
+
+    def create_new_metric_exporter(self, metric_id, labelnames):
+        """Creates a new gauge metric exporter and appends it to the already existing ones"""
+        exporter = Gauge(
+            metric_id,
+            "Tracks the overall processing status",
+            labelnames=labelnames,
+            registry=None,
+        )
+        self.metrics[metric_id] = exporter
 
     def run(self):
         """Starts the default prometheus http endpoint"""

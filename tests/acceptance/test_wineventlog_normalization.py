@@ -1,12 +1,16 @@
+# pylint: disable=missing-docstring
+# pylint: disable=line-too-long
 #!/usr/bin/python3
+from os import path
+
 import pytest
 
-from tests.acceptance.util import *
 from logprep.util.json_handling import dump_config_as_file, parse_jsonl
+from tests.acceptance.util import get_test_output, store_latest_test_output, get_difference
 
 
-@pytest.fixture
-def config():
+@pytest.fixture(name="config")
+def create_config():
     config_yml = {
         "process_count": 1,
         "timeout": 0.1,
@@ -48,4 +52,4 @@ def test_events_normalized_correctly(tmp_path, config):
 
     assert (
         result["difference"][0] == result["difference"][1]
-    ), "Missmatch in event at line {}!".format(result["event_line_no"])
+    ), f"Missmatch in event at line {result['event_line_no']}!"
