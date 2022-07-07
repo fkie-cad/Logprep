@@ -1,7 +1,5 @@
 ## Next Release
 
----
-
 ### Features
 
 * Add ability to add fields from SQL Database via in GenericAdder
@@ -19,14 +17,8 @@ version if found
 * Fix processor initialization in auto rule tester
 * Fix generation of RST-Docs
 
-### Breaking
-
-* The configuration argument `--config` is not a positional argument anymore. 
-This makes it necessary to explicitly use it when a config is to be passed to logprep.
 
 ## v2.0.1
-
----
 
 ### Bugfixes
 
@@ -34,8 +26,6 @@ This makes it necessary to explicitly use it when a config is to be passed to lo
 * Add missing sphinxcontrib-mermaid in tox.ini
 
 ## v2.0.0
-
----
 
 ### Features
 

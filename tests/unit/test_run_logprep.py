@@ -19,7 +19,6 @@ class TestRunLogprep:
         sys.argv = [
             "logprep",
             "--disable-logging",
-            "--config",
             "quickstart/exampledata/config/pipeline.yml",
         ]
         run_logprep.main()
@@ -32,7 +31,6 @@ class TestRunLogprep:
             "logprep",
             "--disable-logging",
             "--validate-rules",
-            "--config",
             "quickstart/exampledata/config/pipeline.yml",
         ]
         with pytest.raises(SystemExit):
@@ -45,7 +43,6 @@ class TestRunLogprep:
             "logprep",
             "--disable-logging",
             "--validate-rules",
-            "--config",
             "quickstart/exampledata/config/pipeline.yml",
         ]
         with pytest.raises(SystemExit) as e_info:
@@ -66,7 +63,7 @@ class TestRunLogprep:
 
     def test_version_arg_prints_also_config_version_if_version_key_is_found(self, capsys):
         config_path = "quickstart/exampledata/config/pipeline.yml"
-        sys.argv = ["logprep", "--version", "--config", config_path]
+        sys.argv = ["logprep", "--version", config_path]
         with pytest.raises(SystemExit):
             run_logprep.main()
         captured = capsys.readouterr()
@@ -86,20 +83,20 @@ class TestRunLogprep:
         captured = capsys.readouterr()
         error_lines = captured.err.strip()
         expected_lines = (
-            f"The given config file does not exist: {DEFAULT_LOCATION_CONFIG}\nCreate "
-            "the configuration or change the path with the '--config' argument."
+            f"The given config file does not exist: {DEFAULT_LOCATION_CONFIG}\nCreate the "
+            f"configuration or change the path. Use '--help' for more information."
         )
         assert error_lines == expected_lines
 
     def test_no_config_error_is_printed_if_given_config_file_does_not_exist(self, capsys):
         non_existing_config_file = "/tmp/does/not/exist.yml"
-        sys.argv = ["logprep", "--config", non_existing_config_file]
+        sys.argv = ["logprep", non_existing_config_file]
         with pytest.raises(SystemExit):
             run_logprep.main()
         captured = capsys.readouterr()
         error_lines = captured.err.strip()
         expected_lines = (
-            f"The given config file does not exist: {non_existing_config_file}\nCreate "
-            "the configuration or change the path with the '--config' argument."
+            f"The given config file does not exist: {non_existing_config_file}\nCreate the "
+            f"configuration or change the path. Use '--help' for more information."
         )
         assert error_lines == expected_lines
