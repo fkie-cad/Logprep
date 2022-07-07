@@ -29,7 +29,7 @@ class Cache(OrderedDict):
         last_stored = self.get(item, self.__class__.EPOCH)
         self[item] = last_stored
         self.move_to_end(item)
-        if now - last_stored > self._max_timedelta:
+        if self._max_timedelta.total_seconds() == 0.0 or now - last_stored > self._max_timedelta:
             self[item] = now
             if len(self) > self._max_items:
                 self.popitem(last=False)

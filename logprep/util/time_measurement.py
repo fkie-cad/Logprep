@@ -1,10 +1,9 @@
 """This module is used to measure the execution time of functions and add the results to events."""
 
-from time import time
 from socket import gethostname
+from time import time
 
 from logprep.util.helper import camel_to_snake
-from logprep.util.processor_stats import ProcessorStats
 
 
 class TimeMeasurement:
@@ -36,9 +35,9 @@ class TimeMeasurement:
 
                     processing_time = end - begin
 
-                    if hasattr(caller, "ps"):
-                        if isinstance(caller.ps, ProcessorStats):
-                            caller.ps.update_average_processing_time(processing_time)
+                    if hasattr(caller, "metrics"):
+                        if hasattr(caller.metrics, "update_mean_processing_time_per_event"):
+                            caller.metrics.update_mean_processing_time_per_event(processing_time)
 
                     if TimeMeasurement.APPEND_TO_EVENT:
                         add_processing_times_to_event(event, processing_time, caller, name)

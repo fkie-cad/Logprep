@@ -4,8 +4,10 @@ from copy import deepcopy
 from os.path import exists
 from pathlib import Path
 from unittest import mock
-from requests import Response
+
 import pytest
+from requests import Response
+
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_factory import ProcessorFactory
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -192,7 +194,7 @@ sth.ac.at
         config.update({"tld_list": TLD_LIST})
         domain_resolver = ProcessorFactory.create({"test instance": config}, self.logger)
 
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"url": "google..invalid.de"}
 
         with pytest.raises(

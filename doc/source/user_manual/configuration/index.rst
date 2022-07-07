@@ -12,4 +12,4 @@ Configuration
    connector
    pipeline
    processor
-   time_measurement
+   metrics

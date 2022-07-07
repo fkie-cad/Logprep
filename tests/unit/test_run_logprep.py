@@ -5,7 +5,6 @@ import sys
 from unittest import mock
 
 import pytest
-from yaml import safe_load
 
 from logprep import run_logprep
 from logprep._version import get_versions

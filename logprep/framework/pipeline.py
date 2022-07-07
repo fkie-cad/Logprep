@@ -5,13 +5,15 @@ They can be multi-processed.
 
 """
 # pylint: disable=logging-fstring-interpolation
+import json
 from ctypes import c_bool, c_double, c_ulonglong
 from logging import DEBUG, INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 from time import time
-from typing import List
+from typing import List, TYPE_CHECKING
 
-import json
+import numpy as np
+from attr import define, Factory
 
 from logprep.connector.connector_factory import ConnectorFactory
 from logprep.input.input import (
@@ -20,13 +22,17 @@ from logprep.input.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
+from logprep.metrics.metric import Metric, MetricTargets
+from logprep.metrics.metric_exposer import MetricExposer
 from logprep.output.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
-from logprep.util.processor_stats import StatusTracker, StatusLoggerCollection
 from logprep.util.time_measurement import TimeMeasurement
+
+if TYPE_CHECKING:
+    from logprep.abc import Processor  # pragma: no cover
 
 
 class PipelineError(BaseException):
@@ -51,17 +57,44 @@ class Pipeline:
     # pylint: disable=logging-not-lazy
     # Would require too much change in the tests.
 
+    @define(kw_only=True)
+    class PipelineMetrics(Metric):
+        """Tracks statistics about a pipeline"""
+
+        _prefix: str = "logprep_pipeline_"
+
+        pipeline: List["Processor.ProcessorMetrics"] = Factory(list)
+        """Pipeline containing the metrics of all set processors"""
+        kafka_offset: int = 0
+        """The current offset of the kafka input reader"""
+
+        @property
+        def number_of_processed_events(self):
+            """Sum of all processed events of all processors"""
+            return np.sum([processor.number_of_processed_events for processor in self.pipeline])
+
+        @property
+        def number_of_warnings(self):
+            """Sum of all warnings of all processors"""
+            return np.sum([processor.number_of_warnings for processor in self.pipeline])
+
+        @property
+        def number_of_errors(self):
+            """Sum of all errors of all processors"""
+            return np.sum([processor.number_of_errors for processor in self.pipeline])
+
     def __init__(
         self,
+        pipeline_index: int,
         connector_config: dict,
         pipeline_config: List[dict],
-        status_logger_config: dict,
+        metrics_config: dict,
         timeout: float,
         counter: "SharedCounter",
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
-        status_logger: StatusLoggerCollection = None,
+        metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
@@ -78,12 +111,13 @@ class Pipeline:
 
         self._processing_counter = counter
 
-        self._tracker = StatusTracker(shared_dict, status_logger_config, status_logger, lock)
+        self._metrics_exposer = MetricExposer(metrics_config, metric_targets, shared_dict, lock)
+        self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
+        self.metrics = self.PipelineMetrics(labels=self._metric_labels)
 
     def _setup(self):
         self._create_logger()
         self._build_pipeline()
-        self._tracker.set_pipeline(self._pipeline)
         self._create_connectors()
 
     def _build_pipeline(self):
@@ -91,8 +125,11 @@ class Pipeline:
             self._logger.debug(f"Building '{current_process().name}'")
         self._pipeline = []
         for entry in self._pipeline_config:
+            processor_name = list(entry.keys())[0]
+            entry[processor_name]["metric_labels"] = self._metric_labels
             processor = ProcessorFactory.create(entry, self._logger)
             self._pipeline.append(processor)
+            self.metrics.pipeline.append(processor.metrics)
             if self._logger.isEnabledFor(DEBUG):
                 self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
             self._pipeline[-1].setup()
@@ -158,11 +195,11 @@ class Pipeline:
     def _retrieve_and_process_data(self):
         event = {}
         try:
-            self._tracker.print_aggregate()
+            self._metrics_exposer.expose(self.metrics)
             event = self._input.get_next(self._timeout)
 
             try:
-                self._tracker.kafka_offset = self._input.current_offset
+                self.metrics.kafka_offset = self._input.current_offset
             except AttributeError:
                 pass
 
@@ -200,8 +237,6 @@ class Pipeline:
 
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):
-        self._tracker.increment_aggregation("processed")
-
         event_received = json.dumps(event, separators=(",", ":"))
         try:
             for processor in self._pipeline:
@@ -214,19 +249,21 @@ class Pipeline:
                         self._store_extra_data(extra_data)
                 except ProcessingWarning as error:
                     self._logger.warning(
-                        f"A non-fatal error occurred for processor {processor.describe()} when processing an event: {error}"
+                        f"A non-fatal error occurred for processor {processor.describe()} "
+                        f"when processing an event: {error}"
                     )
 
-                    self._tracker.add_warnings(error, processor)
+                    processor.metrics.number_of_warnings += 1
                 except ProcessingWarningCollection as error:
                     for warning in error.processing_warnings:
                         self._logger.warning(
-                            "A non-fatal error occurred for processor %s when processing an event: %s",
+                            "A non-fatal error occurred for processor %s "
+                            "when processing an event: %s",
                             processor.describe(),
                             warning,
                         )
 
-                        self._tracker.add_warnings(warning, processor)
+                        processor.metrics.number_of_warnings += 1
 
                 if not event:
                     if self._logger.isEnabledFor(DEBUG):
@@ -245,7 +282,7 @@ class Pipeline:
             self._output.store_failed(msg, json.loads(event_received), event)
             event.clear()  # 'delete' the event, i.e. no regular output
 
-            self._tracker.add_errors(error, processor)
+            processor.metrics.number_of_errors += 1
         # pylint: enable=broad-except
 
     def _store_extra_data(self, extra_data: tuple):
@@ -334,16 +371,17 @@ class MultiprocessingPipeline(Process, Pipeline):
 
     def __init__(
         self,
+        pipeline_index: int,
         connector_config: dict,
         pipeline_config: List[dict],
-        status_logger_config: dict,
+        metrics_config: dict,
         timeout: float,
         log_handler: Handler,
         print_processed_period: float,
         lock: Lock,
         shared_dict: dict,
         profile: bool = False,
-        status_logger: StatusLoggerCollection = None,
+        metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, MultiprocessingLogHandler):
             raise MustProvideAnMPLogHandlerError
@@ -353,15 +391,16 @@ class MultiprocessingPipeline(Process, Pipeline):
 
         Pipeline.__init__(
             self,
+            pipeline_index,
             connector_config,
             pipeline_config,
-            status_logger_config,
+            metrics_config,
             timeout,
             self.processed_counter,
             log_handler,
             lock,
             shared_dict,
-            status_logger=status_logger,
+            metric_targets=metric_targets,
         )
 
         self._continue_iterating = Value(c_bool)

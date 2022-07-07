@@ -1,17 +1,19 @@
 # pylint: disable=missing-docstring
+# pylint: disable=no-self-use
 from unittest import mock
 
 import pytest
 from geoip2.errors import AddressNotFoundError
+
 from logprep.processor.geoip_enricher.processor import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class ReaderMock(mock.MagicMock):
-    def city(self, ip):
-        if "127.0.0.1" in ip:
+    def city(self, ip_list):
+        if "127.0.0.1" in ip_list:
             raise AddressNotFoundError
-        if "8.8.8.8" in ip:
+        if "8.8.8.8" in ip_list:
 
             class MockData:
                 longitude = 1.1
@@ -60,13 +62,13 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         return self.CONFIG["specific_rules"]
 
     def test_geoip_data_added(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "1.2.3.4"}}
 
         self.object.process(document)
 
     def test_geoip_data_added_not_exists(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "127.0.0.1"}}
 
         self.object.process(document)
@@ -74,14 +76,14 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert document.get("geoip") is None
 
     def test_nothing_to_enrich(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"something": {"something": "1.2.3.4"}}
 
         self.object.process(document)
         assert "geoip" not in document
 
     def test_geoip_data_added_not_valid(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "333.333.333.333"}}
 
         self.object.process(document)
@@ -89,7 +91,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert document.get("geoip") is None
 
     def test_enrich_an_event_geoip(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "8.8.8.8"}}
 
         self.object.process(document)
@@ -108,7 +110,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert geoip["properties"].get("accuracy_radius") == 1337
 
     def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"test": "test"}}
 
         with pytest.raises(
@@ -120,7 +122,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             self.object.process(document)
 
     def test_configured_dotted_output_field(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"source": {"ip": "8.8.8.8"}}
 
         self.object.process(document)

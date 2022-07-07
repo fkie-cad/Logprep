@@ -98,7 +98,9 @@ def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory
     mock_connector_factory.return_value = (kafka, kafka)
 
     # Create, setup and execute logprep pipeline
+    pipeline_index = 1
     pipeline = Pipeline(
+        pipeline_index,
         config["connector"],
         config["pipeline"],
         {},

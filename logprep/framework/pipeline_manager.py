@@ -5,9 +5,9 @@ from multiprocessing import Manager, Lock
 from queue import Empty
 
 from logprep.framework.pipeline import MultiprocessingPipeline
+from logprep.metrics.metric import MetricTargets
 from logprep.util.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.util.processor_stats import StatusLoggerCollection
 
 
 class PipelineManagerError(BaseException):
@@ -24,9 +24,9 @@ class MustSetConfigurationFirstError(PipelineManagerError):
 class PipelineManager:
     """Manage pipelines via multi-processing."""
 
-    def __init__(self, logger: Logger, status_logger: StatusLoggerCollection):
+    def __init__(self, logger: Logger, metric_targets: MetricTargets):
         self._logger = logger
-        self._status_logger = status_logger
+        self.metric_targets = metric_targets
 
         self._log_handler = MultiprocessingLogHandler(self._logger.level)
 
@@ -75,7 +75,8 @@ class PipelineManager:
 
     def _increase_to_count(self, count: int):
         while len(self._pipelines) < count:
-            self._pipelines.append(self._create_pipeline())
+            new_pipeline_index = len(self._pipelines) + 1
+            self._pipelines.append(self._create_pipeline(new_pipeline_index))
             self._pipelines[-1].start()
 
     def _decrease_to_count(self, count: int):
@@ -91,7 +92,7 @@ class PipelineManager:
             old_pipeline.stop()
             old_pipeline.join()
 
-            self._pipelines[index] = self._create_pipeline()
+            self._pipelines[index] = self._create_pipeline(index)
             self._pipelines[index].start()
 
     def remove_failed_pipeline(self):
@@ -104,8 +105,8 @@ class PipelineManager:
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
 
-            if self._status_logger.prometheus_exporter is not None:
-                self._status_logger.prometheus_exporter.remove_metrics_from_process(
+            if self.metric_targets.prometheus_target is not None:
+                self.metric_targets.prometheus_target.prometheus_exporter.remove_metrics_from_process(
                     failed_pipeline.pid
                 )
 
@@ -125,20 +126,21 @@ class PipelineManager:
         """Stop processing any pipelines by reducing the pipeline count to zero."""
         self._decrease_to_count(0)
 
-    def _create_pipeline(self) -> MultiprocessingPipeline:
+    def _create_pipeline(self, index) -> MultiprocessingPipeline:
         if self._configuration is None:
             raise MustSetConfigurationFirstError("create new pipeline")
 
         self._logger.info("Created new pipeline")
         return MultiprocessingPipeline(
+            index,
             self._configuration["connector"],
             self._configuration["pipeline"],
-            self._configuration.get("status_logger", {}),
+            self._configuration.get("metrics", {}),
             self._configuration["timeout"],
             self._log_handler,
             self._configuration.get("print_processed_period", 300),
             self._lock,
             self._shared_dict,
             profile=self._configuration.get("profile_pipelines", False),
-            status_logger=self._status_logger,
+            metric_targets=self.metric_targets,
         )
