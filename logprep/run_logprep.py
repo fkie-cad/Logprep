@@ -36,7 +36,8 @@ def _parse_arguments():
         action="store_true",
     )
     argument_parser.add_argument(
-        "config", nargs='?',
+        "config",
+        nargs="?",
         help=f"Path to configuration file, if not given then "
         f"the default path '{DEFAULT_LOCATION_CONFIG}' is used",
         default=DEFAULT_LOCATION_CONFIG,
