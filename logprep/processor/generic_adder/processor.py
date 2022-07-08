@@ -133,10 +133,7 @@ class GenericAdder(Processor):
 
         sql_config = configuration.sql_config
         self._db_connector = MySQLConnector(sql_config, logger) if sql_config else None
-
-        if GenericAdder._db_table is None:
-            GenericAdder._db_table = self._db_connector.get_data() if self._db_connector else None
-        self._db_table = GenericAdder._db_table
+        self._db_table = self._db_connector.get_data() if self._db_connector else None
 
     def _apply_rules(self, event: dict, rule: GenericAdderRule):
         """Apply a matching generic adder rule to the event.

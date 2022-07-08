@@ -60,6 +60,19 @@ class DBMock(mock.MagicMock):
         pass
 
 
+class DBMockNeverEmpty(DBMock):
+    class Cursor(DBMock.Cursor):
+        def execute(self, statement):
+            if statement.startswith("CHECKSUM TABLE "):
+                self._data = [self._checksum]
+            elif statement.startswith("desc "):
+                self._data = [["id"], ["a"], ["b"], ["c"]]
+            elif statement.startswith("SELECT * FROM "):
+                self._data = self._table_result
+            else:
+                self._data = []
+
+
 class TestGenericAdder(BaseProcessorTestCase):
 
     CONFIG = {
@@ -75,6 +88,9 @@ class TestGenericAdder(BaseProcessorTestCase):
     @property
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
+
+    def test_db_table_is_none(self):
+        assert self.object._db_table is None
 
     def test_add_generic_fields(self):
         assert self.object.metrics.number_of_processed_events == 0
@@ -369,6 +385,12 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
 
         assert document == expected
 
+
+class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(BaseProcessorTestCase):
+    mocks = {"mysql.connector.connect": {"return_value": DBMockNeverEmpty()}}
+
+    CONFIG = TestGenericAdderProcessorSQLWithoutAddedTarget.CONFIG
+
     def test_sql_database_no_enrichment_with_empty_table(self):
         expected = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
         document = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
@@ -468,6 +490,9 @@ class TestGenericAdderProcessorSQLWithAddedTarget(BaseProcessorTestCase):
     @property
     def specific_rules_dirs(self):
         return self.CONFIG.get("specific_rules")
+
+    def test_db_table_is_not_none(self):
+        assert self.object._db_table is not None
 
     def test_sql_database_adds_target_field(self):
         expected = {
