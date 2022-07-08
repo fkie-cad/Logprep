@@ -7,6 +7,7 @@ from logging.handlers import TimedRotatingFileHandler
 from os.path import dirname
 from pathlib import Path
 
+from logprep._version import get_versions
 from logprep.metrics.metric import MetricTargets
 from logprep.util.helper import add_field_to
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -138,4 +139,5 @@ class PrometheusMetricTarget(MetricTarget):
                 self.prometheus_exporter.metrics[key].set(value)
 
         interval = self.prometheus_exporter.configuration["period"]
-        self.prometheus_exporter.tracking_interval.labels(component="logprep").set(interval)
+        labels = {"component": "logprep", "version": get_versions()["version"]}
+        self.prometheus_exporter.tracking_interval.labels(**labels).set(interval)

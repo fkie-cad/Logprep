@@ -4,6 +4,8 @@
 
 * Add ability to add fields from SQL Database via in GenericAdder
 * Prometheus Exporter now exports also processor specific metrics
+* Add `--version` cli argument to print the current logprep version, as well as the configuration
+version if found
 
 ### Improvements
 
@@ -34,8 +36,6 @@
 * Add missing sphinxcontrib-mermaid in tox.ini
 
 ## v2.0.0
-
----
 
 ### Features
 

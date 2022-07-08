@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
 import inspect
+import os
 import sys
 from argparse import ArgumentParser
 from logging import getLogger, Logger, DEBUG, ERROR
@@ -10,6 +11,7 @@ from typing import Optional
 
 from colorama import Fore
 
+from logprep._version import get_versions
 from logprep.metrics.metric import MetricTargets
 from logprep.metrics.metric_targets import get_metric_targets
 from logprep.processor.base.rule import Rule
@@ -29,7 +31,16 @@ getLogger("filelock").setLevel(ERROR)
 def _parse_arguments():
     argument_parser = ArgumentParser()
     argument_parser.add_argument(
-        "config", help="Path to configuration file", default=DEFAULT_LOCATION_CONFIG
+        "--version",
+        help="print the current version and exit",
+        action="store_true",
+    )
+    argument_parser.add_argument(
+        "config",
+        nargs="?",
+        help=f"Path to configuration file, if not given then "
+        f"the default path '{DEFAULT_LOCATION_CONFIG}' is used",
+        default=DEFAULT_LOCATION_CONFIG,
     )
     argument_parser.add_argument("--disable-logging", help="Disable logging", action="store_true")
     argument_parser.add_argument(
@@ -92,11 +103,38 @@ def get_processor_type_and_rule_class() -> dict:  # pylint: disable=missing-docs
     }
 
 
+def print_version_and_exit(args):
+    """
+    Prints the version and exists. If a configuration was found then it's version
+    is printed as well
+    """
+    versions = get_versions()
+    print(f"logprep version: \t\t {versions['version']}")
+    if args.config and os.path.isfile(args.config):
+        config = Configuration().create_from_yaml(args.config)
+        config_version = f"{config.get('version', 'unset')}, {os.path.abspath(args.config)}"
+    else:
+        config_version = f"no configuration found in '{os.path.abspath(args.config)}'"
+    print(f"configuration version: \t {config_version}")
+    sys.exit(0)
+
+
 def main():
     """Start the logprep runner."""
     args = _parse_arguments()
-    config = Configuration().create_from_yaml(args.config)
 
+    if args.version:
+        print_version_and_exit(args)
+
+    if not os.path.isfile(args.config):
+        print(f"The given config file does not exist: {args.config}", file=sys.stderr)
+        print(
+            "Create the configuration or change the path. Use '--help' for more information.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    config = Configuration().create_from_yaml(args.config)
     try:
         AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
         logger = AggregatingLogger.create("Logprep")
