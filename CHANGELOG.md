@@ -9,7 +9,7 @@
 
 ### Features
 
-* Add ability to add fields from SQL Database via in GenericAdder
+* Add ability to add fields from SQL database via GenericAdder
 * Prometheus Exporter now exports also processor specific metrics
 * Add `--version` cli argument to print the current logprep version, as well as the configuration
 version if found
