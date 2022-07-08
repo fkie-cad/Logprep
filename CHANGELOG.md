@@ -16,6 +16,7 @@
 
 * Fix processor initialization in auto rule tester
 * Fix generation of RST-Docs
+* Fix crashes of the generic adder if sql-based rules are processed without having set the sql config 
 
 ### Breaking 
 
