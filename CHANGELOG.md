@@ -1,6 +1,13 @@
 ## Next Release
 
 ### Features
+### Improvements
+### Bugfixes
+### Breaking
+
+## v3.0.0
+
+### Features
 
 * Add ability to add fields from SQL Database via in GenericAdder
 * Prometheus Exporter now exports also processor specific metrics
