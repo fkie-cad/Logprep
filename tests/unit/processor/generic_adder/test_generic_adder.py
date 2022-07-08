@@ -60,6 +60,19 @@ class DBMock(mock.MagicMock):
         pass
 
 
+class DBMockNeverEmpty(DBMock):
+    class Cursor(DBMock.Cursor):
+        def execute(self, statement):
+            if statement.startswith("CHECKSUM TABLE "):
+                self._data = [self._checksum]
+            elif statement.startswith("desc "):
+                self._data = [["id"], ["a"], ["b"], ["c"]]
+            elif statement.startswith("SELECT * FROM "):
+                self._data = self._table_result
+            else:
+                self._data = []
+
+
 class TestGenericAdder(BaseProcessorTestCase):
 
     CONFIG = {
@@ -371,6 +384,12 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
             self.object.process(document)
 
         assert document == expected
+
+
+class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(BaseProcessorTestCase):
+    mocks = {"mysql.connector.connect": {"return_value": DBMockNeverEmpty()}}
+
+    CONFIG = TestGenericAdderProcessorSQLWithoutAddedTarget.CONFIG
 
     def test_sql_database_no_enrichment_with_empty_table(self):
         expected = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
