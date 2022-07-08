@@ -25,7 +25,6 @@ version if found
 
 * Fix processor initialization in auto rule tester
 * Fix generation of RST-Docs
-* Fix crashes of the generic adder if sql-based rules are processed without having set the sql config 
 
 ### Breaking 
 
@@ -60,7 +59,6 @@ version if found
 * Rewrite `ProcessorFactory`
 * Automate processor configuration documentation
 * generalize config parameter for using tld lists to `tld_lists` for `domain_resolver`, `domain_label_extractor`, `pseudonymizer`
-* Add functionality to generic adder to add data from MySQL tables
 * refactor `domain_resolver` to make code cleaner and increase test coverage
 
 ### Bugfixes
