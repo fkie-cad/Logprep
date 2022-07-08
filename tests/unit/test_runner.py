@@ -2,8 +2,8 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
-# pylint: disable=wrong-import-position
-# pylint: disable=wrong-import-order
+# pylint: disable=attribute-defined-outside-init
+# pylint: disable=no-self-use
 from copy import deepcopy
 from logging import Logger, ERROR, INFO
 from os.path import split, join
@@ -42,11 +42,11 @@ class RunnerForTesting(Runner):
         super().__init__(bypass_check_to_obtain_non_singleton_instance=True)
 
     def _create_manager(self):
-        self._manager = PipelineManagerForTesting(self._logger, self._status_logger)
+        self._manager = PipelineManagerForTesting(self._logger, self._metric_targets)
 
 
 class LogprepRunnerTest:
-    def setup_method(self, test_name):
+    def setup_method(self, _):
         self.handler = HandlerStub()
         self.logger = Logger("test")
         self.logger.addHandler(self.handler)
@@ -131,7 +131,7 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
 
 class TestRunner(LogprepRunnerTest):
-    def setup_method(self, test_name):
+    def setup_method(self, _):
         self.handler = HandlerStub()
         self.logger = Logger("test")
         self.logger.addHandler(self.handler)
@@ -144,7 +144,7 @@ class TestRunner(LogprepRunnerTest):
     def test_get_runner_returns_the_same_runner_on_all_calls(self):
         runner = Runner.get_runner()
 
-        for i in range(10):
+        for _ in range(10):
             assert runner == Runner.get_runner()
 
     def test_reload_configuration_logs_info_when_reloading_config_was_successful(self):

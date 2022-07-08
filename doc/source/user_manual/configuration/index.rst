@@ -1,3 +1,5 @@
+.. _configuration:
+
 =============
 Configuration
 =============
@@ -10,4 +12,4 @@ Configuration
    connector
    pipeline
    processor
-   time_measurement
+   metrics

@@ -59,6 +59,7 @@ class Clusterer(Processor):
         self.has_custom_tests = True
 
     def process(self, event: dict):
+        self.matching_rules = []
         super().process(event)
         if self._is_clusterable(event):
             self._cluster(event, self.matching_rules)

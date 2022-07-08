@@ -225,11 +225,30 @@ Details about the rule language and how to write rules for the processors can be
 ### Installation
 
 Python should be present on the system, currently supported are the versions 3.6 - 3.9.
-All packages required for Logprep must be installed.
-For this, the following command can be executed from within the project root directory: 
-  
+To install Logprep you have three options:
+
+**1. Option:** Installation via PyPI: 
+
+This option is recommended if you just want to use the latest release of logprep.
 ```
-pip3 install -r requirements.txt
+pip install logprep
+```
+
+**2. Option:** Installation via Git Repository:
+
+This option is recommended if you are interested in the latest developments and might want to 
+contribute to them.
+```
+git clone https://github.com/fkie-cad/Logprep.git
+cd Logprep
+pip install -r requirements.txt
+```
+
+**3. Option:** Installation via Github Release
+
+This option is recommended if you just want to try out the latest developments.
+```
+pip install git+https://github.com/fkie-cad/Logprep.git@latest
 ```
 
 ### Testing
@@ -290,7 +309,14 @@ tox -e py37-semgrep
 
 ### Running Logprep
 
-Execute the following from within the project root directory: 
+Depending on how you have installed Logprep you have different choices to run Logprep as well.  
+If you have installed it via PyPI or the Github Development release just run:
+
+```
+logprep $CONFIG
+```
+
+If you have installed Logprep via cloning the repository then you should run it via:
 
 ```
 PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
@@ -298,13 +324,14 @@ PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
 
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
+The next sections all assume an installation via pip
 
 ### Verifying Configuration
 
 The following command can be executed to verify the configuration file without having to run Logprep:
 
 ```
-PYTHONPATH="." python3 logprep/run_logprep.py --verify-config $CONFIG
+logprep --verify-config $CONFIG
 ```
 
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 
@@ -315,13 +342,14 @@ Where `$CONFIG` is the path to a configuration file (see the documentation about
 The following command can be executed to validate the schema and the rules:
 
 ```
-PYTHONPATH="." python3 logprep/run_logprep.py --validate-rules $CONFIG
+logprep --validate-rules $CONFIG
 ```
 
 Where `$CONFIG` is the path to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
-Alternatively, the validation can be performed directly:
+Alternatively, the validation can be performed directly. Assuming you have cloned the repository 
+from git. 
 
 ```
 PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py --labeling-schema $LABELING_SCHEMA --labeling-rules $LABELING_RULES

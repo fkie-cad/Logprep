@@ -8,8 +8,8 @@ from pytest import raises
 
 from logprep.framework.pipeline import MultiprocessingPipeline
 from logprep.framework.pipeline_manager import PipelineManager, MustSetConfigurationFirstError
+from logprep.metrics.metric import MetricTargets
 from logprep.util.configuration import Configuration
-from logprep.util.processor_stats import StatusLoggerCollection
 from tests.testdata.metadata import path_to_config
 from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub, AssertEmitsLogMessages
 
@@ -45,7 +45,7 @@ class MultiprocessingPipelineMock(MultiprocessingPipeline):
 
 
 class PipelineManagerForTesting(PipelineManager):
-    def _create_pipeline(self):
+    def _create_pipeline(self, index):
         return MultiprocessingPipelineMock()
 
 
@@ -54,22 +54,21 @@ class TestPipelineManager:
         self.config = Configuration.create_from_yaml(path_to_config)
         self.handler = HandlerStub()
         self.logger = Logger("test")
-        self.status_logger = StatusLoggerCollection(
-            file_logger=self.logger, prometheus_exporter=None
-        )
+        self.metric_targets = MetricTargets(file_target=self.logger, prometheus_target=None)
         self.logger.addHandler(self.handler)
 
-        self.manager = PipelineManagerForTesting(self.logger, self.status_logger)
+        self.manager = PipelineManagerForTesting(self.logger, self.metric_targets)
         self.manager.set_configuration(self.config)
 
     def test_create_pipeline_fails_if_config_is_unset(self):
-        manager = PipelineManager(self.logger, self.status_logger)
+        manager = PipelineManager(self.logger, self.metric_targets)
 
         with raises(
             MustSetConfigurationFirstError,
             match="Failed to create new pipeline: Configuration is unset",
         ):
-            manager._create_pipeline()
+            pipeline_index = 1
+            manager._create_pipeline(pipeline_index)
 
     def test_get_count_returns_count_of_pipelines(self):
         for count in range(5):
@@ -200,7 +199,7 @@ class TestPipelineManager:
         logger_out.addHandler(handler)
         # NOTE: This test failed once in a while (fewer messages received than expected),
         # this sleep seems to have fixed it, try adjusting, if the test fails randomly.
-        sleep(0.01)
+        sleep(0.01)  # nosemgrep
 
         with AssertEmitsLogMessages(handler, [ERROR, WARNING, INFO], ["msg1", "msg2", "msg3"]):
             self.manager.handle_logs_into_logger(logger_out, timeout=timeout)

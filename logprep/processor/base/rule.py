@@ -1,11 +1,14 @@
 """This module is the superclass for all rule classes."""
 
-from abc import abstractmethod
 import json
+from abc import abstractmethod
 from os.path import basename, splitext
 from typing import Set, Optional
+
+from attr import define
 from ruamel.yaml import YAML
 
+from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
@@ -17,6 +20,23 @@ yaml = YAML(typ="safe", pure=True)
 class Rule:
     """Check if documents match a filter and add labels them."""
 
+    @define(kw_only=True)
+    class RuleMetrics(Metric):
+        """Tracks statistics about the current rule"""
+
+        _number_of_matches: int = 0
+        """Tracks how often this rule matched regarding an event."""
+        _mean_processing_time: float = 0.0
+        _mean_processing_time_sample_counter: int = 0
+
+        def update_mean_processing_time(self, new_sample):
+            """Updates the mean processing time of this rule"""
+            new_avg, new_sample_counter = calculate_new_average(
+                self._mean_processing_time, new_sample, self._mean_processing_time_sample_counter
+            )
+            self._mean_processing_time = new_avg
+            self._mean_processing_time_sample_counter = new_sample_counter
+
     special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields"]
 
     def __init__(self, filter_rule: FilterExpression):
@@ -26,6 +46,7 @@ class Rule:
         self._special_fields = None
         self.file_name = None
         self._tests = []
+        self.metrics = self.RuleMetrics(labels={"type": "rule"})
 
     @abstractmethod
     def __eq__(self, other: "Rule"):

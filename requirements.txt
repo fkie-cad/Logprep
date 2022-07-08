@@ -64,6 +64,8 @@ multidict==5.2.0
     # via
     #   aiohttp
     #   yarl
+mysql-connector-python==8.0.28
+    # via -r requirements.in
 numpy==1.19.5
     # via -r requirements.in
 platformdirs==2.4.0
@@ -72,6 +74,8 @@ ply==3.11
     # via luqum
 prometheus-client==0.13.1
     # via -r requirements.in
+protobuf==3.19.4
+    # via mysql-connector-python
 pycryptodome==3.14.0
     # via -r requirements.in
 pygrok==1.0.0

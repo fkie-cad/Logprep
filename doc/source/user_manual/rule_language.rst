@@ -961,6 +961,37 @@ In the following example two files are being used, but only the first existing f
         - PATH_TO_FILE_WITH_LIST
     description: '...'
 
+It is also possible to use a table from a MySQL database to add fields to an event.
+If a specified field in the table matches a condition, the remaining fields, except for the ID field,
+will be added to the event.
+The names of the new fields correspond to the column names in the MySQL table.
+This is mutually exclusive with the addition from a list.
+
+It can be defined via :code:`generic_adder.sql_table`.
+There :code:`generic_adder.sql_table.event_source_field` defines a field in the event that is being compared with values in the column of the MySQL table defined in the processor config.
+However, only a part of :code:`event_source_field` will be compared.
+Which part this is can be configured via :code:`generic_adder.sql_table.pattern`.
+This is a regex pattern with a capture group.
+The value in the capture group is being extracted and used for the comparison.
+:code:`generic_adder.sql_table.destination_field_prefix` can be used to prefix all added fields with a dotted path, creating a nested dictionary.
+
+In the following example the value of the field :code:`source` is being parsed with :code:`pattern: ([a-zA-Z0-9]+)_\S+`.
+It extracts the first alphanumerical string delimited by :code:`_`.
+I.e., :code:`Test0_foobarbaz` would extract :code:`test0`, which would be used for the comparison in the MySQL table.
+Since :code:`destination_field_prefix: nested.dict` is set, a newly added field :code:`FOO_NEW` would be placed under :code:`nested.dict.FOO_NEW`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example with a MySQL Table
+
+    filter: '*'
+    generic_adder:
+      sql_table:
+        event_source_field: source
+        pattern: '([a-zA-Z0-9]+)_\S+'
+        destination_field_prefix: nested.dict
+    description: '...'
+
 Selective Extractor
 ===================
 
@@ -990,7 +1021,7 @@ and send to the topic :code:`topcic_to_send_to`.
     {
       "extract_test": {
         "field": {
-          "extract": "extracted value" 
+          "extract": "extracted value"
         }
       }
     }
@@ -999,7 +1030,7 @@ and send to the topic :code:`topcic_to_send_to`.
     :caption: Extracted event from Example
 
     {
-      "extract": "extracted value" 
+      "extract": "extracted value"
     }
 
 

@@ -1,20 +1,49 @@
 """This module contains the rule tree functionality."""
 
-from typing import List
 from json import load
-
 from logging import Logger
+from typing import List
 
-from logprep.processor.base.rule import Rule
+import numpy as np
+from attr import define, Factory
 
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
+from logprep.metrics.metric import Metric
+from logprep.processor.base.rule import Rule
 
 
 class RuleTree:
     """Represent a set of rules using a rule tree model."""
 
-    def __init__(self, root: Node = None, config_path: str = None):
+    @define(kw_only=True)
+    class RuleTreeMetrics(Metric):
+        """Tracks statistics about the current rule tree"""
+
+        number_of_rules: int = 0
+        """Number of rules configured in the current rule tree"""
+        rules: List[Rule.RuleMetrics] = Factory(list)
+        """List of rule metrics"""
+
+        # pylint: disable=not-an-iterable
+        # pylint: disable=protected-access
+        @property
+        def number_of_matches(self):
+            """Sum of all rule matches"""
+            return np.sum([rule._number_of_matches for rule in self.rules])
+
+        @property
+        def mean_processing_time(self):
+            """Mean of all rule mean processing times"""
+            times = [rule._mean_processing_time for rule in self.rules]
+            if times:
+                return np.mean(times)
+            return 0.0
+
+        # pylint: enable=not-an-iterable
+        # pylint: enable=protected-access
+
+    def __init__(self, root: Node = None, config_path: str = None, metric_labels: dict = None):
         """Rule tree initialization function.
 
         Initializes a new rule tree with a given root node and a path to the tree's optional config
@@ -29,10 +58,12 @@ class RuleTree:
             Path to the optional configuration file that contains the new rule tree's configuration.
 
         """
-        self.rule_counter = 0
         self._rule_mapping = {}
         self._config_path = config_path
         self._setup()
+        if not metric_labels:
+            metric_labels = {"component": "rule_tree"}
+        self.metrics = self.RuleTreeMetrics(labels=metric_labels)
 
         if root:
             self._root = root
@@ -82,13 +113,14 @@ class RuleTree:
             )
             return
 
-        self.rule_counter += 1
+        self.metrics.number_of_rules += 1
 
         for parsed_rule in parsed_rule_list:
             end_node = self._add_parsed_rule(parsed_rule)
             end_node.matching_rules.append(rule)
 
-        self._rule_mapping[rule] = self.rule_counter - 1
+        self._rule_mapping[rule] = self.metrics.number_of_rules - 1
+        self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member
 
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.
@@ -118,10 +150,9 @@ class RuleTree:
             if current_node.has_child_with_expression(expression):
                 current_node = current_node.get_child_with_expression(expression)
                 continue
-            else:
-                new_node = Node(expression)
-                current_node.add_child(new_node)
-                current_node = new_node
+            new_node = Node(expression)
+            current_node.add_child(new_node)
+            current_node = new_node
 
         return current_node
 
@@ -251,7 +282,7 @@ class RuleTree:
         rules: List[Rule]
         """
 
-        return [rule for rule in self._rule_mapping]
+        return list(self._rule_mapping)
 
     @property
     def rules(self):  # pylint: disable=missing-docstring

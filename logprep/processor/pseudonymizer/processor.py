@@ -24,19 +24,21 @@ Example
         regex_mapping: /path/to/regex_mapping.json
         max_cached_pseudonyms: 1000000
         max_caching_days: 1
-        tld_list: /path/to/tld_list.dat
+        tld_lists:
+            -/path/to/tld_list.dat
 """
-import sys
 import datetime
 import re
+import sys
 from logging import Logger
 from typing import Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs
-from attr import define, field, validators
 
+from attr import define, field, validators
 from ruamel.yaml import YAML
 from tldextract import TLDExtract
 from urlextract import URLExtract
+
 from logprep.abc import Processor
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
@@ -106,6 +108,13 @@ class Pseudonymizer(Processor):
         a default list will be retrieved online and cached in a local directory. For local
         files the path has to be given with :code:`file:///path/to/file.dat`."""
 
+    @define(kw_only=True)
+    class PseudonymizerMetrics(Processor.ProcessorMetrics):
+        """Tracks statistics about the Pseudonymizer"""
+
+        pseudonymized_urls: int = 0
+        """Number urls that were pseudonymized"""
+
     __slots__ = [
         "_regex_mapping",
         "_cache",
@@ -116,7 +125,7 @@ class Pseudonymizer(Processor):
 
     _regex_mapping: dict
     _cache: Cache
-    _tld_list: str
+    _tld_lists: List[str]
 
     pseudonyms: list
     pseudonymized_fields: set
@@ -128,6 +137,11 @@ class Pseudonymizer(Processor):
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
+        self.metrics = self.PseudonymizerMetrics(
+            labels=self.metric_labels,
+            generic_rule_tree=self._generic_tree.metrics,
+            specific_rule_tree=self._specific_tree.metrics,
+        )
         self._regex_mapping = {}
         self._cache = None
         self.pseudonyms = []
@@ -156,11 +170,14 @@ class Pseudonymizer(Processor):
         self._cache = Cache(
             max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
         )
+        self._init_tld_extractor()
+        self._load_regex_mapping(self._config.regex_mapping)
+
+    def _init_tld_extractor(self):
         if self._config.tld_lists is not None:
-            self._tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_list)
+            self._tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_lists)
         else:
             self._tld_extractor = TLDExtract()
-        self._load_regex_mapping(self._config.regex_mapping)
 
     def _load_regex_mapping(self, regex_mapping_path: str):
         with open(regex_mapping_path, "r", encoding="utf8") as file:
@@ -256,7 +273,7 @@ class Pseudonymizer(Processor):
             pseudonymized_url = "".join(url_split)
             field_ = field_.replace(url_string, pseudonymized_url)
 
-            self.ps.increment_aggregation("urls")
+            self.metrics.pseudonymized_urls += 1
 
         return field_
 

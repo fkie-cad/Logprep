@@ -27,14 +27,14 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         return self.CONFIG.get("specific_rules")
 
     def test_events_processed_count(self):
-        assert self.object.ps.processed_count == 0
+        assert self.object.metrics.number_of_processed_events == 0
         document = {"foo": "bar"}
         for i in range(1, 11):
             try:
                 self.object.process(document)
             except ProcessingWarning:
                 pass
-            assert self.object.ps.processed_count == i
+            assert self.object.metrics.number_of_processed_events == i
 
     def test_domain_extraction_from_full_url(self):
         document = {"url": {"domain": "https://url.full.domain.de/path/file?param=1"}}

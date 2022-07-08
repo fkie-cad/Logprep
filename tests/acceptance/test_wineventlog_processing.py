@@ -3,6 +3,7 @@ import logging
 import os
 
 import pytest
+
 from logprep.util.json_handling import dump_config_as_file, parse_jsonl
 from tests.acceptance.util import get_difference, get_test_output, store_latest_test_output
 
