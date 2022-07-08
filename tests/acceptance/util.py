@@ -8,7 +8,8 @@ from multiprocessing import Lock
 from os import path, makedirs
 from os.path import join
 
-from logprep.connector.confluent_kafka import ConfluentKafkaFactory
+from logprep.input.confluent_kafka_input import ConfluentKafkaInputFactory
+from logprep.output.confluent_kafka_output import ConfluentKafkaOutputFactory
 from logprep.framework.pipeline import Pipeline, SharedCounter
 from logprep.util.helper import recursive_compare, remove_file_if_exists
 from logprep.util.json_handling import parse_jsonl
@@ -91,11 +92,15 @@ class TmpFileProducerMock:
 
 def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory, tmp_path):
     # create kafka connector manually and add custom mock consumer and mock producer objects
-    kafka = ConfluentKafkaFactory.create_from_configuration(config["connector"])
-    kafka._consumer = SingleMessageConsumerJsonMock(input_test_event)
+    kafka_in = ConfluentKafkaInputFactory.create_from_configuration(config["connector"])
+    kafka_out = ConfluentKafkaOutputFactory.create_from_configuration(config["connector"])
+    kafka_out.connect_input(kafka_in)
+    kafka_in.connect_output(kafka_out)
+    kafka_in._consumer = SingleMessageConsumerJsonMock(input_test_event)
     output_file_path = join(tmp_path, "kafka_out.txt")
-    kafka._producer = TmpFileProducerMock(output_file_path)
-    mock_connector_factory.return_value = (kafka, kafka)
+    kafka_out._producer = TmpFileProducerMock(output_file_path)
+
+    mock_connector_factory.return_value = (kafka_in, kafka_out)
 
     # Create, setup and execute logprep pipeline
     pipeline_index = 1
