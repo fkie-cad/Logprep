@@ -71,7 +71,7 @@ class TestConnectorFactoryDummy:
 class TestConnectorFactoryWriter:
     def setup_class(self):
         _, self._temp_path = tempfile.mkstemp()
-        with open(self._temp_path, "w") as temp_file:
+        with open(self._temp_path, "w", encoding="utf-8") as temp_file:
             temp_file.write(json.dumps({"foo": "bar"}))
         self.configuration = {
             "type": "writer",
@@ -95,7 +95,7 @@ class TestConnectorFactoryWriter:
 class TestConnectorFactoryWriterJsonInput:
     def setup_class(self):
         _, self._temp_path = tempfile.mkstemp()
-        with open(self._temp_path, "w") as temp_file:
+        with open(self._temp_path, "w", encoding="utf-8") as temp_file:
             temp_file.write(json.dumps({"foo": "bar"}))
         self.configuration = {
             "type": "writer_json_input",
