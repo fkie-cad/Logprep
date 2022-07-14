@@ -3,6 +3,9 @@
 ### Features
 ### Improvements
 ### Bugfixes
+
+* Fix Auto Rule Tester which tried to access processor stats that do not exist anymore. 
+
 ### Breaking
 
 ## v3.0.0
