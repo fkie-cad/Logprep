@@ -1,7 +1,9 @@
 """This module contains functionality that allows to send events to Elasticsearch."""
 
-from datetime import datetime
 import re
+from datetime import datetime
+from ssl import create_default_context
+from typing import Optional
 
 import arrow
 from elasticsearch import Elasticsearch, helpers, SerializationError
@@ -48,6 +50,9 @@ class ElasticsearchOutputFactory:
                 configuration["elasticsearch"]["message_backlog"],
                 configuration["elasticsearch"].get("timeout", 500),
                 configuration["elasticsearch"].get("max_retries", 0),
+                configuration["elasticsearch"].get("user"),
+                configuration["elasticsearch"].get("secret"),
+                configuration["elasticsearch"].get("cert"),
             )
         except KeyError as error:
             raise InvalidConfigurationError(
@@ -69,6 +74,9 @@ class ElasticsearchOutput(Output):
         message_backlog_size: int,
         timeout: int,
         max_retries: int,
+        user: Optional[str],
+        secret: Optional[str],
+        cert: Optional[str],
     ):
         self._input = None
 
@@ -78,7 +86,16 @@ class ElasticsearchOutput(Output):
         self._error_index = error_index
         self._max_retries = max_retries
 
-        self._es = Elasticsearch([{"host": host, "port": port}], scheme="http", timeout=timeout)
+        ssl_context = create_default_context(cafile=cert) if cert else None
+        scheme = "https" if cert else "http"
+        http_auth = (user, secret) if user and secret else None
+        self._es = Elasticsearch(
+            [{"host": host, "port": port}],
+            scheme=scheme,
+            http_auth=http_auth,
+            ssl_context=ssl_context,
+            timeout=timeout,
+        )
 
         self._max_scroll = "2m"
 

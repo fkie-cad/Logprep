@@ -180,6 +180,9 @@ Documents are sent in batches to Elasticsearch to reduce the amount of times con
 
 - **host** Host of Elasticsearch server.
 - **port** Port of Elasticsearch server.
+- **user** User used for authentication (optional).
+- **secret** Secret used for authentication (optional).
+- **cert** SSL certificate to use (optional).
 - **default_index** Default index to write to if no index was set in the document.
 - **error_index** Index to write documents to that could not be processed.
 - **message_backlog** Amount of documents to store before sending them to Elasticsearch.

@@ -39,12 +39,14 @@ elasticsearch.helpers.bulk = mock_bulk
 class TestElasticsearchOutput:
     def setup_method(self, _):
         self.es_output = ElasticsearchOutput(
-            "host", 123, "default_index", "error_index", 1, 5000, 0
+            "host", 123, "default_index", "error_index", 1, 5000, 0, None, None, None
         )
 
     def test_implements_abstract_methods(self):
         try:
-            ElasticsearchOutput("host", 123, "default_index", "error_index", 2, 5000, 0)
+            ElasticsearchOutput(
+                "host", 123, "default_index", "error_index", 2, 5000, 0, None, None, None
+            )
         except TypeError as err:
             fail(f"Must implement abstract methods: {str(err)}")
 
@@ -56,7 +58,9 @@ class TestElasticsearchOutput:
         event = {"field": "content"}
         expected = {"field": "content", "_index": default_index}
 
-        es_output = ElasticsearchOutput("host", 123, default_index, "error_index", 1, 5000, 0)
+        es_output = ElasticsearchOutput(
+            "host", 123, default_index, "error_index", 1, 5000, 0, None, None, None
+        )
         es_output.store(event)
 
         assert es_output._message_backlog[0] == expected
@@ -69,7 +73,9 @@ class TestElasticsearchOutput:
         expected_index = re.sub(r"%{YYYY-MM-DD}", formatted_date, default_index)
         expected = {"field": "content", "_index": expected_index}
 
-        es_output = ElasticsearchOutput("host", 123, default_index, "error_index", 1, 5000, 0)
+        es_output = ElasticsearchOutput(
+            "host", 123, default_index, "error_index", 1, 5000, 0, None, None, None
+        )
         es_output.store(event)
 
         assert es_output._message_backlog[0] == expected
@@ -80,7 +86,9 @@ class TestElasticsearchOutput:
 
         expected = {"field": "content", "_index": custom_index}
 
-        es_output = ElasticsearchOutput("host", 123, "default_index", "error_index", 1, 5000, 0)
+        es_output = ElasticsearchOutput(
+            "host", 123, "default_index", "error_index", 1, 5000, 0, None, None, None
+        )
         es_output.store_custom(event, custom_index)
 
         assert es_output._message_backlog[0] == expected
@@ -99,7 +107,9 @@ class TestElasticsearchOutput:
             "timestamp": str(datetime.now()),
         }
 
-        es_output = ElasticsearchOutput("host", 123, "default_index", error_index, 1, 5000, 0)
+        es_output = ElasticsearchOutput(
+            "host", 123, "default_index", error_index, 1, 5000, 0, None, None, None
+        )
         es_output.store_failed(error_message, event_received, event)
 
         error_document = es_output._message_backlog[0]
