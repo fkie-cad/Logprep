@@ -1,7 +1,14 @@
 ## Next Release
 
 ### Features
+
+* Add an elasticsearch output connector that can be used to write directly into elasticsearch.
+* Add a connector that combines a confluentkafka input and an elasticsearch output. 
+
 ### Improvements
+
+* Internally separated confluentkafka connector into an input and output connector, so that it is possible to combine those with other inputs and outputs.
+
 ### Bugfixes
 ### Breaking
 
