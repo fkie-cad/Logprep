@@ -129,10 +129,9 @@ class TestMetricExposer:
         store_metrics_mock.assert_called()
         expose_aggregate_mock.assert_called()
 
-    @mock.patch("logprep.metrics.metric_exposer.MetricExposer._store_metrics")
     @mock.patch("logprep.metrics.metric_exposer.MetricExposer._send_to_output")
     def test_expose_calls_send_to_output_if_no_aggregation_is_configured(
-        self, store_metrics_mock, send_to_output_mock
+        self, send_to_output_mock
     ):
         config = self.config.copy()
         config["aggregate_processes"] = False
@@ -140,7 +139,6 @@ class TestMetricExposer:
         self.exposer._timer = Value(c_double, time() - self.config["period"])
         mock_metrics = mock.MagicMock()
         self.exposer.expose(mock_metrics)
-        store_metrics_mock.assert_called()
         send_to_output_mock.assert_called()
         mock_metrics.expose.assert_called()
 

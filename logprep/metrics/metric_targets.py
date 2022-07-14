@@ -28,6 +28,7 @@ def get_metric_targets(config: dict, logger: Logger) -> MetricTargets:
     metric_configs = config.get("metrics", {})
 
     if not metric_configs.get("enabled", False):
+        logger.info("Metric tracking is disabled via config")
         return MetricTargets(None, None)
 
     target_configs = metric_configs.get("targets", [])
