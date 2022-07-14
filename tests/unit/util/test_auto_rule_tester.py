@@ -3,41 +3,20 @@
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
 # pylint: disable=broad-except
+# pylint: disable=line-too-long
 import logging
 from unittest import mock
 
 import pytest
 
-from yaml import safe_dump
 from logprep.util.auto_rule_tester import AutoRuleTester
 
 LOGGER = logging.getLogger()
 
 
 @pytest.fixture(name="auto_rule_tester")
-def fixture_auto_rule_tester(tmp_path):
-    config = {
-        "process_count": 1,
-        "timeout": 0.1,
-        "pipeline": [
-            {
-                "normalizer_name": {
-                    "type": "normalizer",
-                    "specific_rules": [
-                        "tests/testdata/unit/auto_rule_tester/normalizer/rules/specific"
-                    ],
-                    "generic_rules": [
-                        "tests/testdata/unit/auto_rule_tester/normalizer/rules/generic"
-                    ],
-                    "regex_mapping": "tests/testdata/unit/auto_rule_tester/normalizer/"
-                    "regex_mapping.yml",
-                }
-            }
-        ],
-    }
-    config_path = str(tmp_path / "logprep_config.yml")
-    with open(config_path, "w", encoding="utf-8") as config_file:
-        safe_dump(config, config_file)
+def fixture_auto_rule_tester():
+    config_path = "tests/testdata/config/config-auto-tests.yml"
     return AutoRuleTester(config_path)
 
 
@@ -113,7 +92,7 @@ class TestAutoRuleTester:
         coverage = auto_rule_tester._check_which_rule_files_miss_tests(rules_pn)
         assert coverage == 50
 
-    def test_does_not_run_if_no_rules_exist(self, auto_rule_tester):
+    def test_does_not_run_if_no_rules_exist(self, auto_rule_tester, capsys):
         rules_pn = {
             "normalizer_name": {
                 "rules": [],
@@ -123,12 +102,24 @@ class TestAutoRuleTester:
 
         try:
             auto_rule_tester._run_if_any_rules_exist(rules_pn)
+            captured = capsys.readouterr()
+            assert "There are no rules within any of the rules directories!" in captured.out
         except Exception as error:
             assert False, f"test_does_not_run_if_no_rules_exist has raised an exception: {error}"
 
     def test_does_run_if_rules_exist(self, auto_rule_tester):
+        auto_rule_tester._config_yml["pipeline"] = [
+            {
+                "normalizer": {
+                    "type": "normalizer",
+                    "specific_rules": ["tests/testdata/auto_tests/normalizer/rules/specific/"],
+                    "generic_rules": ["tests/testdata/auto_tests/normalizer/rules/generic/"],
+                    "regex_mapping": "tests/testdata/auto_tests/normalizer/regex_mapping.yml",
+                }
+            }
+        ]
         rules_pn = {
-            "normalizer_name": {
+            "normalizer": {
                 "rules": [
                     {
                         "file": "rule",
@@ -197,3 +188,52 @@ class TestAutoRuleTester:
         mock_init_rules_list_comparison.assert_called_once()
         auto_rule_tester._add_rules_from_directory(processor, "specific_rules")
         assert mock_init_rules_list_comparison.call_count == 2
+
+    def test_full_auto_rule_test_run(self, auto_rule_tester, capsys):
+        with pytest.raises(SystemExit):
+            auto_rule_tester.run()
+        expected_rules_with_tests = [
+            "RULES WITH TESTS:",
+            "tests/testdata/auto_tests/labeler/rules/generic/auto_test_labeling_match.json",
+            "tests/testdata/auto_tests/labeler/rules/specific/auto_test_labeling_mismatch.json",
+            "tests/testdata/auto_tests/normalizer/rules/generic/auto_test_normalizer_match.json",
+            "tests/testdata/auto_tests/normalizer/rules/specific/auto_test_normalizer_mismatch.json",
+            "tests/testdata/auto_tests/dropper/rules/generic/drop_field.json",
+            "tests/testdata/auto_tests/dropper/rules/specific/drop_field.json",
+            "tests/testdata/auto_tests/pre_detector/rules/generic/auto_test_pre_detector_match.json",
+            "tests/testdata/auto_tests/pre_detector/rules/specific/auto_test_pre_detector_mismatch.json",
+            "tests/testdata/auto_tests/pseudonymizer/rules/specific/auto_test_pseudonymizer_mismatch.json",
+            "tests/testdata/auto_tests/pseudonymizer/rules/generic/auto_test_pseudonymizer_match.json",
+            "tests/testdata/auto_tests/template_replacer/rules/generic/template_replacer.json",
+            "tests/testdata/auto_tests/template_replacer/rules/specific/template_replacer.json",
+        ]
+        expected_rules_without_tests = [
+            "RULES WITHOUT TESTS:",
+            "tests/testdata/auto_tests/labeler/rules/specific/auto_test_labeling_no_test_.json",
+            "tests/testdata/auto_tests/normalizer/rules/specific/auto_test_normalizer_no_test_.json",
+            "tests/testdata/auto_tests/pre_detector/rules/specific/auto_test_pre_detector_no_test_.json",
+            "tests/testdata/auto_tests/pseudonymizer/rules/specific/auto_test_pseudonymizer_no_test_.json",
+        ]
+        expected_rules_with_custom_tests = [
+            "RULES WITH CUSTOM TESTS:",
+            "tests/testdata/auto_tests/clusterer/rules/specific/rule_with_custom_tests.yml",
+        ]
+        expected_overall_results = [
+            "Results:",
+            "Failed tests: 7",
+            "Successful tests: 7",
+            "Total tests: 14",
+            "Rule Test Coverage: 75.00%",
+            "Warnings: 2",
+        ]
+        captured = capsys.readouterr()
+        expected_sample_lines = (
+            expected_rules_with_tests
+            + expected_rules_without_tests
+            + expected_rules_with_custom_tests
+            + expected_overall_results
+        )
+        for line in expected_sample_lines:
+            assert line in captured.out
+
+        assert "inverse check, this text should not be in captured out" not in captured.out
