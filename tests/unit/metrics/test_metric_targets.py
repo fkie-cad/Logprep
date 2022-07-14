@@ -232,7 +232,7 @@ class TestMetricFileTarget:
                         },
                     },
                     "logprep_pipeline_kafka_offset": 0.0,
-                    'logprep_pipeline_mean_processing_time_per_event': 0.0,
+                    "logprep_pipeline_mean_processing_time_per_event": 0.0,
                     "logprep_pipeline_number_of_processed_events": 0.0,
                     "logprep_pipeline_number_of_warnings": 0.0,
                     "logprep_pipeline_number_of_errors": 0.0,

@@ -130,9 +130,7 @@ class TestMetricExposer:
         expose_aggregate_mock.assert_called()
 
     @mock.patch("logprep.metrics.metric_exposer.MetricExposer._send_to_output")
-    def test_expose_calls_send_to_output_if_no_aggregation_is_configured(
-        self, send_to_output_mock
-    ):
+    def test_expose_calls_send_to_output_if_no_aggregation_is_configured(self, send_to_output_mock):
         config = self.config.copy()
         config["aggregate_processes"] = False
         self.exposer = MetricExposer(config, self.metric_targets, self.shared_dict, Lock())
