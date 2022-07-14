@@ -221,8 +221,8 @@ class TestAutoRuleTester:
         expected_overall_results = [
             "Results:",
             "Failed tests: 7",
-            "Successful tests: 7",
-            "Total tests: 14",
+            "Successful tests: 8",
+            "Total tests: 15",
             "Rule Test Coverage: 75.00%",
             "Warnings: 2",
         ]
