@@ -22,7 +22,7 @@ from logprep.input.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.metrics.metric import Metric, MetricTargets
+from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.output.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
@@ -67,6 +67,9 @@ class Pipeline:
         """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
         """The current offset of the kafka input reader"""
+        mean_processing_time_per_event: float = 0.0
+        """Mean processing time for one event"""
+        _mean_processing_time_sample_counter: int = 0
 
         @property
         def number_of_processed_events(self):
@@ -82,6 +85,16 @@ class Pipeline:
         def number_of_errors(self):
             """Sum of all errors of all processors"""
             return np.sum([processor.number_of_errors for processor in self.pipeline])
+
+        def update_mean_processing_time_per_event(self, new_sample):
+            """Updates the mean processing time per event"""
+            new_avg, new_sample_counter = calculate_new_average(
+                self.mean_processing_time_per_event,
+                new_sample,
+                self._mean_processing_time_sample_counter,
+            )
+            self.mean_processing_time_per_event = new_avg
+            self._mean_processing_time_sample_counter = new_sample_counter
 
     def __init__(
         self,
