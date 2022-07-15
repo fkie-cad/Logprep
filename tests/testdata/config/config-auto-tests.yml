@@ -3,28 +3,32 @@ timeout: 0.1
 
 pipeline:
   - labelername:
-        type: labeler
-        schema: tests/testdata/auto_tests/labeler/schema.json
-        include_parent_labels: True
-        specific_rules:
-            - tests/testdata/auto_tests/labeler/rules/specific/
-        generic_rules:
-          - tests/testdata/auto_tests/labeler/rules/generic/
+      type: labeler
+      schema: tests/testdata/auto_tests/labeler/schema.json
+      include_parent_labels: True
+      specific_rules:
+          - tests/testdata/auto_tests/labeler/rules/specific/
+      generic_rules:
+        - tests/testdata/auto_tests/labeler/rules/generic/
   - normalizer:
       type: normalizer
       specific_rules:
-        - tests/testdata/auto_tests/normalizer/rules/generic_or_specific/
+        - tests/testdata/auto_tests/normalizer/rules/specific/
       generic_rules:
-        - ''
+        - tests/testdata/auto_tests/normalizer/rules/generic/
       regex_mapping: tests/testdata/auto_tests/normalizer/regex_mapping.yml
   - dropper:
       type: dropper
-      rules:
-        - tests/testdata/auto_tests/dropper/rules/
+      specific_rules:
+        - tests/testdata/auto_tests/dropper/rules/specific/
+      generic_rules:
+        - tests/testdata/auto_tests/dropper/rules/generic/
   - pre_detector:
       type: pre_detector
-      rules:
-        - tests/testdata/auto_tests/pre_detector/rules
+      specific_rules:
+        - tests/testdata/auto_tests/pre_detector/rules/specific/
+      generic_rules:
+        - tests/testdata/auto_tests/pre_detector/rules/generic/
       pre_detector_topic: sre
   - pseudonymizer:
       type: pseudonymizer
@@ -34,9 +38,29 @@ pipeline:
       hash_salt: a_secret_tasty_ingredient
       pseudonyms_topic: pseudonyms
       specific_rules:
-        - tests/testdata/auto_tests/pseudonymizer/rules/generic_or_specific/
+        - tests/testdata/auto_tests/pseudonymizer/rules/generic/
       generic_rules:
-        - ''
+        - tests/testdata/auto_tests/pseudonymizer/rules/specific/
       max_cached_pseudonyms: 1000000
       max_caching_days: 1
-      tld_list: '-'
+  - templatereplacername:
+      type: template_replacer
+      specific_rules:
+        - tests/testdata/auto_tests/template_replacer/rules/specific/
+      generic_rules:
+        - tests/testdata/auto_tests/template_replacer/rules/generic/
+      template: tests/testdata/unit/template_replacer/replacer_template.yml
+      pattern:
+          delimiter: ","
+          fields:
+              - field.name.a
+              - field.name.b
+          allowed_delimiter_field: field.name.b
+          target_field: target.field
+  - clusterername:
+      type: clusterer
+      specific_rules:
+          - tests/testdata/auto_tests/clusterer/rules/specific/
+      generic_rules:
+          - tests/testdata/auto_tests/clusterer/rules/generic/
+      output_field_name: target_field
