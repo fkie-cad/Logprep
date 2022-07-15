@@ -439,6 +439,90 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
 
         assert document == expected
 
+    def test_time_to_check_for_change_not_read_for_change(self):
+        self.object._file_check_interval = 9999999
+        assert self.object._db_connector.time_to_check_for_change() is False
+
+    def test_time_to_check_for_change_read_for_change(self):
+        time.sleep(self.object._file_check_interval)
+        assert self.object._db_connector.time_to_check_for_change() is True
+
+    def test_update_from_db_and_write_to_file_change_and_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        last_file_change = os.path.getmtime(self.object._db_file_path)
+        mock_simulate_table_change()
+        time.sleep(self.object._file_check_interval)
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "fi"], ["c", "fo"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.getmtime(self.object._db_file_path) > last_file_change
+
+    def test_update_from_db_and_write_to_file_no_change_and_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        last_file_change = os.path.getmtime(self.object._db_file_path)
+        time.sleep(self.object._file_check_interval)
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.getmtime(self.object._db_file_path) == last_file_change
+
+    def test_update_from_db_and_write_to_file_change_and_not_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        last_file_change = os.path.getmtime(self.object._db_file_path)
+        self.object._file_check_interval = 9999999
+        mock_simulate_table_change()
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "fi"], ["c", "fo"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.getmtime(self.object._db_file_path) > last_file_change
+
+    def test_update_from_db_and_write_to_file_no_change_and_not_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        last_file_change = os.path.getmtime(self.object._db_file_path)
+        self.object._file_check_interval = 9999999
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.getmtime(self.object._db_file_path) == last_file_change
+
+    def test_update_from_db_and_write_to_file_no_existing_file_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        os.remove(self.object._db_file_path)
+        time.sleep(self.object._file_check_interval)
+        self.object._db_connector._last_table_checksum = None
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.isfile(self.object._db_file_path)
+
+    def test_update_from_db_and_write_to_file_no_existing_file_not_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        os.remove(self.object._db_file_path)
+        self.object._file_check_interval = 9999999
+        self.object._db_connector._last_table_checksum = None
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.isfile(self.object._db_file_path)
+
 
 class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(
     BaseTestGenericAdderSQLTestCase

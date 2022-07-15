@@ -80,6 +80,12 @@ class MySQLConnector:
     def disconnect(self):
         self.connection.close()
 
+    def time_to_check_for_change(self) -> bool:
+        change = time.time() - self._last_check >= self._db_check_interval
+        if change:
+            self._last_check = time.time()
+        return change
+
     def has_changed(self) -> bool:
         """Check if a configured SQL table has changed.
 
@@ -92,16 +98,13 @@ class MySQLConnector:
             True if the SQL table has changed, False otherwise.
 
         """
-        if time.time() - self._last_check >= self._db_check_interval:
-            self._last_check = time.time()
-            checksum = self._get_checksum()
-            if self._last_table_checksum is None:
-                self._last_table_checksum = checksum
-                return True
-            if self._last_table_checksum == checksum:
-                return False
+        checksum = self._get_checksum()
+        if self._last_table_checksum is None:
+            self._last_table_checksum = checksum
             return True
-        return False
+        if self._last_table_checksum == checksum:
+            return False
+        return True
 
     def _get_checksum(self) -> int:
         """Get the checksum a configured SQL table.

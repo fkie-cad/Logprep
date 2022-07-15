@@ -179,13 +179,13 @@ class GenericAdder(Processor):
             self._db_connector.disconnect()
 
     def _update_db_table(self):
-        with FileLock(self._file_lock_path):
-            now = time.time()
-            if self._check_if_file_not_exists_or_stale(now):
-                self._update_from_db_and_write_to_file()
-            else:
-                self._load_from_file()
-            os.utime(self._db_file_path, (now, now))
+        if self._db_connector.time_to_check_for_change():
+            with FileLock(self._file_lock_path):
+                now = time.time()
+                if self._check_if_file_not_exists_or_stale(now):
+                    self._update_from_db_and_write_to_file()
+                else:
+                    self._load_from_file()
 
     def _load_from_file(self):
         with open(self._db_file_path, "r", encoding="utf8") as db_file:
