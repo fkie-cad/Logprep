@@ -3,6 +3,8 @@
 ### Features
 
 * Add metric for mean processing time per event for the full pipeline, in addition to per processor
+* Add feature to automatically add version information to all events, configured via the 
+`connector > consumer` configuration
 
 ### Improvements
 ### Bugfixes
