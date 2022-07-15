@@ -1,8 +1,15 @@
 ## Next Release
 
 ### Features
+
+* Add metric for mean processing time per event for the full pipeline, in addition to per processor
+
 ### Improvements
 ### Bugfixes
+
+* Fix performance of the metrics tracking. Due to a store metrics statement at the wrong position
+the logprep performance was dramatically decreased when tracking metrics was activated.
+
 ### Breaking
 
 ## v3.0.0
