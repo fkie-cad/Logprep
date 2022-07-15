@@ -61,6 +61,29 @@ hmac configuration is given at the end of this page.
 The hmac itself will be calculated with python's :code:`hashlib.sha256` algorithm and the compression is based on the
 :code:`zlib` library.
 
+Furthermore it is possible to automatically add the logprep version and the used configuration
+version to every processed event.
+This helps to keep track of the processing of the events when the configuration is changing often.
+To enable adding the versions to each event the keyword :code:`version_info_target_field` has to be
+set under the field :code:`preprocessing`.
+The example at the bottom of this page includes this configuration.
+If the field :code:`preprocessing` and :code:`version_info_target_field` is not present then no
+version information is added to the event.
+The following json shows a snippet of an event with the added version information.
+
+..  code-block:: json
+    :linenos:
+    :caption: Example event with version information
+
+    {
+        "Any": "regular event information",
+        "version_info": {
+            "logprep": "3.0.0",
+            "configuration": "1"
+        },
+        ...
+    }
+
 
 producer
 --------
@@ -91,7 +114,7 @@ Example
 
 ..  code-block:: yaml
     :linenos:
-    :caption: Logprep configuration (with optional hmac settings)
+    :caption: Logprep configuration (with optional settings)
 
     connector:
       type: confluentkafka
@@ -103,6 +126,8 @@ Example
         auto_commit: on
         session_timeout: 6000
         offset_reset_policy: smallest
+        preprocessing:
+          version_info_target_field: version_info
         hmac:
           target: <RAW_MSG>
           key: secret-key

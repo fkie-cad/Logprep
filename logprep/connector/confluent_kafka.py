@@ -1,5 +1,6 @@
 """This module contains functionality that allows to establish a connection with kafka."""
 import hashlib
+import json
 from base64 import b64encode
 from copy import deepcopy
 from datetime import datetime
@@ -8,7 +9,6 @@ from socket import getfqdn
 from typing import List, Optional
 from zlib import compress
 
-import json
 from confluent_kafka import Consumer, Producer
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
@@ -142,6 +142,7 @@ class ConfluentKafka(Input, Output):
                 "session_timeout": 6000,
                 "offset_reset_policy": "smallest",
                 "enable_auto_offset_store": enable_auto_offset_store,
+                "preprocessing": {"version_info_target_field": ""},
                 "hmac": {"target": "", "key": "", "output_field": ""},
             },
             "producer": {

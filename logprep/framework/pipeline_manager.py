@@ -132,15 +132,10 @@ class PipelineManager:
 
         self._logger.info("Created new pipeline")
         return MultiprocessingPipeline(
-            index,
-            self._configuration["connector"],
-            self._configuration["pipeline"],
-            self._configuration.get("metrics", {}),
-            self._configuration["timeout"],
-            self._log_handler,
-            self._configuration.get("print_processed_period", 300),
-            self._lock,
-            self._shared_dict,
-            profile=self._configuration.get("profile_pipelines", False),
+            pipeline_index=index,
+            logprep_config=self._configuration,
+            log_handler=self._log_handler,
+            lock=self._lock,
+            shared_dict=self._shared_dict,
             metric_targets=self.metric_targets,
         )
