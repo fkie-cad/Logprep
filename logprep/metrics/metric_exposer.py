@@ -36,9 +36,9 @@ class MetricExposer:
         if not self.output_targets:
             return
 
-        self._store_metrics(metrics)
         if self._time_to_expose():
             if self._aggregate_processes:
+                self._store_metrics(metrics)
                 self._expose_aggregated_metrics_from_shared_dict()
             else:
                 self._send_to_output(metrics.expose())
