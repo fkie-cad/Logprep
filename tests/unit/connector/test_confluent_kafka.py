@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
+import json
 from base64 import b64decode
 from copy import deepcopy
 from datetime import datetime
@@ -9,7 +10,6 @@ from math import isclose
 from socket import getfqdn
 from zlib import decompress
 
-import json
 from pytest import fail, raises
 
 from logprep.connector.confluent_kafka import (
@@ -659,9 +659,7 @@ class TestConfluentKafka:
 
         # add additional unknown option and test for error message
         config["consumer"]["hmac"] = {"unknown": "option"}
-        with raises(
-            InvalidConfigurationError, match=r"Confluent Kafka: Unknown Hmac Options: {'unknown'}"
-        ):
+        with raises(InvalidConfigurationError, match=r"Confluent Kafka: Unknown Option: unknown"):
             _ = ConfluentKafkaFactory.create_from_configuration(config)
 
     def test_get_next_with_broken_hmac_config(self):

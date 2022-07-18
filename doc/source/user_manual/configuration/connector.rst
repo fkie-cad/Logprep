@@ -43,10 +43,20 @@ This object configures how log messages are being fetched from Kafka.
 - **offset_reset_policy**: Corresponds to the Kafka configuration parameter `auto.offset.reset <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This parameter influences from which offset the Kafka consumer starts to fetch log messages from an assigned partition. The values *latest/earliest/none* are possible. With a value of *none* Logprep must manage the offset by itself. However, this is not supported by Logprep, since it is not relevant for our use-case. If the value is set to *latest/largest*, the Kafka consumer starts by reading the newest log messages of a partition if a valid offset is missing. Thus, old log messages from that partition will not be processed. This setting can therefore lead to a loss of log messages. A value of *earliest/smallest* causes the Kafka consumer to read all log messages from a partition, which can lead to a duplication of log messages. Currently, the deprecated value *smallest* is used, which should be later changed to *earliest*. The default value of librdkafka is *largest*.
 - **enable_auto_offset_store**: Corresponds to the Kafka configuration parameter `enable.auto.offset.store <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This parameter defines if the offset is automatically updated in memory. Disabling this allows Logprep to update the offset more accurately. The default value in librdkafka it is *true*.
 
-Additionally to the previous configurations it is possible to automatically attach an HMAC to an incoming log message.
-If it is required to do so the following options should be appended to the general consumer options under a new
-field :code:`hmac`. This field is completely optional and can also be omitted if no hmac is needed. An example with
-hmac configuration is given at the end of this page.
+preprocessing
+^^^^^^^^^^^^^
+
+It is possible to activate simple preprocessors in the consumer.
+The following will describe the available preprocessors and what they do.
+They each have to be defined under the key :code:`preprocessor`.
+
+**hmac**
+
+If required it is possible to automatically attach an HMAC to incoming log messages.
+To activate this preprocessor the following options should be appended to the preprocessor options
+under a new field :code:`hmac`.
+This field is completely optional and can also be omitted if no hmac is needed.
+An example with hmac configuration is given at the end of this page.
 
 - **target**: Defines a field inside the log message which should be used for the hmac calculation. If the target field
   is not found or does not exists an error message is written into the configured output field. If the hmac should be
@@ -61,15 +71,19 @@ hmac configuration is given at the end of this page.
 The hmac itself will be calculated with python's :code:`hashlib.sha256` algorithm and the compression is based on the
 :code:`zlib` library.
 
-Furthermore it is possible to automatically add the logprep version and the used configuration
-version to every processed event.
+**version_info_target_field**
+
+If required it is possible to automatically add the logprep version and the used configuration
+version to every incoming log message.
 This helps to keep track of the processing of the events when the configuration is changing often.
 To enable adding the versions to each event the keyword :code:`version_info_target_field` has to be
 set under the field :code:`preprocessing`.
+It defines the name of the parent field under which the version info should be given.
 The example at the bottom of this page includes this configuration.
-If the field :code:`preprocessing` and :code:`version_info_target_field` is not present then no
+If the field :code:`preprocessing` and :code:`version_info_target_field` are not present then no
 version information is added to the event.
 The following json shows a snippet of an event with the added version information.
+The configuration was set to :code:`version_info_target_field: version_info`
 
 ..  code-block:: json
     :linenos:
@@ -128,10 +142,10 @@ Example
         offset_reset_policy: smallest
         preprocessing:
           version_info_target_field: version_info
-        hmac:
-          target: <RAW_MSG>
-          key: secret-key
-          output_field: Hmac
+          hmac:
+            target: <RAW_MSG>
+            key: secret-key
+            output_field: Hmac
       producer:
         topic: producer
         error_topic: producer_error
