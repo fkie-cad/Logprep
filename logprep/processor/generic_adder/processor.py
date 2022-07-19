@@ -193,11 +193,13 @@ class GenericAdder(Processor):
 
     def _update_from_db_and_write_to_file(self):
         self._db_connector.connect()
-        if self._db_connector.has_changed():
-            self._db_table = self._db_connector.get_data()
-            with open(self._db_file_path, "w", encoding="utf8") as db_file:
-                json.dump(self._db_table, db_file)
-        self._db_connector.disconnect()
+        try:
+            if self._db_connector.has_changed():
+                self._db_table = self._db_connector.get_data()
+                with open(self._db_file_path, "w", encoding="utf8") as db_file:
+                    json.dump(self._db_table, db_file)
+        finally:
+            self._db_connector.disconnect()
 
     def _check_if_file_not_exists_or_stale(self, now):
         if not os.path.isfile(self._db_file_path):
