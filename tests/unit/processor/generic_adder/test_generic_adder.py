@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+# pylint: disable=unused-argument
 import json
 import os
 import tempfile

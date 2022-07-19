@@ -68,6 +68,7 @@ class MySQLConnector:
         self._last_table_checksum = None
 
     def connect(self):
+        """Get connection to SQL database and cursor for database table"""
         self.connection = db.connect(
             user=self._sql_config["user"],
             password=self._sql_config["password"],
@@ -78,13 +79,24 @@ class MySQLConnector:
         self.cursor = self.connection.cursor()
 
     def disconnect(self):
+        """Close connection to SQL database"""
         self.connection.close()
 
     def time_to_check_for_change(self) -> bool:
-        change = time.time() - self._last_check >= self._db_check_interval
-        if change:
+        """Check if enough time has passed to check for a SQL table change.
+
+        Update the timer if it is time to check for a change.
+
+        Returns
+        -------
+        bool
+            True if a check should be performed, False otherwise.
+
+        """
+        check_change = time.time() - self._last_check >= self._db_check_interval
+        if check_change:
             self._last_check = time.time()
-        return change
+        return check_change
 
     def has_changed(self) -> bool:
         """Check if a configured SQL table has changed.

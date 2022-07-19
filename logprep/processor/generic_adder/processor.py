@@ -67,10 +67,10 @@ def sql_config_validator(_, attribute, value):
     if attribute.name == "sql_config" and isinstance(value, dict):
         table = value.get("table")
         if table and re.search(r"\s", table):
-            raise InvalidConfigurationError(f"Table in 'sql_config' contains whitespaces!")
+            raise InvalidConfigurationError("Table in 'sql_config' contains whitespaces!")
         if table and not re.search(r"^[a-zA-Z0-9_]+$", table):
             raise InvalidConfigurationError(
-                f"Table in 'sql_config' may only contain alphanumeric characters and underscores!"
+                "Table in 'sql_config' may only contain alphanumeric characters and underscores!"
             )
 
 
@@ -108,7 +108,7 @@ class GenericAdder(Processor):
         - `timer` - Period how long to wait (in seconds) before the database table is being checked
           for changes.
           If there is a change, the table is reloaded by Logprep.
-        - `file_lock_path` - Path to a file lock used by the adder when updating SQL the table 
+        - `file_lock_path` - Path to a file lock used by the adder when updating SQL the table
           (default: ./sql_update.lock).
         - `db_file_path` - Path to a file used to store the SQL table obtained by the  adder
           (default: ./sql_db_table.json).
@@ -174,13 +174,13 @@ class GenericAdder(Processor):
 
         Checking at initialization prevents error documents caused by a wrong connection
         configuration when starting Logprep"""
-        with FileLock(self._file_lock_path):
+        with FileLock(self._file_lock_path):  # pylint: disable=abstract-class-instantiated
             self._db_connector.connect()
             self._db_connector.disconnect()
 
     def _update_db_table(self):
         if self._db_connector.time_to_check_for_change():
-            with FileLock(self._file_lock_path):
+            with FileLock(self._file_lock_path):  # pylint: disable=abstract-class-instantiated
                 now = time.time()
                 if self._check_if_file_not_exists_or_stale(now):
                     self._update_from_db_and_write_to_file()
@@ -204,7 +204,7 @@ class GenericAdder(Processor):
     def _check_if_file_not_exists_or_stale(self, now):
         if not os.path.isfile(self._db_file_path):
             return True
-        elif now - os.path.getmtime(self._db_file_path) > self._file_check_interval:
+        if now - os.path.getmtime(self._db_file_path) > self._file_check_interval:
             return True
         return False
 
@@ -271,7 +271,7 @@ class GenericAdder(Processor):
             add_from_db = self._db_table.get(value_to_map, [])
 
             if rule.db_destination_prefix:
-                for idx in range(len(add_from_db)):
+                for idx, _ in enumerate(add_from_db):
                     if not add_from_db[idx][0].startswith(rule.db_destination_prefix):
                         add_from_db[idx][0] = f"{rule.db_destination_prefix}.{add_from_db[idx][0]}"
 
