@@ -56,7 +56,7 @@ class ConfluentKafkaInputFactory(ConfluentKafkaFactory):
                 configuration["bootstrapservers"],
                 configuration["consumer"]["topic"],
                 configuration["consumer"]["group"],
-                configuration["consumer"].get("enable_auto_offset_store", True),
+                configuration["consumer"].get("enable_auto_offset_store", False),
             )
         except KeyError as error:
             raise InvalidConfigurationError(
