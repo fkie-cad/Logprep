@@ -5,6 +5,15 @@
 * Add metric for mean processing time per event for the full pipeline, in addition to per processor
 
 ### Improvements
+
+* Make the generic adder write the SQL table to a file and load it from there instead of loading it 
+from the database for every process of the multiprocessing pipeline.
+Furthermore, only connect to the SQL database on checking if the database table has changed and the 
+file is stale.
+This reduces the SQL connections.
+Before, there was permanently one connection per multiprocessing pipeline active and now there is 
+only one connection per Logprep instance active when accessing the database. 
+
 ### Bugfixes
 
 * Fix performance of the metrics tracking. Due to a store metrics statement at the wrong position
