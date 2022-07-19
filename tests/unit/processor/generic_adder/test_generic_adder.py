@@ -477,6 +477,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         last_file_change = os.path.getmtime(self.object._db_file_path)
         self.object._file_check_interval = 9999999
         mock_simulate_table_change()
+        time.sleep(0.01)
         self.object._update_from_db_and_write_to_file()
         assert self.object._db_table == {
             "TEST_0": (["b", "fi"], ["c", "fo"]),
@@ -489,6 +490,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         assert os.path.isfile(self.object._db_file_path)
         last_file_change = os.path.getmtime(self.object._db_file_path)
         self.object._file_check_interval = 9999999
+        time.sleep(0.01)
         self.object._update_from_db_and_write_to_file()
         assert self.object._db_table == {
             "TEST_0": (["b", "foo"], ["c", "bar"]),
