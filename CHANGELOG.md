@@ -1,6 +1,13 @@
 ## Next Release
 
 ### Features
+### Improvements
+### Bugfixes
+### Breaking
+
+## v3.1.0
+
+### Features
 
 * Add metric for mean processing time per event for the full pipeline, in addition to per processor
 
