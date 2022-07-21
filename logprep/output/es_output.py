@@ -251,17 +251,15 @@ class ElasticsearchOutput(Output):
         self._write_to_es(document)
 
     def _build_failed_index_document(self, message_document: dict, reason: str):
+        document = {
+            "reason": reason,
+            "@timestamp": str(arrow.now().to("UTC")),
+            "_index": self._default_index,
+        }
         try:
-            document = {
-                "reason": reason,
-                "message": json.dumps(message_document),
-                "@timestamp": str(arrow.now().to("UTC")),
-                "_index": self._default_index,
-            }
-        except TypeError as error:
-            raise CriticalOutputError(
-                "Error storing output document: Serialization Error", message_document
-            ) from error
+            document["message"] = json.dumps(message_document)
+        except TypeError:
+            document["message"] = str(message_document)
         return document
 
     def store_custom(self, document: dict, target: str):

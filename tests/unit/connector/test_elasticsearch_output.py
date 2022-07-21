@@ -134,12 +134,17 @@ class TestElasticsearchOutput:
         assert error_document == expected
 
     def test_create_es_output_settings_contains_expected_values(self):
-        with raises(
-            CriticalOutputError, match=r"Error storing output document\: Serialization Error"
-        ):
-            self.es_output.store(
-                {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"}
-            )
+        expected = {
+            "reason": "A reason for failed indexing",
+            "_index": "default_index",
+        }
+        failed_document = self.es_output._build_failed_index_document(
+            {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"},
+            "A reason for failed indexing",
+        )
+        assert "NotJsonSerializableMock" in failed_document.pop("message")
+        assert failed_document.pop("@timestamp")
+        assert failed_document == expected
 
     def test_build_failed_index_document(self):
         expected = {
