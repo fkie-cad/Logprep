@@ -183,7 +183,7 @@ Documents are sent in batches to Elasticsearch to reduce the amount of times con
 - **user** User used for authentication (optional).
 - **secret** Secret used for authentication (optional).
 - **cert** SSL certificate to use (optional).
-- **default_index** Default index to write to if no index was set in the document.
+- **default_index** Default index to write to if no index was set in the document or the document could not be indexed. The document will be transformed into a string to prevent rejections by the default index.
 - **error_index** Index to write documents to that could not be processed.
 - **message_backlog** Amount of documents to store before sending them to Elasticsearch.
 - **timeout** Timeout for Elasticsearch connection  (default: 500ms).
