@@ -10,11 +10,11 @@ from json import loads, dumps
 from math import isclose
 
 import arrow
+import elasticsearch.helpers
 from pytest import fail, raises
 
 from logprep.output.es_output import ElasticsearchOutput
 from logprep.output.output import CriticalOutputError
-import elasticsearch.helpers
 
 
 class NotJsonSerializableMock:
@@ -53,31 +53,41 @@ class TestElasticsearchOutput:
     def test_describe_endpoint_returns_elasticsearch_output(self):
         assert self.es_output.describe_endpoint() == "Elasticsearch Output: host:123"
 
-    def test_store_sends_event_to_expected_index(self):
+    def test_store_sends_event_to_expected_index_if_index_missing_in_event(self):
         default_index = "target_index"
         event = {"field": "content"}
-        expected = {"field": "content", "_index": default_index}
+        expected = {
+            "_index": default_index,
+            "message": '{"field": "content"}',
+            "reason": "Missing index in document",
+        }
 
         es_output = ElasticsearchOutput(
             "host", 123, default_index, "error_index", 1, 5000, 0, None, None, None
         )
         es_output.store(event)
 
+        assert es_output._message_backlog[0].pop("@timestamp")
         assert es_output._message_backlog[0] == expected
 
-    def test_store_sends_event_to_expected_index_with_date_pattern(self):
+    def test_store_sends_event_to_expected_index_with_date_pattern_if_index_missing_in_event(self):
         default_index = "default_index-%{YYYY-MM-DD}"
         event = {"field": "content"}
 
         formatted_date = arrow.now().format("YYYY-MM-DD")
         expected_index = re.sub(r"%{YYYY-MM-DD}", formatted_date, default_index)
-        expected = {"field": "content", "_index": expected_index}
+        expected = {
+            "_index": expected_index,
+            "message": '{"field": "content"}',
+            "reason": "Missing index in document",
+        }
 
         es_output = ElasticsearchOutput(
             "host", 123, default_index, "error_index", 1, 5000, 0, None, None, None
         )
         es_output.store(event)
 
+        assert es_output._message_backlog[0].pop("@timestamp")
         assert es_output._message_backlog[0] == expected
 
     def test_store_custom_sends_event_to_expected_index(self):
@@ -104,7 +114,7 @@ class TestElasticsearchOutput:
             "original": event_received,
             "processed": event,
             "_index": error_index,
-            "timestamp": str(datetime.now()),
+            "@timestamp": str(datetime.now()),
         }
 
         es_output = ElasticsearchOutput(
@@ -115,14 +125,11 @@ class TestElasticsearchOutput:
         error_document = es_output._message_backlog[0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
-        date_format = "%Y-%m-%d %H:%M:%S.%f"
-        error_time = datetime.timestamp(datetime.strptime(error_document["timestamp"], date_format))
-        expected_time = datetime.timestamp(
-            datetime.strptime(error_document["timestamp"], date_format)
-        )
+        error_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
+        expected_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
         assert isclose(error_time, expected_time)
-        del error_document["timestamp"]
-        del expected["timestamp"]
+        del error_document["@timestamp"]
+        del expected["@timestamp"]
 
         assert error_document == expected
 
@@ -133,3 +140,18 @@ class TestElasticsearchOutput:
             self.es_output.store(
                 {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"}
             )
+
+    def test_build_failed_index_document(self):
+        expected = {
+            "reason": "A reason for failed indexing",
+            "message": '{"foo": "bar"}',
+            "_index": "default_index",
+        }
+        es_output = ElasticsearchOutput(
+            "host", 123, "default_index", "error_index", 1, 5000, 0, None, None, None
+        )
+        failed_document = es_output._build_failed_index_document(
+            {"foo": "bar"}, "A reason for failed indexing"
+        )
+        assert failed_document.pop("@timestamp")
+        assert failed_document == expected

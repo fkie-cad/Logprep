@@ -1,7 +1,7 @@
 """This module contains functionality that allows to send events to Elasticsearch."""
 
+import json
 import re
-from datetime import datetime
 from ssl import create_default_context
 from typing import Optional
 
@@ -12,7 +12,7 @@ from elasticsearch.helpers import BulkIndexError
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
 from logprep.input.input import Input
-from logprep.output.output import Output, FatalOutputError
+from logprep.output.output import Output, FatalOutputError, CriticalOutputError
 
 
 class ElasticsearchOutputFactory:
@@ -184,13 +184,8 @@ class ElasticsearchOutput(Output):
         for bulk_error in error.errors:
             error_info = bulk_error.get("index", {})
             data = error_info.get("data")
-            error_document = {
-                "error": f'{error_info["error"]["type"]}: {error_info["error"]["reason"]}',
-                "original": {},
-                "processed": data,
-                "@timestamp": data["@timestamp"],
-                "_index": self._error_index,
-            }
+            reason = f'{error_info["error"]["type"]}: {error_info["error"]["reason"]}'
+            error_document = self._build_failed_index_document(data, reason)
             self._add_dates(error_document)
             error_documents.append(error_document)
             if error_types.get(error_info["error"]["type"]) is None:
@@ -249,9 +244,25 @@ class ElasticsearchOutput(Output):
            Document to store.
 
         """
-        document["_index"] = document.get("_index", self._default_index)
+        if document.get("_index") is None:
+            document = self._build_failed_index_document(document, "Missing index in document")
+
         self._add_dates(document)
         self._write_to_es(document)
+
+    def _build_failed_index_document(self, message_document: dict, reason: str):
+        try:
+            document = {
+                "reason": reason,
+                "message": json.dumps(message_document),
+                "@timestamp": str(arrow.now().to("UTC")),
+                "_index": self._default_index,
+            }
+        except TypeError as error:
+            raise CriticalOutputError(
+                "Error storing output document: Serialization Error", message_document
+            ) from error
+        return document
 
     def store_custom(self, document: dict, target: str):
         """Write document to Elasticsearch into the target index.
@@ -289,7 +300,7 @@ class ElasticsearchOutput(Output):
             "error": error_message,
             "original": document_received,
             "processed": document_processed,
-            "timestamp": str(datetime.now()),
+            "@timestamp": str(arrow.now().to("UTC")),
             "_index": self._error_index,
         }
         self._add_dates(error_document)
