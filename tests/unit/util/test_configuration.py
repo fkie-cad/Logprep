@@ -458,10 +458,10 @@ class TestConfiguration:
             config._verify_connector(getLogger("test-logger"))
 
             expected_warning_message = (
-                "Deprecated configuration format: The hmac options have "
-                "to be under the key 'preprocessing'. The hmac options "
-                "under the key 'consumer' will be removed in a future "
-                "release; version=4.0.0"
+                "[Deprecation]: you are currently using a configuration format that will be "
+                "outdated in the next major release (version 4.0.0). The hmac options will move "
+                "from the keyword 'consumer' to the subkey 'preprocessing', consider changing to "
+                "the new config format. [Expires with logprep=4.0.0]"
             )
             assert len(caplog.messages) == 1
             assert expected_warning_message == caplog.messages[0]
