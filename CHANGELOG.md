@@ -1,12 +1,24 @@
+## Upcoming Changes
+
+### Breaking 
+
+* Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
+under the subkey `preprocessing`
+
+
 ## Next Release
 
 ### Features
 
 * Add metric for mean processing time per event for the full pipeline, in addition to per processor
 * Add feature to automatically add version information to all events, configured via the 
-`connector > consumer` configuration
+`connector > consumer > preprocessing` configuration
 
 ### Improvements
+
+* Move the config hmac options to the new subkey `preprocessing`, maintain backward compatibility, 
+but mark old version as deprecated.
+
 ### Bugfixes
 
 * Fix performance of the metrics tracking. Due to a store metrics statement at the wrong position

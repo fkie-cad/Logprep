@@ -181,11 +181,13 @@ class Configuration(dict):
             raise InvalidConfigurationErrors(errors)
 
     def _verify_connector(self, logger):
+        # DEPRECATION: HMAC-Option: Remove this if with next major version update
         if self.get("connector", {}).get("consumer", {}).get("hmac", {}):
             logger.warning(
-                "Deprecated configuration format: The hmac options have to be under the key "
-                "'preprocessing'. The hmac options under the key 'consumer' will be removed "
-                "in a future release; version=4.0.0"
+                "[Deprecation]: you are currently using a configuration format that will be "
+                "outdated in the next major release (version 4.0.0). The hmac options will move "
+                "from the keyword 'consumer' to the subkey 'preprocessing', consider changing to "
+                "the new config format. [Expires with logprep=4.0.0]"
             )
 
         try:

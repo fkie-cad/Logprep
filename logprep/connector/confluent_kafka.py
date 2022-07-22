@@ -215,7 +215,8 @@ class ConfluentKafka(Input, Output):
             Raises if an option is invalid.
 
         """
-
+        # DEPRECATION: HMAC-Option: Remove this if with next major version update, check also the
+        # self._config dict in this class's init method
         if new_options.get("consumer", {}).get("hmac", None) is not None:
             if "preprocessing" not in new_options["consumer"]:
                 new_options["consumer"]["preprocessing"] = {}
