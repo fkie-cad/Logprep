@@ -253,7 +253,7 @@ class ElasticsearchOutput(Output):
     def _build_failed_index_document(self, message_document: dict, reason: str):
         document = {
             "reason": reason,
-            "@timestamp": str(arrow.now().to("UTC")),
+            "@timestamp": arrow.now().isoformat(),
             "_index": self._default_index,
         }
         try:
@@ -298,7 +298,7 @@ class ElasticsearchOutput(Output):
             "error": error_message,
             "original": document_received,
             "processed": document_processed,
-            "@timestamp": str(arrow.now().to("UTC")),
+            "@timestamp": arrow.now().isoformat(),
             "_index": self._error_index,
         }
         self._add_dates(error_document)
