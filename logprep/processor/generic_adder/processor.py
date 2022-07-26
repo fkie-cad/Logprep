@@ -110,7 +110,7 @@ class GenericAdder(Processor):
           If there is a change, the table is reloaded by Logprep.
         - `file_lock_path` - Path to a file lock used by the adder when updating the SQL table
           (default: ./sql_update.lock).
-        - `db_file_path` - Path to a file used to store the SQL table obtained by the  adder
+        - `db_file_path` - Path to a file used to store the SQL table obtained by the generic adder
           (default: ./sql_db_table.json).
         """
 
