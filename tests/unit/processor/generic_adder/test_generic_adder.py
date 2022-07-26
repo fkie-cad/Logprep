@@ -315,22 +315,23 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
 
         assert self.object._db_table == db_file_content
 
-    def test_check_if_file_not_exists_or_stale(self):
-        db_file_path = self.object._db_file_path
+    def test_check_if_file_not_stale_after_initialization_of_the_generic_adder(self):
+        assert not self.object._check_if_file_not_exists_or_stale(time.time())
 
-        stale_before_interval = self.object._check_if_file_not_exists_or_stale(time.time())
+    def test_check_if_file_stale_after_enough_time_has_passed(self):
+        time.sleep(0.2)  # nosemgrep
+        assert self.object._check_if_file_not_exists_or_stale(time.time())
+
+    def test_check_if_file_not_stale_after_enough_time_has_passed_but_file_has_been_changed(self):
         time.sleep(0.2)  # nosemgrep
         now = time.time()
-        stale_after_interval = self.object._check_if_file_not_exists_or_stale(now)
-        os.utime(db_file_path, (now, now))
-        stale_after_change = self.object._check_if_file_not_exists_or_stale(now)
-        os.remove(db_file_path)
-        stale_without_file = self.object._check_if_file_not_exists_or_stale(now)
+        os.utime(self.object._db_file_path, (now, now))  # Simulates change of file
+        assert not self.object._check_if_file_not_exists_or_stale(now)
 
-        assert stale_before_interval is False
-        assert stale_after_interval is True
-        assert stale_after_change is False
-        assert stale_without_file is True
+    def test_check_if_file_stale_after_removing_it_when_it_was_not_stale(self):
+        assert not self.object._check_if_file_not_exists_or_stale(time.time())
+        os.remove(self.object._db_file_path)
+        assert self.object._check_if_file_not_exists_or_stale(time.time())
 
     def test_sql_database_enriches_via_table(self):
         expected = {
