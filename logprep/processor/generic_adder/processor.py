@@ -26,9 +26,13 @@ Example
             add_target_column: True
             timer: 0.1
 """
+import json
 import re
 from logging import Logger
 from typing import List, Optional
+import time
+import os
+from filelock import FileLock
 
 from attr import define, field, validators
 
@@ -63,10 +67,10 @@ def sql_config_validator(_, attribute, value):
     if attribute.name == "sql_config" and isinstance(value, dict):
         table = value.get("table")
         if table and re.search(r"\s", table):
-            raise InvalidConfigurationError(f"Table in 'sql_config' contains whitespaces!")
+            raise InvalidConfigurationError("Table in 'sql_config' contains whitespaces!")
         if table and not re.search(r"^[a-zA-Z0-9_]+$", table):
             raise InvalidConfigurationError(
-                f"Table in 'sql_config' may only contain alphanumeric characters and underscores!"
+                "Table in 'sql_config' may only contain alphanumeric characters and underscores!"
             )
 
 
@@ -104,17 +108,36 @@ class GenericAdder(Processor):
         - `timer` - Period how long to wait (in seconds) before the database table is being checked
           for changes.
           If there is a change, the table is reloaded by Logprep.
+        - `file_lock_path` - Path to a file lock used by the adder when updating the SQL table
+          (default: ./sql_update.lock).
+        - `db_file_path` - Path to a file used to store the SQL table obtained by the generic adder
+          (default: ./sql_db_table.json).
         """
 
     rule_class = GenericAdderRule
 
-    __slots__ = ["_db_connector", "_db_table"]
+    __slots__ = [
+        "_db_connector",
+        "_db_table",
+        "_file_lock_path",
+        "_db_file_path",
+        "_file_check_interval",
+    ]
 
-    _db_table: dict
+    _db_table: Optional[dict]
     """Dict containing table from SQL database"""
 
     _db_connector: MySQLConnector
     """Connector for MySQL database"""
+
+    _file_check_interval: Optional[float]
+    """Time that has to pass for the database file to become stale"""
+
+    _file_lock_path: Optional[str]
+    """Path to file lock for database update"""
+
+    _db_file_path: Optional[str]
+    """Path to file containing table from SQL database"""
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         """Initialize a generic adder instance.
@@ -131,9 +154,59 @@ class GenericAdder(Processor):
         """
         super().__init__(name, configuration, logger)
 
+        self._db_table = None
         sql_config = configuration.sql_config
-        self._db_connector = MySQLConnector(sql_config, logger) if sql_config else None
-        self._db_table = self._db_connector.get_data() if self._db_connector else None
+        if sql_config:
+            self._initialize_sql(sql_config)
+
+    def _initialize_sql(self, sql_config):
+        self._db_connector = MySQLConnector(sql_config, self._logger) if sql_config else None
+        if self._db_connector:
+            self._file_lock_path = sql_config.get("file_lock_path", "sql_update.lock")
+            self._db_file_path = sql_config.get("db_file_path", "sql_db_table.json")
+            self._file_check_interval = sql_config.get("timer", 60 * 3)
+
+            self._check_connection()
+            self._update_db_table()
+
+    def _check_connection(self):
+        """Check connections with lock to prevent a sudden spike of connections to the database.
+
+        Checking at initialization prevents error documents caused by a wrong connection
+        configuration when starting Logprep"""
+        with FileLock(self._file_lock_path):  # pylint: disable=abstract-class-instantiated
+            self._db_connector.connect()
+            self._db_connector.disconnect()
+
+    def _update_db_table(self):
+        if self._db_connector.time_to_check_for_change():
+            with FileLock(self._file_lock_path):  # pylint: disable=abstract-class-instantiated
+                now = time.time()
+                if self._check_if_file_not_exists_or_stale(now):
+                    self._update_from_db_and_write_to_file()
+                else:
+                    self._load_from_file()
+
+    def _load_from_file(self):
+        with open(self._db_file_path, "r", encoding="utf8") as db_file:
+            self._db_table = json.load(db_file)
+
+    def _update_from_db_and_write_to_file(self):
+        self._db_connector.connect()
+        try:
+            if self._db_connector.has_changed():
+                self._db_table = self._db_connector.get_data()
+                with open(self._db_file_path, "w", encoding="utf8") as db_file:
+                    json.dump(self._db_table, db_file)
+        finally:
+            self._db_connector.disconnect()
+
+    def _check_if_file_not_exists_or_stale(self, now):
+        if not os.path.isfile(self._db_file_path):
+            return True
+        if now - os.path.getmtime(self._db_file_path) > self._file_check_interval:
+            return True
+        return False
 
     def _apply_rules(self, event: dict, rule: GenericAdderRule):
         """Apply a matching generic adder rule to the event.
@@ -158,13 +231,12 @@ class GenericAdder(Processor):
         DuplicationError
             Raises if an addition would overwrite an existing field or value.
         """
-
-        if self._db_connector and self._db_connector.has_changed():
-            self._db_table = self._db_connector.get_data()
-
         conflicting_fields = []
 
         use_db = rule.db_target and self._db_table
+        if use_db:
+            self._update_db_table()
+
         items_to_add = [] if use_db else rule.add.items()
         if use_db and rule.db_pattern:
             self._try_adding_from_db(event, items_to_add, rule)
@@ -199,7 +271,7 @@ class GenericAdder(Processor):
             add_from_db = self._db_table.get(value_to_map, [])
 
             if rule.db_destination_prefix:
-                for idx in range(len(add_from_db)):
+                for idx, _ in enumerate(add_from_db):
                     if not add_from_db[idx][0].startswith(rule.db_destination_prefix):
                         add_from_db[idx][0] = f"{rule.db_destination_prefix}.{add_from_db[idx][0]}"
 

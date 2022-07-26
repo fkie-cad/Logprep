@@ -11,19 +11,25 @@ import mysql.connector as db
 class MySQLConnector:
     """Used to connect to a MySQL database and to retrieve data from a table if it has changed."""
 
-    connection: mysql.connector.MySQLConnection
+    connection: Optional[mysql.connector.MySQLConnection]
 
     target_column: str
+    """The name of the column whose values are being matched against a value from an event"""
 
     _add_target_column: bool
+    """Determines if the target column itself will be added to the event"""
 
     table_name: str
+    """The table name to use when connecting to the MySQL database"""
 
-    _timer: int
+    _db_check_interval: float
+    """Time that has to pass for the database to be checked"""
 
     _last_check: float
+    """Last time the database has been checked"""
 
     _last_table_checksum: Optional[int]
+    """Checksum of the database table that was obtained on the last update check"""
 
     _logger: Logger
 
@@ -47,24 +53,50 @@ class MySQLConnector:
         """
         self._logger = logger
 
-        self.connection = db.connect(
-            user=sql_config["user"],
-            password=sql_config["password"],
-            host=sql_config["host"],
-            database=sql_config["database"],
-            port=sql_config.get("port", 3306),
-        )
+        self.connection = None
+        self.cursor = None
 
-        self.cursor = self.connection.cursor()
+        self._sql_config = sql_config
 
         self.target_column = sql_config["target_column"]
         self._add_target_column = sql_config.get("add_target_column", False)
 
         self.table_name = sql_config["table"]
 
-        self._timer = sql_config.get("timer", 60 * 3)
+        self._db_check_interval = sql_config.get("timer", 60 * 3)
         self._last_check = 0
         self._last_table_checksum = None
+
+    def connect(self):
+        """Get connection to SQL database and cursor for database table"""
+        self.connection = db.connect(
+            user=self._sql_config["user"],
+            password=self._sql_config["password"],
+            host=self._sql_config["host"],
+            database=self._sql_config["database"],
+            port=self._sql_config.get("port", 3306),
+        )
+        self.cursor = self.connection.cursor()
+
+    def disconnect(self):
+        """Close connection to SQL database"""
+        self.connection.close()
+
+    def time_to_check_for_change(self) -> bool:
+        """Check if enough time has passed to check for a SQL table change.
+
+        Update the timer if it is time to check for a change.
+
+        Returns
+        -------
+        bool
+            True if a check should be performed, False otherwise.
+
+        """
+        check_change = time.time() - self._last_check >= self._db_check_interval
+        if check_change:
+            self._last_check = time.time()
+        return check_change
 
     def has_changed(self) -> bool:
         """Check if a configured SQL table has changed.
@@ -78,16 +110,11 @@ class MySQLConnector:
             True if the SQL table has changed, False otherwise.
 
         """
-        if time.time() - self._last_check >= self._timer:
-            self._last_check = time.time()
-            checksum = self._get_checksum()
-            if self._last_table_checksum is None:
-                self._last_table_checksum = checksum
-                return True
-            if self._last_table_checksum == checksum:
-                return False
-            return True
-        return False
+        checksum = self._get_checksum()
+        if self._last_table_checksum == checksum:
+            return False
+        self._last_table_checksum = checksum
+        return True
 
     def _get_checksum(self) -> int:
         """Get the checksum a configured SQL table.
