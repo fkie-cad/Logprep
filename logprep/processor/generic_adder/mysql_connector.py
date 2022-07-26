@@ -111,11 +111,9 @@ class MySQLConnector:
 
         """
         checksum = self._get_checksum()
-        if self._last_table_checksum is None:
-            self._last_table_checksum = checksum
-            return True
         if self._last_table_checksum == checksum:
             return False
+        self._last_table_checksum = checksum
         return True
 
     def _get_checksum(self) -> int:
