@@ -11,7 +11,7 @@ Example
 ..  code-block:: yaml
     :linenos:
 
-    - pseudonymizername:
+    - droppername:
         type: dropper
         specific_rules:
             - tests/testdata/rules/specific/
