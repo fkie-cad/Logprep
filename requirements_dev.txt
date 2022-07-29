@@ -12,7 +12,7 @@ aiosignal==1.2.0
     # via
     #   -r requirements.txt
     #   aiohttp
-arrow==1.2.1
+arrow==1.2.2
     # via -r requirements.txt
 astroid==2.9.3
     # via pylint
@@ -34,8 +34,9 @@ backports.cached-property==1.0.1 ; python_version < "3.8"
 certifi==2021.10.8
     # via
     #   -r requirements.txt
+    #   elasticsearch
     #   requests
-charset-normalizer==2.0.10
+charset-normalizer==2.0.11
     # via
     #   -r requirements.txt
     #   aiohttp
@@ -46,6 +47,8 @@ confluent-kafka==1.8.2
     # via -r requirements.txt
 coverage[toml]==6.2
     # via pytest-cov
+elasticsearch==7.17.0
+    # via -r requirements.txt
 filelock==3.4.1
     # via
     #   -r requirements.txt
@@ -123,7 +126,7 @@ protobuf==3.19.4
     #   mysql-connector-python
 py==1.11.0
     # via pytest
-pycryptodome==3.13.0
+pycryptodome==3.14.0
     # via -r requirements.txt
 pygrok==1.0.0
     # via -r requirements.txt
@@ -203,6 +206,7 @@ urlextract==1.5.0
 urllib3==1.26.8
     # via
     #   -r requirements.txt
+    #   elasticsearch
     #   geoip2
     #   requests
 wrapt==1.13.3

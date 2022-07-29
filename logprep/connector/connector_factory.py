@@ -2,7 +2,6 @@
 
 from typing import Tuple
 
-from logprep.connector.confluent_kafka import ConfluentKafkaFactory
 from logprep.connector.connector_factory_error import (
     UnknownConnectorTypeError,
     InvalidConfigurationError,
@@ -12,8 +11,11 @@ from logprep.output.output import Output
 from logprep.input.dummy_input import DummyInput
 from logprep.input.jsonl_input import JsonlInput
 from logprep.input.json_input import JsonInput
+from logprep.input.confluent_kafka_input import ConfluentKafkaInput, ConfluentKafkaInputFactory
 from logprep.output.dummy_output import DummyOutput
 from logprep.output.writing_output import WritingOutput
+from logprep.output.es_output import ElasticsearchOutput, ElasticsearchOutputFactory
+from logprep.output.confluent_kafka_output import ConfluentKafkaOutput, ConfluentKafkaOutputFactory
 
 
 class ConnectorFactory:
@@ -51,8 +53,11 @@ class ConnectorFactory:
             if config["type"].lower() == "writer_json_input":
                 return ConnectorFactory._create_writing_json_input_connector(config)
             if config["type"].lower() == "confluentkafka":
-                confluent_kafka = ConfluentKafkaFactory.create_from_configuration(config)
-                return confluent_kafka, confluent_kafka
+                kafka_input, kafka_output = ConnectorFactory._create_kafka_connector(config)
+                return kafka_input, kafka_output
+            if config["type"].lower() == "confluentkafka_es":
+                kafka_input, es_output = ConnectorFactory._create_kafka_es_connector(config)
+                return kafka_input, es_output
             raise UnknownConnectorTypeError('Unknown connector type: "{}"'.format(config["type"]))
         except KeyError:
             raise InvalidConfigurationError("Connector type not specified")
@@ -77,3 +82,19 @@ class ConnectorFactory:
             config.get("output_path_custom", None),
             config.get("output_path_errors", None),
         )
+
+    @staticmethod
+    def _create_kafka_connector(config: dict) -> Tuple[ConfluentKafkaInput, ConfluentKafkaOutput]:
+        kafka_in = ConfluentKafkaInputFactory.create_from_configuration(config)
+        kafka_out = ConfluentKafkaOutputFactory.create_from_configuration(config)
+        kafka_out.connect_input(kafka_in)
+        kafka_in.connect_output(kafka_out)
+        return kafka_in, kafka_out
+
+    @staticmethod
+    def _create_kafka_es_connector(config: dict) -> Tuple[ConfluentKafkaInput, ElasticsearchOutput]:
+        kafka_in = ConfluentKafkaInputFactory.create_from_configuration(config)
+        es_out = ElasticsearchOutputFactory.create_from_configuration(config)
+        es_out.connect_input(kafka_in)
+        kafka_in.connect_output(es_out)
+        return kafka_in, es_out

@@ -76,6 +76,9 @@ class Input(metaclass=ABCMeta):
         """
         return {}
 
+    def batch_finished_callback(self):
+        """Can be called by output connectors after processing a batch of one or more records."""
+
     def shut_down(self):
         """Close the input down, e.g. close all connections.
 

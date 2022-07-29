@@ -26,6 +26,8 @@ from logprep.util.time_measurement import TimeMeasurement
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
+getLogger("urllib3.connectionpool").setLevel(ERROR)
+getLogger("elasticsearch").setLevel(ERROR)
 
 
 def _parse_arguments():
