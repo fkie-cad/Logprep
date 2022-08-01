@@ -5,12 +5,10 @@
 * Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
 under the subkey `preprocessing`
 
-
 ## Next Release
 
 ### Features
 
-* Add metric for mean processing time per event for the full pipeline, in addition to per processor
 * Add feature to automatically add version information to all events, configured via the 
 `connector > consumer > preprocessing` configuration
 
@@ -18,14 +16,28 @@ under the subkey `preprocessing`
 
 * Move the config hmac options to the new subkey `preprocessing`, maintain backward compatibility, 
 but mark old version as deprecated.
+* Make the generic adder write the SQL table to a file and load it from there instead of loading it 
+from the database for every process of the multiprocessing pipeline.
+Furthermore, only connect to the SQL database on checking if the database table has changed and the 
+file is stale.
+This reduces the SQL connections.
+Before, there was permanently one connection per multiprocessing pipeline active and now there is 
+only one connection per Logprep instance active when accessing the database. 
+
+### Bugfixes
+### Breaking
+
+## v3.1.0
+
+### Features
+
+* Add metric for mean processing time per event for the full pipeline, in addition to per processor
 
 ### Bugfixes
 
 * Fix performance of the metrics tracking. Due to a store metrics statement at the wrong position
 the logprep performance was dramatically decreased when tracking metrics was activated.
 * Fix Auto Rule Tester which tried to access processor stats that do not exist anymore. 
-
-### Breaking
 
 ## v3.0.0
 
