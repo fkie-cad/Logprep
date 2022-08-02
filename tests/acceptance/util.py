@@ -62,10 +62,6 @@ def get_test_output(config_path):
     return parsed_test_output
 
 
-def assert_result_equal_expected(config, expected_output, tmp_path):
-    ...
-
-
 class SingleMessageConsumerJsonMock:
     def __init__(self, record):
         self.record = json.dumps(record, separators=(",", ":"))
@@ -100,7 +96,7 @@ def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory
     # Create, setup and execute logprep pipeline
     pipeline = Pipeline(
         pipeline_index=1,
-        logprep_config=config,
+        config=config,
         counter=SharedCounter(),
         log_handler=Handler(),
         lock=Lock(),

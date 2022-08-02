@@ -141,7 +141,7 @@ Example
         session_timeout: 6000
         offset_reset_policy: smallest
         preprocessing:
-          version_info_target_field: version_info
+          version_info_target_field: Version_info
           hmac:
             target: <RAW_MSG>
             key: secret-key

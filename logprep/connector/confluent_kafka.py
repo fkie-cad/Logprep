@@ -215,12 +215,13 @@ class ConfluentKafka(Input, Output):
             Raises if an option is invalid.
 
         """
-        # DEPRECATION: HMAC-Option: Remove this if with next major version update, check also the
+        # DEPRECATION: HMAC-Option: Remove this with next major version update, check also the
         # self._config dict in this class's init method
-        if new_options.get("consumer", {}).get("hmac", None) is not None:
-            if "preprocessing" not in new_options["consumer"]:
-                new_options["consumer"]["preprocessing"] = {}
-            new_options["consumer"]["preprocessing"]["hmac"] = new_options["consumer"]["hmac"]
+        consumer_options = new_options.get("consumer")
+        if consumer_options and "preprocessing" not in consumer_options:
+            consumer_options["preprocessing"] = {}
+        if new_options.get("consumer", {}).get("hmac"):
+            consumer_options["preprocessing"]["hmac"] = new_options["consumer"]["hmac"]
 
         self._config = self.update_default_configuration(self._config.copy(), new_options)
 
@@ -233,36 +234,43 @@ class ConfluentKafka(Input, Output):
         """Iterate recursively over the default options and set the values from the user options"""
         if not isinstance(default_options, dict):
             return user_options
-        for key in user_options.keys():
-            if key not in default_options:
-                raise UnknownOptionError(f"Unknown Option: {key}")
-            default_options[key] = self.update_default_configuration(
-                default_options[key], user_options[key]
+        for user_option in user_options:
+            if user_option not in default_options:
+                raise UnknownOptionError(f"Unknown Option: {user_option}")
+            default_options[user_option] = self.update_default_configuration(
+                default_options[user_option], user_options[user_option]
             )
         return default_options
 
     def _validate_hmac_options(self, hmac_options):
-        valid_hmac_options = set(
+        valid_hmac_options_keys = set(
             self._config.get("consumer", {}).get("preprocessing", {}).get("hmac", {}).keys()
         )
 
         new_hmac_options_keys = set(hmac_options)
-        unknown_options = new_hmac_options_keys.difference(valid_hmac_options)
+        unknown_options = new_hmac_options_keys.difference(valid_hmac_options_keys)
         if unknown_options:
             raise UnknownOptionError(f"Unknown Hmac Options: {unknown_options}")
-        missing_options = valid_hmac_options.difference(new_hmac_options_keys)
+        missing_options = valid_hmac_options_keys.difference(new_hmac_options_keys)
         if missing_options:
             raise InvalidConfigurationError(f"Hmac option(s) missing: {missing_options}")
 
-        for key in valid_hmac_options:
-            config_value = self._config["consumer"]["preprocessing"]["hmac"][key]
+        for option in valid_hmac_options_keys:
+            config_value = (
+                self._config.get("consumer", {})
+                .get("preprocessing", {})
+                .get("hmac", {})
+                .get(option)
+            )
             if not isinstance(config_value, str):
                 raise InvalidConfigurationError(
-                    f"Hmac option '{key}' has wrong type: '{type(config_value)}', "
+                    f"Hmac option '{option}' has wrong type: '{type(config_value)}', "
                     f"expected 'str'"
                 )
             if len(config_value) == 0:
-                raise InvalidConfigurationError(f"Hmac option '{key}' is empty: '{config_value}'")
+                raise InvalidConfigurationError(
+                    f"Hmac option '{option}' is empty: '{config_value}'"
+                )
 
     def get_next(self, timeout: float) -> Optional[dict]:
         """Get next document from Kafka.
@@ -302,7 +310,12 @@ class ConfluentKafka(Input, Output):
             event_dict = json.loads(raw_event.decode("utf-8"))
 
             if self._add_hmac:
-                hmac_target_field_name = self._config["consumer"]["preprocessing"]["hmac"]["target"]
+                hmac_target_field_name = (
+                    self._config.get("consumer", {})
+                    .get("preprocessing", {})
+                    .get("hmac", {})
+                    .get("target")
+                )
                 event_dict = self._add_hmac_to(event_dict, hmac_target_field_name, raw_event)
 
             if isinstance(event_dict, dict):
@@ -352,10 +365,11 @@ class ConfluentKafka(Input, Output):
         """
 
         # calculate hmac of full raw message
+        hmac_options = self._config.get("consumer", {}).get("preprocessing", {}).get("hmac", {})
         if hmac_target_field_name == "<RAW_MSG>":
             received_orig_message = raw_event
             hmac = HMAC(
-                key=self._config["consumer"]["preprocessing"]["hmac"]["key"].encode(),
+                key=hmac_options.get("key").encode(),
                 msg=raw_event,
                 digestmod=hashlib.sha256,
             ).hexdigest()
@@ -365,7 +379,7 @@ class ConfluentKafka(Input, Output):
             if received_orig_message is not None:
                 received_orig_message = received_orig_message.encode()
                 hmac = HMAC(
-                    key=self._config["consumer"]["preprocessing"]["hmac"]["key"].encode(),
+                    key=hmac_options.get("key").encode(),
                     msg=received_orig_message,
                     digestmod=hashlib.sha256,
                 ).hexdigest()
@@ -388,14 +402,13 @@ class ConfluentKafka(Input, Output):
         # add hmac result to the original event
         add_was_successful = add_field_to(
             event_dict,
-            self._config["consumer"]["preprocessing"]["hmac"]["output_field"],
+            hmac_options.get("output_field"),
             hmac_output,
         )
         if not add_was_successful:
-            output_field = self._config["consumer"]["preprocessing"]["hmac"]["output_field"]
             self.store_failed(
                 f"Couldn't add the hmac to the input event as the desired output "
-                f"field '{output_field}' already exist.",
+                f"field '{hmac_options.get('output_field')}' already exist.",
                 event_dict,
                 event_dict,
             )

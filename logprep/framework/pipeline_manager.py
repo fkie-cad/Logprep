@@ -133,7 +133,7 @@ class PipelineManager:
         self._logger.info("Created new pipeline")
         return MultiprocessingPipeline(
             pipeline_index=index,
-            logprep_config=self._configuration,
+            config=self._configuration,
             log_handler=self._log_handler,
             lock=self._lock,
             shared_dict=self._shared_dict,
