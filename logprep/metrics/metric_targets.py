@@ -95,13 +95,13 @@ class MetricFileTarget(MetricTarget):
 
     def _add_meta_information(self, metric_json):
         """Adds a timestamp to the metric data"""
-        if "meta" not in metric_json.keys():
+        if "meta" not in metric_json:
             metric_json["meta"] = {}
         metric_json["meta"]["timestamp"] = datetime.datetime.now().isoformat()
 
-        if "version" not in metric_json["meta"].keys():
+        if "version" not in metric_json.get("meta"):
             metric_json["meta"]["version"] = {
-                "logprep": get_versions()["version"],
+                "logprep": get_versions().get("version"),
                 "config": self._logprep_config.get("version", "unset"),
             }
         return metric_json

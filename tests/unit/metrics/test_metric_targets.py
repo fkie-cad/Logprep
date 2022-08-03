@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+# pylint: disable=line-too-long
 import json
 import logging
 import os
@@ -273,25 +274,20 @@ class TestMetricFileTarget:
             datetime.strptime(metric_json["meta"]["timestamp"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
         )
         expected_versions = {
-            "logprep": get_versions()["version"],
+            "logprep": get_versions().get("version"),
             "config": self.logprep_config.get("version"),
         }
         assert metric_json["meta"]["version"] == expected_versions
 
     def test_add_meta_information_adds_unset_for_config_version_if_not_found(self):
         logger = logging.getLogger("test-file-metric-logger")
-        logprep_config = {"other_fields": "are_unimportant_for_test"}
+        logprep_config = {"config": "but without a version field"}
         target = MetricFileTarget(logger, logprep_config)
 
         metric_json = {"pipeline": "not important here"}
         metric_json = target._add_meta_information(metric_json)
-        assert "meta" in metric_json
-        assert "timestamp" in metric_json["meta"].keys()
-        assert isinstance(
-            datetime.strptime(metric_json["meta"]["timestamp"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
-        )
         expected_versions = {
-            "logprep": get_versions()["version"],
+            "logprep": get_versions().get("version"),
             "config": "unset",
         }
         assert metric_json["meta"]["version"] == expected_versions
@@ -415,7 +411,7 @@ class TestPrometheusMetricTarget:
                 mock.call().set(0),
                 mock.call(
                     component="logprep",
-                    logprep_version=get_versions()["version"],
+                    logprep_version=get_versions().get("version"),
                     config_version=self.logprep_config.get("version"),
                 ),
                 mock.call().set(self.logprep_config.get("metrics").get("period")),
@@ -423,7 +419,7 @@ class TestPrometheusMetricTarget:
         )
 
     @mock.patch("prometheus_client.Gauge.labels")
-    def test_expose_calls_prometheus_exporter_and_unset_config_version_if_not_found(
+    def test_expose_calls_prometheus_exporter_and_sets_config_version_to_unset_if_no_config_version_found(
         self, mock_labels, pipeline_metrics
     ):
         logprep_config = {
@@ -445,7 +441,7 @@ class TestPrometheusMetricTarget:
             [
                 mock.call(
                     component="logprep",
-                    logprep_version=get_versions()["version"],
+                    logprep_version=get_versions().get("version"),
                     config_version="unset",
                 ),
                 mock.call().set(logprep_config.get("metrics").get("period")),
