@@ -247,11 +247,7 @@ class ConfluentKafka(Input, Output):
             self._config.get("consumer", {}).get("preprocessing", {}).get("hmac", {}).keys()
         )
 
-        new_hmac_options_keys = set(hmac_options)
-        unknown_options = new_hmac_options_keys.difference(valid_hmac_options_keys)
-        if unknown_options:
-            raise UnknownOptionError(f"Unknown Hmac Options: {unknown_options}")
-        missing_options = valid_hmac_options_keys.difference(new_hmac_options_keys)
+        missing_options = valid_hmac_options_keys.difference(hmac_options)
         if missing_options:
             raise InvalidConfigurationError(f"Hmac option(s) missing: {missing_options}")
 
