@@ -1,6 +1,9 @@
 ## Next Release
 
 ### Features
+
+* Expose logprep and config version in metric targets
+
 ### Improvements
 ### Bugfixes
 ### Breaking
