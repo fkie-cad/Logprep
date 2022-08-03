@@ -149,7 +149,7 @@ class PrometheusMetricTarget(MetricTarget):
         interval = self.prometheus_exporter.configuration["period"]
         labels = {
             "component": "logprep",
-            "logprep_version": get_versions()["version"],
+            "logprep_version": get_versions().get("version"),
             "config_version": self._logprep_config.get("version", "unset"),
         }
         self.prometheus_exporter.tracking_interval.labels(**labels).set(interval)
