@@ -409,6 +409,8 @@ class TestPrometheusMetricTarget:
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01"),
                 mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01"),
+                mock.call().set(0.0),
                 mock.call(
                     component="logprep",
                     logprep_version=get_versions().get("version"),
