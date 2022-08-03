@@ -9,6 +9,7 @@ from unittest import mock
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
+from logprep._version import get_versions
 from logprep.abc import Processor
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
@@ -35,15 +36,15 @@ from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
 
 class ConfigurationForTests:
-    connector_config = {"type": "dummy", "input": [{"test": "empty"}]}
-    pipeline_config = [{"mock_processor1": {"proc": "conf"}}, {"mock_processor2": {"proc": "conf"}}]
-    metrics_config = {
-        "period": 300,
-        "enabled": False,
+    logprep_config = {
+        "version": 1,
+        "timeout": 0.001,
+        "print_processed_period": 600,
+        "connector": {"type": "dummy", "input": [{"test": "empty"}]},
+        "pipeline": [{"mock_processor1": {"proc": "conf"}}, {"mock_processor2": {"proc": "conf"}}],
+        "metrics": {"period": 300, "enabled": False},
     }
     log_handler = MultiprocessingLogHandler(WARNING)
-    timeout = 0.001
-    print_processed_period = 600
     lock = Lock()
     shared_dict = {}
     metric_targets = MetricTargets(file_target=getLogger("Mock"), prometheus_target=None)
@@ -64,34 +65,27 @@ class TestPipeline(ConfigurationForTests):
     def setup_method(self):
         self._check_failed_stored = None
 
-        pipeline_index = 1
         self.pipeline = Pipeline(
-            pipeline_index,
-            self.connector_config,
-            self.pipeline_config,
-            self.metrics_config,
-            self.timeout,
-            self.counter,
-            self.log_handler,
-            self.lock,
-            self.shared_dict,
-            self.metric_targets,
+            pipeline_index=1,
+            config=self.logprep_config,
+            counter=self.counter,
+            log_handler=self.log_handler,
+            lock=self.lock,
+            shared_dict=self.shared_dict,
+            metric_targets=self.metric_targets,
         )
 
     def test_fails_if_log_handler_is_not_of_type_loghandler(self, _):
         for not_a_log_handler in [None, 123, 45.67, TestPipeline()]:
             with raises(MustProvideALogHandlerError):
-                pipeline_index = 1
                 _ = Pipeline(
-                    pipeline_index,
-                    self.connector_config,
-                    self.pipeline_config,
-                    self.metrics_config,
-                    self.timeout,
-                    self.counter,
-                    not_a_log_handler,
-                    self.lock,
-                    self.shared_dict,
+                    pipeline_index=1,
+                    config=self.logprep_config,
+                    counter=self.counter,
+                    log_handler=not_a_log_handler,
+                    lock=self.lock,
+                    shared_dict=self.shared_dict,
+                    metric_targets=self.metric_targets,
                 )
 
     def test_setup_builds_pipeline(self, mock_create):
@@ -134,13 +128,13 @@ class TestPipeline(ConfigurationForTests):
 
         self.pipeline._retrieve_and_process_data()
 
-        assert self.pipeline._input.last_timeout == self.timeout
+        assert self.pipeline._input.last_timeout == self.logprep_config.get("timeout")
 
     def test_empty_documents_are_not_forwarded_to_other_processors(self, _):
         assert len(self.pipeline._pipeline) == 0
         input_data = [{"do_not_delete": "1"}, {"delete_me": "2"}, {"do_not_delete": "3"}]
         connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._connector_config = connector_config
+        self.pipeline._config["connector"] = connector_config
         self.pipeline._setup()
         delete_config = {
             "type": "delete",
@@ -200,7 +194,7 @@ class TestPipeline(ConfigurationForTests):
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
         expected_output_data = deepcopy(input_data)
         connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._connector_config = connector_config
+        self.pipeline._config["connector"] = connector_config
         self.pipeline._setup()
         self.pipeline.run()
         assert self.pipeline._output.events == expected_output_data
@@ -291,7 +285,7 @@ class TestPipeline(ConfigurationForTests):
     def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         input_data = [{"order": 0}, {"order": 1}]
         connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._connector_config = connector_config
+        self.pipeline._config["connector"] = connector_config
         self.pipeline._create_logger()
         self.pipeline._create_connectors()
         error_mock = mock.MagicMock()
@@ -316,7 +310,7 @@ class TestPipeline(ConfigurationForTests):
     ):
         input_data = [{"order": 0}, {"order": 1}]
         connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._connector_config = connector_config
+        self.pipeline._config["connector"] = connector_config
         self.pipeline._create_logger()
         self.pipeline._create_connectors()
         error_mock = mock.MagicMock()
@@ -519,6 +513,31 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.metrics.pipeline = [mock_metrics_one, mock_metrics_two]
         assert self.pipeline.metrics.number_of_errors == 2
 
+    def test_pipeline_preprocessing_adds_versions_if_configured(self, _):
+        preprocessing_config = {"version_info_target_field": "version_info"}
+        self.pipeline._config["connector"] = {"consumer": {"preprocessing": preprocessing_config}}
+        test_event = {"any": "content"}
+        self.pipeline._preprocess_event(test_event)
+        target_field = preprocessing_config.get("version_info_target_field")
+        assert target_field in test_event
+        assert test_event.get(target_field, {}).get("logprep") == get_versions()["version"]
+        expected_config_version = self.logprep_config["version"]
+        assert test_event.get(target_field, {}).get("configuration") == expected_config_version
+
+    def test_pipeline_preprocessing_does_not_add_versions_if_not_configured(self, _):
+        preprocessing_config = {"something": "random"}
+        self.pipeline._config["connector"] = {"consumer": {"preprocessing": preprocessing_config}}
+        test_event = {"any": "content"}
+        self.pipeline._preprocess_event(test_event)
+        assert test_event == {"any": "content"}
+
+    def test_pipeline_preprocessing_does_not_add_versions_if_target_field_exists_already(self, _):
+        preprocessing_config = {"version_info_target_field": "version_info"}
+        self.pipeline._connector_config = {"consumer": {"preprocessing": preprocessing_config}}
+        test_event = {"any": "content", "version_info": "something random"}
+        self.pipeline._preprocess_event(test_event)
+        assert test_event == {"any": "content", "version_info": "something random"}
+
 
 class TestMultiprocessingPipeline(ConfigurationForTests):
     def setup_class(self):
@@ -527,68 +546,48 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
     def test_fails_if_log_handler_is_not_a_multiprocessing_log_handler(self):
         for not_a_log_handler in [None, 123, 45.67, TestMultiprocessingPipeline()]:
             with raises(MustProvideAnMPLogHandlerError):
-                pipeline_index = 1
                 MultiprocessingPipeline(
-                    pipeline_index,
-                    {},
-                    [{}],
-                    self.metrics_config,
-                    self.timeout,
-                    not_a_log_handler,
-                    self.print_processed_period,
-                    self.lock,
-                    self.shared_dict,
+                    pipeline_index=1,
+                    config=self.logprep_config,
+                    log_handler=not_a_log_handler,
+                    lock=self.lock,
+                    shared_dict=self.shared_dict,
                 )
 
     def test_does_not_fail_if_log_handler_is_a_multiprocessing_log_handler(self):
         try:
-            pipeline_index = 1
             MultiprocessingPipeline(
-                pipeline_index,
-                self.connector_config,
-                self.pipeline_config,
-                self.metrics_config,
-                self.timeout,
-                self.log_handler,
-                self.print_processed_period,
-                self.lock,
-                self.shared_dict,
+                pipeline_index=1,
+                config=self.logprep_config,
+                log_handler=self.log_handler,
+                lock=self.lock,
+                shared_dict=self.shared_dict,
             )
         except MustProvideAnMPLogHandlerError:
             fail("Must not raise this error for a correct handler!")
 
     def test_creates_a_new_process(self):
         children_before = active_children()
-        pipeline_index = 1
         children_running = self.start_and_stop_pipeline(
             MultiprocessingPipeline(
-                pipeline_index,
-                self.connector_config,
-                self.pipeline_config,
-                self.metrics_config,
-                self.timeout,
-                self.log_handler,
-                self.print_processed_period,
-                self.lock,
-                self.shared_dict,
+                pipeline_index=1,
+                config=self.logprep_config,
+                log_handler=self.log_handler,
+                lock=self.lock,
+                shared_dict=self.shared_dict,
             )
         )
 
         assert len(children_running) == (len(children_before) + 1)
 
     def test_stop_terminates_the_process(self):
-        pipeline_index = 1
         children_running = self.start_and_stop_pipeline(
             MultiprocessingPipeline(
-                pipeline_index,
-                self.connector_config,
-                self.pipeline_config,
-                self.metrics_config,
-                self.timeout,
-                self.log_handler,
-                self.print_processed_period,
-                self.lock,
-                self.shared_dict,
+                pipeline_index=1,
+                config=self.logprep_config,
+                log_handler=self.log_handler,
+                lock=self.lock,
+                shared_dict=self.shared_dict,
             )
         )
         children_after = active_children()
@@ -596,17 +595,12 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         assert len(children_after) == (len(children_running) - 1)
 
     def test_enable_iteration_sets_iterate_to_true_stop_to_false(self):
-        pipeline_index = 1
         pipeline = MultiprocessingPipeline(
-            pipeline_index,
-            self.connector_config,
-            self.pipeline_config,
-            self.metrics_config,
-            self.timeout,
-            self.log_handler,
-            self.print_processed_period,
-            self.lock,
-            self.shared_dict,
+            pipeline_index=1,
+            config=self.logprep_config,
+            log_handler=self.log_handler,
+            lock=self.lock,
+            shared_dict=self.shared_dict,
         )
         assert not pipeline._iterate()
 
