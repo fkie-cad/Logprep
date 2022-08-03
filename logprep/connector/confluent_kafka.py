@@ -154,7 +154,7 @@ class ConfluentKafka(Input, Output):
                 "maximum_backlog": 10 * 1000,
                 "linger_duration": 0,
                 "send_timeout": 0,
-                "flush_timeout": 30.0,  # may require adjustment
+                "flush_timeout": 30,  # may require adjustment
             },
         }
 
@@ -227,11 +227,16 @@ class ConfluentKafka(Input, Output):
 
         hmac_options = new_options.get("consumer", {}).get("preprocessing", {}).get("hmac", {})
         if hmac_options:
-            self._validate_hmac_options(hmac_options)
+            self._check_for_missing_options(hmac_options)
             self._add_hmac = True
 
     def update_default_configuration(self, default_options, user_options):
         """Iterate recursively over the default options and set the values from the user options"""
+        if not isinstance(user_options, type(default_options)):
+            raise UnknownOptionError(
+                f"Wrong Option type for '{user_options}'. "
+                f"Got {type(user_options)}, expected {type(default_options)}."
+            )
         if not isinstance(default_options, dict):
             return user_options
         for user_option in user_options:
@@ -242,7 +247,7 @@ class ConfluentKafka(Input, Output):
             )
         return default_options
 
-    def _validate_hmac_options(self, hmac_options):
+    def _check_for_missing_options(self, hmac_options):
         valid_hmac_options_keys = set(
             self._config.get("consumer", {}).get("preprocessing", {}).get("hmac", {}).keys()
         )
@@ -258,11 +263,6 @@ class ConfluentKafka(Input, Output):
                 .get("hmac", {})
                 .get(option)
             )
-            if not isinstance(config_value, str):
-                raise InvalidConfigurationError(
-                    f"Hmac option '{option}' has wrong type: '{type(config_value)}', "
-                    f"expected 'str'"
-                )
             if len(config_value) == 0:
                 raise InvalidConfigurationError(
                     f"Hmac option '{option}' is empty: '{config_value}'"
