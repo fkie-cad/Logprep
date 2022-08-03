@@ -747,20 +747,6 @@ class TestConfluentKafka:
         new_config = kafka.update_default_configuration(default_config, user_config)
         assert new_config == default_config
 
-    def test_update_default_configuration_raises_error_on_overwriting_all_subfields(self):
-        default_config = {
-            "option": {"with": {"multiple": "layers", "foo": "bar"}},
-            "another": "option",
-        }
-        user_config = {"option": "dsfv"}
-        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-        kafka = ConfluentKafkaFactory.create_from_configuration(config)
-        with raises(
-            UnknownOptionError,
-            match="Wrong Option type for 'dsfv'. Got <class 'str'>, expected <class 'dict'>.",
-        ):
-            _ = kafka.update_default_configuration(default_config, user_config)
-
     def test_update_default_configuration_raises_error_on_wrong_type(self):
         default_config = {
             "option": 12.2,
