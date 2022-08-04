@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
-
+import logging
 from copy import deepcopy
 from logging import getLogger
 
@@ -445,3 +445,36 @@ class TestConfiguration:
             assert errors_set == raised_errors, f"For test case '{test_case}'!"
         else:
             config._verify_metrics_config()
+
+    def test_set_option_raises_deprecation_warning_on_old_hmac_option_position(self, caplog):
+        config = deepcopy(self.config)
+        config["connector"]["consumer"]["hmac"] = {
+            "target": "foo",
+            "key": "bar",
+            "output_field": "bu",
+        }
+
+        with caplog.at_level(logging.WARNING):
+            config._verify_connector(getLogger("test-logger"))
+
+            expected_warning_message = (
+                "[Deprecation]: you are currently using a configuration format that will be "
+                "outdated in the next major release (version 4.0.0). The hmac options will move "
+                "from the keyword 'consumer' to the subkey 'preprocessing', consider changing to "
+                "the new config format. [Expires with logprep=4.0.0]"
+            )
+            assert len(caplog.messages) == 1
+            assert expected_warning_message == caplog.messages[0]
+
+    def test_set_option_does_not_raise_deprecation_warning_on_new_hmac_option_position(
+        self, caplog
+    ):
+        config = deepcopy(self.config)
+        config["connector"]["consumer"]["preprocessing"] = {
+            "hmac": {"target": "foo", "key": "bar", "output_field": "bu"}
+        }
+
+        with caplog.at_level(logging.WARNING):
+            config._verify_connector(logger)
+
+        assert len(caplog.messages) == 0
