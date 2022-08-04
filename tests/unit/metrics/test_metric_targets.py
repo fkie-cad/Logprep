@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+# pylint: disable=line-too-long
 import json
 import logging
 import os
@@ -13,6 +14,7 @@ from unittest.mock import MagicMock
 import pytest
 from prometheus_client import Gauge
 
+from logprep._version import get_versions
 from logprep.abc import Processor
 from logprep.framework.pipeline import Pipeline
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -176,11 +178,12 @@ class TestGetMetricTargets:
 class TestMetricFileTarget:
     def setup_method(self):
         logger = logging.getLogger("test-file-metric-logger")
-        self.target = MetricFileTarget(logger)
+        self.logprep_config = {"version": 1, "other_fields": "are_unimportant_for_test"}
+        self.target = MetricFileTarget(logger, self.logprep_config)
 
     def test_create_method(self):
         config = {"path": "./logs/status.json", "rollover_interval": 86400, "backup_count": 10}
-        created_target = MetricFileTarget.create(config)
+        created_target = MetricFileTarget.create(config, {})
         assert isinstance(created_target._file_logger, logging.Logger)
         assert isinstance(created_target._file_logger.handlers[0], TimedRotatingFileHandler)
         assert created_target._file_logger.handlers[0].interval == config["rollover_interval"]
@@ -262,14 +265,32 @@ class TestMetricFileTarget:
 
         assert exposed_json == expected_json
 
-    def test_add_timestamp_adds_meta_subfield_with_current_timestamp(self):
+    def test_add_meta_information_adds_meta_subfield_with_timestamp_and_versions(self):
         metric_json = {"pipeline": "not important here"}
-        metric_json = self.target._add_timestamp(metric_json)
+        metric_json = self.target._add_meta_information(metric_json)
         assert "meta" in metric_json
         assert "timestamp" in metric_json["meta"].keys()
         assert isinstance(
             datetime.strptime(metric_json["meta"]["timestamp"], "%Y-%m-%dT%H:%M:%S.%f"), datetime
         )
+        expected_versions = {
+            "logprep": get_versions().get("version"),
+            "config": self.logprep_config.get("version"),
+        }
+        assert metric_json["meta"]["version"] == expected_versions
+
+    def test_add_meta_information_adds_unset_for_config_version_if_not_found(self):
+        logger = logging.getLogger("test-file-metric-logger")
+        logprep_config = {"config": "but without a version field"}
+        target = MetricFileTarget(logger, logprep_config)
+
+        metric_json = {"pipeline": "not important here"}
+        metric_json = target._add_meta_information(metric_json)
+        expected_versions = {
+            "logprep": get_versions().get("version"),
+            "config": "unset",
+        }
+        assert metric_json["meta"]["version"] == expected_versions
 
     def test_expose_preprocesses_metrics_and_prints_them_to_the_logger(self, caplog):
         metrics = Rule.RuleMetrics(labels={"type": "generic"})
@@ -285,18 +306,21 @@ class TestMetricFileTarget:
 
 class TestPrometheusMetricTarget:
     def setup_method(self):
-        config = {
-            "period": 10,
-            "enabled": True,
-            "cumulative": True,
-            "aggregate_processes": True,
-            "targets": [
-                {"prometheus": {"port": 8000}},
-            ],
+        self.logprep_config = {
+            "version": 1,
+            "metrics": {
+                "period": 10,
+                "enabled": True,
+                "cumulative": True,
+                "aggregate_processes": True,
+                "targets": [
+                    {"prometheus": {"port": 8000}},
+                ],
+            },
         }
         logger = logging.getLogger("test-file-metric-logger")
-        prometheus_exporter = PrometheusStatsExporter(config, logger)
-        self.target = PrometheusMetricTarget(prometheus_exporter)
+        prometheus_exporter = PrometheusStatsExporter(self.logprep_config.get("metrics"), logger)
+        self.target = PrometheusMetricTarget(prometheus_exporter, self.logprep_config)
 
     def test_create_method(self, tmpdir):
         with mock.patch.dict(os.environ, {"PROMETHEUS_MULTIPROC_DIR": f"{tmpdir}/some/dir"}):
@@ -338,53 +362,91 @@ class TestPrometheusMetricTarget:
         mock_labels.assert_has_calls(
             [
                 mock.call(pipeline="pipeline-01", processor="generic_adder"),
-                mock.call().set(0),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", processor="generic_adder"),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder"),
-                mock.call().set(0),
-                mock.call(pipeline="pipeline-01", processor="generic_adder"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="generic"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="generic"),
-                mock.call().set(5),
+                mock.call().set(5.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="generic"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="specific"),
-                mock.call().set(0),
-                mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="specific"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="specific"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer"),
-                mock.call().set(0),
+                mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="specific"),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer"),
-                mock.call().set(0),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", processor="normalizer"),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="specific"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="specific"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="specific"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01"),
-                mock.call().set(0),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01"),
-                mock.call().set(0),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01"),
+                mock.call().set(0.0),
+                mock.call(
+                    component="logprep",
+                    logprep_version=get_versions().get("version"),
+                    config_version=self.logprep_config.get("version"),
+                ),
+                mock.call().set(self.logprep_config.get("metrics").get("period")),
+            ]
+        )
+
+    @mock.patch("prometheus_client.Gauge.labels")
+    def test_expose_calls_prometheus_exporter_and_sets_config_version_to_unset_if_no_config_version_found(
+        self, mock_labels, pipeline_metrics
+    ):
+        logprep_config = {
+            "metrics": {
+                "period": 10,
+                "enabled": True,
+                "cumulative": True,
+                "aggregate_processes": True,
+                "targets": [
+                    {"prometheus": {"port": 8000}},
+                ],
+            },
+        }
+        logger = logging.getLogger("test-file-metric-logger")
+        prometheus_exporter = PrometheusStatsExporter(logprep_config.get("metrics"), logger)
+        target = PrometheusMetricTarget(prometheus_exporter, logprep_config)
+        target.expose(pipeline_metrics.expose())
+        mock_labels.assert_has_calls(
+            [
+                mock.call(
+                    component="logprep",
+                    logprep_version=get_versions().get("version"),
+                    config_version="unset",
+                ),
+                mock.call().set(logprep_config.get("metrics").get("period")),
             ]
         )
 

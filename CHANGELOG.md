@@ -1,6 +1,6 @@
 ## Upcoming Changes
 
-### Breaking 
+### Breaking
 
 * Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
 under the subkey `preprocessing`
@@ -11,6 +11,7 @@ under the subkey `preprocessing`
 
 * Add feature to automatically add version information to all events, configured via the 
 `connector > consumer > preprocessing` configuration
+* Expose logprep and config version in metric targets
 
 ### Improvements
 

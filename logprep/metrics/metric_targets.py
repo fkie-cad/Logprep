@@ -36,9 +36,9 @@ def get_metric_targets(config: dict, logger: Logger) -> MetricTargets:
     prometheus_target = None
     for target in target_configs:
         if "file" in target.keys():
-            file_target = MetricFileTarget.create(target.get("file"))
+            file_target = MetricFileTarget.create(target.get("file"), config)
         if "prometheus" in target.keys():
-            prometheus_target = PrometheusMetricTarget.create(metric_configs, logger)
+            prometheus_target = PrometheusMetricTarget.create(config, logger)
     return MetricTargets(file_target, prometheus_target)
 
 
@@ -53,11 +53,12 @@ class MetricTarget:
 class MetricFileTarget(MetricTarget):
     """The MetricFileTarget writes the metrics as a json to a rolling file handler"""
 
-    def __init__(self, file_logger):
+    def __init__(self, file_logger, config):
         self._file_logger = file_logger
+        self._logprep_config = config
 
     @classmethod
-    def create(cls, file_config):
+    def create(cls, file_config, config):
         """Creates a MetricFileTarget"""
         file_exporter = getLogger("Logprep-JSON-File-Logger")
         file_exporter.handlers = []
@@ -71,11 +72,11 @@ class MetricFileTarget(MetricTarget):
                 log_path, when="S", interval=interval, backupCount=backup_count
             )
         )
-        return MetricFileTarget(file_exporter)
+        return MetricFileTarget(file_exporter, config)
 
     def expose(self, metrics):
         metric_json = self._convert_metrics_to_pretty_json(metrics)
-        metric_json = self._add_timestamp(metric_json)
+        metric_json = self._add_meta_information(metric_json)
         self._file_logger.info(json.dumps(metric_json))
 
     @staticmethod
@@ -92,12 +93,17 @@ class MetricFileTarget(MetricTarget):
             add_field_to(metric_data, dotted_path, value)
         return metric_data
 
-    @staticmethod
-    def _add_timestamp(metric_json):
+    def _add_meta_information(self, metric_json):
         """Adds a timestamp to the metric data"""
-        if "meta" not in metric_json.keys():
+        if "meta" not in metric_json:
             metric_json["meta"] = {}
         metric_json["meta"]["timestamp"] = datetime.datetime.now().isoformat()
+
+        if "version" not in metric_json.get("meta"):
+            metric_json["meta"]["version"] = {
+                "logprep": get_versions().get("version"),
+                "config": self._logprep_config.get("version", "unset"),
+            }
         return metric_json
 
 
@@ -107,11 +113,12 @@ class PrometheusMetricTarget(MetricTarget):
     the webinterface.
     """
 
-    def __init__(self, prometheus_exporter: PrometheusStatsExporter):
+    def __init__(self, prometheus_exporter: PrometheusStatsExporter, config: dict):
         self.prometheus_exporter = prometheus_exporter
+        self._logprep_config = config
 
     @classmethod
-    def create(cls, metric_configs, logger):
+    def create(cls, config, logger):
         """Creates a PrometheusMetricTarget"""
         if not os.environ.get("PROMETHEUS_MULTIPROC_DIR", False):
             logger.warning(
@@ -121,9 +128,9 @@ class PrometheusMetricTarget(MetricTarget):
             )
             return None
 
-        prometheus_exporter = PrometheusStatsExporter(metric_configs, logger)
+        prometheus_exporter = PrometheusStatsExporter(config.get("metrics", {}), logger)
         prometheus_exporter.run()
-        return PrometheusMetricTarget(prometheus_exporter)
+        return PrometheusMetricTarget(prometheus_exporter, config)
 
     def expose(self, metrics):
         for key_labels, value in metrics.items():
@@ -140,5 +147,9 @@ class PrometheusMetricTarget(MetricTarget):
                 self.prometheus_exporter.metrics[key].set(value)
 
         interval = self.prometheus_exporter.configuration["period"]
-        labels = {"component": "logprep", "version": get_versions()["version"]}
+        labels = {
+            "component": "logprep",
+            "logprep_version": get_versions().get("version"),
+            "config_version": self._logprep_config.get("version", "unset"),
+        }
         self.prometheus_exporter.tracking_interval.labels(**labels).set(interval)
