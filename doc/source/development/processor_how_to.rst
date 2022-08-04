@@ -270,5 +270,7 @@ For example, the following code will increase the metrics inside the apply_rules
         if something_happens:
             self.metrics.new_metric += 1
 
-Following this description it is also possible to extend already existing metrics object.
-It is simply needed to add a new attribute to a metrics class and then change it's value when needed.
+If the processor already has processor specific metrics and only one new metric value is needed,
+it can simply be created by adding a new attribute to the ProcessorMetrics class.
+Once the new attribute exists it can be accessed and updated when needed.
+The exporter will automatically recognize it as a new metric and will expose it as such.
