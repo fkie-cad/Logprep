@@ -6,7 +6,6 @@ from logging import getLogger, Logger
 from logging.handlers import TimedRotatingFileHandler
 from os.path import dirname
 from pathlib import Path
-from pprint import pprint
 
 from logprep._version import get_versions
 from logprep.metrics.metric import MetricTargets
@@ -134,7 +133,6 @@ class PrometheusMetricTarget(MetricTarget):
         return PrometheusMetricTarget(prometheus_exporter, config)
 
     def expose(self, metrics):
-        pprint(metrics)
         for key_labels, value in metrics.items():
             key, labels = split_key_label_string(key_labels)
             if key not in self.prometheus_exporter.metrics.keys():
