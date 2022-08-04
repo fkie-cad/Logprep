@@ -178,8 +178,7 @@ This section contains the connection settings for Elasticsearch, the default ind
 and a buffer size.
 Documents are sent in batches to Elasticsearch to reduce the amount of times connections are created.
 
-- **host** Host of Elasticsearch server.
-- **port** Port of Elasticsearch server.
+- **hosts** Addresses of Elasticsearch servers. Can be a list of hosts or one single host in the format `HOST:PORT` without specifying a schema. The schema is set automatically to `https` if a certificate is being used.
 - **user** User used for authentication (optional).
 - **secret** Secret used for authentication (optional).
 - **cert** SSL certificate to use (optional).
@@ -211,8 +210,8 @@ Example
         keyfile:
         password:
       elasticsearch:
-        host: 127.0.0.1
-        port: 9200
+        hosts:
+          - 127.0.0.1:9200
         default_index: default_index
         error_index: error_index
         message_backlog: 10000

@@ -11,7 +11,7 @@ from math import isclose
 
 import arrow
 import elasticsearch.helpers
-from pytest import fail, raises
+from pytest import fail
 
 from logprep.output.es_output import ElasticsearchOutput
 from logprep.output.output import CriticalOutputError
@@ -39,19 +39,19 @@ elasticsearch.helpers.bulk = mock_bulk
 class TestElasticsearchOutput:
     def setup_method(self, _):
         self.es_output = ElasticsearchOutput(
-            "host", 123, "default_index", "error_index", 1, 5000, 0, None, None, None
+            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
         )
 
     def test_implements_abstract_methods(self):
         try:
             ElasticsearchOutput(
-                "host", 123, "default_index", "error_index", 2, 5000, 0, None, None, None
+                ["host:123"], "default_index", "error_index", 2, 5000, 0, None, None, None
             )
         except TypeError as err:
             fail(f"Must implement abstract methods: {str(err)}")
 
     def test_describe_endpoint_returns_elasticsearch_output(self):
-        assert self.es_output.describe_endpoint() == "Elasticsearch Output: host:123"
+        assert self.es_output.describe_endpoint() == "Elasticsearch Output: ['host:123']"
 
     def test_store_sends_event_to_expected_index_if_index_missing_in_event(self):
         default_index = "target_index"
@@ -63,7 +63,7 @@ class TestElasticsearchOutput:
         }
 
         es_output = ElasticsearchOutput(
-            "host", 123, default_index, "error_index", 1, 5000, 0, None, None, None
+            ["host:123"], default_index, "error_index", 1, 5000, 0, None, None, None
         )
         es_output.store(event)
 
@@ -83,7 +83,7 @@ class TestElasticsearchOutput:
         }
 
         es_output = ElasticsearchOutput(
-            "host", 123, default_index, "error_index", 1, 5000, 0, None, None, None
+            ["host:123"], default_index, "error_index", 1, 5000, 0, None, None, None
         )
         es_output.store(event)
 
@@ -97,7 +97,7 @@ class TestElasticsearchOutput:
         expected = {"field": "content", "_index": custom_index}
 
         es_output = ElasticsearchOutput(
-            "host", 123, "default_index", "error_index", 1, 5000, 0, None, None, None
+            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
         )
         es_output.store_custom(event, custom_index)
 
@@ -118,7 +118,7 @@ class TestElasticsearchOutput:
         }
 
         es_output = ElasticsearchOutput(
-            "host", 123, "default_index", error_index, 1, 5000, 0, None, None, None
+            ["host:123"], "default_index", error_index, 1, 5000, 0, None, None, None
         )
         es_output.store_failed(error_message, event_received, event)
 
@@ -153,7 +153,7 @@ class TestElasticsearchOutput:
             "_index": "default_index",
         }
         es_output = ElasticsearchOutput(
-            "host", 123, "default_index", "error_index", 1, 5000, 0, None, None, None
+            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
         )
         failed_document = es_output._build_failed_index_document(
             {"foo": "bar"}, "A reason for failed indexing"

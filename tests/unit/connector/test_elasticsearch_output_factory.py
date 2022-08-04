@@ -26,8 +26,7 @@ class TestElasticsearchFactory:
             "offset_reset_policy": "latest",
         },
         "elasticsearch": {
-            "host": "127.0.0.1",
-            "port": 9200,
+            "hosts": "127.0.0.1:9200",
             "default_index": "default_index",
             "error_index": "error_index",
             "message_backlog": 5,
@@ -48,7 +47,7 @@ class TestElasticsearchFactory:
                 ElasticsearchOutputFactory.create_from_configuration(i)
 
     def test_fails_if_any_base_config_value_is_missing_for_output(self):
-        for i in ["host", "port", "default_index", "error_index", "message_backlog"]:
+        for i in ["hosts", "default_index", "error_index", "message_backlog"]:
             config = deepcopy(self.valid_configuration)
             del config["elasticsearch"][i]
             with raises(InvalidConfigurationError):

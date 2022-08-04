@@ -3,7 +3,7 @@
 import json
 import re
 from ssl import create_default_context
-from typing import Optional
+from typing import Optional, List
 
 import arrow
 from elasticsearch import Elasticsearch, helpers, SerializationError
@@ -43,8 +43,7 @@ class ElasticsearchOutputFactory:
 
         try:
             es_output = ElasticsearchOutput(
-                configuration["elasticsearch"]["host"],
-                configuration["elasticsearch"]["port"],
+                configuration["elasticsearch"]["hosts"],
                 configuration["elasticsearch"]["default_index"],
                 configuration["elasticsearch"]["error_index"],
                 configuration["elasticsearch"]["message_backlog"],
@@ -67,8 +66,7 @@ class ElasticsearchOutput(Output):
 
     def __init__(
         self,
-        host: str,
-        port: int,
+        hosts: List[str],
         default_index: str,
         error_index: str,
         message_backlog_size: int,
@@ -80,8 +78,7 @@ class ElasticsearchOutput(Output):
     ):
         self._input = None
 
-        self._host = host
-        self._port = port
+        self._hosts = hosts
         self._default_index = default_index
         self._error_index = error_index
         self._max_retries = max_retries
@@ -90,7 +87,7 @@ class ElasticsearchOutput(Output):
         scheme = "https" if cert else "http"
         http_auth = (user, secret) if user and secret else None
         self._es = Elasticsearch(
-            [{"host": host, "port": port}],
+            hosts,
             scheme=scheme,
             http_auth=http_auth,
             ssl_context=ssl_context,
@@ -127,7 +124,7 @@ class ElasticsearchOutput(Output):
             Acts as output connector for Elasticsearch.
 
         """
-        return f"Elasticsearch Output: {self._host}:{self._port}"
+        return f"Elasticsearch Output: {self._hosts}"
 
     def _write_to_es(self, document):
         """Writes documents from a buffer into Elasticsearch indices.

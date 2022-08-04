@@ -189,8 +189,7 @@ class TestConnectorFactoryConfluentKafkaES:
                 "enable_auto_offset_store": True,
             },
             "elasticsearch": {
-                "host": "127.0.0.1",
-                "port": 9200,
+                "hosts": "127.0.0.1:9200",
                 "default_index": "default_index",
                 "error_index": "error_index",
                 "message_backlog": 10000,
