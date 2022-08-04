@@ -125,3 +125,11 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
                 break
         else:
             assert False, f"other.message not in {result}"
+
+    def test_process_clears_internal_filtered_events_list_before_every_event(self):
+        assert len(self.object._filtered_events) == 0
+        document = {"message": "test_message", "other": {"message": "my message value"}}
+        _ = self.object.process(document)
+        assert len(self.object._filtered_events) == 1
+        _ = self.object.process(document)
+        assert len(self.object._filtered_events) == 1

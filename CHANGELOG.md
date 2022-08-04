@@ -25,6 +25,11 @@ Before, there was permanently one connection per multiprocessing pipeline active
 only one connection per Logprep instance active when accessing the database. 
 
 ### Bugfixes
+
+* Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event, 
+leading to duplication in the output of the processor. Now the events are cleared such that only
+the result of the current event is returned.
+
 ### Breaking
 
 ## v3.1.0
