@@ -259,7 +259,7 @@ the general implementation of a new processor seen in :ref:`implementing_a_new_p
 
 After initialization of these new metrics it is necessary  to increase or change them accordingly.
 This can be simply done by accessing the attribute and changing it's value.
-For example the following code will increase the metrics inside the apply_rules method:
+For example, the following code will increase the metrics inside the apply_rules method:
 
 ..  code-block:: python
     :linenos:
