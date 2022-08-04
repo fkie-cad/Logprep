@@ -257,7 +257,7 @@ the general implementation of a new processor seen in :ref:`implementing_a_new_p
             """your implemented workload"""
             ...
 
-After initialization of these new metrics it is needed to increase or change them accordingly.
+After initialization of these new metrics it is necessary  to increase or change them accordingly.
 This can be simply done by accessing the attribute and changing it's value.
 For example the following code will increase the metrics inside the apply_rules method:
 
