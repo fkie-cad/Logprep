@@ -96,6 +96,8 @@ Factory
 
 Processors are being created by the factory :py:class:`~logprep.processor.processor_factory.ProcessorFactory`. There is no need to implement anything here after registering your processor in the :py:class:`ProcessorRegistry`
 
+.. _implementing_a_new_processor:
+
 Processor
 ---------
 
@@ -187,3 +189,88 @@ All exceptions are being logged and should return a helpful error message with `
 Exceptions derived from `ProcessorWarningError` have no impact on the operation of the processor.
 Other exceptions stop the processing of a log message.
 However, the log message will be separately stored as failed (see :ref:`connector_output`, `store_failed``).
+
+
+Metrics
+^^^^^^^
+
+By default a processor exposes metrics like the number of processed events or the mean processing
+time.
+If it is required to expose new, processor specific, metrics it is possible to extend the default
+metrics.
+To achieve this you have to implement a sub class inside the processor class which inherits from
+:code:`Processor.ProcessorMetrics`.
+The attributes or properties included in that class will be automatically exposed if the general
+metrics configuration is enabled.
+Further more the newly defined metric object has to be defined inside the :code:`__init__` method.
+It is also possible to define metrics that are private and which won't be exposed.
+These metrics have to start with an underscore.
+The purpose of this functionality is to allow the calculation of metrics which are based on
+intermediate values which aren't directly interesting to log and expose.
+
+The following code example highlights an implementation of processor specific metrics, aligned with
+the general implementation of a new processor seen in :ref:`implementing_a_new_processor`.
+
+..  code-block:: python
+    :linenos:
+
+    """Processor Documentation"""
+    from logprep.abc import Processor
+    from attrs import define
+
+    class NewProcessor(Processor):
+        """short docstring for new_processor"""
+
+        @define(kw_only=True)
+        class Config(Processor.Config):
+            """NewProcessor config"""
+            ...
+
+        @define(kw_only=True)
+        class NewProcessorMetrics(Processor.ProcessorMetrics):
+            """Tracks statistics about the NewProcessor"""
+
+            new_metric: int = 0
+            """Short description of this metric"""
+            _private_new_metric: int = 0
+            """Short description of this metric"""
+
+            @property
+            def calculated_metric(self):
+                """Calculates something"""
+                return self.new_metric + self._private_new_metric
+
+        __slots__ = ["processor_attribute"]
+
+        processor_attribute: list
+
+        def __init__(self, name, configuration, logger):
+            super().__init__(name, configuration, logger)
+            self.processor_attribute = []
+            self.metrics = self.NewProcessorMetrics(
+                labels=self.metric_labels,
+                generic_rule_tree=self._generic_tree.metrics,
+                specific_rule_tree=self._specific_tree.metrics,
+            )
+
+        def _apply_rules(self, event, rule):
+            """your implemented workload"""
+            ...
+
+After initialization of these new metrics it is necessary  to increase or change them accordingly.
+This can be simply done by accessing the attribute and changing it's value.
+For example, the following code will increase the metrics inside the apply_rules method:
+
+..  code-block:: python
+    :linenos:
+
+    def _apply_rules(self, event, rule):
+        """your implemented workload"""
+        ...
+        if something_happens:
+            self.metrics.new_metric += 1
+
+If the processor already has processor specific metrics and only one new metric value is needed,
+it can simply be created by adding a new attribute to the ProcessorMetrics class.
+Once the new attribute exists it can be accessed and updated when needed.
+The exporter will automatically recognize it as a new metric and will expose it as such.
