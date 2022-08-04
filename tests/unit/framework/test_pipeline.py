@@ -515,7 +515,9 @@ class TestPipeline(ConfigurationForTests):
 
     def test_pipeline_preprocessing_adds_versions_if_configured(self, _):
         preprocessing_config = {"version_info_target_field": "version_info"}
-        self.pipeline._logprep_config["connector"] = {"consumer": {"preprocessing": preprocessing_config}}
+        self.pipeline._logprep_config["connector"] = {
+            "consumer": {"preprocessing": preprocessing_config}
+        }
         test_event = {"any": "content"}
         self.pipeline._preprocess_event(test_event)
         target_field = preprocessing_config.get("version_info_target_field")
@@ -526,7 +528,9 @@ class TestPipeline(ConfigurationForTests):
 
     def test_pipeline_preprocessing_does_not_add_versions_if_not_configured(self, _):
         preprocessing_config = {"something": "random"}
-        self.pipeline._logprep_config["connector"] = {"consumer": {"preprocessing": preprocessing_config}}
+        self.pipeline._logprep_config["connector"] = {
+            "consumer": {"preprocessing": preprocessing_config}
+        }
         test_event = {"any": "content"}
         self.pipeline._preprocess_event(test_event)
         assert test_event == {"any": "content"}
