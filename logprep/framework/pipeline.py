@@ -110,7 +110,7 @@ class Pipeline:
     ):
         if not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
-        self._config = config
+        self._logprep_config = config
         self._log_handler = log_handler
         self._logger = None
 
@@ -122,14 +122,14 @@ class Pipeline:
         self._processing_counter = counter
 
         self._metrics_exposer = MetricExposer(
-            self._config.get("metrics", {}), metric_targets, shared_dict, lock
+            self._logprep_config.get("metrics", {}), metric_targets, shared_dict, lock
         )
         self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
         self.metrics = self.PipelineMetrics(labels=self._metric_labels)
 
         self._event_version_information = {
             "logprep": get_versions().get("version"),
-            "configuration": self._config.get("version", "unset"),
+            "configuration": self._logprep_config.get("version", "unset"),
         }
 
     def _setup(self):
@@ -141,7 +141,7 @@ class Pipeline:
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Building '{current_process().name}'")
         self._pipeline = []
-        for entry in self._config.get("pipeline"):
+        for entry in self._logprep_config.get("pipeline"):
             processor_name = list(entry.keys())[0]
             entry[processor_name]["metric_labels"] = self._metric_labels
             processor = ProcessorFactory.create(entry, self._logger)
@@ -156,7 +156,7 @@ class Pipeline:
     def _create_connectors(self):
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Creating connectors ({current_process().name})")
-        self._input, self._output = ConnectorFactory.create(self._config.get("connector"))
+        self._input, self._output = ConnectorFactory.create(self._logprep_config.get("connector"))
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
                 f"Created input connector '{self._input.describe_endpoint()}' "
@@ -213,7 +213,7 @@ class Pipeline:
         event = {}
         try:
             self._metrics_exposer.expose(self.metrics)
-            event = self._input.get_next(self._config.get("timeout"))
+            event = self._input.get_next(self._logprep_config.get("timeout"))
 
             try:
                 self.metrics.kafka_offset = self._input.current_offset
@@ -254,7 +254,7 @@ class Pipeline:
                 self._output.store_failed(msg, error.raw_input, {})
 
     def _preprocess_event(self, event):
-        consumer_config = self._config.get("connector").get("consumer", {})
+        consumer_config = self._logprep_config.get("connector").get("consumer", {})
         preprocessing_config = consumer_config.get("preprocessing", {})
         if preprocessing_config.get("version_info_target_field"):
             self._add_version_information_to_event(event, preprocessing_config)
