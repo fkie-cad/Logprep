@@ -134,7 +134,7 @@ class TestPipeline(ConfigurationForTests):
         assert len(self.pipeline._pipeline) == 0
         input_data = [{"do_not_delete": "1"}, {"delete_me": "2"}, {"do_not_delete": "3"}]
         connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._config["connector"] = connector_config
+        self.pipeline._logprep_config["connector"] = connector_config
         self.pipeline._setup()
         delete_config = {
             "type": "delete",
@@ -194,7 +194,7 @@ class TestPipeline(ConfigurationForTests):
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
         expected_output_data = deepcopy(input_data)
         connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._config["connector"] = connector_config
+        self.pipeline._logprep_config["connector"] = connector_config
         self.pipeline._setup()
         self.pipeline.run()
         assert self.pipeline._output.events == expected_output_data
@@ -285,7 +285,7 @@ class TestPipeline(ConfigurationForTests):
     def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         input_data = [{"order": 0}, {"order": 1}]
         connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._config["connector"] = connector_config
+        self.pipeline._logprep_config["connector"] = connector_config
         self.pipeline._create_logger()
         self.pipeline._create_connectors()
         error_mock = mock.MagicMock()
@@ -310,7 +310,7 @@ class TestPipeline(ConfigurationForTests):
     ):
         input_data = [{"order": 0}, {"order": 1}]
         connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._config["connector"] = connector_config
+        self.pipeline._logprep_config["connector"] = connector_config
         self.pipeline._create_logger()
         self.pipeline._create_connectors()
         error_mock = mock.MagicMock()
@@ -515,7 +515,7 @@ class TestPipeline(ConfigurationForTests):
 
     def test_pipeline_preprocessing_adds_versions_if_configured(self, _):
         preprocessing_config = {"version_info_target_field": "version_info"}
-        self.pipeline._config["connector"] = {"consumer": {"preprocessing": preprocessing_config}}
+        self.pipeline._logprep_config["connector"] = {"consumer": {"preprocessing": preprocessing_config}}
         test_event = {"any": "content"}
         self.pipeline._preprocess_event(test_event)
         target_field = preprocessing_config.get("version_info_target_field")
@@ -526,7 +526,7 @@ class TestPipeline(ConfigurationForTests):
 
     def test_pipeline_preprocessing_does_not_add_versions_if_not_configured(self, _):
         preprocessing_config = {"something": "random"}
-        self.pipeline._config["connector"] = {"consumer": {"preprocessing": preprocessing_config}}
+        self.pipeline._logprep_config["connector"] = {"consumer": {"preprocessing": preprocessing_config}}
         test_event = {"any": "content"}
         self.pipeline._preprocess_event(test_event)
         assert test_event == {"any": "content"}
