@@ -22,8 +22,8 @@ yaml = YAML(typ="safe", pure=True)
 def get_test_output_multi(config_path, logger):
     patched_runner = get_patched_runner(config_path, logger)
 
-    parsed_outputs = list()
-    output_paths = list()
+    parsed_outputs = []
+    output_paths = []
     output_paths.append(patched_runner._configuration["connector"].get("output_path", None))
     output_paths.append(patched_runner._configuration["connector"].get("output_path_custom", None))
     output_paths.append(patched_runner._configuration["connector"].get("output_path_errors", None))
@@ -54,8 +54,8 @@ def get_patched_runner(config_path, logger):
 class DryRunner:
     """Used to run pipeline with given events and show changes made by processing."""
 
-    def __init__(self, dry_run: str, config_path: str, full_output: str, use_json: bool, logger):
-        with open(config_path, "r") as yaml_file:
+    def __init__(self, dry_run: str, config_path: str, full_output: bool, use_json: bool, logger):
+        with open(config_path, "r", encoding="utf8") as yaml_file:
             self._config_yml = yaml.load(yaml_file)
 
         self._full_output = full_output
