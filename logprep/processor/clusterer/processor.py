@@ -17,6 +17,20 @@ Logs are only clustered if at least one of the following criteria is fulfilled:
     Criteria 1: { "message": "A sample message", "tags": ["clusterable", ...], ... }
     Criteria 2: { "message": "A sample message", "clusterable": true, ... }
     Criteria 3: { "message": "A sample message", "syslog": { "facility": <number> }, "event": { "severity": <string> }, ... }
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - clusterername:
+        type: clusterer
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+        output_field_name: target_field
 """
 
 from logging import Logger

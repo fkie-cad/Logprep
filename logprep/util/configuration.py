@@ -139,7 +139,7 @@ class Configuration(dict):
         except InvalidConfigurationError as error:
             errors.append(error)
         try:
-            self._verify_connector()
+            self._verify_connector(logger)
         except InvalidConfigurationError as error:
             errors.append(error)
         try:
@@ -180,7 +180,16 @@ class Configuration(dict):
         if errors:
             raise InvalidConfigurationErrors(errors)
 
-    def _verify_connector(self):
+    def _verify_connector(self, logger):
+        # DEPRECATION: HMAC-Option: Remove this if with next major version update
+        if self.get("connector", {}).get("consumer", {}).get("hmac", {}):
+            logger.warning(
+                "[Deprecation]: you are currently using a configuration format that will be "
+                "outdated in the next major release (version 4.0.0). The hmac options will move "
+                "from the keyword 'consumer' to the subkey 'preprocessing', consider changing to "
+                "the new config format. [Expires with logprep=4.0.0]"
+            )
+
         try:
             _, _ = ConnectorFactory.create(self["connector"])
         except ConnectorFactoryError as error:

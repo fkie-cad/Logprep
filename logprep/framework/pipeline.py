@@ -15,6 +15,7 @@ from typing import List, TYPE_CHECKING
 import numpy as np
 from attr import define, Factory
 
+from logprep._version import get_versions
 from logprep.connector.connector_factory import ConnectorFactory
 from logprep.input.input import (
     CriticalInputError,
@@ -22,11 +23,12 @@ from logprep.input.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.metrics.metric import Metric, MetricTargets
+from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.output.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.processor_factory import ProcessorFactory
+from logprep.util.helper import add_field_to
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.time_measurement import TimeMeasurement
@@ -67,6 +69,9 @@ class Pipeline:
         """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
         """The current offset of the kafka input reader"""
+        mean_processing_time_per_event: float = 0.0
+        """Mean processing time for one event"""
+        _mean_processing_time_sample_counter: int = 0
 
         @property
         def number_of_processed_events(self):
@@ -83,13 +88,20 @@ class Pipeline:
             """Sum of all errors of all processors"""
             return np.sum([processor.number_of_errors for processor in self.pipeline])
 
+        def update_mean_processing_time_per_event(self, new_sample):
+            """Updates the mean processing time per event"""
+            new_avg, new_sample_counter = calculate_new_average(
+                self.mean_processing_time_per_event,
+                new_sample,
+                self._mean_processing_time_sample_counter,
+            )
+            self.mean_processing_time_per_event = new_avg
+            self._mean_processing_time_sample_counter = new_sample_counter
+
     def __init__(
         self,
         pipeline_index: int,
-        connector_config: dict,
-        pipeline_config: List[dict],
-        metrics_config: dict,
-        timeout: float,
+        config: dict,
         counter: "SharedCounter",
         log_handler: Handler,
         lock: Lock,
@@ -98,9 +110,7 @@ class Pipeline:
     ):
         if not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
-        self._connector_config = connector_config
-        self._pipeline_config = pipeline_config
-        self._timeout = timeout
+        self._logprep_config = config
         self._log_handler = log_handler
         self._logger = None
 
@@ -111,9 +121,16 @@ class Pipeline:
 
         self._processing_counter = counter
 
-        self._metrics_exposer = MetricExposer(metrics_config, metric_targets, shared_dict, lock)
+        self._metrics_exposer = MetricExposer(
+            self._logprep_config.get("metrics", {}), metric_targets, shared_dict, lock
+        )
         self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
         self.metrics = self.PipelineMetrics(labels=self._metric_labels)
+
+        self._event_version_information = {
+            "logprep": get_versions().get("version"),
+            "configuration": self._logprep_config.get("version", "unset"),
+        }
 
     def _setup(self):
         self._create_logger()
@@ -124,7 +141,7 @@ class Pipeline:
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Building '{current_process().name}'")
         self._pipeline = []
-        for entry in self._pipeline_config:
+        for entry in self._logprep_config.get("pipeline"):
             processor_name = list(entry.keys())[0]
             entry[processor_name]["metric_labels"] = self._metric_labels
             processor = ProcessorFactory.create(entry, self._logger)
@@ -139,7 +156,7 @@ class Pipeline:
     def _create_connectors(self):
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Creating connectors ({current_process().name})")
-        self._input, self._output = ConnectorFactory.create(self._connector_config)
+        self._input, self._output = ConnectorFactory.create(self._logprep_config.get("connector"))
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
                 f"Created input connector '{self._input.describe_endpoint()}' "
@@ -196,7 +213,7 @@ class Pipeline:
         event = {}
         try:
             self._metrics_exposer.expose(self.metrics)
-            event = self._input.get_next(self._timeout)
+            event = self._input.get_next(self._logprep_config.get("timeout"))
 
             try:
                 self.metrics.kafka_offset = self._input.current_offset
@@ -204,6 +221,7 @@ class Pipeline:
                 pass
 
             if event:
+                self._preprocess_event(event)
                 self._process_event(event)
                 self._processing_counter.increment()
                 self._processing_counter.print_if_ready()
@@ -234,6 +252,16 @@ class Pipeline:
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})
+
+    def _preprocess_event(self, event):
+        consumer_config = self._logprep_config.get("connector").get("consumer", {})
+        preprocessing_config = consumer_config.get("preprocessing", {})
+        if preprocessing_config.get("version_info_target_field"):
+            self._add_version_information_to_event(event, preprocessing_config)
+
+    def _add_version_information_to_event(self, event: dict, preprocessing_config: dict):
+        target_field = preprocessing_config.get("version_info_target_field")
+        add_field_to(event, target_field, self._event_version_information)
 
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):
@@ -372,34 +400,27 @@ class MultiprocessingPipeline(Process, Pipeline):
     def __init__(
         self,
         pipeline_index: int,
-        connector_config: dict,
-        pipeline_config: List[dict],
-        metrics_config: dict,
-        timeout: float,
+        config: dict,
         log_handler: Handler,
-        print_processed_period: float,
         lock: Lock,
         shared_dict: dict,
-        profile: bool = False,
         metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, MultiprocessingLogHandler):
             raise MustProvideAnMPLogHandlerError
 
-        self._profile = profile
+        self._profile = config.get("profile_pipelines", False)
+        print_processed_period = config.get("print_processed_period", 300)
         self.processed_counter.setup(print_processed_period, log_handler)
 
         Pipeline.__init__(
             self,
-            pipeline_index,
-            connector_config,
-            pipeline_config,
-            metrics_config,
-            timeout,
-            self.processed_counter,
-            log_handler,
-            lock,
-            shared_dict,
+            pipeline_index=pipeline_index,
+            config=config,
+            counter=self.processed_counter,
+            log_handler=log_handler,
+            lock=lock,
+            shared_dict=shared_dict,
             metric_targets=metric_targets,
         )
 

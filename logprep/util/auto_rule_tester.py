@@ -442,8 +442,6 @@ class AutoRuleTester:
             if test.get("target_rule_idx") is not None and test.get("target_rule_idx") != r_idx:
                 continue
 
-            # Setup arrays according to rule count, but here it's always one
-            processor.ps.setup_rules(["placeholder"])
             try:
                 extra_output = processor.process(test["raw"])
             except BaseException as error:

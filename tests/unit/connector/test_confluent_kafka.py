@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+import json
 from base64 import b64decode
 from copy import deepcopy
 from datetime import datetime
@@ -12,7 +13,6 @@ from math import isclose
 from socket import getfqdn
 from zlib import decompress
 
-import json
 from pytest import fail, raises
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
@@ -312,7 +312,7 @@ class TestConfluentKafka:
         ]
         producer_options = [
             {"producer": {"send_timeout": 0}},
-            {"producer": {"flush_timeout": 30.0}},
+            {"producer": {"flush_timeout": 30}},
             {"producer": {"linger_duration": 0}},
             {"producer": {"maximum_backlog": 10 * 1000}},
             {"producer": {"compression": "none"}},
@@ -705,10 +705,7 @@ class TestConfluentKafka:
 
         # add additional unknown option and test for error message
         config["consumer"]["hmac"] = {"unknown": "option"}
-        with raises(
-            InvalidConfigurationError,
-            match=r"Confluent Kafka Input: Unknown Hmac Options: {'unknown'}",
-        ):
+        with raises(InvalidConfigurationError, match=r"Confluent Kafka Input: Unknown Option: unknown"):
             _ = ConfluentKafkaInputFactory.create_from_configuration(config)
 
     def test_get_next_with_broken_hmac_config(self):
@@ -720,14 +717,6 @@ class TestConfluentKafka:
                 "key": "hmac-test-key",
                 "output_field": "Hmac",
             }
-
-            # set one option to non str type and test for error message
-            config["consumer"]["hmac"][key] = 1
-            with raises(
-                InvalidConfigurationError,
-                match=rf"Hmac option '{key}' has wrong type: '<class 'int'>', " r"expected 'str'",
-            ):
-                _ = ConfluentKafkaInputFactory.create_from_configuration(config)
 
             # empty one option and test for error message
             config["consumer"]["hmac"][key] = ""
@@ -751,3 +740,70 @@ class TestConfluentKafka:
         # output message is the same as the input message
         kafka_next_msg = kafka.get_next(1)
         assert kafka_next_msg == expected_event
+
+    def test_update_default_configuration_overwrites_default_options_in_nested_field(self):
+        default_config = {
+            "option": {"with": {"multiple": "layers", "foo": "bar"}},
+            "another": "option",
+        }
+        user_config = {"option": {"with": {"foo": "bi"}}}
+        expected_config = {
+            "option": {"with": {"multiple": "layers", "foo": "bi"}},
+            "another": "option",
+        }
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
+        new_config = kafka._set_connector_type_options(user_config, default_config)
+        assert new_config == expected_config
+
+    def test_update_default_configuration_overwrites_default_options_in_first_level(self):
+        default_config = {
+            "option": {"with": {"multiple": "layers", "foo": "bar"}},
+            "another": "option",
+        }
+        user_config = {"another": "test option"}
+        expected_config = {
+            "option": {"with": {"multiple": "layers", "foo": "bar"}},
+            "another": "test option",
+        }
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
+        new_config = kafka._set_connector_type_options(user_config, default_config)
+        assert new_config == expected_config
+
+    def test_update_default_configuration_raises_error_on_unknown_option_in_first_level(self):
+        default_config = {
+            "option": {"with": {"multiple": "layers", "foo": "bar"}},
+            "another": "option",
+        }
+        user_config = {"unknown": "option"}
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
+        with raises(UnknownOptionError, match="Unknown Option: unknown"):
+            _ = kafka._set_connector_type_options(user_config, default_config)
+
+    def test_update_default_configuration_does_nothing_on_empty_user_configs(self):
+        default_config = {
+            "option": {"with": {"multiple": "layers", "foo": "bar"}},
+            "another": "option",
+        }
+        user_config = {}
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
+        new_config = kafka._set_connector_type_options(user_config, default_config)
+        assert new_config == default_config
+
+    def test_update_default_configuration_raises_error_on_wrong_type(self):
+        default_config = {
+            "option": 12.2,
+            "another": "option",
+        }
+        user_config = {"option": "string and not float"}
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
+        with raises(
+            UnknownOptionError,
+            match="Wrong Option type for 'string and not float'. "
+            "Got <class 'str'>, expected <class 'float'>.",
+        ):
+            _ = kafka._set_connector_type_options(user_config, default_config)

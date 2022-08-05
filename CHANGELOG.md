@@ -1,16 +1,53 @@
+## Upcoming Changes
+
+### Breaking
+
+* Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
+under the subkey `preprocessing`
+
 ## Next Release
 
 ### Features
 
+* Add feature to automatically add version information to all events, configured via the 
+`connector > consumer > preprocessing` configuration
+* Expose logprep and config version in metric targets
 * Add an elasticsearch output connector that can be used to write directly into elasticsearch.
-* Add a connector that combines a confluentkafka input and an elasticsearch output. 
+* Add a connector that combines a confluentkafka input and an elasticsearch output.
 
 ### Improvements
 
-* Internally separated confluentkafka connector into an input and output connector, so that it is possible to combine those with other inputs and outputs.
+* Move the config hmac options to the new subkey `preprocessing`, maintain backward compatibility, 
+but mark old version as deprecated.
+* Make the generic adder write the SQL table to a file and load it from there instead of loading it 
+from the database for every process of the multiprocessing pipeline.
+Furthermore, only connect to the SQL database on checking if the database table has changed and the 
+file is stale.
+This reduces the SQL connections.
+Before, there was permanently one connection per multiprocessing pipeline active and now there is 
+only one connection per Logprep instance active when accessing the database. 
+* Internally separate confluentkafka connector into an input and output connector,
+so that it is possible to combine those with other inputs and outputs.
 
 ### Bugfixes
+
+* Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event, 
+leading to duplication in the output of the processor. Now the events are cleared such that only
+the result of the current event is returned.
+
 ### Breaking
+
+## v3.1.0
+
+### Features
+
+* Add metric for mean processing time per event for the full pipeline, in addition to per processor
+
+### Bugfixes
+
+* Fix performance of the metrics tracking. Due to a store metrics statement at the wrong position
+the logprep performance was dramatically decreased when tracking metrics was activated.
+* Fix Auto Rule Tester which tried to access processor stats that do not exist anymore. 
 
 ## v3.0.0
 

@@ -50,6 +50,7 @@ class SelectiveExtractor(Processor):
         self._filtered_events = []
 
     def process(self, event: dict) -> tuple:
+        self._filtered_events = []
         super().process(event)
         if self._filtered_events:
             return self._filtered_events

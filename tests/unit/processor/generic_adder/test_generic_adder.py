@@ -1,5 +1,9 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+# pylint: disable=unused-argument
+import json
+import os
+import tempfile
 import time
 from copy import deepcopy
 from unittest import mock
@@ -17,35 +21,40 @@ RULES_DIR_INVALID = "tests/testdata/unit/generic_adder/rules_invalid"
 RULES_DIR_FIRST_EXISTING = "tests/testdata/unit/generic_adder/rules_first_existing"
 
 
+BASE_TABLE_RESULTS = [
+    [0, "TEST_0", "foo", "bar"],
+    [1, "TEST_1", "uuu", "vvv"],
+    [2, "TEST_2", "123", "456"],
+]
+
+
+def mock_simulate_table_change():
+    DBMock.Cursor.checksum += 1
+    DBMock.Cursor.table_result[0] = [0, "TEST_0", "fi", "fo"]
+
+
 class DBMock(mock.MagicMock):
     class Cursor:
+        table_result = deepcopy(BASE_TABLE_RESULTS)
+        checksum = 0
+
         def __init__(self):
-            self._checksum = 0
             self._data = []
-            self._table_result = [
-                [0, "TEST_0", "foo", "bar"],
-                [1, "TEST_1", "uuu", "vvv"],
-                [2, "TEST_2", "123", "456"],
-            ]
 
         def execute(self, statement):
             if statement == "CHECKSUM TABLE test_table":
-                self._data = [self._checksum]
+                self._data = [self.checksum]
             elif statement == "desc test_table":
                 self._data = [["id"], ["a"], ["b"], ["c"]]
             elif statement == "SELECT * FROM test_table":
-                self._data = self._table_result
+                self._data = self.table_result
             else:
                 self._data = []
 
-        def mock_simulate_table_change(self):
-            self._checksum += 1
-            self._table_result[0] = [0, "TEST_0", "fi", "fo"]
-
         def mock_clear_all(self):
-            self._checksum = 0
+            self.checksum = 0
             self._data = []
-            self._table_result = []
+            self.table_result = []
 
         def __next__(self):
             return self._data
@@ -64,11 +73,11 @@ class DBMockNeverEmpty(DBMock):
     class Cursor(DBMock.Cursor):
         def execute(self, statement):
             if statement.startswith("CHECKSUM TABLE "):
-                self._data = [self._checksum]
+                self._data = [self.checksum]
             elif statement.startswith("desc "):
                 self._data = [["id"], ["a"], ["b"], ["c"]]
             elif statement.startswith("SELECT * FROM "):
-                self._data = self._table_result
+                self._data = self.table_result
             else:
                 self._data = []
 
@@ -252,7 +261,24 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert document == expected
 
 
-class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
+class BaseTestGenericAdderSQLTestCase(BaseProcessorTestCase):
+    def setup_method(self):
+        super().setup_method()
+        DBMock.Cursor.table_result = deepcopy(BASE_TABLE_RESULTS)
+        if os.path.isfile(self.object._db_file_path):
+            os.remove(self.object._db_file_path)
+        self.object._initialize_sql(self.CONFIG["sql_config"])
+
+    @property
+    def generic_rules_dirs(self):
+        return self.CONFIG.get("generic_rules")
+
+    @property
+    def specific_rules_dirs(self):
+        return self.CONFIG.get("specific_rules")
+
+
+class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTestCase):
     mocks = {"mysql.connector.connect": {"return_value": DBMock()}}
 
     CONFIG = {
@@ -270,13 +296,42 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
         },
     }
 
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG.get("generic_rules")
+    def test_load_from_file(self):
+        expected_db = {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
 
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG.get("specific_rules")
+        assert self.object._db_table == expected_db
+
+        _, temp_path = tempfile.mkstemp()
+        self.object._db_file_path = temp_path
+
+        db_file_content = {"FOO": "BAR"}
+        with open(temp_path, "w", encoding="utf8") as db_table:
+            json.dump(db_file_content, db_table)
+        self.object._load_from_file()
+
+        assert self.object._db_table == db_file_content
+
+    def test_check_if_file_not_stale_after_initialization_of_the_generic_adder(self):
+        assert not self.object._check_if_file_not_exists_or_stale(time.time())
+
+    def test_check_if_file_stale_after_enough_time_has_passed(self):
+        time.sleep(0.2)  # nosemgrep
+        assert self.object._check_if_file_not_exists_or_stale(time.time())
+
+    def test_check_if_file_not_stale_after_enough_time_has_passed_but_file_has_been_changed(self):
+        time.sleep(0.2)  # nosemgrep
+        now = time.time()
+        os.utime(self.object._db_file_path, (now, now))  # Simulates change of file
+        assert not self.object._check_if_file_not_exists_or_stale(now)
+
+    def test_check_if_file_stale_after_removing_it_when_it_was_not_stale(self):
+        assert not self.object._check_if_file_not_exists_or_stale(time.time())
+        os.remove(self.object._db_file_path)
+        assert self.object._check_if_file_not_exists_or_stale(time.time())
 
     def test_sql_database_enriches_via_table(self):
         expected = {
@@ -334,7 +389,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
 
         self.object.process(document_1)
         time.sleep(0.2)  # nosemgrep
-        self.object._db_connector.cursor.mock_simulate_table_change()
+        mock_simulate_table_change()
         self.object.process(document_2)
 
         assert document_1 == expected_1
@@ -349,7 +404,8 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
         document = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
         self.object._db_table = {}
-        self.object._db_connector.cursor.mock_simulate_table_change()
+        self.object._initialize_sql(self.CONFIG["sql_config"])
+        mock_simulate_table_change()
         time.sleep(0.2)  # nosemgrep
         self.object.process(document)
 
@@ -365,7 +421,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
         document_2 = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
         self.object.process(document_1)
-        self.object._db_connector.cursor.mock_simulate_table_change()
+        mock_simulate_table_change()
         self.object.process(document_2)
 
         assert document_1 == expected
@@ -385,8 +441,96 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseProcessorTestCase):
 
         assert document == expected
 
+    def test_time_to_check_for_change_not_read_for_change(self):
+        self.object._file_check_interval = 9999999
+        assert self.object._db_connector.time_to_check_for_change() is False
 
-class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(BaseProcessorTestCase):
+    def test_time_to_check_for_change_read_for_change(self):
+        time.sleep(self.object._file_check_interval)  # nosemgrep
+        assert self.object._db_connector.time_to_check_for_change() is True
+
+    def test_update_from_db_and_write_to_file_change_and_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        last_file_change = os.path.getmtime(self.object._db_file_path)
+        mock_simulate_table_change()
+        time.sleep(self.object._file_check_interval)  # nosemgrep
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "fi"], ["c", "fo"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.getmtime(self.object._db_file_path) > last_file_change
+
+    def test_update_from_db_and_write_to_file_no_change_and_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        last_file_change = os.path.getmtime(self.object._db_file_path)
+        time.sleep(self.object._file_check_interval)  # nosemgrep
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.getmtime(self.object._db_file_path) == last_file_change
+
+    def test_update_from_db_and_write_to_file_change_and_not_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        last_file_change = os.path.getmtime(self.object._db_file_path)
+        self.object._file_check_interval = 9999999
+        mock_simulate_table_change()
+        time.sleep(0.01)  # nosemgrep
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "fi"], ["c", "fo"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.getmtime(self.object._db_file_path) > last_file_change
+
+    def test_update_from_db_and_write_to_file_no_change_and_not_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        last_file_change = os.path.getmtime(self.object._db_file_path)
+        self.object._file_check_interval = 9999999
+        time.sleep(0.01)  # nosemgrep
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.getmtime(self.object._db_file_path) == last_file_change
+
+    def test_update_from_db_and_write_to_file_no_existing_file_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        os.remove(self.object._db_file_path)
+        time.sleep(self.object._file_check_interval)  # nosemgrep
+        self.object._db_connector._last_table_checksum = None
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.isfile(self.object._db_file_path)
+
+    def test_update_from_db_and_write_to_file_no_existing_file_not_stale(self):
+        assert os.path.isfile(self.object._db_file_path)
+        os.remove(self.object._db_file_path)
+        self.object._file_check_interval = 9999999
+        self.object._db_connector._last_table_checksum = None
+        self.object._update_from_db_and_write_to_file()
+        assert self.object._db_table == {
+            "TEST_0": (["b", "foo"], ["c", "bar"]),
+            "TEST_1": (["b", "uuu"], ["c", "vvv"]),
+            "TEST_2": (["b", "123"], ["c", "456"]),
+        }
+        assert os.path.isfile(self.object._db_file_path)
+
+
+class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(
+    BaseTestGenericAdderSQLTestCase
+):
     mocks = {"mysql.connector.connect": {"return_value": DBMockNeverEmpty()}}
 
     CONFIG = TestGenericAdderProcessorSQLWithoutAddedTarget.CONFIG
@@ -464,7 +608,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(BaseProce
             ProcessorFactory.create({"Test Instance Name": config}, self.logger)
 
 
-class TestGenericAdderProcessorSQLWithAddedTarget(BaseProcessorTestCase):
+class TestGenericAdderProcessorSQLWithAddedTarget(BaseTestGenericAdderSQLTestCase):
     mocks = {"mysql.connector.connect": {"return_value": DBMock()}}
 
     CONFIG = {
@@ -482,14 +626,6 @@ class TestGenericAdderProcessorSQLWithAddedTarget(BaseProcessorTestCase):
             "timer": 0.1,
         },
     }
-
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG.get("generic_rules")
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG.get("specific_rules")
 
     def test_db_table_is_not_none(self):
         assert self.object._db_table is not None
