@@ -8,7 +8,6 @@ from logprep.util.rule_dry_runner import DryRunner
 
 
 class TestRunLogprep:
-
     def test_dry_run_accepts_json_as_input(self, tmp_path, capsys):
         config = "tests/testdata/config/config-dry-run.yml"
         test_json = {"winlog": {"event_id": 1111, "event_data": {"test2": "fancy data"}}}
