@@ -52,7 +52,7 @@ class ConfluentKafka:
         }
 
     def set_option(self, new_options: dict, connector_type: str):
-        """Set configuration options for kafka.
+        """Set configuration options for specified kafka connector type.
 
         Parameters
         ----------
@@ -67,13 +67,31 @@ class ConfluentKafka:
             Raises if an option is invalid.
 
         """
-        connector_type_cfg = self._config.get(connector_type, {})
-        new_consumer_options = new_options.get(connector_type, {})
-        if isinstance(new_consumer_options, dict):
-            for key in new_consumer_options:
-                if key not in connector_type_cfg:
-                    raise UnknownOptionError(f"Unknown Option: {key}")
-                connector_type_cfg[key] = new_consumer_options[key]
+        default_connector_options = self._config.get(connector_type, {})
+        new_connector_options = new_options.get(connector_type, {})
+        self._set_connector_type_options(new_connector_options, default_connector_options)
+
+    def _set_connector_type_options(self, user_options, default_options):
+        """Iterate recursively over the default options and set the values from the user options."""
+        both_options_are_numbers = isinstance(user_options, (int, float)) and isinstance(
+            default_options, (int, float)
+        )
+        options_have_same_type = isinstance(user_options, type(default_options))
+
+        if not options_have_same_type and not both_options_are_numbers:
+            raise UnknownOptionError(
+                f"Wrong Option type for '{user_options}'. "
+                f"Got {type(user_options)}, expected {type(default_options)}."
+            )
+        if not isinstance(default_options, dict):
+            return user_options
+        for user_option in user_options:
+            if user_option not in default_options:
+                raise UnknownOptionError(f"Unknown Option: {user_option}")
+            default_options[user_option] = self._set_connector_type_options(
+                user_options[user_option], default_options[user_option]
+            )
+        return default_options
 
     def set_ssl_config(self, cafile: str, certfile: str, keyfile: str, password: str):
         """Set SSL configuration for kafka.
