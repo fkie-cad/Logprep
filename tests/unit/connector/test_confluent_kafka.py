@@ -705,7 +705,9 @@ class TestConfluentKafka:
 
         # add additional unknown option and test for error message
         config["consumer"]["hmac"] = {"unknown": "option"}
-        with raises(InvalidConfigurationError, match=r"Confluent Kafka Input: Unknown Option: unknown"):
+        with raises(
+            InvalidConfigurationError, match=r"Confluent Kafka Input: Unknown Option: unknown"
+        ):
             _ = ConfluentKafkaInputFactory.create_from_configuration(config)
 
     def test_get_next_with_broken_hmac_config(self):
