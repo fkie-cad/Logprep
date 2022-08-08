@@ -8,6 +8,13 @@ under the subkey `preprocessing`
 ## Next Release
 
 ### Features
+### Improvements
+### Bugfixes
+### Breaking
+
+## v3.2.0
+
+### Features
 
 * Add feature to automatically add version information to all events, configured via the 
 `connector > consumer > preprocessing` configuration
@@ -30,8 +37,6 @@ only one connection per Logprep instance active when accessing the database.
 * Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event, 
 leading to duplication in the output of the processor. Now the events are cleared such that only
 the result of the current event is returned.
-
-### Breaking
 
 ## v3.1.0
 
