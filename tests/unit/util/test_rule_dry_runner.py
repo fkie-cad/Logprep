@@ -44,6 +44,13 @@ class TestRunLogprep:
                 - tests/testdata/unit/pseudonymizer/rules/generic/
               max_cached_pseudonyms: 1000000
               max_caching_days: 1
+          - predetectorname:
+              type: pre_detector
+              specific_rules:
+                - tests/testdata/unit/pre_detector/rules/specific/
+              generic_rules:
+                - tests/testdata/unit/pre_detector/rules/generic/
+              pre_detector_topic: sre_topic
         """
         self.config_path = os.path.join(tempfile.gettempdir(), "dry-run-config.yml")
         with open(self.config_path, "w", encoding="utf8") as config_file:
@@ -119,6 +126,32 @@ class TestRunLogprep:
                 "event_id": 1234,
                 "provider_name": "Test456",
                 "event_data": {"param1": "username"},
+            }
+        }
+        input_json_file = os.path.join(tmp_path, "test_input.json")
+        with open(input_json_file, "w", encoding="utf8") as input_file:
+            json.dump(test_json, input_file)
+
+        dry_runner = DryRunner(
+            dry_run=input_json_file,
+            config_path=self.config_path,
+            full_output=True,
+            use_json=True,
+            logger=logging.getLogger("test-logger"),
+        )
+        dry_runner.run()
+
+        captured = capsys.readouterr()
+        assert "------ PROCESSED EVENT ------" in captured.out
+        assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
+        assert "------ ALL PSEUDONYMS ------" in captured.out
+        assert "------ ALL PRE-DETECTIONS ------" in captured.out
+
+    def test_dry_run_prints_predetection(self, tmp_path, capsys):
+        test_json = {
+            "winlog": {
+                "event_id": 123,
+                "event_data": {"ServiceName": "VERY BAD"},
             }
         }
         input_json_file = os.path.join(tmp_path, "test_input.json")
