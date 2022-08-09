@@ -49,6 +49,9 @@ class TestRunLogprep:
         with open(self.config_path, "w", encoding="utf8") as config_file:
             config_file.write(config)
 
+    def teardown_method(self):
+        os.remove(self.config_path)
+
     def test_dry_run_accepts_json_as_input(self, tmp_path, capsys):
         test_json = {"winlog": {"event_id": 1111, "event_data": {"test2": "fancy data"}}}
         input_json_file = os.path.join(tmp_path, "test_input.json")
