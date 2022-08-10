@@ -86,7 +86,7 @@ def parse_json(json_path):
     Returns
     -------
     list
-        A list of dictionary representing the json/jsons.
+        A list of dictionaries representing the json/jsons.
     """
     with open(json_path, "r", encoding="utf8") as json_file:
         parsed_json = json.load(json_file)

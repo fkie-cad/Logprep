@@ -26,8 +26,7 @@ yaml = YAML(typ="safe", pure=True)
 def get_runner_outputs(patched_runner):
     # pylint: disable=protected-access
     """
-    Creates a patched logprep runner, executes it and returns the output which were stored in
-    output files.
+    Extracts the outputs of a patched logprep runner.
 
     Parameters
     ----------
@@ -37,7 +36,7 @@ def get_runner_outputs(patched_runner):
     Returns
     -------
     parsed_outputs : list
-        A list of logprep outputs containing events, extra outputs like predetections or pseudonyms
+        A list of logprep outputs containing events, extra outputs like pre-detections or pseudonyms
         and errors
     """
     parsed_outputs = []
@@ -62,8 +61,8 @@ def get_runner_outputs(patched_runner):
 
 def get_patched_runner(config_path, logger):
     """
-    Create a patched runner that bypasses check to obtain non singleton instance and which won't
-    continue iterating on empty pipeline.
+    Creates a patched runner that bypasses check to obtain non singleton instance and the runner
+    won't continue iterating on an empty pipeline.
 
     Parameters
     ----------
@@ -74,7 +73,8 @@ def get_patched_runner(config_path, logger):
 
     Returns
     -------
-
+    runner : Runner
+        The patched logprep runner
     """
     runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
     runner.set_logger(logger)
