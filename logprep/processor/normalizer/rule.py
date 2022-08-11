@@ -195,9 +195,7 @@ class NormalizerRule(Rule):
             if any(not isinstance(pattern, str) for pattern in grok):
                 raise InvalidNormalizationDefinition(value)
         try:
-            GrokWrapper(
-                grok, custom_patterns_dir=NormalizerRule.additional_grok_patterns
-            )
+            GrokWrapper(grok, custom_patterns_dir=NormalizerRule.additional_grok_patterns)
         except Exception as error:
             raise InvalidGrokDefinition(grok) from error
 
