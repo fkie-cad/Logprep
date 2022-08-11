@@ -8,6 +8,9 @@ under the subkey `preprocessing`
 ## Next Release
 
 ### Features
+
+* Normalizer can now write add grok failure fields to an event when no grok pattern matches
+
 ### Improvements
 ### Bugfixes
 ### Breaking
