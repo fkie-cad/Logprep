@@ -42,11 +42,12 @@ from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
 from ruamel.yaml import YAML
-from logprep.abc.processor import Processor
 
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
+from logprep.util.helper import add_field_to
 from logprep.util.validators import file_validator, directory_validator
 
 yaml = YAML(typ="safe", pure=True)
@@ -243,6 +244,8 @@ class Normalizer(Processor):
             self._try_normalize_event_data_field(event, before, after)
 
     def _try_add_grok(self, event: dict, rule: NormalizerRule):
+        one_matched = False
+        source_field, source_value = None, None
         for source_field, grok in rule.grok.items():
             source_value = self._get_dotted_field_value(event, source_field)
             if source_value is None:
@@ -252,9 +255,18 @@ class Normalizer(Processor):
                 matches = grok.match(source_value, self._grok_pattern_matches)
             else:
                 matches = grok.match(source_value)
+
             for normalized_field, field_value in matches.items():
                 if field_value is not None:
                     self._try_add_field(event, normalized_field, field_value)
+                    one_matched = True
+
+        if not rule.grok.items():
+            return
+        failure_target_field = rule.grok.get(source_field).failure_target_field
+        if not one_matched and failure_target_field:
+            source_field_path = source_field.replace(".", ">")
+            add_field_to(event, f"{failure_target_field}.{source_field_path}", source_value[:100])
 
     def _try_add_timestamps(self, event: dict, rule: NormalizerRule):
         for source_field, normalization in rule.timestamps.items():
@@ -265,62 +277,63 @@ class Normalizer(Processor):
             if source_timestamp is None:
                 continue
 
-            allow_override = timestamp_normalization.get("allow_override", True)
-            normalization_target = timestamp_normalization["destination"]
-            source_formats = timestamp_normalization["source_formats"]
-            source_timezone = timestamp_normalization["source_timezone"]
-            destination_timezone = timestamp_normalization["destination_timezone"]
-
-            timestamp = None
-            format_parsed = False
-            for source_format in source_formats:
-                try:
-                    if source_format == "ISO8601":
-                        timestamp = parser.isoparse(source_timestamp)
-
-                    elif source_format == "UNIX":
-                        # convert UNIX Epoch timestamp string to int (with or without milliseconds)
-                        new_stamp = int(source_timestamp)
-                        if len(source_timestamp) > 10:
-                            # Epoch with milliseconds
-                            timestamp = datetime.fromtimestamp(
-                                new_stamp / 1000, timezone(source_timezone)
-                            )
-                        else:
-                            # Epoch without milliseconds
-                            timestamp = datetime.fromtimestamp(new_stamp, timezone(source_timezone))
-                    else:
-                        timestamp = datetime.strptime(source_timestamp, source_format)
-                        # Set year to current year if no year was provided in timestamp
-                        if timestamp.year == 1900:
-                            timestamp = timestamp.replace(year=datetime.now().year)
-                    format_parsed = True
-                    break
-                except ValueError:
-                    pass
-            if not format_parsed:
-                raise NormalizerError(
-                    self.name,
-                    (
-                        f"Could not parse source timestamp "
-                        f"{source_timestamp}' with formats '{source_formats}'"
-                    ),
-                )
-
-            time_zone = timezone(source_timezone)
-            if not timestamp.tzinfo:
-                timestamp = time_zone.localize(timestamp)
-                timestamp = timezone(source_timezone).normalize(timestamp)
-            timestamp = timestamp.astimezone(timezone(destination_timezone))
-            timestamp = timezone(destination_timezone).normalize(timestamp)
+            timestamp = self._transform_timestamp(source_timestamp, timestamp_normalization)
+            timestamp = self._convert_timezone(timestamp, timestamp_normalization)
 
             converted_time = timestamp.isoformat()
             converted_time = converted_time.replace("+00:00", "Z")
 
+            allow_override = timestamp_normalization.get("allow_override", True)
+            normalization_target = timestamp_normalization["destination"]
             if allow_override:
                 self._replace_field(event, normalization_target, converted_time)
             else:
                 self._try_add_field(event, normalization_target, converted_time)
+
+    def _convert_timezone(self, timestamp, timestamp_normalization):
+        source_timezone = timestamp_normalization["source_timezone"]
+        destination_timezone = timestamp_normalization["destination_timezone"]
+        time_zone = timezone(source_timezone)
+        if not timestamp.tzinfo:
+            timestamp = time_zone.localize(timestamp)
+            timestamp = timezone(source_timezone).normalize(timestamp)
+        timestamp = timestamp.astimezone(timezone(destination_timezone))
+        timestamp = timezone(destination_timezone).normalize(timestamp)
+        return timestamp
+
+    def _transform_timestamp(self, source_timestamp, timestamp_normalization):
+        source_timezone = timestamp_normalization["source_timezone"]
+        timestamp = None
+        format_parsed = False
+        source_formats = timestamp_normalization["source_formats"]
+        for source_format in source_formats:
+            try:
+                if source_format == "ISO8601":
+                    timestamp = parser.isoparse(source_timestamp)
+
+                elif source_format == "UNIX":
+                    new_stamp = int(source_timestamp)
+                    if len(source_timestamp) > 10:
+                        timestamp = datetime.fromtimestamp(
+                            new_stamp / 1000, timezone(source_timezone)
+                        )
+                    else:
+                        timestamp = datetime.fromtimestamp(new_stamp, timezone(source_timezone))
+                else:
+                    timestamp = datetime.strptime(source_timestamp, source_format)
+                    if timestamp.year == 1900:
+                        timestamp = timestamp.replace(year=datetime.now().year)
+                format_parsed = True
+                break
+            except ValueError:
+                pass
+        if not format_parsed:
+            error_message = (
+                f"Could not parse source timestamp "
+                f"{source_timestamp}' with formats '{source_formats}'"
+            )
+            raise NormalizerError(self.name, error_message)
+        return timestamp
 
     def _try_normalize_event_data_field(self, event: dict, field: str, normalized_field: str):
         if self._field_exists(event, field):
