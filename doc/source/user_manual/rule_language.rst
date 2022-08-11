@@ -225,13 +225,17 @@ Grok
 ----
 
 Grok functionality is fully supported for field normalization.
-This can be combined with the normalizations that have been already introduced or it can be used instead of them.
-By combining both types of normalization it is possible to perform transformations on results of Grok that can not be achieved by Grok alone.
+This can be combined with the normalizations that have been already introduced or it can be used
+instead of them.
+By combining both types of normalization it is possible to perform transformations on results of
+Grok that can not be achieved by Grok alone.
 All Grok normalizations are always performed before other normalizations.
 An example for this is the creation of nested fields.
 
-The following example would normalize :code:`event_data.ip_and_port: "Linus has the address 1.2.3.4 1234", event_data.address_text: "This is an address: 1.2.3.4:1234"` to
-:code:`address.ip: "1.2.3.4"`, :code:`address.port: 1234`, :code:`name: Linus` and :code:`address.combined: 1.2.3.4 and 1234`.
+The following example would normalize
+:code:`event_data.ip_and_port: "Linus has the address 1.2.3.4 1234", event_data.address_text: "This is an address: 1.2.3.4:1234"` to
+:code:`address.ip: "1.2.3.4"`, :code:`address.port: 1234`, :code:`name: Linus` and
+:code:`address.combined: 1.2.3.4 and 1234`.
 
 ..  code-block:: yaml
     :linenos:
@@ -245,11 +249,14 @@ The following example would normalize :code:`event_data.ip_and_port: "Linus has 
         - RE_IP_PORT_CAP
         - '\g<IP> and \g<PORT>'
 
-It is furthermore possible to use more than one Grok pattern for a field by specifying them in a list.
+It is furthermore possible to use more than one Grok pattern for a field by specifying them
+in a list.
 The patterns will be sequentially checked until one of them matches.
 
-The following example would normalize :code:`some_field_with_an_ip: "1.2.3.4 1234"` to :code:`ip: "1.2.3.4"`, :code:`port: 1234`, skipping the first Grok pattern.
-:code:`some_field_with_an_ip: "1.2.3.4 1234 foo"` would be however normalized to :code:`ip_foo: "1.2.3.4"`, :code:`port_foo: 1234`.
+The following example would normalize :code:`some_field_with_an_ip: "1.2.3.4 1234"` to
+:code:`ip: "1.2.3.4"`, :code:`port: 1234`, skipping the first Grok pattern.
+:code:`some_field_with_an_ip: "1.2.3.4 1234 foo"` would be however normalized to
+:code:`ip_foo: "1.2.3.4"`, :code:`port_foo: 1234`.
 
 ..  code-block:: yaml
     :linenos:
@@ -257,10 +264,83 @@ The following example would normalize :code:`some_field_with_an_ip: "1.2.3.4 123
 
       filter: 'some_field_with_an_ip'
       normalize:
-      some_field_with_an_ip:
-        grok:
-        - '%{IP:ip_foo} %{NUMBER:port_foo:int} foo'
-        - '%{IP:ip} %{NUMBER:port:int}'
+        some_field_with_an_ip:
+          grok:
+            - '%{IP:ip_foo} %{NUMBER:port_foo:int} foo'
+            - '%{IP:ip} %{NUMBER:port:int}'
+
+As Grok pattern are only applied when they match a given input string it is sometimes desired to
+know when none of the given pattern matches.
+This is helpful in identifying new unknown events that are not correctly covered by the current
+rule set.
+To activate the output of this information it is required to add the field
+:code:`failure_target_field` to the grok rule.
+This will describe the output field where the grok failure should be written to.
+It can be a dotted field path.
+An example rule would look like:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Grok normalization with grok failure target field
+
+      filter: 'some_field_with_an_ip'
+      normalize:
+        some_field_with_an_ip:
+          grok:
+            - '%{IP:ip_foo} %{NUMBER:port_foo:int} foo'
+            - '%{IP:ip} %{NUMBER:port:int}'
+          failure_target_field: 'grok_failure'
+
+If this is applied to an event which has the field :code:`some_field_with_an_ip`, but it's content
+is not matched by any grok-filter then the :code:`grok_failure` field will be added.
+This failure field will contain a subfield which identifies the grok target field as well as the
+first 100 characters of the fields content.
+By adding the failure information as an separate object it is possible to add more failures to it
+in case many different grok rules exist and multiple events are not matched by any grok pattern.
+
+Given this example event:
+
+..  code-block:: json
+    :linenos:
+    :caption: Example Input Event
+
+    {
+      "some_field_with_an_ip": "content which is not an ip",
+      "other event": "content"
+    }
+
+The normalizer would produce the following output event:
+
+..  code-block:: json
+    :linenos:
+    :caption: Example Output Event
+
+    {
+      "some_field_with_an_ip": "content which is not an ip",
+      "other event": "content",
+      "grok_failure": {
+        "some_field_with_an_ip": "content which is not an ip"
+      }
+    }
+
+If the grok field is a subfield somewhere inside the event, then the keys of the grok_failure object
+would contain the path to this subfield separated by :code:`>`.
+This helps in identifying the original source field to which the grok pattern was applied to.
+An grok failure output example would look like:
+
+..  code-block:: json
+    :linenos:
+    :caption: Example Output Event
+
+    {
+      "nested_ip": {
+        "some_field_with_an_ip": "content which is not an ip",
+      },
+      "other event": "content",
+      "grok_failure": {
+        "nested_ip>some_field_with_an_ip": "content which is not an ip"
+      }
+    }
 
 Normalization of Timestamps
 ---------------------------
