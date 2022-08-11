@@ -531,9 +531,7 @@ class TestNormalizer(BaseProcessorTestCase):
     def test_normalization_from_grok_writes_grok_failure_if_no_grok_pattern_matches_and_if_configured(
         self,
     ):
-        event = {
-            "grok_me": "123.123.123.123 1234"
-        }
+        event = {"grok_me": "123.123.123.123 1234"}
 
         rule = {
             "filter": "grok_me",
@@ -555,9 +553,7 @@ class TestNormalizer(BaseProcessorTestCase):
         assert event.get("port_1") is None
         assert event.get("some_ip_2") is None
         assert event.get("port_2") is None
-        assert event.get("grok_failure") == {
-            "grok_me": "123.123.123.123 1234"
-        }
+        assert event.get("grok_failure") == {"grok_me": "123.123.123.123 1234"}
 
     def test_normalization_from_grok_writes_grok_failure_for_nested_fields(
         self,
