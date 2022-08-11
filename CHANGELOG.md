@@ -9,7 +9,7 @@ under the subkey `preprocessing`
 
 ### Features
 
-* Normalizer can now write add grok failure fields to an event when no grok pattern matches
+* Normalizer can now write grok failure fields to an event when no grok pattern matches
 
 ### Improvements
 ### Bugfixes
