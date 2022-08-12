@@ -19,6 +19,7 @@ under the subkey `preprocessing`
 * Add feature to automatically add version information to all events, configured via the 
 `connector > consumer > preprocessing` configuration
 * Expose logprep and config version in metric targets
+* Dry-Run accepts now a single json without brackets for input type `json` 
 
 ### Improvements
 
