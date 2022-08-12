@@ -238,68 +238,62 @@ class Normalizer(Processor):
         be written in a way that no such warnings are produced during normal operation because each
         warning should be an indicator of incorrect rules or unexpected/changed events.
         """
-        self._try_add_grok(event, rule)
-        self._try_add_timestamps(event, rule)
-        for before, after in rule.substitutions.items():
-            self._try_normalize_event_data_field(event, before, after)
+        self._apply_grok(event, rule)
+        self._apply_timestamp_normalization(event, rule)
+        for source_field, target_field in rule.substitutions.items():
+            self._apply_field_copy(event, source_field, target_field)
 
-    def _try_add_grok(self, event: dict, rule: NormalizerRule):
+    def _apply_grok(self, event: dict, rule: NormalizerRule):
+        """
+        Applies the grok pattern of a given NormalizerRule to a given event, by matching the field
+        value against the grok pattern. If no pattern matches a grok failure field is written to the
+        event (if configured).
+        """
         one_matched = False
         source_field, source_value = None, None
         for source_field, grok in rule.grok.items():
             source_value = self._get_dotted_field_value(event, source_field)
             if source_value is None:
                 continue
-
-            if self._count_grok_pattern_matches:
-                matches = grok.match(source_value, self._grok_pattern_matches)
-            else:
-                matches = grok.match(source_value)
-
+            matches = self._get_grok_matches(grok, source_value)
             for normalized_field, field_value in matches.items():
                 if field_value is not None:
                     self._try_add_field(event, normalized_field, field_value)
                     one_matched = True
+        if not one_matched:
+            self._write_grok_failure_field(event, rule, source_field, source_value)
 
+    def _get_grok_matches(self, grok, source_value):
+        if self._count_grok_pattern_matches:
+            return grok.match(source_value, self._grok_pattern_matches)
+        return grok.match(source_value)
+
+    def _write_grok_failure_field(self, event, rule, source_field, source_value):
+        """
+        If grok pattern exist and are configured with a failure target field, then write the source
+        field and the first 100 characters in the event.
+        """
         if not rule.grok.items():
             return
         failure_target_field = rule.grok.get(source_field).failure_target_field
-        if not one_matched and failure_target_field:
+        if failure_target_field:
             source_field_path = source_field.replace(".", ">")
             add_field_to(event, f"{failure_target_field}.{source_field_path}", source_value[:100])
 
-    def _try_add_timestamps(self, event: dict, rule: NormalizerRule):
+    def _apply_timestamp_normalization(self, event: dict, rule: NormalizerRule):
+        """
+        Normalizes the timestamps of an event by applying the given rule.
+        """
         for source_field, normalization in rule.timestamps.items():
-            timestamp_normalization = normalization["timestamp"]
-
             source_timestamp = self._get_dotted_field_value(event, source_field)
-
             if source_timestamp is None:
                 continue
 
+            timestamp_normalization = normalization.get("timestamp")
             timestamp = self._transform_timestamp(source_timestamp, timestamp_normalization)
             timestamp = self._convert_timezone(timestamp, timestamp_normalization)
-
-            converted_time = timestamp.isoformat()
-            converted_time = converted_time.replace("+00:00", "Z")
-
-            allow_override = timestamp_normalization.get("allow_override", True)
-            normalization_target = timestamp_normalization["destination"]
-            if allow_override:
-                self._replace_field(event, normalization_target, converted_time)
-            else:
-                self._try_add_field(event, normalization_target, converted_time)
-
-    def _convert_timezone(self, timestamp, timestamp_normalization):
-        source_timezone = timestamp_normalization["source_timezone"]
-        destination_timezone = timestamp_normalization["destination_timezone"]
-        time_zone = timezone(source_timezone)
-        if not timestamp.tzinfo:
-            timestamp = time_zone.localize(timestamp)
-            timestamp = timezone(source_timezone).normalize(timestamp)
-        timestamp = timestamp.astimezone(timezone(destination_timezone))
-        timestamp = timezone(destination_timezone).normalize(timestamp)
-        return timestamp
+            iso_timestamp = timestamp.isoformat().replace("+00:00", "Z")
+            self._write_normalized_timestamp(event, iso_timestamp, timestamp_normalization)
 
     def _transform_timestamp(self, source_timestamp, timestamp_normalization):
         source_timezone = timestamp_normalization["source_timezone"]
@@ -310,7 +304,6 @@ class Normalizer(Processor):
             try:
                 if source_format == "ISO8601":
                     timestamp = parser.isoparse(source_timestamp)
-
                 elif source_format == "UNIX":
                     new_stamp = int(source_timestamp)
                     if len(source_timestamp) > 10:
@@ -335,20 +328,38 @@ class Normalizer(Processor):
             raise NormalizerError(self.name, error_message)
         return timestamp
 
-    def _try_normalize_event_data_field(self, event: dict, field: str, normalized_field: str):
-        if self._field_exists(event, field):
-            dotted_field_value = self._get_dotted_field_value(event, field)
-            self._try_add_field(event, normalized_field, dotted_field_value)
+    def _convert_timezone(self, timestamp, timestamp_normalization):
+        source_timezone = timestamp_normalization["source_timezone"]
+        destination_timezone = timestamp_normalization["destination_timezone"]
+        time_zone = timezone(source_timezone)
+        if not timestamp.tzinfo:
+            timestamp = time_zone.localize(timestamp)
+            timestamp = timezone(source_timezone).normalize(timestamp)
+        timestamp = timestamp.astimezone(timezone(destination_timezone))
+        timestamp = timezone(destination_timezone).normalize(timestamp)
+        return timestamp
+
+    def _write_normalized_timestamp(self, event, iso_timestamp, timestamp_normalization):
+        allow_override = timestamp_normalization.get("allow_override", True)
+        normalization_target = timestamp_normalization["destination"]
+        if allow_override:
+            self._replace_field(event, normalization_target, iso_timestamp)
+        else:
+            self._try_add_field(event, normalization_target, iso_timestamp)
+
+    def _apply_field_copy(self, event: dict, source_field: str, target_field: str):
+        if self._field_exists(event, source_field):
+            source_value = self._get_dotted_field_value(event, source_field)
+            self._try_add_field(event, target_field, source_value)
 
     def _raise_warning_if_fields_already_existed(self):
         if self._conflicting_fields:
             raise DuplicationError(self.name, self._conflicting_fields)
 
     def shut_down(self):
-        """Stop processing of this processor and finish outstanding actions.
-
+        """
+        Stop processing of this processor and finish outstanding actions.
         Optional: Called when stopping the pipeline
-
         """
         if self._count_grok_pattern_matches:
             self._write_grok_matches()
