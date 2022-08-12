@@ -10,6 +10,9 @@ under the subkey `preprocessing`
 ### Features
 ### Improvements
 ### Bugfixes
+
+* Fix config validation of the preprocessor `version_info_target_field`.
+
 ### Breaking
 
 ## v3.2.0
