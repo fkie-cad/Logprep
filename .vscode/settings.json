@@ -6,5 +6,20 @@
     "editor.formatOnSave": true,
     "python.linting.pylintEnabled": true,
     "python.linting.lintOnSave": true,
-    "autoDocstring.docstringFormat": "numpy"
+    "autoDocstring.docstringFormat": "numpy",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/.coverage*": true,
+        "**/*.lock": true,
+        "**/sql_db_table.json": true,
+        "**/.pytest_cache": true,
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "**/.profile": true
+    }
 }

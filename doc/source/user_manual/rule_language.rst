@@ -1599,3 +1599,16 @@ In the following example the field :code:`keep_me.drop_me` is deleted while the 
             "keep_me_too": "something"
         }
     }]
+
+Delete
+======
+The delete processor deletes the entire log message if the filter produces a match.
+The example below deletes the log message if the message field equals "foo".
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example delete rule
+
+    filter: 'message: "foo"'
+    delete: true
+    description: '...'

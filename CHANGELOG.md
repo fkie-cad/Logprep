@@ -8,10 +8,18 @@ under the subkey `preprocessing`
 ## Next Release
 
 ### Features
+### Improvements
+### Bugfixes
+### Breaking
+
+## v3.2.0
+
+### Features
 
 * Add feature to automatically add version information to all events, configured via the 
 `connector > consumer > preprocessing` configuration
 * Expose logprep and config version in metric targets
+* Dry-Run accepts now a single json without brackets for input type `json` 
 * Add an elasticsearch output connector that can be used to write directly into elasticsearch.
 * Add a connector that combines a confluentkafka input and an elasticsearch output.
 
@@ -34,8 +42,6 @@ so that it is possible to combine those with other inputs and outputs.
 * Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event, 
 leading to duplication in the output of the processor. Now the events are cleared such that only
 the result of the current event is returned.
-
-### Breaking
 
 ## v3.1.0
 

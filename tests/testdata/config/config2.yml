@@ -5,7 +5,7 @@ pipeline:
   - labelername:
       type: labeler
       schema: tests/testdata/unit/labeler/schemas/schema3.json
-      include_parent_labels: on
+      include_parent_labels: true
       specific_rules:
         - tests/testdata/unit/labeler/rules/specific/
       generic_rules:

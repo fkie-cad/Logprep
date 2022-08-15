@@ -7,7 +7,9 @@ from colorama import Fore, Back
 from colorama.ansi import AnsiFore, AnsiBack
 
 
-def print_color(back: Optional[AnsiBack], fore: Optional[AnsiFore], message: str):
+def color_print_line(
+    back: Optional[Union[str, AnsiBack]], fore: Optional[Union[str, AnsiBack]], message: str
+):
     """Print string with colors and reset the color afterwards."""
     color = ""
     if back:
@@ -18,14 +20,14 @@ def print_color(back: Optional[AnsiBack], fore: Optional[AnsiFore], message: str
     print(color + message + Fore.RESET + Back.RESET)
 
 
-def print_bcolor(back: AnsiBack, message: str):
-    """Print string with background color and reset the color afterwards."""
-    print_color(back, None, message)
+def color_print_title(background: Union[str, AnsiBack], message: str):
+    message = f"------ {message} ------"
+    color_print_line(background, Fore.BLACK, message)
 
 
 def print_fcolor(fore: AnsiFore, message: str):
     """Print string with colored font and reset the color afterwards."""
-    print_color(None, fore, message)
+    color_print_line(None, fore, message)
 
 
 def add_field_to(event, output_field, content, extends_lists=False):
