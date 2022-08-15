@@ -110,7 +110,7 @@ class TestConnectorFactoryWriterJsonInput:
         assert isinstance(json_input, JsonInput)
         assert isinstance(writing_output, WritingOutput)
 
-        assert json_input._documents == {"foo": "bar"}
+        assert json_input._documents == [{"foo": "bar"}]
 
     def teardown_class(self):
         os.remove(self._temp_path)
