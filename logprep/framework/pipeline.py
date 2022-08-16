@@ -256,7 +256,7 @@ class Pipeline:
     def _preprocess_event(self, event):
         consumer_config = self._logprep_config.get("connector").get("consumer", {})
         preprocessing_config = consumer_config.get("preprocessing", {})
-        if preprocessing_config.get("version_info_target_field", "") != "":
+        if preprocessing_config.get("version_info_target_field"):
             self._add_version_information_to_event(event, preprocessing_config)
 
     def _add_version_information_to_event(self, event: dict, preprocessing_config: dict):
