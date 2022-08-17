@@ -270,8 +270,8 @@ class Normalizer(Processor):
 
     def _write_grok_failure_field(self, event, rule, source_field, source_value):
         """
-        If grok pattern exist and are configured with a failure target field, then write the source
-        field and the first 100 characters in the event.
+        If grok patterns exist and are configured with a failure target field, then add the source
+        field and the first 100 characters of the grok patterns' target field to the event.
         """
         if not rule.grok.items():
             return
