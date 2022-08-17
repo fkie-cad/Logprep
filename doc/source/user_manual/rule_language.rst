@@ -324,9 +324,9 @@ The normalizer would produce the following output event:
     }
 
 If the grok field is a subfield somewhere inside the event, then the keys of the grok_failure object
-would contain the path to this subfield separated by :code:`>`.
+will contain the path to this subfield separated by :code:`>`.
 This helps in identifying the original source field to which the grok pattern was applied to.
-An grok failure output example would look like:
+A grok failure output example would look like:
 
 ..  code-block:: json
     :linenos:
