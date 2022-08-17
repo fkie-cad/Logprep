@@ -295,7 +295,7 @@ If this is applied to an event which has the field :code:`some_field_with_an_ip`
 is not matched by any grok-filter then the :code:`grok_failure` field will be added.
 This failure field will contain a subfield which identifies the grok target field as well as the
 first 100 characters of the fields content.
-By adding the failure information as an separate object it is possible to add more failures to it
+By adding the failure information as a separate object it is possible to add more failures to it
 in case many different grok rules exist and multiple events are not matched by any grok pattern.
 
 Given this example event:
