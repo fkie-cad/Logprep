@@ -272,11 +272,29 @@ class Normalizer(Processor):
         """
         If grok patterns exist and are configured with a failure target field, then add the source
         field and the first 100 characters of the grok patterns' target field to the event.
+        The source field path, which is usually converted to subfields according to the dotted field
+        path, is converted first to a path that is split by '>'. That way the separate fields are
+        not all added to the event and instead only a path identifier is added. For example the
+        source_field 'field.subfield.key' will be converted to 'field>subfield>key'. This makes
+        it easy to understand in which field the grok failure happened without having to add
+        all subfields separately.
+
+        Parameters
+        ----------
+        event : dict
+            The event that is currently being processed
+        rule : NormalizerRule
+            The current rule that should be applied to the event
+        source_field : str
+            The dotted source field path to which the grok pattern was applied to
+        source_value : str
+            The content of the source_field
         """
         if not rule.grok.items():
             return
-        failure_target_field = rule.grok.get(source_field).failure_target_field
-        if failure_target_field:
+        grok_wrapper = rule.grok.get(source_field)
+        failure_target_field = grok_wrapper.failure_target_field
+        if grok_wrapper.failure_target_field:
             source_field_path = source_field.replace(".", ">")
             add_field_to(event, f"{failure_target_field}.{source_field_path}", source_value[:100])
 

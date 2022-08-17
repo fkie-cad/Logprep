@@ -9,7 +9,8 @@ under the subkey `preprocessing`
 
 ### Features
 
-* Normalizer can now write grok failure fields to an event when no grok pattern matches and if `failure_target_field` is specified
+* Normalizer can now write grok failure fields to an event when no grok pattern matches and if 
+`failure_target_field` is specified in the configuration
 
 ### Improvements
 ### Bugfixes
