@@ -271,7 +271,7 @@ The following example would normalize :code:`some_field_with_an_ip: "1.2.3.4 123
 
 As Grok pattern are only applied when they match a given input string it is sometimes desired to
 know when none of the given pattern matches.
-This is helpful in identifying new unknown events that are not correctly covered by the current
+This is helpful in identifying new, unknown or reconfigured log sources that are not correctly covered by the current
 rule set.
 To activate the output of this information it is required to add the field
 :code:`failure_target_field` to the grok rule.
