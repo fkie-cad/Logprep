@@ -1,8 +1,8 @@
 """This module is used to get documents that match a normalization filter."""
 
+import re
 from typing import Union, Dict, List
 
-import re
 from pygrok import Grok
 
 from logprep.filter.expression.filter_expression import FilterExpression
@@ -47,7 +47,7 @@ class GrokWrapper:
 
     grok_delimiter_pattern = re.compile(GROK_DELIMITER)
 
-    def __init__(self, patterns: Union[str, List[str]], **kwargs):
+    def __init__(self, patterns: Union[str, List[str]], failure_target_field=None, **kwargs):
         if isinstance(patterns, str):
             self._grok_list = [Grok(f"^{patterns}$", **kwargs)]
         else:
@@ -55,6 +55,7 @@ class GrokWrapper:
             self._grok_list = [Grok(pattern_item, **kwargs) for pattern_item in patterns]
 
         self._match_cnt_initialized = False
+        self.failure_target_field = failure_target_field
 
     def match(self, text: str, pattern_matches: dict = None) -> Dict[str, str]:
         """Match string via grok using delimiter and count matches if enabled."""
@@ -72,7 +73,7 @@ class GrokWrapper:
                 for key, value in matches.items():
                     dotted_matches[self.grok_delimiter_pattern.sub(".", key)] = value
                 return dotted_matches
-        return dict()
+        return {}
 
 
 class NormalizerRule(Rule):
@@ -91,36 +92,50 @@ class NormalizerRule(Rule):
         self._parse_normalizations(normalizations)
 
     def _parse_normalizations(self, normalizations):
-        for src, norm in normalizations.items():
-            if isinstance(norm, dict) and norm.get("grok"):
-                norm["grok"] = [norm["grok"]] if isinstance(norm["grok"], str) else norm["grok"]
-                for idx, grok in enumerate(norm["grok"]):
-                    patterns = self.extract_field_pattern.findall(grok)
-                    for pattern in patterns:
-                        if len(pattern) >= 2:
-                            sub_fields = re.findall(self.sub_fields_pattern, pattern[1])
-                            if sub_fields:
-                                mutable_pattern = list(pattern)
-                                mutable_pattern[1] = GROK_DELIMITER.join(
-                                    (sub_field[1] for sub_field in sub_fields)
-                                )
-                                to_replace = re.escape(r"%{" + r":".join(pattern))
-                                transformed_fields_names = "%{" + ":".join(mutable_pattern)
-                                norm["grok"][idx] = re.sub(
-                                    to_replace, transformed_fields_names, norm["grok"][idx]
-                                )
-                    self._grok.update(
-                        {
-                            src: GrokWrapper(
-                                norm["grok"],
-                                custom_patterns_dir=NormalizerRule.additional_grok_patterns,
-                            )
-                        }
-                    )
-            elif isinstance(norm, dict) and norm.get("timestamp"):
-                self._timestamps.update({src: norm})
+        for source_field, normalization in normalizations.items():
+            if isinstance(normalization, dict) and normalization.get("grok"):
+                self._extract_grok_pattern(normalization, source_field)
+            elif isinstance(normalization, dict) and normalization.get("timestamp"):
+                self._timestamps.update({source_field: normalization})
             else:
-                self._substitutions.update({src: norm})
+                self._substitutions.update({source_field: normalization})
+
+    def _extract_grok_pattern(self, normalization, source_field):
+        """Checks the rule file for grok pattern, reformats them and adds them to self._grok"""
+        if isinstance(normalization["grok"], str):
+            normalization["grok"] = [normalization["grok"]]
+        for idx, grok in enumerate(normalization["grok"]):
+            patterns = self.extract_field_pattern.findall(grok)
+            self._reformat_grok_pattern(idx, normalization, patterns)
+            failure_target_field = normalization.get("failure_target_field")
+            self._grok.update(
+                {
+                    source_field: GrokWrapper(
+                        patterns=normalization["grok"],
+                        custom_patterns_dir=NormalizerRule.additional_grok_patterns,
+                        failure_target_field=failure_target_field,
+                    )
+                }
+            )
+
+    def _reformat_grok_pattern(self, idx, normalization, patterns):
+        """
+        Changes the grok pattern format by removing the square brackets and introducing
+        the GROK_DELIMITER.
+        """
+        for pattern in patterns:
+            if len(pattern) >= 2:
+                sub_fields = re.findall(self.sub_fields_pattern, pattern[1])
+                if sub_fields:
+                    mutable_pattern = list(pattern)
+                    mutable_pattern[1] = GROK_DELIMITER.join(
+                        (sub_field[1] for sub_field in sub_fields)
+                    )
+                    to_replace = re.escape(r"%{" + r":".join(pattern))
+                    transformed_fields_names = "%{" + ":".join(mutable_pattern)
+                    normalization["grok"][idx] = re.sub(
+                        to_replace, transformed_fields_names, normalization["grok"][idx]
+                    )
 
     def __eq__(self, other: "NormalizerRule") -> bool:
         return (
@@ -159,33 +174,41 @@ class NormalizerRule(Rule):
                 if len(value) != 3:
                     raise InvalidNormalizationDefinition(value)
             if isinstance(value, dict):
-
-                if any([key for key in value.keys() if key not in ("grok", "timestamp")]):
-                    raise InvalidNormalizationDefinition(value)
-
+                NormalizerRule._validate_allowed_keys(value)
                 if "grok" in value.keys():
-                    grok = value["grok"]
-                    if not grok:
-                        raise InvalidNormalizationDefinition(value)
-                    if isinstance(grok, list):
-                        if any([not isinstance(pattern, str) for pattern in grok]):
-                            raise InvalidNormalizationDefinition(value)
-                    try:
-                        GrokWrapper(
-                            grok, custom_patterns_dir=NormalizerRule.additional_grok_patterns
-                        )
-                    except Exception as error:
-                        raise InvalidGrokDefinition(grok) from error
-
+                    NormalizerRule._validate_grok(value)
                 if "timestamp" in value.keys():
-                    timestamp = value.get("timestamp")
-                    if not timestamp:
-                        raise InvalidNormalizationDefinition(value)
-                    if not isinstance(timestamp.get("destination"), str):
-                        raise InvalidTimestampDefinition(timestamp)
-                    if not isinstance(timestamp.get("source_formats"), list):
-                        raise InvalidTimestampDefinition(timestamp)
-                    if not isinstance(timestamp.get("source_timezone"), str):
-                        raise InvalidTimestampDefinition(timestamp)
-                    if not isinstance(timestamp.get("destination_timezone"), str):
-                        raise InvalidTimestampDefinition(timestamp)
+                    NormalizerRule._validate_timestamp(value)
+
+    @staticmethod
+    def _validate_allowed_keys(value):
+        allowed_keys = ["grok", "timestamp", "failure_target_field"]
+        if any(key for key in value.keys() if key not in allowed_keys):
+            raise InvalidNormalizationDefinition(value)
+
+    @staticmethod
+    def _validate_grok(value):
+        grok = value["grok"]
+        if not grok:
+            raise InvalidNormalizationDefinition(value)
+        if isinstance(grok, list):
+            if any(not isinstance(pattern, str) for pattern in grok):
+                raise InvalidNormalizationDefinition(value)
+        try:
+            GrokWrapper(grok, custom_patterns_dir=NormalizerRule.additional_grok_patterns)
+        except Exception as error:
+            raise InvalidGrokDefinition(grok) from error
+
+    @staticmethod
+    def _validate_timestamp(value):
+        timestamp = value.get("timestamp")
+        if not timestamp:
+            raise InvalidNormalizationDefinition(value)
+        if not isinstance(timestamp.get("destination"), str):
+            raise InvalidTimestampDefinition(timestamp)
+        if not isinstance(timestamp.get("source_formats"), list):
+            raise InvalidTimestampDefinition(timestamp)
+        if not isinstance(timestamp.get("source_timezone"), str):
+            raise InvalidTimestampDefinition(timestamp)
+        if not isinstance(timestamp.get("destination_timezone"), str):
+            raise InvalidTimestampDefinition(timestamp)
