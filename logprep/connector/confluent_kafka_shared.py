@@ -19,20 +19,12 @@ class ConfluentKafkaFactory:
     @staticmethod
     def _set_ssl_options(kafka: "ConfluentKafka", ssl_config: dict):
         ssl_keys = ["cafile", "certfile", "keyfile", "password"]
-        if not any([i in ssl_config for i in ssl_keys]):
-            return
-
-        cafile = ssl_config["cafile"] if "cafile" in ssl_config else None
-        certfile = ssl_config["certfile"] if "certfile" in ssl_config else None
-        keyfile = ssl_config["keyfile"] if "keyfile" in ssl_config else None
-        password = ssl_config["password"] if "password" in ssl_config else None
-
-        kafka.set_ssl_config(cafile, certfile, keyfile, password)
-
-    @staticmethod
-    def _set_if_exists(key: str, config: dict, kafka_setter):
-        if key in config:
-            kafka_setter(config[key])
+        if all(i in ssl_config for i in ssl_keys):
+            cafile = ssl_config["cafile"]
+            certfile = ssl_config["certfile"]
+            keyfile = ssl_config["keyfile"]
+            password = ssl_config["password"]
+            kafka.set_ssl_config(cafile, certfile, keyfile, password)
 
     @staticmethod
     def _remove_shared_base_options(config):

@@ -63,7 +63,7 @@ class TestConfluentKafkaFactory:
     # pylint: enable=attribute-defined-outside-init
 
     def test_fails_if_configuration_is_not_a_dictionary(self):
-        cc_input = ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        _ = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         for i in ["string", 123, 456.789, None, ConfluentKafkaInputFactory, ["list"], {"set"}]:
             with raises(InvalidConfigurationError):
                 ConfluentKafkaInputFactory.create_from_configuration(i)
