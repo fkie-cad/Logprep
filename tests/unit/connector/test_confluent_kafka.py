@@ -11,6 +11,7 @@ from datetime import datetime
 from json import loads
 from math import isclose
 from socket import getfqdn
+from unittest import mock
 from zlib import decompress
 
 from pytest import fail, raises
@@ -85,7 +86,7 @@ class TestConfluentKafkaFactory:
 
     def test_fails_if_any_base_config_value_is_missing_for_output(self):
         configuration = deepcopy(self.valid_configuration)
-        cc_input = ConfluentKafkaInputFactory.create_from_configuration(configuration)
+        _ = ConfluentKafkaInputFactory.create_from_configuration(configuration)
 
         del configuration["bootstrapservers"]
         with raises(InvalidConfigurationError):
@@ -104,6 +105,20 @@ class TestConfluentKafkaFactory:
         assert [kafka._config["ssl"][key] for key in kafka._config["ssl"]] == [
             None for i in range(4)
         ]
+
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    def test_create_consume_calls_subscribe(self, mock_consumer):
+        kafka =  ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        kafka._create_consumer()
+        kafka._consumer.subscribe.assert_called()
+        
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    def test_get_next_creates_consumer_if_consumer_is_none(self, mock_consumer):
+        kafka =  ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        assert kafka._consumer is None
+        with raises(CriticalInputError): # silence mock error
+            kafka.get_next(1)
+        assert kafka._consumer == mock_consumer.return_value
 
     def test_ssl_config_values_are_set_if_section_ssl_section_is_present(self):
         kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
