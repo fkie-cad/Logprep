@@ -179,6 +179,21 @@ class TestConfluentKafkaFactory:
         assert kafka._config["consumer"]["hmac"]["key"] == "hmac-test-key"
         assert kafka._config["consumer"]["hmac"]["output_field"] == "Hmac"
 
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    def test_shut_down_calls_consumer_close(self, mock_consumer):
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        kafka._create_consumer()
+        kafka_consumer = kafka._consumer
+        kafka.shut_down()
+        kafka_consumer.close.assert_called()
+
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    def test_shut_down_sets_consumer_to_none(self, mock_consumer):
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        kafka._create_consumer()
+        kafka.shut_down()
+        assert kafka._consumer is None
+        
 
 class NotJsonSerializableMock:
     pass
