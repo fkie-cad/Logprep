@@ -143,8 +143,10 @@ class ConfluentKafka(Input, Output):
                 "offset_reset_policy": "smallest",
                 "enable_auto_offset_store": enable_auto_offset_store,
                 "preprocessing": {
-                    "version_info_target_field": None,
+                    "version_info_target_field": "",
                     "hmac": {"target": "", "key": "", "output_field": ""},
+                    "logprep_arrival_timestamp_target_field": "",
+                    "logprep_arrival_delta_target_field": ""
                 },
                 "hmac": {"target": "", "key": "", "output_field": ""},
             },
