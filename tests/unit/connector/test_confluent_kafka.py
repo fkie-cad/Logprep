@@ -107,7 +107,7 @@ class TestConfluentKafkaFactory:
         ]
 
     @mock.patch("logprep.input.confluent_kafka_input.Consumer")
-    def test_create_consume_calls_subscribe(self, mock_consumer):
+    def test_create_consume_calls_subscribe(self, _):
         kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         kafka._create_consumer()
         kafka._consumer.subscribe.assert_called()
@@ -119,6 +119,31 @@ class TestConfluentKafkaFactory:
         with raises(CriticalInputError):  # silence mock error
             kafka.get_next(1)
         assert kafka._consumer == mock_consumer.return_value
+
+    def test_get_next_raises_critical_input_error_if_unvalid_json(self):
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        kafka._consumer = mock.MagicMock()
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        kafka._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = "I'm not valid json".encode("utf8")
+        with raises(CriticalInputError, match=r"not a valid json"):
+            kafka.get_next(1)
+
+    def test_get_next_raises_critical_input_error_if_not_a_dict(self):
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        kafka._consumer = mock.MagicMock()
+        kafka._add_hmac = True
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        kafka._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
+        with raises(CriticalInputError, match=r"could not be parsed as dict"):
+            kafka.get_next(1)
 
     def test_ssl_config_values_are_set_if_section_ssl_section_is_present(self):
         kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
@@ -529,20 +554,6 @@ class TestConfluentKafka:
             CriticalInputError,
             match=r"A confluent-kafka record contains an error code: "
             r"\(An arbitrary confluent-kafka error\)",
-        ):
-            kafka_input.get_next(1)
-
-    def test_get_next_raises_critical_input_exception_for_invalid_json_string(self):
-        kafka_input = ConfluentKafkaInput(
-            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-        )
-
-        kafka_input._consumer = ConsumerInvalidJsonMock()
-
-        with raises(
-            CriticalInputError,
-            match=r"Input record value is not a valid json string\: \(JSONDecodeError\: "
-            r"Expecting value",
         ):
             kafka_input.get_next(1)
 

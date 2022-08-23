@@ -20,6 +20,7 @@ from logprep.connector.confluent_kafka_shared import (
 from logprep.input.input import Input, CriticalInputError
 from logprep.output.output import Output
 from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.json_handling import is_json
 
 
 class ConfluentKafkaInputFactory(ConfluentKafkaFactory):
@@ -223,43 +224,30 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
         if self._record is None:
             return None
         self._last_valid_records[self._record.partition()] = self._record
-
         self.current_offset = self._record.offset()
-
-        if self._record.error():
+        record_error = self._record.error()
+        if record_error:
             raise CriticalInputError(
-                f"A confluent-kafka record contains an error code: ({self._record.error()})",
-                None,
+                f"A confluent-kafka record contains an error code: ({record_error})", None
             )
+        raw_event = self._record.value()
         try:
-            raw_event = self._record.value()
             event_dict = json.loads(raw_event.decode("utf-8"))
-
-            if self._add_hmac:
-                hmac_target_field_name = (
-                    self._config.get("consumer", {})
-                    .get("preprocessing", {})
-                    .get("hmac", {})
-                    .get("target")
-                )
-                event_dict = self._add_hmac_to(event_dict, hmac_target_field_name, raw_event)
-
-            return event_dict
         except ValueError as error:
             raise CriticalInputError(
-                f"Input record value is not a valid json string: ({self._format_message(error)})",
-                self._record.value().decode("utf-8"),
+                "Input record value is not a valid json string", raw_event
             ) from error
-        except InvalidMessageError as error:
-            raise CriticalInputError(
-                f"Input record value could not be parsed as dict: ({self._format_message(error)})",
-                self._record.value().decode("utf-8"),
-            ) from error
-        except BaseException as error:
-            raise CriticalInputError(
-                f"Error parsing input record: ({self._format_message(error)})",
-                self._record.value().decode("utf-8"),
-            ) from error
+        if not isinstance(event_dict, dict):
+            raise CriticalInputError("Input record value could not be parsed as dict", event_dict)
+        if self._add_hmac:
+            hmac_target_field_name = (
+                self._config.get("consumer", {})
+                .get("preprocessing", {})
+                .get("hmac", {})
+                .get("target")
+            )
+            event_dict = self._add_hmac_to(event_dict, hmac_target_field_name, raw_event)
+        return event_dict
 
     def _add_hmac_to(self, event_dict, hmac_target_field_name, raw_event):
         """
