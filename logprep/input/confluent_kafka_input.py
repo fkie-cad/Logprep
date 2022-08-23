@@ -109,7 +109,7 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             "enable_auto_offset_store": enable_auto_offset_store,
             "hmac": {"target": "", "key": "", "output_field": ""},
             "preprocessing": {
-                "version_info_target_field": None,
+                "version_info_target_field": "",
                 "hmac": {"target": "", "key": "", "output_field": ""},
             },
         }
