@@ -108,15 +108,15 @@ class TestConfluentKafkaFactory:
 
     @mock.patch("logprep.input.confluent_kafka_input.Consumer")
     def test_create_consume_calls_subscribe(self, mock_consumer):
-        kafka =  ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         kafka._create_consumer()
         kafka._consumer.subscribe.assert_called()
-        
+
     @mock.patch("logprep.input.confluent_kafka_input.Consumer")
     def test_get_next_creates_consumer_if_consumer_is_none(self, mock_consumer):
-        kafka =  ConfluentKafkaInputFactory.create_from_configuration(self.config)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         assert kafka._consumer is None
-        with raises(CriticalInputError): # silence mock error
+        with raises(CriticalInputError):  # silence mock error
             kafka.get_next(1)
         assert kafka._consumer == mock_consumer.return_value
 
@@ -193,7 +193,7 @@ class TestConfluentKafkaFactory:
         kafka._create_consumer()
         kafka.shut_down()
         assert kafka._consumer is None
-        
+
 
 class NotJsonSerializableMock:
     pass
