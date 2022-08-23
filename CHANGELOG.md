@@ -12,6 +12,17 @@ under the subkey `preprocessing`
 ### Bugfixes
 ### Breaking
 
+## v3.3.0
+
+### Features
+
+* Normalizer can now write grok failure fields to an event when no grok pattern matches and if 
+`failure_target_field` is specified in the configuration
+
+### Bugfixes
+
+* Fix config validation of the preprocessor `version_info_target_field`.
+
 ## v3.2.0
 
 ### Features
