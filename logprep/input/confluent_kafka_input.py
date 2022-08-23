@@ -273,43 +273,32 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             The original event extended with a field that has the hmac and the corresponding target
             field, which was used to calculate the hmac.
         """
-
-        # calculate hmac of full raw message
         hmac_options = self._config.get("consumer", {}).get("preprocessing", {}).get("hmac", {})
         if hmac_target_field_name == "<RAW_MSG>":
             received_orig_message = raw_event
+        else:
+            received_orig_message = get_dotted_field_value(event_dict, hmac_target_field_name)
+
+        if received_orig_message is None:
+            hmac = "error"
+            received_orig_message = (
+                f"<expected hmac target field '{hmac_target_field_name}' not found>".encode()
+            )
+            self._output.store_failed(
+                f"Couldn't find the hmac target field '{hmac_target_field_name}'",
+                event_dict,
+                event_dict,
+            )
+        else:
+            if isinstance(received_orig_message, str):
+                received_orig_message = received_orig_message.encode("utf-8")
             hmac = HMAC(
                 key=hmac_options.get("key").encode(),
-                msg=raw_event,
+                msg=received_orig_message,
                 digestmod=hashlib.sha256,
             ).hexdigest()
-        else:
-            # calculate hmac of dotted field value
-            received_orig_message = get_dotted_field_value(event_dict, hmac_target_field_name)
-            if received_orig_message is not None:
-                received_orig_message = received_orig_message.encode()
-                hmac = HMAC(
-                    key=hmac_options.get("key").encode(),
-                    msg=received_orig_message,
-                    digestmod=hashlib.sha256,
-                ).hexdigest()
-            else:
-                hmac = "error"
-                received_orig_message = (
-                    f"<expected hmac target field '{hmac_target_field_name}' not found>".encode()
-                )
-                self._output.store_failed(
-                    f"Couldn't find the hmac target field '{hmac_target_field_name}'",
-                    event_dict,
-                    event_dict,
-                )
-
-        # compress received_orig_message and create output with base 64 encoded compressed
-        # received_orig_message
         compressed = compress(received_orig_message, level=-1)
         hmac_output = {"hmac": hmac, "compressed_base64": b64encode(compressed).decode()}
-
-        # add hmac result to the original event
         add_was_successful = add_field_to(
             event_dict,
             hmac_options.get("output_field"),
