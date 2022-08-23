@@ -244,9 +244,7 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
                 )
                 event_dict = self._add_hmac_to(event_dict, hmac_target_field_name, raw_event)
 
-            if isinstance(event_dict, dict):
-                return event_dict
-            raise InvalidMessageError
+            return event_dict
         except ValueError as error:
             raise CriticalInputError(
                 f"Input record value is not a valid json string: ({self._format_message(error)})",
