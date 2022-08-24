@@ -185,6 +185,20 @@ class TestElasticsearchOutput:
         self.es_output._write_to_es({"dummy": "event"})
         self.es_output._handle_bulk_index_error.assert_called()
 
+    @mock.patch("logprep.output.es_output.helpers.bulk")
+    def test__handle_bulk_index_error_calls_bulk(self, mock_bulk):
+        mock_bulk_index_error = mock.MagicMock()
+        mock_bulk_index_error.errors = [
+            {
+                "index": {
+                    "data": {"my": "document"},
+                    "error": {"type": "myerrortype", "reason": "myreason"},
+                }
+            }
+        ]
+        self.es_output._handle_bulk_index_error(mock_bulk_index_error)
+        mock_bulk.assert_called()
+
     def test_write_to_es_calls_input_batch_finished_callback(self):
         self.es_output._input = mock.MagicMock()
         self.es_output._input.batch_finished_callback = mock.MagicMock()

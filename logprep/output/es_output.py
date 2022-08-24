@@ -208,7 +208,7 @@ class ElasticsearchOutput(Output):
             This causes a pipeline rebuild and gives an appropriate error log message.
 
         """
-        raise elasticsearch.FatalOutputError(error.error)
+        raise FatalOutputError(error.error)
 
     def _handle_serialization_error(self, error: elasticsearch.SerializationError):
         """Handle serialization error for elasticsearch bulk indexing.
