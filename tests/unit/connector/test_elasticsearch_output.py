@@ -8,8 +8,10 @@ import re
 from datetime import datetime
 from json import loads, dumps
 from math import isclose
+from unittest import mock
 
 import arrow
+import elasticsearch
 import elasticsearch.helpers
 from pytest import fail
 
@@ -160,3 +162,25 @@ class TestElasticsearchOutput:
         )
         assert failed_document.pop("@timestamp")
         assert failed_document == expected
+
+    @mock.patch(
+        "logprep.output.es_output.helpers.bulk", side_effect=elasticsearch.SerializationError
+    )
+    def test_write_to_es_calls_handle_serialization_error_if_serialization_error(self, _):
+        self.es_output._handle_serialization_error = mock.MagicMock()
+        self.es_output._write_to_es({"dummy": "event"})
+        self.es_output._handle_serialization_error.assert_called()
+
+    @mock.patch("logprep.output.es_output.helpers.bulk", side_effect=elasticsearch.ConnectionError)
+    def test_write_to_es_calls_handle_connection_error_if_connection_error(self, _):
+        self.es_output._handle_connection_error = mock.MagicMock()
+        self.es_output._write_to_es({"dummy": "event"})
+        self.es_output._handle_connection_error.assert_called()
+
+    @mock.patch(
+        "logprep.output.es_output.helpers.bulk", side_effect=elasticsearch.helpers.BulkIndexError
+    )
+    def test_write_to_es_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
+        self.es_output._handle_bulk_index_error = mock.MagicMock()
+        self.es_output._write_to_es({"dummy": "event"})
+        self.es_output._handle_bulk_index_error.assert_called()
