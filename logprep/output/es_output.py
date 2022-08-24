@@ -175,7 +175,6 @@ class ElasticsearchOutput(Output):
 
         """
         error_documents = []
-        error_types = {}
         for bulk_error in error.errors:
             error_info = bulk_error.get("index", {})
             data = error_info.get("data")
@@ -183,11 +182,6 @@ class ElasticsearchOutput(Output):
             error_document = self._build_failed_index_document(data, reason)
             self._add_dates(error_document)
             error_documents.append(error_document)
-            if error_types.get(error_info["error"]["type"]) is None:
-                error_types[error_info["error"]["type"]] = 1
-            else:
-                error_types[error_info["error"]["type"]] += 1
-
         helpers.bulk(self._es, error_documents)
 
     def _handle_connection_error(self, error: elasticsearch.ConnectionError):
