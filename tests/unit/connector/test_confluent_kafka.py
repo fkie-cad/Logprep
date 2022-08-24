@@ -885,3 +885,19 @@ class TestConfluentKafka:
             "doesnotcare", {"message": "does not matter"}, {"message": "does not matter"}
         )
         kafka._producer.flush.assert_called()
+
+    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    def test_shut_down_calls_producer_flush(self, mock_producer):
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
+        kafka._producer = mock_producer
+        kafka.shut_down()
+        mock_producer.flush.assert_called()
+
+    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    def test_shut_down_sets_producer_to_none(self, mock_producer):
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
+        kafka._producer = mock_producer
+        kafka.shut_down()
+        assert kafka._producer is None
