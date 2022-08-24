@@ -9,7 +9,7 @@ import os
 import tempfile
 from copy import deepcopy
 
-from pytest import raises
+import pytest
 
 from logprep.connector.connector_factory import (
     InvalidConfigurationError,
@@ -20,7 +20,7 @@ from logprep.input.confluent_kafka_input import ConfluentKafkaInput
 from logprep.input.dummy_input import DummyInput
 from logprep.input.json_input import JsonInput
 from logprep.input.jsonl_input import JsonlInput
-from logprep.output.confluent_kafka_output import ConfluentKafkaOutput
+from logprep.output.confluent_kafka_output import ConfluentKafkaOutput, ConfluentKafkaOutputFactory
 from logprep.output.dummy_output import DummyOutput
 from logprep.output.es_output import ElasticsearchOutput
 from logprep.output.writing_output import WritingOutput
@@ -31,18 +31,18 @@ class TestConnectorFactory:
         self.configuration = {"type": "dummy", "input": [{}, {}]}
 
     def test_fails_to_create_a_connector_from_empty_config(self):
-        with raises(InvalidConfigurationError, match="Connector type not specified"):
+        with pytest.raises(InvalidConfigurationError, match="Connector type not specified"):
             ConnectorFactory.create({})
 
     def test_fails_to_create_a_connector_from_config_without_type_field(self):
         configuration_without_type = deepcopy(self.configuration)
         del configuration_without_type["type"]
-        with raises(InvalidConfigurationError, match="Connector type not specified"):
+        with pytest.raises(InvalidConfigurationError, match="Connector type not specified"):
             ConnectorFactory.create(configuration_without_type)
 
     def test_fails_to_create_a_connector_when_type_is_unknown(self):
         for unknown_type in ["test", "unknown", "this is not a known type"]:
-            with raises(
+            with pytest.raises(
                 UnknownConnectorTypeError, match=f'Unknown connector type: "{unknown_type}"'
             ):
                 ConnectorFactory.create({"type": unknown_type})
@@ -56,7 +56,7 @@ class TestConnectorFactoryDummy:
         self.configuration = {"type": "dummy", "input": [{}, {}]}
 
     def test_fails_to_create_a_connector_when_input_is_missing(self):
-        with raises(InvalidConfigurationError):
+        with pytest.raises(InvalidConfigurationError):
             ConnectorFactory.create({"type": "dummy"})
 
     def test_returns_a_dummy_input_and_output_instance(self):
@@ -117,7 +117,7 @@ class TestConnectorFactoryWriterJsonInput:
 
 
 class TestConnectorFactoryConfluentKafka:
-    def setup_class(self):
+    def setup_method(self):
         self.configuration = {
             "type": "confluentkafka",
             "bootstrapservers": ["bootstrap1:9092", "bootstrap2:9092"],
@@ -175,6 +175,11 @@ class TestConnectorFactoryConfluentKafka:
 
         assert cc_input._create_confluent_settings() == expected_input
         assert cc_output._create_confluent_settings() == expected_output
+
+    def test_raises_invalidconfigurationerror_for_unknown_option(self):
+        self.configuration.get("producer").update({"unknown": "option"})
+        with pytest.raises(InvalidConfigurationError, match=r"Unknown\sOption:\s+unknown"):
+            _ = ConfluentKafkaOutputFactory.create_from_configuration(self.configuration)
 
 
 class TestConnectorFactoryConfluentKafkaES:
