@@ -300,7 +300,3 @@ class ElasticsearchOutput(Output):
             for date_format_match in date_format_matches:
                 formatted_date = now.format(date_format_match[2:-1])
                 document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])
-
-    @staticmethod
-    def _format_message(error: BaseException) -> str:
-        return f"{type(error).__name__}: {str(error)}" if str(error) else type(error).__name__
