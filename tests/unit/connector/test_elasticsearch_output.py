@@ -6,6 +6,7 @@
 # pylint: disable=no-self-use
 import json
 import re
+import pytest
 from datetime import datetime
 from json import loads, dumps
 from math import isclose
@@ -14,10 +15,10 @@ from unittest import mock
 import arrow
 import elasticsearch
 import elasticsearch.helpers
-from pytest import fail
+
 
 from logprep.output.es_output import ElasticsearchOutput
-from logprep.output.output import CriticalOutputError
+from logprep.output.output import CriticalOutputError, FatalOutputError
 
 
 class NotJsonSerializableMock:
@@ -51,7 +52,7 @@ class TestElasticsearchOutput:
                 ["host:123"], "default_index", "error_index", 2, 5000, 0, None, None, None
             )
         except TypeError as err:
-            fail(f"Must implement abstract methods: {str(err)}")
+            pytest.fail(f"Must implement abstract methods: {str(err)}")
 
     def test_describe_endpoint_returns_elasticsearch_output(self):
         assert self.es_output.describe_endpoint() == "Elasticsearch Output: ['host:123']"
@@ -232,3 +233,11 @@ class TestElasticsearchOutput:
         current_proccessed_cnt = self.es_output._processed_cnt
         self.es_output._write_to_es({"dummy": "event"})
         assert current_proccessed_cnt < self.es_output._processed_cnt
+
+    def test_handle_connection_error_raises_fatal_output_error(self):
+        with pytest.raises(FatalOutputError):
+            self.es_output._handle_connection_error(mock.MagicMock())
+
+    def test_handle_serialization_error_raises_fatal_output_error(self):
+        with pytest.raises(FatalOutputError):
+            self.es_output._handle_serialization_error(mock.MagicMock())
