@@ -190,3 +190,9 @@ class TestElasticsearchOutput:
         self.es_output._input.batch_finished_callback = mock.MagicMock()
         self.es_output._write_to_es({"dummy": "event"})
         self.es_output._input.batch_finished_callback.assert_called()
+
+    def test_write_to_es_sets_processed_cnt(self):
+        self.es_output._message_backlog_size = 2
+        current_proccessed_cnt = self.es_output._processed_cnt
+        self.es_output._write_to_es({"dummy": "event"})
+        assert current_proccessed_cnt < self.es_output._processed_cnt
