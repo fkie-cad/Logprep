@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-from cmath import pi
 from copy import deepcopy
 from logging import DEBUG, WARNING, getLogger
 from multiprocessing import active_children, Lock
