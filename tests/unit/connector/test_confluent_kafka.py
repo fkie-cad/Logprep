@@ -319,7 +319,7 @@ class TestConfluentKafka:
         try:
             ConfluentKafkaOutput(["127.0.0.1:27001"], "producertopic", "producer_error_topic")
         except TypeError as err:
-            fail(f"Must implement abstract methods: {str(err)}")
+            pytest.fail(f"Must implement abstract methods: {str(err)}")
 
     def test_describe_endpoint_returns_kafka_with_first_boostrap_config(self):
         assert self.kafka_input.describe_endpoint() == "Kafka Input: bootstrap1"
@@ -369,7 +369,7 @@ class TestConfluentKafka:
             for i in producer_options:
                 self.kafka_output.set_option(i, "producer")
         except UnknownOptionError:
-            fail("set_option should allow setting non-constructor and non-ssl options.")
+            pytest.fail("set_option should allow setting non-constructor and non-ssl options.")
 
     def test_create_confluent_settings_returns_expected_dict_without_ssl(self):
         self.kafka_output.set_option({"producer": {"maximum_backlog": 31337}}, "producer")
