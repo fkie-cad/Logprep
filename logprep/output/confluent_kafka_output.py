@@ -63,7 +63,7 @@ class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
         try:
             kafka.set_option(configuration, "producer")
         except UnknownOptionError as error:
-            raise InvalidConfigurationError(f"Confluent Kafka: {str(error)}")
+            raise InvalidConfigurationError(f"Confluent Kafka: {str(error)}") from error
 
         return kafka
 
