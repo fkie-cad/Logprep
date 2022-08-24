@@ -3,16 +3,14 @@
 import json
 import re
 from ssl import create_default_context
-from typing import Optional, List
+from typing import List, Optional
 
 import arrow
-from elasticsearch import Elasticsearch, helpers, SerializationError
-from elasticsearch.exceptions import ConnectionError
-from elasticsearch.helpers import BulkIndexError
-
+import elasticsearch
+from elasticsearch import helpers
 from logprep.connector.connector_factory_error import InvalidConfigurationError
 from logprep.input.input import Input
-from logprep.output.output import Output, FatalOutputError, CriticalOutputError
+from logprep.output.output import FatalOutputError, Output
 
 
 class ElasticsearchOutputFactory:
@@ -86,7 +84,7 @@ class ElasticsearchOutput(Output):
         ssl_context = create_default_context(cafile=cert) if cert else None
         scheme = "https" if cert else "http"
         http_auth = (user, secret) if user and secret else None
-        self._es = Elasticsearch(
+        self._es = elasticsearch.Elasticsearch(
             hosts,
             scheme=scheme,
             http_auth=http_auth,
@@ -150,11 +148,11 @@ class ElasticsearchOutput(Output):
                     max_retries=self._max_retries,
                     chunk_size=self._message_backlog_size,
                 )
-            except SerializationError as error:
+            except elasticsearch.SerializationError as error:
                 self._handle_serialization_error(error)
-            except ConnectionError as error:
+            except elasticsearch.ConnectionError as error:
                 self._handle_connection_error(error)
-            except BulkIndexError as error:
+            except helpers.BulkIndexError as error:
                 self._handle_bulk_index_error(error)
             self._processed_cnt = 0
 
@@ -163,7 +161,7 @@ class ElasticsearchOutput(Output):
         else:
             self._processed_cnt = currently_processed_cnt
 
-    def _handle_bulk_index_error(self, error: BulkIndexError):
+    def _handle_bulk_index_error(self, error: helpers.BulkIndexError):
         """Handle bulk indexing error for elasticsearch bulk indexing.
 
         Documents that could not be sent to elastiscsearch due to index errors are collected and
@@ -192,7 +190,7 @@ class ElasticsearchOutput(Output):
 
         helpers.bulk(self._es, error_documents)
 
-    def _handle_connection_error(self, error: ConnectionError):
+    def _handle_connection_error(self, error: elasticsearch.ConnectionError):
         """Handle connection error for elasticsearch bulk indexing.
 
         No documents will be sent if there is no connection to begin with.
@@ -210,9 +208,9 @@ class ElasticsearchOutput(Output):
             This causes a pipeline rebuild and gives an appropriate error log message.
 
         """
-        raise FatalOutputError(error.error)
+        raise elasticsearch.FatalOutputError(error.error)
 
-    def _handle_serialization_error(self, error: SerializationError):
+    def _handle_serialization_error(self, error: elasticsearch.SerializationError):
         """Handle serialization error for elasticsearch bulk indexing.
 
         If at least one document in a chunk can't be serialized, no events will be sent.
