@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+import json
 import re
 from datetime import datetime
 from json import loads, dumps
@@ -186,7 +187,7 @@ class TestElasticsearchOutput:
         self.es_output._handle_bulk_index_error.assert_called()
 
     @mock.patch("logprep.output.es_output.helpers.bulk")
-    def test__handle_bulk_index_error_calls_bulk(self, mock_bulk):
+    def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
             {
@@ -197,7 +198,28 @@ class TestElasticsearchOutput:
             }
         ]
         self.es_output._handle_bulk_index_error(mock_bulk_index_error)
-        mock_bulk.assert_called()
+        fake_bulk.assert_called()
+
+    @mock.patch("logprep.output.es_output.helpers.bulk")
+    def test__handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
+        mock_bulk_index_error = mock.MagicMock()
+        mock_bulk_index_error.errors = [
+            {
+                "index": {
+                    "data": {"my": "document"},
+                    "error": {"type": "myerrortype", "reason": "myreason"},
+                }
+            }
+        ]
+        self.es_output._handle_bulk_index_error(mock_bulk_index_error)
+        call_args = fake_bulk.call_args[0][1]
+        error_document = call_args[0]
+        assert "reason" in error_document
+        assert "@timestamp" in error_document
+        assert "_index" in error_document
+        assert "message" in error_document
+        assert error_document.get("reason") == "myerrortype: myreason"
+        assert error_document.get("message") == json.dumps({"my": "document"})
 
     def test_write_to_es_calls_input_batch_finished_callback(self):
         self.es_output._input = mock.MagicMock()
