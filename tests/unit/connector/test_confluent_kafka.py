@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 import json
+import pytest
 from base64 import b64decode
 from copy import deepcopy
 from datetime import datetime
@@ -14,7 +15,6 @@ from socket import getfqdn
 from unittest import mock
 from zlib import decompress
 
-from pytest import fail, raises
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
 from logprep.input.confluent_kafka_input import ConfluentKafkaInput, ConfluentKafkaInputFactory
@@ -66,22 +66,22 @@ class TestConfluentKafkaFactory:
     def test_fails_if_configuration_is_not_a_dictionary(self):
         _ = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         for i in ["string", 123, 456.789, None, ConfluentKafkaInputFactory, ["list"], {"set"}]:
-            with raises(InvalidConfigurationError):
+            with pytest.raises(InvalidConfigurationError):
                 ConfluentKafkaInputFactory.create_from_configuration(i)
-            with raises(InvalidConfigurationError):
+            with pytest.raises(InvalidConfigurationError):
                 ConfluentKafkaOutputFactory.create_from_configuration(i)
 
     def test_fails_if_any_base_config_value_is_missing_for_input(self):
         configuration = deepcopy(self.valid_configuration)
         del configuration["bootstrapservers"]
-        with raises(InvalidConfigurationError):
+        with pytest.raises(InvalidConfigurationError):
             ConfluentKafkaInputFactory.create_from_configuration(configuration)
 
         for i in ["topic", "group"]:
             configuration = deepcopy(self.valid_configuration)
             del configuration["consumer"][i]
 
-            with raises(InvalidConfigurationError):
+            with pytest.raises(InvalidConfigurationError):
                 ConfluentKafkaInputFactory.create_from_configuration(configuration)
 
     def test_fails_if_any_base_config_value_is_missing_for_output(self):
@@ -89,13 +89,13 @@ class TestConfluentKafkaFactory:
         _ = ConfluentKafkaInputFactory.create_from_configuration(configuration)
 
         del configuration["bootstrapservers"]
-        with raises(InvalidConfigurationError):
+        with pytest.raises(InvalidConfigurationError):
             ConfluentKafkaOutputFactory.create_from_configuration(configuration)
 
         configuration = deepcopy(self.valid_configuration)
         del configuration["producer"]["topic"]
 
-        with raises(InvalidConfigurationError):
+        with pytest.raises(InvalidConfigurationError):
             ConfluentKafkaOutputFactory.create_from_configuration(configuration)
 
     def test_ssl_config_values_are_none_if_section_is_missing(self):
@@ -116,7 +116,7 @@ class TestConfluentKafkaFactory:
     def test_get_next_creates_consumer_if_consumer_is_none(self, mock_consumer):
         kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         assert kafka._consumer is None
-        with raises(CriticalInputError):  # silence mock error
+        with pytest.raises(CriticalInputError):  # silence mock error
             kafka.get_next(1)
         assert kafka._consumer == mock_consumer.return_value
 
@@ -129,7 +129,7 @@ class TestConfluentKafkaFactory:
         kafka._consumer.poll = mock.MagicMock(return_value=mock_record)
         mock_record.value = mock.MagicMock()
         mock_record.value.return_value = "I'm not valid json".encode("utf8")
-        with raises(CriticalInputError, match=r"not a valid json"):
+        with pytest.raises(CriticalInputError, match=r"not a valid json"):
             kafka.get_next(1)
 
     def test_get_next_raises_critical_input_error_if_not_a_dict(self):
@@ -142,7 +142,7 @@ class TestConfluentKafkaFactory:
         kafka._consumer.poll = mock.MagicMock(return_value=mock_record)
         mock_record.value = mock.MagicMock()
         mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
-        with raises(CriticalInputError, match=r"could not be parsed as dict"):
+        with pytest.raises(CriticalInputError, match=r"could not be parsed as dict"):
             kafka.get_next(1)
 
     def test_ssl_config_values_are_set_if_section_ssl_section_is_present(self):
@@ -204,20 +204,10 @@ class TestConfluentKafkaFactory:
         assert kafka._config["consumer"]["hmac"]["key"] == "hmac-test-key"
         assert kafka._config["consumer"]["hmac"]["output_field"] == "Hmac"
 
-    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
-    def test_shut_down_calls_consumer_close(self, mock_consumer):
-        kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
-        kafka._create_consumer()
-        kafka_consumer = kafka._consumer
-        kafka.shut_down()
-        kafka_consumer.close.assert_called()
-
-    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
-    def test_shut_down_sets_consumer_to_none(self, mock_consumer):
-        kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
-        kafka._create_consumer()
-        kafka.shut_down()
-        assert kafka._consumer is None
+    def test_raises_invalidconfigurationerror_for_unknown_option(self):
+        self.config.get("producer").update({"unknown": "option"})
+        with pytest.raises(InvalidConfigurationError, match=r"Unknown\sOption:\s+unknown"):
+            _ = ConfluentKafkaOutputFactory.create_from_configuration(self.config)
 
 
 class NotJsonSerializableMock:
@@ -347,7 +337,7 @@ class TestConfluentKafka:
             "consumer_group",
             "consumer_topic",
         ]:
-            with raises(UnknownOptionError):
+            with pytest.raises(UnknownOptionError):
                 self.kafka_input.set_option({"consumer": {i: True}}, "consumer")
         for i in [
             "unknown",
@@ -356,7 +346,7 @@ class TestConfluentKafka:
             "producer_topic",
             "producer_error_topic",
         ]:
-            with raises(UnknownOptionError):
+            with pytest.raises(UnknownOptionError):
                 self.kafka_output.set_option({"producer": {i: True}}, "producer")
 
     def test_set_option_accepts_known_non_constructor_non_ssl_options(self):
@@ -550,7 +540,7 @@ class TestConfluentKafka:
 
         kafka_input._consumer = ConsumerRecordWithKafkaErrorMock()
 
-        with raises(
+        with pytest.raises(
             CriticalInputError,
             match=r"A confluent-kafka record contains an error code: "
             r"\(An arbitrary confluent-kafka error\)",
@@ -558,7 +548,7 @@ class TestConfluentKafka:
             kafka_input.get_next(1)
 
     def test_create_confluent_settings_contains_expected_values2(self):
-        with raises(
+        with pytest.raises(
             CriticalOutputError,
             match=r"Error storing output document\: \(TypeError: Object of type "
             r"\'?NotJsonSerializableMock\'? is not JSON serializable\)",
@@ -738,7 +728,9 @@ class TestConfluentKafka:
 
             # drop option to test for missing option error message
             del config["consumer"]["hmac"][key]
-            with raises(InvalidConfigurationError, match=rf"Hmac option\(s\) missing: {{'{key}'}}"):
+            with pytest.raises(
+                InvalidConfigurationError, match=rf"Hmac option\(s\) missing: {{'{key}'}}"
+            ):
                 _ = ConfluentKafkaInputFactory.create_from_configuration(config)
 
         # set default config
@@ -746,7 +738,7 @@ class TestConfluentKafka:
 
         # add additional unknown option and test for error message
         config["consumer"]["hmac"] = {"unknown": "option"}
-        with raises(
+        with pytest.raises(
             InvalidConfigurationError, match=r"Confluent Kafka Input: Unknown Option: unknown"
         ):
             _ = ConfluentKafkaInputFactory.create_from_configuration(config)
@@ -763,7 +755,9 @@ class TestConfluentKafka:
 
             # empty one option and test for error message
             config["consumer"]["hmac"][key] = ""
-            with raises(InvalidConfigurationError, match=rf"Hmac option '{key}' is empty: ''"):
+            with pytest.raises(
+                InvalidConfigurationError, match=rf"Hmac option '{key}' is empty: ''"
+            ):
                 _ = ConfluentKafkaInputFactory.create_from_configuration(config)
 
     def test_get_next_without_hmac(self):
@@ -822,7 +816,7 @@ class TestConfluentKafka:
         user_config = {"unknown": "option"}
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
         kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
-        with raises(UnknownOptionError, match="Unknown Option: unknown"):
+        with pytest.raises(UnknownOptionError, match="Unknown Option: unknown"):
             _ = kafka._set_connector_type_options(user_config, default_config)
 
     def test_update_default_configuration_does_nothing_on_empty_user_configs(self):
@@ -844,9 +838,26 @@ class TestConfluentKafka:
         user_config = {"option": "string and not float"}
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
         kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
-        with raises(
+        with pytest.raises(
             UnknownOptionError,
             match="Wrong Option type for 'string and not float'. "
             "Got <class 'str'>, expected <class 'float'>.",
         ):
             _ = kafka._set_connector_type_options(user_config, default_config)
+
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    def test_shut_down_calls_consumer_close(self, _):
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
+        kafka._create_consumer()
+        kafka_consumer = kafka._consumer
+        kafka.shut_down()
+        kafka_consumer.close.assert_called()
+
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    def test_shut_down_sets_consumer_to_none(self, _):
+        config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
+        kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
+        kafka._create_consumer()
+        kafka.shut_down()
+        assert kafka._consumer is None

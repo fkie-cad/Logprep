@@ -176,11 +176,6 @@ class TestConnectorFactoryConfluentKafka:
         assert cc_input._create_confluent_settings() == expected_input
         assert cc_output._create_confluent_settings() == expected_output
 
-    def test_raises_invalidconfigurationerror_for_unknown_option(self):
-        self.configuration.get("producer").update({"unknown": "option"})
-        with pytest.raises(InvalidConfigurationError, match=r"Unknown\sOption:\s+unknown"):
-            _ = ConfluentKafkaOutputFactory.create_from_configuration(self.configuration)
-
 
 class TestConnectorFactoryConfluentKafkaES:
     def setup_class(self):
