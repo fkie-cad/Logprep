@@ -107,11 +107,7 @@ class ConfluentKafka:
 
     @staticmethod
     def _format_message(error: BaseException) -> str:
-        return (
-            "{}: {}".format(type(error).__name__, str(error))
-            if str(error)
-            else type(error).__name__
-        )
+        return f"{type(error).__name__}: {str(error)}" if str(error) else type(error).__name__
 
     def _set_base_confluent_settings(self, configuration):
         configuration["bootstrap.servers"] = ",".join(self._bootstrap_servers)
