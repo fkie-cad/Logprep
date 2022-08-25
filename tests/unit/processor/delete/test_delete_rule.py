@@ -69,8 +69,8 @@ class TestDeleteRule:
                 "valid rule",
             ),
             (
-                    {"filter": "test", "delete": "yes", "description": "my reference rule"},
-                    InvalidDeleterDefinition,
+                {"filter": "test", "delete": "yes", "description": "my reference rule"},
+                InvalidDeleterDefinition,
                 'Delete value "yes" is not a boolean!',
             ),
         ],
