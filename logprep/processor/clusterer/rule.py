@@ -45,11 +45,14 @@ class ClustererRule(Rule):
             self._tests = []
 
     def __eq__(self, other: "ClustererRule") -> bool:
-        filter_equal = self._filter == other.filter
-        target_equal = self._target == other.target
-        pattern_equal = self._pattern == other.pattern
-        repl_equal = self._repl == other.repl
-        return filter_equal and target_equal and pattern_equal and repl_equal
+        return all(
+            [
+                self._filter == other.filter,
+                self._target == other.target,
+                self._pattern == other.pattern,
+                self._repl == other.repl,
+            ]
+        )
 
     # pylint: disable=C0111
     @property

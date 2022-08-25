@@ -28,10 +28,12 @@ class PreDetectorRule(Rule):
         self._detection_data = detection_data
 
     def __eq__(self, other: "PreDetectorRule") -> bool:
-        return (
-            (self._filter == other.filter)
-            and (self._detection_data == other.detection_data)
-            and (self._ip_fields == other.ip_fields)
+        return all(
+            [
+                self._filter == other.filter,
+                self._detection_data == other.detection_data,
+                self._ip_fields == other.ip_fields,
+            ]
         )
 
     # pylint: disable=C0111

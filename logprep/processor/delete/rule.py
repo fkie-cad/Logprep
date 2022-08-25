@@ -28,7 +28,7 @@ class DeleteRule(Rule):
         self._delete_or_not = delete
 
     def __eq__(self, other: "DeleteRule") -> bool:
-        return (other.filter == self._filter) and (self._delete_or_not == other.delete_or_not)
+        return all([other.filter == self._filter, self._delete_or_not == other.delete_or_not])
 
     # pylint: disable=C0111
     @property

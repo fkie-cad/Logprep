@@ -138,11 +138,13 @@ class NormalizerRule(Rule):
                     )
 
     def __eq__(self, other: "NormalizerRule") -> bool:
-        return (
-            (other.filter == self._filter)
-            and (self._substitutions == other.substitutions)
-            and (self._grok == other.grok)
-            and (self._timestamps == other.timestamps)
+        return all(
+            [
+                other.filter == self._filter,
+                self._substitutions == other.substitutions,
+                self._grok == other.grok,
+                self._timestamps == other.timestamps,
+            ]
         )
 
     # pylint: disable=C0111

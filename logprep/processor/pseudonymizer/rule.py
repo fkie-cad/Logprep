@@ -32,10 +32,13 @@ class PseudonymizerRule(Rule):
         self._url_fields = url_fields if url_fields else list()
 
     def __eq__(self, other: "PseudonymizerRule") -> bool:
-        filter_equal = self._filter == other.filter
-        pseudonyms_equal = self._pseudonyms == other.pseudonyms
-        url_fields_equal = self._url_fields == other.url_fields
-        return filter_equal and pseudonyms_equal and url_fields_equal
+        return all(
+            [
+                self._filter == other.filter,
+                self._pseudonyms == other.pseudonyms,
+                self._url_fields == other.url_fields,
+            ]
+        )
 
     # pylint: disable=C0111
     @property

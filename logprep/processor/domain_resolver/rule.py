@@ -34,10 +34,12 @@ class DomainResolverRule(Rule):
             self._output_field = "resolved_ip"
 
     def __eq__(self, other: "DomainResolverRule") -> bool:
-        return (
-            (other.filter == self._filter)
-            and (self._source_url_or_domain == other.source_url_or_domain)
-            and (self._output_field == other.output_field)
+        return all(
+            [
+                other.filter == self._filter,
+                self._source_url_or_domain == other.source_url_or_domain,
+                self._output_field == other.output_field,
+            ]
         )
 
     # pylint: disable=C0111

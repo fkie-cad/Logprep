@@ -30,10 +30,12 @@ class DateTimeExtractorRule(Rule):
         self._destination_field = datetime_extractor_cfg.get("destination_field", {})
 
     def __eq__(self, other: "DateTimeExtractorRule") -> bool:
-        return (
-            (other.filter == self._filter)
-            and (self._datetime_field == other.datetime_field)
-            and (self._destination_field == other.destination_field)
+        return all(
+            [
+                other.filter == self._filter,
+                self._datetime_field == other.datetime_field,
+                self._destination_field == other.destination_field,
+            ]
         )
 
     def __hash__(self) -> int:
