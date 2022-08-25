@@ -5,9 +5,9 @@ from typing import Hashable
 from unittest import mock
 import pytest
 
-from logprep.processor.delete.rule import (
-    DeleteRule,
-    InvalidDeleteDefinition,
+from logprep.processor.deleter.rule import (
+    DeleterRule,
+    InvalidDeleterDefinition,
 )
 
 
@@ -49,12 +49,12 @@ class TestDeleteRule:
     def test_rules_equality(
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule1 = DeleteRule._create_from_dict(
+        rule1 = DeleterRule._create_from_dict(
             specific_rule_definition,
         )
 
         print(other_rule_definition)
-        rule2 = DeleteRule._create_from_dict(
+        rule2 = DeleterRule._create_from_dict(
             other_rule_definition,
         )
 
@@ -69,8 +69,8 @@ class TestDeleteRule:
                 "valid rule",
             ),
             (
-                {"filter": "test", "delete": "yes", "description": "my reference rule"},
-                InvalidDeleteDefinition,
+                    {"filter": "test", "delete": "yes", "description": "my reference rule"},
+                    InvalidDeleterDefinition,
                 'Delete value "yes" is not a boolean!',
             ),
         ],
@@ -79,12 +79,12 @@ class TestDeleteRule:
         with mock.patch("os.path.isfile", return_value=True):
             if raised:
                 with pytest.raises(raised, match=message):
-                    _ = DeleteRule._create_from_dict(rule_definition)
+                    _ = DeleterRule._create_from_dict(rule_definition)
             else:
                 with mock.patch("builtins.open", mock.mock_open(read_data="")):
-                    dropper_rule = DeleteRule._create_from_dict(rule_definition)
-                    assert isinstance(dropper_rule, DeleteRule)
+                    dropper_rule = DeleterRule._create_from_dict(rule_definition)
+                    assert isinstance(dropper_rule, DeleterRule)
 
     def test_rule_is_hashable(self, specific_rule_definition):
-        rule = DeleteRule._create_from_dict(specific_rule_definition)
+        rule = DeleterRule._create_from_dict(specific_rule_definition)
         assert isinstance(rule, Hashable)

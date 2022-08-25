@@ -4,7 +4,7 @@
 """
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
-from logprep.processor.delete.processor import Delete
+from logprep.processor.deleter.processor import Deleter
 from logprep.processor.domain_label_extractor.processor import DomainLabelExtractor
 from logprep.processor.domain_resolver.processor import DomainResolver
 from logprep.processor.dropper.processor import Dropper
@@ -27,7 +27,7 @@ class ProcessorRegistry:
     mapping = {
         "clusterer": Clusterer,
         "datetime_extractor": DatetimeExtractor,
-        "delete": Delete,
+        "deleter": Deleter,
         "domain_label_extractor": DomainLabelExtractor,
         "domain_resolver": DomainResolver,
         "dropper": Dropper,

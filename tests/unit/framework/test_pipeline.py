@@ -29,8 +29,8 @@ from logprep.metrics.metric import MetricTargets
 from logprep.connector.dummy.output import DummyOutput
 from logprep.abc.output import FatalOutputError, WarningOutputError, CriticalOutputError
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.delete.processor import Delete
-from logprep.processor.delete.rule import DeleteRule
+from logprep.processor.deleter.processor import Deleter
+from logprep.processor.deleter.rule import DeleterRule
 from logprep.processor.processor_configuration import ProcessorConfiguration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
@@ -136,17 +136,17 @@ class TestPipeline(ConfigurationForTests):
         connector_config = {"type": "dummy", "input": input_data}
         self.pipeline._logprep_config["connector"] = connector_config
         self.pipeline._setup()
-        delete_config = {
-            "type": "delete",
-            "specific_rules": ["tests/testdata/unit/delete/rules/specific"],
-            "generic_rules": ["tests/testdata/unit/delete/rules/generic"],
+        deleter_config = {
+            "type": "deleter",
+            "specific_rules": ["tests/testdata/unit/deleter/rules/specific"],
+            "generic_rules": ["tests/testdata/unit/deleter/rules/generic"],
         }
-        processor_configuration = ProcessorConfiguration.create("delete processor", delete_config)
+        processor_configuration = ProcessorConfiguration.create("deleter processor", deleter_config)
         processor_configuration.metric_labels = {}
-        delete_processor = Delete("delete processor", processor_configuration, mock.MagicMock())
-        delete_rule = DeleteRule._create_from_dict({"filter": "delete_me", "delete": True})
-        delete_processor._specific_tree.add_rule(delete_rule)
-        self.pipeline._pipeline = [mock.MagicMock(), delete_processor, mock.MagicMock()]
+        deleter_processor = Deleter("deleter processor", processor_configuration, mock.MagicMock())
+        deleter_rule = DeleterRule._create_from_dict({"filter": "delete_me", "delete": True})
+        deleter_processor._specific_tree.add_rule(deleter_rule)
+        self.pipeline._pipeline = [mock.MagicMock(), deleter_processor, mock.MagicMock()]
         self.pipeline._create_logger()
         self.pipeline._logger.setLevel(DEBUG)
         while self.pipeline._input._documents:
