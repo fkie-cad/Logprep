@@ -35,6 +35,7 @@ class GenericResolverRule(Rule):
             (other.filter == self._filter)
             and (self._field_mapping == other.field_mapping)
             and (self._resolve_list == other.resolve_list)
+            and (self._resolve_from_file == other.resolve_from_file)
             and (self._append_to_list == other.append_to_list)
         )
 

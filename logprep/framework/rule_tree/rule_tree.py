@@ -117,7 +117,8 @@ class RuleTree:
 
         for parsed_rule in parsed_rule_list:
             end_node = self._add_parsed_rule(parsed_rule)
-            end_node.matching_rules.append(rule)
+            if rule not in end_node.matching_rules:
+                end_node.matching_rules.append(rule)
 
         self._rule_mapping[rule] = self.metrics.number_of_rules - 1
         self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member
@@ -177,7 +178,7 @@ class RuleTree:
 
     def get_matching_rules(
         self, event: dict, current_node: Node = None, matches: List[Rule] = None
-    ) -> list:
+    ) -> List[Rule]:
         """Get all rules in the tree that match given event.
 
         This function gets all rules that were added to the rule tree that match a given event.
@@ -200,7 +201,7 @@ class RuleTree:
 
         Returns
         -------
-        matches: list
+        matches: List[Rule]
             List of rules that match the given event.
 
         """
@@ -212,8 +213,9 @@ class RuleTree:
             if child.does_match(event):
                 current_node = child
 
-                if current_node.matching_rules:
-                    matches += child.matching_rules
+                for matching_rule in current_node.matching_rules:
+                    if matching_rule not in matches:
+                        matches.append(matching_rule)
 
                 self.get_matching_rules(event, current_node, matches)
 

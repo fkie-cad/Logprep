@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 
 import json
+from ruamel.yaml import YAML
 from abc import ABC
 from copy import deepcopy
 from logging import getLogger
@@ -19,6 +20,8 @@ from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
+
+yaml = YAML(typ="safe", pure=True)
 
 
 class BaseProcessorTestCase(ABC):
@@ -63,10 +66,13 @@ class BaseProcessorTestCase(ABC):
             rule_paths = list_json_files_in_directory(rules_dir)
             for rule_path in rule_paths:
                 with open(rule_path, "r", encoding="utf8") as rule_file:
-                    loaded_rules = json.load(rule_file)
+                    loaded_rules = []
+                    if rule_path.endswith(".yml"):
+                        loaded_rules = yaml.load_all(rule_file)
+                    elif rule_path.endswith(".json"):
+                        loaded_rules = json.load(rule_file)
                     for rule in loaded_rules:
                         rules.append(rule)
-
         return rules
 
     def _load_specific_rule(self, rule):

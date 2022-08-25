@@ -12,7 +12,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 class ReaderMock(mock.MagicMock):
     def city(self, ip_list):
         if "127.0.0.1" in ip_list:
-            raise AddressNotFoundError
+            raise AddressNotFoundError("127.0.0.1 not found in IP list")
         if "8.8.8.8" in ip_list:
 
             class MockData:

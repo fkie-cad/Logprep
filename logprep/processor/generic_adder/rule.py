@@ -138,10 +138,6 @@ class GenericAdderRule(Rule):
         return self._add
 
     @property
-    def add_from_file(self) -> dict:
-        return self._add_from_file
-
-    @property
     def db_target(self) -> str:
         return self._db_target
 

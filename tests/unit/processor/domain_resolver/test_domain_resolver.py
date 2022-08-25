@@ -234,3 +234,12 @@ sth.ac.at
             r"DomainResolver: resolved_ip",
         ):
             self.object.process(document)
+
+    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
+    def test_no_duplication_error(self, _):
+        document = {"client_2": "google.de"}
+        expected = {"client_2": "google.de", "resolved_ip": "1.2.3.4"}
+
+        # Rules have same effect, but are equal and thus one is ignored
+        self.object.process(document)
+        assert document == expected

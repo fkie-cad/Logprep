@@ -48,7 +48,6 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
         processor_metrics: "Processor.ProcessorMetrics",
     ):
         """method for processing specific rules"""
-
         for rule in specific_tree.get_matching_rules(event):
             begin = time()
             callback(event, rule)

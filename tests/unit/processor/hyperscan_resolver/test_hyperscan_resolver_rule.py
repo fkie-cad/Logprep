@@ -129,7 +129,7 @@ def test_rules_equality(
     assert (rule1 == rule2) == is_equal, testcase
 
 
-def test_rules_with_different_regex_pattern_definition_types_equal(
+def test_rules_with_differently_defined_but_equivalent_regex_pattern_definition_types_are_equal(
     specific_rule_with_resolve_file_definition,
 ):
     rule_no_regex = HyperscanResolverRule._create_from_dict(

@@ -28,7 +28,11 @@ class PreDetectorRule(Rule):
         self._detection_data = detection_data
 
     def __eq__(self, other: "PreDetectorRule") -> bool:
-        return (self._filter == other.filter) and (self._detection_data == other.detection_data)
+        return (
+            (self._filter == other.filter)
+            and (self._detection_data == other.detection_data)
+            and (self._ip_fields == other.ip_fields)
+        )
 
     # pylint: disable=C0111
     @property
@@ -39,6 +43,7 @@ class PreDetectorRule(Rule):
     def ip_fields(self) -> list:
         return self._ip_fields
 
+    # Not used to check for equality, since it has not effect on the rule effects
     @property
     def description(self) -> str:
         return self._description
