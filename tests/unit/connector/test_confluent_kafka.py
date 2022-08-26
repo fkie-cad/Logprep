@@ -101,10 +101,7 @@ class TestConfluentKafkaFactory:
     def test_ssl_config_values_are_none_if_section_is_missing(self):
         del self.config["ssl"]
         kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
-
-        assert [kafka._config["ssl"][key] for key in kafka._config["ssl"]] == [
-            None for i in range(4)
-        ]
+        assert not all(kafka._config["ssl"][key] for key in kafka._config["ssl"])
 
     @mock.patch("logprep.input.confluent_kafka_input.Consumer")
     def test_create_consume_calls_subscribe(self, _):
