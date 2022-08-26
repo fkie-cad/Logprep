@@ -2,6 +2,8 @@
     it is used to check if a processor is known to the system.
     you have to register new processors here by import them and add to `ProcessorRegistry.mapping`
 """
+import warnings
+
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.deleter.processor import Deleter
@@ -28,6 +30,7 @@ class ProcessorRegistry:
         "clusterer": Clusterer,
         "datetime_extractor": DatetimeExtractor,
         "deleter": Deleter,
+        "delete": Deleter,
         "domain_label_extractor": DomainLabelExtractor,
         "domain_resolver": DomainResolver,
         "dropper": Dropper,
@@ -58,4 +61,9 @@ class ProcessorRegistry:
         _type_
             _description_
         """
+        if processor_type == "delete":
+            warnings.warn(
+                "delete processor is deprecated and will be removed in a future release. Please use deleter instead.",
+                DeprecationWarning,
+            )
         return cls.mapping.get(processor_type)
