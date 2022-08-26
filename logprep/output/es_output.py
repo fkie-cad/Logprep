@@ -53,7 +53,7 @@ class ElasticsearchOutputFactory:
             )
         except KeyError as error:
             raise InvalidConfigurationError(
-                f"Elasticsearch: Missing configuration parameter " f"{str(error)}!"
+                f"Elasticsearch: Missing configuration parameter {str(error)}!"
             ) from error
 
         return es_output
