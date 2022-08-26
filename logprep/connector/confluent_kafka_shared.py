@@ -111,7 +111,8 @@ class ConfluentKafka:
 
     def _set_base_confluent_settings(self, configuration):
         configuration["bootstrap.servers"] = ",".join(self._bootstrap_servers)
-        if [self._config["ssl"][key] for key in self._config["ssl"]] != [None, None, None, None]:
+        ssl_settings_are_setted = any(self._config["ssl"][key] for key in self._config["ssl"])
+        if ssl_settings_are_setted:
             configuration.update(
                 {
                     "security.protocol": "SSL",
