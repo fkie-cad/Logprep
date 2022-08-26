@@ -645,7 +645,7 @@ class TestPipeline(ConfigurationForTests):
 
     @mock.patch("logprep.input.confluent_kafka_input.Consumer")
     @mock.patch("logprep.output.confluent_kafka_output.Producer")
-    def test_pipeline_kafka_batch_finisched_callback_calls_store_offsets_with_message(
+    def test_pipeline_kafka_batch_finished_callback_calls_store_offsets_with_message(
         self, _, __, ___
     ):
         logprep_config = {
