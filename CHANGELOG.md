@@ -8,7 +8,14 @@ under the subkey `preprocessing`
 ## Next Release
 
 ### Features
+
+* Add an elasticsearch output connector that can be used to write directly into elasticsearch.
+* Add a connector that combines a confluentkafka input and an elasticsearch output.
+
 ### Improvements
+* Internally separate confluentkafka connector into an input and output connector,
+so that it is possible to combine those with other inputs and outputs.
+
 ### Bugfixes
 ### Breaking
 
@@ -31,8 +38,6 @@ under the subkey `preprocessing`
 `connector > consumer > preprocessing` configuration
 * Expose logprep and config version in metric targets
 * Dry-Run accepts now a single json without brackets for input type `json` 
-* Add an elasticsearch output connector that can be used to write directly into elasticsearch.
-* Add a connector that combines a confluentkafka input and an elasticsearch output.
 
 ### Improvements
 
@@ -45,8 +50,6 @@ file is stale.
 This reduces the SQL connections.
 Before, there was permanently one connection per multiprocessing pipeline active and now there is 
 only one connection per Logprep instance active when accessing the database. 
-* Internally separate confluentkafka connector into an input and output connector,
-so that it is possible to combine those with other inputs and outputs.
 
 ### Bugfixes
 
