@@ -106,7 +106,7 @@ class ConfluentKafka:
         self._config["ssl"]["password"] = password
 
     @staticmethod
-    def _format_message(error: BaseException) -> str:
+    def _format_error(error: BaseException) -> str:
         return f"{type(error).__name__}: {str(error)}" if str(error) else type(error).__name__
 
     def _set_base_confluent_settings(self, configuration):
