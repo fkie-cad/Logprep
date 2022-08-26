@@ -544,7 +544,7 @@ class TestPipeline(ConfigurationForTests):
 
     @mock.patch("logprep.input.confluent_kafka_input.Consumer")
     @mock.patch("logprep.output.confluent_kafka_output.Producer")
-    def test_pipeline_kafka_batch_finisched_callback_is_called(self, _, __, ___):
+    def test_pipeline_kafka_batch_finished_callback_is_called(self, _, __, ___):
         logprep_config = {
             "version": 1,
             "timeout": 0.001,
