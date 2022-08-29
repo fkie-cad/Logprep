@@ -52,7 +52,6 @@ class Input(metaclass=ABCMeta):
         May be used as a word in a sentence.
 
         """
-        return "Input: the.host.name.tld:1234"
 
     @abstractmethod
     def get_next(self, timeout: float):
@@ -74,7 +73,6 @@ class Input(metaclass=ABCMeta):
             After timeout (usually a fraction of seconds) if no input data was available by then.
 
         """
-        return {}
 
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
