@@ -125,11 +125,14 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
             "source": {"domain": "domain.invalid"},
-            "tags": ["source", "invalid_domain_in_url_domain", "invalid_domain_in_source_domain"],
         }
+        expected_tags = ["source", "invalid_domain_in_url_domain", "invalid_domain_in_source_domain"]
 
         self.object.process(document)
+        tags = document.pop("tags")
+
         assert document == expected_output
+        assert set(tags) == set(expected_tags)
 
     def test_two_domains_one_is_invalid(self):
         document = {
@@ -160,11 +163,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
             "source": {"domain": "123.123.123.123"},
-            "tags": ["source", "invalid_domain_in_url_domain", "ip_in_source_domain"],
         }
-
+        expected_tags = ["source", "invalid_domain_in_url_domain", "ip_in_source_domain"]
         self.object.process(document)
+        tags = document.pop("tags")
+
         assert document == expected_output
+        assert set(tags) == set(expected_tags)
 
     def test_new_non_default_tagging_field(self):
         config = {
