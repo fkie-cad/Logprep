@@ -1,3 +1,4 @@
+# pylint: disable=missing-docstring
 from pytest import raises
 
 from logprep.input.dummy_input import DummyInput
@@ -42,7 +43,7 @@ class TestDummyInput:
         with raises(SourceDisconnectedError):
             dummy_input.get_next(self.timeout)
 
-    def test_raises_exceptions_instead_of_returning_them(self):
+    def test_raises_exceptions_instead_of_returning_them_in_document(self):
         documents = [{"order": 0}, DummyError, {"order": 1}]
         dummy_input = DummyInput(documents)
 
@@ -52,4 +53,10 @@ class TestDummyInput:
         assert dummy_input.get_next(self.timeout)["order"] == 1
 
         with raises(SourceDisconnectedError):
+            dummy_input.get_next(self.timeout)
+
+    def test_raises_exceptions_instead_of_returning_them(self):
+        documents = [BaseException]
+        dummy_input = DummyInput(documents)
+        with raises(BaseException):
             dummy_input.get_next(self.timeout)
