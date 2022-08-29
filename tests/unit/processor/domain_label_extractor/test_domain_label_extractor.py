@@ -126,7 +126,11 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "url": {"domain": "domain.fubarbo"},
             "source": {"domain": "domain.invalid"},
         }
-        expected_tags = ["source", "invalid_domain_in_url_domain", "invalid_domain_in_source_domain"]
+        expected_tags = [
+            "source",
+            "invalid_domain_in_url_domain",
+            "invalid_domain_in_source_domain",
+        ]
 
         self.object.process(document)
         tags = document.pop("tags")
