@@ -542,6 +542,160 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._preprocess_event(test_event)
         assert test_event == {"any": "content", "version_info": "something random"}
 
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    def test_pipeline_kafka_batch_finished_callback_is_called(self, _, __, ___):
+        logprep_config = {
+            "version": 1,
+            "timeout": 0.001,
+            "print_processed_period": 600,
+            "connector": {
+                "type": "confluentkafka",
+                "bootstrapservers": "127.0.0.1:9092",
+                "consumer": {
+                    "topic": "Consumer",
+                    "group": "cgroup",
+                    "auto_commit": True,
+                    "session_timeout": 6000,
+                    "offset_reset_policy": "smallest",
+                    "enable_auto_offset_store": False,
+                },
+                "producer": {
+                    "topic": "producer",
+                    "error_topic": "producer_error",
+                    "ack_policy": "all",
+                    "compression": "gzip",
+                    "maximum_backlog": 10000,
+                    "linger_duration": 0,
+                    "flush_timeout": 30,
+                    "send_timeout": 2,
+                },
+            },
+            "pipeline": [
+                {"mock_processor1": {"proc": "conf"}},
+            ],
+            "metrics": {"period": 300, "enabled": False},
+        }
+        pipeline = Pipeline(
+            pipeline_index=1,
+            config=logprep_config,
+            counter=self.counter,
+            log_handler=self.log_handler,
+            lock=self.lock,
+            shared_dict=self.shared_dict,
+            metric_targets=self.metric_targets,
+        )
+        pipeline._setup()
+        pipeline._input.get_next = mock.MagicMock()
+        pipeline._input.get_next.return_value = {"message": "foo"}
+        pipeline._input.batch_finished_callback = mock.MagicMock()
+        pipeline._retrieve_and_process_data()
+        pipeline._input.batch_finished_callback.assert_called()
+
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    def test_pipeline_kafka_batch_finished_callback_calls_store_offsets(self, _, __, ___):
+        logprep_config = {
+            "version": 1,
+            "timeout": 0.001,
+            "print_processed_period": 600,
+            "connector": {
+                "type": "confluentkafka",
+                "bootstrapservers": "127.0.0.1:9092",
+                "consumer": {
+                    "topic": "Consumer",
+                    "group": "cgroup",
+                    "auto_commit": True,
+                    "session_timeout": 6000,
+                    "offset_reset_policy": "smallest",
+                    "enable_auto_offset_store": False,
+                },
+                "producer": {
+                    "topic": "producer",
+                    "error_topic": "producer_error",
+                    "ack_policy": "all",
+                    "compression": "gzip",
+                    "maximum_backlog": 10000,
+                    "linger_duration": 0,
+                    "flush_timeout": 30,
+                    "send_timeout": 2,
+                },
+            },
+            "pipeline": [
+                {"mock_processor1": {"proc": "conf"}},
+            ],
+            "metrics": {"period": 300, "enabled": False},
+        }
+        pipeline = Pipeline(
+            pipeline_index=1,
+            config=logprep_config,
+            counter=self.counter,
+            log_handler=self.log_handler,
+            lock=self.lock,
+            shared_dict=self.shared_dict,
+            metric_targets=self.metric_targets,
+        )
+        pipeline._setup()
+        pipeline._input.get_next = mock.MagicMock()
+        pipeline._input.get_next.return_value = {"message": "foo"}
+        pipeline._input._last_valid_records = {"record1": "record_value5"}
+        pipeline._input._consumer = mock.MagicMock()
+        pipeline._retrieve_and_process_data()
+        pipeline._input._consumer.store_offsets.assert_called()
+
+    @mock.patch("logprep.input.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    def test_pipeline_kafka_batch_finished_callback_calls_store_offsets_with_message(
+        self, _, __, ___
+    ):
+        logprep_config = {
+            "version": 1,
+            "timeout": 0.001,
+            "print_processed_period": 600,
+            "connector": {
+                "type": "confluentkafka",
+                "bootstrapservers": "127.0.0.1:9092",
+                "consumer": {
+                    "topic": "Consumer",
+                    "group": "cgroup",
+                    "auto_commit": True,
+                    "session_timeout": 6000,
+                    "offset_reset_policy": "smallest",
+                    "enable_auto_offset_store": False,
+                },
+                "producer": {
+                    "topic": "producer",
+                    "error_topic": "producer_error",
+                    "ack_policy": "all",
+                    "compression": "gzip",
+                    "maximum_backlog": 10000,
+                    "linger_duration": 0,
+                    "flush_timeout": 30,
+                    "send_timeout": 2,
+                },
+            },
+            "pipeline": [
+                {"mock_processor1": {"proc": "conf"}},
+            ],
+            "metrics": {"period": 300, "enabled": False},
+        }
+        pipeline = Pipeline(
+            pipeline_index=1,
+            config=logprep_config,
+            counter=self.counter,
+            log_handler=self.log_handler,
+            lock=self.lock,
+            shared_dict=self.shared_dict,
+            metric_targets=self.metric_targets,
+        )
+        pipeline._setup()
+        pipeline._input.get_next = mock.MagicMock()
+        pipeline._input.get_next.return_value = {"message": "foo"}
+        pipeline._input._last_valid_records = {"record1": "record_value5"}
+        pipeline._input._consumer = mock.MagicMock()
+        pipeline._retrieve_and_process_data()
+        pipeline._input._consumer.store_offsets.assert_called_with(message="record_value5")
+
 
 class TestMultiprocessingPipeline(ConfigurationForTests):
     def setup_class(self):
