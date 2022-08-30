@@ -1,6 +1,5 @@
 """This module contains an output that writes documents to a file."""
 
-from typing import TextIO
 import json
 
 from logprep.output.output import Output
@@ -27,20 +26,22 @@ class WritingOutput(Output):
         self.events = []
         self.failed_events = []
 
-        self._output_file = open(output_path, "a+", encoding="utf8")
-        self._output_file_custom = (
-            open(output_path_custom, "a+", encoding="utf8") if output_path_custom else None
-        )
-        self._output_file_error = (
-            open(output_path_error, "a+", encoding="utf8") if output_path_error else None
-        )
+        self._output_file = output_path
+        open(self._output_file, "a+", encoding="utf8").close()
+        self._output_file_custom = output_path_custom
+        if self._output_file_custom:
+            open(self._output_file_custom, "a+", encoding="utf8").close()
+        self._output_file_error = output_path_error
+        if self._output_file_error:
+            open(self._output_file_error, "a+", encoding="utf8").close()
 
     def describe_endpoint(self) -> str:
         return "writer"
 
     @staticmethod
-    def _write_json(file: TextIO, line: dict):
-        file.write(f"{json.dumps(line)}\n")
+    def _write_json(filepath: str, line: dict):
+        with open(filepath, "a+", encoding="utf8") as file:
+            file.write(f"{json.dumps(line)}\n")
 
     def store(self, document: dict):
         self.events.append(document)
@@ -65,10 +66,3 @@ class WritingOutput(Output):
                     "document_processed": document_processed,
                 },
             )
-
-    def shut_down(self):
-        self._output_file.close()
-        if self._output_file_custom:
-            self._output_file_custom.close()
-        if self._output_file_error:
-            self._output_file_error.close()

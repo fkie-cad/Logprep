@@ -54,11 +54,10 @@ class TestWritingOutput:
         output = WritingOutput("/file/for/store")
         output.store(self.document)
         mock_open.assert_called_with("/file/for/store", "a+", encoding="utf8")
-        mock_open().write.assert_called_with('{"the": "document"}\n')
+        mock_open().__enter__().write.assert_called_with('{"the": "document"}\n')
 
     def test_write_document_to_file_on_store_custom(self, mock_open):
         output = WritingOutput(output_path="/file/for/store", output_path_custom="/file/for/custom")
-        mock_open.assert_called_with("/file/for/custom", "a+", encoding="utf8")
         WritingOutput._write_json = mock.MagicMock()
         output.store_custom(self.document, target="whatever")
         output._write_json.assert_called_with(output._output_file_custom, self.document)
@@ -67,8 +66,8 @@ class TestWritingOutput:
         output = WritingOutput("/file/to/store")
         output.store(self.document)
         output.store(self.document)
-        # assert mock_open().write.call_count == 2
-        assert mock_open().write.call_args_list == [
+        assert mock_open().__enter__().write.call_count == 2
+        assert mock_open().__enter__().write.call_args_list == [
             mock.call('{"the": "document"}\n'),
             mock.call('{"the": "document"}\n'),
         ]
@@ -76,7 +75,7 @@ class TestWritingOutput:
     def test_store_failed_writes_errors(self, mock_open):
         output = WritingOutput(output_path="file/to/store", output_path_error="file/to/error")
         output.store_failed("my error message", self.document, self.document)
-        mock_open().write.assert_called_with(
+        mock_open().__enter__().write.assert_called_with(
             '{"error_message": "my error message", '
             '"document_received": {"the": "document"}, '
             '"document_processed": {"the": "document"}}\n'
