@@ -11,13 +11,12 @@ class WritingOutput(Output):
 
     Parameters
     ----------
-    documents : list
-       A list of documents that should be written into a file.
     output_path : str
-       The path for the output file.
-    replace : bool, optional
-       Determines if the output file should be replaced when instantiating a writer.
-
+        The path for the output file.
+    output_path_custom: str
+        The path to store custom
+    output_path_error: str
+        The path to store error
     """
 
     def __init__(
@@ -28,16 +27,20 @@ class WritingOutput(Output):
         self.events = []
         self.failed_events = []
 
-        self._output_file = open(output_path, "a+")
-        self._output_file_custom = open(output_path_custom, "a+") if output_path_custom else None
-        self._output_file_error = open(output_path_error, "a+") if output_path_error else None
+        self._output_file = open(output_path, "a+", encoding="utf8")
+        self._output_file_custom = (
+            open(output_path_custom, "a+", encoding="utf8") if output_path_custom else None
+        )
+        self._output_file_error = (
+            open(output_path_error, "a+", encoding="utf8") if output_path_error else None
+        )
 
     def describe_endpoint(self) -> str:
         return "writer"
 
     @staticmethod
     def _write_json(file: TextIO, line: dict):
-        file.write("{}\n".format(json.dumps(line)))
+        file.write(f"{json.dumps(line)}\n")
 
     def store(self, document: dict):
         self.events.append(document)

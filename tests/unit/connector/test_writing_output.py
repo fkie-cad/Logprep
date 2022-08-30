@@ -53,12 +53,12 @@ class TestWritingOutput:
     def test_write_document_to_file_on_store(self, mock_open):
         output = WritingOutput("/file/for/store")
         output.store(self.document)
-        mock_open.assert_called_with("/file/for/store", "a+")
+        mock_open.assert_called_with("/file/for/store", "a+", encoding="utf8")
         mock_open().write.assert_called_with('{"the": "document"}\n')
 
     def test_write_document_to_file_on_store_custom(self, mock_open):
         output = WritingOutput(output_path="/file/for/store", output_path_custom="/file/for/custom")
-        mock_open.assert_called_with("/file/for/custom", "a+")
+        mock_open.assert_called_with("/file/for/custom", "a+", encoding="utf8")
         WritingOutput._write_json = mock.MagicMock()
         output.store_custom(self.document, target="whatever")
         output._write_json.assert_called_with(output._output_file_custom, self.document)
