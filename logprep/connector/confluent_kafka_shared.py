@@ -9,10 +9,6 @@ class UnknownOptionError(ConfluentKafkaError):
     """Raise if an invalid option has been set in the ConfluentKafka configuration."""
 
 
-class InvalidMessageError(ConfluentKafkaError):
-    """Raise if an invalid message has been received by ConfluentKafka."""
-
-
 class ConfluentKafkaFactory:
     """Create ConfluentKafka connectors for logprep and input/output communication."""
 
