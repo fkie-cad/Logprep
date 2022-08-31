@@ -38,8 +38,6 @@ class DummyInput(Input):
 
         document = self._documents.pop(0)
 
-        if isinstance(document, BaseException):
-            raise document
         if (document.__class__ == type) and issubclass(document, BaseException):
             raise document
         return document

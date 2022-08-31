@@ -1,7 +1,7 @@
 """This module contains a dummy input that can be used for testing purposes."""
 
 
-from logprep.input.input import Input, SourceDisconnectedError
+from logprep.input.input import CriticalInputError, Input, SourceDisconnectedError
 from logprep.util.json_handling import parse_json
 
 
@@ -39,10 +39,8 @@ class JsonInput(Input):
 
         document = self._documents.pop(0)
 
-        if isinstance(document, BaseException):
-            raise document
-        if (document.__class__ == type) and issubclass(document, BaseException):
-            raise document
+        if not isinstance(document, dict):
+            raise CriticalInputError("not a dict", document)
         return document
 
     def shut_down(self):
