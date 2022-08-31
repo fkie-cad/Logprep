@@ -27,7 +27,7 @@ from logprep.connector.confluent_kafka.output import (
 )
 from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
-from logprep.connector.jsonl.output import WritingOutput
+from logprep.connector.jsonl.output import JsonlOutput
 
 
 class TestConnectorFactory:
@@ -88,7 +88,7 @@ class TestConnectorFactoryWriter:
         jsonl_input, writing_output = ConnectorFactory.create(self.configuration)
 
         assert isinstance(jsonl_input, JsonlInput)
-        assert isinstance(writing_output, WritingOutput)
+        assert isinstance(writing_output, JsonlOutput)
 
         assert jsonl_input._documents == [{"foo": "bar"}]
 
@@ -112,7 +112,7 @@ class TestConnectorFactoryWriterJsonInput:
         json_input, writing_output = ConnectorFactory.create(self.configuration)
 
         assert isinstance(json_input, JsonInput)
-        assert isinstance(writing_output, WritingOutput)
+        assert isinstance(writing_output, JsonlOutput)
 
         assert json_input._documents == [{"foo": "bar"}]
 

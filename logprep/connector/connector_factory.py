@@ -16,7 +16,7 @@ from logprep.connector.confluent_kafka.input import (
     ConfluentKafkaInputFactory,
 )
 from logprep.connector.dummy.output import DummyOutput
-from logprep.connector.jsonl.output import WritingOutput
+from logprep.connector.jsonl.output import JsonlOutput
 from logprep.connector.elasticsearch.output import (
     ElasticsearchOutput,
     ElasticsearchOutputFactory,
@@ -77,16 +77,16 @@ class ConnectorFactory:
         return DummyInput(config["input"]), DummyOutput(output_exceptions)
 
     @staticmethod
-    def _create_writing_connector(config: dict) -> Tuple[JsonlInput, WritingOutput]:
-        return JsonlInput(config["input_path"]), WritingOutput(
+    def _create_writing_connector(config: dict) -> Tuple[JsonlInput, JsonlOutput]:
+        return JsonlInput(config["input_path"]), JsonlOutput(
             config["output_path"],
             config.get("output_path_custom", None),
             config.get("output_path_errors", None),
         )
 
     @staticmethod
-    def _create_writing_json_input_connector(config: dict) -> Tuple[JsonInput, WritingOutput]:
-        return JsonInput(config["input_path"]), WritingOutput(
+    def _create_writing_json_input_connector(config: dict) -> Tuple[JsonInput, JsonlOutput]:
+        return JsonInput(config["input_path"]), JsonlOutput(
             config["output_path"],
             config.get("output_path_custom", None),
             config.get("output_path_errors", None),
