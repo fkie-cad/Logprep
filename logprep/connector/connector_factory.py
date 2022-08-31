@@ -10,7 +10,7 @@ from logprep.input.input import Input
 from logprep.output.output import Output
 from logprep.connector.dummy.input import DummyInput
 from logprep.input.jsonl_input import JsonlInput
-from logprep.input.json_input import JsonInput
+from logprep.connector.json.input import JsonInput
 from logprep.connector.confluent_kafka.input import (
     ConfluentKafkaInput,
     ConfluentKafkaInputFactory,
