@@ -8,7 +8,7 @@ aiohttp==3.8.1
     # via geoip2
 aiosignal==1.2.0
     # via aiohttp
-arrow==1.2.1
+arrow==1.2.2
     # via -r requirements.in
 async-timeout==4.0.2
     # via aiohttp
@@ -19,14 +19,18 @@ attrs==21.4.0
 backports.cached-property==1.0.1 ; python_version < "3.8"
     # via -r requirements.in
 certifi==2021.10.8
-    # via requests
-charset-normalizer==2.0.10
+    # via
+    #   elasticsearch
+    #   requests
+charset-normalizer==2.0.11
     # via
     #   aiohttp
     #   requests
 colorama==0.4.4
     # via -r requirements.in
 confluent-kafka==1.8.2
+    # via -r requirements.in
+elasticsearch==7.17.0
     # via -r requirements.in
 filelock==3.4.1
     # via
@@ -72,7 +76,7 @@ prometheus-client==0.13.1
     # via -r requirements.in
 protobuf==3.19.4
     # via mysql-connector-python
-pycryptodome==3.13.0
+pycryptodome==3.14.0
     # via -r requirements.in
 pygrok==1.0.0
     # via -r requirements.in
@@ -117,6 +121,7 @@ urlextract==1.5.0
     # via -r requirements.in
 urllib3==1.26.8
     # via
+    #   elasticsearch
     #   geoip2
     #   requests
 yarl==1.7.2

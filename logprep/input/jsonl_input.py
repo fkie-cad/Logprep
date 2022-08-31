@@ -1,9 +1,8 @@
 """This module contains a dummy input that can be used for testing purposes."""
 
-from typing import List
-import json
 
 from logprep.input.input import Input, SourceDisconnectedError
+from logprep.util.json_handling import parse_jsonl
 
 
 class JsonlInput(Input):
@@ -21,7 +20,7 @@ class JsonlInput(Input):
     """
 
     def __init__(self, documents_path: str):
-        self._documents = self._parse_jsonl(documents_path)
+        self._documents = parse_jsonl(documents_path)
 
         self.last_timeout = None
         self.setup_called_count = 0
@@ -48,13 +47,3 @@ class JsonlInput(Input):
 
     def shut_down(self):
         self.shut_down_called_count += 1
-
-    @staticmethod
-    def _parse_jsonl(jsonl_path: str) -> List[dict]:
-        parsed_events = []
-        with open(jsonl_path) as jsonl_file:
-            for json_string in jsonl_file.readlines():
-                if json_string.strip() != "":
-                    event = json.loads(json_string)
-                    parsed_events.append(event)
-        return parsed_events

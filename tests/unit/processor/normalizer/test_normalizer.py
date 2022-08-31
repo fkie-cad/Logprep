@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=too-many-lines
+# pylint: disable=line-too-long
 import calendar
 import copy
 import json
@@ -109,7 +110,7 @@ class TestNormalizer(BaseProcessorTestCase):
             }
         }
         self.object.process(document)
-        assert "test1" not in document.get("test_normalized", dict())
+        assert "test1" not in document.get("test_normalized", {})
 
     def test_add_field_without_conflicts(self):
         event = {"host": {"ip": "127.0.0.1"}, "client": {"port": 22222}}
@@ -526,6 +527,103 @@ class TestNormalizer(BaseProcessorTestCase):
         assert event.get("port") == 1234
         assert event.get("some")
         assert event["some"].get("ip") == "123.123.123.123"
+
+    def test_normalization_from_grok_writes_grok_failure_if_no_grok_pattern_matches_and_if_configured(
+        self,
+    ):
+        event = {"grok_me": "123.123.123.123 1234"}
+
+        rule = {
+            "filter": "grok_me",
+            "normalize": {
+                "grok_me": {
+                    "grok": [
+                        "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
+                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                    ],
+                    "failure_target_field": "grok_failure",
+                }
+            },
+        }
+
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event.get("some_ip_1") is None
+        assert event.get("port_1") is None
+        assert event.get("some_ip_2") is None
+        assert event.get("port_2") is None
+        assert event.get("grok_failure") == {"grok_me": "123.123.123.123 1234"}
+
+    def test_normalization_from_grok_writes_grok_failure_for_nested_fields(
+        self,
+    ):
+        event = {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234"},
+            }
+        }
+
+        rule = {
+            "filter": "winlog.event_id: 123456789",
+            "normalize": {
+                "winlog.event_data.normalize me!": {
+                    "grok": [
+                        "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
+                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                    ],
+                    "failure_target_field": "grok_failure",
+                }
+            },
+        }
+
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event.get("some_ip_1") is None
+        assert event.get("port_1") is None
+        assert event.get("some_ip_2") is None
+        assert event.get("port_2") is None
+        assert event.get("grok_failure") == {
+            "winlog>event_data>normalize me!": "123.123.123.123 1234"
+        }
+
+    def test_normalization_from_grok_writes_grok_failure_to_dotted_subfield(
+        self,
+    ):
+        event = {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234"},
+            }
+        }
+
+        rule = {
+            "filter": "winlog.event_id: 123456789",
+            "normalize": {
+                "winlog.event_data.normalize me!": {
+                    "grok": [
+                        "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
+                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                    ],
+                    "failure_target_field": "winlog.event_data.grok_failure",
+                }
+            },
+        }
+
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event.get("some_ip_1") is None
+        assert event.get("port_1") is None
+        assert event.get("some_ip_2") is None
+        assert event.get("port_2") is None
+        assert event.get("winlog", {}).get("event_data", {}).get("grok_failure") == {
+            "winlog>event_data>normalize me!": "123.123.123.123 1234"
+        }
 
     def test_normalization_from_grok_onto_existing(self):
         event = {
@@ -1014,7 +1112,6 @@ class TestNormalizer(BaseProcessorTestCase):
         assert event == expected
 
     def test_normalization_with_grok_pattern_count(self):
-        config = copy.deepcopy(self.CONFIG)
         temp_path = tempfile.mkdtemp()
         config = deepcopy(self.CONFIG)
 

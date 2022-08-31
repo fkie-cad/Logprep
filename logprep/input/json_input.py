@@ -1,9 +1,8 @@
 """This module contains a dummy input that can be used for testing purposes."""
 
-from typing import List, Union
-import json
 
 from logprep.input.input import Input, SourceDisconnectedError
+from logprep.util.json_handling import parse_json
 
 
 class JsonInput(Input):
@@ -21,7 +20,7 @@ class JsonInput(Input):
     """
 
     def __init__(self, documents_path: str):
-        self._documents = self._parse_json(documents_path)
+        self._documents = parse_json(documents_path)
 
         self.last_timeout = None
         self.setup_called_count = 0
@@ -48,8 +47,3 @@ class JsonInput(Input):
 
     def shut_down(self):
         self.shut_down_called_count += 1
-
-    @staticmethod
-    def _parse_json(json_path: str) -> List[Union[dict, type, BaseException]]:
-        with open(json_path, "r") as json_file:
-            return json.load(json_file)

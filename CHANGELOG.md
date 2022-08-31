@@ -9,9 +9,35 @@ under the subkey `preprocessing`
 
 ### Features
 
+* Add an elasticsearch output connector that can be used to write directly into elasticsearch.
+* Add a connector that combines a confluentkafka input and an elasticsearch output.
+
+### Improvements
+* Internally separate confluentkafka connector into an input and output connector,
+so that it is possible to combine those with other inputs and outputs.
+
+### Bugfixes
+### Breaking
+
+## v3.3.0
+
+### Features
+
+* Normalizer can now write grok failure fields to an event when no grok pattern matches and if 
+`failure_target_field` is specified in the configuration
+
+### Bugfixes
+
+* Fix config validation of the preprocessor `version_info_target_field`.
+
+## v3.2.0
+
+### Features
+
 * Add feature to automatically add version information to all events, configured via the 
 `connector > consumer > preprocessing` configuration
 * Expose logprep and config version in metric targets
+* Dry-Run accepts now a single json without brackets for input type `json` 
 
 ### Improvements
 
@@ -30,8 +56,6 @@ only one connection per Logprep instance active when accessing the database.
 * Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event, 
 leading to duplication in the output of the processor. Now the events are cleared such that only
 the result of the current event is returned.
-
-### Breaking
 
 ## v3.1.0
 

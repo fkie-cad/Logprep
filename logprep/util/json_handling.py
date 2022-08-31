@@ -75,7 +75,8 @@ def parse_jsonl(jsonl_path):
 
 def parse_json(json_path):
     """
-    Reads and parses one json file
+    Reads and parses one json file and return it as list, containing either only one json or
+    multiple jsons depending on the file.
 
     Parameters
     ----------
@@ -84,11 +85,14 @@ def parse_json(json_path):
 
     Returns
     -------
-    dict
-        The dictionary representing the json.
+    list
+        A list of dictionaries representing the json/jsons.
     """
     with open(json_path, "r", encoding="utf8") as json_file:
-        return json.load(json_file)
+        parsed_json = json.load(json_file)
+        if isinstance(parsed_json, dict):
+            parsed_json = [parsed_json]
+        return parsed_json
 
 
 def is_json(path):

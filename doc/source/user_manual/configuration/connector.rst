@@ -5,8 +5,12 @@ Connectors
 Connectors are used to connect the pipeline with different log sources and log sinks on the system,
 allowing Logprep to read and write log messages.
 It is possible to configure different type of connectors via the `type` field.
-Currently, it is assumed that Kafka is being used, which uses the `confluentkafka` connector.
-Thus, `confluentkafka` will be described in greater detail below.
+Currently, there exist two connectors that are meant to be used in production:
+
+- The `confluentkafka` connector, which combines a Kafka input and a Kafka output.
+- The `confluentkafka_es` connector, which combines a Kafka input and an Elasticsearch output.
+
+Both will be described below in greater detail.
 The `dummy`, `writer` and `writer_json_input` connectors are only utilized in testing.
 
 
@@ -24,12 +28,16 @@ type
 Connectors are chosen by the value `confluentkafka`.
 The options for the `confluentkafka` connector will be described below.
 
+.. _cc-bootstrapservers:
+
 bootstrapservers
 ----------------
 
 This field contains a list of Kafka servers (also known as Kafka brokers or Kafka nodes) that can be contacted by Logprep to initiate the connection to a Kafka cluster.
 The list does not have to be complete, since the Kafka server contains contact information for other Kafka nodes after the initial connection.
 It is advised to list at least two Kafka servers.
+
+.. _cc-consumer:
 
 consumer
 --------
@@ -38,10 +46,10 @@ This object configures how log messages are being fetched from Kafka.
 
 - **topic**: The topic from which new log messages will be fetched.
 - **group**: Corresponds to the Kafka configuration parameter `group.id <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. The individual Logprep processes have the same *group.id* and thus belong to the same consumer group. Thereby partitions of topics can be assigned to individual consumers.
-- **auto_commit**: Corresponds to the Kafka configuration parameter `enable.auto.commit <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. Enabling this parameter causes offsets being sent automatically and periodically. The values can be either *true/false* or *on/off*. Currently, this has to be set to *true*, since independent offset handling is not implemented in Logprep and it would not make sense to activate it anyways. The default setting of librdkafka is *true*.
+- **auto_commit**: Corresponds to the Kafka configuration parameter `enable.auto.commit <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. Enabling this parameter causes offsets being sent automatically and periodically. The values can be either *true/false* or *on/off*. Currently, this has to be set to *true*, since independent committing is not implemented in Logprep and it would not make sense to activate it anyways. The default setting of librdkafka is *true*.
 - **session_timeout**: Corresponds to the Kafka configuration parameter `session.timeout.ms <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This defines the maximum duration a kafka consumer can be without contact to the Kafka broker. The kafka consumer must regularly send a heartbeat to the group coordinator, otherwise the consumer will be considered as being unavailable. In this case the group coordinator assigns the partition to be processed to another computer while re-balancing. The default of librdkafka is `10000` ms (10 s).
 - **offset_reset_policy**: Corresponds to the Kafka configuration parameter `auto.offset.reset <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This parameter influences from which offset the Kafka consumer starts to fetch log messages from an assigned partition. The values *latest/earliest/none* are possible. With a value of *none* Logprep must manage the offset by itself. However, this is not supported by Logprep, since it is not relevant for our use-case. If the value is set to *latest/largest*, the Kafka consumer starts by reading the newest log messages of a partition if a valid offset is missing. Thus, old log messages from that partition will not be processed. This setting can therefore lead to a loss of log messages. A value of *earliest/smallest* causes the Kafka consumer to read all log messages from a partition, which can lead to a duplication of log messages. Currently, the deprecated value *smallest* is used, which should be later changed to *earliest*. The default value of librdkafka is *largest*.
-- **enable_auto_offset_store**: Corresponds to the Kafka configuration parameter `enable.auto.offset.store <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This parameter defines if the offset is automatically updated in memory. Disabling this allows Logprep to update the offset more accurately. The default value in librdkafka it is *true*.
+- **enable_auto_offset_store**: Corresponds to the Kafka configuration parameter `enable.auto.offset.store <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This parameter defines if the offset is automatically updated in memory by librdkafka. Disabling this allows Logprep to update the offset itself more accurately. It is disabled per default in Logprep. The default value in librdkafka it is *true*.
 
 preprocessing
 ^^^^^^^^^^^^^
@@ -136,6 +144,8 @@ In this object the configuration for storing and processing log messages in kafk
 - **flush_timeout**: Does not correspond to any Kafka producer configuration parameter. This setting defines after how many seconds an overflown buffer (Exception BufferError) must be flushed at the latest. After the time is over processing will be resumed even if the buffer was not flushed completely. This could be eventually optimized. *flush_timeout* is a parameter for the confluent Kafka method `flush() <https://docs.confluent.io/current/clients/confluent-kafka-python/index.html#confluent_kafka.Producer.flush>`_. See `additional documentation <https://docs.confluent.io/current/clients/python.html#synchronous-writes>`_.
 - **send_timeout**: Does not correspond to any Kafka producer configuration parameter. The maximum waiting time in seconds Logprep should wait blocking. *send_timeout* is a parameter for the method `poll() <https://docs.confluent.io/current/clients/confluent-kafka-python/index.html#confluent_kafka.Producer.poll>`_.
 
+.. _cc-ssl:
+
 ssl
 ---
 
@@ -185,3 +195,88 @@ Example
         certfile:
         keyfile:
         password:
+
+Confluentkafka Elasticsearch
+============================
+
+This connector gets input data from Kafka and sends it directly to Elasticsearch.
+The target indices for Elsticsearch have to be set directly in Logprep.
+
+.. important::
+    Target indices are determined by the `_index` field in each document.
+    However, a default index and an error index have to be set in the config.
+
+    Adding `%{YYYY-MM-DD}` to an index name replaces this part of the index by the current date in
+    the format `YYYY-MM-DD`. Valid formatting tokens can be found in the `arrow documentation <https://arrow.readthedocs.io/en/latest/#supported-tokens>`__.
+
+This connector has the same Kafka configuration parameters as `Confluentkafka`_, except that it lacks `producer` configuration parameter.
+Additionally, it has configuration parameters for Elasticsearch.
+
+The Kafka configuration won't be repeated in detail, instead the Elasticseach configuration will be described.
+
+type
+----
+
+Connectors are chosen by the value `confluentkafka_es`.
+The options for the `confluentkafka_es` connector will be described below.
+
+bootstrapservers
+----------------
+
+See :ref:`bootstrapservers <cc-bootstrapservers>`.
+
+consumer
+--------
+
+See :ref:`consumer <cc-consumer>`.
+
+ssl
+---
+
+See :ref:`ssl <cc-ssl>`.
+
+elasticsearch
+-------------
+
+This section contains the connection settings for Elasticsearch, the default index, the error index
+and a buffer size.
+Documents are sent in batches to Elasticsearch to reduce the amount of times connections are created.
+
+- **hosts** Addresses of Elasticsearch servers. Can be a list of hosts or one single host in the format `HOST:PORT` without specifying a schema. The schema is set automatically to `https` if a certificate is being used.
+- **user** User used for authentication (optional).
+- **secret** Secret used for authentication (optional).
+- **cert** SSL certificate to use (optional).
+- **default_index** Default index to write to if no index was set in the document or the document could not be indexed. The document will be transformed into a string to prevent rejections by the default index.
+- **error_index** Index to write documents to that could not be processed.
+- **message_backlog** Amount of documents to store before sending them to Elasticsearch.
+- **timeout** Timeout for Elasticsearch connection  (default: 500ms).
+- **max_retries** Maximum number of retries for documents rejected with code `429` (default: 0). Increases backoff time by 2 seconds per try, but never exceeds 600 seconds.
+
+Example
+-------
+
+..  code-block:: yaml
+    :linenos:
+
+    connector:
+      type: confluentkafka_es
+      bootstrapservers:
+        - 127.0.0.1:9092
+      consumer:
+        topic: consumer
+        group: cgroup
+        auto_commit: on
+        session_timeout: 6000
+        offset_reset_policy: smallest
+      ssl:
+        cafile:
+        certfile:
+        keyfile:
+        password:
+      elasticsearch:
+        hosts:
+          - 127.0.0.1:9200
+        default_index: default_index
+        error_index: error_index
+        message_backlog: 10000
+        timeout: 10000

@@ -50,7 +50,6 @@ class IPAlerter:
                             if "/" in ip_string
                         )
                     )
-                    print(self._alert_network)
 
     def _filter_non_expired_alert_ips(self, full_alert_ip_list: dict):
         for alert_ip, expiration_date_str in full_alert_ip_list.items():
