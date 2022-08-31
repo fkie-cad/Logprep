@@ -20,7 +20,7 @@ def fixture_specific_rule_definition():
     }
 
 
-class TestDeleteRule:
+class TestDeleterRule:
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
         [

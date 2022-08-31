@@ -3,7 +3,7 @@ import pytest
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
-class TestDelete(BaseProcessorTestCase):
+class TestDeleter(BaseProcessorTestCase):
 
     CONFIG = {
         "type": "deleter",
