@@ -766,7 +766,9 @@ class TestPipeline(ConfigurationForTests):
         assert "arrival_time" in test_event
         assert "delta_time" not in test_event
 
-    def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_and_timestamp_but_not_target_timestamp(self, _):
+    def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_and_timestamp_but_not_target_timestamp(
+        self, _
+    ):
         preprocessing_config = {
             "add_timestamp_delta": "delta_time",
         }
