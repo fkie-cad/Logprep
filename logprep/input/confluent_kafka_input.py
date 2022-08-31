@@ -111,6 +111,8 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             "preprocessing": {
                 "version_info_target_field": "",
                 "hmac": {"target": "", "key": "", "output_field": ""},
+                "add_timestamp": "",
+                "add_timestamp_delta": "",
             },
         }
 
