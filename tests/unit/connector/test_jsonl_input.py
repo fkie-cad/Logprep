@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 from logprep.input.input import CriticalInputError
-from logprep.input.jsonl_input import JsonlInput
+from logprep.connector.jsonl.input import JsonlInput
 
 
 class TestJsonlInput:

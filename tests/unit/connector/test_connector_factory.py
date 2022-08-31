@@ -21,7 +21,7 @@ from logprep.connector.confluent_kafka.input import (
 )
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.json.input import JsonInput
-from logprep.input.jsonl_input import JsonlInput
+from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.confluent_kafka.output import (
     ConfluentKafkaOutput,
 )
