@@ -25,7 +25,7 @@ from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.confluent_kafka.output import (
     ConfluentKafkaOutput,
 )
-from logprep.output.dummy_output import DummyOutput
+from logprep.connector.dummy.output import DummyOutput
 from logprep.output.es_output import ElasticsearchOutput
 from logprep.output.writing_output import WritingOutput
 
