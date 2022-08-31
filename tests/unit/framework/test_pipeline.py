@@ -544,13 +544,13 @@ class TestPipeline(ConfigurationForTests):
         assert test_event == {"any": "content", "version_info": "something random"}
 
     def test_pipeline_preprocessing_adds_timestamp_if_configured(self, _):
-        preprocessing_config = {"logprep_arrival_timestamp_target_field": "arrival_time"}
+        preprocessing_config = {"add_timestamp": "arrival_time"}
         self.pipeline._logprep_config["connector"] = {
             "consumer": {"preprocessing": preprocessing_config}
         }
         test_event = {"any": "content"}
         self.pipeline._preprocess_event(test_event)
-        target_field = preprocessing_config.get("logprep_arrival_timestamp_target_field")
+        target_field = preprocessing_config.get("add_timestamp")
         assert target_field in test_event
         assert isinstance(test_event[target_field], str)
         assert (arrow.now() - arrow.get(test_event[target_field])).total_seconds() < 0.1
@@ -567,21 +567,21 @@ class TestPipeline(ConfigurationForTests):
     def test_pipeline_preprocessing_does_not_add_timestamp_if_target_field_exists_already(self, _):
         preprocessing_config = {"version_info_target_field": "version_info"}
         self.pipeline._connector_config = {"consumer": {"preprocessing": preprocessing_config}}
-        test_event = {"any": "content", "logprep_arrival_timestamp_target_field": "something random"}
+        test_event = {"any": "content", "add_timestamp": "something random"}
         self.pipeline._preprocess_event(test_event)
-        assert test_event == {"any": "content", "logprep_arrival_timestamp_target_field": "something random"}
+        assert test_event == {"any": "content", "add_timestamp": "something random"}
 
     def test_pipeline_preprocessing_adds_timestamp_delta_if_configured_and_timestamp(self, _):
         preprocessing_config = {
-            "logprep_arrival_timestamp_target_field": "arrival_time",
-            "logprep_arrival_delta_target_field": "delta_time",
+            "add_timestamp": "arrival_time",
+            "add_timestamp_delta": "delta_time",
         }
         self.pipeline._logprep_config["connector"] = {
             "consumer": {"preprocessing": preprocessing_config}
         }
         test_event = {"any": "content", "@timestamp": "1999-09-09T09:09:09.448319+02:00"}
         self.pipeline._preprocess_event(test_event)
-        target_field = preprocessing_config.get("logprep_arrival_delta_target_field")
+        target_field = preprocessing_config.get("add_timestamp_delta")
         assert target_field in test_event
         assert isinstance(test_event[target_field], float)
 
@@ -589,8 +589,8 @@ class TestPipeline(ConfigurationForTests):
         self, _
     ):
         preprocessing_config = {
-            "logprep_arrival_timestamp_target_field": "arrival_time",
-            "logprep_arrival_delta_target_field": "delta_time",
+            "add_timestamp": "arrival_time",
+            "add_timestamp_delta": "delta_time",
         }
         self.pipeline._logprep_config["connector"] = {
             "consumer": {"preprocessing": preprocessing_config}
@@ -603,7 +603,7 @@ class TestPipeline(ConfigurationForTests):
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_and_not_timestamp(
         self, _
     ):
-        preprocessing_config = {"logprep_arrival_timestamp_target_field": "arrival_time"}
+        preprocessing_config = {"add_timestamp": "arrival_time"}
         self.pipeline._logprep_config["connector"] = {
             "consumer": {"preprocessing": preprocessing_config}
         }
@@ -614,7 +614,7 @@ class TestPipeline(ConfigurationForTests):
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_and_timestamp_but_not_target_timestamp(self, _):
         preprocessing_config = {
-            "logprep_arrival_delta_target_field": "delta_time",
+            "add_timestamp_delta": "delta_time",
         }
         self.pipeline._logprep_config["connector"] = {
             "consumer": {"preprocessing": preprocessing_config}

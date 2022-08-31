@@ -259,19 +259,19 @@ class Pipeline:
         preprocessing_config = consumer_config.get("preprocessing", {})
         if preprocessing_config.get("version_info_target_field"):
             self._add_version_information_to_event(event, preprocessing_config)
-        if preprocessing_config.get("logprep_arrival_timestamp_target_field"):
+        if preprocessing_config.get("add_timestamp"):
             self._add_arrival_time_information_to_event(event, preprocessing_config)
 
     def _add_arrival_time_information_to_event(self, event: dict, preprocessing_config: dict):
         now = arrow.now()
-        add_field_to(event, preprocessing_config["logprep_arrival_timestamp_target_field"], now.isoformat())
+        add_field_to(event, preprocessing_config["add_timestamp"], now.isoformat())
 
-        logprep_arrival_delta_target_field = preprocessing_config.get("logprep_arrival_delta_target_field")
-        if logprep_arrival_delta_target_field and event.get("@timestamp"):
+        add_timestamp_delta = preprocessing_config.get("add_timestamp_delta")
+        if add_timestamp_delta and event.get("@timestamp"):
             delta_time_sec = (now - arrow.get(event["@timestamp"])).total_seconds()
             add_field_to(
                 event,
-                logprep_arrival_delta_target_field,
+                add_timestamp_delta,
                 delta_time_sec,
             )
 

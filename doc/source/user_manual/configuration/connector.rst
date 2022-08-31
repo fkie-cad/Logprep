@@ -85,27 +85,27 @@ version information is added to the event.
 The following json shows a snippet of an event with the added version information.
 The configuration was set to :code:`version_info_target_field: version_info`
 
-**logprep_arrival_timestamp_target_field**
+**add_timestamp**
 
 It is possible to automatically add the arrival time in Logprep to every incoming log message.
 To enable adding arrival times to each event the keyword
-:code:`logprep_arrival_timestamp_target_field` has to be set under the field :code:`preprocessing`.
+:code:`add_timestamp` has to be set under the field :code:`preprocessing`.
 It defines the name of the dotted field under which the arrival times should be given.
 The example at the bottom of this page includes this configuration.
-If the field :code:`preprocessing` and :code:`logprep_arrival_timestamp_target_field` are not
+If the field :code:`preprocessing` and :code:`add_timestamp` are not
 present then no arrival timestamp is added to the event.
 
-**logprep_arrival_delta_target_field**
+**add_timestamp_delta**
 
 It is possible to automatically calculate the difference between the arrival time of logs in
 Logprep and their generation timestamp, which is then added to every incoming log message.
-To enable adding delta times to each event the keyword :code:`logprep_arrival_delta_target_field`
+To enable adding delta times to each event the keyword :code:`add_timestamp_delta`
 has to be set under the field :code:`preprocessing`.
-Furthermore, :code:`logprep_arrival_delta_target_field` has to be set (see above).
+Furthermore, :code:`add_timestamp_delta` has to be set (see above).
 It defines the name of the dotted field under which the delta times should be given.
 The example at the bottom of this page includes this configuration.
-If the field :code:`preprocessing`, :code:`logprep_arrival_timestamp_target_field` and
-:code:`logprep_arrival_delta_target_field` are not present then no arrival timestamp is added to the
+If the field :code:`preprocessing`, :code:`add_timestamp` and
+:code:`add_timestamp_delta` are not present then no arrival timestamp is added to the
 event.
 
 ..  code-block:: json
@@ -169,8 +169,8 @@ Example
             target: <RAW_MSG>
             key: secret-key
             output_field: Hmac
-          logprep_arrival_timestamp_target_field: logprep_arrival.timestamp
-          logprep_arrival_delta_target_field: logprep_arrival.delta
+          add_timestamp: logprep_arrival.timestamp
+          add_timestamp_delta: logprep_arrival.delta
       producer:
         topic: producer
         error_topic: producer_error

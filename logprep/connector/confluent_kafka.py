@@ -145,8 +145,8 @@ class ConfluentKafka(Input, Output):
                 "preprocessing": {
                     "version_info_target_field": "",
                     "hmac": {"target": "", "key": "", "output_field": ""},
-                    "logprep_arrival_timestamp_target_field": "",
-                    "logprep_arrival_delta_target_field": ""
+                    "add_timestamp": "",
+                    "add_timestamp_delta": ""
                 },
                 "hmac": {"target": "", "key": "", "output_field": ""},
             },
