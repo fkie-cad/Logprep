@@ -15,7 +15,7 @@ from logprep.connector.connector_factory_error import InvalidConfigurationError
 from logprep.input.input import Input
 from logprep.output.output import Output, FatalOutputError
 
-logging.getLogger('opensearch').setLevel(logging.WARNING)
+logging.getLogger("opensearch").setLevel(logging.WARNING)
 
 
 class OpenSearchOutputFactory:
