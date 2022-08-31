@@ -9,7 +9,7 @@ from os import path, makedirs
 from os.path import join
 
 from logprep.connector.confluent_kafka_input import ConfluentKafkaInputFactory
-from logprep.output.confluent_kafka_output import ConfluentKafkaOutputFactory
+from logprep.connector.confluent_kafka_output import ConfluentKafkaOutputFactory
 from logprep.framework.pipeline import Pipeline, SharedCounter
 from logprep.util.helper import recursive_compare, remove_file_if_exists
 from logprep.util.json_handling import parse_jsonl

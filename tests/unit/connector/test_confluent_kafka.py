@@ -18,7 +18,7 @@ from zlib import decompress
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
 from logprep.connector.confluent_kafka_input import ConfluentKafkaInput, ConfluentKafkaInputFactory
-from logprep.output.confluent_kafka_output import (
+from logprep.connector.confluent_kafka_output import (
     ConfluentKafkaOutput,
     UnknownOptionError,
     ConfluentKafkaOutputFactory,
@@ -859,7 +859,7 @@ class TestConfluentKafka:
         kafka.shut_down()
         assert kafka._consumer is None
 
-    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    @mock.patch("logprep.connector.confluent_kafka_output.Producer")
     def test_store_custom_calls_producer_flush_on_buffererror(self, mock_producer):
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
         kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
@@ -870,7 +870,7 @@ class TestConfluentKafka:
         kafka.store_custom({"message": "does not matter"}, "doesnotcare")
         kafka._producer.flush.assert_called()
 
-    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    @mock.patch("logprep.connector.confluent_kafka_output.Producer")
     def test_store_failed_calls_producer_flush_on_buffererror(self, mock_producer):
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
         kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
@@ -883,7 +883,7 @@ class TestConfluentKafka:
         )
         kafka._producer.flush.assert_called()
 
-    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    @mock.patch("logprep.connector.confluent_kafka_output.Producer")
     def test_shut_down_calls_producer_flush(self, mock_producer):
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
         kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
@@ -891,7 +891,7 @@ class TestConfluentKafka:
         kafka.shut_down()
         mock_producer.flush.assert_called()
 
-    @mock.patch("logprep.output.confluent_kafka_output.Producer")
+    @mock.patch("logprep.connector.confluent_kafka_output.Producer")
     def test_shut_down_sets_producer_to_none(self, mock_producer):
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
         kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
