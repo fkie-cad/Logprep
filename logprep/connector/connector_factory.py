@@ -17,7 +17,10 @@ from logprep.connector.confluent_kafka.input import (
 )
 from logprep.connector.dummy.output import DummyOutput
 from logprep.output.writing_output import WritingOutput
-from logprep.output.es_output import ElasticsearchOutput, ElasticsearchOutputFactory
+from logprep.connector.elasticsearch.output import (
+    ElasticsearchOutput,
+    ElasticsearchOutputFactory,
+)
 from logprep.connector.confluent_kafka.output import (
     ConfluentKafkaOutput,
     ConfluentKafkaOutputFactory,
