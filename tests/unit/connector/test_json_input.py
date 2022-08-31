@@ -4,7 +4,7 @@ import json
 from unittest import mock
 
 import pytest
-from logprep.input.input import CriticalInputError
+from logprep.abc.input import CriticalInputError
 from logprep.connector.json.input import JsonInput
 
 

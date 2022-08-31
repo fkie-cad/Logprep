@@ -1,7 +1,7 @@
 """This module contains a dummy input that can be used for testing purposes."""
 
 
-from logprep.input.input import CriticalInputError, Input, SourceDisconnectedError
+from logprep.abc.input import CriticalInputError, Input, SourceDisconnectedError
 from logprep.util.json_handling import parse_json
 
 

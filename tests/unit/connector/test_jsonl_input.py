@@ -5,7 +5,7 @@ from typing import Union
 from unittest import mock
 
 import pytest
-from logprep.input.input import CriticalInputError
+from logprep.abc.input import CriticalInputError
 from logprep.connector.jsonl.input import JsonlInput
 
 

@@ -3,7 +3,7 @@
 from pytest import raises
 
 from logprep.connector.dummy.input import DummyInput
-from logprep.input.input import SourceDisconnectedError
+from logprep.abc.input import SourceDisconnectedError
 
 
 class DummyError(BaseException):

@@ -19,7 +19,7 @@ from logprep.framework.pipeline import (
     SharedCounter,
 )
 from logprep.connector.dummy.input import DummyInput
-from logprep.input.input import (
+from logprep.abc.input import (
     SourceDisconnectedError,
     FatalInputError,
     WarningInputError,

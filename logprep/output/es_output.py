@@ -9,7 +9,7 @@ import arrow
 import elasticsearch
 from elasticsearch import helpers
 from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.input.input import Input
+from logprep.abc.input import Input
 from logprep.output.output import FatalOutputError, Output
 
 

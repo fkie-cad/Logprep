@@ -17,7 +17,7 @@ from attr import define, Factory
 
 from logprep._version import get_versions
 from logprep.connector.connector_factory import ConnectorFactory
-from logprep.input.input import (
+from logprep.abc.input import (
     CriticalInputError,
     FatalInputError,
     SourceDisconnectedError,

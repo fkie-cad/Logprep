@@ -9,7 +9,7 @@ from socket import getfqdn
 from confluent_kafka import Producer
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.input.input import Input
+from logprep.abc.input import Input
 from logprep.connector.confluent_kafka.common import (
     ConfluentKafka,
     ConfluentKafkaFactory,

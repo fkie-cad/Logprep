@@ -1,7 +1,7 @@
 """This module contains a dummy input that can be used for testing purposes."""
 
 from typing import List, Union
-from logprep.input.input import Input, SourceDisconnectedError
+from logprep.abc.input import Input, SourceDisconnectedError
 
 
 class DummyInput(Input):
