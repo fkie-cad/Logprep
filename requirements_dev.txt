@@ -35,6 +35,7 @@ certifi==2021.10.8
     # via
     #   -r requirements.txt
     #   elasticsearch
+    #   opensearch-py
     #   requests
 charset-normalizer==2.0.11
     # via
@@ -62,7 +63,6 @@ frozenlist==1.2.0
 geoip2==4.5.0
     # via -r requirements.txt
 hyperscan==0.1.5 ; python_version >= "3.6" and python_version <= "3.8" and sys_platform == "linux" and platform_machine == "x86_64"
-hyperscan>=0.2.0; python_version >= '3.9' and sys_platform == 'linux' and platform_machine == 'x86_64'
     # via -r requirements.txt
 idna==3.3
     # via
@@ -104,6 +104,8 @@ multidict==5.2.0
 mysql-connector-python==8.0.28
     # via -r requirements.txt
 numpy==1.19.5
+    # via -r requirements.txt
+opensearch-py==2.0.0
     # via -r requirements.txt
 packaging==21.3
     # via pytest
@@ -156,6 +158,7 @@ requests==2.27.1
     # via
     #   -r requirements.txt
     #   geoip2
+    #   opensearch-py
     #   requests-file
     #   tldextract
 requests-file==1.5.1
@@ -208,6 +211,7 @@ urllib3==1.26.8
     #   -r requirements.txt
     #   elasticsearch
     #   geoip2
+    #   opensearch-py
     #   requests
 wrapt==1.13.3
     # via astroid
