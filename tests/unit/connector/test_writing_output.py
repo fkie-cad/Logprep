@@ -2,7 +2,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 from unittest import mock
-from logprep.output.writing_output import WritingOutput
+from logprep.connector.jsonl.output import WritingOutput
 
 
 @mock.patch("builtins.open")

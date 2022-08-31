@@ -27,7 +27,7 @@ from logprep.connector.confluent_kafka.output import (
 )
 from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
-from logprep.output.writing_output import WritingOutput
+from logprep.connector.jsonl.output import WritingOutput
 
 
 class TestConnectorFactory:
