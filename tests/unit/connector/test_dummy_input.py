@@ -2,7 +2,7 @@
 # pylint: disable=attribute-defined-outside-init
 from pytest import raises
 
-from logprep.input.dummy_input import DummyInput
+from logprep.connector.dummy.input import DummyInput
 from logprep.input.input import SourceDisconnectedError
 
 
