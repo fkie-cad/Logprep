@@ -10,7 +10,7 @@ from confluent_kafka import Producer
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
 from logprep.input.input import Input
-from logprep.connector.confluent_kafka_shared import (
+from logprep.connector.confluent_kafka.confluent_kafka_shared import (
     ConfluentKafka,
     ConfluentKafkaFactory,
     UnknownOptionError,
