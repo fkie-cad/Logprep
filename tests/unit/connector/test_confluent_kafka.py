@@ -17,7 +17,7 @@ from zlib import decompress
 
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.connector.confluent_kafka.confluent_kafka_input import (
+from logprep.connector.confluent_kafka.input import (
     ConfluentKafkaInput,
     ConfluentKafkaInputFactory,
 )
@@ -106,13 +106,13 @@ class TestConfluentKafkaFactory:
         kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         assert not all(kafka._config["ssl"][key] for key in kafka._config["ssl"])
 
-    @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_create_consume_calls_subscribe(self, _):
         kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         kafka._create_consumer()
         kafka._consumer.subscribe.assert_called()
 
-    @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_creates_consumer_if_consumer_is_none(self, mock_consumer):
         kafka = ConfluentKafkaInputFactory.create_from_configuration(self.config)
         assert kafka._consumer is None
@@ -845,7 +845,7 @@ class TestConfluentKafka:
         ):
             _ = kafka._set_connector_type_options(user_config, default_config)
 
-    @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_shut_down_calls_consumer_close(self, _):
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
         kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
@@ -854,7 +854,7 @@ class TestConfluentKafka:
         kafka.shut_down()
         kafka_consumer.close.assert_called()
 
-    @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_shut_down_sets_consumer_to_none(self, _):
         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
         kafka = ConfluentKafkaInputFactory.create_from_configuration(config)

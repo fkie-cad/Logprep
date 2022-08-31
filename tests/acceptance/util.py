@@ -8,7 +8,7 @@ from multiprocessing import Lock
 from os import path, makedirs
 from os.path import join
 
-from logprep.connector.confluent_kafka.confluent_kafka_input import (
+from logprep.connector.confluent_kafka.input import (
     ConfluentKafkaInputFactory,
 )
 from logprep.connector.confluent_kafka.confluent_kafka_output import (

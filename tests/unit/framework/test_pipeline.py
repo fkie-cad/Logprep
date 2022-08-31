@@ -542,7 +542,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._preprocess_event(test_event)
         assert test_event == {"any": "content", "version_info": "something random"}
 
-    @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_output.Producer")
     def test_pipeline_kafka_batch_finished_callback_is_called(self, _, __, ___):
         logprep_config = {
@@ -592,7 +592,7 @@ class TestPipeline(ConfigurationForTests):
         pipeline._retrieve_and_process_data()
         pipeline._input.batch_finished_callback.assert_called()
 
-    @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_output.Producer")
     def test_pipeline_kafka_batch_finished_callback_calls_store_offsets(self, _, __, ___):
         logprep_config = {
@@ -643,7 +643,7 @@ class TestPipeline(ConfigurationForTests):
         pipeline._retrieve_and_process_data()
         pipeline._input._consumer.store_offsets.assert_called()
 
-    @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_input.Consumer")
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     @mock.patch("logprep.connector.confluent_kafka.confluent_kafka_output.Producer")
     def test_pipeline_kafka_batch_finished_callback_calls_store_offsets_with_message(
         self, _, __, ___

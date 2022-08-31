@@ -16,7 +16,7 @@ from logprep.connector.connector_factory import (
     ConnectorFactory,
     UnknownConnectorTypeError,
 )
-from logprep.connector.confluent_kafka.confluent_kafka_input import (
+from logprep.connector.confluent_kafka.input import (
     ConfluentKafkaInput,
 )
 from logprep.input.dummy_input import DummyInput
