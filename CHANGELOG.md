@@ -5,7 +5,7 @@
 * Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
 under the subkey `preprocessing`
 
-* Removal of Deprecated Feature: `delete`processor was renamed to `deleter`
+* Removal of Deprecated Feature: `delete` processor was renamed to `deleter`
 
 ## Next Release
 
