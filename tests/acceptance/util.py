@@ -11,7 +11,7 @@ from os.path import join
 from logprep.connector.confluent_kafka.input import (
     ConfluentKafkaInputFactory,
 )
-from logprep.connector.confluent_kafka.confluent_kafka_output import (
+from logprep.connector.confluent_kafka.output import (
     ConfluentKafkaOutputFactory,
 )
 from logprep.framework.pipeline import Pipeline, SharedCounter
