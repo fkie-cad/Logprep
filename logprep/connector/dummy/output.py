@@ -2,7 +2,7 @@
 
 from typing import List, Type
 
-from logprep.output.output import Output
+from logprep.abc.output import Output
 
 
 class DummyOutput(Output):

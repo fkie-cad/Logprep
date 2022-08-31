@@ -17,8 +17,8 @@ import elasticsearch
 import elasticsearch.helpers
 
 
-from logprep.output.es_output import ElasticsearchOutput
-from logprep.output.output import CriticalOutputError, FatalOutputError
+from logprep.connector.elasticsearch.output import ElasticsearchOutput
+from logprep.abc.output import CriticalOutputError, FatalOutputError
 
 
 class NotJsonSerializableMock:
@@ -166,28 +166,33 @@ class TestElasticsearchOutput:
         assert failed_document == expected
 
     @mock.patch(
-        "logprep.output.es_output.helpers.bulk", side_effect=elasticsearch.SerializationError
+        "logprep.connector.elasticsearch.output.helpers.bulk",
+        side_effect=elasticsearch.SerializationError,
     )
     def test_write_to_es_calls_handle_serialization_error_if_serialization_error(self, _):
         self.es_output._handle_serialization_error = mock.MagicMock()
         self.es_output._write_to_es({"dummy": "event"})
         self.es_output._handle_serialization_error.assert_called()
 
-    @mock.patch("logprep.output.es_output.helpers.bulk", side_effect=elasticsearch.ConnectionError)
+    @mock.patch(
+        "logprep.connector.elasticsearch.output.helpers.bulk",
+        side_effect=elasticsearch.ConnectionError,
+    )
     def test_write_to_es_calls_handle_connection_error_if_connection_error(self, _):
         self.es_output._handle_connection_error = mock.MagicMock()
         self.es_output._write_to_es({"dummy": "event"})
         self.es_output._handle_connection_error.assert_called()
 
     @mock.patch(
-        "logprep.output.es_output.helpers.bulk", side_effect=elasticsearch.helpers.BulkIndexError
+        "logprep.connector.elasticsearch.output.helpers.bulk",
+        side_effect=elasticsearch.helpers.BulkIndexError,
     )
     def test_write_to_es_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
         self.es_output._handle_bulk_index_error = mock.MagicMock()
         self.es_output._write_to_es({"dummy": "event"})
         self.es_output._handle_bulk_index_error.assert_called()
 
-    @mock.patch("logprep.output.es_output.helpers.bulk")
+    @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
     def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
@@ -201,7 +206,7 @@ class TestElasticsearchOutput:
         self.es_output._handle_bulk_index_error(mock_bulk_index_error)
         fake_bulk.assert_called()
 
-    @mock.patch("logprep.output.es_output.helpers.bulk")
+    @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
     def test__handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [

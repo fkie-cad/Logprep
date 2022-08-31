@@ -3,10 +3,10 @@
 import sys
 from unittest import mock
 
-from logprep.output.console_output import ConsoleOutput
+from logprep.connector.console.output import ConsoleOutput
 
 
-@mock.patch("logprep.output.console_output.pprint")
+@mock.patch("logprep.connector.console.output.pprint")
 class TestConsoleOutput:
     def test_describe_returns_console_output(self, _):
         output = ConsoleOutput()

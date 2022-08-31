@@ -16,14 +16,18 @@ from logprep.connector.connector_factory import (
     ConnectorFactory,
     UnknownConnectorTypeError,
 )
-from logprep.input.confluent_kafka_input import ConfluentKafkaInput
-from logprep.input.dummy_input import DummyInput
-from logprep.input.json_input import JsonInput
-from logprep.input.jsonl_input import JsonlInput
-from logprep.output.confluent_kafka_output import ConfluentKafkaOutput
-from logprep.output.dummy_output import DummyOutput
-from logprep.output.es_output import ElasticsearchOutput
-from logprep.output.writing_output import WritingOutput
+from logprep.connector.confluent_kafka.input import (
+    ConfluentKafkaInput,
+)
+from logprep.connector.dummy.input import DummyInput
+from logprep.connector.json.input import JsonInput
+from logprep.connector.jsonl.input import JsonlInput
+from logprep.connector.confluent_kafka.output import (
+    ConfluentKafkaOutput,
+)
+from logprep.connector.dummy.output import DummyOutput
+from logprep.connector.elasticsearch.output import ElasticsearchOutput
+from logprep.connector.jsonl.output import JsonlOutput
 
 
 class TestConnectorFactory:
@@ -84,7 +88,7 @@ class TestConnectorFactoryWriter:
         jsonl_input, writing_output = ConnectorFactory.create(self.configuration)
 
         assert isinstance(jsonl_input, JsonlInput)
-        assert isinstance(writing_output, WritingOutput)
+        assert isinstance(writing_output, JsonlOutput)
 
         assert jsonl_input._documents == [{"foo": "bar"}]
 
@@ -108,7 +112,7 @@ class TestConnectorFactoryWriterJsonInput:
         json_input, writing_output = ConnectorFactory.create(self.configuration)
 
         assert isinstance(json_input, JsonInput)
-        assert isinstance(writing_output, WritingOutput)
+        assert isinstance(writing_output, JsonlOutput)
 
         assert json_input._documents == [{"foo": "bar"}]
 

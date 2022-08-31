@@ -2,7 +2,7 @@
 import sys
 from pprint import pprint
 
-from logprep.output.output import Output
+from logprep.abc.output import Output
 
 
 class ConsoleOutput(Output):

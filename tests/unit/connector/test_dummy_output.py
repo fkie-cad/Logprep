@@ -1,7 +1,7 @@
 from pytest import raises, fail
 
-from logprep.output.dummy_output import DummyOutput
-from logprep.output.output import FatalOutputError
+from logprep.connector.dummy.output import DummyOutput
+from logprep.abc.output import FatalOutputError
 
 
 class TestDummyOutput:
