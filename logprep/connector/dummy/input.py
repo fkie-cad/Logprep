@@ -1,5 +1,5 @@
 """This module contains a dummy input that can be used for testing purposes."""
-
+from attrs import define, field, Factory
 from typing import List, Union
 from logprep.abc.input import Input, SourceDisconnectedError
 
@@ -18,18 +18,13 @@ class DummyInput(Input):
 
     """
 
-    def __init__(self, documents: List[Union[dict, type, BaseException]]):
-        self._documents = documents
+    @define(kw_only=True)
+    class Config(Input.Config):
+        documents: List[Union[dict, type, BaseException]]
 
-        self.last_timeout = None
-        self.setup_called_count = 0
-        self.shut_down_called_count = 0
-
-    def describe_endpoint(self) -> str:
-        return "dummy"
-
-    def setup(self):
-        self.setup_called_count += 1
+    @property
+    def _documents(self):
+        return self._config.documents
 
     def get_next(self, timeout: float):
         self.last_timeout = timeout
@@ -41,6 +36,3 @@ class DummyInput(Input):
         if (document.__class__ == type) and issubclass(document, BaseException):
             raise document
         return document
-
-    def shut_down(self):
-        self.shut_down_called_count += 1

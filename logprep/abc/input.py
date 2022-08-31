@@ -4,7 +4,7 @@ New input endpoint types are created by implementing it.
 
 """
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from .connector import Connector
 
 
@@ -43,14 +43,6 @@ class Input(Connector):
         """Set the input up, e.g. connect to a database.
 
         This is optional.
-
-        """
-
-    @abstractmethod
-    def describe_endpoint(self):
-        """Return a brief description of the endpoint for this input.
-
-        May be used as a word in a sentence.
 
         """
 
