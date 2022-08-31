@@ -6,14 +6,17 @@ from unittest import mock
 import pytest
 from logprep.abc.input import CriticalInputError
 from logprep.connector.json.input import JsonInput
+from tests.unit.connector.base import BaseConnectorTestCase
 
 
 class DummyError(BaseException):
     pass
 
 
-class TestJsonInput:
+class TestJsonInput(BaseConnectorTestCase):
     timeout = 0.1
+
+    CONFIG = {"type": "json_input"}
 
     def create_input(self, documents: str) -> None:
         mock_open = mock.mock_open(read_data=json.dumps(documents))

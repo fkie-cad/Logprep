@@ -5,6 +5,7 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import ABCMeta, abstractmethod
+from .connector import Connector
 
 
 class OutputError(BaseException):
@@ -27,7 +28,7 @@ class WarningOutputError(OutputError):
     """May be catched but must be displayed to the user/logged."""
 
 
-class Output(metaclass=ABCMeta):
+class Output(Connector):
     """Connect to a source for log data."""
 
     def setup(self):

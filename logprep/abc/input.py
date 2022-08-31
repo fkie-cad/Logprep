@@ -5,6 +5,7 @@ New input endpoint types are created by implementing it.
 """
 
 from abc import ABCMeta, abstractmethod
+from .connector import Connector
 
 
 class InputError(BaseException):
@@ -35,7 +36,7 @@ class InfoInputError(InputError):
     """Informational exceptions, e.g. to inform that a timeout occurred"""
 
 
-class Input(metaclass=ABCMeta):
+class Input(Connector):
     """Connect to a source for log data."""
 
     def setup(self):

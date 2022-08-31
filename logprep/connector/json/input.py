@@ -1,6 +1,7 @@
 """This module contains a dummy input that can be used for testing purposes."""
 
 
+from functools import cached_property
 from logprep.abc.input import CriticalInputError, Input, SourceDisconnectedError
 from logprep.util.json_handling import parse_json
 
@@ -19,18 +20,19 @@ class JsonInput(Input):
 
     """
 
-    def __init__(self, documents_path: str):
-        self._documents = parse_json(documents_path)
+    class Config(Input.Config):
+        documents_path: str
 
-        self.last_timeout = None
-        self.setup_called_count = 0
-        self.shut_down_called_count = 0
+    __slots__ = ["last_timeout"]
+
+    last_timeout: float
+
+    @cached_property
+    def _documents(self):
+        return parse_json(self._config.documents_path)
 
     def describe_endpoint(self) -> str:
         return "json"
-
-    def setup(self):
-        self.setup_called_count += 1
 
     def get_next(self, timeout: float) -> dict:
         self.last_timeout = timeout
@@ -42,6 +44,3 @@ class JsonInput(Input):
         if not isinstance(document, dict):
             raise CriticalInputError("not a dict", document)
         return document
-
-    def shut_down(self):
-        self.shut_down_called_count += 1

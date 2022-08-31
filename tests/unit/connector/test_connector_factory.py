@@ -14,7 +14,6 @@ import pytest
 from logprep.connector.connector_factory import (
     InvalidConfigurationError,
     ConnectorFactory,
-    UnknownConnectorTypeError,
 )
 from logprep.connector.confluent_kafka.input import (
     ConfluentKafkaInput,

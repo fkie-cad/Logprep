@@ -1,6 +1,5 @@
 """ abstract module for processors"""
 import copy
-import os
 import sys
 from abc import ABC, abstractmethod
 from logging import DEBUG, Logger
