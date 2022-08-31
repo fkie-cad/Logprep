@@ -7,7 +7,7 @@ from logprep.connector.connector_factory_error import (
     InvalidConfigurationError,
 )
 from logprep.abc.input import Input
-from logprep.output.output import Output
+from logprep.abc.output import Output
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.json.input import JsonInput

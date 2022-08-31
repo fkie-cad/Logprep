@@ -15,7 +15,7 @@ from logprep.connector.confluent_kafka.common import (
     ConfluentKafkaFactory,
     UnknownOptionError,
 )
-from logprep.output.output import Output, CriticalOutputError
+from logprep.abc.output import Output, CriticalOutputError
 
 
 class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):

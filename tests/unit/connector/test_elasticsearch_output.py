@@ -18,7 +18,7 @@ import elasticsearch.helpers
 
 
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
-from logprep.output.output import CriticalOutputError, FatalOutputError
+from logprep.abc.output import CriticalOutputError, FatalOutputError
 
 
 class NotJsonSerializableMock:

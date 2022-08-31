@@ -27,7 +27,7 @@ from logprep.abc.input import (
 )
 from logprep.metrics.metric import MetricTargets
 from logprep.connector.dummy.output import DummyOutput
-from logprep.output.output import FatalOutputError, WarningOutputError, CriticalOutputError
+from logprep.abc.output import FatalOutputError, WarningOutputError, CriticalOutputError
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.delete.processor import Delete
 from logprep.processor.delete.rule import DeleteRule

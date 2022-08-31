@@ -17,7 +17,7 @@ from logprep.connector.confluent_kafka.common import (
     UnknownOptionError,
 )
 from logprep.abc.input import Input, CriticalInputError
-from logprep.output.output import Output
+from logprep.abc.output import Output
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 

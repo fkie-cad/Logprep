@@ -2,7 +2,7 @@
 
 import json
 
-from logprep.output.output import Output
+from logprep.abc.output import Output
 
 
 class JsonlOutput(Output):

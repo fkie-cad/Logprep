@@ -25,7 +25,7 @@ from logprep.abc.input import (
 )
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
-from logprep.output.output import CriticalOutputError, FatalOutputError, WarningOutputError
+from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.helper import add_field_to

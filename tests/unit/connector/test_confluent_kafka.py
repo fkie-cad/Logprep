@@ -27,7 +27,7 @@ from logprep.connector.confluent_kafka.output import (
     ConfluentKafkaOutputFactory,
 )
 from logprep.abc.input import CriticalInputError
-from logprep.output.output import CriticalOutputError
+from logprep.abc.output import CriticalOutputError
 
 
 class TestConfluentKafkaFactory:
