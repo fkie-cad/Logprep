@@ -64,6 +64,6 @@ class ProcessorRegistry:
         if processor_type == "delete":
             warnings.warn(
                 "delete processor is deprecated and will be removed in a future release. Please use deleter instead.",
-                DeprecationWarning,
+                UserWarning,
             )
         return cls.mapping.get(processor_type)
