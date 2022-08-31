@@ -6,15 +6,15 @@ from logprep.output.output import Output
 
 
 class WritingOutput(Output):
-    """An output that can writes the documents it was initialized with into a file.
+    """An output that writes the documents it was initialized with to a file.
 
     Parameters
     ----------
     output_path : str
         The path for the output file.
-    output_path_custom: str
+    output_path_custom : str
         The path to store custom
-    output_path_error: str
+    output_path_error : str
         The path to store error
     """
 

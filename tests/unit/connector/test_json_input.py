@@ -33,7 +33,7 @@ class TestJsonInput:
         assert {"order": 1} == self.input.get_next(self.timeout)
 
     def test_raises_exception_if_not_a_dict(self):
-        documents = ["no document"]
+        documents = ["no dict"]
         self.create_input(documents)
         with pytest.raises(CriticalInputError, match=r"not a dict"):
             _ = self.input.get_next(self.timeout)

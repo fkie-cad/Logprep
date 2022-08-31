@@ -41,7 +41,7 @@ class TestJsonlInput:
             _ = self.input.get_next(self.timeout)
 
     def test_raises_exception_if_one_element_is_not_a_dict(self):
-        documents = [{"order": 0}, "no document", {"order": 1}]
+        documents = [{"order": 0}, "not a dict", {"order": 1}]
         self.create_input(documents)
         with pytest.raises(CriticalInputError, match=r"not a dict"):
             _ = self.input.get_next(self.timeout)
