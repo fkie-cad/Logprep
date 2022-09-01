@@ -3,7 +3,6 @@
 # pylint: disable=protected-access
 from pytest import raises
 
-from logprep.connector.dummy.input import DummyInput
 from logprep.abc.input import SourceDisconnectedError
 from tests.unit.connector.base import BaseConnectorTestCase
 

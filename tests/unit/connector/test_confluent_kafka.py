@@ -19,7 +19,6 @@ from zlib import decompress
 from logprep.connector.connector_factory_error import InvalidConfigurationError
 from logprep.connector.confluent_kafka.input import (
     ConfluentKafkaInput,
-    ConfluentKafkaInputFactory,
 )
 from logprep.connector.confluent_kafka.output import (
     ConfluentKafkaOutput,

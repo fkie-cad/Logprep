@@ -1,24 +1,20 @@
 """This module contains functionality that allows to obtain records from kafka."""
 
-from typing import List, Optional
-import hashlib
 import json
-from base64 import b64encode
-from hmac import HMAC
-from copy import deepcopy
-from zlib import compress
+from functools import cached_property, partial
+from logging import Logger
 from socket import getfqdn
+from typing import Any, List, Optional
+
+from attrs import define, field, validators
 from confluent_kafka import Consumer
 
-from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.connector.confluent_kafka.common import (
-    ConfluentKafka,
-    ConfluentKafkaFactory,
-    UnknownOptionError,
-)
-from logprep.abc.input import Input, CriticalInputError
+from logprep.abc.connector import Connector
+from logprep.abc.input import CriticalInputError, Input
 from logprep.abc.output import Output
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.connector.confluent_kafka.common import ConfluentKafkaFactory, UnknownOptionError
+from logprep.connector.connector_factory_error import InvalidConfigurationError
+from logprep.util.validators import dict_with_keys_validator
 
 
 class ConfluentKafkaInputFactory(ConfluentKafkaFactory):
@@ -73,53 +69,144 @@ class ConfluentKafkaInputFactory(ConfluentKafkaFactory):
 
         return kafka_input
 
-    @staticmethod
-    def _create_copy_without_base_options(configuration: dict) -> dict:
-        config = deepcopy(configuration)
-        del config["consumer"]["topic"]
-        del config["consumer"]["group"]
-        ConfluentKafkaInputFactory._remove_shared_base_options(config)
 
-        return config
-
-
-class ConfluentKafkaInput(Input, ConfluentKafka):
+class ConfluentKafkaInput(Input):
     """A kafka input connector."""
 
-    def __init__(
-        self,
-        bootstrap_servers: List[str],
-        consumer_topic: str,
-        consumer_group: str,
-        enable_auto_offset_store: bool,
-    ):
-        ConfluentKafka.__init__(self, bootstrap_servers)
-        self._consumer_topic = consumer_topic
-        self._consumer_group = consumer_group
-        self._output = None
+    @define(kw_only=True, slots=False)
+    class Config(Input.Config):
+        """Common Configurations"""
 
-        self.current_offset = -1
+        bootstrapservers: List[str]
+        topic: str
+        group: str
+        enable_auto_offset_store: bool
+        ssl: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                partial(
+                    dict_with_keys_validator,
+                    expected_keys=["cafile", "certfile", "keyfile", "password"],
+                ),
+            ],
+            default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
+        )
+        auto_commit: bool = field(validator=validators.instance_of(bool), default=True)
+        session_timeout: int = field(validator=validators.instance_of(int), default=6000)
+        offset_reset_policy: str = field(
+            default="smallest",
+            validator=validators.in_(["latest", "earliest", "none", "largest", "smallest"]),
+        )
 
-        self._config["consumer"] = {
-            "auto_commit": True,
-            "session_timeout": 6000,
-            "offset_reset_policy": "smallest",
-            "enable_auto_offset_store": enable_auto_offset_store,
-            "hmac": {"target": "", "key": "", "output_field": ""},
-            "preprocessing": {
-                "version_info_target_field": "",
-                "hmac": {"target": "", "key": "", "output_field": ""},
-            },
-        }
+    _output: Connector
 
-        self._client_id = getfqdn()
-        self._consumer = None
-        self._record = None
+    current_offset: int
+
+    _record: Any
+
+    _last_valid_records: dict
+
+    __slots__ = [
+        "_output",
+        "current_offset",
+        "_record",
+        "_last_valid_records",
+    ]
+
+    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
         self._last_valid_records = {}
+        self._record = None
 
-        self._add_hmac = False
+    @cached_property
+    def _client_id(self):
+        return getfqdn()
 
-        self._enable_auto_offset_store = enable_auto_offset_store
+    @property
+    def _consumer(self):
+        consumer = Consumer(self._create_confluent_settings())
+        consumer.subscribe([self._config.topic])
+        return consumer
+
+    def set_option(self, new_options: dict, connector_type: str):
+        """Set configuration options for specified kafka connector type.
+
+        Parameters
+        ----------
+        new_options : dict
+           New options to set.
+        connector_type : str
+           Name of the connector type. Can be either producer or consumer.
+
+        Raises
+        ------
+        UnknownOptionError
+            Raises if an option is invalid.
+
+        """
+        default_connector_options = self._config.get(connector_type, {})
+        new_connector_options = new_options.get(connector_type, {})
+        self._set_connector_type_options(new_connector_options, default_connector_options)
+
+    def _set_connector_type_options(self, user_options, default_options):
+        """Iterate recursively over the default options and set the values from the user options."""
+        both_options_are_numbers = isinstance(user_options, (int, float)) and isinstance(
+            default_options, (int, float)
+        )
+        options_have_same_type = isinstance(user_options, type(default_options))
+
+        if not options_have_same_type and not both_options_are_numbers:
+            raise UnknownOptionError(
+                f"Wrong Option type for '{user_options}'. "
+                f"Got {type(user_options)}, expected {type(default_options)}."
+            )
+        if not isinstance(default_options, dict):
+            return user_options
+        for user_option in user_options:
+            if user_option not in default_options:
+                raise UnknownOptionError(f"Unknown Option: {user_option}")
+            default_options[user_option] = self._set_connector_type_options(
+                user_options[user_option], default_options[user_option]
+            )
+        return default_options
+
+    def set_ssl_config(self, cafile: str, certfile: str, keyfile: str, password: str):
+        """Set SSL configuration for kafka.
+
+        Parameters
+        ----------
+        cafile : str
+           Path to certificate authority file.
+        certfile : str
+           Path to certificate file.
+        keyfile : str
+           Path to private key file.
+        password : str
+           Password for private key.
+
+        """
+        self._config["ssl"]["cafile"] = cafile
+        self._config["ssl"]["certfile"] = certfile
+        self._config["ssl"]["keyfile"] = keyfile
+        self._config["ssl"]["password"] = password
+
+    @staticmethod
+    def _format_error(error: BaseException) -> str:
+        return f"{type(error).__name__}: {str(error)}" if str(error) else type(error).__name__
+
+    def _set_base_confluent_settings(self, configuration):
+        configuration["bootstrap.servers"] = ",".join(self._bootstrap_servers)
+        ssl_settings_are_setted = any(self._config["ssl"][key] for key in self._config["ssl"])
+        if ssl_settings_are_setted:
+            configuration.update(
+                {
+                    "security.protocol": "SSL",
+                    "ssl.ca.location": self._config["ssl"]["cafile"],
+                    "ssl.certificate.location": self._config["ssl"]["certfile"],
+                    "ssl.key.location": self._config["ssl"]["keyfile"],
+                    "ssl.key.password": self._config["ssl"]["password"],
+                }
+            )
 
     def connect_output(self, output_connector: Output):
         """Connect output connector.
@@ -196,7 +283,7 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
                     f"Hmac option '{option}' is empty: '{config_value}'"
                 )
 
-    def get_next(self, timeout: float) -> Optional[dict]:
+    def _get_raw_event(self, timeout: float) -> bytearray:
         """Get next document from Kafka.
 
         Parameters
@@ -215,9 +302,6 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             Raises if an input is invalid or if it causes an error.
 
         """
-        if self._consumer is None:
-            self._create_consumer()
-
         self._record = self._consumer.poll(timeout=timeout)
         if self._record is None:
             return None
@@ -228,7 +312,28 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             raise CriticalInputError(
                 f"A confluent-kafka record contains an error code: ({record_error})", None
             )
-        raw_event = self._record.value()
+        return self._record.value()
+
+    def _get_event(self, timeout: float) -> Optional[dict]:
+        """Get next document from Kafka.
+
+        Parameters
+        ----------
+        timeout : float
+           Timeout for obtaining a document from Kafka.
+
+        Returns
+        -------
+        json_dict : dict
+            A document obtained from Kafka.
+
+        Raises
+        ------
+        CriticalInputError
+            Raises if an input is invalid or if it causes an error.
+
+        """
+        raw_event = self._get_raw_event(timeout)
         try:
             event_dict = json.loads(raw_event.decode("utf-8"))
         except ValueError as error:
@@ -237,96 +342,28 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             ) from error
         if not isinstance(event_dict, dict):
             raise CriticalInputError("Input record value could not be parsed as dict", event_dict)
-        if self._add_hmac:
-            hmac_target_field_name = (
-                self._config.get("consumer", {})
-                .get("preprocessing", {})
-                .get("hmac", {})
-                .get("target")
-            )
-            event_dict = self._add_hmac_to(event_dict, hmac_target_field_name, raw_event)
-        return event_dict
-
-    def _add_hmac_to(self, event_dict, hmac_target_field_name, raw_event):
-        """
-        Calculates an HMAC (Hash-based message authentication code) based on a given target field
-        and adds it to the given event. If the target field has the value '<RAW_MSG>' the full raw
-        byte message is used instead as a target for the HMAC calculation. As a result the target
-        field value and the resulting hmac will be added to the original event. The target field
-        value will be compressed and base64 encoded though to reduce memory usage.
-
-        Parameters
-        ----------
-        event_dict: dict
-            The event to which the calculated hmac should be appended
-        hmac_target_field_name: str
-            The dotted field name of the target value that should be used for the hmac calculation.
-            If instead '<RAW_MSG>' is used then the hmac will be calculated over the full raw event.
-        raw_event: bytearray
-            The raw event how it is received from kafka.
-
-        Returns
-        -------
-        event_dict: dict
-            The original event extended with a field that has the hmac and the corresponding target
-            field, which was used to calculate the hmac.
-        """
-        hmac_options = self._config.get("consumer", {}).get("preprocessing", {}).get("hmac", {})
-        if hmac_target_field_name == "<RAW_MSG>":
-            received_orig_message = raw_event
-        else:
-            received_orig_message = get_dotted_field_value(event_dict, hmac_target_field_name)
-
-        if received_orig_message is None:
-            hmac = "error"
-            received_orig_message = (
-                f"<expected hmac target field '{hmac_target_field_name}' not found>".encode()
-            )
-            self._output.store_failed(
-                f"Couldn't find the hmac target field '{hmac_target_field_name}'",
-                event_dict,
-                event_dict,
-            )
-        else:
-            if isinstance(received_orig_message, str):
-                received_orig_message = received_orig_message.encode("utf-8")
-            hmac = HMAC(
-                key=hmac_options.get("key").encode(),
-                msg=received_orig_message,
-                digestmod=hashlib.sha256,
-            ).hexdigest()
-        compressed = compress(received_orig_message, level=-1)
-        hmac_output = {"hmac": hmac, "compressed_base64": b64encode(compressed).decode()}
-        add_was_successful = add_field_to(
-            event_dict,
-            hmac_options.get("output_field"),
-            hmac_output,
-        )
-        if not add_was_successful:
-            self._output.store_failed(
-                f"Couldn't add the hmac to the input event as the desired output "
-                f"field '{hmac_options.get('output_field')}' already exist.",
-                event_dict,
-                event_dict,
-            )
-        return event_dict
-
-    def _create_consumer(self):
-        self._consumer = Consumer(self._create_confluent_settings())
-        self._consumer.subscribe([self._consumer_topic])
+        return event_dict, raw_event
 
     def _create_confluent_settings(self):
         configuration = {
-            "group.id": self._consumer_group,
-            "enable.auto.commit": self._config["consumer"]["auto_commit"],
-            "session.timeout.ms": self._config["consumer"]["session_timeout"],
-            "enable.auto.offset.store": self._enable_auto_offset_store,
-            "default.topic.config": {
-                "auto.offset.reset": self._config["consumer"]["offset_reset_policy"]
-            },
+            "bootstrap.servers": ",".join(self._config.bootstrapservers),
+            "group.id": self._config.group,
+            "enable.auto.commit": self._config.auto_commit,
+            "session.timeout.ms": self._config.session_timeout,
+            "enable.auto.offset.store": self._config.enable_auto_offset_store,
+            "default.topic.config": {"auto.offset.reset": self._config.offset_reset_policy},
         }
-        self._set_base_confluent_settings(configuration)
-
+        ssl_settings_are_setted = any(self._config.ssl[key] for key in self._config.ssl)
+        if ssl_settings_are_setted:
+            configuration.update(
+                {
+                    "security.protocol": "SSL",
+                    "ssl.ca.location": self._config.ssl["cafile"],
+                    "ssl.certificate.location": self._config.ssl["certfile"],
+                    "ssl.key.location": self._config.ssl["keyfile"],
+                    "ssl.key.password": self._config.ssl["password"],
+                }
+            )
         return configuration
 
     def batch_finished_callback(self):

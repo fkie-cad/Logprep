@@ -13,11 +13,10 @@ class ConnectorRegistry:
     """Connector Registry"""
 
     mapping = {
-        "confluent_kafka_input": ConfluentKafkaInput,
-        "confluent_kafka_output": ConfluentKafkaOutput,
         "json_input": JsonInput,
         "jsonl_input": JsonlInput,
         "dummy_input": DummyInput,
+        "confluentkafka_input": ConfluentKafkaInput,
     }
 
     @classmethod

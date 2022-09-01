@@ -90,3 +90,14 @@ def list_of_dirs_validator(_, attribute, directory_list):
     is_non_empty_list_validator(attribute, directory_list)
     for directory_path in directory_list:
         directory_validator(_, attribute, directory_path)
+
+
+def dict_with_keys_validator(_, __, value, expected_keys):
+    """validate if a dict has keys"""
+    missing_keys = set(expected_keys).difference(set(value))
+    if missing_keys:
+        raise InvalidConfigurationError(f"following keys are missing: {missing_keys}")
+
+    unexpected_keys = set(value).difference(set(expected_keys))
+    if unexpected_keys:
+        raise InvalidConfigurationError(f"following keys are unknown: {unexpected_keys}")
