@@ -4,8 +4,8 @@ import json
 from unittest import mock
 
 import pytest
-from logprep.input.input import CriticalInputError
-from logprep.input.json_input import JsonInput
+from logprep.abc.input import CriticalInputError
+from logprep.connector.json.input import JsonInput
 
 
 class DummyError(BaseException):

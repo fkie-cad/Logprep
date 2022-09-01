@@ -2,10 +2,10 @@
 
 import json
 
-from logprep.output.output import Output
+from logprep.abc.output import Output
 
 
-class WritingOutput(Output):
+class JsonlOutput(Output):
     """An output that writes the documents it was initialized with to a file.
 
     Parameters
@@ -46,19 +46,19 @@ class WritingOutput(Output):
     def store(self, document: dict):
         self.events.append(document)
 
-        WritingOutput._write_json(self._output_file, document)
+        JsonlOutput._write_json(self._output_file, document)
 
     def store_custom(self, document: dict, target: str):
         self.events.append(document)
 
         if self._output_file_custom:
-            WritingOutput._write_json(self._output_file_custom, document)
+            JsonlOutput._write_json(self._output_file_custom, document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         self.failed_events.append((error_message, document_received, document_processed))
 
         if self._output_file_error:
-            WritingOutput._write_json(
+            JsonlOutput._write_json(
                 self._output_file_error,
                 {
                     "error_message": error_message,
