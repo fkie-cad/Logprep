@@ -269,30 +269,3 @@ class Processor(ABC):
             else:
                 return None
         return dict_
-
-    def _list_json_files_in_directory(self, directory: str) -> List[str]:
-        """
-        Collects all json and yaml files from a given directory and it's subdirectories.
-
-        Parameters
-        ----------
-        directory: str
-            Path to a directory which should be scanned
-
-        Returns
-        -------
-        List[str]
-            List of filenames in the given directory
-        """
-        valid_file_paths = []
-        for root, _, files in os.walk(directory):
-            for file_name in [
-                file
-                for file in files
-                if (
-                    (file.endswith(".json") or file.endswith(".yml"))
-                    and not file.endswith("_test.json")
-                )
-            ]:
-                valid_file_paths.append(os.path.join(root, file_name))
-        return valid_file_paths
