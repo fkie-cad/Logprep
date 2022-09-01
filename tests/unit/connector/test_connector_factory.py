@@ -27,6 +27,7 @@ from logprep.connector.confluent_kafka.output import (
 )
 from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
+from logprep.connector.opensearch.output import OpenSearchOutput
 from logprep.connector.jsonl.output import JsonlOutput
 
 
@@ -226,5 +227,54 @@ class TestConnectorFactoryConfluentKafkaES:
 
         assert isinstance(cc_input, ConfluentKafkaInput)
         assert isinstance(es_output, ElasticsearchOutput)
+
+        assert cc_input._create_confluent_settings() == expected_input
+
+
+class TestConnectorFactoryConfluentKafkaOS:
+    def setup_class(self):
+        self.configuration = {
+            "type": "confluentkafka_os",
+            "bootstrapservers": ["bootstrap1:9092", "bootstrap2:9092"],
+            "consumer": {
+                "topic": "test_consumer",
+                "group": "test_consumer_group",
+                "auto_commit": True,
+                "enable_auto_offset_store": True,
+            },
+            "opensearch": {
+                "hosts": "127.0.0.1:9200",
+                "default_index": "default_index",
+                "error_index": "error_index",
+                "message_backlog": 10000,
+                "timeout": 10000,
+            },
+            "ssl": {
+                "cafile": "test_cafile",
+                "certfile": "test_certificatefile",
+                "keyfile": "test_keyfile",
+                "password": "test_password",
+            },
+        }
+
+    def test_creates_connector_with_expected_configuration(self):
+        expected_input = {
+            "bootstrap.servers": "bootstrap1:9092,bootstrap2:9092",
+            "group.id": "test_consumer_group",
+            "enable.auto.commit": True,
+            "enable.auto.offset.store": True,
+            "session.timeout.ms": 6000,
+            "default.topic.config": {"auto.offset.reset": "smallest"},
+            "security.protocol": "SSL",
+            "ssl.ca.location": "test_cafile",
+            "ssl.certificate.location": "test_certificatefile",
+            "ssl.key.location": "test_keyfile",
+            "ssl.key.password": "test_password",
+        }
+
+        cc_input, os_output = ConnectorFactory.create(self.configuration)
+
+        assert isinstance(cc_input, ConfluentKafkaInput)
+        assert isinstance(os_output, OpenSearchOutput)
 
         assert cc_input._create_confluent_settings() == expected_input
