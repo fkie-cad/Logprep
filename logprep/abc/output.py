@@ -45,7 +45,6 @@ class Output(metaclass=ABCMeta):
         Setting a description is optional.
 
         """
-        return "Output: the.host.name.tld:1234"
 
     @abstractmethod
     def store(self, document: dict):

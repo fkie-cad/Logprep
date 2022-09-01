@@ -6,16 +6,25 @@ from logprep.connector.connector_factory_error import (
     UnknownConnectorTypeError,
     InvalidConfigurationError,
 )
-from logprep.input.input import Input
-from logprep.output.output import Output
-from logprep.input.dummy_input import DummyInput
-from logprep.input.jsonl_input import JsonlInput
-from logprep.input.json_input import JsonInput
-from logprep.input.confluent_kafka_input import ConfluentKafkaInput, ConfluentKafkaInputFactory
-from logprep.output.dummy_output import DummyOutput
-from logprep.output.writing_output import WritingOutput
-from logprep.output.es_output import ElasticsearchOutput, ElasticsearchOutputFactory
-from logprep.output.confluent_kafka_output import ConfluentKafkaOutput, ConfluentKafkaOutputFactory
+from logprep.abc.input import Input
+from logprep.abc.output import Output
+from logprep.connector.dummy.input import DummyInput
+from logprep.connector.jsonl.input import JsonlInput
+from logprep.connector.json.input import JsonInput
+from logprep.connector.confluent_kafka.input import (
+    ConfluentKafkaInput,
+    ConfluentKafkaInputFactory,
+)
+from logprep.connector.dummy.output import DummyOutput
+from logprep.connector.jsonl.output import JsonlOutput
+from logprep.connector.elasticsearch.output import (
+    ElasticsearchOutput,
+    ElasticsearchOutputFactory,
+)
+from logprep.connector.confluent_kafka.output import (
+    ConfluentKafkaOutput,
+    ConfluentKafkaOutputFactory,
+)
 
 
 class ConnectorFactory:
@@ -68,16 +77,16 @@ class ConnectorFactory:
         return DummyInput(config["input"]), DummyOutput(output_exceptions)
 
     @staticmethod
-    def _create_writing_connector(config: dict) -> Tuple[JsonlInput, WritingOutput]:
-        return JsonlInput(config["input_path"]), WritingOutput(
+    def _create_writing_connector(config: dict) -> Tuple[JsonlInput, JsonlOutput]:
+        return JsonlInput(config["input_path"]), JsonlOutput(
             config["output_path"],
             config.get("output_path_custom", None),
             config.get("output_path_errors", None),
         )
 
     @staticmethod
-    def _create_writing_json_input_connector(config: dict) -> Tuple[JsonInput, WritingOutput]:
-        return JsonInput(config["input_path"]), WritingOutput(
+    def _create_writing_json_input_connector(config: dict) -> Tuple[JsonInput, JsonlOutput]:
+        return JsonInput(config["input_path"]), JsonlOutput(
             config["output_path"],
             config.get("output_path_custom", None),
             config.get("output_path_errors", None),

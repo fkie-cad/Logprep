@@ -11,16 +11,14 @@ from socket import getfqdn
 from confluent_kafka import Consumer
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.connector.confluent_kafka_shared import (
+from logprep.connector.confluent_kafka.common import (
     ConfluentKafka,
     ConfluentKafkaFactory,
-    InvalidMessageError,
     UnknownOptionError,
 )
-from logprep.input.input import Input, CriticalInputError
-from logprep.output.output import Output
+from logprep.abc.input import Input, CriticalInputError
+from logprep.abc.output import Output
 from logprep.util.helper import add_field_to, get_dotted_field_value
-from logprep.util.json_handling import is_json
 
 
 class ConfluentKafkaInputFactory(ConfluentKafkaFactory):

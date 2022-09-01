@@ -8,8 +8,10 @@ from copy import deepcopy
 
 from pytest import fail, raises
 
-from logprep.input.confluent_kafka_input import ConfluentKafkaInputFactory
-from logprep.output.es_output import ElasticsearchOutputFactory
+from logprep.connector.confluent_kafka.input import (
+    ConfluentKafkaInputFactory,
+)
+from logprep.connector.elasticsearch.output import ElasticsearchOutputFactory
 from logprep.connector.connector_factory import InvalidConfigurationError
 
 
