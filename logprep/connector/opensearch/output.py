@@ -12,8 +12,8 @@ from opensearchpy.exceptions import ConnectionError
 from opensearchpy.helpers import BulkIndexError
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.input.input import Input
-from logprep.output.output import Output, FatalOutputError
+from logprep.abc.input import Input
+from logprep.abc.output import Output, FatalOutputError
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
 

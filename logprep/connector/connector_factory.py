@@ -21,7 +21,10 @@ from logprep.connector.elasticsearch.output import (
     ElasticsearchOutput,
     ElasticsearchOutputFactory,
 )
-from logprep.output.os_output import OpenSearchOutput, OpenSearchOutputFactory
+from logprep.connector.opensearch.output import (
+    OpenSearchOutput,
+    OpenSearchOutputFactory,
+)
 from logprep.connector.confluent_kafka.output import (
     ConfluentKafkaOutput,
     ConfluentKafkaOutputFactory,

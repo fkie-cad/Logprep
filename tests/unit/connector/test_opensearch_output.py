@@ -13,8 +13,8 @@ import arrow
 import opensearchpy.helpers
 from pytest import fail
 
-from logprep.output.os_output import OpenSearchOutput
-from logprep.output.output import CriticalOutputError
+from logprep.connector.opensearch.output import OpenSearchOutput
+from logprep.abc.output import CriticalOutputError
 
 
 class NotJsonSerializableMock:
