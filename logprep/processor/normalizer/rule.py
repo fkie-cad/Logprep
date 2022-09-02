@@ -57,6 +57,11 @@ class GrokWrapper:
         self._match_cnt_initialized = False
         self.failure_target_field = failure_target_field
 
+    def __eq__(self, other: "GrokWrapper") -> bool:
+        return set([grok_item.regex_obj for grok_item in self._grok_list]) == set(
+            [grok_item.regex_obj for grok_item in other._grok_list]
+        )
+
     def match(self, text: str, pattern_matches: dict = None) -> Dict[str, str]:
         """Match string via grok using delimiter and count matches if enabled."""
         if pattern_matches is not None and not self._match_cnt_initialized:
@@ -138,6 +143,13 @@ class NormalizerRule(Rule):
                     )
 
     def __eq__(self, other: "NormalizerRule") -> bool:
+        print(other.filter_str, self.filter_str)
+        print(self._substitutions, other.substitutions)
+        print(self._grok)
+        print(other.grok)
+        print(other.grok)
+        print(self._timestamps)
+        print(other.timestamps)
         return all(
             [
                 other.filter == self._filter,
