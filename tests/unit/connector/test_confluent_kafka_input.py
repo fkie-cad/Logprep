@@ -4,31 +4,19 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
-import json
-import pytest
 from copy import deepcopy
-from datetime import datetime
-from math import isclose
 from socket import getfqdn
 from unittest import mock
-from logprep.connector.connector_factory import ConnectorFactory
 
+import pytest
 
-from logprep.processor.processor_factory_error import InvalidConfigurationError
-from logprep.connector.confluent_kafka.input import (
-    ConfluentKafkaInput,
-)
-from logprep.connector.confluent_kafka.output import (
-    UnknownOptionError,
-    ConfluentKafkaOutputFactory,
-)
 from logprep.abc.input import CriticalInputError
-from logprep.abc.output import CriticalOutputError
+from logprep.connector.connector_factory import ConnectorFactory
+from logprep.processor.processor_factory_error import InvalidConfigurationError
 from tests.unit.connector.base import BaseInputTestCase
 
 
 class TestConfluentKafkaInput(BaseInputTestCase):
-
     CONFIG = {
         "type": "confluentkafka_input",
         "bootstrapservers": ["testserver:9092"],
@@ -107,472 +95,42 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         with pytest.raises(ValueError, match=r"'offset_reset_policy' must be in.*got 'invalid'"):
             _ = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_next_with_hmac_of_raw_message(self, mock_consumer):
-        mock_record = mock.MagicMock()
-        mock_record.error = mock.MagicMock(return_value=None)
-        mock_record.value = mock.MagicMock(return_value=b'{"message": "with_content"}')
-        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update(
-            {
-                "preprocessing": {
-                    "hmac": {
-                        "target": "<RAW_MSG>",
-                        "key": "hmac-test-key",
-                        "output_field": "Hmac",
-                    }
-                }
-            }
-        )
-        kafka = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
-        test_event = {"message": "with_content"}
-        expected_event = {
-            "message": "with_content",
-            "Hmac": {
-                "compressed_base64": "eJyrVspNLS5OTE9VslIqzyzJiE/OzytJzStRqgUAgKkJtg==",
-                "hmac": "dfe78753da634d7b76760488dbb2cf7bfe1b0e4e794930c36e98a984b6b6be63",
-            },
+    def test_create_confluent_settings_contains_expected_values(self):
+        expected_config = {
+            "bootstrap.servers": "testserver:9092",
+            "default.topic.config": {"auto.offset.reset": "latest"},
+            "enable.auto.commit": False,
+            "enable.auto.offset.store": True,
+            "group.id": "test_consumergroup",
+            "security.protocol": "SSL",
+            "session.timeout.ms": 654321,
+            "ssl.ca.location": "test_cafile",
+            "ssl.certificate.location": "test_certfile",
+            "ssl.key.location": "test_keyfile",
+            "ssl.key.password": "test_password",
         }
-        with mock.patch(
-            "logprep.connector.confluent_kafka.input.json.loads", return_value=test_event
+        kafka_input_cfg = self.object._create_confluent_settings()
+        assert kafka_input_cfg == expected_config
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_next_returns_none_if_no_records(self, _):
+        self.object._consumer.poll = mock.MagicMock(return_value=None)
+        event, non_critical_error_msg = self.object.get_next(1)
+        assert event is None
+        assert non_critical_error_msg is None
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self, _):
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock(return_value="An arbitrary confluent-kafka error")
+        mock_record.value = mock.MagicMock(return_value=None)
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        with pytest.raises(
+                CriticalInputError,
+                match=r"A confluent-kafka record contains an error code: "
+                      r"\(An arbitrary confluent-kafka error\)",
         ):
-            kafka_next_msg = kafka.get_next(1)
-        assert kafka_next_msg == expected_event, "Output event with hmac is not as expected"
-
-        # decoded_message = decode_b64_and_decompress(kafka_next_msg["Hmac"]["compressed_base64"])
-        # assert test_event == json.loads(
-        #     decoded_message.decode("utf-8")
-        # ), "The hmac base massage was not correctly encoded and compressed. "
-
-    # def test_set_option_accepts_known_non_constructor_non_ssl_options(self):
-    #     consumer_options = [
-    #         {"consumer": {"auto_commit": True}},
-    #         {"consumer": {"session_timeout": 0}},
-    #         {"consumer": {"offset_reset_policy": "smallest"}},
-    #     ]
-    #     producer_options = [
-    #         {"producer": {"send_timeout": 0}},
-    #         {"producer": {"flush_timeout": 30}},
-    #         {"producer": {"linger_duration": 0}},
-    #         {"producer": {"maximum_backlog": 10 * 1000}},
-    #         {"producer": {"compression": "none"}},
-    #         {"producer": {"ack_policy": "all"}},
-    #     ]
-    #     try:
-    #         for i in consumer_options:
-    #             self.kafka_input.set_option(i, "consumer")
-    #         for i in producer_options:
-    #             self.kafka_output.set_option(i, "producer")
-    #     except UnknownOptionError:
-    #         pytest.fail("set_option should allow setting non-constructor and non-ssl options.")
-
-    # def test_create_confluent_settings_returns_expected_dict_without_ssl(self):
-    #     self.kafka_output.set_option({"producer": {"maximum_backlog": 31337}}, "producer")
-    #     expected_config = deepcopy(self.config)
-    #     self._delete_consumer_settings(expected_config)
-    #     assert self.kafka_output._create_confluent_settings() == expected_config
-
-    # def test_create_confluent_settings_returns_expected_dict_with_ssl(self):
-    #     self.kafka_output.set_option({"producer": {"maximum_backlog": 42}}, "producer")
-    #     self.kafka_input.set_ssl_config("cafile", "certificatefile", "keyfile", "password")
-    #     self.kafka_output.set_ssl_config("cafile", "certificatefile", "keyfile", "password")
-
-    #     self.config.update(
-    #         {
-    #             "queue.buffering.max.messages": 42,
-    #             "security.protocol": "SSL",
-    #             "ssl.ca.location": "cafile",
-    #             "ssl.certificate.location": "certificatefile",
-    #             "ssl.key.location": "keyfile",
-    #             "ssl.key.password": "password",
-    #         }
-    #     )
-
-    #     kafka_input_cfg = self.kafka_input._create_confluent_settings()
-    #     expected_config = deepcopy(self.config)
-    #     self._delete_producer_settings(expected_config)
-    #     assert kafka_input_cfg == expected_config
-
-    #     kafka_output_cfg = self.kafka_output._create_confluent_settings()
-    #     expected_config = deepcopy(self.config)
-    #     self._delete_consumer_settings(expected_config)
-    #     assert kafka_output_cfg == expected_config
-
-    # def test_create_confluent_settings_contains_expected_values(self):
-    #     options = {
-    #         "consumer": {
-    #             "auto_commit": False,
-    #             "session_timeout": 23456,
-    #             "offset_reset_policy": "latest",
-    #         },
-    #         "producer": {
-    #             "ack_policy": "1",
-    #             "compression": "gzip",
-    #             "maximum_backlog": 4711,
-    #             "linger_duration": 12345,
-    #         },
-    #     }
-
-    #     self.kafka_input.set_option(options, "consumer")
-    #     self.config["enable.auto.commit"] = False
-    #     self.config["session.timeout.ms"] = 23456
-    #     self.config["default.topic.config"]["auto.offset.reset"] = "latest"
-    #     expected_config = deepcopy(self.config)
-    #     self._delete_producer_settings(expected_config)
-    #     assert self.kafka_input._create_confluent_settings() == expected_config
-
-    #     self.kafka_output.set_option(options, "producer")
-    #     self.config["acks"] = "1"
-    #     self.config["compression.type"] = "gzip"
-    #     self.config["queue.buffering.max.messages"] = 4711
-    #     self.config["linger.ms"] = 12345
-    #     expected_config = deepcopy(self.config)
-    #     self._delete_consumer_settings(expected_config)
-    #     assert self.kafka_output._create_confluent_settings() == expected_config
-
-    # @staticmethod
-    # def _delete_producer_settings(expected_config):
-    #     del expected_config["acks"]
-    #     del expected_config["compression.type"]
-    #     del expected_config["linger.ms"]
-    #     del expected_config["queue.buffering.max.messages"]
-
-    # @staticmethod
-    # def _delete_consumer_settings(expected_config):
-    #     del expected_config["default.topic.config"]
-    #     del expected_config["enable.auto.commit"]
-    #     del expected_config["enable.auto.offset.store"]
-    #     del expected_config["group.id"]
-    #     del expected_config["session.timeout.ms"]
-
-    # def test_store_sends_event_to_expected_topic(self):
-    #     producer_topic = "producer_topic"
-    #     event = {"field": "content"}
-    #     expected = (producer_topic, event)
-
-    #     kafka_input = ConfluentKafkaInput(
-    #         ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-    #     )
-    #     kafka_output = ConfluentKafkaOutputForTest(
-    #         ["bootstrap1", "bootstrap2"], producer_topic, "producer_error_topic"
-    #     )
-    #     kafka_output.connect_input(kafka_input)
-    #     kafka_output.store(event)
-
-    #     assert len(kafka_output._producer.produced) == 1
-    #     assert kafka_output._producer.produced[0] == expected
-
-    # def test_store_custom_sends_event_to_expected_topic(self):
-    #     custom_topic = "custom_topic"
-    #     event = {"field": "content"}
-    #     expected = (custom_topic, event)
-
-    #     kafka_input = ConfluentKafkaInput(
-    #         ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-    #     )
-    #     kafka_output = ConfluentKafkaOutputForTest(
-    #         ["bootstrap1", "bootstrap2"], "default_topic", "producer_error_topic"
-    #     )
-    #     kafka_output.connect_input(kafka_input)
-    #     kafka_output.store_custom(event, custom_topic)
-
-    #     assert len(kafka_output._producer.produced) == 1
-    #     assert kafka_output._producer.produced[0] == expected
-
-    # def test_store_failed(self):
-    #     producer_error_topic = "producer_error_topic"
-    #     event_received = {"field": "received"}
-    #     event = {"field": "content"}
-    #     error_message = "error message"
-
-    #     expected = (
-    #         producer_error_topic,
-    #         {
-    #             "error": error_message,
-    #             "original": event_received,
-    #             "processed": event,
-    #             "timestamp": str(datetime.now()),
-    #         },
-    #     )
-
-    #     kafka_input = ConfluentKafkaInput(
-    #         ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-    #     )
-    #     kafka_output = ConfluentKafkaOutputForTest(
-    #         ["bootstrap1", "bootstrap2"], "producer_topic", producer_error_topic
-    #     )
-    #     kafka_output.connect_input(kafka_input)
-    #     kafka_output.store_failed(error_message, event_received, event)
-
-    #     assert len(kafka_output._producer.produced) == 1
-
-    #     error_topic = kafka_output._producer.produced[0]
-
-    #     # timestamp is compared to be approximately the same,
-    #     # since it is variable and then removed to compare the rest
-    #     date_format = "%Y-%m-%d %H:%M:%S.%f"
-    #     error_time = datetime.timestamp(datetime.strptime(error_topic[1]["timestamp"], date_format))
-    #     expected_time = datetime.timestamp(datetime.strptime(expected[1]["timestamp"], date_format))
-    #     assert isclose(error_time, expected_time)
-    #     del error_topic[1]["timestamp"]
-    #     del expected[1]["timestamp"]
-
-    #     assert error_topic == expected
-
-    # def test_get_next_returns_none_if_no_records(self):
-    #     kafka_input = ConfluentKafkaInput(
-    #         ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-    #     )
-
-    #     kafka_input._consumer = ConsumerNoRecordMock()
-
-    #     assert kafka_input.get_next(1) is None
-
-    # def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self):
-    #     kafka_input = ConfluentKafkaInput(
-    #         ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-    #     )
-
-    #     kafka_input._consumer = ConsumerRecordWithKafkaErrorMock()
-
-    #     with pytest.raises(
-    #         CriticalInputError,
-    #         match=r"A confluent-kafka record contains an error code: "
-    #         r"\(An arbitrary confluent-kafka error\)",
-    #     ):
-    #         kafka_input.get_next(1)
-
-    # def test_create_confluent_settings_contains_expected_values2(self):
-    #     with pytest.raises(
-    #         CriticalOutputError,
-    #         match=r"Error storing output document\: \(TypeError: Object of type "
-    #         r"\'?NotJsonSerializableMock\'? is not JSON serializable\)",
-    #     ):
-    #         self.kafka_output.store(
-    #             {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"}
-    #         )
-
-    # def test_get_next_with_hmac_of_raw_message(self):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     config["consumer"]["hmac"] = {
-    #         "target": "<RAW_MSG>",
-    #         "key": "hmac-test-key",
-    #         "output_field": "Hmac",
-    #     }
-
-    #     kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    #     test_event = {"message": "with_content"}
-    #     expected_event = {
-    #         "message": "with_content",
-    #         "Hmac": {
-    #             "compressed_base64": "eJyrVspNLS5OTE9VslIqzyzJiE/OzytJzStRqgUAgKkJtg==",
-    #             "hmac": "dfe78753da634d7b76760488dbb2cf7bfe1b0e4e794930c36e98a984b6b6be63",
-    #         },
-    #     }
-
-    #     kafka._consumer = ConsumerJsonMock(test_event)
-
-    #     kafka_next_msg = kafka.get_next(1)
-
-    #     assert kafka_next_msg == expected_event, "Output event with hmac is not as expected"
-
-    #     decoded_message = decode_b64_and_decompress(kafka_next_msg["Hmac"]["compressed_base64"])
-    #     assert test_event == json.loads(
-    #         decoded_message.decode("utf-8")
-    #     ), "The hmac base massage was not correctly encoded and compressed. "
-
-    # def test_get_next_with_hmac_of_subfield(self):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     config["consumer"]["hmac"] = {
-    #         "target": "message.with_subfield",
-    #         "key": "hmac-test-key",
-    #         "output_field": "Hmac",
-    #     }
-
-    #     kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    #     test_event = {"message": {"with_subfield": "content"}}
-    #     expected_event = {
-    #         "message": {"with_subfield": "content"},
-    #         "Hmac": {
-    #             "compressed_base64": "eJxLzs8rSc0rAQALywL8",
-    #             "hmac": "e01e02a09cb270eebf7ae846b96d7306681038bd279f85d44c77019e0c4f6316",
-    #         },
-    #     }
-
-    #     kafka._consumer = ConsumerJsonMock(test_event)
-
-    #     kafka_next_msg = kafka.get_next(1)
-    #     assert kafka_next_msg == expected_event
-
-    #     decoded_message = decode_b64_and_decompress(kafka_next_msg["Hmac"]["compressed_base64"])
-    #     assert test_event["message"]["with_subfield"] == decoded_message.decode(
-    #         "utf-8"
-    #     ), "The hmac base massage was not correctly encoded and compressed. "
-
-    # def test_get_next_with_hmac_of_non_existing_subfield(self):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     config["consumer"]["hmac"] = {
-    #         "target": "non_existing_field",
-    #         "key": "hmac-test-key",
-    #         "output_field": "Hmac",
-    #     }
-
-    #     kafka_input = ConfluentKafkaInputFactory.create_from_configuration(config)
-    #     kafka_output = ConfluentKafkaOutputFactory.create_from_configuration(config)
-    #     kafka_input.connect_output(kafka_output)
-
-    #     test_event = {"message": {"with_subfield": "content"}}
-    #     expected_output_event = {
-    #         "message": {"with_subfield": "content"},
-    #         "Hmac": {
-    #             "hmac": "error",
-    #             "compressed_base64": "eJyzSa0oSE0uSU1RyMhNTFYoSSxKTy1RSMtMzUlRUM/Lz4tPrcgsLsnMS48Hi"
-    #             "6kr5OUDpfNL81LsAJILFeQ=",
-    #         },
-    #     }
-    #     kafka_input._consumer = ConsumerJsonMock(test_event)
-    #     kafka_output._producer = ProducerMock()
-
-    #     kafka_next_msg = kafka_input.get_next(1)
-    #     assert kafka_next_msg == expected_output_event
-
-    #     decoded_message = decode_b64_and_decompress(
-    #         kafka_next_msg["Hmac"]["compressed_base64"]
-    #     ).decode()
-    #     assert decoded_message == "<expected hmac target field 'non_existing_field' not found>"
-
-    #     assert len(kafka_output._producer.produced) == 1
-    #     assert (
-    #         kafka_output._producer.produced[0][1]["error"]
-    #         == "Couldn't find the hmac target field 'non_existing_field'"
-    #     )
-    #     assert kafka_output._producer.produced[0][1]["original"] == test_event
-
-    # def test_get_next_with_hmac_result_in_dotted_subfield(self):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     config["consumer"]["hmac"] = {
-    #         "target": "<RAW_MSG>",
-    #         "key": "hmac-test-key",
-    #         "output_field": "Hmac.dotted.subfield",
-    #     }
-
-    #     kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    #     test_event = {"message": "with_content"}
-    #     expected_event = {
-    #         "message": "with_content",
-    #         "Hmac": {
-    #             "dotted": {
-    #                 "subfield": {
-    #                     "compressed_base64": "eJyrVspNLS5OTE9VslIqzyzJiE/OzytJzStRqgUAgKkJtg==",
-    #                     "hmac": "dfe78753da634d7b76760488dbb2cf7bfe1b0e4e794930c36e98a984b6b6be63",
-    #                 }
-    #             }
-    #         },
-    #     }
-
-    #     kafka._consumer = ConsumerJsonMock(test_event)
-
-    #     kafka_next_msg = kafka.get_next(1)
-    #     assert kafka_next_msg == expected_event
-
-    #     decoded_message = decode_b64_and_decompress(
-    #         kafka_next_msg["Hmac"]["dotted"]["subfield"]["compressed_base64"]
-    #     )
-    #     assert test_event == json.loads(
-    #         decoded_message.decode("utf-8")
-    #     ), "The hmac base massage was not correctly encoded and compressed. "
-
-    # def test_get_next_with_hmac_result_in_already_existing_subfield(self):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     config["consumer"]["hmac"] = {
-    #         "target": "<RAW_MSG>",
-    #         "key": "hmac-test-key",
-    #         "output_field": "message",
-    #     }
-
-    #     kafka_input = ConfluentKafkaInputFactory.create_from_configuration(config)
-    #     kafka_output = ConfluentKafkaOutputFactory.create_from_configuration(config)
-    #     kafka_input.connect_output(kafka_output)
-
-    #     test_event = {"message": {"with_subfield": "content"}}
-    #     kafka_input._consumer = ConsumerJsonMock(test_event)
-    #     kafka_output._producer = ProducerMock()
-
-    #     _ = kafka_input.get_next(1)
-
-    #     assert len(kafka_output._producer.produced) == 1
-    #     assert (
-    #         kafka_output._producer.produced[0][1]["error"]
-    #         == "Couldn't add the hmac to the input event as the desired output field 'message' "
-    #         "already exist."
-    #     )
-    #     assert kafka_output._producer.produced[0][1]["original"] == test_event
-
-    # def test_get_next_with_wrong_or_missing_hmac_config(self):
-    #     for key in ["target", "key", "output_field"]:
-    #         # set default config
-    #         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #         config["consumer"]["hmac"] = {
-    #             "target": "<RAW_MSG>",
-    #             "key": "hmac-test-key",
-    #             "output_field": "Hmac",
-    #         }
-
-    #         # drop option to test for missing option error message
-    #         del config["consumer"]["hmac"][key]
-    #         with pytest.raises(
-    #             InvalidConfigurationError, match=rf"Hmac option\(s\) missing: {{'{key}'}}"
-    #         ):
-    #             _ = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    #     # set default config
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-
-    #     # add additional unknown option and test for error message
-    #     config["consumer"]["hmac"] = {"unknown": "option"}
-    #     with pytest.raises(
-    #         InvalidConfigurationError, match=r"Confluent Kafka Input: Unknown Option: unknown"
-    #     ):
-    #         _ = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    # def test_get_next_with_broken_hmac_config(self):
-    #     for key in ["target", "key", "output_field"]:
-    #         # set default config
-    #         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #         config["consumer"]["hmac"] = {
-    #             "target": "<RAW_MSG>",
-    #             "key": "hmac-test-key",
-    #             "output_field": "Hmac",
-    #         }
-
-    #         # empty one option and test for error message
-    #         config["consumer"]["hmac"][key] = ""
-    #         with pytest.raises(
-    #             InvalidConfigurationError, match=rf"Hmac option '{key}' is empty: ''"
-    #         ):
-    #             _ = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    # def test_get_next_without_hmac(self):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    #     # configuration is not set
-    #     assert kafka._config["consumer"]["hmac"]["target"] == ""
-    #     assert kafka._config["consumer"]["hmac"]["key"] == ""
-    #     assert kafka._config["consumer"]["hmac"]["output_field"] == ""
-
-    #     test_event = {"message": "with_content"}
-    #     expected_event = {"message": "with_content"}
-
-    #     kafka._consumer = ConsumerJsonMock(test_event)
-
-    #     # output message is the same as the input message
-    #     kafka_next_msg = kafka.get_next(1)
-    #     assert kafka_next_msg == expected_event
+            _, _ = self.object.get_next(1)
 
     # def test_update_default_configuration_overwrites_default_options_in_nested_field(self):
     #     default_config = {

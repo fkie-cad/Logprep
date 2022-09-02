@@ -4,7 +4,7 @@ import json
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
-from typing import Any, List, Optional
+from typing import Any, List, Union
 
 from attrs import define, field, validators
 from confluent_kafka import Consumer
@@ -170,25 +170,25 @@ class ConfluentKafkaInput(Input):
             )
         return default_options
 
-    def set_ssl_config(self, cafile: str, certfile: str, keyfile: str, password: str):
-        """Set SSL configuration for kafka.
-
-        Parameters
-        ----------
-        cafile : str
-           Path to certificate authority file.
-        certfile : str
-           Path to certificate file.
-        keyfile : str
-           Path to private key file.
-        password : str
-           Password for private key.
-
-        """
-        self._config["ssl"]["cafile"] = cafile
-        self._config["ssl"]["certfile"] = certfile
-        self._config["ssl"]["keyfile"] = keyfile
-        self._config["ssl"]["password"] = password
+    # def set_ssl_config(self, cafile: str, certfile: str, keyfile: str, password: str):
+    #     """Set SSL configuration for kafka.
+    #
+    #     Parameters
+    #     ----------
+    #     cafile : str
+    #        Path to certificate authority file.
+    #     certfile : str
+    #        Path to certificate file.
+    #     keyfile : str
+    #        Path to private key file.
+    #     password : str
+    #        Password for private key.
+    #
+    #     """
+    #     self._config["ssl"]["cafile"] = cafile
+    #     self._config["ssl"]["certfile"] = certfile
+    #     self._config["ssl"]["keyfile"] = keyfile
+    #     self._config["ssl"]["password"] = password
 
     @staticmethod
     def _format_error(error: BaseException) -> str:
@@ -231,36 +231,36 @@ class ConfluentKafkaInput(Input):
         """
         return f"Kafka Input: {self._bootstrap_servers[0]}"
 
-    def set_option(self, new_options: dict, connector_type: str):
-        """Set configuration options for kafka input.
-
-        Parameters
-        ----------
-        new_options : dict
-           New options to set.
-        connector_type : str
-           Name of the connector type. Can be either producer or consumer.
-
-        Raises
-        ------
-        UnknownOptionError
-            Raises if an option is invalid.
-
-        """
-        # DEPRECATION: HMAC-Option: Remove this with next major version update, check also the
-        # self._config dict in this class's init method
-        consumer_options = new_options.get("consumer")
-        if consumer_options and "preprocessing" not in consumer_options:
-            consumer_options["preprocessing"] = {}
-        if new_options.get("consumer", {}).get("hmac"):
-            consumer_options["preprocessing"]["hmac"] = new_options["consumer"]["hmac"]
-
-        super().set_option(new_options, connector_type)
-
-        hmac_options = new_options.get("consumer", {}).get("preprocessing", {}).get("hmac", {})
-        if hmac_options:
-            self._check_for_missing_options(hmac_options)
-            self._add_hmac = True
+    # def set_option(self, new_options: dict, connector_type: str):
+    #     """Set configuration options for kafka input.
+    #
+    #     Parameters
+    #     ----------
+    #     new_options : dict
+    #        New options to set.
+    #     connector_type : str
+    #        Name of the connector type. Can be either producer or consumer.
+    #
+    #     Raises
+    #     ------
+    #     UnknownOptionError
+    #         Raises if an option is invalid.
+    #
+    #     """
+    #     # DEPRECATION: HMAC-Option: Remove this with next major version update, check also the
+    #     # self._config dict in this class's init method
+    #     consumer_options = new_options.get("consumer")
+    #     if consumer_options and "preprocessing" not in consumer_options:
+    #         consumer_options["preprocessing"] = {}
+    #     if new_options.get("consumer", {}).get("hmac"):
+    #         consumer_options["preprocessing"]["hmac"] = new_options["consumer"]["hmac"]
+    #
+    #     super().set_option(new_options, connector_type)
+    #
+    #     hmac_options = new_options.get("consumer", {}).get("preprocessing", {}).get("hmac", {})
+    #     if hmac_options:
+    #         self._check_for_missing_options(hmac_options)
+    #         self._add_hmac = True
 
     def _check_for_missing_options(self, hmac_options):
         valid_hmac_options_keys = set(
@@ -314,7 +314,7 @@ class ConfluentKafkaInput(Input):
             )
         return self._record.value()
 
-    def _get_event(self, timeout: float) -> Optional[dict]:
+    def _get_event(self, timeout: float) -> Union[tuple[None, None], tuple[dict, dict]]:
         """Get next document from Kafka.
 
         Parameters
@@ -334,6 +334,8 @@ class ConfluentKafkaInput(Input):
 
         """
         raw_event = self._get_raw_event(timeout)
+        if raw_event is None:
+            return None, None
         try:
             event_dict = json.loads(raw_event.decode("utf-8"))
         except ValueError as error:

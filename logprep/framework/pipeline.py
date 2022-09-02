@@ -16,16 +16,16 @@ import numpy as np
 from attr import define, Factory
 
 from logprep._version import get_versions
-from logprep.connector.connector_factory import ConnectorFactory
 from logprep.abc.input import (
     CriticalInputError,
     FatalInputError,
     SourceDisconnectedError,
     WarningInputError,
 )
+from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
+from logprep.connector.connector_factory import ConnectorFactory
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
-from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.processor_factory import ProcessorFactory
 from logprep.util.helper import add_field_to
@@ -213,7 +213,11 @@ class Pipeline:
         event = {}
         try:
             self._metrics_exposer.expose(self.metrics)
-            event = self._input.get_next(self._logprep_config.get("timeout"))
+            event, non_critical_error_msg = self._input.get_next(
+                self._logprep_config.get("timeout")
+            )
+            if non_critical_error_msg:
+                self._output.store_failed(non_critical_error_msg, event, None)
 
             try:
                 self.metrics.kafka_offset = self._input.current_offset
