@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 
+from datetime import datetime
 import json
 from unittest import mock
 from logprep.connector.connector_factory import ConnectorFactory
@@ -16,6 +17,7 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
         "type": "confluentkafka_output",
         "bootstrapservers": ["testserver:9092"],
         "topic": "test_input_raw",
+        "error_topic": "test_error_topic",
         "group": "test_producergroup",
         "auto_commit": False,
         "session_timeout": 654321,
@@ -67,62 +69,23 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
         kafka_producer.produce.assert_called()
         assert expected_call in kafka_producer.produce.mock_calls
 
-    # def test_store_custom_sends_event_to_expected_topic(self):
-    #     custom_topic = "custom_topic"
-    #     event = {"field": "content"}
-    #     expected = (custom_topic, event)
-
-    #     kafka_input = ConfluentKafkaInput(
-    #         ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-    #     )
-    #     kafka_output = ConfluentKafkaOutputForTest(
-    #         ["bootstrap1", "bootstrap2"], "default_topic", "producer_error_topic"
-    #     )
-    #     kafka_output.connect_input(kafka_input)
-    #     kafka_output.store_custom(event, custom_topic)
-
-    #     assert len(kafka_output._producer.produced) == 1
-    #     assert kafka_output._producer.produced[0] == expected
-
-    # def test_store_failed(self):
-    #     producer_error_topic = "producer_error_topic"
-    #     event_received = {"field": "received"}
-    #     event = {"field": "content"}
-    #     error_message = "error message"
-
-    #     expected = (
-    #         producer_error_topic,
-    #         {
-    #             "error": error_message,
-    #             "original": event_received,
-    #             "processed": event,
-    #             "timestamp": str(datetime.now()),
-    #         },
-    #     )
-
-    #     kafka_input = ConfluentKafkaInput(
-    #         ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-    #     )
-    #     kafka_output = ConfluentKafkaOutputForTest(
-    #         ["bootstrap1", "bootstrap2"], "producer_topic", producer_error_topic
-    #     )
-    #     kafka_output.connect_input(kafka_input)
-    #     kafka_output.store_failed(error_message, event_received, event)
-
-    #     assert len(kafka_output._producer.produced) == 1
-
-    #     error_topic = kafka_output._producer.produced[0]
-
-    #     # timestamp is compared to be approximately the same,
-    #     # since it is variable and then removed to compare the rest
-    #     date_format = "%Y-%m-%d %H:%M:%S.%f"
-    #     error_time = datetime.timestamp(datetime.strptime(error_topic[1]["timestamp"], date_format))
-    #     expected_time = datetime.timestamp(datetime.strptime(expected[1]["timestamp"], date_format))
-    #     assert isclose(error_time, expected_time)
-    #     del error_topic[1]["timestamp"]
-    #     del expected[1]["timestamp"]
-
-    #     assert error_topic == expected
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_store_failed_calls_producer_produce(self, _):
+        kafka_producer = self.object._producer
+        event_received = {"field": "received"}
+        event = {"field": "content"}
+        error_message = "error message"
+        self.object.store_failed(error_message, event_received, event)
+        kafka_producer.produce.assert_called()
+        mock_produce_call = kafka_producer.produce.mock_calls[0]
+        assert self.CONFIG.get("error_topic") in mock_produce_call.args
+        assert "value" in mock_produce_call.kwargs
+        mock_produce_call_value = mock_produce_call.kwargs.get("value")
+        mock_produce_call_value = json.loads(mock_produce_call_value.decode("utf8"))
+        assert "error" in mock_produce_call_value
+        assert "original" in mock_produce_call_value
+        assert "processed" in mock_produce_call_value
+        assert "timestamp" in mock_produce_call_value
 
     # def test_create_confluent_settings_contains_expected_values2(self):
     #     with pytest.raises(

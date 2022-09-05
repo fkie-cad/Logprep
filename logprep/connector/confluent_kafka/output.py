@@ -16,6 +16,7 @@ from logprep.connector.confluent_kafka.common import (
     ConfluentKafkaFactory,
     UnknownOptionError,
 )
+from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.abc.output import Output, CriticalOutputError
 from logprep.util.validators import dict_with_keys_validator
 
@@ -83,29 +84,10 @@ class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
 
     @define(kw_only=True, slots=False)
-    class Config(Input.Config):
-        """Common Configurations"""
+    class Config(ConfluentKafkaInput.Config):
+        """Confluent Kafka Output Config"""
 
-        bootstrapservers: List[str]
-        topic: str
-        group: str
-        enable_auto_offset_store: bool
-        ssl: dict = field(
-            validator=[
-                validators.instance_of(dict),
-                partial(
-                    dict_with_keys_validator,
-                    expected_keys=["cafile", "certfile", "keyfile", "password"],
-                ),
-            ],
-            default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
-        )
-        auto_commit: bool = field(validator=validators.instance_of(bool), default=True)
-        session_timeout: int = field(validator=validators.instance_of(int), default=6000)
-        offset_reset_policy: str = field(
-            default="smallest",
-            validator=validators.in_(["latest", "earliest", "none", "largest", "smallest"]),
-        )
+        error_topic: str
 
     @cached_property
     def _client_id(self):
@@ -212,9 +194,6 @@ class ConfluentKafkaOutput(Output):
             Document after processing until an error occurred.
 
         """
-        if self._producer is None:
-            self._create_producer()
-
         value = {
             "error": error_message,
             "original": document_received,
@@ -223,7 +202,7 @@ class ConfluentKafkaOutput(Output):
         }
         try:
             self._producer.produce(
-                self._producer_error_topic,
+                self._config.error_topic,
                 value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
             )
             self._producer.poll(0)
