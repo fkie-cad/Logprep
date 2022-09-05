@@ -88,6 +88,7 @@ class ConfluentKafkaOutput(Output):
         """Confluent Kafka Output Config"""
 
         error_topic: str
+        flush_timeout: float
 
     @cached_property
     def _client_id(self):
@@ -139,7 +140,7 @@ class ConfluentKafkaOutput(Output):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self._config.bootstrapservers[0]}"
 
-    def store(self, document: dict):
+    def store(self, document: dict) -> None:
         """Store a document in the producer topic.
 
         Parameters
@@ -153,7 +154,7 @@ class ConfluentKafkaOutput(Output):
         # if self._input:
         #     self._input.batch_finished_callback()
 
-    def store_custom(self, document: dict, target: str):
+    def store_custom(self, document: dict, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters
@@ -175,13 +176,15 @@ class ConfluentKafkaOutput(Output):
             self._producer.poll(0)
         except BufferError:
             # block program until buffer is empty
-            self._producer.flush(timeout=self._config["producer"]["flush_timeout"])
+            self._producer.flush(timeout=self._config.flush_timeout)
         except BaseException as error:
             raise CriticalOutputError(
                 f"Error storing output document: ({self._format_error(error)})", document
             ) from error
 
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+    def store_failed(
+        self, error_message: str, document_received: dict, document_processed: dict
+    ) -> None:
         """Write errors into error topic for documents that failed processing.
 
         Parameters
@@ -208,9 +211,9 @@ class ConfluentKafkaOutput(Output):
             self._producer.poll(0)
         except BufferError:
             # block program until buffer is empty
-            self._producer.flush(timeout=self._config["producer"]["flush_timeout"])
+            self._producer.flush(timeout=self._config.flush_timeout)
 
-    def shut_down(self):
+    def shut_down(self) -> None:
+        """ensures that all all messages are flushed"""
         if self._producer is not None:
-            self._producer.flush(self._config["producer"]["flush_timeout"])
-            self._producer = None
+            self._producer.flush(self._config.flush_timeout)

@@ -5,7 +5,6 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 
-from datetime import datetime
 import json
 from unittest import mock
 from logprep.connector.connector_factory import ConnectorFactory
@@ -23,25 +22,13 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
         "session_timeout": 654321,
         "enable_auto_offset_store": True,
         "offset_reset_policy": "latest",
+        "flush_timeout": 0.1,
         "ssl": {
             "cafile": "test_cafile",
             "certfile": "test_certfile",
             "keyfile": "test_keyfile",
             "password": "test_password",
         },
-    }
-
-    default_configuration = {
-        "bootstrap.servers": "bootstrap1,bootstrap2",
-        "group.id": "consumer_group",
-        "enable.auto.commit": True,
-        "enable.auto.offset.store": True,
-        "session.timeout.ms": 6000,
-        "default.topic.config": {"auto.offset.reset": "smallest"},
-        "acks": "all",
-        "compression.type": "none",
-        "queue.buffering.max.messages": 31337,
-        "linger.ms": 0,
     }
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
@@ -87,52 +74,24 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
         assert "processed" in mock_produce_call_value
         assert "timestamp" in mock_produce_call_value
 
-    # def test_create_confluent_settings_contains_expected_values2(self):
-    #     with pytest.raises(
-    #         CriticalOutputError,
-    #         match=r"Error storing output document\: \(TypeError: Object of type "
-    #         r"\'?NotJsonSerializableMock\'? is not JSON serializable\)",
-    #     ):
-    #         self.kafka_output.store(
-    #             {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"}
-    #         )
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_store_custom_calls_producer_flush_on_buffererror(self, _):
+        kafka_producer = self.object._producer
+        kafka_producer.produce.side_effect = BufferError
+        self.object.store_custom({"message": "does not matter"}, "doesnotcare")
+        kafka_producer.flush.assert_called()
 
-    # @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    # def test_store_custom_calls_producer_flush_on_buffererror(self, mock_producer):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
-    #     kafka._producer = mock_producer
-    #     kafka._producer.produce = mock.MagicMock()
-    #     kafka._producer.produce.side_effect = BufferError
-    #     kafka._producer.flush = mock.MagicMock()
-    #     kafka.store_custom({"message": "does not matter"}, "doesnotcare")
-    #     kafka._producer.flush.assert_called()
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_store_failed_calls_producer_flush_on_buffererror(self, _):
+        kafka_producer = self.object._producer
+        kafka_producer.produce.side_effect = BufferError
+        self.object.store_failed(
+            "doesnotcare", {"message": "does not matter"}, {"message": "does not matter"}
+        )
+        kafka_producer.flush.assert_called()
 
-    # @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    # def test_store_failed_calls_producer_flush_on_buffererror(self, mock_producer):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
-    #     kafka._producer = mock_producer
-    #     kafka._producer.produce = mock.MagicMock()
-    #     kafka._producer.produce.side_effect = BufferError
-    #     kafka._producer.flush = mock.MagicMock()
-    #     kafka.store_failed(
-    #         "doesnotcare", {"message": "does not matter"}, {"message": "does not matter"}
-    #     )
-    #     kafka._producer.flush.assert_called()
-
-    # @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    # def test_shut_down_calls_producer_flush(self, mock_producer):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
-    #     kafka._producer = mock_producer
-    #     kafka.shut_down()
-    #     mock_producer.flush.assert_called()
-
-    # @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    # def test_shut_down_sets_producer_to_none(self, mock_producer):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     kafka = ConfluentKafkaOutputFactory.create_from_configuration(config)
-    #     kafka._producer = mock_producer
-    #     kafka.shut_down()
-    #     assert kafka._producer is None
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_shut_down_calls_producer_flush(self, _):
+        kafka_producer = self.object._producer
+        self.object.shut_down()
+        kafka_producer.flush.assert_called()

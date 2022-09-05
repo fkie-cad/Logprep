@@ -34,19 +34,6 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         },
     }
 
-    default_configuration = {
-        "bootstrap.servers": "bootstrap1,bootstrap2",
-        "group.id": "consumer_group",
-        "enable.auto.commit": True,
-        "enable.auto.offset.store": True,
-        "session.timeout.ms": 6000,
-        "default.topic.config": {"auto.offset.reset": "smallest"},
-        "acks": "all",
-        "compression.type": "none",
-        "queue.buffering.max.messages": 31337,
-        "linger.ms": 0,
-    }
-
     def test_client_id_is_set_to_hostname(self):
         assert self.object._client_id == getfqdn()
 
