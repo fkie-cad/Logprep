@@ -1,24 +1,20 @@
 """This module contains functionality that allows to establish a connection with kafka."""
 
-from functools import cached_property, partial
-from typing import List
+from functools import cached_property
 from copy import deepcopy
 from datetime import datetime
 import json
 from socket import getfqdn
-from attrs import validators, field, define
+from attrs import define
 from confluent_kafka import Producer
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.abc.input import Input
 from logprep.connector.confluent_kafka.common import (
-    ConfluentKafka,
     ConfluentKafkaFactory,
     UnknownOptionError,
 )
 from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.abc.output import Output, CriticalOutputError
-from logprep.util.validators import dict_with_keys_validator
 
 
 class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
