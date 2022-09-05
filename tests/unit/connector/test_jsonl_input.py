@@ -5,10 +5,10 @@ from unittest import mock
 
 import pytest
 from logprep.abc.input import CriticalInputError
-from tests.unit.connector.base import BaseConnectorTestCase
+from tests.unit.connector.base import BaseInputTestCase
 
 
-class TestJsonlInput(BaseConnectorTestCase):
+class TestJsonlInput(BaseInputTestCase):
     timeout = 0.1
 
     CONFIG = {"type": "jsonl_input", "documents_path": "/does/not/matter"}
@@ -25,14 +25,14 @@ class TestJsonlInput(BaseConnectorTestCase):
     def test_get_next_returns_document(self, mock_parse):
         mock_parse.return_value = [{"message": "test_message"}]
         expected = {"message": "test_message"}
-        document = self.object.get_next(self.timeout)
+        document, _ = self.object.get_next(self.timeout)
         assert document == expected
 
     @mock.patch(parse_function)
     def test_get_next_returns_multiple_documents(self, mock_parse):
         mock_parse.return_value = [{"order": 0}, {"order": 1}]
-        assert {"order": 0} == self.object.get_next(self.timeout)
-        assert {"order": 1} == self.object.get_next(self.timeout)
+        assert ({"order": 0}, None) == self.object.get_next(self.timeout)
+        assert ({"order": 1}, None) == self.object.get_next(self.timeout)
 
     @mock.patch(parse_function)
     def test_raises_exception_if_not_a_dict(self, mock_parse):

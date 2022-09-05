@@ -139,6 +139,8 @@ class Input(Connector):
         """
         event, raw_event = self._get_event(timeout)
         non_critical_error_msg = None
+        if not isinstance(event, dict):
+            raise CriticalInputError("not a dict", event)
         if event and self._add_hmac:
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
         return event, non_critical_error_msg

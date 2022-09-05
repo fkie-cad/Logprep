@@ -4,14 +4,14 @@
 from pytest import raises
 
 from logprep.abc.input import SourceDisconnectedError
-from tests.unit.connector.base import BaseConnectorTestCase
+from tests.unit.connector.base import BaseInputTestCase
 
 
 class DummyError(BaseException):
     pass
 
 
-class TestDummyInput(BaseConnectorTestCase):
+class TestDummyInput(BaseInputTestCase):
     timeout = 0.01
 
     CONFIG = {"type": "dummy_input", "documents": []}

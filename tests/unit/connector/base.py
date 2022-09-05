@@ -85,11 +85,11 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert non_critical_error_msg is None
         assert processed_event.get("Hmac")
         assert (
-                processed_event.get("Hmac").get("hmac")
-                == "cc67047535dc9ac17775785b05fe8cdd245387e2d036b2475e82f37653c5bf3d"
+            processed_event.get("Hmac").get("hmac")
+            == "cc67047535dc9ac17775785b05fe8cdd245387e2d036b2475e82f37653c5bf3d"
         )
         assert (
-                processed_event.get("Hmac").get("compressed_base64") == "eJwrSS0uUchNLS5OTE8FAB8fBMY="
+            processed_event.get("Hmac").get("compressed_base64") == "eJwrSS0uUchNLS5OTE8FAB8fBMY="
         )
 
     def test_get_next_with_hmac_of_raw_message(self):
@@ -181,7 +181,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
             "Hmac": {
                 "hmac": "error",
                 "compressed_base64": "eJyzSa0oSE0uSU1RyMhNTFYoSSxKTy1RSMtMzUlRUM/Lz4tPrcgsLsnMS48Hi"
-                                     "6kr5OUDpfNL81LsAJILFeQ=",
+                "6kr5OUDpfNL81LsAJILFeQ=",
             },
         }
         kafka_next_msg, non_critical_error_msg = kafka.get_next(1)
@@ -249,8 +249,8 @@ class BaseInputTestCase(BaseConnectorTestCase):
         kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
         _, non_critical_error_msg = kafka.get_next(1)
         assert (
-                non_critical_error_msg
-                == "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
+            non_critical_error_msg
+            == "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
         )
 
     def test_get_next_without_hmac(self):
