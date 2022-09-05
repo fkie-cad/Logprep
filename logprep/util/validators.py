@@ -1,5 +1,6 @@
 """ validators to use with `attrs` fields"""
 import os
+import typing
 from urllib.parse import urlparse
 
 from logprep.processor.processor_factory_error import InvalidConfigurationError
@@ -101,3 +102,56 @@ def dict_with_keys_validator(_, __, value, expected_keys):
     unexpected_keys = set(value).difference(set(expected_keys))
     if unexpected_keys:
         raise InvalidConfigurationError(f"following keys are unknown: {unexpected_keys}")
+
+
+def dict_structure_validator(_, __, value, reference_dict):
+    """
+    validate structure of a dictionary by checking:
+    - if fields are optional or not
+    - if fields have the correct types
+    - if the validation of a nested config object is valid
+    """
+    unexpected_keys = set(value.keys()).difference(set(reference_dict.keys()))
+    if unexpected_keys:
+        raise InvalidConfigurationError(f"following keys are unknown: {unexpected_keys}")
+
+    for key in reference_dict:
+        if _is_optional_type(reference_dict[key]):
+            _validate_optional_dict_keys(key, reference_dict, value)
+        else:
+            _validate_mandatory_dict_keys(key, reference_dict, value)
+
+
+def _validate_mandatory_dict_keys(key, reference_dict, value):
+    if key not in value.keys():
+        raise InvalidConfigurationError(f"following key is missing: '{key}'")
+    if hasattr(reference_dict[key], "__attrs_attrs__"):
+        _ = reference_dict[key](**value[key])
+    elif not isinstance(value[key], reference_dict[key]):
+        raise InvalidConfigurationError(
+            f"'{key}' has wrong type {type(value[key])}, expected {reference_dict[key]}."
+        )
+
+
+def _validate_optional_dict_keys(key, reference_dict, value):
+    expected_type = _extract_not_none_type(reference_dict[key])
+    if hasattr(expected_type, "__attrs_attrs__"):
+        _ = expected_type(**value[key])
+    elif key in value.keys() and not isinstance(value[key], expected_type):
+        raise InvalidConfigurationError(
+            f"'{key}' has wrong type {type(value[key])}, expected {reference_dict[key]}."
+        )
+
+
+def _extract_not_none_type(type_declaration):
+    type_list = getattr(type_declaration, "__args__")
+    return [typ for typ in type_list if not isinstance(typ, type(None))][0]
+
+
+def _is_optional_type(given_type):
+    """Checks if a given type is an optional type"""
+    if hasattr(given_type, "__origin__"):
+        if given_type.__origin__ is typing.Union:
+            if type(None) in getattr(given_type, "__args__"):
+                return True
+    return False

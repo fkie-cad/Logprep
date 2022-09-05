@@ -7,13 +7,15 @@ New input endpoint types are created by implementing it.
 import base64
 import hashlib
 import zlib
+from functools import partial
 from hmac import HMAC
-from typing import Tuple
+from typing import Tuple, Optional
 
 from attrs import define, field, validators
 
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from .connector import Connector
+from ..util.validators import dict_structure_validator
 
 
 class InputError(BaseException):
@@ -51,10 +53,24 @@ class Input(Connector):
     class Config(Connector.Config):
         """Input Configurations"""
 
+        @define(kw_only=True)
+        class HmacConfig:
+            """Hmac Configurations"""
+
+            target: str = field(validator=validators.instance_of(str))
+            key: str = field(validator=validators.instance_of(str))
+            output_field: str = field(validator=validators.instance_of(str))
+
         preprocessing: dict = field(
             validator=[
                 validators.instance_of(dict),
-                # TODO: Write validator for hmac subfields
+                partial(
+                    dict_structure_validator,
+                    reference_dict={
+                        "version_info_target_field": Optional[str],
+                        "hmac": Optional[HmacConfig],
+                    },
+                ),
             ],
             default={
                 "version_info_target_field": "",
@@ -68,7 +84,8 @@ class Input(Connector):
 
     @property
     def _add_hmac(self):
-        return all(bool(hmac_value) for hmac_value in self._config.preprocessing.get("hmac"))
+        hmac_options = self._config.preprocessing.get("hmac")
+        return all(bool(hmac_options[option_key]) for option_key in hmac_options)
 
     def setup(self):
         """Set the input up, e.g. connect to a database.

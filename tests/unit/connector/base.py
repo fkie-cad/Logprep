@@ -252,81 +252,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 == "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
         )
 
-    def test_get_next_with_wrong_or_missing_hmac_config(self):
-        # TODO: write hmac config validator -> see logprep.abc.input.Input.Config
+    def test_get_next_without_hmac(self):
         kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update(
-            {
-                "preprocessing": {
-                    "hmac": {
-                        "key": "hmac-test-key",
-                        "output_field": "message",
-                    }
-                }
-            }
-        )
-        _ = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
-        assert False, (
-            "This test should fail because of missing hmac target option -> validator is "
-            "missing yet though"
-        )
-
-        # for key in ["target", "key", "output_field"]:
-        #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-        #     config["consumer"]["hmac"] = {
-        #         "target": "<RAW_MSG>",
-        #         "key": "hmac-test-key",
-        #         "output_field": "Hmac",
-        #     }
-        #
-        #     # drop option to test for missing option error message
-        #     del config["consumer"]["hmac"][key]
-        #     with pytest.raises(
-        #         InvalidConfigurationError, match=rf"Hmac option\(s\) missing: {{'{key}'}}"
-        #     ):
-        #         _ = ConfluentKafkaInputFactory.create_from_configuration(config)
-        #
-        # # set default config
-        # config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-        #
-        # # add additional unknown option and test for error message
-        # config["consumer"]["hmac"] = {"unknown": "option"}
-        # with pytest.raises(
-        #     InvalidConfigurationError, match=r"Confluent Kafka Input: Unknown Option: unknown"
-        # ):
-        #     _ = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    # def test_get_next_with_broken_hmac_config(self):
-    #     for key in ["target", "key", "output_field"]:
-    #         # set default config
-    #         config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #         config["consumer"]["hmac"] = {
-    #             "target": "<RAW_MSG>",
-    #             "key": "hmac-test-key",
-    #             "output_field": "Hmac",
-    #         }
-
-    #         # empty one option and test for error message
-    #         config["consumer"]["hmac"][key] = ""
-    #         with pytest.raises(
-    #             InvalidConfigurationError, match=rf"Hmac option '{key}' is empty: ''"
-    #         ):
-    #             _ = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    # def test_get_next_without_hmac(self):
-    #     config = deepcopy(TestConfluentKafkaFactory.valid_configuration)
-    #     kafka = ConfluentKafkaInputFactory.create_from_configuration(config)
-
-    #     # configuration is not set
-    #     assert kafka._config["consumer"]["hmac"]["target"] == ""
-    #     assert kafka._config["consumer"]["hmac"]["key"] == ""
-    #     assert kafka._config["consumer"]["hmac"]["output_field"] == ""
-
-    #     test_event = {"message": "with_content"}
-    #     expected_event = {"message": "with_content"}
-
-    #     kafka._consumer = ConsumerJsonMock(test_event)
-
-    #     # output message is the same as the input message
-    #     kafka_next_msg = kafka.get_next(1)
-    #     assert kafka_next_msg == expected_event
+        assert not kafka_config.get("preprocessing", {}).get("hmac")
+        test_event = {"message": "with_content"}
+        kafka = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
+        raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
+        kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
+        kafka_next_msg, non_critical_error_msg = kafka.get_next(1)
+        assert kafka_next_msg == test_event
