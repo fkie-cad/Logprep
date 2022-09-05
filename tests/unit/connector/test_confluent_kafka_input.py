@@ -95,7 +95,7 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         with pytest.raises(ValueError, match=r"'offset_reset_policy' must be in.*got 'invalid'"):
             _ = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
 
-    def test_create_confluent_settings_contains_expected_values(self):
+    def test_confluent_settings_contains_expected_values(self):
         expected_config = {
             "bootstrap.servers": "testserver:9092",
             "default.topic.config": {"auto.offset.reset": "latest"},
@@ -109,7 +109,7 @@ class TestConfluentKafkaInput(BaseInputTestCase):
             "ssl.key.location": "test_keyfile",
             "ssl.key.password": "test_password",
         }
-        kafka_input_cfg = self.object._create_confluent_settings()
+        kafka_input_cfg = self.object._confluent_settings
         assert kafka_input_cfg == expected_config
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")

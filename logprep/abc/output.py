@@ -39,15 +39,6 @@ class Output(Connector):
         """
 
     @abstractmethod
-    def describe_endpoint(self) -> str:
-        """Return a brief description of the endpoint for this output.
-
-        This may be used as a word in a sentence.
-        Setting a description is optional.
-
-        """
-
-    @abstractmethod
     def store(self, document: dict):
         """Store the document.
 
@@ -65,10 +56,3 @@ class Output(Connector):
     @abstractmethod
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Store an event when an error occurred during the processing."""
-
-    def shut_down(self):
-        """Close the output down, e.g. close all connections.
-
-        This is optional.
-
-        """

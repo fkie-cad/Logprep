@@ -17,6 +17,7 @@ class ConnectorRegistry:
         "jsonl_input": JsonlInput,
         "dummy_input": DummyInput,
         "confluentkafka_input": ConfluentKafkaInput,
+        "confluentkafka_output": ConfluentKafkaOutput,
     }
 
     @classmethod

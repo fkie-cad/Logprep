@@ -5,12 +5,14 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 
+from unittest import mock
+from logprep.connector.connector_factory import ConnectorFactory
 from tests.unit.connector.base import BaseConnectorTestCase
 
 
 class TestConfluentKafkaOutput(BaseConnectorTestCase):
     CONFIG = {
-        "type": "confluentkafka_input",
+        "type": "confluentkafka_output",
         "bootstrapservers": ["testserver:9092"],
         "topic": "test_input_raw",
         "group": "test_consumergroup",
@@ -38,6 +40,11 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
         "queue.buffering.max.messages": 31337,
         "linger.ms": 0,
     }
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
+    def test_producer_property_instanciates_kafka_producer(self, mock_producer):
+        kafka_output = ConnectorFactory.create({"test connector": self.CONFIG}, logger=self.logger)
+        assert kafka_output._producer == "The Producer"
 
     # def test_store_sends_event_to_expected_topic(self):
     #     producer_topic = "producer_topic"

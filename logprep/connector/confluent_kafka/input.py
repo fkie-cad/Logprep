@@ -121,7 +121,7 @@ class ConfluentKafkaInput(Input):
 
     @property
     def _consumer(self):
-        consumer = Consumer(self._create_confluent_settings())
+        consumer = Consumer(self._confluent_settings)
         consumer.subscribe([self._config.topic])
         return consumer
 
@@ -200,7 +200,15 @@ class ConfluentKafkaInput(Input):
             raise CriticalInputError("Input record value could not be parsed as dict", event_dict)
         return event_dict, raw_event
 
-    def _create_confluent_settings(self):
+    @cached_property
+    def _confluent_settings(self) -> dict:
+        """generate confluence settings mapping
+
+        Returns
+        -------
+        dict
+            the translated confluence settings
+        """
         configuration = {
             "bootstrap.servers": ",".join(self._config.bootstrapservers),
             "group.id": self._config.group,

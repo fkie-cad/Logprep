@@ -1,11 +1,12 @@
 """This module contains functionality that allows to establish a connection with kafka."""
 
+from functools import cached_property, partial
 from typing import List
 from copy import deepcopy
 from datetime import datetime
 import json
 from socket import getfqdn
-
+from attrs import validators, field, define
 from confluent_kafka import Producer
 
 from logprep.connector.connector_factory_error import InvalidConfigurationError
@@ -16,6 +17,7 @@ from logprep.connector.confluent_kafka.common import (
     UnknownOptionError,
 )
 from logprep.abc.output import Output, CriticalOutputError
+from logprep.util.validators import dict_with_keys_validator
 
 
 class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
@@ -77,42 +79,73 @@ class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
         return config
 
 
-class ConfluentKafkaOutput(Output, ConfluentKafka):
+class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
 
-    def __init__(
-        self, bootstrap_servers: List[str], producer_topic: str, producer_error_topic: str
-    ):
-        ConfluentKafka.__init__(self, bootstrap_servers)
-        self._producer_topic = producer_topic
-        self._producer_error_topic = producer_error_topic
-        self._input = None
+    @define(kw_only=True, slots=False)
+    class Config(Input.Config):
+        """Common Configurations"""
 
-        self._config["producer"] = {
-            "ack_policy": "all",
-            "compression": "none",
-            "maximum_backlog": 10 * 1000,
-            "linger_duration": 0,
-            "send_timeout": 0,
-            "flush_timeout": 30.0,  # may require adjustment
-        }
+        bootstrapservers: List[str]
+        topic: str
+        group: str
+        enable_auto_offset_store: bool
+        ssl: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                partial(
+                    dict_with_keys_validator,
+                    expected_keys=["cafile", "certfile", "keyfile", "password"],
+                ),
+            ],
+            default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
+        )
+        auto_commit: bool = field(validator=validators.instance_of(bool), default=True)
+        session_timeout: int = field(validator=validators.instance_of(int), default=6000)
+        offset_reset_policy: str = field(
+            default="smallest",
+            validator=validators.in_(["latest", "earliest", "none", "largest", "smallest"]),
+        )
 
-        self._client_id = getfqdn()
-        self._producer = None
+    @cached_property
+    def _client_id(self):
+        return getfqdn()
 
-    def connect_input(self, input_connector: Input):
-        """Connect input connector.
+    @property
+    def _producer(self):
+        return Producer(self._confluent_settings)
 
-        This connector is used for callbacks.
+    @cached_property
+    def _confluent_settings(self) -> dict:
+        """generate confluence settings mapping
 
-        Parameters
-        ----------
-        input_connector : Input
-           Input connector to connect this output with.
+        Returns
+        -------
+        dict
+            the translated confluence settings
         """
-        self._input = input_connector
+        configuration = {
+            "bootstrap.servers": ",".join(self._config.bootstrapservers),
+            "group.id": self._config.group,
+            "enable.auto.commit": self._config.auto_commit,
+            "session.timeout.ms": self._config.session_timeout,
+            "enable.auto.offset.store": self._config.enable_auto_offset_store,
+            "default.topic.config": {"auto.offset.reset": self._config.offset_reset_policy},
+        }
+        ssl_settings_are_setted = any(self._config.ssl[key] for key in self._config.ssl)
+        if ssl_settings_are_setted:
+            configuration.update(
+                {
+                    "security.protocol": "SSL",
+                    "ssl.ca.location": self._config.ssl["cafile"],
+                    "ssl.certificate.location": self._config.ssl["certfile"],
+                    "ssl.key.location": self._config.ssl["keyfile"],
+                    "ssl.key.password": self._config.ssl["password"],
+                }
+            )
+        return configuration
 
-    def describe_endpoint(self) -> str:
+    def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
 
         Returns
@@ -121,7 +154,8 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
             Acts as input and output connector.
 
         """
-        return f"Kafka Output: {self._bootstrap_servers[0]}"
+        base_description = super().describe()
+        return f"{base_description} - Kafka Input: {self._config.bootstrapservers[0]}"
 
     def store(self, document: dict):
         """Store a document in the producer topic.
@@ -132,9 +166,10 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
            Document to store.
 
         """
-        self.store_custom(document, self._producer_topic)
-        if self._input:
-            self._input.batch_finished_callback()
+        self.store_custom(document, self._config.topic)
+        # TODO: Has to be done on pipeline level
+        # if self._input:
+        #     self._input.batch_finished_callback()
 
     def store_custom(self, document: dict, target: str):
         """Write document to Kafka into target topic.
@@ -198,20 +233,6 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config["producer"]["flush_timeout"])
-
-    def _create_producer(self):
-        self._producer = Producer(self._create_confluent_settings())
-
-    def _create_confluent_settings(self):
-        configuration = {
-            "acks": self._config["producer"]["ack_policy"],
-            "compression.type": self._config["producer"]["compression"],
-            "queue.buffering.max.messages": self._config["producer"]["maximum_backlog"],
-            "linger.ms": self._config["producer"]["linger_duration"],
-        }
-        self._set_base_confluent_settings(configuration)
-
-        return configuration
 
     def shut_down(self):
         if self._producer is not None:
