@@ -143,13 +143,6 @@ class NormalizerRule(Rule):
                     )
 
     def __eq__(self, other: "NormalizerRule") -> bool:
-        print(other.filter_str, self.filter_str)
-        print(self._substitutions, other.substitutions)
-        print(self._grok)
-        print(other.grok)
-        print(other.grok)
-        print(self._timestamps)
-        print(other.timestamps)
         return all(
             [
                 other.filter == self._filter,
