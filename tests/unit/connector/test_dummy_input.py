@@ -23,14 +23,17 @@ class TestDummyInput(BaseConnectorTestCase):
     def test_returns_documents_in_order_provided(self):
         self.object._config.documents = [{"order": 0}, {"order": 1}, {"order": 2}]
         for order in range(0, 3):
-            assert self.object.get_next(self.timeout)["order"] == order
+            event, _ = self.object.get_next(self.timeout)
+            assert event.get("order") == order
 
     def test_raises_exceptions_instead_of_returning_them_in_document(self):
         self.object._config.documents = [{"order": 0}, DummyError, {"order": 1}]
-        assert self.object.get_next(self.timeout)["order"] == 0
+        event, _ = self.object.get_next(self.timeout)
+        assert event.get("order") == 0
         with raises(DummyError):
-            self.object.get_next(self.timeout)
-        assert self.object.get_next(self.timeout)["order"] == 1
+            _, _ = self.object.get_next(self.timeout)
+        event, _ = self.object.get_next(self.timeout)
+        assert event.get("order") == 1
 
     def test_raises_exceptions_instead_of_returning_them(self):
         self.object._config.documents = [BaseException]

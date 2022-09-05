@@ -93,7 +93,6 @@ class Input(Connector):
 
         """
 
-    @abstractmethod
     def _get_raw_event(self, timeout: float) -> bytearray:
         """Implements the details how to get the event
 

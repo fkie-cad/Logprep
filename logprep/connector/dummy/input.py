@@ -26,8 +26,7 @@ class DummyInput(Input):
     def _documents(self):
         return self._config.documents
 
-    def get_next(self, timeout: float):
-        self.last_timeout = timeout
+    def _get_event(self, timeout: float) -> tuple:
         if not self._documents:
             raise SourceDisconnectedError
 
@@ -35,4 +34,4 @@ class DummyInput(Input):
 
         if (document.__class__ == type) and issubclass(document, BaseException):
             raise document
-        return document
+        return document, None
