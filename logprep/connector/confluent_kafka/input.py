@@ -98,8 +98,6 @@ class ConfluentKafkaInput(Input):
             validator=validators.in_(["latest", "earliest", "none", "largest", "smallest"]),
         )
 
-    _output: Output
-
     current_offset: int
 
     _record: Any
@@ -107,7 +105,6 @@ class ConfluentKafkaInput(Input):
     _last_valid_records: dict
 
     __slots__ = [
-        "_output",
         "current_offset",
         "_record",
         "_last_valid_records",
