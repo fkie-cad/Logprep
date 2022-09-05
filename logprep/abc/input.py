@@ -4,6 +4,7 @@ New input endpoint types are created by implementing it.
 
 """
 
+from abc import abstractmethod
 import base64
 import hashlib
 import zlib
@@ -78,9 +79,7 @@ class Input(Connector):
             },
         )
 
-    _output: Connector
-
-    __slots__ = ["_output"]
+    __slots__ = []
 
     @property
     def _add_hmac(self):
@@ -94,6 +93,7 @@ class Input(Connector):
 
         """
 
+    @abstractmethod
     def _get_raw_event(self, timeout: float) -> bytearray:
         """Implements the details how to get the event
 
@@ -104,6 +104,7 @@ class Input(Connector):
         """
         return None
 
+    @abstractmethod
     def _get_event(self, timeout: float) -> Tuple:
         """Implements the details how to get the event
 

@@ -126,9 +126,9 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         mock_record.value = mock.MagicMock(return_value=None)
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         with pytest.raises(
-                CriticalInputError,
-                match=r"A confluent-kafka record contains an error code: "
-                      r"\(An arbitrary confluent-kafka error\)",
+            CriticalInputError,
+            match=r"A confluent-kafka record contains an error code: "
+            r"\(An arbitrary confluent-kafka error\)",
         ):
             _, _ = self.object.get_next(1)
 
@@ -137,3 +137,11 @@ class TestConfluentKafkaInput(BaseInputTestCase):
         kafka_consumer = self.object._consumer
         self.object.shut_down()
         kafka_consumer.close.assert_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_batch_finished_callback_calls_consumer_store_offsets(self, _):
+        kafka_consumer = self.object._consumer
+        self.object._config.enable_auto_offset_store = False
+        self.object._last_valid_records = {"record1": ["dummy"]}
+        self.object.batch_finished_callback()
+        kafka_consumer.store_offsets.assert_called()
