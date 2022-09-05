@@ -31,7 +31,8 @@ class BaseConnectorTestCase(ABC):
 
     def test_describe(self):
         describe_string = self.object.describe()
-        assert f"{self.object.__class__.__name__} (Test Instance Name)" == describe_string
+        expected_base_description = f"{self.object.__class__.__name__} (Test Instance Name)"
+        assert describe_string.startswith(expected_base_description)
 
     def test_snake_type(self):
         assert str(self.object) == camel_to_snake(self.object.__class__.__name__)
