@@ -10,47 +10,204 @@ from logprep.processor.normalizer.rule import NormalizerRule
 @pytest.fixture()
 def specific_rule_definition():
     return {
-        "filter": 'winlog.event_id: 1234 AND source_name: "test"',
+        "filter": "message",
         "normalize": {
-            "winlog.event_data.param1": "normalized_test",
+            "substitution_field": "foo",
+            "grok_field": {"grok": ["%{IP:ip_foo} %{NUMBER:port_foo:int} foo"]},
+            "timestamp_field": {
+                "timestamp": {
+                    "destination": "timestamp_field",
+                    "source_formats": ["%Y %m %d - %H:%M:%S"],
+                    "source_timezone": "UTC",
+                    "destination_timezone": "Europe/Berlin",
+                },
+            },
         },
         "description": "insert a description text",
     }
 
 
 class TestNormalizerRule:
-    def test_rules_are_equal(self, specific_rule_definition):
+    @pytest.mark.parametrize(
+        "testcase, other_rule_definition, is_equal",
+        [
+            (
+                "Should be equal cause the same",
+                {
+                    "filter": "message",
+                    "normalize": {
+                        "substitution_field": "foo",
+                        "grok_field": {"grok": ["%{IP:ip_foo} %{NUMBER:port_foo:int} foo"]},
+                        "timestamp_field": {
+                            "timestamp": {
+                                "destination": "timestamp_field",
+                                "source_formats": ["%Y %m %d - %H:%M:%S"],
+                                "source_timezone": "UTC",
+                                "destination_timezone": "Europe/Berlin",
+                            },
+                        },
+                    },
+                },
+                True,
+            ),
+            (
+                "Should be not equal cause of other filter",
+                {
+                    "filter": "other_message",
+                    "normalize": {
+                        "substitution_field": "foo",
+                        "grok_field": {"grok": ["%{IP:ip_foo} %{NUMBER:port_foo:int} foo"]},
+                        "timestamp_field": {
+                            "timestamp": {
+                                "destination": "timestamp_field",
+                                "source_formats": ["%Y %m %d - %H:%M:%S"],
+                                "source_timezone": "UTC",
+                                "destination_timezone": "Europe/Berlin",
+                            },
+                        },
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other substitution_field",
+                {
+                    "filter": "message",
+                    "normalize": {
+                        "substitution_field": "bar",
+                        "grok_field": {"grok": ["%{IP:ip_foo} %{NUMBER:port_foo:int} foo"]},
+                        "timestamp_field": {
+                            "timestamp": {
+                                "destination": "timestamp_field",
+                                "source_formats": ["%Y %m %d - %H:%M:%S"],
+                                "source_timezone": "UTC",
+                                "destination_timezone": "Europe/Berlin",
+                            },
+                        },
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of no substitution_field",
+                {
+                    "filter": "message",
+                    "normalize": {
+                        "grok_field": {"grok": ["%{IP:ip_foo} %{NUMBER:port_foo:int} foo"]},
+                        "timestamp_field": {
+                            "timestamp": {
+                                "destination": "timestamp_field",
+                                "source_formats": ["%Y %m %d - %H:%M:%S"],
+                                "source_timezone": "UTC",
+                                "destination_timezone": "Europe/Berlin",
+                            },
+                        },
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of no grok_field",
+                {
+                    "filter": "message",
+                    "normalize": {
+                        "substitution_field": "foo",
+                        "timestamp_field": {
+                            "timestamp": {
+                                "destination": "timestamp_field",
+                                "source_formats": ["%Y %m %d - %H:%M:%S"],
+                                "source_timezone": "UTC",
+                                "destination_timezone": "Europe/Berlin",
+                            },
+                        },
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other grok_field",
+                {
+                    "filter": "message",
+                    "normalize": {
+                        "substitution_field": "foo",
+                        "grok_field": {"grok": ["%{IP:ip_bar} %{NUMBER:port_bar:int} bar"]},
+                        "timestamp_field": {
+                            "timestamp": {
+                                "destination": "timestamp_field",
+                                "source_formats": ["%Y %m %d - %H:%M:%S"],
+                                "source_timezone": "UTC",
+                                "destination_timezone": "Europe/Berlin",
+                            },
+                        },
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of additional grok_field",
+                {
+                    "filter": "message",
+                    "normalize": {
+                        "substitution_field": "foo",
+                        "grok_field": {
+                            "grok": [
+                                "%{IP:ip_foo} %{NUMBER:port_foo:int} foo",
+                                "%{IP:ip_bar} %{NUMBER:port_bar:int} bar",
+                            ]
+                        },
+                        "timestamp_field": {
+                            "timestamp": {
+                                "destination": "timestamp_field",
+                                "source_formats": ["%Y %m %d - %H:%M:%S"],
+                                "source_timezone": "UTC",
+                                "destination_timezone": "Europe/Berlin",
+                            },
+                        },
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other timestamp_field",
+                {
+                    "filter": "message",
+                    "normalize": {
+                        "substitution_field": "foo",
+                        "grok_field": {"grok": ["%{IP:ip_foo} %{NUMBER:port_foo:int} foo"]},
+                        "timestamp_field": {
+                            "timestamp": {
+                                "destination": "other_timestamp_field",
+                                "source_formats": ["%Y %m %d - %H:%M:%S"],
+                                "source_timezone": "UTC",
+                                "destination_timezone": "Europe/Berlin",
+                            },
+                        },
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of no timestamp_field",
+                {
+                    "filter": "message",
+                    "normalize": {
+                        "substitution_field": "foo",
+                        "grok_field": {"grok": ["%{IP:ip_foo} %{NUMBER:port_foo:int} foo"]},
+                    },
+                },
+                False,
+            ),
+        ],
+    )
+    def test_rules_equality(
+        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+    ):
         rule1 = NormalizerRule(
             LuceneFilter.create(specific_rule_definition["filter"]),
             specific_rule_definition["normalize"],
         )
-
         rule2 = NormalizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["normalize"],
+            LuceneFilter.create(other_rule_definition["filter"]),
+            other_rule_definition["normalize"],
         )
-
-        assert rule1 == rule2
-
-    def test_rules_are_not_equal(self, specific_rule_definition):
-        rule = NormalizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["normalize"],
-        )
-
-        rule_diff_substi = NormalizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["normalize"],
-        )
-
-        rule_diff_filter = NormalizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["normalize"],
-        )
-
-        rule_diff_substi._substitutions = ["I am different!"]
-        rule_diff_filter._filter = ["I am different!"]
-
-        assert rule != rule_diff_substi
-        assert rule != rule_diff_filter
-        assert rule_diff_substi != rule_diff_filter
+        assert (rule1 == rule2) == is_equal, testcase

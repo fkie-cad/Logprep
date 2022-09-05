@@ -34,7 +34,13 @@ class GeoipEnricherRule(Rule):
         self._source_ip = geoip_enricher_cfg["source_ip"]
 
     def __eq__(self, other: "GeoipEnricherRule") -> bool:
-        return (other.filter == self._filter) and (self.source_ip == other.source_ip)
+        return all(
+            [
+                other.filter == self._filter,
+                self.source_ip == other.source_ip,
+                self._output_field == other.output_field,
+            ]
+        )
 
     # pylint: disable=C0111
     @property
@@ -44,7 +50,7 @@ class GeoipEnricherRule(Rule):
     # pylint: enable=C0111
 
     @property
-    def output_field(self) -> dict:
+    def output_field(self) -> str:
         return self._output_field
 
     @staticmethod

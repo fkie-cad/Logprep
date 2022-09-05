@@ -30,10 +30,12 @@ class DropperRule(Rule):
         self._drop_full = drop_full
 
     def __eq__(self, other: "DropperRule") -> bool:
-        return (
-            (other.filter == self._filter)
-            and (self._fields_to_drop == other.fields_to_drop)
-            and (self._drop_full == other.drop_full)
+        return all(
+            [
+                other.filter == self._filter,
+                self._fields_to_drop == other.fields_to_drop,
+                self._drop_full == other.drop_full,
+            ]
         )
 
     # pylint: disable=C0111

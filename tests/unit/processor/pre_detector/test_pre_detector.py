@@ -301,4 +301,14 @@ class TestPreDetector(BaseProcessorTestCase):
             result_pre_detection_id = detection_result.pop("pre_detection_id", None)
             assert result_pre_detection_id is not None
             assert pre_detection_id == result_pre_detection_id
-        assert detection_results == expected_detection_results
+
+        sorted_detection_results = (
+            sorted([frozenset(result) for result in detection_results[0]]),
+            detection_results[1],
+        )
+        sorted_expected_detection_results = (
+            sorted([frozenset(result) for result in expected_detection_results[0]]),
+            expected_detection_results[1],
+        )
+
+        assert sorted_detection_results == sorted_expected_detection_results

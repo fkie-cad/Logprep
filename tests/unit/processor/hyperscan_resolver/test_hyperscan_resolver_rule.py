@@ -16,6 +16,7 @@ def fixture_specific_rule_definition():
         "hyperscan_resolver": {
             "field_mapping": {"to_resolve": "resolved"},
             "resolve_list": {"to_resolve": "resolved"},
+            "store_db_persistent": True,
         },
         "description": "insert a description text",
     }
@@ -46,9 +47,33 @@ def fixture_specific_rule_with_resolve_file_definition():
                 "hyperscan_resolver": {
                     "field_mapping": {"to_resolve": "resolved"},
                     "resolve_list": {"to_resolve": "resolved"},
+                    "store_db_persistent": True,
                 },
             },
             True,
+        ),
+        (
+            "Should be not equal cause of other store_db_persistent",
+            {
+                "filter": "some_filter",
+                "hyperscan_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_list": {"to_resolve": "resolved"},
+                    "store_db_persistent": False,
+                },
+            },
+            False,
+        ),
+        (
+            "Should be not equal cause of no store_db_persistent and default is different",
+            {
+                "filter": "some_filter",
+                "hyperscan_resolver": {
+                    "field_mapping": {"to_resolve": "resolved"},
+                    "resolve_list": {"to_resolve": "resolved"},
+                },
+            },
+            False,
         ),
         (
             "Should be not equal cause of other filter",
@@ -57,6 +82,7 @@ def fixture_specific_rule_with_resolve_file_definition():
                 "hyperscan_resolver": {
                     "field_mapping": {"to_resolve": "resolved"},
                     "resolve_list": {"to_resolve": "resolved"},
+                    "store_db_persistent": True,
                 },
             },
             False,
@@ -68,6 +94,7 @@ def fixture_specific_rule_with_resolve_file_definition():
                 "hyperscan_resolver": {
                     "field_mapping": {"to_resolve": "resolved"},
                     "resolve_list": {"other_to_resolve": "other_resolved"},
+                    "store_db_persistent": True,
                 },
             },
             False,
@@ -81,6 +108,7 @@ def fixture_specific_rule_with_resolve_file_definition():
                     "resolve_list": {
                         "to_resolve": "resolved",
                         "other_to_resolve": "other_resolved",
+                        "store_db_persistent": True,
                     },
                 },
             },
@@ -94,6 +122,7 @@ def fixture_specific_rule_with_resolve_file_definition():
                     "field_mapping": {"to_resolve": "resolved"},
                     "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
                     "resolve_mapping_same.yml",
+                    "store_db_persistent": True,
                 },
             },
             True,
@@ -106,6 +135,7 @@ def fixture_specific_rule_with_resolve_file_definition():
                     "field_mapping": {"to_resolve": "resolved"},
                     "resolve_from_file": "tests/testdata/unit/hyperscan_resolver/"
                     "resolve_mapping_different.yml",
+                    "store_db_persistent": True,
                 },
             },
             False,
@@ -129,7 +159,7 @@ def test_rules_equality(
     assert (rule1 == rule2) == is_equal, testcase
 
 
-def test_rules_with_different_regex_pattern_definition_types_equal(
+def test_rules_with_differently_defined_but_equivalent_regex_pattern_definition_types_are_equal(
     specific_rule_with_resolve_file_definition,
 ):
     rule_no_regex = HyperscanResolverRule._create_from_dict(

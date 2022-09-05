@@ -22,41 +22,83 @@ def fixture_specific_rule_definition():
 
 
 class TestListComparisonRule:
-    def test_rules_are_equal(self, specific_rule_definition):
+    @pytest.mark.parametrize(
+        "testcase, other_rule_definition, is_equal",
+        [
+            (
+                "Should be equal cause the same",
+                {
+                    "filter": "user",
+                    "list_comparison": {
+                        "check_field": "user",
+                        "output_field": "user_results",
+                        "list_file_paths": ["../lists/user_list.txt"],
+                    },
+                },
+                True,
+            ),
+            (
+                "Should be not equal cause of other filter",
+                {
+                    "filter": "other_user",
+                    "list_comparison": {
+                        "check_field": "user",
+                        "output_field": "user_results",
+                        "list_file_paths": ["../lists/user_list.txt"],
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other check_field",
+                {
+                    "filter": "user",
+                    "list_comparison": {
+                        "check_field": "other_user",
+                        "output_field": "user_results",
+                        "list_file_paths": ["../lists/user_list.txt"],
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other output_field",
+                {
+                    "filter": "user",
+                    "list_comparison": {
+                        "check_field": "user",
+                        "output_field": "other_user_results",
+                        "list_file_paths": ["../lists/user_list.txt"],
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other list_file_paths",
+                {
+                    "filter": "user",
+                    "list_comparison": {
+                        "check_field": "user",
+                        "output_field": "other_user_results",
+                        "list_file_paths": ["../lists/other_user_list.txt"],
+                    },
+                },
+                False,
+            ),
+        ],
+    )
+    def test_rules_equality(
+        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+    ):
         rule1 = ListComparisonRule(
             LuceneFilter.create(specific_rule_definition["filter"]),
             specific_rule_definition["list_comparison"],
         )
-
         rule2 = ListComparisonRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["list_comparison"],
+            LuceneFilter.create(other_rule_definition["filter"]),
+            other_rule_definition["list_comparison"],
         )
-
-        assert rule1 == rule2
-
-    def test_rules_are_not_equal(self, specific_rule_definition):
-        rule = ListComparisonRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["list_comparison"],
-        )
-
-        rule_diff_check_field = ListComparisonRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["list_comparison"],
-        )
-
-        rule_diff_filter = ListComparisonRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["list_comparison"],
-        )
-
-        rule_diff_check_field._check_field = ["diff_field"]
-        rule_diff_filter._filter = ["diff_user"]
-
-        assert rule != rule_diff_check_field
-        assert rule != rule_diff_filter
-        assert rule_diff_check_field != rule_diff_filter
+        assert (rule1 == rule2) == is_equal, testcase
 
     def test_compare_set_not_empty_for_valid_rule_def_after_init_list_comparison(
         self, specific_rule_definition

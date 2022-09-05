@@ -13,7 +13,7 @@ class LabelingRule(Rule):
         self._label = label
 
     def __eq__(self, other: "LabelingRule"):
-        return (self._filter == other.filter) and (self._label == other.label)
+        return all([self._filter == other.filter, self._label == other.label])
 
     # pylint: disable=C0111
     @property

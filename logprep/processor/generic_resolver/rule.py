@@ -31,11 +31,14 @@ class GenericResolverRule(Rule):
         self._append_to_list = generic_resolver_cfg.get("append_to_list", False)
 
     def __eq__(self, other: "GenericResolverRule") -> bool:
-        return (
-            (other.filter == self._filter)
-            and (self._field_mapping == other.field_mapping)
-            and (self._resolve_list == other.resolve_list)
-            and (self._append_to_list == other.append_to_list)
+        return all(
+            [
+                other.filter == self._filter,
+                self._field_mapping == other.field_mapping,
+                self._resolve_list == other.resolve_list,
+                self._resolve_from_file == other.resolve_from_file,
+                self._append_to_list == other.append_to_list,
+            ]
         )
 
     # pylint: disable=C0111

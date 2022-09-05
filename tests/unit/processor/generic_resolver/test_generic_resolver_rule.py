@@ -13,48 +13,157 @@ pytest.importorskip("logprep.processor.normalizer")
 @pytest.fixture(name="specific_rule_definition")
 def fixture_specific_rule_definition():
     return {
-        "filter": 'winlog.event_id: 1234 AND source_name: "test"',
+        "filter": "message",
         "generic_resolver": {
             "field_mapping": {"to_resolve": "resolved"},
             "resolve_list": {"pattern": "result"},
+            "resolve_from_file": {
+                "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+            },
+            "append_to_list": False,
         },
         "description": "insert a description text",
     }
 
 
 class TestGenericResolverRule:
-    def test_rules_are_equal(self, specific_rule_definition):
+    @pytest.mark.parametrize(
+        "testcase, other_rule_definition, is_equal",
+        [
+            (
+                "Should be equal cause the same",
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": {"pattern": "result"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "append_to_list": False,
+                    },
+                },
+                True,
+            ),
+            (
+                "Should be equal cause without append_to_list, since default is the same",
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": {"pattern": "result"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                    },
+                },
+                True,
+            ),
+            (
+                "Should be not equal cause of other filter",
+                {
+                    "filter": "other_message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": {"pattern": "result"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "append_to_list": False,
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other field_mapping",
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "other_resolved"},
+                        "resolve_list": {"pattern": "result"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "append_to_list": False,
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other resolve_list",
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": {"pattern": "other_result"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "append_to_list": False,
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of no resolve_list",
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "append_to_list": False,
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of other resolve_from_file",
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": {"pattern": "result"},
+                        "resolve_from_file": {
+                            "path": "tests/testdata/unit/generic_resolver/resolve_mapping.yml",
+                            "pattern": r"other_\d*(?P<mapping>[a-z]+)\d*",
+                        },
+                        "append_to_list": False,
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause of no resolve_from_file",
+                {
+                    "filter": "message",
+                    "generic_resolver": {
+                        "field_mapping": {"to_resolve": "resolved"},
+                        "resolve_list": {"pattern": "result"},
+                        "append_to_list": False,
+                    },
+                },
+                False,
+            ),
+        ],
+    )
+    def test_rules_equality(
+        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+    ):
         rule1 = GenericResolverRule(
             LuceneFilter.create(specific_rule_definition["filter"]),
             specific_rule_definition["generic_resolver"],
         )
-
         rule2 = GenericResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["generic_resolver"],
+            LuceneFilter.create(other_rule_definition["filter"]),
+            other_rule_definition["generic_resolver"],
         )
-
-        assert rule1 == rule2
-
-    def test_rules_are_not_equal(self, specific_rule_definition):
-        rule = GenericResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["generic_resolver"],
-        )
-
-        rule_diff_field_mapping = GenericResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["generic_resolver"],
-        )
-
-        rule_diff_filter = GenericResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["generic_resolver"],
-        )
-
-        rule_diff_field_mapping._field_mapping = {"different": "mapping"}
-        rule_diff_filter._filter = ["I am different!"]
-
-        assert rule != rule_diff_field_mapping
-        assert rule != rule_diff_filter
-        assert rule_diff_field_mapping != rule_diff_filter
+        assert (rule1 == rule2) == is_equal, testcase

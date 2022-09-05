@@ -127,6 +127,7 @@ class HyperscanResolverRule(Rule):
                 self._field_mapping == other.field_mapping,
                 self._resolve_list == other.resolve_list,
                 self._append_to_list == other.append_to_list,
+                self._store_db_persistent == other.store_db_persistent,
             ]
         )
 
@@ -142,6 +143,7 @@ class HyperscanResolverRule(Rule):
     def resolve_list(self) -> dict:
         return self._resolve_list
 
+    # Not used to check for equality, since it's results are reflected in resolve_list
     @property
     def resolve_from_file(self) -> str:
         return self._resolve_from_file

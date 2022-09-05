@@ -2,7 +2,7 @@
 
 from json import load
 from logging import Logger
-from typing import List
+from typing import List, Set
 
 import numpy as np
 from attr import define, Factory
@@ -117,7 +117,8 @@ class RuleTree:
 
         for parsed_rule in parsed_rule_list:
             end_node = self._add_parsed_rule(parsed_rule)
-            end_node.matching_rules.append(rule)
+            if rule not in end_node.matching_rules:
+                end_node.matching_rules.append(rule)
 
         self._rule_mapping[rule] = self.metrics.number_of_rules - 1
         self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member
@@ -176,8 +177,8 @@ class RuleTree:
         return self._rule_mapping[rule]
 
     def get_matching_rules(
-        self, event: dict, current_node: Node = None, matches: List[Rule] = None
-    ) -> list:
+        self, event: dict, current_node: Node = None, matches: Set[Rule] = None
+    ) -> Set[Rule]:
         """Get all rules in the tree that match given event.
 
         This function gets all rules that were added to the rule tree that match a given event.
@@ -195,25 +196,25 @@ class RuleTree:
             Event dictionary that is used to check rules.
         current_node: Node
             Tree node that is currently investigated in recursive matching process.
-        matches: List[Rule]
-            List of matching rules that is extended in recursive matching process.
+        matches: Set[Rule]
+            Set of matching rules that is extended in recursive matching process.
 
         Returns
         -------
-        matches: list
-            List of rules that match the given event.
+        matches: Set[Rule]
+            Set of rules that match the given event.
 
         """
         if not current_node:
             current_node = self._root
-            matches = []
+            matches = set()
 
         for child in current_node.children:
             if child.does_match(event):
                 current_node = child
 
-                if current_node.matching_rules:
-                    matches += child.matching_rules
+                for matching_rule in current_node.matching_rules:
+                    matches.add(matching_rule)
 
                 self.get_matching_rules(event, current_node, matches)
 

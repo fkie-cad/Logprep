@@ -74,7 +74,14 @@ class ListComparisonRule(Rule):
                         self._compare_sets[file_name] = set(file_elem_tuples)
 
     def __eq__(self, other: "ListComparisonRule") -> bool:
-        return (other.filter == self._filter) and (self._check_field == other.check_field)
+        return all(
+            [
+                other.filter == self._filter,
+                self._compare_sets == other.compare_sets,
+                self._check_field == other.check_field,
+                self._list_comparison_output_field == other.list_comparison_output_field,
+            ]
+        )
 
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring

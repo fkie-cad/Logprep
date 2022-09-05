@@ -1,0 +1,35 @@
+---
+filter: url
+domain_resolver:
+  source_url_or_domain: url
+description: ""
+---
+filter: source
+domain_resolver:
+  source_url_or_domain: source
+  output_field: resolved.ip
+description: ""
+---
+filter: client
+domain_resolver:
+  source_url_or_domain: client
+description: ""
+---
+# Same effects as rule above, but not equal
+filter: client OR anything
+domain_resolver:
+  source_url_or_domain: client
+  output_field: resolved_ip
+description: ""
+---
+filter: client_2
+domain_resolver:
+  source_url_or_domain: client_2
+description: ""
+---
+# Equal to rule above
+filter: client_2
+domain_resolver:
+  source_url_or_domain: client_2
+  output_field: resolved_ip
+description: ""
