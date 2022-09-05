@@ -186,9 +186,6 @@ class ConfluentKafkaOutput(Output):
             Raises if any error except a BufferError occurs while writing into Kafka.
 
         """
-        if self._producer is None:
-            self._create_producer()
-
         try:
             self._producer.produce(
                 target, value=json.dumps(document, separators=(",", ":")).encode("utf-8")

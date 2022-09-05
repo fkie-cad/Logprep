@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 
+import json
 from unittest import mock
 from logprep.connector.connector_factory import ConnectorFactory
 from tests.unit.connector.base import BaseConnectorTestCase
@@ -15,7 +16,7 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
         "type": "confluentkafka_output",
         "bootstrapservers": ["testserver:9092"],
         "topic": "test_input_raw",
-        "group": "test_consumergroup",
+        "group": "test_producergroup",
         "auto_commit": False,
         "session_timeout": 654321,
         "enable_auto_offset_store": True,
@@ -42,26 +43,19 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
     }
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
-    def test_producer_property_instanciates_kafka_producer(self, mock_producer):
+    def test_producer_property_instanciates_kafka_producer(self, _):
         kafka_output = ConnectorFactory.create({"test connector": self.CONFIG}, logger=self.logger)
         assert kafka_output._producer == "The Producer"
 
-    # def test_store_sends_event_to_expected_topic(self):
-    #     producer_topic = "producer_topic"
-    #     event = {"field": "content"}
-    #     expected = (producer_topic, event)
-    #
-    #     kafka_input = ConfluentKafkaInput(
-    #         ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
-    #     )
-    #     kafka_output = ConfluentKafkaOutputForTest(
-    #         ["bootstrap1", "bootstrap2"], producer_topic, "producer_error_topic"
-    #     )
-    #     kafka_output.connect_input(kafka_input)
-    #     kafka_output.store(event)
-    #
-    #     assert len(kafka_output._producer.produced) == 1
-    #     assert kafka_output._producer.produced[0] == expected
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_store_sends_event_to_expected_topic(self, _):
+        kafka_producer = self.object._producer
+        event = {"field": "content"}
+        event_raw = json.dumps(event, separators=(",", ":")).encode("utf-8")
+        expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
+        self.object.store(event)
+        kafka_producer.produce.assert_called()
+        assert expected_call in kafka_producer.produce.mock_calls
 
     # def test_store_custom_sends_event_to_expected_topic(self):
     #     custom_topic = "custom_topic"
