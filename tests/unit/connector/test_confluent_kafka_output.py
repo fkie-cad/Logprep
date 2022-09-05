@@ -57,6 +57,16 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
         kafka_producer.produce.assert_called()
         assert expected_call in kafka_producer.produce.mock_calls
 
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_store_custom_sends_event_to_expected_topic(self, _):
+        kafka_producer = self.object._producer
+        event = {"field": "content"}
+        event_raw = json.dumps(event, separators=(",", ":")).encode("utf-8")
+        expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
+        self.object.store_custom(event, self.CONFIG.get("topic"))
+        kafka_producer.produce.assert_called()
+        assert expected_call in kafka_producer.produce.mock_calls
+
     # def test_store_custom_sends_event_to_expected_topic(self):
     #     custom_topic = "custom_topic"
     #     event = {"field": "content"}
