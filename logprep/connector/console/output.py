@@ -8,9 +8,6 @@ from logprep.abc.output import Output
 class ConsoleOutput(Output):
     """A console output that pretty prints documents instead of storing them."""
 
-    def describe_endpoint(self) -> str:
-        return "console output"
-
     def store(self, document: dict):
         pprint(document)
 

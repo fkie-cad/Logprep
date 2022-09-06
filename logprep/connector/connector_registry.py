@@ -4,6 +4,7 @@
 """
 from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
+from logprep.connector.console.output import ConsoleOutput
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.json.input import JsonInput
 from logprep.connector.jsonl.input import JsonlInput
@@ -18,6 +19,7 @@ class ConnectorRegistry:
         "dummy_input": DummyInput,
         "confluentkafka_input": ConfluentKafkaInput,
         "confluentkafka_output": ConfluentKafkaOutput,
+        "console_output": ConsoleOutput,
     }
 
     @classmethod
