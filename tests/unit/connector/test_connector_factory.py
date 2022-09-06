@@ -22,6 +22,7 @@ from logprep.connector.connector_factory import (
     InvalidConfigurationError,
     ConnectorFactory,
 )
+from logprep.connector.connector_factory_error import UnknownConnectorTypeError
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
@@ -36,21 +37,28 @@ class TestConnectorFactory:
         self.configuration = {"type": "dummy", "input": [{}, {}]}
 
     def test_fails_to_create_a_connector_from_empty_config(self):
-        with pytest.raises(InvalidConfigurationError, match="Connector type not specified"):
+        with pytest.raises(
+                InvalidConfigurationError, match="There must be exactly one known connector definition."
+        ):
             ConnectorFactory.create({}, logging.getLogger("test-logger"))
 
     def test_fails_to_create_a_connector_from_config_without_type_field(self):
         configuration_without_type = deepcopy(self.configuration)
         del configuration_without_type["type"]
-        with pytest.raises(InvalidConfigurationError, match="Connector type not specified"):
+        with pytest.raises(
+                InvalidConfigurationError,
+                match="The connector configuration must be specified as an object.",
+        ):
             ConnectorFactory.create(configuration_without_type, logging.getLogger("test-logger"))
 
     def test_fails_to_create_a_connector_when_type_is_unknown(self):
         for unknown_type in ["test", "unknown", "this is not a known type"]:
             with pytest.raises(
-                UnknownConnectorTypeError, match=f'Unknown connector type: "{unknown_type}"'
+                    UnknownConnectorTypeError, match=f'Unknown connector type: "{unknown_type}"'
             ):
-                ConnectorFactory.create({"type": unknown_type}, logging.getLogger("test-logger"))
+                ConnectorFactory.create(
+                    {"test_connector": {"type": unknown_type}}, logging.getLogger("test-logger")
+                )
 
     def test_returns_an_input_and_output_instance(self):
         pass
