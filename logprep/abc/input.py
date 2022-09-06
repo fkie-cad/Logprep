@@ -4,10 +4,10 @@ New input endpoint types are created by implementing it.
 
 """
 
-from abc import abstractmethod
 import base64
 import hashlib
 import zlib
+from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
 from typing import Tuple, Optional
@@ -139,7 +139,7 @@ class Input(Connector):
         """
         event, raw_event = self._get_event(timeout)
         non_critical_error_msg = None
-        if not isinstance(event, dict):
+        if event is not None and not isinstance(event, dict):
             raise CriticalInputError("not a dict", event)
         if event and self._add_hmac:
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
