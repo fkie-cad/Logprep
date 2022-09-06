@@ -7,11 +7,13 @@
 
 import json
 from unittest import mock
+
 from logprep.connector.connector_factory import ConnectorFactory
 from tests.unit.connector.base import BaseConnectorTestCase
+from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
 
 
-class TestConfluentKafkaOutput(BaseConnectorTestCase):
+class TestConfluentKafkaOutput(BaseConnectorTestCase, CommonConfluentKafkaTestCase):
     CONFIG = {
         "type": "confluentkafka_output",
         "bootstrapservers": ["testserver:9092"],
@@ -30,6 +32,23 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase):
             "password": "test_password",
         },
     }
+
+    def test_confluent_settings_contains_expected_values(self):
+        expected_config = {
+            "bootstrap.servers": "testserver:9092",
+            "group.id": "test_producergroup",
+            "enable.auto.commit": False,
+            "session.timeout.ms": 654321,
+            "enable.auto.offset.store": True,
+            "default.topic.config": {"auto.offset.reset": "latest"},
+            "security.protocol": "SSL",
+            "ssl.ca.location": "test_cafile",
+            "ssl.certificate.location": "test_certfile",
+            "ssl.key.location": "test_keyfile",
+            "ssl.key.password": "test_password",
+        }
+        kafka_input_cfg = self.object._confluent_settings
+        assert kafka_input_cfg == expected_config
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
     def test_producer_property_instanciates_kafka_producer(self, _):

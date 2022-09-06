@@ -1,20 +1,21 @@
 """This module contains functionality that allows to establish a connection with kafka."""
 
-from functools import cached_property
+import json
 from copy import deepcopy
 from datetime import datetime
-import json
+from functools import cached_property
 from socket import getfqdn
+
 from attrs import define
 from confluent_kafka import Producer
 
-from logprep.connector.connector_factory_error import InvalidConfigurationError
+from logprep.abc.output import Output, CriticalOutputError
 from logprep.connector.confluent_kafka.common import (
     ConfluentKafkaFactory,
     UnknownOptionError,
 )
 from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
-from logprep.abc.output import Output, CriticalOutputError
+from logprep.connector.connector_factory_error import InvalidConfigurationError
 
 
 class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
@@ -134,7 +135,7 @@ class ConfluentKafkaOutput(Output):
 
         """
         base_description = super().describe()
-        return f"{base_description} - Kafka Input: {self._config.bootstrapservers[0]}"
+        return f"{base_description} - Kafka Output: {self._config.bootstrapservers[0]}"
 
     def store(self, document: dict) -> None:
         """Store a document in the producer topic.
@@ -210,6 +211,6 @@ class ConfluentKafkaOutput(Output):
             self._producer.flush(timeout=self._config.flush_timeout)
 
     def shut_down(self) -> None:
-        """ensures that all all messages are flushed"""
+        """ensures that all messages are flushed"""
         if self._producer is not None:
             self._producer.flush(self._config.flush_timeout)
