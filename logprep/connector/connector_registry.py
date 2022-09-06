@@ -6,6 +6,7 @@ from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.console.output import ConsoleOutput
 from logprep.connector.dummy.input import DummyInput
+from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.json.input import JsonInput
 from logprep.connector.jsonl.input import JsonlInput
 
@@ -17,6 +18,7 @@ class ConnectorRegistry:
         "json_input": JsonInput,
         "jsonl_input": JsonlInput,
         "dummy_input": DummyInput,
+        "dummy_output": DummyOutput,
         "confluentkafka_input": ConfluentKafkaInput,
         "confluentkafka_output": ConfluentKafkaOutput,
         "console_output": ConsoleOutput,
