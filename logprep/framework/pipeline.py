@@ -156,7 +156,7 @@ class Pipeline:
     def _create_connectors(self):
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Creating connectors ({current_process().name})")
-        self._input, self._output = ConnectorFactory.create(self._logprep_config.get("connector"))
+        self._input, self._output = ConnectorFactory.create(self._logprep_config.get("connector"), self._logger)
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
                 f"Created input connector '{self._input.describe_endpoint()}' "

@@ -191,7 +191,7 @@ class Configuration(dict):
             )
 
         try:
-            _, _ = ConnectorFactory.create(self["connector"])
+            _, _ = ConnectorFactory.create(self["connector"], logger)
         except ConnectorFactoryError as error:
             raise InvalidConnectorConfigurationError(str(error)) from error
         except KeyError as error:

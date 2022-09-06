@@ -5,28 +5,29 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 import json
+import logging
 import os
 import tempfile
 from copy import deepcopy
 
 import pytest
 
+from logprep.connector.confluent_kafka.input import (
+    ConfluentKafkaInput,
+)
+from logprep.connector.confluent_kafka.output import (
+    ConfluentKafkaOutput,
+)
 from logprep.connector.connector_factory import (
     InvalidConfigurationError,
     ConnectorFactory,
 )
-from logprep.connector.confluent_kafka.input import (
-    ConfluentKafkaInput,
-)
 from logprep.connector.dummy.input import DummyInput
-from logprep.connector.json.input import JsonInput
-from logprep.connector.jsonl.input import JsonlInput
-from logprep.connector.confluent_kafka.output import (
-    ConfluentKafkaOutput,
-)
 from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.connector.opensearch.output import OpenSearchOutput
+from logprep.connector.json.input import JsonInput
+from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
 
 
@@ -36,20 +37,20 @@ class TestConnectorFactory:
 
     def test_fails_to_create_a_connector_from_empty_config(self):
         with pytest.raises(InvalidConfigurationError, match="Connector type not specified"):
-            ConnectorFactory.create({})
+            ConnectorFactory.create({}, logging.getLogger("test-logger"))
 
     def test_fails_to_create_a_connector_from_config_without_type_field(self):
         configuration_without_type = deepcopy(self.configuration)
         del configuration_without_type["type"]
         with pytest.raises(InvalidConfigurationError, match="Connector type not specified"):
-            ConnectorFactory.create(configuration_without_type)
+            ConnectorFactory.create(configuration_without_type, logging.getLogger("test-logger"))
 
     def test_fails_to_create_a_connector_when_type_is_unknown(self):
         for unknown_type in ["test", "unknown", "this is not a known type"]:
             with pytest.raises(
                 UnknownConnectorTypeError, match=f'Unknown connector type: "{unknown_type}"'
             ):
-                ConnectorFactory.create({"type": unknown_type})
+                ConnectorFactory.create({"type": unknown_type}, logging.getLogger("test-logger"))
 
     def test_returns_an_input_and_output_instance(self):
         pass
@@ -61,10 +62,12 @@ class TestConnectorFactoryDummy:
 
     def test_fails_to_create_a_connector_when_input_is_missing(self):
         with pytest.raises(InvalidConfigurationError):
-            ConnectorFactory.create({"type": "dummy"})
+            ConnectorFactory.create({"type": "dummy"}, logging.getLogger("test-logger"))
 
     def test_returns_a_dummy_input_and_output_instance(self):
-        _input, output = ConnectorFactory.create(self.configuration)
+        _input, output = ConnectorFactory.create(
+            self.configuration, logging.getLogger("test-logger")
+        )
 
         assert isinstance(_input, DummyInput)
         assert isinstance(output, DummyOutput)
@@ -85,7 +88,9 @@ class TestConnectorFactoryWriter:
         }
 
     def test_returns_a_writer_input_and_output_instance(self):
-        jsonl_input, writing_output = ConnectorFactory.create(self.configuration)
+        jsonl_input, writing_output = ConnectorFactory.create(
+            self.configuration, logging.getLogger("test-logger")
+        )
 
         assert isinstance(jsonl_input, JsonlInput)
         assert isinstance(writing_output, JsonlOutput)
@@ -109,7 +114,9 @@ class TestConnectorFactoryWriterJsonInput:
         }
 
     def test_returns_a_writer_input_and_output_instance(self):
-        json_input, writing_output = ConnectorFactory.create(self.configuration)
+        json_input, writing_output = ConnectorFactory.create(
+            self.configuration, logging.getLogger("test-logger")
+        )
 
         assert isinstance(json_input, JsonInput)
         assert isinstance(writing_output, JsonlOutput)
@@ -172,7 +179,9 @@ class TestConnectorFactoryConfluentKafka:
             "ssl.key.password": "test_password",
         }
 
-        cc_input, cc_output = ConnectorFactory.create(self.configuration)
+        cc_input, cc_output = ConnectorFactory.create(
+            self.configuration, logging.getLogger("test-logger")
+        )
 
         assert isinstance(cc_input, ConfluentKafkaInput)
         assert isinstance(cc_output, ConfluentKafkaOutput)
@@ -222,7 +231,9 @@ class TestConnectorFactoryConfluentKafkaES:
             "ssl.key.password": "test_password",
         }
 
-        cc_input, es_output = ConnectorFactory.create(self.configuration)
+        cc_input, es_output = ConnectorFactory.create(
+            self.configuration, logging.getLogger("test-logger")
+        )
 
         assert isinstance(cc_input, ConfluentKafkaInput)
         assert isinstance(es_output, ElasticsearchOutput)
