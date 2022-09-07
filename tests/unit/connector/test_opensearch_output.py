@@ -245,3 +245,31 @@ class TestOpenSearchOutput:
     def test_handle_serialization_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
             self.os_output._handle_serialization_error(mock.MagicMock())
+
+    @mock.patch("logprep.connector.opensearch.output.create_default_context")
+    @mock.patch("logprep.connector.opensearch.output.OpenSearch")
+    def test_ssl_context_check_hostname(self, mock_opensearch, mock_ssl_context):
+        ssl_context_type = type("context", (), {"check_hostname": None})
+        mock_ssl_context.return_value = ssl_context_type
+        _ = OpenSearchOutput(
+            ["host:123"],
+            "default_index",
+            "error_index",
+            1,
+            5000,
+            0,
+            None,
+            None,
+            "this/is/a/path",
+            True,
+        )
+
+        mock_opensearch.assert_called_with(
+            ["host:123"],
+            scheme="https",
+            http_auth=None,
+            ssl_context=ssl_context_type,
+            timeout=5000,
+        )
+
+        assert ssl_context_type.check_hostname
