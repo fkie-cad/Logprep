@@ -1,9 +1,11 @@
 """This module contains functionality that allows to send events to OpenSearch."""
 
+from functools import cached_property
 import json
 import logging
 import re
-from ssl import create_default_context
+from attrs import define, field, validators
+import ssl
 from typing import List, Optional
 
 import arrow
@@ -11,7 +13,6 @@ from opensearchpy import OpenSearch, helpers, SerializationError
 from opensearchpy.exceptions import ConnectionError
 from opensearchpy.helpers import BulkIndexError
 
-from logprep.abc.input import Input
 from logprep.abc.output import Output, FatalOutputError
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
@@ -20,72 +21,84 @@ logging.getLogger("opensearch").setLevel(logging.WARNING)
 class OpenSearchOutput(Output):
     """An OpenSearch output connector."""
 
-    def __init__(
-        self,
-        hosts: List[str],
-        default_index: str,
-        error_index: str,
-        message_backlog_size: int,
-        timeout: int,
-        max_retries: int,
-        user: Optional[str],
-        secret: Optional[str],
-        cert: Optional[str],
-        check_hostname: Optional[bool],
-    ):
-        self._input = None
+    @define(kw_only=True, slots=False)
+    class Config(Output.Config):
+        """Confluent Kafka Output Config"""
 
-        self._hosts = hosts
-        self._default_index = default_index
-        self._error_index = error_index
-        self._max_retries = max_retries
+        hosts: List[str] = field(
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of((str, type(None))),
+                iterable_validator=validators.instance_of(list),
+            ),
+            default=[],
+        )
+        default_index: str = field(validator=validators.instance_of(str))
+        error_index: str = field(validator=validators.instance_of(str))
+        message_backlog_size: int = field(validator=validators.instance_of(int))
+        timeout: int = field(validator=validators.instance_of(int))
+        max_scroll: str = field(validator=validators.instance_of(str), default="2m")
+        max_retries: int = field(validator=validators.instance_of(int), default=1)
+        user: Optional[str] = field(validator=validators.instance_of(str), default="")
+        secret: Optional[str] = field(validator=validators.instance_of(str), default="")
+        cert: Optional[str] = field(validator=validators.instance_of(str), default="")
 
-        ssl_context = create_default_context(cafile=cert) if cert else None
-        if ssl_context and check_hostname is not None:
-            ssl_context.check_hostname = check_hostname
+    __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
 
-        scheme = "https" if cert else "http"
-        http_auth = (user, secret) if user and secret else None
+    _message_backlog: List
 
-        self._os = OpenSearch(
-            hosts,
-            scheme=scheme,
-            http_auth=http_auth,
-            ssl_context=ssl_context,
-            timeout=timeout,
+    _processed_cnt: int
+
+    _index_cache: dict
+
+    def __init__(self, name: str, configuration: "Input.Config", logger: logging.Logger):
+        super().__init__(name, configuration, logger)
+        self._message_backlog = [
+            {"_index": self._config.default_index}
+        ] * self._config.message_backlog_size
+        self._processed_cnt = 0
+        self._index_cache = {}
+
+    @cached_property
+    def ssl_context(self):
+        return ssl.create_default_context(cafile=self._config.cert) if self._config.cert else None
+
+    @property
+    def schema(self):
+        return "https" if self._config.cert else "http"
+
+    @property
+    def http_auth(self):
+        return (
+            (self._config.user, self._config.secret)
+            if self._config.user and self._config.secret
+            else None
         )
 
-        self._max_scroll = "2m"
+    @cached_property
+    def _os(self):
+        return OpenSearch(
+            self._config.hosts,
+            scheme=self.schema,
+            http_auth=self.http_auth,
+            ssl_context=self.ssl_context,
+            timeout=self._config.timeout,
+        )
 
-        self._message_backlog_size = message_backlog_size
-        self._message_backlog = [{"_index": default_index}] * self._message_backlog_size
-        self._processed_cnt = 0
+    @cached_property
+    def _replace_pattern(self):
+        return re.compile(r"%{\S+?}")
 
-        self._index_cache = {}
-        self._replace_pattern = re.compile(r"%{\S+?}")
-
-    def connect_input(self, input_connector: Input):
-        """Connect input connector.
-
-        This connector is used for callbacks.
-
-        Parameters
-        ----------
-        input_connector : Input
-           Input connector to connect this output with.
-        """
-        self._input = input_connector
-
-    def describe_endpoint(self) -> str:
-        """Get name of OpenSearch endpoint with the host.
+    def describe(self) -> str:
+        """Get name of Elasticsearch endpoint with the host.
 
         Returns
         -------
-        opensearch_output : OpenSearchOutput
-            Acts as output connector for OpenSearch.
+        elasticsearch_output : ElasticsearchOutput
+            Acts as output connector for Elasticsearch.
 
         """
-        return f"OpenSearch Output: {self._hosts}"
+        base_description = super().describe()
+        return f"{base_description} - ElasticSearch Output: {self._config.hosts}"
 
     def _write_to_os(self, document):
         """Writes documents from a buffer into OpenSearch indices.
@@ -103,13 +116,13 @@ class OpenSearchOutput(Output):
         """
         self._message_backlog[self._processed_cnt] = document
         currently_processed_cnt = self._processed_cnt + 1
-        if currently_processed_cnt == self._message_backlog_size:
+        if currently_processed_cnt == self._config.message_backlog_size:
             try:
                 helpers.bulk(
                     self._os,
                     self._message_backlog,
-                    max_retries=self._max_retries,
-                    chunk_size=self._message_backlog_size,
+                    max_retries=self._config.max_retries,
+                    chunk_size=self._config.message_backlog_size,
                 )
             except SerializationError as error:
                 self._handle_serialization_error(error)
@@ -119,8 +132,9 @@ class OpenSearchOutput(Output):
                 self._handle_bulk_index_error(error)
             self._processed_cnt = 0
 
-            if self._input:
-                self._input.batch_finished_callback()
+            # TODO resolve on pipeline level
+            # if self._input:
+            #     self._input.batch_finished_callback()
         else:
             self._processed_cnt = currently_processed_cnt
 

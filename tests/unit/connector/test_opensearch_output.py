@@ -46,7 +46,14 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     #         ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None, None
     #     )
 
-    CONFIG = {"type": "opensearch_output"}
+    CONFIG = {
+        "type": "opensearch_output",
+        "hosts": ["host:123"],
+        "default_index": "default_index",
+        "error_index": "error_index",
+        "message_backlog_size": 1,
+        "timeout": 5000,
+    }
 
     def test_implements_abstract_methods(self):
         try:
