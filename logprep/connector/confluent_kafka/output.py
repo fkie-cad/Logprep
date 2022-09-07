@@ -1,7 +1,6 @@
 """This module contains functionality that allows to establish a connection with kafka."""
 
 import json
-from copy import deepcopy
 from datetime import datetime
 from functools import cached_property
 from socket import getfqdn
@@ -10,71 +9,7 @@ from attrs import define
 from confluent_kafka import Producer
 
 from logprep.abc.output import Output, CriticalOutputError
-from logprep.connector.confluent_kafka.common import (
-    ConfluentKafkaFactory,
-    UnknownOptionError,
-)
 from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
-from logprep.factory_error import InvalidConfigurationError
-
-
-class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
-    """Create ConfluentKafka connector for output communication."""
-
-    @staticmethod
-    def create_from_configuration(configuration: dict) -> "ConfluentKafkaOutput":
-        """Create a ConfluentKafkaOutput connector.
-
-        Parameters
-        ----------
-        configuration : dict
-           Parsed configuration YML.
-
-        Returns
-        -------
-        kafka : ConfluentKafka
-            Acts as input and output connector.
-
-        Raises
-        ------
-        InvalidConfigurationError
-            If ConfluentKafka configuration is invalid.
-
-        """
-        if not isinstance(configuration, dict):
-            raise InvalidConfigurationError("Confluent Kafka: Configuration is not a dict!")
-
-        try:
-            kafka = ConfluentKafkaOutput(
-                configuration["bootstrapservers"],
-                configuration["producer"]["topic"],
-                configuration["producer"]["error_topic"],
-            )
-        except KeyError as error:
-            raise InvalidConfigurationError(
-                f"Confluent Kafka: Missing configuration parameter " f"{str(error)}!"
-            ) from error
-
-        if "ssl" in configuration:
-            ConfluentKafkaOutputFactory._set_ssl_options(kafka, configuration["ssl"])
-
-        configuration = ConfluentKafkaOutputFactory._create_copy_without_base_options(configuration)
-
-        try:
-            kafka.set_option(configuration, "producer")
-        except UnknownOptionError as error:
-            raise InvalidConfigurationError(f"Confluent Kafka: {str(error)}") from error
-
-        return kafka
-
-    @staticmethod
-    def _create_copy_without_base_options(configuration: dict) -> dict:
-        config = deepcopy(configuration)
-        del config["producer"]["topic"]
-        del config["producer"]["error_topic"]
-        ConfluentKafkaOutputFactory._remove_shared_base_options(config)
-
-        return config
 
 
 class ConfluentKafkaOutput(Output):
@@ -176,7 +111,7 @@ class ConfluentKafkaOutput(Output):
             self._producer.flush(timeout=self._config.flush_timeout)
         except BaseException as error:
             raise CriticalOutputError(
-                f"Error storing output document: ({self._format_error(error)})", document
+                f"Error storing output document: ({error})", document
             ) from error
 
     def store_failed(
