@@ -175,7 +175,7 @@ Confluentkafka Elasticsearch
 ============================
 
 This connector gets input data from Kafka and sends it directly to Elasticsearch.
-The target indices for Elsticsearch have to be set directly in Logprep.
+The target indices for Elasticsearch have to be set directly in Logprep.
 
 .. important::
     Target indices are determined by the `_index` field in each document.
@@ -187,7 +187,7 @@ The target indices for Elsticsearch have to be set directly in Logprep.
 This connector has the same Kafka configuration parameters as `Confluentkafka`_, except that it lacks `producer` configuration parameter.
 Additionally, it has configuration parameters for Elasticsearch.
 
-The Kafka configuration won't be repeated in detail, instead the Elasticseach configuration will be described.
+The Kafka configuration won't be repeated in detail, instead the Elasticsearch configuration will be described.
 
 type
 ----
@@ -249,6 +249,92 @@ Example
         keyfile:
         password:
       elasticsearch:
+        hosts:
+          - 127.0.0.1:9200
+        default_index: default_index
+        error_index: error_index
+        message_backlog: 10000
+        timeout: 10000
+
+Confluentkafka Opensearch
+=========================
+
+This connector gets input data from Kafka and sends it directly to Opensearch.
+The target indices for Opensearch have to be set directly in Logprep.
+
+.. important::
+    Target indices are determined by the `_index` field in each document.
+    However, a default index and an error index have to be set in the config.
+
+    Adding `%{YYYY-MM-DD}` to an index name replaces this part of the index by the current date in
+    the format `YYYY-MM-DD`. Valid formatting tokens can be found in the `arrow documentation <https://arrow.readthedocs.io/en/latest/#supported-tokens>`__.
+
+This connector has the same Kafka configuration parameters as `Confluentkafka`_, except that it lacks `producer` configuration parameter.
+Additionally, it has configuration parameters for Opensearch.
+
+The Kafka configuration won't be repeated in detail, instead the Opensearch configuration will be described.
+
+type
+----
+
+Connectors are chosen by the value `confluentkafka_os`.
+The options for the `confluentkafka_os` connector will be described below.
+
+bootstrapservers
+----------------
+
+See :ref:`bootstrapservers <cc-bootstrapservers>`.
+
+consumer
+--------
+
+See :ref:`consumer <cc-consumer>`.
+
+ssl
+---
+
+See :ref:`ssl <cc-ssl>`.
+
+opensearch
+----------
+
+This section contains the connection settings for Opensearch, the default index, the error index
+and a buffer size.
+Documents are sent in batches to Opensearch to reduce the amount of times connections are created.
+
+- **hosts** Addresses of Opensearch servers. Can be a list of hosts or one single host in the format `HOST:PORT` without specifying a schema. The schema is set automatically to `https` if a certificate is being used.
+- **user** User used for authentication (optional).
+- **secret** Secret used for authentication (optional).
+- **cert** SSL certificate to use (optional).
+- **check_hostname** Check hostname if using SSL (optional).
+- **default_index** Default index to write to if no index was set in the document or the document could not be indexed. The document will be transformed into a string to prevent rejections by the default index.
+- **error_index** Index to write documents to that could not be processed.
+- **message_backlog** Amount of documents to store before sending them to Opensearch.
+- **timeout** Timeout for Opensearch connection  (default: 500ms).
+- **max_retries** Maximum number of retries for documents rejected with code `429` (default: 0). Increases backoff time by 2 seconds per try, but never exceeds 600 seconds.
+
+Example
+-------
+
+..  code-block:: yaml
+    :linenos:
+
+    connector:
+      type: confluentkafka_os
+      bootstrapservers:
+        - 127.0.0.1:9092
+      consumer:
+        topic: consumer
+        group: cgroup
+        auto_commit: on
+        session_timeout: 6000
+        offset_reset_policy: smallest
+      ssl:
+        cafile:
+        certfile:
+        keyfile:
+        password:
+      opensearch:
         hosts:
           - 127.0.0.1:9200
         default_index: default_index

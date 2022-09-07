@@ -21,6 +21,10 @@ from logprep.connector.elasticsearch.output import (
     ElasticsearchOutput,
     ElasticsearchOutputFactory,
 )
+from logprep.connector.opensearch.output import (
+    OpenSearchOutput,
+    OpenSearchOutputFactory,
+)
 from logprep.connector.confluent_kafka.output import (
     ConfluentKafkaOutput,
     ConfluentKafkaOutputFactory,
@@ -67,6 +71,9 @@ class ConnectorFactory:
             if config["type"].lower() == "confluentkafka_es":
                 kafka_input, es_output = ConnectorFactory._create_kafka_es_connector(config)
                 return kafka_input, es_output
+            if config["type"].lower() == "confluentkafka_os":
+                kafka_input, os_output = ConnectorFactory._create_kafka_os_connector(config)
+                return kafka_input, os_output
             raise UnknownConnectorTypeError('Unknown connector type: "{}"'.format(config["type"]))
         except KeyError:
             raise InvalidConfigurationError("Connector type not specified")
@@ -107,3 +114,11 @@ class ConnectorFactory:
         es_out.connect_input(kafka_in)
         kafka_in.connect_output(es_out)
         return kafka_in, es_out
+
+    @staticmethod
+    def _create_kafka_os_connector(config: dict) -> Tuple[ConfluentKafkaInput, OpenSearchOutput]:
+        kafka_in = ConfluentKafkaInputFactory.create_from_configuration(config)
+        os_out = OpenSearchOutputFactory.create_from_configuration(config)
+        os_out.connect_input(kafka_in)
+        kafka_in.connect_output(os_out)
+        return kafka_in, os_out

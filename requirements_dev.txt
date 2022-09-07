@@ -35,6 +35,7 @@ certifi==2021.10.8
     # via
     #   -r requirements.txt
     #   elasticsearch
+    #   opensearch-py
     #   requests
 charset-normalizer==2.0.11
     # via
@@ -105,6 +106,8 @@ mysql-connector-python==8.0.28
     # via -r requirements.txt
 numpy==1.19.5
     # via -r requirements.txt
+opensearch-py==2.0.0
+    # via -r requirements.txt
 packaging==21.3
     # via pytest
 platformdirs==2.4.0
@@ -156,6 +159,7 @@ requests==2.27.1
     # via
     #   -r requirements.txt
     #   geoip2
+    #   opensearch-py
     #   requests-file
     #   tldextract
 requests-file==1.5.1
@@ -208,6 +212,7 @@ urllib3==1.26.8
     #   -r requirements.txt
     #   elasticsearch
     #   geoip2
+    #   opensearch-py
     #   requests
 wrapt==1.13.3
     # via astroid

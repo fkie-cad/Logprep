@@ -9,6 +9,7 @@ under the subkey `preprocessing`
 
 ### Features
 
+* Add an opensearch output connector that can be used to write directly into opensearch.
 * Add an elasticsearch output connector that can be used to write directly into elasticsearch.
 * Add a connector that combines a confluentkafka input and an elasticsearch output.
 
