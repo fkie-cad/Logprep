@@ -1,6 +1,6 @@
 """This module contains functionality that allows to send events to Elasticsearch."""
 
-from functools import cache, cached_property
+from functools import cached_property
 import json
 from logging import Logger
 import re
@@ -13,8 +13,6 @@ from elasticsearch import helpers
 from attr import field, define
 from attrs import validators
 
-from logprep.factory_error import InvalidConfigurationError
-from logprep.abc.input import Input
 from logprep.abc.output import FatalOutputError, Output
 
 
