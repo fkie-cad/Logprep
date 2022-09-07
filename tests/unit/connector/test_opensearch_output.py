@@ -4,17 +4,20 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+import json
 import re
+import pytest
 from datetime import datetime
 from json import loads, dumps
 from math import isclose
+from unittest import mock
 
 import arrow
+import opensearchpy
 import opensearchpy.helpers
-from pytest import fail
 
 from logprep.connector.opensearch.output import OpenSearchOutput
-from logprep.abc.output import CriticalOutputError
+from logprep.abc.output import CriticalOutputError, FatalOutputError
 
 
 class NotJsonSerializableMock:
@@ -48,7 +51,7 @@ class TestOpenSearchOutput:
                 ["host:123"], "default_index", "error_index", 2, 5000, 0, None, None, None, None
             )
         except TypeError as err:
-            fail(f"Must implement abstract methods: {str(err)}")
+            pytest.fail(f"Must implement abstract methods: {str(err)}")
 
     def test_describe_endpoint_returns_opensearch_output(self):
         assert self.os_output.describe_endpoint() == "OpenSearch Output: ['host:123']"
@@ -160,3 +163,85 @@ class TestOpenSearchOutput:
         )
         assert failed_document.pop("@timestamp")
         assert failed_document == expected
+
+    @mock.patch(
+        "logprep.connector.opensearch.output.helpers.bulk",
+        side_effect=opensearchpy.SerializationError,
+    )
+    def test_write_to_os_calls_handle_serialization_error_if_serialization_error(self, _):
+        self.os_output._handle_serialization_error = mock.MagicMock()
+        self.os_output._write_to_os({"dummy": "event"})
+        self.os_output._handle_serialization_error.assert_called()
+
+    @mock.patch(
+        "logprep.connector.opensearch.output.helpers.bulk",
+        side_effect=opensearchpy.ConnectionError,
+    )
+    def test_write_to_os_calls_handle_connection_error_if_connection_error(self, _):
+        self.os_output._handle_connection_error = mock.MagicMock()
+        self.os_output._write_to_os({"dummy": "event"})
+        self.os_output._handle_connection_error.assert_called()
+
+    @mock.patch(
+        "logprep.connector.opensearch.output.helpers.bulk",
+        side_effect=opensearchpy.helpers.BulkIndexError,
+    )
+    def test_write_to_os_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
+        self.os_output._handle_bulk_index_error = mock.MagicMock()
+        self.os_output._write_to_os({"dummy": "event"})
+        self.os_output._handle_bulk_index_error.assert_called()
+
+    @mock.patch("logprep.connector.opensearch.output.helpers.bulk")
+    def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
+        mock_bulk_index_error = mock.MagicMock()
+        mock_bulk_index_error.errors = [
+            {
+                "index": {
+                    "data": {"my": "document"},
+                    "error": {"type": "myerrortype", "reason": "myreason"},
+                }
+            }
+        ]
+        self.os_output._handle_bulk_index_error(mock_bulk_index_error)
+        fake_bulk.assert_called()
+
+    @mock.patch("logprep.connector.opensearch.output.helpers.bulk")
+    def test__handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
+        mock_bulk_index_error = mock.MagicMock()
+        mock_bulk_index_error.errors = [
+            {
+                "index": {
+                    "data": {"my": "document"},
+                    "error": {"type": "myerrortype", "reason": "myreason"},
+                }
+            }
+        ]
+        self.os_output._handle_bulk_index_error(mock_bulk_index_error)
+        call_args = fake_bulk.call_args[0][1]
+        error_document = call_args[0]
+        assert "reason" in error_document
+        assert "@timestamp" in error_document
+        assert "_index" in error_document
+        assert "message" in error_document
+        assert error_document.get("reason") == "myerrortype: myreason"
+        assert error_document.get("message") == json.dumps({"my": "document"})
+
+    def test_write_to_os_calls_input_batch_finished_callback(self):
+        self.os_output._input = mock.MagicMock()
+        self.os_output._input.batch_finished_callback = mock.MagicMock()
+        self.os_output._write_to_os({"dummy": "event"})
+        self.os_output._input.batch_finished_callback.assert_called()
+
+    def test_write_to_os_sets_processed_cnt(self):
+        self.os_output._message_backlog_size = 2
+        current_proccessed_cnt = self.os_output._processed_cnt
+        self.os_output._write_to_os({"dummy": "event"})
+        assert current_proccessed_cnt < self.os_output._processed_cnt
+
+    def test_handle_connection_error_raises_fatal_output_error(self):
+        with pytest.raises(FatalOutputError):
+            self.os_output._handle_connection_error(mock.MagicMock())
+
+    def test_handle_serialization_error_raises_fatal_output_error(self):
+        with pytest.raises(FatalOutputError):
+            self.os_output._handle_serialization_error(mock.MagicMock())
