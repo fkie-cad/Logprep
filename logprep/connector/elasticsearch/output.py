@@ -1,119 +1,88 @@
 """This module contains functionality that allows to send events to Elasticsearch."""
 
+from functools import cache, cached_property
 import json
+from logging import Logger
 import re
-from ssl import create_default_context
+import ssl
 from typing import List, Optional
 
 import arrow
 import elasticsearch
 from elasticsearch import helpers
+from attr import field, define
+from attrs import validators
+
 from logprep.factory_error import InvalidConfigurationError
 from logprep.abc.input import Input
 from logprep.abc.output import FatalOutputError, Output
 
 
-class ElasticsearchOutputFactory:
-    """Create ElasticsearchOutput for logprep and output communication."""
-
-    @staticmethod
-    def create_from_configuration(configuration: dict) -> "ElasticsearchOutput":
-        """Create a ElasticsearchOutput connector.
-
-        Parameters
-        ----------
-        configuration : dict
-           Parsed configuration YML.
-
-        Returns
-        -------
-        elasticsearch_output : ElasticsearchOutput
-            Acts as output connector for Elasticsearch.
-
-        Raises
-        ------
-        InvalidConfigurationError
-            If Elasticsearch configuration is invalid.
-
-        """
-        if not isinstance(configuration, dict):
-            raise InvalidConfigurationError("ElasticsearchOutput: Configuration is not a dict!")
-
-        try:
-            es_output = ElasticsearchOutput(
-                configuration["elasticsearch"]["hosts"],
-                configuration["elasticsearch"]["default_index"],
-                configuration["elasticsearch"]["error_index"],
-                configuration["elasticsearch"]["message_backlog"],
-                configuration["elasticsearch"].get("timeout", 500),
-                configuration["elasticsearch"].get("max_retries", 0),
-                configuration["elasticsearch"].get("user"),
-                configuration["elasticsearch"].get("secret"),
-                configuration["elasticsearch"].get("cert"),
-            )
-        except KeyError as error:
-            raise InvalidConfigurationError(
-                f"Elasticsearch: Missing configuration parameter {str(error)}!"
-            ) from error
-
-        return es_output
-
-
 class ElasticsearchOutput(Output):
     """An Elasticsearch output connector."""
 
-    def __init__(
-        self,
-        hosts: List[str],
-        default_index: str,
-        error_index: str,
-        message_backlog_size: int,
-        timeout: int,
-        max_retries: int,
-        user: Optional[str],
-        secret: Optional[str],
-        cert: Optional[str],
-    ):
-        self._input = None
+    @define(kw_only=True, slots=False)
+    class Config(Output.Config):
+        """Confluent Kafka Output Config"""
 
-        self._hosts = hosts
-        self._default_index = default_index
-        self._error_index = error_index
-        self._max_retries = max_retries
+        hosts: List[str] = field(
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of((str, type(None))),
+                iterable_validator=validators.instance_of(list),
+            ),
+            default=[],
+        )
+        default_index: str = field(validator=validators.instance_of(str))
+        error_index: str = field(validator=validators.instance_of(str))
+        message_backlog_size: int = field(validator=validators.instance_of(int))
+        timeout: int = field(validator=validators.instance_of(int))
+        max_scroll: str = field(validator=validators.instance_of(str), default="2m")
+        max_retries: int = field(validator=validators.instance_of(int), default=1)
+        user: Optional[str] = field(validator=validators.instance_of(str), default="")
+        secret: Optional[str] = field(validator=validators.instance_of(str), default="")
+        cert: Optional[str] = field(validator=validators.instance_of(str), default="")
 
-        ssl_context = create_default_context(cafile=cert) if cert else None
-        scheme = "https" if cert else "http"
-        http_auth = (user, secret) if user and secret else None
-        self._es = elasticsearch.Elasticsearch(
-            hosts,
-            scheme=scheme,
-            http_auth=http_auth,
-            ssl_context=ssl_context,
-            timeout=timeout,
+    __slots__ = []
+
+    @cached_property
+    def ssl_context(self):
+        return ssl.create_default_context(cafile=self._config.cert) if self._config.cert else None
+
+    @property
+    def schema(self):
+        return "https" if self._config.cert else "http"
+
+    @property
+    def http_auth(self):
+        return (
+            (self._config.user, self._config.secret)
+            if self._config.user and self._config.secret
+            else None
         )
 
-        self._max_scroll = "2m"
+    @cached_property
+    def _es(self):
+        return elasticsearch.Elasticsearch(
+            self._config.hosts,
+            scheme=self.schema,
+            http_auth=self.http_auth,
+            ssl_context=self.ssl_context,
+            timeout=self._config.timeout,
+        )
 
-        self._message_backlog_size = message_backlog_size
-        self._message_backlog = [{"_index": default_index}] * self._message_backlog_size
+    @cached_property
+    def _replace_pattern(self):
+        return re.compile(r"%{\S+?}")
+
+    def __init__(self, name: str, configuration: "Input.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self._message_backlog = [
+            {"_index": self._config.default_index}
+        ] * self._config.message_backlog_size
         self._processed_cnt = 0
-
         self._index_cache = {}
-        self._replace_pattern = re.compile(r"%{\S+?}")
 
-    def connect_input(self, input_connector: Input):
-        """Connect input connector.
-
-        This connector is used for callbacks.
-
-        Parameters
-        ----------
-        input_connector : Input
-           Input connector to connect this output with.
-        """
-        self._input = input_connector
-
-    def describe_endpoint(self) -> str:
+    def describe(self) -> str:
         """Get name of Elasticsearch endpoint with the host.
 
         Returns
@@ -122,7 +91,8 @@ class ElasticsearchOutput(Output):
             Acts as output connector for Elasticsearch.
 
         """
-        return f"Elasticsearch Output: {self._hosts}"
+        base_description = super().describe()
+        return f"{base_description} - ElasticSearch Output: {self._config.hosts}"
 
     def _write_to_es(self, document):
         """Writes documents from a buffer into Elasticsearch indices.
@@ -140,13 +110,13 @@ class ElasticsearchOutput(Output):
         """
         self._message_backlog[self._processed_cnt] = document
         currently_processed_cnt = self._processed_cnt + 1
-        if currently_processed_cnt == self._message_backlog_size:
+        if currently_processed_cnt == self._config.message_backlog_size:
             try:
                 helpers.bulk(
                     self._es,
                     self._message_backlog,
-                    max_retries=self._max_retries,
-                    chunk_size=self._message_backlog_size,
+                    max_retries=self._config.max_retries,
+                    chunk_size=self._config.message_backlog_size,
                 )
             except elasticsearch.SerializationError as error:
                 self._handle_serialization_error(error)
@@ -156,8 +126,9 @@ class ElasticsearchOutput(Output):
                 self._handle_bulk_index_error(error)
             self._processed_cnt = 0
 
-            if self._input:
-                self._input.batch_finished_callback()
+            # TODO has to be done on pipeline level
+            # if self._input:
+            #     self._input.batch_finished_callback()
         else:
             self._processed_cnt = currently_processed_cnt
 
@@ -243,7 +214,7 @@ class ElasticsearchOutput(Output):
         document = {
             "reason": reason,
             "@timestamp": arrow.now().isoformat(),
-            "_index": self._default_index,
+            "_index": self._config.default_index,
         }
         try:
             document["message"] = json.dumps(message_document)
@@ -288,7 +259,7 @@ class ElasticsearchOutput(Output):
             "original": document_received,
             "processed": document_processed,
             "@timestamp": arrow.now().isoformat(),
-            "_index": self._error_index,
+            "_index": self._config.error_index,
         }
         self._add_dates(error_document)
         self._write_to_es(error_document)

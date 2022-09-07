@@ -9,6 +9,7 @@ from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.console.output import ConsoleOutput
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.dummy.output import DummyOutput
+from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.connector.json.input import JsonInput
 from logprep.connector.jsonl.input import JsonlInput
 from logprep.processor.clusterer.processor import Clusterer
@@ -61,6 +62,7 @@ class Registry:
         "confluentkafka_input": ConfluentKafkaInput,
         "confluentkafka_output": ConfluentKafkaOutput,
         "console_output": ConsoleOutput,
+        "eleasticsearch_output": ElasticsearchOutput,
     }
 
     @classmethod

@@ -19,6 +19,7 @@ import elasticsearch.helpers
 
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.abc.output import CriticalOutputError, FatalOutputError
+from tests.unit.connector.base import BaseOutputTestCase
 
 
 class NotJsonSerializableMock:
@@ -40,39 +41,34 @@ def mock_bulk(
 elasticsearch.helpers.bulk = mock_bulk
 
 
-class TestElasticsearchOutput:
-    def setup_method(self, _):
-        self.es_output = ElasticsearchOutput(
-            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
-        )
+class TestElasticsearchOutput(BaseOutputTestCase):
 
-    def test_implements_abstract_methods(self):
-        try:
-            ElasticsearchOutput(
-                ["host:123"], "default_index", "error_index", 2, 5000, 0, None, None, None
-            )
-        except TypeError as err:
-            pytest.fail(f"Must implement abstract methods: {str(err)}")
+    CONFIG = {
+        "type": "eleasticsearch_output",
+        "hosts": ["host:123"],
+        "default_index": "default_index",
+        "error_index": "error_index",
+        "message_backlog_size": 1,
+        "timeout": 5000,
+    }
 
     def test_describe_endpoint_returns_elasticsearch_output(self):
-        assert self.es_output.describe_endpoint() == "Elasticsearch Output: ['host:123']"
+        assert (
+            self.object.describe()
+            == "ElasticsearchOutput (Test Instance Name) - ElasticSearch Output: ['host:123']"
+        )
 
-    def test_store_sends_event_to_expected_index_if_index_missing_in_event(self):
-        default_index = "target_index"
+    def test_store_sends_to_default_index(self):
         event = {"field": "content"}
         expected = {
-            "_index": default_index,
+            "_index": "default_index",
             "message": '{"field": "content"}',
             "reason": "Missing index in document",
         }
+        self.object.store(event)
 
-        es_output = ElasticsearchOutput(
-            ["host:123"], default_index, "error_index", 1, 5000, 0, None, None, None
-        )
-        es_output.store(event)
-
-        assert es_output._message_backlog[0].pop("@timestamp")
-        assert es_output._message_backlog[0] == expected
+        assert self.object._message_backlog[0].pop("@timestamp")
+        assert self.object._message_backlog[0] == expected
 
     def test_store_sends_event_to_expected_index_with_date_pattern_if_index_missing_in_event(self):
         default_index = "default_index-%{YYYY-MM-DD}"

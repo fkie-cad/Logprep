@@ -10,6 +10,8 @@ from typing import Iterable
 from unittest import mock
 
 from logprep.abc.connector import Connector
+from logprep.abc.input import Input
+from logprep.abc.output import Output
 from logprep.pipeline_component_factory import PipelineComponentFactory
 from logprep.util.helper import camel_to_snake
 
@@ -39,6 +41,9 @@ class BaseConnectorTestCase(ABC):
 
 
 class BaseInputTestCase(BaseConnectorTestCase):
+    def test_is_input_instance(self):
+        assert isinstance(self.object, Input)
+
     def test_get_next_returns_event(self):
         return_value = ({"message": "test message"}, b'{"message": "test message"}')
         self.object._get_event = mock.MagicMock(return_value=return_value)
@@ -272,5 +277,10 @@ class BaseInputTestCase(BaseConnectorTestCase):
         )
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
-        kafka_next_msg, non_critical_error_msg = kafka.get_next(1)
+        kafka_next_msg, _ = kafka.get_next(1)
         assert kafka_next_msg == test_event
+
+
+class BaseOutputTestCase(BaseConnectorTestCase):
+    def test_is_output_instance(self):
+        assert isinstance(self.object, Output)
