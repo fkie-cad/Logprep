@@ -9,29 +9,9 @@ from logprep.factory_error import (
     InvalidConfigurationError,
     NotExactlyOneEntryInConfigurationError,
 )
-from logprep.abc.input import Input
-from logprep.abc.output import Output
-from logprep.connector.dummy.input import DummyInput
-from logprep.connector.jsonl.input import JsonlInput
-from logprep.connector.json.input import JsonInput
-from logprep.connector.confluent_kafka.input import (
-    ConfluentKafkaInput,
-    ConfluentKafkaInputFactory,
-)
-from logprep.connector.dummy.output import DummyOutput
-from logprep.connector.jsonl.output import JsonlOutput
-from logprep.connector.elasticsearch.output import (
-    ElasticsearchOutput,
-    ElasticsearchOutputFactory,
-)
-from logprep.connector.opensearch.output import (
-    OpenSearchOutput,
-    OpenSearchOutputFactory,
-)
-from logprep.connector.confluent_kafka.output import (
-    ConfluentKafkaOutput,
-    ConfluentKafkaOutputFactory,
-)
+
+if TYPE_CHECKING:  # pragma: no cover
+    from logging import Logger
 
 
 class PipelineComponentFactory:

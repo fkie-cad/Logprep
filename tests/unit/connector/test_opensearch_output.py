@@ -18,6 +18,7 @@ import opensearchpy.helpers
 
 from logprep.connector.opensearch.output import OpenSearchOutput
 from logprep.abc.output import CriticalOutputError, FatalOutputError
+from tests.unit.connector.base import BaseOutputTestCase
 
 
 class NotJsonSerializableMock:
@@ -39,11 +40,13 @@ def mock_bulk(
 opensearchpy.helpers.bulk = mock_bulk
 
 
-class TestOpenSearchOutput:
-    def setup_method(self, _):
-        self.os_output = OpenSearchOutput(
-            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None, None
-        )
+class TestOpenSearchOutput(BaseOutputTestCase):
+    # def setup_method(self, _):
+    #     self.os_output = OpenSearchOutput(
+    #         ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None, None
+    #     )
+
+    CONFIG = {"type": "opensearch_output"}
 
     def test_implements_abstract_methods(self):
         try:

@@ -11,58 +11,10 @@ from opensearchpy import OpenSearch, helpers, SerializationError
 from opensearchpy.exceptions import ConnectionError
 from opensearchpy.helpers import BulkIndexError
 
-from logprep.connector.connector_factory_error import InvalidConfigurationError
 from logprep.abc.input import Input
 from logprep.abc.output import Output, FatalOutputError
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
-
-
-class OpenSearchOutputFactory:
-    """Create OpenSearchOutput for logprep and output communication."""
-
-    @staticmethod
-    def create_from_configuration(configuration: dict) -> "OpenSearchOutput":
-        """Create a OpenSearchOutput connector.
-
-        Parameters
-        ----------
-        configuration : dict
-           Parsed configuration YML.
-
-        Returns
-        -------
-        opensearch_output : OpenSearchOutput
-            Acts as output connector for OpenSearch.
-
-        Raises
-        ------
-        InvalidConfigurationError
-            If OpenSearch configuration is invalid.
-
-        """
-        if not isinstance(configuration, dict):
-            raise InvalidConfigurationError("OpenSearchOutput: Configuration is not a dict!")
-
-        try:
-            os_output = OpenSearchOutput(
-                configuration["opensearch"]["hosts"],
-                configuration["opensearch"]["default_index"],
-                configuration["opensearch"]["error_index"],
-                configuration["opensearch"]["message_backlog"],
-                configuration["opensearch"].get("timeout", 500),
-                configuration["opensearch"].get("max_retries", 0),
-                configuration["opensearch"].get("user"),
-                configuration["opensearch"].get("secret"),
-                configuration["opensearch"].get("cert"),
-                configuration["opensearch"].get("check_hostname"),
-            )
-        except KeyError as error:
-            raise InvalidConfigurationError(
-                f"OpenSearch: Missing configuration parameter {str(error)}!"
-            ) from error
-
-        return os_output
 
 
 class OpenSearchOutput(Output):
