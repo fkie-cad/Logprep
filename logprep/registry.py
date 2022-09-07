@@ -12,6 +12,7 @@ from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.connector.json.input import JsonInput
 from logprep.connector.jsonl.input import JsonlInput
+from logprep.connector.jsonl.output import JsonlOutput
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.deleter.processor import Deleter
@@ -63,6 +64,7 @@ class Registry:
         "confluentkafka_output": ConfluentKafkaOutput,
         "console_output": ConsoleOutput,
         "eleasticsearch_output": ElasticsearchOutput,
+        "jsonl_output": JsonlOutput,
     }
 
     @classmethod

@@ -1,7 +1,8 @@
 """This module contains an output that writes documents to a file."""
 
 import json
-
+from logging import Logger
+from attrs import define, field, validators
 from logprep.abc.output import Output
 
 
@@ -18,25 +19,36 @@ class JsonlOutput(Output):
         The path to store error
     """
 
-    def __init__(
-        self, output_path: str, output_path_custom: str = None, output_path_error: str = None
-    ):
-        self.last_timeout = None
+    @define(kw_only=True)
+    class Config(Output.Config):
+        """Common Configurations"""
 
+        output_file = field(validator=validators.instance_of(str))
+        output_file_custom = field(validator=validators.instance_of(str), default="")
+        output_file_error = field(validator=validators.instance_of(str), default="")
+
+    last_timeout: float
+    events: list
+    failed_events: list
+
+    __slots__ = [
+        "ast_timeout",
+        "events",
+        "failed_events",
+    ]
+
+    def __init__(self, name: str, configuration: "Output.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
         self.events = []
         self.failed_events = []
 
-        self._output_file = output_path
-        open(self._output_file, "a+", encoding="utf8").close()
-        self._output_file_custom = output_path_custom
-        if self._output_file_custom:
-            open(self._output_file_custom, "a+", encoding="utf8").close()
-        self._output_file_error = output_path_error
-        if self._output_file_error:
-            open(self._output_file_error, "a+", encoding="utf8").close()
-
-    def describe_endpoint(self) -> str:
-        return "writer"
+    def setup(self):
+        super().setup()
+        open(self._config.output_file, "a+", encoding="utf8").close()
+        if self._config.output_file_custom:
+            open(self._config.output_file_custom, "a+", encoding="utf8").close()
+        if self._config.output_file_error:
+            open(self._config.output_file_error, "a+", encoding="utf8").close()
 
     @staticmethod
     def _write_json(filepath: str, line: dict):
@@ -45,21 +57,20 @@ class JsonlOutput(Output):
 
     def store(self, document: dict):
         self.events.append(document)
-
-        JsonlOutput._write_json(self._output_file, document)
+        JsonlOutput._write_json(self._config.output_file, document)
 
     def store_custom(self, document: dict, target: str):
         self.events.append(document)
 
-        if self._output_file_custom:
-            JsonlOutput._write_json(self._output_file_custom, document)
+        if self._config.output_file_custom:
+            JsonlOutput._write_json(self._config.output_file_custom, document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         self.failed_events.append((error_message, document_received, document_processed))
 
-        if self._output_file_error:
+        if self._config.output_file_error:
             JsonlOutput._write_json(
-                self._output_file_error,
+                self._config.output_file_error,
                 {
                     "error_message": error_message,
                     "document_received": document_received,
