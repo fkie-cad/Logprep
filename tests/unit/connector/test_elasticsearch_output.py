@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+from copy import deepcopy
 import json
 import re
 import pytest
@@ -16,7 +17,7 @@ import arrow
 import elasticsearch
 import elasticsearch.helpers
 
-
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from tests.unit.connector.base import BaseOutputTestCase
@@ -81,10 +82,9 @@ class TestElasticsearchOutput(BaseOutputTestCase):
             "message": '{"field": "content"}',
             "reason": "Missing index in document",
         }
-
-        es_output = ElasticsearchOutput(
-            ["host:123"], default_index, "error_index", 1, 5000, 0, None, None, None
-        )
+        es_config = deepcopy(self.CONFIG)
+        es_config.update({"default_index": default_index})
+        es_output = PipelineComponentFactory.create({"elasticsearch": es_config}, self.logger)
         es_output.store(event)
 
         assert es_output._message_backlog[0].pop("@timestamp")
@@ -93,22 +93,15 @@ class TestElasticsearchOutput(BaseOutputTestCase):
     def test_store_custom_sends_event_to_expected_index(self):
         custom_index = "custom_index"
         event = {"field": "content"}
-
         expected = {"field": "content", "_index": custom_index}
-
-        es_output = ElasticsearchOutput(
-            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
-        )
-        es_output.store_custom(event, custom_index)
-
-        assert es_output._message_backlog[0] == expected
+        self.object.store_custom(event, custom_index)
+        assert self.object._message_backlog[0] == expected
 
     def test_store_failed(self):
         error_index = "error_index"
         event_received = {"field": "received"}
         event = {"field": "content"}
         error_message = "error message"
-
         expected = {
             "error": error_message,
             "original": event_received,
@@ -117,12 +110,9 @@ class TestElasticsearchOutput(BaseOutputTestCase):
             "@timestamp": str(datetime.now()),
         }
 
-        es_output = ElasticsearchOutput(
-            ["host:123"], "default_index", error_index, 1, 5000, 0, None, None, None
-        )
-        es_output.store_failed(error_message, event_received, event)
+        self.object.store_failed(error_message, event_received, event)
 
-        error_document = es_output._message_backlog[0]
+        error_document = self.object._message_backlog[0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
         error_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
@@ -138,7 +128,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
             "reason": "A reason for failed indexing",
             "_index": "default_index",
         }
-        failed_document = self.es_output._build_failed_index_document(
+        failed_document = self.object._build_failed_index_document(
             {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"},
             "A reason for failed indexing",
         )
@@ -152,10 +142,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
             "message": '{"foo": "bar"}',
             "_index": "default_index",
         }
-        es_output = ElasticsearchOutput(
-            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
-        )
-        failed_document = es_output._build_failed_index_document(
+        failed_document = self.object._build_failed_index_document(
             {"foo": "bar"}, "A reason for failed indexing"
         )
         assert failed_document.pop("@timestamp")
@@ -166,27 +153,27 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         side_effect=elasticsearch.SerializationError,
     )
     def test_write_to_es_calls_handle_serialization_error_if_serialization_error(self, _):
-        self.es_output._handle_serialization_error = mock.MagicMock()
-        self.es_output._write_to_es({"dummy": "event"})
-        self.es_output._handle_serialization_error.assert_called()
+        self.object._handle_serialization_error = mock.MagicMock()
+        self.object._write_to_es({"dummy": "event"})
+        self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
         "logprep.connector.elasticsearch.output.helpers.bulk",
         side_effect=elasticsearch.ConnectionError,
     )
     def test_write_to_es_calls_handle_connection_error_if_connection_error(self, _):
-        self.es_output._handle_connection_error = mock.MagicMock()
-        self.es_output._write_to_es({"dummy": "event"})
-        self.es_output._handle_connection_error.assert_called()
+        self.object._handle_connection_error = mock.MagicMock()
+        self.object._write_to_es({"dummy": "event"})
+        self.object._handle_connection_error.assert_called()
 
     @mock.patch(
         "logprep.connector.elasticsearch.output.helpers.bulk",
         side_effect=elasticsearch.helpers.BulkIndexError,
     )
     def test_write_to_es_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
-        self.es_output._handle_bulk_index_error = mock.MagicMock()
-        self.es_output._write_to_es({"dummy": "event"})
-        self.es_output._handle_bulk_index_error.assert_called()
+        self.object._handle_bulk_index_error = mock.MagicMock()
+        self.object._write_to_es({"dummy": "event"})
+        self.object._handle_bulk_index_error.assert_called()
 
     @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
     def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
@@ -199,7 +186,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 }
             }
         ]
-        self.es_output._handle_bulk_index_error(mock_bulk_index_error)
+        self.object._handle_bulk_index_error(mock_bulk_index_error)
         fake_bulk.assert_called()
 
     @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
@@ -213,7 +200,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
                 }
             }
         ]
-        self.es_output._handle_bulk_index_error(mock_bulk_index_error)
+        self.object._handle_bulk_index_error(mock_bulk_index_error)
         call_args = fake_bulk.call_args[0][1]
         error_document = call_args[0]
         assert "reason" in error_document
@@ -223,22 +210,18 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         assert error_document.get("reason") == "myerrortype: myreason"
         assert error_document.get("message") == json.dumps({"my": "document"})
 
-    def test_write_to_es_calls_input_batch_finished_callback(self):
-        self.es_output._input = mock.MagicMock()
-        self.es_output._input.batch_finished_callback = mock.MagicMock()
-        self.es_output._write_to_es({"dummy": "event"})
-        self.es_output._input.batch_finished_callback.assert_called()
-
     def test_write_to_es_sets_processed_cnt(self):
-        self.es_output._message_backlog_size = 2
-        current_proccessed_cnt = self.es_output._processed_cnt
-        self.es_output._write_to_es({"dummy": "event"})
-        assert current_proccessed_cnt < self.es_output._processed_cnt
+        es_config = deepcopy(self.CONFIG)
+        es_config.update({"message_backlog_size": 2})
+        es_output = PipelineComponentFactory.create({"elasticsearch": es_config}, self.logger)
+        current_proccessed_cnt = es_output._processed_cnt
+        es_output._write_to_es({"dummy": "event"})
+        assert current_proccessed_cnt < es_output._processed_cnt
 
     def test_handle_connection_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
-            self.es_output._handle_connection_error(mock.MagicMock())
+            self.object._handle_connection_error(mock.MagicMock())
 
     def test_handle_serialization_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
-            self.es_output._handle_serialization_error(mock.MagicMock())
+            self.object._handle_serialization_error(mock.MagicMock())

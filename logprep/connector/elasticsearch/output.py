@@ -42,7 +42,21 @@ class ElasticsearchOutput(Output):
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
         cert: Optional[str] = field(validator=validators.instance_of(str), default="")
 
-    __slots__ = []
+    __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
+
+    _message_backlog: List
+
+    _processed_cnt: int
+
+    _index_cache: dict
+
+    def __init__(self, name: str, configuration: "Input.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self._message_backlog = [
+            {"_index": self._config.default_index}
+        ] * self._config.message_backlog_size
+        self._processed_cnt = 0
+        self._index_cache = {}
 
     @cached_property
     def ssl_context(self):
@@ -73,14 +87,6 @@ class ElasticsearchOutput(Output):
     @cached_property
     def _replace_pattern(self):
         return re.compile(r"%{\S+?}")
-
-    def __init__(self, name: str, configuration: "Input.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
-        self._message_backlog = [
-            {"_index": self._config.default_index}
-        ] * self._config.message_backlog_size
-        self._processed_cnt = 0
-        self._index_cache = {}
 
     def describe(self) -> str:
         """Get name of Elasticsearch endpoint with the host.
