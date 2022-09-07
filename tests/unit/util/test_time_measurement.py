@@ -3,7 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 
-from logprep.processor.processor_factory import ProcessorFactory
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from logprep.util.time_measurement import TimeMeasurement
 
 
@@ -71,7 +71,7 @@ class TestTimeMeasurement:
             }
         }
 
-        dropper = ProcessorFactory.create(
+        dropper = PipelineComponentFactory.create(
             dropper_config,
             logging.getLogger("test-logger"),
         )

@@ -12,8 +12,8 @@ import pytest
 
 from logprep.processor.generic_adder.processor import DuplicationError
 from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
-from logprep.processor.processor_factory import ProcessorFactory
-from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory_error import InvalidConfigurationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
@@ -166,7 +166,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config["generic_rules"] = [RULES_DIR_FIRST_EXISTING]
         configuration = {"test processor": config}
-        generic_adder = ProcessorFactory.create(configuration, self.logger)
+        generic_adder = PipelineComponentFactory.create(configuration, self.logger)
 
         assert generic_adder.metrics.number_of_processed_events == 0
         expected = {
@@ -186,7 +186,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config["specific_rules"] = [RULES_DIR_FIRST_EXISTING]
         configuration = {"test_instance_name": config}
-        generic_adder = ProcessorFactory.create(configuration, self.logger)
+        generic_adder = PipelineComponentFactory.create(configuration, self.logger)
 
         assert generic_adder.metrics.number_of_processed_events == 0
         expected = {
@@ -210,7 +210,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             config = deepcopy(self.CONFIG)
             config["specific_rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
-            ProcessorFactory.create(configuration, self.logger)
+            PipelineComponentFactory.create(configuration, self.logger)
 
     def test_add_generic_fields_from_file_invalid(self):
         with pytest.raises(
@@ -221,7 +221,7 @@ class TestGenericAdder(BaseProcessorTestCase):
             config = deepcopy(self.CONFIG)
             config["generic_rules"] = [RULES_DIR_INVALID]
             configuration = {"test processor": config}
-            ProcessorFactory.create(configuration, self.logger)
+            PipelineComponentFactory.create(configuration, self.logger)
 
     def test_add_generic_fields_to_co_existing_field(self):
         expected = {
@@ -603,9 +603,9 @@ class TestGenericAdderProcessorSQLWithoutAddedTargetAndTableNeverEmpty(
 
         if raised_error:
             with pytest.raises(raised_error[0], match=raised_error[1]):
-                ProcessorFactory.create({"Test Instance Name": config}, self.logger)
+                PipelineComponentFactory.create({"Test Instance Name": config}, self.logger)
         else:
-            ProcessorFactory.create({"Test Instance Name": config}, self.logger)
+            PipelineComponentFactory.create({"Test Instance Name": config}, self.logger)
 
 
 class TestGenericAdderProcessorSQLWithAddedTarget(BaseTestGenericAdderSQLTestCase):

@@ -31,7 +31,7 @@ from logprep.abc.output import FatalOutputError, WarningOutputError, CriticalOut
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.deleter.processor import Deleter
 from logprep.processor.deleter.rule import DeleterRule
-from logprep.processor.processor_configuration import ProcessorConfiguration
+from logprep.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
 
@@ -60,7 +60,7 @@ class ProcessorWarningMockError(ProcessingWarning):
         super().__init__("ProcessorWarningMockError")
 
 
-@mock.patch("logprep.processor.processor_factory.ProcessorFactory.create")
+@mock.patch("logprep.pipeline_component_factory.ProcessorFactory.create")
 class TestPipeline(ConfigurationForTests):
     def setup_method(self):
         self._check_failed_stored = None

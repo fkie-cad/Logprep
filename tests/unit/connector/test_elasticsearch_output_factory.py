@@ -9,7 +9,7 @@ from copy import deepcopy
 from pytest import fail, raises
 
 from logprep.connector.elasticsearch.output import ElasticsearchOutputFactory
-from logprep.connector.connector_factory import InvalidConfigurationError
+from logprep.pipeline_component_factory import InvalidConfigurationError
 
 # '
 

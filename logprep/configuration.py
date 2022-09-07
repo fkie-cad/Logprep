@@ -1,8 +1,8 @@
 """module for processor configuration """
 from typing import TYPE_CHECKING, Any, Mapping
 
-from logprep.processor.processor_registry import ProcessorRegistry
-from logprep.processor.processor_factory_error import (
+from logprep.registry import Registry
+from logprep.factory_error import (
     NoTypeSpecifiedError,
     UnknownProcessorTypeError,
 )
@@ -11,7 +11,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc import Processor
 
 
-class ProcessorConfiguration:
+class Configuration:
     """factory and adapter for generating config"""
 
     @classmethod
@@ -30,11 +30,11 @@ class ProcessorConfiguration:
         Processor.Config
             the processor configuration
         """
-        processor_class = cls.get_processor_class(processor_name, config_)
+        processor_class = cls.get_class(processor_name, config_)
         return processor_class.Config(**config_)
 
     @staticmethod
-    def get_processor_class(processor_name: str, config_: Mapping[str, Any]):
+    def get_class(processor_name: str, config_: Mapping[str, Any]):
         """gets the processorclass from config
 
         Parameters
@@ -58,8 +58,8 @@ class ProcessorConfiguration:
         """
         if "type" not in config_:
             raise NoTypeSpecifiedError(processor_name)
-        processors = ProcessorRegistry.mapping
+        processors = Registry.mapping
         processor_type = config_.get("type")
         if processor_type not in processors:
             raise UnknownProcessorTypeError(processor_type)
-        return ProcessorRegistry.get_processor_class(processor_type)
+        return Registry.get_processor_class(processor_type)

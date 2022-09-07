@@ -10,7 +10,7 @@ from typing import Iterable
 from unittest import mock
 
 from logprep.abc.connector import Connector
-from logprep.connector.connector_factory import ConnectorFactory
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from logprep.util.helper import camel_to_snake
 
 
@@ -21,7 +21,7 @@ class BaseConnectorTestCase(ABC):
 
     def setup_method(self) -> None:
         config = {"Test Instance Name": self.CONFIG}
-        self.object = ConnectorFactory.create(configuration=config, logger=self.logger)
+        self.object = PipelineComponentFactory.create(configuration=config, logger=self.logger)
 
     def test_is_a_connector_implementation(self):
         assert isinstance(self.object, Connector)
@@ -58,7 +58,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = ConnectorFactory.create(
+        connector = PipelineComponentFactory.create(
             {"test connector": connector_config}, logger=self.logger
         )
         assert connector._add_hmac is True
@@ -76,7 +76,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = ConnectorFactory.create(
+        connector = PipelineComponentFactory.create(
             {"test connector": connector_config}, logger=self.logger
         )
         processed_event, non_critical_error_msg = connector._add_hmac_to(
@@ -105,7 +105,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
+        kafka = PipelineComponentFactory.create(
+            {"test connector": kafka_config}, logger=self.logger
+        )
         test_event = {"message": "with_content"}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
@@ -138,7 +140,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
+        kafka = PipelineComponentFactory.create(
+            {"test connector": kafka_config}, logger=self.logger
+        )
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
@@ -172,7 +176,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
+        kafka = PipelineComponentFactory.create(
+            {"test connector": kafka_config}, logger=self.logger
+        )
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
@@ -204,7 +210,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
+        kafka = PipelineComponentFactory.create(
+            {"test connector": kafka_config}, logger=self.logger
+        )
         test_event = {"message": "with_content"}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
@@ -243,7 +251,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
+        kafka = PipelineComponentFactory.create(
+            {"test connector": kafka_config}, logger=self.logger
+        )
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
@@ -257,7 +267,9 @@ class BaseInputTestCase(BaseConnectorTestCase):
         kafka_config = deepcopy(self.CONFIG)
         assert not kafka_config.get("preprocessing", {}).get("hmac")
         test_event = {"message": "with_content"}
-        kafka = ConnectorFactory.create({"test connector": kafka_config}, logger=self.logger)
+        kafka = PipelineComponentFactory.create(
+            {"test connector": kafka_config}, logger=self.logger
+        )
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
         kafka_next_msg, non_critical_error_msg = kafka.get_next(1)

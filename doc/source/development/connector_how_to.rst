@@ -83,7 +83,7 @@ New connector types have to be manually added to this factory.
 
 For simple cases it might be enough to create a factory method directly in :py:class:`~logprep.connector.connector_factory.ConnectorFactory` (i.e. `dummy` with `DummyInput` and `DummyOutput`).
 Generally, it is however better to create a separate factory for a connector so that `ConnectorFactory` just contains a call to that specific connector factory (i.e. `confluentkafka` with :py:class:`~logprep.connector.confluent_kafka.ConfluentKafkaFactory`).
-Errors in the configuration must throw exceptions that are derived from `connector.ConnectorFactoryError.InvalidConfigurationError`.
+Errors in the configuration must throw exceptions that are derived from `connector.FactoryError.InvalidConfigurationError`.
 
 The functionality of a factory should be checked with appropriate tests (`connector.test_ConnectorFactory`).
 The configuration in the test serves simultaneously as reference for the configuration of connectors.

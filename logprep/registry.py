@@ -4,6 +4,13 @@
 """
 import warnings
 
+from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
+from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
+from logprep.connector.console.output import ConsoleOutput
+from logprep.connector.dummy.input import DummyInput
+from logprep.connector.dummy.output import DummyOutput
+from logprep.connector.json.input import JsonInput
+from logprep.connector.jsonl.input import JsonlInput
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.deleter.processor import Deleter
@@ -23,10 +30,11 @@ from logprep.processor.template_replacer.processor import TemplateReplacer
 from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 
 
-class ProcessorRegistry:
+class Registry:
     """Processor Registry"""
 
     mapping = {
+        # Processors
         "clusterer": Clusterer,
         "datetime_extractor": DatetimeExtractor,
         "deleter": Deleter,
@@ -45,6 +53,14 @@ class ProcessorRegistry:
         "pseudonymizer": Pseudonymizer,
         "selective_extractor": SelectiveExtractor,
         "template_replacer": TemplateReplacer,
+        # Connectors
+        "json_input": JsonInput,
+        "jsonl_input": JsonlInput,
+        "dummy_input": DummyInput,
+        "dummy_output": DummyOutput,
+        "confluentkafka_input": ConfluentKafkaInput,
+        "confluentkafka_output": ConfluentKafkaOutput,
+        "console_output": ConsoleOutput,
     }
 
     @classmethod

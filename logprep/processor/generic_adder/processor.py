@@ -39,7 +39,7 @@ from attr import define, field, validators
 from logprep.abc import Processor
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.helper import get_dotted_field_value
 
 

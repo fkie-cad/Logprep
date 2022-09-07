@@ -18,10 +18,33 @@ from logprep.framework.pipeline import Pipeline, SharedCounter
 from logprep.util.helper import recursive_compare, remove_file_if_exists
 from logprep.util.json_handling import parse_jsonl
 from logprep.util.rule_dry_runner import get_patched_runner
-from tests.unit.connector.test_confluent_kafka import RecordMock
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
+
+
+class RecordMock:
+    def __init__(self, record_value, record_error):
+        self.record_value = record_value
+        self.record_error = record_error
+
+    @staticmethod
+    def partition():
+        return 0
+
+    def value(self):
+        if self.record_value is None:
+            return None
+        return self.record_value.encode("utf-8")
+
+    def error(self):
+        if self.record_error is None:
+            return None
+        return self.record_error
+
+    @staticmethod
+    def offset():
+        return -1
 
 
 def get_difference(test_output, expected_output):

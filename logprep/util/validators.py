@@ -3,7 +3,7 @@ import os
 import typing
 from urllib.parse import urlparse
 
-from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.json_handling import is_json
 
 

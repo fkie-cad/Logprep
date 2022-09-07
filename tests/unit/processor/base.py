@@ -14,8 +14,8 @@ import pytest
 from logprep.abc.processor import Processor
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.processor_factory import ProcessorFactory
-from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
@@ -93,7 +93,7 @@ class BaseProcessorTestCase(ABC):
             patcher.start()
             self.patchers.append(patcher)
         config = {"Test Instance Name": self.CONFIG}
-        self.object = ProcessorFactory.create(configuration=config, logger=self.logger)
+        self.object = PipelineComponentFactory.create(configuration=config, logger=self.logger)
         self.specific_rules = self.set_rules(self.specific_rules_dirs)
         self.generic_rules = self.set_rules(self.generic_rules_dirs)
 
@@ -289,14 +289,14 @@ class BaseProcessorTestCase(ABC):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: "i am not a list"})
         with pytest.raises(InvalidConfigurationError, match=r"not a list"):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            PipelineComponentFactory.create({"test instance": config}, self.logger)
 
     @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
     def test_validation_raises_on_empty_rules_list(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: []})
         with pytest.raises(InvalidConfigurationError, match=rf"{rule_list} is empty"):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            PipelineComponentFactory.create({"test instance": config}, self.logger)
 
     @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
     def test_validation_raises_if_elements_does_not_exist(self, rule_list):
@@ -305,7 +305,7 @@ class BaseProcessorTestCase(ABC):
         with pytest.raises(
             InvalidConfigurationError, match=r"'\/i\/do\/not\/exist' does not exist"
         ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            PipelineComponentFactory.create({"test instance": config}, self.logger)
 
     @mock.patch("os.path.exists", return_value=True)
     @mock.patch("os.path.isdir", return_value=False)
@@ -316,13 +316,13 @@ class BaseProcessorTestCase(ABC):
         with pytest.raises(
             InvalidConfigurationError, match=r"'\/i\/am\/not\/a\/directory' is not a directory"
         ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            PipelineComponentFactory.create({"test instance": config}, self.logger)
 
     def test_validation_raises_if_tree_config_is_not_a_str(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": 12})
         with pytest.raises(InvalidConfigurationError, match=r"tree_config is not a str"):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            PipelineComponentFactory.create({"test instance": config}, self.logger)
 
     def test_validation_raises_if_tree_config_is_not_exist(self):
         config = deepcopy(self.CONFIG)
@@ -331,7 +331,7 @@ class BaseProcessorTestCase(ABC):
             InvalidConfigurationError,
             match=r"tree_config file '\/i\/am\/not\/a\/file\/path' does not exist",
         ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            PipelineComponentFactory.create({"test instance": config}, self.logger)
 
     def test_processor_metrics_counts_processed_events(self):
         assert self.object.metrics.number_of_processed_events == 0

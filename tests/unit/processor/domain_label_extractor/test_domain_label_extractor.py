@@ -5,7 +5,7 @@ import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_label_extractor.processor import DuplicationError
-from logprep.processor.processor_factory import ProcessorFactory
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -186,7 +186,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = ProcessorFactory.create(configuration=config, logger=self.logger)
+        domain_label_extractor = PipelineComponentFactory.create(
+            configuration=config, logger=self.logger
+        )
         document = {"url": {"domain": "domain.fubarbo"}}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},
@@ -207,7 +209,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             }
         }
 
-        domain_label_extractor = ProcessorFactory.create(config, self.logger)
+        domain_label_extractor = PipelineComponentFactory.create(config, self.logger)
         document = {"url": {"domain": "domain.fubarbo"}, "special_tags": ["source"]}
         expected_output = {
             "url": {"domain": "domain.fubarbo"},

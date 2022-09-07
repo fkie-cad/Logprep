@@ -3,8 +3,8 @@ import copy
 from typing import TYPE_CHECKING
 
 from logprep.abc import Connector
-from logprep.connector.connector_configuration import ConnectorConfiguration
-from logprep.connector.connector_factory_error import (
+from logprep.configuration import Configuration
+from logprep.factory_error import (
     InvalidConfigSpecificationError,
     InvalidConfigurationError,
     NotExactlyOneEntryInConfigurationError,
@@ -34,8 +34,8 @@ from logprep.connector.confluent_kafka.output import (
 )
 
 
-class ConnectorFactory:
-    """Create connectors for logprep and input/output communication."""
+class PipelineComponentFactory:
+    """Create components for logprep."""
 
     @classmethod
     def create(cls, configuration: dict, logger: "Logger") -> Connector:
@@ -44,7 +44,7 @@ class ConnectorFactory:
             raise NotExactlyOneEntryInConfigurationError()
         if len(configuration) > 1:
             raise InvalidConfigurationError(
-                "There must be exactly one connector definition per pipeline entry."
+                "There must be exactly one definition per pipeline entry."
             )
         for connector_name, connector_configuration_dict in configuration.items():
             if not isinstance(connector_configuration_dict, dict):
@@ -52,10 +52,8 @@ class ConnectorFactory:
             metric_labels = {}
             if "metric_labels" in configuration[connector_name]:
                 metric_labels = configuration[connector_name].pop("metric_labels")
-            connector = ConnectorConfiguration.get_connector_class(
-                connector_name, connector_configuration_dict
-            )
-            connector_configuration = ConnectorConfiguration.create(
+            connector = Configuration.get_class(connector_name, connector_configuration_dict)
+            connector_configuration = Configuration.create(
                 connector_name, connector_configuration_dict
             )
             connector_configuration.metric_labels = copy.deepcopy(metric_labels)

@@ -5,7 +5,7 @@ from copy import deepcopy
 from pytest import raises, fail
 
 from logprep.abc.output import FatalOutputError
-from logprep.connector.connector_factory import ConnectorFactory
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from tests.unit.connector.base import BaseConnectorTestCase
 
 
@@ -48,7 +48,9 @@ class TestDummyOutput(BaseConnectorTestCase):
     def test_raises_exception_on_call_to_store(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
-        dummy_output = ConnectorFactory.create({"test connector": config}, logger=self.logger)
+        dummy_output = PipelineComponentFactory.create(
+            {"test connector": config}, logger=self.logger
+        )
 
         with raises(BaseException, match="FatalOutputError"):
             dummy_output.store({"order": 0})
@@ -56,7 +58,9 @@ class TestDummyOutput(BaseConnectorTestCase):
     def test_raises_exception_on_call_to_store_custom(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
-        dummy_output = ConnectorFactory.create({"test connector": config}, logger=self.logger)
+        dummy_output = PipelineComponentFactory.create(
+            {"test connector": config}, logger=self.logger
+        )
 
         with raises(Exception, match="FatalOutputError"):
             dummy_output.store_custom({"order": 0}, target="whatever")
@@ -64,7 +68,9 @@ class TestDummyOutput(BaseConnectorTestCase):
     def test_raises_exception_only_once(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
-        dummy_output = ConnectorFactory.create({"test connector": config}, logger=self.logger)
+        dummy_output = PipelineComponentFactory.create(
+            {"test connector": config}, logger=self.logger
+        )
 
         with raises(Exception, match="FatalOutputError"):
             dummy_output.store({"order": 0})
@@ -76,7 +82,9 @@ class TestDummyOutput(BaseConnectorTestCase):
     def test_raises_exception_only_when_not_none(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": [None, "FatalOutputError", None]})
-        dummy_output = ConnectorFactory.create({"test connector": config}, logger=self.logger)
+        dummy_output = PipelineComponentFactory.create(
+            {"test connector": config}, logger=self.logger
+        )
 
         dummy_output.store({"order": 0})
         with raises(Exception, match="FatalOutputError"):
@@ -87,4 +95,8 @@ class TestDummyOutput(BaseConnectorTestCase):
         self.object.store_failed("message", {"doc": "received"}, {"doc": "processed"})
 
         assert len(self.object.failed_events) == 1
-        assert self.object.failed_events[0] == ("message", {"doc": "received"}, {"doc": "processed"})
+        assert self.object.failed_events[0] == (
+            "message",
+            {"doc": "received"},
+            {"doc": "processed"},
+        )

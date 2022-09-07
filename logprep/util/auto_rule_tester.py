@@ -27,7 +27,7 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.list_comparison.processor import ListComparison
-from logprep.processor.processor_factory import ProcessorFactory
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
 from logprep.abc import Processor
 from logprep.util.helper import print_fcolor, remove_file_if_exists, get_dotted_field_value
@@ -546,7 +546,7 @@ class AutoRuleTester:
     @staticmethod
     def _get_processor_instance(name, processor_cfg, logger_):
         cfg = {name: processor_cfg}
-        processor = ProcessorFactory.create(cfg, logger_)
+        processor = PipelineComponentFactory.create(cfg, logger_)
         processor_plugin_path = str(pathlib.Path(inspect.getfile(processor.__class__)).parent)
 
         rule_class_path = path.join(processor_plugin_path, "rule.py")

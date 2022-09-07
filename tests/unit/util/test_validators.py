@@ -7,7 +7,7 @@ import pytest
 from attr import define, field
 from attrs import validators
 
-from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.validators import (
     json_validator,
     file_validator,
@@ -217,8 +217,8 @@ class TestDictStructureValidator:
             "some_option": int,
         }
         with pytest.raises(
-                InvalidConfigurationError,
-                match=r"some_option' has wrong type <class 'str'>, expected <class 'int'>.",
+            InvalidConfigurationError,
+            match=r"some_option' has wrong type <class 'str'>, expected <class 'int'>.",
         ):
             dict_structure_validator(None, None, value, reference_dict)
 
@@ -230,8 +230,8 @@ class TestDictStructureValidator:
             "some_option": Optional[int],
         }
         with pytest.raises(
-                InvalidConfigurationError,
-                match=r"'some_option' has wrong type <class 'str'>, expected typing.Optional\[int\].",
+            InvalidConfigurationError,
+            match=r"'some_option' has wrong type <class 'str'>, expected typing.Optional\[int\].",
         ):
             dict_structure_validator(None, None, value, reference_dict)
 
@@ -241,8 +241,8 @@ class TestDictStructureValidator:
         }
         reference_dict = {"some_option": str, "other_expected_option": str}
         with pytest.raises(
-                InvalidConfigurationError,
-                match=r"following key is missing: 'other_expected_option'",
+            InvalidConfigurationError,
+            match=r"following key is missing: 'other_expected_option'",
         ):
             dict_structure_validator(None, None, value, reference_dict)
 
@@ -259,7 +259,7 @@ class TestDictStructureValidator:
             "some_option": str,
         }
         with pytest.raises(
-                InvalidConfigurationError, match=r"following keys are unknown: \{'something'\}"
+            InvalidConfigurationError, match=r"following keys are unknown: \{'something'\}"
         ):
             dict_structure_validator(None, None, value, reference_dict)
 

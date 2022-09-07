@@ -8,7 +8,7 @@ from typing import List, Optional
 import arrow
 import elasticsearch
 from elasticsearch import helpers
-from logprep.connector.connector_factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidConfigurationError
 from logprep.abc.input import Input
 from logprep.abc.output import FatalOutputError, Output
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.processor_factory import ProcessorFactory
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -94,7 +94,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def test_init_tld_extractor_uses_file(self):
         config = deepcopy(self.CONFIG)
         config["tld_lists"] = [TLD_LIST]
-        object_with_tld_list = ProcessorFactory.create({"pseudonymizer": config}, self.logger)
+        object_with_tld_list = PipelineComponentFactory.create(
+            {"pseudonymizer": config}, self.logger
+        )
         object_with_tld_list._init_tld_extractor()
         assert len(object_with_tld_list._tld_extractor.suffix_list_urls) == 1
         assert object_with_tld_list._tld_extractor.suffix_list_urls[0].endswith(

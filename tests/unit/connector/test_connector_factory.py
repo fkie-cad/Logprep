@@ -38,7 +38,7 @@ class TestConnectorFactory:
 
     def test_fails_to_create_a_connector_from_empty_config(self):
         with pytest.raises(
-                InvalidConfigurationError, match="There must be exactly one known connector definition."
+            InvalidConfigurationError, match="There must be exactly one known connector definition."
         ):
             ConnectorFactory.create({}, logging.getLogger("test-logger"))
 
@@ -46,15 +46,15 @@ class TestConnectorFactory:
         configuration_without_type = deepcopy(self.configuration)
         del configuration_without_type["type"]
         with pytest.raises(
-                InvalidConfigurationError,
-                match="The connector configuration must be specified as an object.",
+            InvalidConfigurationError,
+            match="The connector configuration must be specified as an object.",
         ):
             ConnectorFactory.create(configuration_without_type, logging.getLogger("test-logger"))
 
     def test_fails_to_create_a_connector_when_type_is_unknown(self):
         for unknown_type in ["test", "unknown", "this is not a known type"]:
             with pytest.raises(
-                    UnknownConnectorTypeError, match=f'Unknown connector type: "{unknown_type}"'
+                UnknownConnectorTypeError, match=f'Unknown connector type: "{unknown_type}"'
             ):
                 ConnectorFactory.create(
                     {"test_connector": {"type": unknown_type}}, logging.getLogger("test-logger")

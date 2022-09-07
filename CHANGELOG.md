@@ -122,7 +122,7 @@ version if found
 * Add `ProcessorRegistry` to register all processors
 * Remove plugins feature
 * Add `ProcessorConfiguration` as an adapter to create configuration for processors
-* Remove all specific processor factories in favor of `logprep.processor.processor_factory.ProcessorFactory`
+* Remove all specific processor factories in favor of `logprep.pipeline_component_factory.ProcessorFactory`
 * Rewrite `ProcessorFactory`
 * Automate processor configuration documentation
 * generalize config parameter for using tld lists to `tld_lists` for `domain_resolver`, `domain_label_extractor`, `pseudonymizer`

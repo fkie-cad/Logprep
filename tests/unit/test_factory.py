@@ -7,12 +7,13 @@ from string import ascii_letters
 from unittest import mock
 
 from pytest import raises
+from logprep.abc.input import Input
 
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
-from logprep.processor.processor_factory import ProcessorFactory
-from logprep.processor.processor_factory_error import (
+from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory_error import (
     InvalidConfigurationError,
     UnknownProcessorTypeError,
     NotExactlyOneEntryInConfigurationError,
@@ -28,22 +29,22 @@ logger = getLogger()
 def test_create_fails_for_an_empty_section():
     with raises(
         NotExactlyOneEntryInConfigurationError,
-        match="There must be exactly one processor definition per pipeline entry.",
+        match="There must be exactly one definition per pipeline entry.",
     ):
-        ProcessorFactory.create({}, logger)
+        PipelineComponentFactory.create({}, logger)
 
 
 def test_create_fails_if_config_is_not_an_object():
     with raises(
         InvalidConfigSpecificationError,
-        match="The processor configuration must be specified as an object.",
+        match="The configuration must be specified as an object.",
     ):
-        ProcessorFactory.create({"processorname": "string"}, logger)
+        PipelineComponentFactory.create({"processorname": "string"}, logger)
 
 
 def test_create_fails_if_config_does_not_contain_type():
-    with raises(NoTypeSpecifiedError, match="The processor type specification is missing"):
-        ProcessorFactory.create({"processorname": {"other": "value"}}, logger)
+    with raises(NoTypeSpecifiedError, match="The type specification is missing"):
+        PipelineComponentFactory.create({"processorname": {"other": "value"}}, logger)
 
 
 def test_create_fails_for_unknown_type():
@@ -51,11 +52,11 @@ def test_create_fails_for_unknown_type():
         "".join(sample(ascii_letters, 6)) for i in range(5)
     ]:
         with raises(UnknownProcessorTypeError):
-            ProcessorFactory.create({"processorname": {"type": type_name}}, logger)
+            PipelineComponentFactory.create({"processorname": {"type": type_name}}, logger)
 
 
 def test_create_pseudonymizer_returns_pseudonymizer_processor():
-    processor = ProcessorFactory.create(
+    processor = PipelineComponentFactory.create(
         {
             "pseudonymizer": {
                 "type": "pseudonymizer",
@@ -77,7 +78,7 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
 
 
 def test_create_normalizer_returns_normalizer_processor():
-    processor = ProcessorFactory.create(
+    processor = PipelineComponentFactory.create(
         {
             "normalizer": {
                 "type": "normalizer",
@@ -93,7 +94,7 @@ def test_create_normalizer_returns_normalizer_processor():
 
 
 def test_create_clusterer_returns_clusterer_processor():
-    processor = ProcessorFactory.create(
+    processor = PipelineComponentFactory.create(
         {
             "clusterer": {
                 "type": "clusterer",
@@ -111,13 +112,15 @@ def test_create_clusterer_returns_clusterer_processor():
 def test_fails_when_section_contains_more_than_one_element():
     with raises(
         InvalidConfigurationError,
-        match="There must be exactly one processor definition per pipeline entry.",
+        match="There must be exactly one definition per pipeline entry.",
     ):
-        ProcessorFactory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
+        PipelineComponentFactory.create(
+            {"first": mock.MagicMock(), "second": mock.MagicMock()}, logger
+        )
 
 
 def test_create_labeler_creates_labeler_processor():
-    processor = ProcessorFactory.create(
+    processor = PipelineComponentFactory.create(
         {
             "labelername": {
                 "type": "labeler",
@@ -130,3 +133,12 @@ def test_create_labeler_creates_labeler_processor():
     )
 
     assert isinstance(processor, Labeler)
+
+
+def test_dummy_input_creates_dummy_input_connector():
+    processor = PipelineComponentFactory.create(
+        {"labelername": {"type": "dummy_input", "documents": [{}, {}]}},
+        logger,
+    )
+
+    assert isinstance(processor, Input)

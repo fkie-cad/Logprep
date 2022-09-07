@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.processor.processor_factory import ProcessorFactory
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from logprep.processor.template_replacer.processor import TemplateReplacerError
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -85,7 +85,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        self.object = PipelineComponentFactory.create({"test instance": config}, self.logger)
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
@@ -101,7 +101,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_non_existing_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        self.object = PipelineComponentFactory.create({"test instance": config}, self.logger)
         assert self.object.metrics.number_of_processed_events == 0
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
 
@@ -114,7 +114,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_partly_existing_dotted_message_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        self.object = PipelineComponentFactory.create({"test instance": config}, self.logger)
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
@@ -131,7 +131,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_existing_dotted_message_dict_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        self.object = PipelineComponentFactory.create({"test instance": config}, self.logger)
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
@@ -147,7 +147,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
     def test_replace_incompatible_existing_dotted_message_parent_via_template(self):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
-        self.object = ProcessorFactory.create({"test instance": config}, self.logger)
+        self.object = PipelineComponentFactory.create({"test instance": config}, self.logger)
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
@@ -167,4 +167,4 @@ class TestTemplateReplacer(BaseProcessorTestCase):
             {"template": "tests/testdata/unit/template_replacer/replacer_template_invalid.yml"}
         )
         with pytest.raises(TemplateReplacerError, match="Not enough delimiters"):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            PipelineComponentFactory.create({"test instance": config}, self.logger)

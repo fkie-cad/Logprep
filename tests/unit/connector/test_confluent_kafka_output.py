@@ -8,7 +8,7 @@
 import json
 from unittest import mock
 
-from logprep.connector.connector_factory import ConnectorFactory
+from logprep.pipeline_component_factory import PipelineComponentFactory
 from tests.unit.connector.base import BaseConnectorTestCase
 from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
 
@@ -52,7 +52,9 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase, CommonConfluentKafkaTestCa
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
     def test_producer_property_instanciates_kafka_producer(self, _):
-        kafka_output = ConnectorFactory.create({"test connector": self.CONFIG}, logger=self.logger)
+        kafka_output = PipelineComponentFactory.create(
+            {"test connector": self.CONFIG}, logger=self.logger
+        )
         assert kafka_output._producer == "The Producer"
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")

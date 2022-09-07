@@ -13,7 +13,7 @@ from logprep.abc.connector import Connector
 from logprep.abc.input import CriticalInputError, Input
 from logprep.abc.output import Output
 from logprep.connector.confluent_kafka.common import ConfluentKafkaFactory, UnknownOptionError
-from logprep.connector.connector_factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.validators import dict_with_keys_validator
 
 

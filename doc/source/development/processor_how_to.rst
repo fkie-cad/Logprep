@@ -94,7 +94,7 @@ In those cases it should be reconsidered if it is necessary that information is 
 Factory
 -------
 
-Processors are being created by the factory :py:class:`~logprep.processor.processor_factory.ProcessorFactory`. There is no need to implement anything here after registering your processor in the :py:class:`ProcessorRegistry`
+Processors are being created by the factory :py:class:`~logprep.pipeline_component_factory.ProcessorFactory`. There is no need to implement anything here after registering your processor in the :py:class:`ProcessorRegistry`
 
 .. _implementing_a_new_processor:
 
