@@ -8,7 +8,7 @@ from yaml import safe_load
 
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from logprep.factory_error import (
     UnknownProcessorTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,

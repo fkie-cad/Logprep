@@ -193,12 +193,12 @@ class Pipeline:
                 self._retrieve_and_process_data()
         except SourceDisconnectedError:
             self._logger.warning(
-                f"Lost or failed to establish connection to {self._input.describe_endpoint()}"
+                f"Lost or failed to establish connection to {self._input.describe()}"
             )
         except FatalInputError as error:
-            self._logger.error(f"Input {self._input.describe_endpoint()} failed: {error}")
+            self._logger.error(f"Input {self._input.describe()} failed: {error}")
         except FatalOutputError as error:
-            self._logger.error(f"Output {self._output.describe_endpoint()} failed: {error}")
+            self._logger.error(f"Output {self._output.describe()} failed: {error}")
 
         self._shut_down()
 
@@ -235,23 +235,16 @@ class Pipeline:
         except SourceDisconnectedError as error:
             raise error
         except WarningInputError as error:
-            self._logger.warning(
-                f"An error occurred for input {self._input.describe_endpoint()}: {error}"
-            )
+            self._logger.warning(f"An error occurred for input {self._input.describe()}: {error}")
         except WarningOutputError as error:
-            self._logger.warning(
-                f"An error occurred for output {self._output.describe_endpoint()}: {error}"
-            )
+            self._logger.warning(f"An error occurred for output {self._output.describe()}: {error}")
         except CriticalInputError as error:
-            msg = f"A critical error occurred for input {self._input.describe_endpoint()}: {error}"
+            msg = f"A critical error occurred for input {self._input.describe()}: {error}"
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, event)
         except CriticalOutputError as error:
-            msg = (
-                f"A critical error occurred for output "
-                f"{self._output.describe_endpoint()}: {error}"
-            )
+            msg = f"A critical error occurred for output " f"{self._output.describe()}: {error}"
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})

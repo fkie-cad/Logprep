@@ -4,6 +4,7 @@
 from copy import deepcopy
 from logging import DEBUG, WARNING, getLogger
 from multiprocessing import active_children, Lock
+import re
 from unittest import mock
 
 from _pytest.outcomes import fail
@@ -11,6 +12,7 @@ from _pytest.python_api import raises
 
 from logprep._version import get_versions
 from logprep.abc import Processor
+from logprep.factory import Factory
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
     MustProvideAnMPLogHandlerError,
@@ -33,6 +35,8 @@ from logprep.processor.deleter.processor import Deleter
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
+
+original_create = Factory.create
 
 
 class ConfigurationForTests:
@@ -159,43 +163,50 @@ class TestPipeline(ConfigurationForTests):
 
     def test_empty_documents_are_not_stored_in_the_output(self, _):
         self.pipeline._process_event = lambda x: x.clear()
-        self.pipeline.run()
-        assert len(self.pipeline._output.events) == 0, "output is emty after processing events"
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
+        self.pipeline._output.store = mock.MagicMock()
+        self.pipeline._retrieve_and_process_data()
+        assert self.pipeline._output.store.call_count == 0
 
-    @mock.patch("logprep.connector.dummy.input.DummyInput.setup")
-    def test_setup_calls_setup_on_input(self, mock_setup, _):
-        self.pipeline.run()
-        mock_setup.assert_called()
+    def test_setup_calls_setup_on_input(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.setup.assert_called()
 
-    @mock.patch("logprep.connector.dummy.output.DummyOutput.setup")
-    def test_setup_calls_setup_on_output(self, mock_setup, _):
-        self.pipeline.run()
-        mock_setup.assert_called()
+    def test_setup_calls_setup_on_output(self, _):
+        self.pipeline._setup()
+        self.pipeline._output.setup.assert_called()
 
-    @mock.patch("logprep.connector.dummy.input.DummyInput.shut_down")
-    def test_shut_down_calls_shut_down_on_input(self, mock_shut_down, _):
-        self.pipeline.run()
-        mock_shut_down.assert_called()
+    def test_shut_down_calls_shut_down_on_input(self, _):
+        self.pipeline._setup()
+        self.pipeline._shut_down()
+        self.pipeline._input.shut_down.assert_called()
 
-    @mock.patch("logprep.connector.dummy.output.DummyOutput.shut_down")
-    def test_shut_down_calls_shut_down_on_output(self, mock_shut_down, _):
-        self.pipeline.run()
-        mock_shut_down.assert_called()
+    def test_shut_down_calls_shut_down_on_output(self, _):
+        self.pipeline._setup()
+        self.pipeline._shut_down()
+        self.pipeline._output.shut_down.assert_called()
 
     @mock.patch("logging.Logger.warning")
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next")
-    def test_logs_source_disconnected_error_as_warning(self, mock_get_next, mock_warning, _):
-        mock_get_next.side_effect = SourceDisconnectedError
+    def test_logs_source_disconnected_error_as_warning(self, mock_warning, _):
+        self.pipeline._setup()
+        self.pipeline._input.get_next.side_effect = SourceDisconnectedError
         self.pipeline.run()
         mock_warning.assert_called()
-        assert "Lost or failed to establish connection to dummy" in mock_warning.call_args[0]
+        assert re.search(
+            r"Lost or failed to establish connection to ", mock_warning.call_args[0][0]
+        )
 
     def test_all_events_provided_by_input_arrive_at_output(self, _):
+        self.pipeline._setup()
+        self.pipeline._setup = mock.MagicMock()
         input_data = [{"test": "1"}, {"test": "2"}, {"test": "3"}]
         expected_output_data = deepcopy(input_data)
-        connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._logprep_config["connector"] = connector_config
-        self.pipeline._setup()
+        connector_config = {"type": "dummy_input", "documents": input_data}
+        self.pipeline._input = original_create({"dummy": connector_config}, mock.MagicMock())
+        self.pipeline._output = original_create(
+            {"dummy": {"type": "dummy_output"}}, mock.MagicMock()
+        )
         self.pipeline.run()
         assert self.pipeline._output.events == expected_output_data
 
@@ -209,100 +220,76 @@ class TestPipeline(ConfigurationForTests):
         assert not self.pipeline._iterate()
 
     @mock.patch("logging.Logger.error")
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next")
-    def test_critical_input_error_is_logged_and_stored_as_failed(
-        self, mock_get_next, mock_error, _
-    ):
+    def test_critical_input_error_is_logged_and_stored_as_failed(self, mock_error, _):
         def raise_critical_input_error(event):
             raise CriticalInputError("An error message", event)
 
-        mock_get_next.side_effect = raise_critical_input_error
         self.pipeline._setup()
+        self.pipeline._input.get_next.side_effect = raise_critical_input_error
+        self.pipeline._output = original_create(
+            {"dummy": {"type": "dummy_output"}}, mock.MagicMock()
+        )
         self.pipeline._retrieve_and_process_data()
         assert len(self.pipeline._output.events) == 0
         mock_error.assert_called()
-        assert (
-            "A critical error occurred for input dummy: An error message" in mock_error.call_args[0]
+        assert re.search(
+            "A critical error occurred for input .*: An error message", mock_error.call_args[0][0]
         )
         assert len(self.pipeline._output.failed_events) == 1
 
     @mock.patch("logging.Logger.error")
-    @mock.patch("logprep.connector.dummy.output.DummyOutput.store")
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next")
-    def test_critical_output_error_is_logged_and_stored_as_failed(
-        self, mock_get_next, mock_store, mock_error, _
-    ):
-        mock_get_next.return_value = {"order": 1}
-
+    def test_critical_output_error_is_logged_and_stored_as_failed(self, mock_error, _):
         def raise_critical_output_error(event):
             raise CriticalOutputError("An error message", event)
 
-        mock_store.side_effect = raise_critical_output_error
         self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"order": 1}, None)
+        self.pipeline._output.store.side_effect = raise_critical_output_error
         self.pipeline._retrieve_and_process_data()
-        assert len(self.pipeline._output.events) == 0
+        self.pipeline._output.store_failed.assert_called()
         mock_error.assert_called()
-        assert (
-            "A critical error occurred for output dummy: An error message"
-            in mock_error.call_args[0]
+        assert re.search(
+            r"A critical error occurred for output .*: An error message", mock_error.call_args[0][0]
         )
-        assert len(self.pipeline._output.failed_events) == 1
 
     @mock.patch("logging.Logger.warning")
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next")
-    def test_input_warning_error_is_logged_but_processing_continues(
-        self, mock_get_next, mock_warning, _
-    ):
-        mock_get_next.return_value = {"order": 1}
+    def test_input_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"order": 1}, None)
         self.pipeline._retrieve_and_process_data()
-        mock_get_next.side_effect = WarningInputError
+        self.pipeline._input.get_next.side_effect = WarningInputError
         self.pipeline._retrieve_and_process_data()
-        mock_get_next.side_effect = None
+        self.pipeline._input.get_next.side_effect = None
         self.pipeline._retrieve_and_process_data()
-        assert mock_get_next.call_count == 3
+        assert self.pipeline._input.get_next.call_count == 3
         assert mock_warning.call_count == 1
-        assert len(self.pipeline._output.events) == 2
+        assert self.pipeline._output.store.call_count == 2
 
     @mock.patch("logging.Logger.warning")
-    @mock.patch("logprep.connector.dummy.output.DummyOutput.store")
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next")
-    def test_output_warning_error_is_logged_but_processing_continues(
-        self, mock_get_next, mock_store, mock_warning, _
-    ):
-        mock_get_next.return_value = {"order": 1}
+    def test_output_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"order": 1}, None)
         self.pipeline._retrieve_and_process_data()
-        mock_store.side_effect = WarningOutputError
+        self.pipeline._output.store.side_effect = WarningOutputError
         self.pipeline._retrieve_and_process_data()
-        mock_store.side_effect = None
+        self.pipeline._output.store.side_effect = None
         self.pipeline._retrieve_and_process_data()
-        assert mock_get_next.call_count == 3
+        assert self.pipeline._input.get_next.call_count == 3
         assert mock_warning.call_count == 1
-        assert mock_store.call_count == 3
+        assert self.pipeline._output.store.call_count == 3
 
     @mock.patch("logging.Logger.warning")
     def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
-        input_data = [{"order": 0}, {"order": 1}]
-        connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._logprep_config["connector"] = connector_config
-        self.pipeline._create_logger()
-        self.pipeline._create_connectors()
-        error_mock = mock.MagicMock()
-        error_mock.process = mock.MagicMock()
-        error_mock.process.side_effect = ProcessorWarningMockError
-        self.pipeline._pipeline = [
-            mock.MagicMock(),
-            error_mock,
-            mock.MagicMock(),
-        ]
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
+        self.pipeline._pipeline[1].process.side_effect = ProcessorWarningMockError
         self.pipeline._retrieve_and_process_data()
         self.pipeline._retrieve_and_process_data()
         mock_warning.assert_called()
         assert (
             "ProcessorWarningMockError" in mock_warning.call_args[0][0]
         ), "the log message was written"
-        assert len(self.pipeline._output.events) == 2, "all events are processed"
+        assert self.pipeline._output.store.call_count == 2, "all events are processed"
 
     @mock.patch("logging.Logger.error")
     def test_processor_critical_error_is_logged_event_is_stored_in_error_output(
