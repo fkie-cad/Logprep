@@ -13,7 +13,7 @@ from time import time
 from typing import List, TYPE_CHECKING
 
 import numpy as np
-from attr import define, Factory
+import attrs
 
 from logprep._version import get_versions
 from logprep.abc.input import (
@@ -27,7 +27,6 @@ from logprep.factory import Factory
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
-from logprep.factory import PipelineComponentFactory
 from logprep.util.helper import add_field_to
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
@@ -59,13 +58,13 @@ class Pipeline:
     # pylint: disable=logging-not-lazy
     # Would require too much change in the tests.
 
-    @define(kw_only=True)
+    @attrs.define(kw_only=True)
     class PipelineMetrics(Metric):
         """Tracks statistics about a pipeline"""
 
         _prefix: str = "logprep_pipeline_"
 
-        pipeline: List["Processor.ProcessorMetrics"] = Factory(list)
+        pipeline: List["Processor.ProcessorMetrics"] = attrs.Factory(list)
         """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
         """The current offset of the kafka input reader"""
