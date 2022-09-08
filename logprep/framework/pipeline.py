@@ -155,17 +155,15 @@ class Pipeline:
     def _create_connectors(self):
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Creating connectors ({current_process().name})")
-        self._input, self._output = Factory.create(
-            self._logprep_config.get("connector"), self._logger
-        )
+        self._input = Factory.create(self._logprep_config.get("input"), self._logger)
+        self._output = Factory.create(self._logprep_config.get("output"), self._logger)
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                f"Created input connector '{self._input.describe_endpoint()}' "
-                f"({current_process().name})"
+                f"Created input connector '{self._input.describe()}' " f"({current_process().name})"
             )
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
-                f"Created output connector '{self._output.describe_endpoint()}' "
+                f"Created output connector '{self._output.describe()}' "
                 f"({current_process().name})"
             )
 
@@ -259,7 +257,7 @@ class Pipeline:
                 self._output.store_failed(msg, error.raw_input, {})
 
     def _preprocess_event(self, event):
-        consumer_config = self._logprep_config.get("connector").get("consumer", {})
+        consumer_config = self._logprep_config.get("input", {})
         preprocessing_config = consumer_config.get("preprocessing", {})
         if preprocessing_config.get("version_info_target_field"):
             self._add_version_information_to_event(event, preprocessing_config)

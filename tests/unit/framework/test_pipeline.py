@@ -40,7 +40,8 @@ class ConfigurationForTests:
         "version": 1,
         "timeout": 0.001,
         "print_processed_period": 600,
-        "connector": {"type": "dummy", "input": [{"test": "empty"}]},
+        "input": {"type": "dummy_input", "documents": [{"test": "empty"}]},
+        "output": {"type": "dummy_output"},
         "pipeline": [{"mock_processor1": {"proc": "conf"}}, {"mock_processor2": {"proc": "conf"}}],
         "metrics": {"period": 300, "enabled": False},
     }
@@ -92,7 +93,7 @@ class TestPipeline(ConfigurationForTests):
         assert len(self.pipeline._pipeline) == 0
         self.pipeline._setup()
         assert len(self.pipeline._pipeline) == 2
-        assert mock_create.call_count == 2
+        assert mock_create.call_count == 4  # 2 processors, 1 input, 1 output
 
     def test_setup_calls_setup_on_pipeline_processors(self, _):
         self.pipeline._setup()
@@ -110,38 +111,37 @@ class TestPipeline(ConfigurationForTests):
     def test_setup_creates_connectors(self, _):
         assert self.pipeline._input is None
         assert self.pipeline._output is None
-
         self.pipeline._setup()
-
-        assert isinstance(self.pipeline._input, DummyInput)
-        assert isinstance(self.pipeline._output, DummyOutput)
+        assert self.pipeline._input is not None
+        assert self.pipeline._output is not None
 
     def test_setup_calls_setup_on_input_and_output(self, _):
         self.pipeline._setup()
-
-        assert self.pipeline._input.setup_called_count == 1
-        assert self.pipeline._output.setup_called_count == 1
+        self.pipeline._input.setup.assert_called()
+        self.pipeline._output.setup.assert_called()
 
     def test_passes_timeout_parameter_to_inputs_get_next(self, _):
         self.pipeline._setup()
-        assert self.pipeline._input.last_timeout is None
-
+        self.pipeline._input.get_next.return_value = ({}, {})
         self.pipeline._retrieve_and_process_data()
-
-        assert self.pipeline._input.last_timeout == self.logprep_config.get("timeout")
+        timeout = self.logprep_config.get("timeout")
+        self.pipeline._input.get_next.assert_called_with(timeout)
 
     def test_empty_documents_are_not_forwarded_to_other_processors(self, _):
         assert len(self.pipeline._pipeline) == 0
         input_data = [{"do_not_delete": "1"}, {"delete_me": "2"}, {"do_not_delete": "3"}]
-        connector_config = {"type": "dummy", "input": input_data}
-        self.pipeline._logprep_config["connector"] = connector_config
-        self.pipeline._setup()
-        deleter_config = {
-            "type": "deleter",
-            "specific_rules": ["tests/testdata/unit/deleter/rules/specific"],
-            "generic_rules": ["tests/testdata/unit/deleter/rules/generic"],
+        connector_config = {"type": "dummy_input", "documents": input_data}
+        input_configuration = Configuration.create("dummy", connector_config)
+        input_connector = DummyInput("dummy", input_configuration, mock.MagicMock())
+        self.pipeline._input = input_connector
+        output_configuration = Configuration.create("dummy", self.logprep_config.get("output"))
+        self.pipeline._output = DummyOutput("dummy", output_configuration, mock.MagicMock())
+        delete_config = {
+            "type": "delete",
+            "specific_rules": ["tests/testdata/unit/delete/rules/specific"],
+            "generic_rules": ["tests/testdata/unit/delete/rules/generic"],
         }
-        processor_configuration = ProcessorConfiguration.create("deleter processor", deleter_config)
+        processor_configuration = Configuration.create("delete processor", delete_config)
         processor_configuration.metric_labels = {}
         deleter_processor = Deleter("deleter processor", processor_configuration, mock.MagicMock())
         deleter_rule = DeleterRule._create_from_dict({"filter": "delete_me", "delete": True})
