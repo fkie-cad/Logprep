@@ -189,7 +189,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         fake_bulk.assert_called()
 
     @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
-    def test__handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
+    def test_handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
             {

@@ -221,7 +221,7 @@ class OpenSearchOutput(Output):
         document = {
             "reason": reason,
             "@timestamp": arrow.now().isoformat(),
-            "_index": self._default_index,
+            "_index": self._config.default_index,
         }
         try:
             document["message"] = json.dumps(message_document)
@@ -266,7 +266,7 @@ class OpenSearchOutput(Output):
             "original": document_received,
             "processed": document_processed,
             "@timestamp": arrow.now().isoformat(),
-            "_index": self._error_index,
+            "_index": self._config.error_index,
         }
         self._add_dates(error_document)
         self._write_to_os(error_document)
