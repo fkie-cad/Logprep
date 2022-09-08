@@ -5,7 +5,7 @@ from copy import deepcopy
 from pytest import raises, fail
 
 from logprep.abc.output import FatalOutputError
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseConnectorTestCase
 
 
@@ -48,9 +48,7 @@ class TestDummyOutput(BaseConnectorTestCase):
     def test_raises_exception_on_call_to_store(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
-        dummy_output = PipelineComponentFactory.create(
-            {"test connector": config}, logger=self.logger
-        )
+        dummy_output = Factory.create({"test connector": config}, logger=self.logger)
 
         with raises(BaseException, match="FatalOutputError"):
             dummy_output.store({"order": 0})
@@ -58,9 +56,7 @@ class TestDummyOutput(BaseConnectorTestCase):
     def test_raises_exception_on_call_to_store_custom(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
-        dummy_output = PipelineComponentFactory.create(
-            {"test connector": config}, logger=self.logger
-        )
+        dummy_output = Factory.create({"test connector": config}, logger=self.logger)
 
         with raises(Exception, match="FatalOutputError"):
             dummy_output.store_custom({"order": 0}, target="whatever")
@@ -68,9 +64,7 @@ class TestDummyOutput(BaseConnectorTestCase):
     def test_raises_exception_only_once(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": ["FatalOutputError"]})
-        dummy_output = PipelineComponentFactory.create(
-            {"test connector": config}, logger=self.logger
-        )
+        dummy_output = Factory.create({"test connector": config}, logger=self.logger)
 
         with raises(Exception, match="FatalOutputError"):
             dummy_output.store({"order": 0})
@@ -82,9 +76,7 @@ class TestDummyOutput(BaseConnectorTestCase):
     def test_raises_exception_only_when_not_none(self):
         config = deepcopy(self.CONFIG)
         config.update({"exceptions": [None, "FatalOutputError", None]})
-        dummy_output = PipelineComponentFactory.create(
-            {"test connector": config}, logger=self.logger
-        )
+        dummy_output = Factory.create({"test connector": config}, logger=self.logger)
 
         dummy_output.store({"order": 0})
         with raises(Exception, match="FatalOutputError"):

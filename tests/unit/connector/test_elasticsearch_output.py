@@ -17,7 +17,7 @@ import arrow
 import elasticsearch
 import elasticsearch.helpers
 
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from tests.unit.connector.base import BaseOutputTestCase
 
@@ -83,7 +83,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         }
         es_config = deepcopy(self.CONFIG)
         es_config.update({"default_index": default_index})
-        es_output = PipelineComponentFactory.create({"elasticsearch": es_config}, self.logger)
+        es_output = Factory.create({"elasticsearch": es_config}, self.logger)
         es_output.store(event)
 
         assert es_output._message_backlog[0].pop("@timestamp")
@@ -212,7 +212,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
     def test_write_to_es_sets_processed_cnt(self):
         es_config = deepcopy(self.CONFIG)
         es_config.update({"message_backlog_size": 2})
-        es_output = PipelineComponentFactory.create({"elasticsearch": es_config}, self.logger)
+        es_output = Factory.create({"elasticsearch": es_config}, self.logger)
         current_proccessed_cnt = es_output._processed_cnt
         es_output._write_to_es({"dummy": "event"})
         assert current_proccessed_cnt < es_output._processed_cnt

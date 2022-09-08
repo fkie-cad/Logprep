@@ -9,7 +9,7 @@ from os import path, makedirs
 from os.path import join
 
 from logprep.framework.pipeline import Pipeline, SharedCounter
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from logprep.util.helper import recursive_compare, remove_file_if_exists
 from logprep.util.json_handling import parse_jsonl
 from logprep.util.rule_dry_runner import get_patched_runner
@@ -110,8 +110,8 @@ class TmpFileProducerMock:
 
 def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory, tmp_path):
     # create kafka connector manually and add custom mock consumer and mock producer objects
-    kafka_in = PipelineComponentFactory.create(config["connector"], logger)
-    kafka_out = PipelineComponentFactory.create(config["connector"], logger)
+    kafka_in = Factory.create(config["connector"], logger)
+    kafka_out = Factory.create(config["connector"], logger)
     kafka_out.connect_input(kafka_in)
     kafka_in.connect_output(kafka_out)
     kafka_in._consumer = SingleMessageConsumerJsonMock(input_test_event)

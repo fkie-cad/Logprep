@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from logging import Logger
 
 
-class PipelineComponentFactory:
+class Factory:
     """Create components for logprep."""
 
     @classmethod

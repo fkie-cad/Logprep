@@ -23,7 +23,7 @@ from logprep.abc.input import (
     WarningInputError,
 )
 from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
@@ -144,7 +144,7 @@ class Pipeline:
         for entry in self._logprep_config.get("pipeline"):
             processor_name = list(entry.keys())[0]
             entry[processor_name]["metric_labels"] = self._metric_labels
-            processor = PipelineComponentFactory.create(entry, self._logger)
+            processor = Factory.create(entry, self._logger)
             self._pipeline.append(processor)
             self.metrics.pipeline.append(processor.metrics)
             if self._logger.isEnabledFor(DEBUG):
@@ -156,7 +156,7 @@ class Pipeline:
     def _create_connectors(self):
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Creating connectors ({current_process().name})")
-        self._input, self._output = PipelineComponentFactory.create(
+        self._input, self._output = Factory.create(
             self._logprep_config.get("connector"), self._logger
         )
         if self._logger.isEnabledFor(DEBUG):

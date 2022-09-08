@@ -9,7 +9,7 @@ import pytest
 from requests import Response
 
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -75,7 +75,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_domain_ip_map_greater_cache(self):
         config = deepcopy(self.CONFIG)
         config.update({"max_cached_domains": 1})
-        self.object = PipelineComponentFactory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config}, self.logger)
         rule = {
             "filter": "url",
             "domain_resolver": {"source_url_or_domain": "url"},
@@ -107,7 +107,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_and_added_with_debug_cache(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"debug_cache": True})
-        self.object = PipelineComponentFactory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config}, self.logger)
         rule = {
             "filter": "url",
             "domain_resolver": {"source_url_or_domain": "url"},
@@ -127,7 +127,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_from_cache_and_added_with_debug_cache(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"debug_cache": True})
-        self.object = PipelineComponentFactory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config}, self.logger)
         rule = {
             "filter": "url",
             "domain_resolver": {"source_url_or_domain": "url"},
@@ -149,7 +149,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_and_added_with_cache_disabled(self, _):
         config = deepcopy(self.CONFIG)
         config.update({"cache_enabled": False})
-        self.object = PipelineComponentFactory.create({"resolver": config}, self.logger)
+        self.object = Factory.create({"resolver": config}, self.logger)
         rule = {
             "filter": "url",
             "domain_resolver": {"source_url_or_domain": "url"},
@@ -182,7 +182,7 @@ sth.ac.at
         mock_get.return_value = response
         config = deepcopy(self.CONFIG)
         config.update({"tld_lists": ["file://does_not_matter"]})
-        domain_resolver = PipelineComponentFactory.create({"test instance": config}, self.logger)
+        domain_resolver = Factory.create({"test instance": config}, self.logger)
         document = {"url": "www.google.ac.at"}
         expected = {"url": "www.google.ac.at", "resolved_ip": "1.2.3.4"}
         domain_resolver.process(document)
@@ -192,7 +192,7 @@ sth.ac.at
     def test_invalid_dots_domain_to_ip_produces_warning(self):
         config = deepcopy(self.CONFIG)
         config.update({"tld_list": TLD_LIST})
-        domain_resolver = PipelineComponentFactory.create({"test instance": config}, self.logger)
+        domain_resolver = Factory.create({"test instance": config}, self.logger)
 
         assert self.object.metrics.number_of_processed_events == 0
         document = {"url": "google..invalid.de"}

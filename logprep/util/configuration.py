@@ -6,7 +6,7 @@ from typing import List
 from colorama import Fore
 from yaml import safe_load
 
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from logprep.factory_error import FactoryError
 from logprep.factory import PipelineComponentFactory
 from logprep.factory_error import (
@@ -191,7 +191,7 @@ class Configuration(dict):
             )
 
         try:
-            _, _ = PipelineComponentFactory.create(self["connector"], logger)
+            _, _ = Factory.create(self["connector"], logger)
         except FactoryError as error:
             raise InvalidConnectorConfigurationError(str(error)) from error
         except KeyError as error:
@@ -204,7 +204,7 @@ class Configuration(dict):
         errors = []
         for processor_config in self["pipeline"]:
             try:
-                PipelineComponentFactory.create(processor_config, logger)
+                Factory.create(processor_config, logger)
             except (
                 FactoryInvalidConfigurationError,
                 UnknownProcessorTypeError,

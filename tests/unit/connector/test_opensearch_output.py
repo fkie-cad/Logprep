@@ -19,7 +19,7 @@ import opensearchpy.helpers
 
 from logprep.connector.opensearch.output import OpenSearchOutput
 from logprep.abc.output import CriticalOutputError, FatalOutputError
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -89,7 +89,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         }
         os_config = deepcopy(self.CONFIG)
         os_config.update({"default_index": default_index})
-        os_output = PipelineComponentFactory.create({"elasticsearch": os_config}, self.logger)
+        os_output = Factory.create({"elasticsearch": os_config}, self.logger)
         os_output.store(event)
         assert os_output._message_backlog[0].pop("@timestamp")
         assert os_output._message_backlog[0] == expected
@@ -221,7 +221,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_write_to_es_sets_processed_cnt(self):
         os_config = deepcopy(self.CONFIG)
         os_config.update({"message_backlog_size": 2})
-        os_output = PipelineComponentFactory.create({"opensearch": os_config}, self.logger)
+        os_output = Factory.create({"opensearch": os_config}, self.logger)
         current_proccessed_cnt = os_output._processed_cnt
         os_output._write_to_os({"dummy": "event"})
         assert current_proccessed_cnt < os_output._processed_cnt

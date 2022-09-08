@@ -12,7 +12,7 @@ from logprep.abc.input import Input
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
-from logprep.factory import PipelineComponentFactory
+from logprep.factory import Factory
 from logprep.factory_error import (
     InvalidConfigurationError,
     UnknownProcessorTypeError,
@@ -31,7 +31,7 @@ def test_create_fails_for_an_empty_section():
         NotExactlyOneEntryInConfigurationError,
         match="There must be exactly one definition per pipeline entry.",
     ):
-        PipelineComponentFactory.create({}, logger)
+        Factory.create({}, logger)
 
 
 def test_create_fails_if_config_is_not_an_object():
@@ -39,12 +39,12 @@ def test_create_fails_if_config_is_not_an_object():
         InvalidConfigSpecificationError,
         match="The configuration must be specified as an object.",
     ):
-        PipelineComponentFactory.create({"processorname": "string"}, logger)
+        Factory.create({"processorname": "string"}, logger)
 
 
 def test_create_fails_if_config_does_not_contain_type():
     with raises(NoTypeSpecifiedError, match="The type specification is missing"):
-        PipelineComponentFactory.create({"processorname": {"other": "value"}}, logger)
+        Factory.create({"processorname": {"other": "value"}}, logger)
 
 
 def test_create_fails_for_unknown_type():
@@ -52,11 +52,11 @@ def test_create_fails_for_unknown_type():
         "".join(sample(ascii_letters, 6)) for i in range(5)
     ]:
         with raises(UnknownProcessorTypeError):
-            PipelineComponentFactory.create({"processorname": {"type": type_name}}, logger)
+            Factory.create({"processorname": {"type": type_name}}, logger)
 
 
 def test_create_pseudonymizer_returns_pseudonymizer_processor():
-    processor = PipelineComponentFactory.create(
+    processor = Factory.create(
         {
             "pseudonymizer": {
                 "type": "pseudonymizer",
@@ -78,7 +78,7 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
 
 
 def test_create_normalizer_returns_normalizer_processor():
-    processor = PipelineComponentFactory.create(
+    processor = Factory.create(
         {
             "normalizer": {
                 "type": "normalizer",
@@ -94,7 +94,7 @@ def test_create_normalizer_returns_normalizer_processor():
 
 
 def test_create_clusterer_returns_clusterer_processor():
-    processor = PipelineComponentFactory.create(
+    processor = Factory.create(
         {
             "clusterer": {
                 "type": "clusterer",
@@ -114,13 +114,11 @@ def test_fails_when_section_contains_more_than_one_element():
         InvalidConfigurationError,
         match="There must be exactly one definition per pipeline entry.",
     ):
-        PipelineComponentFactory.create(
-            {"first": mock.MagicMock(), "second": mock.MagicMock()}, logger
-        )
+        Factory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
 
 
 def test_create_labeler_creates_labeler_processor():
-    processor = PipelineComponentFactory.create(
+    processor = Factory.create(
         {
             "labelername": {
                 "type": "labeler",
@@ -136,7 +134,7 @@ def test_create_labeler_creates_labeler_processor():
 
 
 def test_dummy_input_creates_dummy_input_connector():
-    processor = PipelineComponentFactory.create(
+    processor = Factory.create(
         {"labelername": {"type": "dummy_input", "documents": [{}, {}]}},
         logger,
     )
