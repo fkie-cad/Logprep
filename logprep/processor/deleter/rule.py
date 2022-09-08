@@ -12,7 +12,7 @@ class DeleteRuleError(InvalidRuleDefinitionError):
         super().__init__(f"Delete rule ({message}): ")
 
 
-class InvalidDeleteDefinition(DeleteRuleError):
+class InvalidDeleterDefinition(DeleteRuleError):
     """Raise if Delete definition invalid."""
 
     def __init__(self, definition):
@@ -20,14 +20,14 @@ class InvalidDeleteDefinition(DeleteRuleError):
         super().__init__(message)
 
 
-class DeleteRule(Rule):
+class DeleterRule(Rule):
     """Check if documents match a filter."""
 
     def __init__(self, filter_rule: FilterExpression, delete: bool):
         super().__init__(filter_rule)
         self._delete_or_not = delete
 
-    def __eq__(self, other: "DeleteRule") -> bool:
+    def __eq__(self, other: "DeleterRule") -> bool:
         return all([other.filter == self._filter, self._delete_or_not == other.delete_or_not])
 
     # pylint: disable=C0111
@@ -38,14 +38,14 @@ class DeleteRule(Rule):
     # pylint: enable=C0111
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> "DeleteRule":
-        DeleteRule._check_rule_validity(rule, "delete")
-        DeleteRule._check_if_delete_valid(rule)
+    def _create_from_dict(rule: dict) -> "DeleterRule":
+        DeleterRule._check_rule_validity(rule, "delete")
+        DeleterRule._check_if_delete_valid(rule)
 
         filter_expression = Rule._create_filter_expression(rule)
-        return DeleteRule(filter_expression, rule["delete"])
+        return DeleterRule(filter_expression, rule["delete"])
 
     @staticmethod
     def _check_if_delete_valid(rule: dict):
         if not isinstance(rule["delete"], bool):
-            raise InvalidDeleteDefinition(f'Delete value "{rule["delete"]}" is not a boolean!')
+            raise InvalidDeleterDefinition(f'Delete value "{rule["delete"]}" is not a boolean!')

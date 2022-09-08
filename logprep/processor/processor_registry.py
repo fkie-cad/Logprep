@@ -2,9 +2,11 @@
     it is used to check if a processor is known to the system.
     you have to register new processors here by import them and add to `ProcessorRegistry.mapping`
 """
+import warnings
+
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
-from logprep.processor.delete.processor import Delete
+from logprep.processor.deleter.processor import Deleter
 from logprep.processor.domain_label_extractor.processor import DomainLabelExtractor
 from logprep.processor.domain_resolver.processor import DomainResolver
 from logprep.processor.dropper.processor import Dropper
@@ -27,7 +29,8 @@ class ProcessorRegistry:
     mapping = {
         "clusterer": Clusterer,
         "datetime_extractor": DatetimeExtractor,
-        "delete": Delete,
+        "deleter": Deleter,
+        "delete": Deleter,
         "domain_label_extractor": DomainLabelExtractor,
         "domain_resolver": DomainResolver,
         "dropper": Dropper,
@@ -58,4 +61,9 @@ class ProcessorRegistry:
         _type_
             _description_
         """
+        if processor_type == "delete":
+            warnings.warn(
+                "delete processor is deprecated and will be removed in a future release. Please use deleter instead.",
+                UserWarning,
+            )
         return cls.mapping.get(processor_type)

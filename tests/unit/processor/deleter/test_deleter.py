@@ -3,12 +3,12 @@ import pytest
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
-class TestDelete(BaseProcessorTestCase):
+class TestDeleter(BaseProcessorTestCase):
 
     CONFIG = {
-        "type": "delete",
-        "specific_rules": ["tests/testdata/unit/delete/rules/specific/"],
-        "generic_rules": ["tests/testdata/unit/delete/rules/generic/"],
+        "type": "deleter",
+        "specific_rules": ["tests/testdata/unit/deleter/rules/specific/"],
+        "generic_rules": ["tests/testdata/unit/deleter/rules/generic/"],
     }
 
     @pytest.mark.parametrize(

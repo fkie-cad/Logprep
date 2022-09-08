@@ -2,7 +2,7 @@
 Delete
 -------
 
-The `delete` is a processor that removes an entire event from further pipeline processing.
+The `deleter` is a processor that removes an entire event from further pipeline processing.
 
 
 Example
@@ -11,7 +11,7 @@ Example
     :linenos:
 
     - deletename:
-        type: delete
+        type: deleter
         specific_rules:
             - tests/testdata/rules/specific/
         generic_rules:
@@ -19,13 +19,13 @@ Example
 """
 
 from logprep.abc import Processor
-from logprep.processor.delete.rule import DeleteRule
+from logprep.processor.deleter.rule import DeleterRule
 
 
-class Delete(Processor):
+class Deleter(Processor):
     """A processor that deletes processed log events from further pipeline process"""
 
-    rule_class = DeleteRule
+    rule_class = DeleterRule
 
     def _apply_rules(self, event, rule):
         event.clear()
