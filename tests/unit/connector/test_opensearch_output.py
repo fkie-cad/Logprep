@@ -19,7 +19,7 @@ import opensearchpy.helpers
 
 from logprep.connector.opensearch.output import OpenSearchOutput
 from logprep.abc.output import CriticalOutputError, FatalOutputError
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from tests.unit.connector.base import BaseOutputTestCase
 
 

@@ -8,7 +8,7 @@
 import json
 from unittest import mock
 
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from tests.unit.connector.base import BaseConnectorTestCase
 from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
 

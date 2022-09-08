@@ -9,7 +9,7 @@ from os import path, makedirs
 from os.path import join
 
 from logprep.framework.pipeline import Pipeline, SharedCounter
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.util.helper import recursive_compare, remove_file_if_exists
 from logprep.util.json_handling import parse_jsonl
 from logprep.util.rule_dry_runner import get_patched_runner

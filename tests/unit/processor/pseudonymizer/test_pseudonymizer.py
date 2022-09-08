@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from tests.unit.processor.base import BaseProcessorTestCase
 

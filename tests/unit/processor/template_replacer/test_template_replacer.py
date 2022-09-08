@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.processor.template_replacer.processor import TemplateReplacerError
 from tests.unit.processor.base import BaseProcessorTestCase
 

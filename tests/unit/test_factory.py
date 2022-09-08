@@ -12,7 +12,7 @@ from logprep.abc.input import Input
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.factory_error import (
     InvalidConfigurationError,
     UnknownProcessorTypeError,

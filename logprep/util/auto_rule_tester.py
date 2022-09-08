@@ -27,7 +27,7 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.list_comparison.processor import ListComparison
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
 from logprep.abc import Processor
 from logprep.util.helper import print_fcolor, remove_file_if_exists, get_dotted_field_value

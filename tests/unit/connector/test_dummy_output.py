@@ -5,7 +5,7 @@ from copy import deepcopy
 from pytest import raises, fail
 
 from logprep.abc.output import FatalOutputError
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from tests.unit.connector.base import BaseConnectorTestCase
 
 

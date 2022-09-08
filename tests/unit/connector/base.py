@@ -12,7 +12,7 @@ from unittest import mock
 from logprep.abc.connector import Connector
 from logprep.abc.input import Input
 from logprep.abc.output import Output
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.util.helper import camel_to_snake
 
 

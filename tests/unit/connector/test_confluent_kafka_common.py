@@ -5,7 +5,7 @@ from socket import getfqdn
 
 import pytest
 
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.factory_error import InvalidConfigurationError
 
 

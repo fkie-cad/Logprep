@@ -15,7 +15,7 @@ from ruamel.yaml import YAML, YAMLError
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.util.helper import print_fcolor
 
 logger = logging.getLogger()

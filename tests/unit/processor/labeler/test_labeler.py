@@ -12,7 +12,7 @@ from pytest import raises
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelingRule
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from tests.testdata.metadata import path_to_schema, path_to_schema2
 from tests.unit.processor.base import BaseProcessorTestCase
 

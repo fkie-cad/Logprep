@@ -5,7 +5,7 @@ import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_label_extractor.processor import DuplicationError
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 

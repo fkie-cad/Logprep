@@ -6,9 +6,9 @@ from typing import List
 from colorama import Fore
 from yaml import safe_load
 
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.factory_error import FactoryError
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.factory_error import (
     UnknownProcessorTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,

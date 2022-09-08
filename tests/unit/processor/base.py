@@ -14,7 +14,7 @@ import pytest
 from logprep.abc.processor import Processor
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake

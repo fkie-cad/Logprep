@@ -23,11 +23,11 @@ from logprep.abc.input import (
     WarningInputError,
 )
 from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.util.helper import add_field_to
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler

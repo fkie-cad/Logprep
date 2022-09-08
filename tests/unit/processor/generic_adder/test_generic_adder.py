@@ -12,7 +12,7 @@ import pytest
 
 from logprep.processor.generic_adder.processor import DuplicationError
 from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.factory_error import InvalidConfigurationError
 from tests.unit.processor.base import BaseProcessorTestCase
 

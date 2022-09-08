@@ -3,7 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 import logging
 
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.util.time_measurement import TimeMeasurement
 
 

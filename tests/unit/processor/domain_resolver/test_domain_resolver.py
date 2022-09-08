@@ -9,7 +9,7 @@ import pytest
 from requests import Response
 
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"

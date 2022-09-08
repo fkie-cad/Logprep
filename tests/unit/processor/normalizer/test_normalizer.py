@@ -18,7 +18,7 @@ from logprep.processor.normalizer.rule import (
     InvalidNormalizationDefinition,
     NormalizerRule,
 )
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 

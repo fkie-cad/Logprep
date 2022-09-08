@@ -17,7 +17,7 @@ import arrow
 import elasticsearch
 import elasticsearch.helpers
 
-from logprep.pipeline_component_factory import PipelineComponentFactory
+from logprep.factory import PipelineComponentFactory
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from tests.unit.connector.base import BaseOutputTestCase
 
