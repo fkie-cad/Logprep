@@ -4,7 +4,9 @@ New output endpoint types are created by implementing it.
 
 """
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
+from typing import Optional
+
 from .connector import Connector
 
 
@@ -39,14 +41,13 @@ class Output(Connector):
         """
 
     @abstractmethod
-    def store(self, document: dict):
+    def store(self, document: dict) -> Optional[bool]:
         """Store the document.
 
         Parameters
         ----------
         document : dict
            Processed log event that will be stored.
-
         """
 
     @abstractmethod

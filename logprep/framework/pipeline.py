@@ -12,8 +12,8 @@ from multiprocessing import Lock, Process, Value, current_process
 from time import time
 from typing import List, TYPE_CHECKING
 
-import numpy as np
 import attrs
+import numpy as np
 
 from logprep._version import get_versions
 from logprep.abc.input import (
@@ -229,7 +229,9 @@ class Pipeline:
                 self._processing_counter.increment()
                 self._processing_counter.print_if_ready()
                 if event:
-                    self._output.store(event)
+                    call_batch_finished_callback = self._output.store(event)
+                    if call_batch_finished_callback:
+                        self._input.batch_finished_callback()
                     if self._logger.isEnabledFor(DEBUG):
                         self._logger.debug("Stored output")
         except SourceDisconnectedError as error:

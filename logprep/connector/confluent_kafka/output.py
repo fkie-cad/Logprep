@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from functools import cached_property
 from socket import getfqdn
+from typing import Optional
 
 from attrs import define
 from confluent_kafka import Producer
@@ -72,7 +73,7 @@ class ConfluentKafkaOutput(Output):
         base_description = super().describe()
         return f"{base_description} - Kafka Output: {self._config.bootstrapservers[0]}"
 
-    def store(self, document: dict) -> None:
+    def store(self, document: dict) -> Optional[bool]:
         """Store a document in the producer topic.
 
         Parameters
@@ -80,11 +81,13 @@ class ConfluentKafkaOutput(Output):
         document : dict
            Document to store.
 
+        Returns
+        -------
+        Returns True to inform the pipeline to call the batch_finished_callback method in the
+        configured input
         """
         self.store_custom(document, self._config.topic)
-        # TODO: Has to be done on pipeline level
-        # if self._input:
-        #     self._input.batch_finished_callback()
+        return True
 
     def store_custom(self, document: dict, target: str) -> None:
         """Write document to Kafka into target topic.

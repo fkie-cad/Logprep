@@ -511,59 +511,29 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._preprocess_event(test_event)
         assert test_event == {"any": "content", "version_info": "something random"}
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_pipeline_kafka_batch_finished_callback_is_called(self, _, __, ___):
-        logprep_config = {
-            "version": 1,
-            "timeout": 0.001,
-            "print_processed_period": 600,
-            "connector": {
-                "type": "confluentkafka",
-                "bootstrapservers": "127.0.0.1:9092",
-                "consumer": {
-                    "topic": "Consumer",
-                    "group": "cgroup",
-                    "auto_commit": True,
-                    "session_timeout": 6000,
-                    "offset_reset_policy": "smallest",
-                    "enable_auto_offset_store": False,
-                },
-                "producer": {
-                    "topic": "producer",
-                    "error_topic": "producer_error",
-                    "ack_policy": "all",
-                    "compression": "gzip",
-                    "maximum_backlog": 10000,
-                    "linger_duration": 0,
-                    "flush_timeout": 30,
-                    "send_timeout": 2,
-                },
-            },
-            "pipeline": [
-                {"mock_processor1": {"proc": "conf"}},
-            ],
-            "metrics": {"period": 300, "enabled": False},
-        }
-        pipeline = Pipeline(
-            pipeline_index=1,
-            config=logprep_config,
-            counter=self.counter,
-            log_handler=self.log_handler,
-            lock=self.lock,
-            shared_dict=self.shared_dict,
-            metric_targets=self.metric_targets,
-        )
-        pipeline._setup()
-        pipeline._input.get_next = mock.MagicMock()
-        pipeline._input.get_next.return_value = {"message": "foo"}
-        pipeline._input.batch_finished_callback = mock.MagicMock()
-        pipeline._retrieve_and_process_data()
-        pipeline._input.batch_finished_callback.assert_called()
+    def test_pipeline_calls_batch_finished_callback_if_output_store_returns_true(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
+        self.pipeline._input.batch_finished_callback = mock.MagicMock()
+        self.pipeline._output.store = mock.MagicMock()
+        self.pipeline._output.store.return_value = True
+        self.pipeline._retrieve_and_process_data()
+        self.pipeline._input.batch_finished_callback.assert_called()
+
+    def test_pipeline_does_not_call_batch_finished_callback_if_output_store_does_not_return_true(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
+        self.pipeline._input.batch_finished_callback = mock.MagicMock()
+        self.pipeline._output.store = mock.MagicMock()
+        self.pipeline._output.store.return_value = None
+        self.pipeline._retrieve_and_process_data()
+        self.pipeline._input.batch_finished_callback.assert_not_called()
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_pipeline_kafka_batch_finished_callback_calls_store_offsets(self, _, __, ___):
+        # TODO: this is a test that belongs to the test_confluent_kafka_input.py (probably also
+        #  for the elastic- and opensearch connector
         logprep_config = {
             "version": 1,
             "timeout": 0.001,
@@ -615,8 +585,10 @@ class TestPipeline(ConfigurationForTests):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_pipeline_kafka_batch_finished_callback_calls_store_offsets_with_message(
-        self, _, __, ___
+            self, _, __, ___
     ):
+        # TODO: this is a test that belongs to the test_confluent_kafka_input.py (probably also
+        #  for the elastic- and opensearch connector
         logprep_config = {
             "version": 1,
             "timeout": 0.001,
