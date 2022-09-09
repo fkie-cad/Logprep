@@ -31,18 +31,27 @@ pipeline:
       max_cached_pseudonyms: 1000000
       max_caching_days: 1
 
-connector:
-  type: confluentkafka
-  bootstrapservers:
-    - 127.0.0.1:9092
-  consumer:
+input:
+  kafka_input:
+    type: confluentkafka_input
+    bootstrapservers:
+      - 127.0.0.1:9092
     topic: consumer
     group: cgroup
     auto_commit: on
     session_timeout: 6000
     offset_reset_policy: smallest
     enable_auto_offset_store: true
-  producer:
+    ssl:
+      cafile:
+      certfile:
+      keyfile:
+      password:
+output:
+  kafka_output:
+    type: confluentkafka_output
+    bootstrapservers:
+      - 127.0.0.1:9092
     topic: producer
     error_topic: producer_error
     ack_policy: all
@@ -51,8 +60,8 @@ connector:
     linger_duration: 0
     flush_timeout: 30
     send_timeout: 2
-  ssl:
-    cafile:
-    certfile:
-    keyfile:
-    password:
+    ssl:
+      cafile:
+      certfile:
+      keyfile:
+      password:

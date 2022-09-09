@@ -6,11 +6,10 @@ from typing import List
 from colorama import Fore
 from yaml import safe_load
 
-from logprep.factory import Factory
 from logprep.factory_error import FactoryError
 from logprep.factory import Factory
 from logprep.factory_error import (
-    UnknownProcessorTypeError,
+    UnknownComponentTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,
 )
 from logprep.util.helper import print_fcolor
@@ -181,17 +180,10 @@ class Configuration(dict):
             raise InvalidConfigurationErrors(errors)
 
     def _verify_connector(self, logger):
-        # DEPRECATION: HMAC-Option: Remove this if with next major version update
-        if self.get("connector", {}).get("consumer", {}).get("hmac", {}):
-            logger.warning(
-                "[Deprecation]: you are currently using a configuration format that will be "
-                "outdated in the next major release (version 4.0.0). The hmac options will move "
-                "from the keyword 'consumer' to the subkey 'preprocessing', consider changing to "
-                "the new config format. [Expires with logprep=4.0.0]"
-            )
-
         try:
-            _, _ = Factory.create(self["connector"], logger)
+            _ = Factory.create(self["input"], logger)
+            _ = Factory.create(self["output"], logger)
+
         except FactoryError as error:
             raise InvalidConnectorConfigurationError(str(error)) from error
         except KeyError as error:
@@ -207,7 +199,7 @@ class Configuration(dict):
                 Factory.create(processor_config, logger)
             except (
                 FactoryInvalidConfigurationError,
-                UnknownProcessorTypeError,
+                UnknownComponentTypeError,
                 TypeError,
             ) as error:
                 errors.append(

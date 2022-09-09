@@ -41,7 +41,9 @@ class ConfluentKafkaOutput(Output):
             converter=lambda x: -1 if x == "all" else x,
             default=-1,
         )
-        linger_duration: float = field(validator=[validators.instance_of(float)], default=0.5)
+        linger_duration: float = field(
+            validator=[validators.instance_of(float)], converter=float, default=0.5
+        )
         ssl: dict = field(
             validator=[
                 validators.instance_of(dict),
