@@ -5,10 +5,11 @@ from logging import getLogger
 from random import sample
 from string import ascii_letters
 from unittest import mock
+import warnings
 
 from pytest import raises
 from logprep.abc.input import Input
-
+from logprep.registry import Registry
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
@@ -140,3 +141,14 @@ def test_dummy_input_creates_dummy_input_connector():
     )
 
     assert isinstance(processor, Input)
+
+
+def test_get_processor_class_throws_deprecation_warning():
+    with warnings.catch_warnings(record=True) as warning_messages:
+        Registry.get_processor_class("delete")
+        assert len(warning_messages) == 1
+        assert isinstance(warning_messages[0], warnings.WarningMessage)
+        assert (
+            str(warning_messages[0].message)
+            == "delete processor is deprecated and will be removed in a future release. Please use deleter instead."
+        )

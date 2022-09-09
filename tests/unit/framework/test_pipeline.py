@@ -141,9 +141,9 @@ class TestPipeline(ConfigurationForTests):
         output_configuration = Configuration.create("dummy", self.logprep_config.get("output"))
         self.pipeline._output = DummyOutput("dummy", output_configuration, mock.MagicMock())
         delete_config = {
-            "type": "delete",
-            "specific_rules": ["tests/testdata/unit/delete/rules/specific"],
-            "generic_rules": ["tests/testdata/unit/delete/rules/generic"],
+            "type": "deleter",
+            "specific_rules": ["tests/testdata/unit/deleter/rules/specific"],
+            "generic_rules": ["tests/testdata/unit/deleter/rules/generic"],
         }
         processor_configuration = Configuration.create("delete processor", delete_config)
         processor_configuration.metric_labels = {}
