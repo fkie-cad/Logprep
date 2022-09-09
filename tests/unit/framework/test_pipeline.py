@@ -1,10 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import re
 from copy import deepcopy
 from logging import DEBUG, WARNING, getLogger
 from multiprocessing import active_children, Lock
-import re
 from unittest import mock
 
 from _pytest.outcomes import fail
@@ -12,6 +12,16 @@ from _pytest.python_api import raises
 
 from logprep._version import get_versions
 from logprep.abc import Processor
+from logprep.abc.input import (
+    SourceDisconnectedError,
+    FatalInputError,
+    WarningInputError,
+    CriticalInputError,
+)
+from logprep.abc.output import WarningOutputError, CriticalOutputError, FatalOutputError
+from logprep.configuration import Configuration
+from logprep.connector.dummy.input import DummyInput
+from logprep.connector.dummy.output import DummyOutput
 from logprep.factory import Factory
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
@@ -20,20 +30,10 @@ from logprep.framework.pipeline import (
     MustProvideALogHandlerError,
     SharedCounter,
 )
-from logprep.connector.dummy.input import DummyInput
-from logprep.abc.input import (
-    SourceDisconnectedError,
-    FatalInputError,
-    WarningInputError,
-    CriticalInputError,
-)
 from logprep.metrics.metric import MetricTargets
-from logprep.connector.dummy.output import DummyOutput
-from logprep.abc.output import FatalOutputError, WarningOutputError, CriticalOutputError
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.deleter.processor import Deleter
 from logprep.processor.deleter.rule import DeleterRule
-from logprep.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
 original_create = Factory.create
@@ -359,47 +359,43 @@ class TestPipeline(ConfigurationForTests):
             mock_error.call_args[0][0],
         ), "error message is logged"
 
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next", return_value={"mock": "event"})
-    @mock.patch("logprep.connector.dummy.output.DummyOutput.store")
     @mock.patch("logging.Logger.warning")
-    def test_warning_output_error_is_logged(self, mock_warning, mock_store, _, __):
-        def raise_warning(args):
-            raise WarningOutputError("mock output warning", args)
-
-        mock_store.side_effect = raise_warning
+    def test_warning_output_error_is_logged(self, mock_warning, _):
         self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
+        self.pipeline._output.store.side_effect = WarningOutputError("mock output warning")
         self.pipeline._retrieve_and_process_data()
-        mock_store.assert_called()
+        self.pipeline._output.store.assert_called()
         mock_warning.assert_called()
-        assert (
-            "An error occurred for output dummy:" in mock_warning.call_args[0][0]
+        assert mock_warning.call_args[0][0].startswith(
+            "An error occurred for output"
         ), "error message is logged"
 
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next")
     @mock.patch("logging.Logger.error")
     def test_processor_fatal_input_error_is_logged_pipeline_is_rebuilt(
-        self, mock_error, mock_get_next, mock_shut_down, _
+            self, mock_error, mock_shut_down, _
     ):
-        mock_get_next.side_effect = FatalInputError
+        self.pipeline._setup()
+        self.pipeline._input.get_next.side_effect = FatalInputError
         self.pipeline.run()
-        mock_get_next.assert_called()
+        self.pipeline._input.get_next.assert_called()
         mock_error.assert_called()
-        assert "Input dummy failed:" in mock_error.call_args[0][0], "error message is logged"
+        assert re.search(r"Input .* failed:", mock_error.call_args[0][0]), "error message is logged"
         mock_shut_down.assert_called()
 
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next", return_value={"mock": "event"})
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
-    @mock.patch("logprep.connector.dummy.output.DummyOutput.store")
     @mock.patch("logging.Logger.error")
     def test_processor_fatal_output_error_is_logged_pipeline_is_rebuilt(
-        self, mock_error, mock_store, mock_shut_down, _, __
+            self, mock_error, mock_shut_down, _
     ):
-        mock_store.side_effect = FatalOutputError
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
+        self.pipeline._output.store.side_effect = FatalOutputError
         self.pipeline.run()
-        mock_store.assert_called()
+        self.pipeline._output.store.assert_called()
         mock_error.assert_called()
-        assert "Output dummy failed:" in mock_error.call_args[0][0], "error message is logged"
+        assert re.search("Output .* failed:", mock_error.call_args[0][0]), "error message is logged"
         mock_shut_down.assert_called()
 
     @mock.patch("logprep.connector.dummy.output.DummyOutput.store_custom")
