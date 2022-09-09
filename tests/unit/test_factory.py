@@ -16,7 +16,7 @@ from logprep.processor.normalizer.processor import Normalizer
 from logprep.factory import Factory
 from logprep.factory_error import (
     InvalidConfigurationError,
-    UnknownProcessorTypeError,
+    UnknownComponentTypeError,
     NotExactlyOneEntryInConfigurationError,
     NoTypeSpecifiedError,
     InvalidConfigSpecificationError,
@@ -52,7 +52,7 @@ def test_create_fails_for_unknown_type():
     for type_name in ["unknown", "no such processor"] + [
         "".join(sample(ascii_letters, 6)) for i in range(5)
     ]:
-        with raises(UnknownProcessorTypeError):
+        with raises(UnknownComponentTypeError):
             Factory.create({"processorname": {"type": type_name}}, logger)
 
 

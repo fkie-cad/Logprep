@@ -33,7 +33,7 @@ class NoTypeSpecifiedError(InvalidConfigurationError):
         super().__init__(message)
 
 
-class UnknownProcessorTypeError(FactoryError):
+class UnknownComponentTypeError(FactoryError):
     """Raise if the type is unknown."""
 
     def __init__(self, processor_type):

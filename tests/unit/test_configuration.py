@@ -8,7 +8,7 @@ from logprep.abc.processor import Processor
 from logprep.configuration import Configuration
 from logprep.factory_error import (
     NoTypeSpecifiedError,
-    UnknownProcessorTypeError,
+    UnknownComponentTypeError,
 )
 from logprep.registry import Registry
 
@@ -67,7 +67,7 @@ class TestConfiguration:
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
-        with pytest.raises(UnknownProcessorTypeError):
+        with pytest.raises(UnknownComponentTypeError):
             Configuration.create("dummy name", test_config)
 
     def test_raises_if_one_mandatory_field_is_missing(self):
