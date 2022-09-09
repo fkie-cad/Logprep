@@ -27,7 +27,6 @@ from logprep.factory import Factory
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
-from logprep.util.helper import add_field_to
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.time_measurement import TimeMeasurement
@@ -155,7 +154,9 @@ class Pipeline:
     def _create_connectors(self):
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Creating connectors ({current_process().name})")
-        self._input = Factory.create(self._logprep_config.get("input"), self._logger)
+        input_connector_config = self._logprep_config.get("input")
+        input_connector_config.update({"version_information": self._event_version_information})
+        self._input = Factory.create(input_connector_config, self._logger)
         self._output = Factory.create(self._logprep_config.get("output"), self._logger)
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
@@ -224,7 +225,6 @@ class Pipeline:
                 pass
 
             if event:
-                self._preprocess_event(event)
                 self._process_event(event)
                 self._processing_counter.increment()
                 self._processing_counter.print_if_ready()
@@ -250,16 +250,6 @@ class Pipeline:
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})
-
-    def _preprocess_event(self, event):
-        consumer_config = self._logprep_config.get("input", {})
-        preprocessing_config = consumer_config.get("preprocessing", {})
-        if preprocessing_config.get("version_info_target_field"):
-            self._add_version_information_to_event(event, preprocessing_config)
-
-    def _add_version_information_to_event(self, event: dict, preprocessing_config: dict):
-        target_field = preprocessing_config.get("version_info_target_field")
-        add_field_to(event, target_field, self._event_version_information)
 
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):

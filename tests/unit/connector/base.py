@@ -264,6 +264,36 @@ class BaseInputTestCase(BaseConnectorTestCase):
         kafka_next_msg, _ = kafka.get_next(1)
         assert kafka_next_msg == test_event
 
+    def test_preprocessing_version_info_is_added_if_configured(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "version_info_target_field": "version_info",
+                "hmac": {"target": "", "key": "", "output_field": ""},
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        test_event = {"any": "content"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result, _ = connector.get_next(0.01)
+        assert result.get("version_info")
+
+    def test_pipeline_preprocessing_does_not_add_versions_if_target_field_exists_already(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "version_info_target_field": "version_info",
+                "hmac": {"target": "", "key": "", "output_field": ""},
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        test_event = {"any": "content", "version_info": "something random"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result, _ = connector.get_next(0.01)
+        assert result == {"any": "content", "version_info": "something random"}
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):

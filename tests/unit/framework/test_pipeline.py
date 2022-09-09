@@ -374,7 +374,7 @@ class TestPipeline(ConfigurationForTests):
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
     @mock.patch("logging.Logger.error")
     def test_processor_fatal_input_error_is_logged_pipeline_is_rebuilt(
-            self, mock_error, mock_shut_down, _
+        self, mock_error, mock_shut_down, _
     ):
         self.pipeline._setup()
         self.pipeline._input.get_next.side_effect = FatalInputError
@@ -387,7 +387,7 @@ class TestPipeline(ConfigurationForTests):
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
     @mock.patch("logging.Logger.error")
     def test_processor_fatal_output_error_is_logged_pipeline_is_rebuilt(
-            self, mock_error, mock_shut_down, _
+        self, mock_error, mock_shut_down, _
     ):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
@@ -482,34 +482,15 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.metrics.pipeline = [mock_metrics_one, mock_metrics_two]
         assert self.pipeline.metrics.number_of_errors == 2
 
-    def test_pipeline_preprocessing_adds_versions_if_configured(self, _):
-        preprocessing_config = {"version_info_target_field": "version_info"}
-        self.pipeline._logprep_config["connector"] = {
-            "consumer": {"preprocessing": preprocessing_config}
-        }
-        test_event = {"any": "content"}
-        self.pipeline._preprocess_event(test_event)
-        target_field = preprocessing_config.get("version_info_target_field")
-        assert target_field in test_event
-        assert test_event.get(target_field, {}).get("logprep") == get_versions()["version"]
-        expected_config_version = self.logprep_config["version"]
-        assert test_event.get(target_field, {}).get("configuration") == expected_config_version
-
-    def test_pipeline_preprocessing_does_not_add_versions_if_not_configured(self, _):
-        preprocessing_config = {"something": "random"}
-        self.pipeline._logprep_config["connector"] = {
-            "consumer": {"preprocessing": preprocessing_config}
-        }
-        test_event = {"any": "content"}
-        self.pipeline._preprocess_event(test_event)
-        assert test_event == {"any": "content"}
-
-    def test_pipeline_preprocessing_does_not_add_versions_if_target_field_exists_already(self, _):
-        preprocessing_config = {"version_info_target_field": "version_info"}
-        self.pipeline._connector_config = {"consumer": {"preprocessing": preprocessing_config}}
-        test_event = {"any": "content", "version_info": "something random"}
-        self.pipeline._preprocess_event(test_event)
-        assert test_event == {"any": "content", "version_info": "something random"}
+    def test_create_connector_adds_verions_information_to_input_connector_config(self, mock_create):
+        self.pipeline._create_logger()
+        self.pipeline._create_connectors()
+        called_input_config = mock_create.call_args_list[0][0][0]
+        assert "version_information" in called_input_config, "ensure version_information is added"
+        assert "logprep" in called_input_config.get("version_information"), "ensure logprep key"
+        assert "configuration" in called_input_config.get("version_information"), "ensure config"
+        assert called_input_config.get("version_information").get("logprep"), "ensure values"
+        assert called_input_config.get("version_information").get("configuration"), "ensure values"
 
     def test_pipeline_calls_batch_finished_callback_if_output_store_returns_true(self, _):
         self.pipeline._setup()
@@ -520,7 +501,9 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._retrieve_and_process_data()
         self.pipeline._input.batch_finished_callback.assert_called()
 
-    def test_pipeline_does_not_call_batch_finished_callback_if_output_store_does_not_return_true(self, _):
+    def test_pipeline_does_not_call_batch_finished_callback_if_output_store_does_not_return_true(
+        self, _
+    ):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         self.pipeline._input.batch_finished_callback = mock.MagicMock()
@@ -585,7 +568,7 @@ class TestPipeline(ConfigurationForTests):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_pipeline_kafka_batch_finished_callback_calls_store_offsets_with_message(
-            self, _, __, ___
+        self, _, __, ___
     ):
         # TODO: this is a test that belongs to the test_confluent_kafka_input.py (probably also
         #  for the elastic- and opensearch connector

@@ -8,7 +8,7 @@ import base64
 import hashlib
 import zlib
 from abc import abstractmethod
-from functools import partial
+from functools import cached_property, partial
 from hmac import HMAC
 from typing import Tuple, Optional
 
@@ -79,12 +79,24 @@ class Input(Connector):
             },
         )
 
+        version_information: dict = field(
+            validator=validators.instance_of(dict),
+            default={
+                "logprep": "",
+                "configuration": "",
+            },
+        )
+
     __slots__ = []
 
     @property
     def _add_hmac(self):
         hmac_options = self._config.preprocessing.get("hmac")
         return all(bool(hmac_options[option_key]) for option_key in hmac_options)
+
+    @property
+    def _add_version_info(self):
+        return bool(self._config.preprocessing.get("version_info_target_field"))
 
     def setup(self):
         """Set the input up, e.g. connect to a database.
@@ -143,7 +155,13 @@ class Input(Connector):
             raise CriticalInputError("not a dict", event)
         if event and self._add_hmac:
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
+        if event and self._add_version_info:
+            self._add_version_information_to_event(event)
         return event, non_critical_error_msg
+
+    def _add_version_information_to_event(self, event: dict):
+        target_field = self._config.preprocessing.get("version_info_target_field")
+        add_field_to(event, target_field, self._config.version_information)
 
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
