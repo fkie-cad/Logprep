@@ -34,7 +34,7 @@ from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 
 
 class Registry:
-    """Processor Registry"""
+    """Component Registry"""
 
     mapping = {
         # Processors
@@ -70,7 +70,7 @@ class Registry:
     }
 
     @classmethod
-    def get_processor_class(cls, processor_type):
+    def get_class(cls, component_type):
         """return the processor class for a given type
 
         Parameters
@@ -83,9 +83,9 @@ class Registry:
         _type_
             _description_
         """
-        if processor_type == "delete":
+        if component_type == "delete":
             warnings.warn(
                 "delete processor is deprecated and will be removed in a future release. Please use deleter instead.",
                 UserWarning,
             )
-        return cls.mapping.get(processor_type)
+        return cls.mapping.get(component_type)

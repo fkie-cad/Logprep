@@ -2,22 +2,29 @@
 
 ### Breaking
 
+## Next Release
+### Breaking
+
+* Splitting the general `connector` config into `input` and `output` to compose connector config independendly
+
 * Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
-under the subkey `preprocessing`
+under the subkey `preprocessing` of the `input` processor
 
 * Removal of Deprecated Feature: `delete` processor was renamed to `deleter`
 
-## Next Release
+* Rename `writing_output` connector to `jsonl_output`
 
 ### Features
 
 * Add an opensearch output connector that can be used to write directly into opensearch.
 * Add an elasticsearch output connector that can be used to write directly into elasticsearch.
-* Add a connector that combines a confluentkafka input and an elasticsearch output.
+* Split connector config into seperate config keys `input` and `output`
+* add preprocessing capabillities to all input connectors
 
 ### Improvements
-* Internally separate confluentkafka connector into an input and output connector,
-so that it is possible to combine those with other inputs and outputs.
+* validate connector config on class level via attrs classes
+* implement a common interface to all connectors
+* refactor connector code
 
 ### Bugfixes
 ### Breaking

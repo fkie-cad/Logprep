@@ -1,4 +1,4 @@
-"""This module contains a factory to create connectors."""
+"""This module contains a factory to create connectors and processors."""
 import copy
 from typing import TYPE_CHECKING
 

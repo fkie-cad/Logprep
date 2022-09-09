@@ -145,7 +145,7 @@ def test_dummy_input_creates_dummy_input_connector():
 
 def test_get_processor_class_throws_deprecation_warning():
     with warnings.catch_warnings(record=True) as warning_messages:
-        Registry.get_processor_class("delete")
+        Registry.get_class("delete")
         assert len(warning_messages) == 1
         assert isinstance(warning_messages[0], warnings.WarningMessage)
         assert (

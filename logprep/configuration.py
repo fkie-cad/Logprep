@@ -15,39 +15,39 @@ class Configuration:
     """factory and adapter for generating config"""
 
     @classmethod
-    def create(cls, processor_name: str, config_: Mapping[str, Any]) -> "Processor.Config":
+    def create(cls, name: str, config_: Mapping[str, Any]) -> "Processor.Config":
         """factory method to create processor configuration
 
         Parameters
         ----------
-        processor_name: str
-            the name of the processor
+        name: str
+            the name of the pipeline component
         config_ : Mapping[str, Any]
             the config dict
 
         Returns
         -------
-        Processor.Config
-            the processor configuration
+        Config
+            the pipeline component configuration
         """
-        processor_class = cls.get_class(processor_name, config_)
-        return processor_class.Config(**config_)
+        class_ = cls.get_class(name, config_)
+        return class_.Config(**config_)
 
     @staticmethod
-    def get_class(processor_name: str, config_: Mapping[str, Any]):
-        """gets the processorclass from config
+    def get_class(name: str, config_: Mapping[str, Any]):
+        """gets the class from config
 
         Parameters
         ----------
-        processor_name : str
+        name : str
             The name of the processor
         config_ : Mapping[str, Any]
             the configuration with setted `type`
 
         Returns
         -------
-        Processor
-            The requested processor
+        Processor|Connector
+            The requested pipeline component
 
         Raises
         ------
@@ -57,9 +57,9 @@ class Configuration:
             if type is not found in config object
         """
         if "type" not in config_:
-            raise NoTypeSpecifiedError(processor_name)
-        processors = Registry.mapping
-        processor_type = config_.get("type")
-        if processor_type not in processors:
-            raise UnknownProcessorTypeError(processor_type)
-        return Registry.get_processor_class(processor_type)
+            raise NoTypeSpecifiedError(name)
+        components = Registry.mapping
+        component_type = config_.get("type")
+        if component_type not in components:
+            raise UnknownProcessorTypeError(component_type)
+        return Registry.get_class(component_type)
