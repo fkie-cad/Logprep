@@ -33,13 +33,6 @@ class WarningOutputError(OutputError):
 class Output(Connector):
     """Connect to a source for log data."""
 
-    def setup(self):
-        """Set the output up, e.g. connect to a database.
-
-        This is optional.
-
-        """
-
     @abstractmethod
     def store(self, document: dict) -> Optional[bool]:
         """Store the document.

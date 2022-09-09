@@ -98,13 +98,6 @@ class Input(Connector):
     def _add_version_info(self):
         return bool(self._config.preprocessing.get("version_info_target_field"))
 
-    def setup(self):
-        """Set the input up, e.g. connect to a database.
-
-        This is optional.
-
-        """
-
     def _get_raw_event(self, timeout: float) -> bytearray:
         """Implements the details how to get the event
 
@@ -165,13 +158,6 @@ class Input(Connector):
 
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
-
-    def shut_down(self):
-        """Close the input down, e.g. close all connections.
-
-        This is optional.
-
-        """
 
     def _add_hmac_to(self, event_dict, raw_event) -> tuple[dict, str]:
         """

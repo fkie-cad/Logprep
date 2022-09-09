@@ -1,21 +1,11 @@
 """ abstract module for connectors"""
-import sys
-from abc import ABC
-from logging import Logger
-
-from attr import define, field, validators
+from attr import define
+from logprep.abc import Component
 from logprep.metrics.metric import Metric, calculate_new_average
-from logprep.util.helper import camel_to_snake
 
 
-class Connector(ABC):
+class Connector(Component):
     """Abstract Connector Class to define the Interface"""
-
-    @define(kw_only=True, slots=False)
-    class Config:
-        """Common Configurations"""
-
-        type: str = field(validator=validators.instance_of(str))
 
     @define(kw_only=True)
     class ConnectorMetrics(Metric):
@@ -43,34 +33,7 @@ class Connector(ABC):
             self.mean_processing_time_per_event = new_avg
             self._mean_processing_time_sample_counter = new_sample_counter
 
-    __slots__ = ["name", "_logger", "_config", "metrics", "metric_labels"]
+    __slots__ = ["metrics", "metric_labels"]
 
-    if not sys.version_info.minor < 7:
-        __slots__.append("__dict__")
-
-    name: str
     metrics: ConnectorMetrics
     metric_labels: dict
-    _logger: Logger
-    _config: Config
-
-    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
-        self._logger = logger
-        self._config = configuration
-        self.name = name
-
-    def __repr__(self):
-        return camel_to_snake(self.__class__.__name__)
-
-    def describe(self) -> str:
-        """Provide a brief name-like description of the connector.
-
-        The description is indicating its type _and_ the name provided when creating it.
-
-        Examples
-        --------
-
-        >>> ConfluentKafkaInput(name)
-
-        """
-        return f"{self.__class__.__name__} ({self.name})"
