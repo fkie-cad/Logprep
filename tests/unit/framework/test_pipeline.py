@@ -324,7 +324,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.assert_called()
         mock_error.assert_called()
         assert re.search(
-            r"A critical error occurred for input .*: mock input error", mock_error.call_args[0]
+            r"A critical error occurred for input .*: mock input error", mock_error.call_args[0][0]
         ), "error message is logged"
         assert self.pipeline._output.store_failed.call_count == 1, "one error is stored"
         assert self.pipeline._output.store.call_count == 0, "no event is stored"
@@ -398,31 +398,29 @@ class TestPipeline(ConfigurationForTests):
         assert re.search("Output .* failed:", mock_error.call_args[0][0]), "error message is logged"
         mock_shut_down.assert_called()
 
-    @mock.patch("logprep.connector.dummy.output.DummyOutput.store_custom")
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next", return_value={"mock": "event"})
-    def test_extra_dat_tuple_is_passed_to_store_custom(self, mock_get_next, mock_store_custom, _):
+    def test_extra_data_tuple_is_passed_to_store_custom(self, _):
         self.pipeline._setup()
-        processor_with_exta_data = mock.MagicMock()
-        processor_with_exta_data.process = mock.MagicMock()
-        processor_with_exta_data.process.return_value = ([{"foo": "bar"}], "target")
-        self.pipeline._pipeline = [mock.MagicMock(), processor_with_exta_data, mock.MagicMock()]
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
+        processor_with_extra_data = mock.MagicMock()
+        processor_with_extra_data.process = mock.MagicMock()
+        processor_with_extra_data.process.return_value = ([{"foo": "bar"}], "target")
+        self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
         self.pipeline._retrieve_and_process_data()
-        mock_get_next.call_count = 1
-        mock_store_custom.call_count = 1
-        mock_store_custom.assert_called_with({"foo": "bar"}, "target")
+        assert self.pipeline._input.get_next.call_count == 1
+        assert self.pipeline._output.store_custom.call_count == 1
+        self.pipeline._output.store_custom.assert_called_with({"foo": "bar"}, "target")
 
-    @mock.patch("logprep.connector.dummy.output.DummyOutput.store_custom")
-    @mock.patch("logprep.connector.dummy.input.DummyInput.get_next", return_value={"mock": "event"})
-    def test_extra_dat_list_is_passed_to_store_custom(self, mock_get_next, mock_store_custom, _):
+    def test_extra_data_list_is_passed_to_store_custom(self, _):
         self.pipeline._setup()
-        processor_with_exta_data = mock.MagicMock()
-        processor_with_exta_data.process = mock.MagicMock()
-        processor_with_exta_data.process.return_value = [([{"foo": "bar"}], "target")]
-        self.pipeline._pipeline = [mock.MagicMock(), processor_with_exta_data, mock.MagicMock()]
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
+        processor_with_extra_data = mock.MagicMock()
+        processor_with_extra_data.process = mock.MagicMock()
+        processor_with_extra_data.process.return_value = [([{"foo": "bar"}], "target")]
+        self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
         self.pipeline._retrieve_and_process_data()
-        mock_get_next.call_count = 1
-        mock_store_custom.call_count = 1
-        mock_store_custom.assert_called_with({"foo": "bar"}, "target")
+        assert self.pipeline._input.get_next.call_count == 1
+        assert self.pipeline._output.store_custom.call_count == 1
+        self.pipeline._output.store_custom.assert_called_with({"foo": "bar"}, "target")
 
     def test_pipeline_metrics_number_of_events_counts_events_of_all_processor_metrics(
         self,
