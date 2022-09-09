@@ -10,7 +10,6 @@ from unittest import mock
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
-from logprep._version import get_versions
 from logprep.abc import Processor
 from logprep.abc.input import (
     SourceDisconnectedError,
@@ -31,7 +30,7 @@ from logprep.framework.pipeline import (
     SharedCounter,
 )
 from logprep.metrics.metric import MetricTargets
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
 from logprep.processor.deleter.processor import Deleter
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
@@ -291,6 +290,25 @@ class TestPipeline(ConfigurationForTests):
             "ProcessorWarningMockError" in mock_warning.call_args[0][0]
         ), "the log message was written"
         assert self.pipeline._output.store.call_count == 2, "all events are processed"
+
+    @mock.patch("logging.Logger.warning")
+    def test_processor_warning_error_is_logged_for_processingwarningcollection(
+        self, mock_warning, _
+    ):
+        class ProcessingWarningMockCollection(ProcessingWarningCollection):
+            def __init__(self):
+                super().__init__(
+                    "name",
+                    "message",
+                    [ProcessingWarning("warning1"), ProcessingWarning("warning2")],
+                )
+
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
+        self.pipeline._pipeline[0].process.side_effect = ProcessingWarningMockCollection
+        self.pipeline._retrieve_and_process_data()
+        assert mock_warning.call_count == 4, "called 2 times for 2 processors in pipeline"
+        assert self.pipeline._output.store.call_count == 1, "the event is processed"
 
     @mock.patch("logging.Logger.error")
     def test_processor_critical_error_is_logged_event_is_stored_in_error_output(
