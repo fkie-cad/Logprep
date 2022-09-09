@@ -51,9 +51,3 @@ class CommonConfluentKafkaTestCase:
             "keyfile": None,
             "password": None,
         }
-
-    def test_create_fails_for_unknown_offset_reset_policy(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update({"offset_reset_policy": "invalid"})
-        with pytest.raises(ValueError, match=r"'offset_reset_policy' must be in.*got 'invalid'"):
-            _ = Factory.create({"test connector": kafka_config}, logger=self.logger)

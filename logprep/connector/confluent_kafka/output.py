@@ -2,26 +2,56 @@
 
 import json
 from datetime import datetime
-from functools import cached_property
+from functools import cached_property, partial
 from socket import getfqdn
-from typing import Optional
+from typing import List, Optional
 
-from attrs import define
+from attrs import define, field, validators
 from confluent_kafka import Producer
 
 from logprep.abc.output import Output, CriticalOutputError
 from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
+from logprep.util.validators import dict_with_keys_validator
 
 
 class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
 
     @define(kw_only=True, slots=False)
-    class Config(ConfluentKafkaInput.Config):
+    class Config(Output.Config):
         """Confluent Kafka Output Config"""
 
+        bootstrapservers: List[str]
+        topic: str = field(validator=validators.instance_of(str))
         error_topic: str
         flush_timeout: float
+        send_timeout: int = field(validator=validators.instance_of(int), default=0)
+        compression: str = field(
+            validator=[
+                validators.instance_of(str),
+                validators.in_(["snappy", "gzip", "lz4", "zstd", "none"]),
+            ],
+            default="none",
+        )
+        maximum_backlog: int = field(
+            validator=[validators.instance_of(int), validators.gt(0)], default=100000
+        )
+        ack_policy: int = field(
+            validator=[validators.instance_of(int), validators.in_([0, 1, -1])],
+            converter=lambda x: -1 if x == "all" else x,
+            default=-1,
+        )
+        linger_duration: float = field(validator=[validators.instance_of(float)], default=0.5)
+        ssl: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                partial(
+                    dict_with_keys_validator,
+                    expected_keys=["cafile", "certfile", "keyfile", "password"],
+                ),
+            ],
+            default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
+        )
 
     @cached_property
     def _client_id(self):
@@ -42,11 +72,10 @@ class ConfluentKafkaOutput(Output):
         """
         configuration = {
             "bootstrap.servers": ",".join(self._config.bootstrapservers),
-            "group.id": self._config.group,
-            "enable.auto.commit": self._config.auto_commit,
-            "session.timeout.ms": self._config.session_timeout,
-            "enable.auto.offset.store": self._config.enable_auto_offset_store,
-            "default.topic.config": {"auto.offset.reset": self._config.offset_reset_policy},
+            "queue.buffering.max.messages": self._config.maximum_backlog,
+            "compression.type": self._config.compression,
+            "acks": self._config.ack_policy,
+            "linger.ms": self._config.linger_duration,
         }
         ssl_settings_are_setted = any(self._config.ssl[key] for key in self._config.ssl)
         if ssl_settings_are_setted:
@@ -108,7 +137,7 @@ class ConfluentKafkaOutput(Output):
             self._producer.produce(
                 target, value=json.dumps(document, separators=(",", ":")).encode("utf-8")
             )
-            self._producer.poll(0)
+            self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
@@ -143,7 +172,7 @@ class ConfluentKafkaOutput(Output):
                 self._config.error_topic,
                 value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
             )
-            self._producer.poll(0)
+            self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)

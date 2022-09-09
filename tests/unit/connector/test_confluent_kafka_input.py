@@ -4,10 +4,12 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+from copy import deepcopy
 from unittest import mock
 
 import pytest
 
+from logprep.factory import Factory
 from logprep.abc.input import CriticalInputError
 from tests.unit.connector.base import BaseInputTestCase
 from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
@@ -81,3 +83,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._last_valid_records = {"record1": ["dummy"]}
         self.object.batch_finished_callback()
         kafka_consumer.store_offsets.assert_called()
+
+    def test_create_fails_for_unknown_offset_reset_policy(self):
+        kafka_config = deepcopy(self.CONFIG)
+        kafka_config.update({"offset_reset_policy": "invalid"})
+        with pytest.raises(ValueError, match=r"'offset_reset_policy' must be in.*got 'invalid'"):
+            _ = Factory.create({"test connector": kafka_config}, logger=self.logger)

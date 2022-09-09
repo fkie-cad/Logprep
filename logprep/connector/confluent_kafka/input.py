@@ -21,9 +21,11 @@ class ConfluentKafkaInput(Input):
         """Common Configurations"""
 
         bootstrapservers: List[str]
-        topic: str
-        group: str
-        enable_auto_offset_store: bool
+        topic: str = field(validator=validators.instance_of(str))
+        group: str = field(validator=validators.instance_of(str))
+        enable_auto_offset_store: bool = field(
+            validator=validators.instance_of(bool), default=False
+        )
         ssl: dict = field(
             validator=[
                 validators.instance_of(dict),

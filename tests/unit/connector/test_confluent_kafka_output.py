@@ -19,11 +19,6 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase, CommonConfluentKafkaTestCa
         "bootstrapservers": ["testserver:9092"],
         "topic": "test_input_raw",
         "error_topic": "test_error_topic",
-        "group": "test_producergroup",
-        "auto_commit": False,
-        "session_timeout": 654321,
-        "enable_auto_offset_store": True,
-        "offset_reset_policy": "latest",
         "flush_timeout": 0.1,
         "ssl": {
             "cafile": "test_cafile",
@@ -36,16 +31,15 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase, CommonConfluentKafkaTestCa
     def test_confluent_settings_contains_expected_values(self):
         expected_config = {
             "bootstrap.servers": "testserver:9092",
-            "group.id": "test_producergroup",
-            "enable.auto.commit": False,
-            "session.timeout.ms": 654321,
-            "enable.auto.offset.store": True,
-            "default.topic.config": {"auto.offset.reset": "latest"},
             "security.protocol": "SSL",
             "ssl.ca.location": "test_cafile",
             "ssl.certificate.location": "test_certfile",
             "ssl.key.location": "test_keyfile",
             "ssl.key.password": "test_password",
+            "queue.buffering.max.messages": 100000,
+            "compression.type": "none",
+            "acks": -1,
+            "linger.ms": 0.5,
         }
         kafka_input_cfg = self.object._confluent_settings
         assert kafka_input_cfg == expected_config
