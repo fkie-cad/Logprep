@@ -90,6 +90,8 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
 
     @mock.patch("builtins.open")
     def test_setup_creates_single_file_if_only_output_file(self, mock_open):
+        self.object._config.output_file_custom = ""
+        self.object._config.output_file_error = ""
         self.object.setup()
         mock_open.assert_called()
-        assert mock_open.call_count == 3
+        assert mock_open.call_count == 1
