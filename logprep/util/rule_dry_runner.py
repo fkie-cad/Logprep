@@ -39,22 +39,19 @@ def get_runner_outputs(patched_runner):
         A list of logprep outputs containing events, extra outputs like pre-detections or pseudonyms
         and errors
     """
-    parsed_outputs = []
+    parsed_outputs = [None, None, None]
+    output_config = list(patched_runner._configuration.get("output").values())[0]
     output_paths = [
-        patched_runner._configuration["output"]["jsonl_output"].get("output_file", None),
-        patched_runner._configuration["output"]["jsonl_output"].get("output_file_custom", None),
-        patched_runner._configuration["output"]["jsonl_output"].get("output_file_error", None),
+        output_path for key, output_path in output_config.items() if "output_file" in key
     ]
-    output_paths = [output_path for output_path in output_paths if output_path]
 
     for output_path in output_paths:
         remove_file_if_exists(output_path)
-        Path(output_path).touch()
 
     patched_runner.start()
 
-    for output_path in output_paths:
-        parsed_outputs.append(parse_jsonl(output_path))
+    for index, output_path in enumerate(output_paths):
+        parsed_outputs[index] = parse_jsonl(output_path)
         remove_file_if_exists(output_path)
 
     return parsed_outputs

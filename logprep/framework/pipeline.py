@@ -155,8 +155,8 @@ class Pipeline:
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(f"Creating connectors ({current_process().name})")
         input_connector_config = self._logprep_config.get("input")
-        input_connector_config.update({"version_information": self._event_version_information})
         self._input = Factory.create(input_connector_config, self._logger)
+        input_connector_config.update({"version_information": self._event_version_information})
         self._output = Factory.create(self._logprep_config.get("output"), self._logger)
         if self._logger.isEnabledFor(DEBUG):
             self._logger.debug(
