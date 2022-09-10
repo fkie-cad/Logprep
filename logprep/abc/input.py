@@ -7,8 +7,9 @@ New input endpoint types are created by implementing it.
 import base64
 import hashlib
 import zlib
+import sys
 from abc import abstractmethod
-from functools import cached_property, partial
+from functools import partial
 from hmac import HMAC
 from typing import Tuple, Optional
 
@@ -17,6 +18,11 @@ from attrs import define, field, validators
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from .connector import Connector
 from ..util.validators import dict_structure_validator
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class InputError(BaseException):

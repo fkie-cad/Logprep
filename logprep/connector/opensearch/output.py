@@ -1,19 +1,21 @@
 """This module contains functionality that allows to send events to OpenSearch."""
 
-from functools import cached_property
 import json
 import logging
 import re
-from attrs import define, field, validators
 import ssl
+import sys
 from typing import List, Optional
 
 import arrow
-from opensearchpy import OpenSearch, helpers, SerializationError
-from opensearchpy.exceptions import ConnectionError
-from opensearchpy.helpers import BulkIndexError
+from attrs import define, field, validators
+import opensearchpy as opensearch
+from logprep.abc.output import FatalOutputError, Output
 
-from logprep.abc.output import Output, FatalOutputError
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
 
@@ -76,7 +78,7 @@ class OpenSearchOutput(Output):
 
     @cached_property
     def _os(self):
-        return OpenSearch(
+        return opensearch.OpenSearch(
             self._config.hosts,
             scheme=self.schema,
             http_auth=self.http_auth,
@@ -118,17 +120,17 @@ class OpenSearchOutput(Output):
         currently_processed_cnt = self._processed_cnt + 1
         if currently_processed_cnt == self._config.message_backlog_size:
             try:
-                helpers.bulk(
+                opensearch.helpers.bulk(
                     self._os,
                     self._message_backlog,
                     max_retries=self._config.max_retries,
                     chunk_size=self._config.message_backlog_size,
                 )
-            except SerializationError as error:
+            except opensearch.SerializationError as error:
                 self._handle_serialization_error(error)
-            except ConnectionError as error:
+            except opensearch.ConnectionError as error:
                 self._handle_connection_error(error)
-            except BulkIndexError as error:
+            except opensearch.helpers.BulkIndexError as error:
                 self._handle_bulk_index_error(error)
             self._processed_cnt = 0
 
@@ -138,7 +140,7 @@ class OpenSearchOutput(Output):
         else:
             self._processed_cnt = currently_processed_cnt
 
-    def _handle_bulk_index_error(self, error: BulkIndexError):
+    def _handle_bulk_index_error(self, error: opensearch.helpers.BulkIndexError):
         """Handle bulk indexing error for OpenSearch bulk indexing.
 
         Documents that could not be sent to OpenSearch due to index errors are collected and
@@ -160,7 +162,7 @@ class OpenSearchOutput(Output):
             self._add_dates(error_document)
             error_documents.append(error_document)
 
-        helpers.bulk(self._os, error_documents)
+        opensearch.helpers.bulk(self._os, error_documents)
 
     def _handle_connection_error(self, error: ConnectionError):
         """Handle connection error for OpenSearch bulk indexing.
@@ -182,7 +184,7 @@ class OpenSearchOutput(Output):
         """
         raise FatalOutputError(error.error)
 
-    def _handle_serialization_error(self, error: SerializationError):
+    def _handle_serialization_error(self, error: opensearch.SerializationError):
         """Handle serialization error for OpenSearch bulk indexing.
 
         If at least one document in a chunk can't be serialized, no events will be sent.

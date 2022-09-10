@@ -157,7 +157,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert failed_document == expected
 
     @mock.patch(
-        "logprep.connector.opensearch.output.helpers.bulk",
+        "logprep.connector.opensearch.output.opensearch.helpers.bulk",
         side_effect=opensearchpy.SerializationError,
     )
     def test_write_to_os_calls_handle_serialization_error_if_serialization_error(self, _):
@@ -166,7 +166,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
-        "logprep.connector.opensearch.output.helpers.bulk",
+        "logprep.connector.opensearch.output.opensearch.helpers.bulk",
         side_effect=opensearchpy.ConnectionError,
     )
     def test_write_to_os_calls_handle_connection_error_if_connection_error(self, _):
@@ -175,7 +175,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object._handle_connection_error.assert_called()
 
     @mock.patch(
-        "logprep.connector.opensearch.output.helpers.bulk",
+        "logprep.connector.opensearch.output.opensearch.helpers.bulk",
         side_effect=opensearchpy.helpers.BulkIndexError,
     )
     def test_write_to_os_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
@@ -183,7 +183,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object._write_to_os({"dummy": "event"})
         self.object._handle_bulk_index_error.assert_called()
 
-    @mock.patch("logprep.connector.opensearch.output.helpers.bulk")
+    @mock.patch("logprep.connector.opensearch.output.opensearch.helpers.bulk")
     def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
@@ -197,7 +197,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object._handle_bulk_index_error(mock_bulk_index_error)
         fake_bulk.assert_called()
 
-    @mock.patch("logprep.connector.opensearch.output.helpers.bulk")
+    @mock.patch("logprep.connector.opensearch.output.opensearch.helpers.bulk")
     def test__handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [

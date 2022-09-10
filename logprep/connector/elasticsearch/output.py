@@ -1,6 +1,6 @@
 """This module contains functionality that allows to send events to Elasticsearch."""
 
-from functools import cached_property
+import sys
 import json
 from logging import Logger
 import re
@@ -14,6 +14,11 @@ from attr import field, define
 from attrs import validators
 
 from logprep.abc.output import FatalOutputError, Output
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class ElasticsearchOutput(Output):
