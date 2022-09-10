@@ -6,7 +6,6 @@ import pytest
 
 from tests.acceptance.util import (
     get_test_output,
-    mock_kafka_and_run_pipeline,
     get_default_logprep_config,
 )
 from logprep.util.json_handling import dump_config_as_file
