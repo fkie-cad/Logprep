@@ -4,7 +4,7 @@ import json
 from functools import partial
 from logging import Logger
 from socket import getfqdn
-from typing import Any, List, Union
+from typing import Any, List, Tuple, Union
 
 from attrs import define, field, validators
 from confluent_kafka import Consumer
@@ -118,7 +118,7 @@ class ConfluentKafkaInput(Input):
             )
         return self._record.value()
 
-    def _get_event(self, timeout: float) -> Union[tuple[None, None], tuple[dict, dict]]:
+    def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
         """Get next document from Kafka.
 
         Parameters
