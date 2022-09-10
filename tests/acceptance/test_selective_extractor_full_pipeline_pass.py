@@ -1,7 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
-from unittest.mock import patch
-
 import pytest
 
 from tests.acceptance.util import (
