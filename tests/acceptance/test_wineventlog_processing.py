@@ -5,7 +5,12 @@ import os
 import pytest
 
 from logprep.util.json_handling import dump_config_as_file, parse_jsonl
-from tests.acceptance.util import get_difference, get_test_output, store_latest_test_output
+from tests.acceptance.util import (
+    get_default_logprep_config,
+    get_difference,
+    get_test_output,
+    store_latest_test_output,
+)
 
 logging.basicConfig(
     level=logging.DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
@@ -15,29 +20,18 @@ logger = logging.getLogger("Logprep-Test")
 
 @pytest.fixture(name="config_template")
 def fixture_config_template():
-    config_yml = {
-        "process_count": 1,
-        "print_processed_period": 600,
-        "timeout": 0.1,
-        "profile_pipelines": True,
-        "pipeline": [
-            {
-                "labelername": {
-                    "type": "labeler",
-                    "schema": "",
-                    "include_parent_labels": True,
-                    "specific_rules": None,
-                    "generic_rules": None,
-                }
+    pipeline = [
+        {
+            "labelername": {
+                "type": "labeler",
+                "schema": "",
+                "include_parent_labels": True,
+                "specific_rules": None,
+                "generic_rules": None,
             }
-        ],
-        "connector": {
-            "type": "writer",
-            "output_path": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
-            "input_path": "tests/testdata/input_logdata/kafka_raw_event.jsonl",
-        },
-    }
-    return config_yml
+        }
+    ]
+    return get_default_logprep_config(pipeline, with_hmac=False)
 
 
 @pytest.mark.parametrize(
@@ -71,6 +65,7 @@ def test_events_labeled_correctly(
     )
 
     set_config(config_template, specific_rules, generic_rules, schema)
+    config_template["input"]["jsonl"]["documents_path"] = str(tmp_path / "wineventlog_raw.jsonl")
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config_template)
 
