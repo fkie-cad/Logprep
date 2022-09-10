@@ -69,7 +69,7 @@ def test_events_labeled_correctly(
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config_template)
 
-    test_output = get_test_output(config_path)
+    test_output, _, _ = get_test_output(config_path)
     store_latest_test_output(expected_output, test_output)
 
     expected_output = parse_jsonl(expected_output_path)

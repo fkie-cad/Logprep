@@ -12,7 +12,7 @@ from logprep.framework.pipeline import Pipeline, SharedCounter
 from logprep.factory import Factory
 from logprep.util.helper import recursive_compare, remove_file_if_exists
 from logprep.util.json_handling import parse_jsonl
-from logprep.util.rule_dry_runner import get_patched_runner
+from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
@@ -73,16 +73,7 @@ def store_latest_test_output(target_output_identifier, output_of_test):
 
 def get_test_output(config_path):
     patched_runner = get_patched_runner(config_path, logger)
-
-    test_output_path = list(patched_runner._configuration["output"].values())[0].get("output_file")
-    remove_file_if_exists(test_output_path)
-
-    patched_runner.start()
-    parsed_test_output = parse_jsonl(test_output_path)
-
-    remove_file_if_exists(test_output_path)
-
-    return parsed_test_output
+    return get_runner_outputs(patched_runner=patched_runner)
 
 
 class SingleMessageConsumerJsonMock:
@@ -148,6 +139,8 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
             "jsonl": {
                 "type": "jsonl_output",
                 "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
+                "output_file_custom": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
+                "output_file_error": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_error.out",
             }
         },
     }
