@@ -32,11 +32,14 @@ def create_config():
 def test_events_normalized_correctly(tmp_path, config):
     expected_output = "normalized_win_event_log.jsonl"
     expected_output_path = path.join("tests/testdata/acceptance/expected_result", expected_output)
-    config["input"]["jsonl"]["documents_path"] = str(tmp_path / "wineventlog_raw.jsonl")
+    config["input"]["jsonl"][
+        "documents_path"
+    ] = "tests/testdata/input_logdata/wineventlog_raw.jsonl"
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
 
     test_output, _, _ = get_test_output(config_path)
+    assert test_output, "should not be empty"
     store_latest_test_output(expected_output, test_output)
 
     expected_output = parse_jsonl(expected_output_path)

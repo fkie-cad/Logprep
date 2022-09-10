@@ -28,7 +28,7 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
     def test_store_custom_appends_document_to_variable(self, _):
         self.object.store_custom(self.document, target="whatever")
         assert len(self.object.events) == 1
-        assert self.object.events[0] == self.document
+        assert self.object.events[0] == {"whatever": self.document}
 
     @mock.patch("logprep.connector.jsonl.output.JsonlOutput._write_json")
     def test_store_maintains_order_of_documents(self, _):
@@ -58,7 +58,7 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
     def test_write_document_to_file_on_store_custom(self, _):
         self.object.store_custom(self.document, target="whatever")
         self.object._write_json.assert_called_with(
-            self.object._config.output_file_custom, self.document
+            self.object._config.output_file_custom, {"whatever": self.document}
         )
 
     @mock.patch("logprep.connector.jsonl.output.JsonlOutput._write_json")

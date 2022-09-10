@@ -65,11 +65,14 @@ def test_events_labeled_correctly(
     )
 
     set_config(config_template, specific_rules, generic_rules, schema)
-    config_template["input"]["jsonl"]["documents_path"] = str(tmp_path / "wineventlog_raw.jsonl")
+    config_template["input"]["jsonl"][
+        "documents_path"
+    ] = "/home/vagrant/external_work/Logprep/tests/testdata/input_logdata/wineventlog_raw.jsonl"
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config_template)
 
     test_output, _, _ = get_test_output(config_path)
+    assert test_output, "should not be empty"
     store_latest_test_output(expected_output, test_output)
 
     expected_output = parse_jsonl(expected_output_path)

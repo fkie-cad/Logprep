@@ -60,6 +60,7 @@ class JsonlOutput(Output):
         JsonlOutput._write_json(self._config.output_file, document)
 
     def store_custom(self, document: dict, target: str):
+        document = {target: document}
         self.events.append(document)
 
         if self._config.output_file_custom:
