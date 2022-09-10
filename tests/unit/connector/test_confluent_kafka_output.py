@@ -79,8 +79,8 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase, CommonConfluentKafkaTestCa
         kafka_producer.produce.assert_called()
         mock_produce_call = kafka_producer.produce.mock_calls[0]
         assert self.CONFIG.get("error_topic") in mock_produce_call[1]
-        assert "value" in mock_produce_call.kwargs
-        mock_produce_call_value = mock_produce_call.kwargs.get("value")
+        assert "value" in mock_produce_call[2]
+        mock_produce_call_value = mock_produce_call[2].get("value")
         mock_produce_call_value = json.loads(mock_produce_call_value.decode("utf8"))
         assert "error" in mock_produce_call_value
         assert "original" in mock_produce_call_value
