@@ -85,7 +85,9 @@ class TestConfiguration:
 
     def test_verify_verifies_connector_config(self):
         self.assert_fails_when_replacing_key_with_value(
-            "connector", {"type": "unknown"}, 'Unknown connector type: "unknown"'
+            "input",
+            {"random_name": {"type": "unknown"}},
+            "Invalid connector configuration: Unknown type 'unknown'",
         )
 
     @pytest.mark.parametrize(
@@ -278,7 +280,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
                     )
                 ],
             ),
@@ -318,11 +320,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: another_processor_name - Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: another_processor_name - Unknown type 'does_not_exist'",
                     ),
                 ],
             ),
@@ -369,7 +371,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
                     )
                 ],
             ),
@@ -409,11 +411,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: another_processor_name - Unknown processor type 'does_not_exist'",
+                        "Invalid processor config: another_processor_name - Unknown type 'does_not_exist'",
                     ),
                 ],
             ),
@@ -427,7 +429,7 @@ class TestConfiguration:
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - The processor type specification is missing for processor with name 'some_processor_name'",
+                        "Invalid processor config: some_processor_name - The type specification is missing for element with name 'some_processor_name'",
                     ),
                 ],
             ),
@@ -446,31 +448,11 @@ class TestConfiguration:
         else:
             config._verify_metrics_config()
 
-    def test_set_option_raises_deprecation_warning_on_old_hmac_option_position(self, caplog):
-        config = deepcopy(self.config)
-        config["connector"]["consumer"]["hmac"] = {
-            "target": "foo",
-            "key": "bar",
-            "output_field": "bu",
-        }
-
-        with caplog.at_level(logging.WARNING):
-            config._verify_connector(getLogger("test-logger"))
-
-            expected_warning_message = (
-                "[Deprecation]: you are currently using a configuration format that will be "
-                "outdated in the next major release (version 4.0.0). The hmac options will move "
-                "from the keyword 'consumer' to the subkey 'preprocessing', consider changing to "
-                "the new config format. [Expires with logprep=4.0.0]"
-            )
-            assert len(caplog.messages) == 1
-            assert expected_warning_message == caplog.messages[0]
-
     def test_set_option_does_not_raise_deprecation_warning_on_new_hmac_option_position(
         self, caplog
     ):
         config = deepcopy(self.config)
-        config["connector"]["consumer"]["preprocessing"] = {
+        config["input"]["kafka_input"]["preprocessing"] = {
             "hmac": {"target": "foo", "key": "bar", "output_field": "bu"}
         }
 
