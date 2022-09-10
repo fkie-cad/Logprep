@@ -1,6 +1,6 @@
 """This module contains a dummy input that can be used for testing purposes."""
-from attrs import define, field, Factory
 from typing import List, Union
+from attrs import define
 from logprep.abc.input import Input, SourceDisconnectedError
 
 

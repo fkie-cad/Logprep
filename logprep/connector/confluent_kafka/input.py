@@ -1,7 +1,7 @@
 """This module contains functionality that allows to obtain records from kafka."""
-
+import sys
 import json
-from functools import cached_property, partial
+from functools import partial
 from logging import Logger
 from socket import getfqdn
 from typing import Any, List, Union
@@ -11,6 +11,11 @@ from confluent_kafka import Consumer
 
 from logprep.abc.input import CriticalInputError, Input
 from logprep.util.validators import dict_with_keys_validator
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class ConfluentKafkaInput(Input):

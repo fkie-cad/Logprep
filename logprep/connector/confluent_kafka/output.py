@@ -1,8 +1,8 @@
 """This module contains functionality that allows to establish a connection with kafka."""
-
+import sys
 import json
 from datetime import datetime
-from functools import cached_property, partial
+from functools import partial
 from socket import getfqdn
 from typing import List, Optional
 
@@ -10,8 +10,12 @@ from attrs import define, field, validators
 from confluent_kafka import Producer
 
 from logprep.abc.output import Output, CriticalOutputError
-from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.util.validators import dict_with_keys_validator
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class ConfluentKafkaOutput(Output):

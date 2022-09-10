@@ -1,8 +1,12 @@
 """This module contains a dummy input that can be used for testing purposes."""
-
-from functools import cached_property
+import sys
 from logprep.connector.json.input import JsonInput
 from logprep.util.json_handling import parse_jsonl
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 class JsonlInput(JsonInput):
