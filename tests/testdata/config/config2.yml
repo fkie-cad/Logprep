@@ -11,18 +11,28 @@ pipeline:
       generic_rules:
         - tests/testdata/unit/labeler/rules/generic/
 
-connector:
-  type: confluentkafka
-  bootstrapservers:
-    - 127.0.0.1:9092
-  consumer:
+input:
+  kafka:
+    type: confluentkafka_input
+    bootstrapservers:
+      - 127.0.0.1:9092
     topic: consumer3
     group: cgroup3
     auto_commit: on
     session_timeout: 6000
     offset_reset_policy: smallest
     enable_auto_offset_store: true
-  producer:
+    ssl:
+      cafile:
+      certfile:
+      keyfile:
+      password:
+
+output:
+  kafka:
+    type: confluentkafka_output
+    bootstrapservers:
+      - 127.0.0.1:9092
     topic: producer3
     error_topic: producer_error3
     ack_policy: all
@@ -31,8 +41,8 @@ connector:
     linger_duration: 0
     flush_timeout: 30
     send_timeout: 2
-  ssl:
-    cafile:
-    certfile:
-    keyfile:
-    password:
+    ssl:
+      cafile:
+      certfile:
+      keyfile:
+      password:
