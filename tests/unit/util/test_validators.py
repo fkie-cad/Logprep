@@ -231,7 +231,7 @@ class TestDictStructureValidator:
         }
         with pytest.raises(
             InvalidConfigurationError,
-            match=r"'some_option' has wrong type <class 'str'>, expected typing.Optional\[int\].",
+            match=r"'some_option' has wrong type <class 'str'>, expected [typing\.Optional\[int\]|typing\.Union\[int, NoneType\]].",
         ):
             dict_structure_validator(None, None, value, reference_dict)
 
