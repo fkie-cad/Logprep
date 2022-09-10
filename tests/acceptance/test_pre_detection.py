@@ -1,6 +1,4 @@
 #!/usr/bin/python3
-import pytest
-
 from tests.acceptance.util import *
 from logprep.util.helper import recursive_compare
 from logprep.util.json_handling import dump_config_as_file, parse_jsonl
@@ -9,34 +7,21 @@ basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(me
 logger = getLogger("Logprep-Test")
 
 
-@pytest.fixture
-def config():
-    """Default logprep configuration"""
-    config_yml = {
-        "process_count": 1,
-        "timeout": 0.1,
-        "profile_pipelines": False,
-        "pipeline": [
-            {
-                "pre_detector": {
-                    "type": "pre_detector",
-                    "pre_detector_topic": "pre_detector_topic",
-                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
-                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
-                    "tree_config": "tests/testdata/acceptance/pre_detector/tree_config.json",
-                }
-            }
-        ],
-        "connector": {
-            "type": "writer",
-            "output_path": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
-            "input_path": "tests/testdata/input_logdata/kafka_raw_event_for_pre_detector.jsonl",
-        },
-    }
-    return config_yml
+pipeline = [
+    {
+        "pre_detector": {
+            "type": "pre_detector",
+            "pre_detector_topic": "pre_detector_topic",
+            "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
+            "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
+            "tree_config": "tests/testdata/acceptance/pre_detector/tree_config.json",
+        }
+    },
+]
 
 
-def test_events_pre_detected_correctly(tmp_path, config):
+def test_events_pre_detected_correctly(tmp_path):
+    config = get_default_logprep_config(pipeline_config=pipeline, with_hmac=False)
     expected_output = "pre_detection_expected.jsonl"
     expected_output_path = path.join("tests/testdata/acceptance/expected_result", expected_output)
 
