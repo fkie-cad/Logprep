@@ -129,7 +129,7 @@ class Input(Connector):
         """
         return None, self._get_raw_event(timeout)
 
-    def get_next(self, timeout: float) -> tuple[dict, str]:
+    def get_next(self, timeout: float) -> Tuple[dict, str]:
         """Return the next document, blocking if none is available.
 
         Parameters
@@ -165,7 +165,7 @@ class Input(Connector):
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
 
-    def _add_hmac_to(self, event_dict, raw_event) -> tuple[dict, str]:
+    def _add_hmac_to(self, event_dict, raw_event) -> Tuple[dict, str]:
         """
         Calculates an HMAC (Hash-based message authentication code) based on a given target field
         and adds it to the given event. If the target field has the value '<RAW_MSG>' the full raw
