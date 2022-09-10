@@ -67,7 +67,7 @@ def test_events_labeled_correctly(
     set_config(config_template, specific_rules, generic_rules, schema)
     config_template["input"]["jsonl"][
         "documents_path"
-    ] = "/home/vagrant/external_work/Logprep/tests/testdata/input_logdata/wineventlog_raw.jsonl"
+    ] = "tests/testdata/input_logdata/wineventlog_raw.jsonl"
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config_template)
 
