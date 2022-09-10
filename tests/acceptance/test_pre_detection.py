@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+# pylint: disable=missing-docstring
 from tests.acceptance.util import *
 from logprep.util.helper import recursive_compare
 from logprep.util.json_handling import dump_config_as_file, parse_jsonl
@@ -39,7 +39,7 @@ def test_events_pre_detected_correctly(tmp_path):
     result_detections = get_difference_detections(test_output_documents, expected_output_documents)
     assert (
         result_detections["difference"][0] == result_detections["difference"][1]
-    ), "Missmatch in event at line {}!".format(result_detections["event_line_no"])
+    ), f"Missmatch in event at line {result_detections['event_line_no']}!"
 
     test_output_detections = [event for event in test_output if "mitre" in event.keys()]
     expected_output_detections = [event for event in expected_output if "mitre" in event.keys()]
@@ -49,7 +49,7 @@ def test_events_pre_detected_correctly(tmp_path):
     )
     assert (
         result_detections["difference"][0] == result_detections["difference"][1]
-    ), "Missmatch in event at line {}!".format(result_detections["event_line_no"])
+    ), f"Missmatch in event at line {result_detections['event_line_no']}!"
 
 
 def get_difference_detections(test_output, expected_output):
