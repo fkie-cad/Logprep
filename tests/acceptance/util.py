@@ -74,7 +74,7 @@ def store_latest_test_output(target_output_identifier, output_of_test):
 def get_test_output(config_path):
     patched_runner = get_patched_runner(config_path, logger)
 
-    test_output_path = patched_runner._configuration["connector"]["output_path"]
+    test_output_path = list(patched_runner._configuration["output"].values())[0].get("output_file")
     remove_file_if_exists(test_output_path)
 
     patched_runner.start()
@@ -108,18 +108,13 @@ class TmpFileProducerMock:
         ...
 
 
-def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory, tmp_path):
+def mock_kafka_and_run_pipeline(config, input_test_event, tmp_path):
     # create kafka connector manually and add custom mock consumer and mock producer objects
-    kafka_in = Factory.create(config["connector"], logger)
-    kafka_out = Factory.create(config["connector"], logger)
-    kafka_out.connect_input(kafka_in)
-    kafka_in.connect_output(kafka_out)
-    kafka_in._consumer = SingleMessageConsumerJsonMock(input_test_event)
+    kafka_in = Factory.create(config["input"], logger)
+    kafka_out = Factory.create(config["output"], logger)
+    kafka_in.get_next.return_value = (input_test_event, None)
     output_file_path = join(tmp_path, "kafka_out.txt")
     kafka_out._producer = TmpFileProducerMock(output_file_path)
-
-    mock_connector_factory.return_value = (kafka_in, kafka_out)
-
     # Create, setup and execute logprep pipeline
     pipeline = Pipeline(
         pipeline_index=1,
@@ -130,6 +125,8 @@ def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory
         shared_dict={},
     )
     pipeline._setup()
+    pipeline._input = kafka_in
+    pipeline._output = kafka_out
     pipeline._retrieve_and_process_data()
 
     return output_file_path
@@ -141,35 +138,28 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
         "timeout": 0.1,
         "profile_pipelines": False,
         "pipeline": pipeline_config,
-        "connector": {
-            "type": "confluentkafka",
-            "bootstrapservers": ["testserver:9092"],
-            "consumer": {
-                "topic": "test_input_raw",
-                "group": "test_consumergroup",
-                "auto_commit": False,
-                "session_timeout": 654321,
-                "enable_auto_offset_store": True,
-                "offset_reset_policy": "latest",
-            },
-            "producer": {
-                "topic": "test_input_processed",
-                "error_topic": "test_error_producer",
-                "ack_policy": "1",
-                "compression": "gzip",
-                "maximum_backlog": 987654,
-                "send_timeout": 2,
-                "flush_timeout": 30,
-                "linger_duration": 4321,
-            },
+        "input": {
+            "jsonl": {
+                "type": "jsonl_input",
+                "documents_path": "tests/testdata/input_logdata/kafka_raw_event_for_pre_detector.jsonl",
+            }
+        },
+        "output": {
+            "jsonl": {
+                "type": "jsonl_output",
+                "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
+            }
         },
     }
 
     if with_hmac:
-        config_yml["connector"]["consumer"]["hmac"] = {
-            "target": "<RAW_MSG>",
-            "key": "secret",
-            "output_field": "hmac",
+        input_config = config_yml.get("input").get("jsonl")
+        input_config["preprocessing"] = {
+            "hmac": {
+                "target": "<RAW_MSG>",
+                "key": "secret",
+                "output_field": "hmac",
+            }
         }
 
     return config_yml
