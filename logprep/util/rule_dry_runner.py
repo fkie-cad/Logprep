@@ -6,7 +6,7 @@ import shutil
 import tempfile
 from copy import deepcopy
 from difflib import ndiff
-from os import path
+from pathlib import Path
 
 from colorama import Fore, Back
 from ruamel.yaml import YAML
@@ -41,14 +41,15 @@ def get_runner_outputs(patched_runner):
     """
     parsed_outputs = []
     output_paths = [
-        patched_runner._configuration["connector"].get("output_path", None),
-        patched_runner._configuration["connector"].get("output_path_custom", None),
-        patched_runner._configuration["connector"].get("output_path_errors", None),
+        patched_runner._configuration["output"]["jsonl_output"].get("output_file", None),
+        patched_runner._configuration["output"]["jsonl_output"].get("output_file_custom", None),
+        patched_runner._configuration["output"]["jsonl_output"].get("output_file_error", None),
     ]
     output_paths = [output_path for output_path in output_paths if output_path]
 
     for output_path in output_paths:
         remove_file_if_exists(output_path)
+        Path(output_path).touch()
 
     patched_runner.start()
 
@@ -93,9 +94,17 @@ class DryRunner:
             self._config_yml = yaml.load(yaml_file)
         self._full_output = full_output
         self._use_json = use_json
-        self._config_yml["connector"] = {
-            "type": "writer_json_input" if use_json else "writer",
-            "input_path": dry_run,
+        self._config_yml["input"] = {
+            "json_input": {
+                "type": "json_input" if use_json else "jsonl_input",
+                "documents_path": dry_run,
+            }
+        }
+        self._config_yml["output"] = {
+            "jsonl_output": {
+                "type": "jsonl_output",
+                "output_file": dry_run,
+            }
         }
         self._config_yml["process_count"] = 1
         self._logger = logger
@@ -106,21 +115,22 @@ class DryRunner:
         config_path = self._patch_config(tmp_path)
         patched_runner = get_patched_runner(config_path, self._logger)
         test_output, test_output_custom, test_output_error = get_runner_outputs(patched_runner)
-        input_path = self._config_yml["connector"]["input_path"]
+        input_path = self._config_yml["input"]["json_input"]["documents_path"]
         input_data = parse_json(input_path) if self._use_json else parse_jsonl(input_path)
         self._print_output_results(input_data, test_output, test_output_custom, test_output_error)
         shutil.rmtree(tmp_path)
 
     def _patch_config(self, tmp_path):
         """Generate a config file on disk which contains the output jsonl files in a tmp dir."""
-        self._config_yml["connector"]["output_path"] = path.join(tmp_path, "output.jsonl")
-        self._config_yml["connector"]["output_path_custom"] = path.join(
-            tmp_path, "output_custom.jsonl"
-        )
-        self._config_yml["connector"]["output_path_errors"] = path.join(
-            tmp_path, "output_errors.jsonl"
-        )
-        config_path = path.join(tmp_path, "generated_config.yml")
+        tmp_path = Path(tmp_path)
+        output_file = tmp_path / "output.jsonl"
+        output_file_custom = tmp_path / "output_custom.jsonl"
+        output_file_error = tmp_path / "output_errors.jsonl"
+        output_config = self._config_yml["output"]["jsonl_output"]
+        output_config["output_file"] = str(output_file)
+        output_config["output_file_custom"] = str(output_file_custom)
+        output_config["output_file_error"] = str(output_file_error)
+        config_path = str(tmp_path / "generated_config.yml")
         dump_config_as_file(config_path, self._config_yml)
         return config_path
 
