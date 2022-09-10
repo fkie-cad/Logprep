@@ -99,30 +99,6 @@ class TmpFileProducerMock:
         ...
 
 
-def mock_kafka_and_run_pipeline(config, input_test_event, tmp_path):
-    # create kafka connector manually and add custom mock consumer and mock producer objects
-    kafka_in = Factory.create(config["input"], logger)
-    kafka_out = Factory.create(config["output"], logger)
-    kafka_in.get_next.return_value = (input_test_event, None)
-    output_file_path = join(tmp_path, "kafka_out.txt")
-    kafka_out._producer = TmpFileProducerMock(output_file_path)
-    # Create, setup and execute logprep pipeline
-    pipeline = Pipeline(
-        pipeline_index=1,
-        config=config,
-        counter=SharedCounter(),
-        log_handler=Handler(),
-        lock=Lock(),
-        shared_dict={},
-    )
-    pipeline._setup()
-    pipeline._input = kafka_in
-    pipeline._output = kafka_out
-    pipeline._retrieve_and_process_data()
-
-    return output_file_path
-
-
 def get_default_logprep_config(pipeline_config, with_hmac=True):
     config_yml = {
         "process_count": 1,
