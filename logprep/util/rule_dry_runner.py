@@ -201,13 +201,13 @@ class DryRunner:
         for test_items in test_output_error:
             color_print_title(Back.RED, "ERROR")
 
-            json_message = json.dumps(test_items[0], sort_keys=True, indent=4)
+            json_message = test_items.get("error_message")
             color_print_line(Back.BLACK, Fore.RED, json_message)
 
-            json_original = json.dumps(test_items[1], sort_keys=True, indent=4)
-            json_processed = json.dumps(test_items[2], sort_keys=True, indent=4)
+            json_original = test_items.get("document_received")
+            json_processed = test_items.get("document_processed")
 
-            diff = ndiff(json_original.splitlines(), json_processed.splitlines())
+            diff = ndiff(str(json_original), str(json_processed))
             color_print_title(Back.YELLOW, "PARTIALLY PROCESSED EVENT")
             self._print_ndiff_items(diff)
         log_message = "^^^ RESULTS CAN NOT BE SHOWN UNTIL ALL ERRORS HAVE BEEN FIXED ^^^"
