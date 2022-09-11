@@ -127,7 +127,6 @@ class Input(Connector):
         -------
         (event, raw_event)
         """
-        return None, self._get_raw_event(timeout)
 
     def get_next(self, timeout: float) -> Tuple[dict, str]:
         """Return the next document, blocking if none is available.

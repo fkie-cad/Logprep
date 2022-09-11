@@ -294,6 +294,11 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result, _ = connector.get_next(0.01)
         assert result == {"any": "content", "version_info": "something random"}
 
+    def test_get_raw_event_is_callable(self):
+        # should be overwritten for special implementation
+        result = self.object._get_raw_event(0.001)
+        assert result is None
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):

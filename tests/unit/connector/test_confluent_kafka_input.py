@@ -89,3 +89,49 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_config.update({"offset_reset_policy": "invalid"})
         with pytest.raises(ValueError, match=r"'offset_reset_policy' must be in.*got 'invalid'"):
             _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_next_raises_critical_input_error_if_not_a_dict(self, _):
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
+        with pytest.raises(CriticalInputError, match=r"could not be parsed as dict"):
+            self.object.get_next(1)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_next_raises_critical_input_error_if_unvalid_json(self, _):
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = "I'm not valid json".encode("utf8")
+        with pytest.raises(CriticalInputError, match=r"not a valid json"):
+            self.object.get_next(1)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_event_returns_event_and_raw_event(self, _):
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+        event, raw_event = self.object._get_event(0.001)
+        assert event == {"element": "in list"}
+        assert raw_event == '{"element":"in list"}'.encode("utf8")
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_raw_event_is_callable(self, _):  # pylint: disable=arguments-differ
+        # should be overwritten if reimplemented
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+        result = self.object._get_raw_event(0.001)
+        assert result
