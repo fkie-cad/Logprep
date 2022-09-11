@@ -40,10 +40,10 @@ class DummyOutput(Output):
     ]
 
     def __init__(
-            self,
-            name: str,
-            configuration: "Connector.Config",
-            logger: Logger,
+        self,
+        name: str,
+        configuration: "Connector.Config",
+        logger: Logger,
     ):
         super().__init__(name, configuration, logger)
         self.events = []
