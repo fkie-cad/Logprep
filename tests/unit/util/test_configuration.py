@@ -433,6 +433,57 @@ class TestConfiguration:
                     ),
                 ],
             ),
+            (
+                "metrics configured without errors",
+                {
+                    "metrics": {
+                        "period": 10,
+                        "enabled": True,
+                        "cumulative": True,
+                        "aggregate_processes": True,
+                        "measure_time": {"enabled": True, "append_to_event": False},
+                        "targets": [
+                            {"prometheus": {"port": 8000}},
+                            {
+                                "file": {
+                                    "path": "./logs/status.json",
+                                    "rollover_interval": 86400,
+                                    "backup_count": 10,
+                                }
+                            },
+                        ],
+                    }
+                },
+                [],
+            ),
+            (
+                "measure_time enabled key is missing",
+                {
+                    "metrics": {
+                        "period": 10,
+                        "enabled": True,
+                        "cumulative": True,
+                        "aggregate_processes": True,
+                        "measure_time": {"append_to_event": False},
+                        "targets": [
+                            {"prometheus": {"port": 8000}},
+                            {
+                                "file": {
+                                    "path": "./logs/status.json",
+                                    "rollover_interval": 86400,
+                                    "backup_count": 10,
+                                }
+                            },
+                        ],
+                    }
+                },
+                [
+                    (
+                        RequiredConfigurationKeyMissingError,
+                        "Required option is missing: The following option keys for the measure time configs are missing: {'enabled'}",
+                    )
+                ],
+            ),
         ],
     )
     def test_verify_errors_get_collected(self, config_dict, raised_errors, test_case):
