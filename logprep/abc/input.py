@@ -105,7 +105,7 @@ class Input(Connector):
         return bool(self._config.preprocessing.get("version_info_target_field"))
 
     def _get_raw_event(self, timeout: float) -> bytearray:
-        """Implements the details how to get the event
+        """Implements the details how to get the raw event
 
         Parameters
         ----------

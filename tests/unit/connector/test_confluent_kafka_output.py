@@ -6,7 +6,9 @@
 # pylint: disable=no-self-use
 
 import json
+import pytest
 from unittest import mock
+from logprep.abc.output import CriticalOutputError
 
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseConnectorTestCase
@@ -108,3 +110,9 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase, CommonConfluentKafkaTestCa
         kafka_producer = self.object._producer
         self.object.shut_down()
         kafka_producer.flush.assert_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_create_confluent_settings_contains_expected_values2(self, _):
+        self.object._producer.produce.side_effect = BaseException
+        with pytest.raises(CriticalOutputError, match=r"Error storing output document:"):
+            self.object.store({"message": "test message"})
