@@ -55,10 +55,6 @@ class ConfigurationForTests:
     counter = SharedCounter()
 
 
-class NotJsonSerializableMock:
-    pass
-
-
 class ProcessorWarningMockError(ProcessingWarning):
     def __init__(self):
         super().__init__("ProcessorWarningMockError")
@@ -529,6 +525,14 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._output.store.return_value = None
         self.pipeline._retrieve_and_process_data()
         self.pipeline._input.batch_finished_callback.assert_not_called()
+
+    def test_retrieve_and_process_data_calls_store_failed_for_non_critical_error_message(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, "This is non critical")
+        self.pipeline._retrieve_and_process_data()
+        self.pipeline._output.store_failed.assert_called_with(
+            "This is non critical", {"some": "event"}, None
+        )
 
 
 class TestMultiprocessingPipeline(ConfigurationForTests):
