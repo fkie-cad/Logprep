@@ -5,6 +5,7 @@ New output endpoint types are created by implementing it.
 """
 
 from abc import abstractmethod
+from logging import Logger
 from typing import Optional
 
 from .connector import Connector
@@ -32,6 +33,14 @@ class WarningOutputError(OutputError):
 
 class Output(Connector):
     """Connect to a source for log data."""
+
+    __slots__ = {"input_connector"}
+
+    input_connector: Connector
+
+    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self.input_connector = None
 
     @abstractmethod
     def store(self, document: dict) -> Optional[bool]:

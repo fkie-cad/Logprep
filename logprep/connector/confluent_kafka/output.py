@@ -122,7 +122,9 @@ class ConfluentKafkaOutput(Output):
         configured input
         """
         self.store_custom(document, self._config.topic)
-        return True
+        self.metrics.number_of_processed_events += 1
+        if self.input_connector:
+            self.input_connector.batch_finished_callback()
 
     def store_custom(self, document: dict, target: str) -> None:
         """Write document to Kafka into target topic.

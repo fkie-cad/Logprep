@@ -268,6 +268,8 @@ class TestPipeline(ConfigurationForTests):
     def test_output_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"order": 1}, None)
+        self.pipeline._output.metrics = mock.MagicMock()
+        self.pipeline._output.metrics.number_of_warnings = 0
         self.pipeline._retrieve_and_process_data()
         self.pipeline._output.store.side_effect = WarningOutputError
         self.pipeline._retrieve_and_process_data()
@@ -276,6 +278,7 @@ class TestPipeline(ConfigurationForTests):
         assert self.pipeline._input.get_next.call_count == 3
         assert mock_warning.call_count == 1
         assert self.pipeline._output.store.call_count == 3
+        assert self.pipeline._output.metrics.number_of_warnings == 1
 
     @mock.patch("logging.Logger.warning")
     def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
@@ -371,6 +374,8 @@ class TestPipeline(ConfigurationForTests):
 
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"test": "message"}, None)
+        self.pipeline._output.metrics = mock.MagicMock()
+        self.pipeline._output.metrics.number_of_errors = 0
         self.pipeline._output.store.side_effect = raise_critical
         self.pipeline._retrieve_and_process_data()
         self.pipeline._output.store_failed.assert_called()
@@ -379,6 +384,7 @@ class TestPipeline(ConfigurationForTests):
             r"A critical error occurred for output .*: mock output error",
             mock_error.call_args[0][0],
         ), "error message is logged"
+        assert self.pipeline._output.metrics.number_of_errors == 1, "counts error metric"
 
     @mock.patch("logging.Logger.warning")
     def test_warning_output_error_is_logged(self, mock_warning, _):
@@ -513,14 +519,9 @@ class TestPipeline(ConfigurationForTests):
         assert called_input_config.get("version_information").get("logprep"), "ensure values"
         assert called_input_config.get("version_information").get("configuration"), "ensure values"
 
-    def test_pipeline_calls_batch_finished_callback_if_output_store_returns_true(self, _):
+    def test_create_connectors_connects_output_with_input(self, _):
         self.pipeline._setup()
-        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
-        self.pipeline._input.batch_finished_callback = mock.MagicMock()
-        self.pipeline._output.store = mock.MagicMock()
-        self.pipeline._output.store.return_value = True
-        self.pipeline._retrieve_and_process_data()
-        self.pipeline._input.batch_finished_callback.assert_called()
+        assert self.pipeline._output.input_connector == self.pipeline._input
 
     def test_pipeline_does_not_call_batch_finished_callback_if_output_store_does_not_return_true(
         self, _

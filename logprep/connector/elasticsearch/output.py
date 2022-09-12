@@ -116,6 +116,10 @@ class ElasticsearchOutput(Output):
         document : dict
            Document to store.
 
+        Returns
+        -------
+        Returns True to inform the pipeline to call the batch_finished_callback method in the
+        configured input
         """
         self._message_backlog[self._processed_cnt] = document
         currently_processed_cnt = self._processed_cnt + 1
@@ -134,10 +138,8 @@ class ElasticsearchOutput(Output):
             except helpers.BulkIndexError as error:
                 self._handle_bulk_index_error(error)
             self._processed_cnt = 0
-
-            # TODO has to be done on pipeline level
-            # if self._input:
-            #     self._input.batch_finished_callback()
+            if self.input_connector:
+                self.input_connector.batch_finished_callback()
         else:
             self._processed_cnt = currently_processed_cnt
 
@@ -204,7 +206,7 @@ class ElasticsearchOutput(Output):
         """
         raise FatalOutputError(f"{error.args[1]} in document {error.args[0]}")
 
-    def store(self, document: dict):
+    def store(self, document: dict) -> bool:
         """Store a document in the index.
 
         Parameters
@@ -212,11 +214,16 @@ class ElasticsearchOutput(Output):
         document : dict
            Document to store.
 
+        Returns
+        -------
+        Returns True to inform the pipeline to call the batch_finished_callback method in the
+        configured input
         """
         if document.get("_index") is None:
             document = self._build_failed_index_document(document, "Missing index in document")
 
         self._add_dates(document)
+        self.metrics.number_of_processed_events += 1
         self._write_to_es(document)
 
     def _build_failed_index_document(self, message_document: dict, reason: str):
@@ -248,6 +255,7 @@ class ElasticsearchOutput(Output):
         """
         document["_index"] = target
         self._add_dates(document)
+        self.metrics.number_of_processed_events += 1
         self._write_to_es(document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):

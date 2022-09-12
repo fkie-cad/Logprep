@@ -174,6 +174,7 @@ class Pipeline:
         connector_name = list(output_connector_config.keys())[0]
         output_connector_config[connector_name]["metric_labels"] = self._metric_labels
         self._output = Factory.create(output_connector_config, self._logger)
+        self._output.input_connector = self._input
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(
                 f"Created input connector '{self._input.describe()}' " f"({current_process().name})"
@@ -245,9 +246,7 @@ class Pipeline:
                 self._processing_counter.increment()
                 self._processing_counter.print_if_ready()
                 if event:
-                    call_batch_finished_callback = self._output.store(event)
-                    if call_batch_finished_callback:
-                        self._input.batch_finished_callback()
+                    self._output.store(event)
                     if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                         self._logger.debug("Stored output")
         except SourceDisconnectedError as error:
@@ -257,6 +256,7 @@ class Pipeline:
             self._input.metrics.number_of_warnings += 1
         except WarningOutputError as error:
             self._logger.warning(f"An error occurred for output {self._output.describe()}: {error}")
+            self._output.metrics.number_of_warnings += 1
         except CriticalInputError as error:
             msg = f"A critical error occurred for input {self._input.describe()}: {error}"
             self._logger.error(msg)
@@ -268,6 +268,7 @@ class Pipeline:
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})
+            self._output.metrics.number_of_errors += 1
 
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):

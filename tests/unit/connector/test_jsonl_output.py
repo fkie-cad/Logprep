@@ -95,3 +95,22 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
         self.object.setup()
         mock_open.assert_called()
         assert mock_open.call_count == 1
+
+    @mock.patch("builtins.open")
+    def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
+        assert self.object.metrics.number_of_processed_events == 0
+        self.object.store({"message": "my event message"})
+        assert self.object.metrics.number_of_processed_events == 1
+
+    @mock.patch("builtins.open")
+    def test_store_calls_batch_finished_callback(self, _):  # pylint: disable=arguments-differ
+        self.object.input_connector = mock.MagicMock()
+        self.object.store({"message": "my event message"})
+        self.object.input_connector.batch_finished_callback.assert_called()
+
+    @mock.patch("builtins.open")
+    def test_store_calls_batch_finished_callback_without_errors(
+        self, _
+    ):  # pylint: disable=arguments-differ
+        self.object.input_connector = mock.MagicMock()
+        self.object.store({"message": "my event message"})

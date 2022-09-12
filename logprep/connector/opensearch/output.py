@@ -126,6 +126,7 @@ class OpenSearchOutput(Output):
                     max_retries=self._config.max_retries,
                     chunk_size=self._config.message_backlog_size,
                 )
+                self.metrics.number_of_processed_events += currently_processed_cnt
             except opensearch.SerializationError as error:
                 self._handle_serialization_error(error)
             except opensearch.ConnectionError as error:
@@ -133,10 +134,8 @@ class OpenSearchOutput(Output):
             except opensearch.helpers.BulkIndexError as error:
                 self._handle_bulk_index_error(error)
             self._processed_cnt = 0
-
-            # TODO resolve on pipeline level
-            # if self._input:
-            #     self._input.batch_finished_callback()
+            if self.input_connector:
+                self.input_connector.batch_finished_callback()
         else:
             self._processed_cnt = currently_processed_cnt
 
@@ -212,6 +211,10 @@ class OpenSearchOutput(Output):
         document : dict
            Document to store.
 
+        Returns
+        -------
+        Returns True to inform the pipeline to call the batch_finished_callback method in the
+        configured input
         """
         if document.get("_index") is None:
             document = self._build_failed_index_document(document, "Missing index in document")

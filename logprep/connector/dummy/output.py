@@ -61,6 +61,9 @@ class DummyOutput(Output):
             if exception is not None:
                 raise Exception(exception)
         self.events.append(document)
+        self.metrics.number_of_processed_events += 1
+        if self.input_connector:
+            self.input_connector.batch_finished_callback()
 
     def store_custom(self, document: dict, target: str):
         self.store(document)
