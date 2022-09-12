@@ -43,8 +43,8 @@ class ConfigurationForTests:
         "version": 1,
         "timeout": 0.001,
         "print_processed_period": 600,
-        "input": {"type": "dummy_input", "documents": [{"test": "empty"}]},
-        "output": {"type": "dummy_output"},
+        "input": {"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
+        "output": {"dummy": {"type": "dummy_output"}},
         "pipeline": [{"mock_processor1": {"proc": "conf"}}, {"mock_processor2": {"proc": "conf"}}],
         "metrics": {"period": 300, "enabled": False},
     }
@@ -128,21 +128,22 @@ class TestPipeline(ConfigurationForTests):
 
     def test_empty_documents_are_not_forwarded_to_other_processors(self, _):
         assert len(self.pipeline._pipeline) == 0
+        self.pipeline._setup()
         input_data = [{"do_not_delete": "1"}, {"delete_me": "2"}, {"do_not_delete": "3"}]
-        connector_config = {"type": "dummy_input", "documents": input_data}
-        input_configuration = Configuration.create("dummy", connector_config)
-        input_connector = DummyInput("dummy", input_configuration, mock.MagicMock())
+        connector_config = {"dummy": {"type": "dummy_input", "documents": input_data}}
+        input_connector = original_create(connector_config, mock.MagicMock())
         self.pipeline._input = input_connector
-        output_configuration = Configuration.create("dummy", self.logprep_config.get("output"))
-        self.pipeline._output = DummyOutput("dummy", output_configuration, mock.MagicMock())
-        delete_config = {
-            "type": "deleter",
-            "specific_rules": ["tests/testdata/unit/deleter/rules/specific"],
-            "generic_rules": ["tests/testdata/unit/deleter/rules/generic"],
+        self.pipeline._output = original_create(
+            {"dummy": {"type": "dummy_output"}}, mock.MagicMock()
+        )
+        deleter_config = {
+            "deleter processor": {
+                "type": "deleter",
+                "specific_rules": ["tests/testdata/unit/deleter/rules/specific"],
+                "generic_rules": ["tests/testdata/unit/deleter/rules/generic"],
+            }
         }
-        processor_configuration = Configuration.create("delete processor", delete_config)
-        processor_configuration.metric_labels = {}
-        deleter_processor = Deleter("deleter processor", processor_configuration, mock.MagicMock())
+        deleter_processor = original_create(deleter_config, mock.MagicMock())
         deleter_rule = DeleterRule._create_from_dict({"filter": "delete_me", "delete": True})
         deleter_processor._specific_tree.add_rule(deleter_rule)
         self.pipeline._pipeline = [mock.MagicMock(), deleter_processor, mock.MagicMock()]
@@ -250,6 +251,8 @@ class TestPipeline(ConfigurationForTests):
     @mock.patch("logging.Logger.warning")
     def test_input_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
+        self.pipeline._input.metrics = mock.MagicMock()
+        self.pipeline._input.metrics.number_of_warnings = 0
         self.pipeline._input.get_next.return_value = ({"order": 1}, None)
         self.pipeline._retrieve_and_process_data()
         self.pipeline._input.get_next.side_effect = WarningInputError
@@ -259,6 +262,7 @@ class TestPipeline(ConfigurationForTests):
         assert self.pipeline._input.get_next.call_count == 3
         assert mock_warning.call_count == 1
         assert self.pipeline._output.store.call_count == 2
+        assert self.pipeline._input.metrics.number_of_warnings == 1
 
     @mock.patch("logging.Logger.warning")
     def test_output_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
@@ -332,6 +336,8 @@ class TestPipeline(ConfigurationForTests):
             raise CriticalInputError("mock input error", args)
 
         self.pipeline._setup()
+        self.pipeline._input.metrics = mock.MagicMock()
+        self.pipeline._input.metrics.number_of_errors = 0
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._input.get_next.side_effect = raise_critical
         self.pipeline._retrieve_and_process_data()
@@ -342,6 +348,7 @@ class TestPipeline(ConfigurationForTests):
         ), "error message is logged"
         assert self.pipeline._output.store_failed.call_count == 1, "one error is stored"
         assert self.pipeline._output.store.call_count == 0, "no event is stored"
+        assert self.pipeline._input.metrics.number_of_errors == 1, "counts error metric"
 
     @mock.patch("logging.Logger.warning")
     def test_input_warning_is_logged(self, mock_warning, _):

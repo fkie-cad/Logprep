@@ -16,6 +16,7 @@ from prometheus_client import Gauge
 
 from logprep._version import get_versions
 from logprep.abc import Processor
+from logprep.abc.connector import Connector
 from logprep.framework.pipeline import Pipeline
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric_exposer import MetricExposer
@@ -111,8 +112,19 @@ def fixture_full_pipeline_metrics():
         generic_rule_tree=generic_rule_tree_metrics,
         specific_rule_tree=specific_rule_tree_metrics,
     )
+
+    input_metrics = Connector.ConnectorMetrics(
+        labels={"pipeline": "pipeline-01", "connector": "input"}
+    )
+    output_metrics = Connector.ConnectorMetrics(
+        labels={"pipeline": "pipeline-01", "connector": "output"}
+    )
+
     pipeline_metrics = Pipeline.PipelineMetrics(
-        labels={"pipeline": "pipeline-01"}, pipeline=[generic_adder_metrics, normalizer_metrics]
+        input=input_metrics,
+        output=output_metrics,
+        labels={"pipeline": "pipeline-01"},
+        pipeline=[generic_adder_metrics, normalizer_metrics],
     )
     return pipeline_metrics
 
@@ -232,6 +244,20 @@ class TestMetricFileTarget:
                                     "logprep_mean_processing_time": 0.0,
                                 },
                             },
+                        },
+                    },
+                    "connector": {
+                        "input": {
+                            "logprep_connector_mean_processing_time_per_event": 0.0,
+                            "logprep_connector_number_of_processed_events": 0.0,
+                            "logprep_connector_number_of_warnings": 0.0,
+                            "logprep_connector_number_of_errors": 0.0,
+                        },
+                        "output": {
+                            "logprep_connector_mean_processing_time_per_event": 0.0,
+                            "logprep_connector_number_of_processed_events": 0.0,
+                            "logprep_connector_number_of_warnings": 0.0,
+                            "logprep_connector_number_of_errors": 0.0,
                         },
                     },
                     "logprep_pipeline_kafka_offset": 0.0,

@@ -41,7 +41,10 @@ class Connector(Component):
 
     def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
         super().__init__(name, configuration, logger)
-        self.metric_labels = {"type": "input" if self._config.type.endswith("_input") else "output"}
+        self.metric_labels = self._config.metric_labels
+        self.metric_labels.update(
+            {"connector": "input" if self._config.type.endswith("_input") else "output"}
+        )
         self.metrics = self.ConnectorMetrics(
             labels=self.metric_labels,
         )

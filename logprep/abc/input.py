@@ -157,6 +157,7 @@ class Input(Connector):
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
         if event and self._add_version_info:
             self._add_version_information_to_event(event)
+        self.metrics.number_of_processed_events += 1
         return event, non_critical_error_msg
 
     def _add_version_information_to_event(self, event: dict):

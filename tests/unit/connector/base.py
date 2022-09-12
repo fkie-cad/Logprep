@@ -3,6 +3,7 @@
 import base64
 import json
 import zlib
+import pytest
 from abc import ABC
 from copy import deepcopy
 from logging import getLogger
@@ -10,7 +11,7 @@ from typing import Iterable
 from unittest import mock
 
 from logprep.abc.connector import Connector
-from logprep.abc.input import Input
+from logprep.abc.input import Input, WarningInputError
 from logprep.abc.output import Output
 from logprep.factory import Factory
 from logprep.util.helper import camel_to_snake
@@ -298,6 +299,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
         # should be overwritten for special implementation
         result = self.object._get_raw_event(0.001)
         assert result is None
+
+    def test_connector_metrics_counts_processed_events(self):
+        assert self.object.metrics.number_of_processed_events == 0
+        self.object._get_event = mock.MagicMock(return_value=({"message": "test"}, None))
+        self.object.get_next(0.01)
+        assert self.object.metrics.number_of_processed_events == 1
 
 
 class BaseOutputTestCase(BaseConnectorTestCase):

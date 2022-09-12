@@ -16,6 +16,7 @@ import attrs
 import numpy as np
 
 from logprep._version import get_versions
+from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
     FatalInputError,
@@ -63,6 +64,10 @@ class Pipeline:
 
         _prefix: str = "logprep_pipeline_"
 
+        input: Connector.ConnectorMetrics
+        """Input metrics"""
+        output: Connector.ConnectorMetrics
+        """Output metrics"""
         pipeline: List["Processor.ProcessorMetrics"] = attrs.Factory(list)
         """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
@@ -123,7 +128,7 @@ class Pipeline:
             self._logprep_config.get("metrics", {}), metric_targets, shared_dict, lock
         )
         self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
-        self.metrics = self.PipelineMetrics(labels=self._metric_labels)
+        # self.metrics = self.PipelineMetrics(labels=self._metric_labels)
 
         self._event_version_information = {
             "logprep": get_versions().get("version"),
@@ -132,8 +137,14 @@ class Pipeline:
 
     def _setup(self):
         self._create_logger()
-        self._build_pipeline()
         self._create_connectors()
+        self._create_metrics()
+        self._build_pipeline()
+
+    def _create_metrics(self):
+        self.metrics = self.PipelineMetrics(
+            input=self._input.metrics, output=self._output.metrics, labels=self._metric_labels
+        )
 
     def _build_pipeline(self):
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
@@ -155,9 +166,14 @@ class Pipeline:
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Creating connectors ({current_process().name})")
         input_connector_config = self._logprep_config.get("input")
+        connector_name = list(input_connector_config.keys())[0]
+        input_connector_config[connector_name]["metric_labels"] = self._metric_labels
         self._input = Factory.create(input_connector_config, self._logger)
         input_connector_config.update({"version_information": self._event_version_information})
-        self._output = Factory.create(self._logprep_config.get("output"), self._logger)
+        output_connector_config = self._logprep_config.get("output")
+        connector_name = list(output_connector_config.keys())[0]
+        output_connector_config[connector_name]["metric_labels"] = self._metric_labels
+        self._output = Factory.create(output_connector_config, self._logger)
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(
                 f"Created input connector '{self._input.describe()}' " f"({current_process().name})"
@@ -238,6 +254,7 @@ class Pipeline:
             raise error
         except WarningInputError as error:
             self._logger.warning(f"An error occurred for input {self._input.describe()}: {error}")
+            self._input.metrics.number_of_warnings += 1
         except WarningOutputError as error:
             self._logger.warning(f"An error occurred for output {self._output.describe()}: {error}")
         except CriticalInputError as error:
@@ -245,6 +262,7 @@ class Pipeline:
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, event)
+            self._input.metrics.number_of_errors += 1
         except CriticalOutputError as error:
             msg = f"A critical error occurred for output " f"{self._output.describe()}: {error}"
             self._logger.error(msg)
