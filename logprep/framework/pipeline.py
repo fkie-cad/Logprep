@@ -136,7 +136,7 @@ class Pipeline:
         self._create_connectors()
 
     def _build_pipeline(self):
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Building '{current_process().name}'")
         self._pipeline = []
         for entry in self._logprep_config.get("pipeline"):
@@ -145,24 +145,24 @@ class Pipeline:
             processor = Factory.create(entry, self._logger)
             self._pipeline.append(processor)
             self.metrics.pipeline.append(processor.metrics)
-            if self._logger.isEnabledFor(DEBUG):
+            if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
             self._pipeline[-1].setup()
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Finished building pipeline ({current_process().name})")
 
     def _create_connectors(self):
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Creating connectors ({current_process().name})")
         input_connector_config = self._logprep_config.get("input")
         self._input = Factory.create(input_connector_config, self._logger)
         input_connector_config.update({"version_information": self._event_version_information})
         self._output = Factory.create(self._logprep_config.get("output"), self._logger)
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(
                 f"Created input connector '{self._input.describe()}' " f"({current_process().name})"
             )
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(
                 f"Created output connector '{self._output.describe()}' "
                 f"({current_process().name})"
@@ -170,7 +170,7 @@ class Pipeline:
 
         self._input.setup()
         self._output.setup()
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Finished creating connectors ({current_process().name})")
 
     def _create_logger(self):
@@ -188,7 +188,7 @@ class Pipeline:
         self._setup()
         self._enable_iteration()
         try:
-            if self._logger.isEnabledFor(DEBUG):
+            if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug("Start iterating (%s)", current_process().name)
             while self._iterate():
                 self._retrieve_and_process_data()
@@ -232,7 +232,7 @@ class Pipeline:
                     call_batch_finished_callback = self._output.store(event)
                     if call_batch_finished_callback:
                         self._input.batch_finished_callback()
-                    if self._logger.isEnabledFor(DEBUG):
+                    if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                         self._logger.debug("Stored output")
         except SourceDisconnectedError as error:
             raise error
@@ -282,7 +282,7 @@ class Pipeline:
                         processor.metrics.number_of_warnings += 1
 
                 if not event:
-                    if self._logger.isEnabledFor(DEBUG):
+                    if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                         self._logger.debug(f"Event deleted by processor {processor}")
                     return
         # pylint: disable=broad-except
@@ -302,7 +302,7 @@ class Pipeline:
         # pylint: enable=broad-except
 
     def _store_extra_data(self, extra_data: tuple):
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug("Storing extra data")
         documents = extra_data[0]
         target = extra_data[1]

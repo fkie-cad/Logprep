@@ -152,7 +152,7 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug("%s process event %s", self, event)
         self._strategy.process(
             event,
@@ -191,7 +191,7 @@ class Processor(Component):
                 rules = self.rule_class.create_rules_from_file(rule_path)
                 for rule in rules:
                     self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             number_specific_rules = self._specific_tree.metrics.number_of_rules
             self._logger.debug(
                 f"{self.describe()} loaded {number_specific_rules} "

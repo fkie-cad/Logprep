@@ -59,7 +59,7 @@ class Dropper(Processor):
     def _apply_rules(self, event: dict, rule: DropperRule):
         """Drops fields from event Logs."""
 
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"{self.describe()} processing matching event")
         for drop_field in rule.fields_to_drop:
             self._try_dropping_field(event, drop_field, rule.drop_full)
