@@ -81,3 +81,19 @@ class TestTimeMeasurement:
         dropper.process(event)
         assert dropper.metrics.mean_processing_time_per_event > 0
         assert dropper.metrics._mean_processing_time_sample_counter == 1
+
+    def test_time_measurement_decorator_updates_connectors_processing_time_statistic(self):
+        TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
+        TimeMeasurement.APPEND_TO_EVENT = False
+
+        dummy_input_config = {"Dummy": {"type": "dummy_input", "documents": [{}, {}]}}
+
+        dummy_input = Factory.create(
+            dummy_input_config,
+            logging.getLogger("test-logger"),
+        )
+        assert dummy_input.metrics.mean_processing_time_per_event == 0
+        assert dummy_input.metrics._mean_processing_time_sample_counter == 0
+        dummy_input.get_next(0.001)
+        assert dummy_input.metrics.mean_processing_time_per_event > 0
+        assert dummy_input.metrics._mean_processing_time_sample_counter == 1

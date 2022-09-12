@@ -16,6 +16,7 @@ from typing import Tuple, Optional
 from attrs import define, field, validators
 
 from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.time_measurement import TimeMeasurement
 from .connector import Connector
 from ..util.validators import dict_structure_validator
 
@@ -128,6 +129,7 @@ class Input(Connector):
         (event, raw_event)
         """
 
+    @TimeMeasurement.measure_time()
     def get_next(self, timeout: float) -> Tuple[dict, str]:
         """Return the next document, blocking if none is available.
 
