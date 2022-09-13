@@ -1,6 +1,5 @@
 ## Upcoming Changes
 
-### Breaking
 
 ## Next Release
 ### Breaking

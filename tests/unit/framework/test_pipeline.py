@@ -18,9 +18,6 @@ from logprep.abc.input import (
     CriticalInputError,
 )
 from logprep.abc.output import WarningOutputError, CriticalOutputError, FatalOutputError
-from logprep.configuration import Configuration
-from logprep.connector.dummy.input import DummyInput
-from logprep.connector.dummy.output import DummyOutput
 from logprep.factory import Factory
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
@@ -31,7 +28,6 @@ from logprep.framework.pipeline import (
 )
 from logprep.metrics.metric import MetricTargets
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
-from logprep.processor.deleter.processor import Deleter
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
@@ -509,7 +505,9 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.metrics.pipeline = [mock_metrics_one, mock_metrics_two]
         assert self.pipeline.metrics.number_of_errors == 2
 
-    def test_create_connector_adds_verions_information_to_input_connector_config(self, mock_create):
+    def test_create_connector_adds_versions_information_to_input_connector_config(
+        self, mock_create
+    ):
         self.pipeline._create_logger()
         self.pipeline._create_connectors()
         called_input_config = mock_create.call_args_list[0][0][0]

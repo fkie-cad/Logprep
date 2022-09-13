@@ -214,7 +214,7 @@ class Input(Connector):
     def _add_version_information_to_event(self, event: dict):
         """Add the version information to the event"""
         target_field = self._config.preprocessing.get("version_info_target_field")
-        add_field_to(event, target_field, self._config.version_information)
+        add_field_to(event, target_field, self._config._version_information)
 
     def _add_hmac_to(self, event_dict, raw_event) -> Tuple[dict, str]:
         """
