@@ -2,7 +2,8 @@
 JsonlOutput
 ----------------------
 
-The JsonlOutput Connector can be used to 
+The JsonlOutput Connector can be used to write processed documents to .jsonl
+files.
 
 ..  code-block:: yaml
 
@@ -12,18 +13,11 @@ Example
     :linenos:
 
     output:
-      my_confluent_kafka_output:
-        type: confluentkafka_output
-        bootstrapservers: [127.0.0.1:9200]
-        topic: my_default_topic
-        error_topic: my_error_topic
-        flush_timeout: 0.2
-        send_timeout: 0
-        compression: gzip
-        maximum_backlog: 100000
-        ack_policy: -1
-        linger_duration: 0.5
-        ssl: {"cafile": None, "certfile": None, "keyfile": None, "password": None}     
+      my_jsonl_output:
+        type: jsonl_output
+        output_file = path/to/output.file
+        output_file_custom = ""
+        output_file_error = ""    
 """
 
 import json
@@ -78,6 +72,7 @@ class JsonlOutput(Output):
 
     @staticmethod
     def _write_json(filepath: str, line: dict):
+        """writes processed document to configured file"""
         with open(filepath, "a+", encoding="utf8") as file:
             file.write(f"{json.dumps(line)}\n")
 

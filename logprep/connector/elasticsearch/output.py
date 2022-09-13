@@ -51,7 +51,7 @@ class ElasticsearchOutput(Output):
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
-        """Elasticsearch Output Config"""
+        """Elastic/Opensearch Output Config"""
 
         hosts: List[str] = field(
             validator=validators.deep_iterable(
@@ -60,7 +60,7 @@ class ElasticsearchOutput(Output):
             ),
             default=[],
         )
-        """Addresses of elasticsearch servers. Can be a list of hosts or one single host in the format HOST:PORT
+        """Addresses of elasticsearch/opensearch servers. Can be a list of hosts or one single host in the format HOST:PORT
            without specifying a schema. The schema is set automatically to https if a certificate is being used."""
         default_index: str = field(validator=validators.instance_of(str))
         """Default index to write to if no index was set in the document or the document could not be indexed.

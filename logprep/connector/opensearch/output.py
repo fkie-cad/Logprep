@@ -1,5 +1,5 @@
 """
-ElasticsearchOutput
+OpensearchOutput
 -------------------
 
 This section contains the connection settings for Elasticsearch, the default
@@ -11,8 +11,8 @@ Example
 ..  code-block::yaml
     :linenos:
     output:
-        myelasticsearch_output:
-            type: elasticsearch_output
+        myopensearch_output:
+            type: opensearch_output
             hosts:
                 - 127.0.0.1:9200
             default_index: default_index
@@ -25,15 +25,8 @@ Example
             cert: /path/to/cert.crt
 """
 
-import json
 import logging
-import re
-import ssl
 import sys
-from typing import List, Optional
-
-import arrow
-from attrs import define, field, validators
 import opensearchpy as opensearch
 from logprep.abc.output import FatalOutputError, Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
@@ -49,38 +42,6 @@ logging.getLogger("opensearch").setLevel(logging.WARNING)
 class OpensearchOutput(ElasticsearchOutput):
     """An OpenSearch output connector."""
 
-    __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
-
-    _message_backlog: List
-
-    _processed_cnt: int
-
-    _index_cache: dict
-
-    def __init__(self, name: str, configuration: "Input.Config", logger: logging.Logger):
-        super().__init__(name, configuration, logger)
-        self._message_backlog = [
-            {"_index": self._config.default_index}
-        ] * self._config.message_backlog_size
-        self._processed_cnt = 0
-        self._index_cache = {}
-
-    @cached_property
-    def ssl_context(self):
-        return ssl.create_default_context(cafile=self._config.cert) if self._config.cert else None
-
-    @property
-    def schema(self):
-        return "https" if self._config.cert else "http"
-
-    @property
-    def http_auth(self):
-        return (
-            (self._config.user, self._config.secret)
-            if self._config.user and self._config.secret
-            else None
-        )
-
     @cached_property
     def _search_context(self):
         return opensearch.OpenSearch(
@@ -91,16 +52,12 @@ class OpensearchOutput(ElasticsearchOutput):
             timeout=self._config.timeout,
         )
 
-    @cached_property
-    def _replace_pattern(self):
-        return re.compile(r"%{\S+?}")
-
     def describe(self) -> str:
         """Get name of Elasticsearch endpoint with the host.
 
         Returns
         -------
-        elasticsearch_output : ElasticsearchOutput
+        opensearch_output : OpensearchOutput
             Acts as output connector for Elasticsearch.
 
         """
@@ -131,7 +88,6 @@ class OpensearchOutput(ElasticsearchOutput):
                     max_retries=self._config.max_retries,
                     chunk_size=self._config.message_backlog_size,
                 )
-                self.metrics.number_of_processed_events += currently_processed_cnt
             except opensearch.SerializationError as error:
                 self._handle_serialization_error(error)
             except opensearch.ConnectionError as error:
@@ -168,26 +124,6 @@ class OpensearchOutput(ElasticsearchOutput):
 
         opensearch.helpers.bulk(self._search_context, error_documents)
 
-    def _handle_connection_error(self, error: ConnectionError):
-        """Handle connection error for OpenSearch bulk indexing.
-
-        No documents will be sent if there is no connection to begin with.
-        Therefore, it won't result in duplicates once the the data is resent.
-        If the connection is lost during indexing, duplicate documents could be sent.
-
-        Parameters
-        ----------
-        error : ConnectionError
-           ConnectionError for the error message.
-
-        Raises
-        ------
-        FatalOutputError
-            This causes a pipeline rebuild and gives an appropriate error log message.
-
-        """
-        raise FatalOutputError(error.error)
-
     def _handle_serialization_error(self, error: opensearch.SerializationError):
         """Handle serialization error for OpenSearch bulk indexing.
 
@@ -207,84 +143,3 @@ class OpensearchOutput(ElasticsearchOutput):
 
         """
         raise FatalOutputError(f"{error.args[1]} in document {error.args[0]}")
-
-    def store(self, document: dict):
-        """Store a document in the index.
-
-        Parameters
-        ----------
-        document : dict
-           Document to store.
-
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
-        """
-        if document.get("_index") is None:
-            document = self._build_failed_index_document(document, "Missing index in document")
-
-        self._add_dates(document)
-        self._write_to_search_context(document)
-
-    def _build_failed_index_document(self, message_document: dict, reason: str):
-        document = {
-            "reason": reason,
-            "@timestamp": arrow.now().isoformat(),
-            "_index": self._config.default_index,
-        }
-        try:
-            document["message"] = json.dumps(message_document)
-        except TypeError:
-            document["message"] = str(message_document)
-        return document
-
-    def store_custom(self, document: dict, target: str):
-        """Write document to OpenSearch into the target index.
-
-        Parameters
-        ----------
-        document : dict
-            Document to be stored into the target index.
-        target : str
-            Index to store the document in.
-        Raises
-        ------
-        CriticalOutputError
-            Raises if any error except a BufferError occurs while writing into OpenSearch.
-
-        """
-        document["_index"] = target
-        self._add_dates(document)
-        self._write_to_search_context(document)
-
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
-        """Write errors into error topic for documents that failed processing.
-
-        Parameters
-        ----------
-        error_message : str
-           Error message to write into Kafka document.
-        document_received : dict
-            Document as it was before processing.
-        document_processed : dict
-            Document after processing until an error occurred.
-
-        """
-        error_document = {
-            "error": error_message,
-            "original": document_received,
-            "processed": document_processed,
-            "@timestamp": arrow.now().isoformat(),
-            "_index": self._config.error_index,
-        }
-        self._add_dates(error_document)
-        self._write_to_search_context(error_document)
-
-    def _add_dates(self, document):
-        date_format_matches = self._replace_pattern.findall(document["_index"])
-        if date_format_matches:
-            now = arrow.now()
-            for date_format_match in date_format_matches:
-                formatted_date = now.format(date_format_match[2:-1])
-                document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])

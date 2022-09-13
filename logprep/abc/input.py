@@ -223,12 +223,13 @@ class Input(Connector):
         self.metrics.number_of_processed_events += 1
         return event, non_critical_error_msg
 
-    def _add_version_information_to_event(self, event: dict):
-        target_field = self._config.preprocessing.get("version_info_target_field")
-        add_field_to(event, target_field, self._config.version_information)
-
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
+
+    def _add_version_information_to_event(self, event: dict):
+        """Add the version information to the event"""
+        target_field = self._config.preprocessing.get("version_info_target_field")
+        add_field_to(event, target_field, self._config.version_information)
 
     def _add_hmac_to(self, event_dict, raw_event) -> Tuple[dict, str]:
         """
