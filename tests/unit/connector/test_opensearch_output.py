@@ -17,7 +17,6 @@ import arrow
 import opensearchpy
 import opensearchpy.helpers
 
-from logprep.connector.opensearch.output import OpenSearchOutput
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
@@ -60,7 +59,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_describe_endpoint_returns_opensearch_output(self):
         assert (
             self.object.describe()
-            == "OpenSearchOutput (Test Instance Name) - ElasticSearch Output: ['host:123']"
+            == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['host:123']"
         )
 
     def test_store_sends_event_to_expected_index_if_index_missing_in_event(self):

@@ -19,6 +19,7 @@ class Connector(Component):
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
+        """Helper to calculate mean processing time"""
         number_of_warnings: int = 0
         """Number of warnings that occurred while processing events"""
         number_of_errors: int = 0

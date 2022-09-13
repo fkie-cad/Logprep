@@ -1,4 +1,28 @@
-"""This module contains functionality that allows to obtain records from kafka."""
+"""
+Confluentkafka
+==============
+
+Logprep uses Confluent-Kafka-Python as client library to communicate with kafka-clusters.
+Important information sources are `Confluent-Kafka-Python-Repo <https://github.com/confluentinc/confluent-kafka-python>`_,
+`Confluent-Kafka-Python-Doku 1 <https://docs.confluent.io/current/clients/confluent-kafka-python/>`_ (comprehensive but out-dated description),
+`Confluent-Kafka-Python-Doku 2 <https://docs.confluent.io/current/clients/python.html#>`_ (currently just a brief description) and the C-library `librdkafka <https://github.com/edenhill/librdkafka>`_, which is built on Confluent-Kafka-Python.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    input:
+      mykafka:
+        type: confluentkafka_input
+        bootstrapservers: [127.0.0.1:9092]
+        topic: consumer
+        group: cgroup
+        auto_commit: on
+        session_timeout: 6000
+        offset_reset_policy: smallest
+"""
 import sys
 import json
 from functools import partial
@@ -26,6 +50,7 @@ class ConfluentKafkaInput(Input):
         """Common Configurations"""
 
         bootstrapservers: List[str]
+        """Servers...."""
         topic: str = field(validator=validators.instance_of(str))
         group: str = field(validator=validators.instance_of(str))
         enable_auto_offset_store: bool = field(

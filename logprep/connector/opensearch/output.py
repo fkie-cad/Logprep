@@ -20,7 +20,7 @@ else:
 logging.getLogger("opensearch").setLevel(logging.WARNING)
 
 
-class OpenSearchOutput(Output):
+class OpensearchOutput(Output):
     """An OpenSearch output connector."""
 
     @define(kw_only=True, slots=False)
@@ -100,7 +100,7 @@ class OpenSearchOutput(Output):
 
         """
         base_description = super().describe()
-        return f"{base_description} - ElasticSearch Output: {self._config.hosts}"
+        return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
     def _write_to_os(self, document):
         """Writes documents from a buffer into OpenSearch indices.

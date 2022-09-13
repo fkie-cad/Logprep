@@ -66,6 +66,7 @@ class Input(Connector):
             """Hmac Configurations"""
 
             target: str = field(validator=validators.instance_of(str))
+            """ Field where to write hmac to"""
             key: str = field(validator=validators.instance_of(str))
             output_field: str = field(validator=validators.instance_of(str))
 
