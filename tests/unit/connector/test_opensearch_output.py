@@ -56,7 +56,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         "timeout": 5000,
     }
 
-    def test_describe_endpoint_returns_opensearch_output(self):
+    def test_describe_returns_opensearch_output(self):
         assert (
             self.object.describe()
             == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['host:123']"

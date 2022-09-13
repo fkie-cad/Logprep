@@ -52,7 +52,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         "timeout": 5000,
     }
 
-    def test_describe_endpoint_returns_elasticsearch_output(self):
+    def test_describe_returns_elasticsearch_output(self):
         assert (
             self.object.describe()
             == "ElasticsearchOutput (Test Instance Name) - ElasticSearch Output: ['host:123']"

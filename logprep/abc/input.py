@@ -135,7 +135,6 @@ class Input(Connector):
                 "configuration": "",
             },
         )
-        """TODO: FOOOOOOO, HIDE MEEEEE PLEASEEEE; NO ONE NEEDS TO KNOW MEE"""
 
     __slots__ = []
 
