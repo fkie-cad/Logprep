@@ -15,6 +15,7 @@ class Component(ABC):
         """Common Configurations"""
 
         type: str = field(validator=validators.instance_of(str))
+        """Type of the component"""
 
     __slots__ = ["name", "_logger", "_config"]
 

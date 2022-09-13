@@ -55,7 +55,8 @@ class InfoInputError(InputError):
 @define(kw_only=True)
 class HmacConfig:
     """Hmac Configurations
-    The hmac itself will be calculated with python's hashlib.sha256 algorithm and the compression is based on the zlib library.
+    The hmac itself will be calculated with python's hashlib.sha256 algorithm and the compression
+    is based on the zlib library.
     """
 
     target: str = field(validator=validators.instance_of(str))
@@ -127,7 +128,7 @@ class Input(Connector):
               error is raised.
         """
 
-        version_information: dict = field(
+        _version_information: dict = field(
             validator=validators.instance_of(dict),
             default={
                 "logprep": "",

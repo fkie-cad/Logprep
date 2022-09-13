@@ -1,6 +1,6 @@
-======
-Inputs
-======
+=====
+Input
+=====
 
 .. automodule:: logprep.connector.confluent_kafka.input
 .. autoclass:: logprep.connector.confluent_kafka.input.ConfluentKafkaInput.Config
@@ -29,6 +29,3 @@ Inputs
    :undoc-members:
    :inherited-members:
    :noindex:
-
-
-#  TODO: Fix Factories and Registry in the Documentation
