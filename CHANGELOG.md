@@ -6,12 +6,9 @@
 ### Breaking
 
 * Splitting the general `connector` config into `input` and `output` to compose connector config independendly
-
 * Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
 under the subkey `preprocessing` of the `input` processor
-
 * Removal of Deprecated Feature: `delete` processor was renamed to `deleter`
-
 * Rename `writing_output` connector to `jsonl_output`
 
 ### Features
@@ -19,12 +16,14 @@ under the subkey `preprocessing` of the `input` processor
 * Add an opensearch output connector that can be used to write directly into opensearch.
 * Add an elasticsearch output connector that can be used to write directly into elasticsearch.
 * Split connector config into seperate config keys `input` and `output`
-* add preprocessing capabillities to all input connectors
+* Add preprocessing capabillities to all input connectors
+* Add metrics to connectors
 
 ### Improvements
-* validate connector config on class level via attrs classes
-* implement a common interface to all connectors
-* refactor connector code
+* Validate connector config on class level via attrs classes
+* Implement a common interface to all connectors
+* Refactor connector code
+* Revise the documentation
 
 ### Bugfixes
 ### Breaking
