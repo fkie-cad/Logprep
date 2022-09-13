@@ -1,4 +1,29 @@
-"""This module contains functionality that allows to send events to OpenSearch."""
+"""
+ElasticsearchOutput
+-------------------
+
+This section contains the connection settings for Elasticsearch, the default
+index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
+the amount of times connections are created.
+
+Example
+^^^^^^^
+..  code-block::yaml
+    :linenos:
+    output:
+        myelasticsearch_output:
+            type: elasticsearch_output
+            hosts:
+                - 127.0.0.1:9200
+            default_index: default_index
+            error_index: error_index
+            message_backlog_size: 10000
+            timeout: 10000
+            max_retries:
+            user:
+            secret:
+            cert: /path/to/cert.crt
+"""
 
 import json
 import logging
@@ -11,6 +36,7 @@ import arrow
 from attrs import define, field, validators
 import opensearchpy as opensearch
 from logprep.abc.output import FatalOutputError, Output
+from logprep.connector.elasticsearch.output import ElasticsearchOutput
 
 if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
@@ -20,29 +46,8 @@ else:
 logging.getLogger("opensearch").setLevel(logging.WARNING)
 
 
-class OpensearchOutput(Output):
+class OpensearchOutput(ElasticsearchOutput):
     """An OpenSearch output connector."""
-
-    @define(kw_only=True, slots=False)
-    class Config(Output.Config):
-        """Confluent Kafka Output Config"""
-
-        hosts: List[str] = field(
-            validator=validators.deep_iterable(
-                member_validator=validators.instance_of((str, type(None))),
-                iterable_validator=validators.instance_of(list),
-            ),
-            default=[],
-        )
-        default_index: str = field(validator=validators.instance_of(str))
-        error_index: str = field(validator=validators.instance_of(str))
-        message_backlog_size: int = field(validator=validators.instance_of(int))
-        timeout: int = field(validator=validators.instance_of(int))
-        max_scroll: str = field(validator=validators.instance_of(str), default="2m")
-        max_retries: int = field(validator=validators.instance_of(int), default=1)
-        user: Optional[str] = field(validator=validators.instance_of(str), default="")
-        secret: Optional[str] = field(validator=validators.instance_of(str), default="")
-        cert: Optional[str] = field(validator=validators.instance_of(str), default="")
 
     __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
 
@@ -77,7 +82,7 @@ class OpensearchOutput(Output):
         )
 
     @cached_property
-    def _os(self):
+    def _search_context(self):
         return opensearch.OpenSearch(
             self._config.hosts,
             scheme=self.schema,
@@ -99,10 +104,10 @@ class OpensearchOutput(Output):
             Acts as output connector for Elasticsearch.
 
         """
-        base_description = super().describe()
+        base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
-    def _write_to_os(self, document):
+    def _write_to_search_context(self, document):
         """Writes documents from a buffer into OpenSearch indices.
 
         Writes documents in a bulk if the document buffer limit has been reached.
@@ -121,7 +126,7 @@ class OpensearchOutput(Output):
         if currently_processed_cnt == self._config.message_backlog_size:
             try:
                 opensearch.helpers.bulk(
-                    self._os,
+                    self._search_context,
                     self._message_backlog,
                     max_retries=self._config.max_retries,
                     chunk_size=self._config.message_backlog_size,
@@ -161,7 +166,7 @@ class OpensearchOutput(Output):
             self._add_dates(error_document)
             error_documents.append(error_document)
 
-        opensearch.helpers.bulk(self._os, error_documents)
+        opensearch.helpers.bulk(self._search_context, error_documents)
 
     def _handle_connection_error(self, error: ConnectionError):
         """Handle connection error for OpenSearch bulk indexing.
@@ -220,7 +225,7 @@ class OpensearchOutput(Output):
             document = self._build_failed_index_document(document, "Missing index in document")
 
         self._add_dates(document)
-        self._write_to_os(document)
+        self._write_to_search_context(document)
 
     def _build_failed_index_document(self, message_document: dict, reason: str):
         document = {
@@ -251,7 +256,7 @@ class OpensearchOutput(Output):
         """
         document["_index"] = target
         self._add_dates(document)
-        self._write_to_os(document)
+        self._write_to_search_context(document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Write errors into error topic for documents that failed processing.
@@ -274,7 +279,7 @@ class OpensearchOutput(Output):
             "_index": self._config.error_index,
         }
         self._add_dates(error_document)
-        self._write_to_os(error_document)
+        self._write_to_search_context(error_document)
 
     def _add_dates(self, document):
         date_format_matches = self._replace_pattern.findall(document["_index"])

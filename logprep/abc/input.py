@@ -1,7 +1,5 @@
 """This module provides the abstract base class for all input endpoints.
-
 New input endpoint types are created by implementing it.
-
 """
 
 import base64
@@ -54,21 +52,34 @@ class InfoInputError(InputError):
     """Informational exceptions, e.g. to inform that a timeout occurred"""
 
 
+@define(kw_only=True)
+class HmacConfig:
+    """Hmac Configurations
+    The hmac itself will be calculated with python's hashlib.sha256 algorithm and the compression is based on the zlib library.
+    """
+
+    target: str = field(validator=validators.instance_of(str))
+    """Defines a field inside the log message which should be used for the hmac
+    calculation. If the target field is not found or does not exists an error message
+    is written into the configured output field. If the hmac should be calculated on
+    the full incoming raw message instead of a subfield the target option should be set to
+    :code:`<RAW_MSG>`."""
+    key: str = field(validator=validators.instance_of(str))
+    """The secret key that will be used to calculate the hmac."""
+    output_field: str = field(validator=validators.instance_of(str))
+    """The parent name of the field where the hmac result should be written to in the
+    original incoming log message. As subfields the result will have a field called :code:`hmac`,
+    containing the calculated hmac, and :code:`compressed_base64`, containing the original message
+    that was used to calculate the hmac in compressed and base64 encoded. In case the output
+    field exists already in the original message an error is raised."""
+
+
 class Input(Connector):
     """Connect to a source for log data."""
 
     @define(kw_only=True, slots=False)
     class Config(Connector.Config):
         """Input Configurations"""
-
-        @define(kw_only=True)
-        class HmacConfig:
-            """Hmac Configurations"""
-
-            target: str = field(validator=validators.instance_of(str))
-            """ Field where to write hmac to"""
-            key: str = field(validator=validators.instance_of(str))
-            output_field: str = field(validator=validators.instance_of(str))
 
         preprocessing: dict = field(
             validator=[
@@ -86,6 +97,50 @@ class Input(Connector):
                 "hmac": {"target": "", "key": "", "output_field": ""},
             },
         )
+        """
+        All input connectors support different preprocessing methods:
+        
+        - `version_info_target_field` - If required it is possible to automatically add the logprep
+          version and the used configuration version to every incoming log message. This helps to
+          keep track of the processing of the events when the configuration is changing often. To
+          enable adding the versions to each event the keyword :code:`version_info_target_field`
+          has to be set under the field :code:`preprocessing`. It defines the name of the parent
+          field under which the version info should be given. If the field :code:`preprocessing`
+          and :code:`version_info_target_field` are not present then no version information is
+          added to the event. The following json shows a snippet of an event with the added version
+          information. The configuration was set to :code:`version_info_target_field: version_info`
+            
+          Example
+          ^^^^^^^
+          ..  code-block::json
+              :linenos:
+              
+              {
+                  "Any": "regular event information",
+                  "version_info": {
+                      "logprep": "3.0.0",
+                      "configuration": "1"
+                  },
+                  "rest_of": "event..."
+              }
+
+        - `hmac` - If required it is possible to automatically attach an HMAC to incoming log
+          messages. To activate this preprocessor the following options should be appended to the
+          preprocessor options. This field is completely optional and can also be omitted if no
+          hmac is needed.
+          - `target` - Defines a field inside the log message which should be used for the hmac
+            calculation. If the target field is not found or does not exists an error message
+            is written into the configured output field. If the hmac should be calculated on
+            the full incoming raw message instead of a subfield the target option should be set to
+            :code:`<RAW_MSG>`.
+          - `key` - The secret key that will be used to calculate the hmac.
+          - `output_field` - The parent name of the field where the hmac result should be written
+            to in the original incoming log message. As subfields the result will have a field
+            called :code:`hmac`, containing the calculated hmac, and :code:`compressed_base64`, 
+            containing the original message that was used to calculate the hmac in compressed and
+            base64 encoded. In case the output field exists already in the original message an
+            error is raised.
+        """
 
         version_information: dict = field(
             validator=validators.instance_of(dict),
@@ -94,16 +149,19 @@ class Input(Connector):
                 "configuration": "",
             },
         )
+        """TODO: FOOOOOOO, HIDE MEEEEE PLEASEEEE; NO ONE NEEDS TO KNOW MEE"""
 
     __slots__ = []
 
     @property
     def _add_hmac(self):
+        """Check and return if an hmac should be added or not."""
         hmac_options = self._config.preprocessing.get("hmac")
         return all(bool(hmac_options[option_key]) for option_key in hmac_options)
 
     @property
     def _add_version_info(self):
+        """Check and return if the version info shuold be added to the event."""
         return bool(self._config.preprocessing.get("version_info_target_field"))
 
     def _get_raw_event(self, timeout: float) -> bytearray:
@@ -113,6 +171,11 @@ class Input(Connector):
         ----------
         timeout : float
             timeout
+
+        Returns
+        -------
+        raw_event : bytearray
+            The retrieved raw event
         """
         return None
 
@@ -132,7 +195,7 @@ class Input(Connector):
 
     @TimeMeasurement.measure_time()
     def get_next(self, timeout: float) -> Tuple[dict, str]:
-        """Return the next document, blocking if none is available.
+        """Return the next document
 
         Parameters
         ----------
@@ -148,7 +211,6 @@ class Input(Connector):
         ------
         TimeoutWhileWaitingForInputError
             After timeout (usually a fraction of seconds) if no input data was available by then.
-
         """
         event, raw_event = self._get_event(timeout)
         non_critical_error_msg = None

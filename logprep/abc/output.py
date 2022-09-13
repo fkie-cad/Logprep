@@ -1,7 +1,5 @@
 """This module provides the abstract base class for all output endpoints.
-
 New output endpoint types are created by implementing it.
-
 """
 
 from abc import abstractmethod
@@ -32,7 +30,7 @@ class WarningOutputError(OutputError):
 
 
 class Output(Connector):
-    """Connect to a source for log data."""
+    """Connect to a output destination."""
 
     __slots__ = {"input_connector"}
 
@@ -44,7 +42,7 @@ class Output(Connector):
 
     @abstractmethod
     def store(self, document: dict) -> Optional[bool]:
-        """Store the document.
+        """Store the document in the output destination.
 
         Parameters
         ----------
@@ -54,7 +52,7 @@ class Output(Connector):
 
     @abstractmethod
     def store_custom(self, document: dict, target: str):
-        """Store additional data in a custom location."""
+        """Store additional data in a custom location inside the output destination."""
 
     @abstractmethod
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):

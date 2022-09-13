@@ -1,4 +1,23 @@
-"""This module contains a dummy input that can be used for testing purposes."""
+"""
+JsonInput
+=========
+
+A json input that returns the documents it was initialized with.
+
+If a "document" is derived from BaseException, that exception will be thrown instead of
+returning a document. The exception will be removed and subsequent calls may return documents or
+throw other exceptions in the given order.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    input:
+      myjsoninput:
+        type: json_input
+        documents_path: path/to/a/document.json
+"""
 
 import sys
 
@@ -14,22 +33,15 @@ else:
 
 
 class JsonInput(DummyInput):
-    """A json input that returns the documents it was initialized with.
-
-    If a "document" is derived from BaseException, that exception will be thrown instead of
-    returning a document. The exception will be removed and subsequent calls may return documents or
-    throw other exceptions in the given order.
-
-    Parameters
-    ----------
-    documents_path : string
-       A path to a file in json format with json dicts in a list.
-
-    """
+    """JsonInput Connector"""
 
     @define(kw_only=True)
     class Config(Input.Config):
+        """JsonInput connector specific configuration"""
+
         documents_path: str
+        """A path to a file in json format, with can also include multiple jsons
+        dicts wrapped in a list."""
 
     @cached_property
     def _documents(self):

@@ -151,27 +151,29 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         "logprep.connector.elasticsearch.output.helpers.bulk",
         side_effect=elasticsearch.SerializationError,
     )
-    def test_write_to_es_calls_handle_serialization_error_if_serialization_error(self, _):
+    def test_write_to_search_context_calls_handle_serialization_error_if_serialization_error(
+        self, _
+    ):
         self.object._handle_serialization_error = mock.MagicMock()
-        self.object._write_to_es({"dummy": "event"})
+        self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
         "logprep.connector.elasticsearch.output.helpers.bulk",
         side_effect=elasticsearch.ConnectionError,
     )
-    def test_write_to_es_calls_handle_connection_error_if_connection_error(self, _):
+    def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
         self.object._handle_connection_error = mock.MagicMock()
-        self.object._write_to_es({"dummy": "event"})
+        self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_connection_error.assert_called()
 
     @mock.patch(
         "logprep.connector.elasticsearch.output.helpers.bulk",
         side_effect=elasticsearch.helpers.BulkIndexError,
     )
-    def test_write_to_es_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
+    def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
         self.object._handle_bulk_index_error = mock.MagicMock()
-        self.object._write_to_es({"dummy": "event"})
+        self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_bulk_index_error.assert_called()
 
     @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
@@ -209,12 +211,12 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         assert error_document.get("reason") == "myerrortype: myreason"
         assert error_document.get("message") == json.dumps({"my": "document"})
 
-    def test_write_to_es_sets_processed_cnt(self):
+    def test_write_to_search_context_sets_processed_cnt(self):
         es_config = deepcopy(self.CONFIG)
         es_config.update({"message_backlog_size": 2})
         es_output = Factory.create({"elasticsearch": es_config}, self.logger)
         current_proccessed_cnt = es_output._processed_cnt
-        es_output._write_to_es({"dummy": "event"})
+        es_output._write_to_search_context({"dummy": "event"})
         assert current_proccessed_cnt < es_output._processed_cnt
 
     def test_handle_connection_error_raises_fatal_output_error(self):

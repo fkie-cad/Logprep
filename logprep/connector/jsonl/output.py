@@ -1,4 +1,30 @@
-"""This module contains an output that writes documents to a file."""
+"""
+JsonlOutput
+----------------------
+
+The JsonlOutput Connector can be used to 
+
+..  code-block:: yaml
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    output:
+      my_confluent_kafka_output:
+        type: confluentkafka_output
+        bootstrapservers: [127.0.0.1:9200]
+        topic: my_default_topic
+        error_topic: my_error_topic
+        flush_timeout: 0.2
+        send_timeout: 0
+        compression: gzip
+        maximum_backlog: 100000
+        ack_policy: -1
+        linger_duration: 0.5
+        ssl: {"cafile": None, "certfile": None, "keyfile": None, "password": None}     
+"""
 
 import json
 from logging import Logger

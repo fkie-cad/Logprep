@@ -1,4 +1,33 @@
-"""This module contains functionality that allows to establish a connection with kafka."""
+"""
+ConfluentKafkaOutput
+----------------------
+
+This section contains the connection settings for ConfluentKafka, the default 
+index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce 
+the amount of times connections are created.
+
+..  code-block:: yaml
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    output:
+      my_confluent_kafka_output:
+        type: confluentkafka_output
+        bootstrapservers: [127.0.0.1:9200]
+        topic: my_default_topic
+        error_topic: my_error_topic
+        flush_timeout: 0.2
+        send_timeout: 0
+        compression: gzip
+        maximum_backlog: 100000
+        ack_policy: -1
+        linger_duration: 0.5
+        ssl: {"cafile": None, "certfile": None, "keyfile": None, "password": None}     
+"""
+
 import sys
 import json
 from datetime import datetime

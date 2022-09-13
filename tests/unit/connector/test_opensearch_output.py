@@ -159,27 +159,29 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         "logprep.connector.opensearch.output.opensearch.helpers.bulk",
         side_effect=opensearchpy.SerializationError,
     )
-    def test_write_to_os_calls_handle_serialization_error_if_serialization_error(self, _):
+    def test_write_to_search_context_calls_handle_serialization_error_if_serialization_error(
+        self, _
+    ):
         self.object._handle_serialization_error = mock.MagicMock()
-        self.object._write_to_os({"dummy": "event"})
+        self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
         "logprep.connector.opensearch.output.opensearch.helpers.bulk",
         side_effect=opensearchpy.ConnectionError,
     )
-    def test_write_to_os_calls_handle_connection_error_if_connection_error(self, _):
+    def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
         self.object._handle_connection_error = mock.MagicMock()
-        self.object._write_to_os({"dummy": "event"})
+        self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_connection_error.assert_called()
 
     @mock.patch(
         "logprep.connector.opensearch.output.opensearch.helpers.bulk",
         side_effect=opensearchpy.helpers.BulkIndexError,
     )
-    def test_write_to_os_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
+    def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
         self.object._handle_bulk_index_error = mock.MagicMock()
-        self.object._write_to_os({"dummy": "event"})
+        self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_bulk_index_error.assert_called()
 
     @mock.patch("logprep.connector.opensearch.output.opensearch.helpers.bulk")
@@ -222,7 +224,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         os_config.update({"message_backlog_size": 2})
         os_output = Factory.create({"opensearch": os_config}, self.logger)
         current_proccessed_cnt = os_output._processed_cnt
-        os_output._write_to_os({"dummy": "event"})
+        os_output._write_to_search_context({"dummy": "event"})
         assert current_proccessed_cnt < os_output._processed_cnt
 
     def test_handle_connection_error_raises_fatal_output_error(self):

@@ -1,4 +1,21 @@
-"""This module contains a dummy output that can be used for testing purposes."""
+"""
+DummyOutput
+----------------------
+
+The Dummy Output Connector can be used to store unmodified documents.
+It only requires the connector type to be configured.
+
+..  code-block:: yaml
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    output:
+      my_dummy_output:
+        type: dummy_output    
+"""
 from logging import Logger
 from typing import List
 
@@ -56,6 +73,13 @@ class DummyOutput(Output):
         self.setup_called_count += 1
 
     def store(self, document: dict):
+        """Store the document in the output destination.
+
+        Parameters
+        ----------
+        document : dict
+           Processed log event that will be stored.
+        """
         if self._exceptions:
             exception = self._exceptions.pop(0)
             if exception is not None:
@@ -66,9 +90,11 @@ class DummyOutput(Output):
             self.input_connector.batch_finished_callback()
 
     def store_custom(self, document: dict, target: str):
+        """Store additional data in a custom location inside the output destination."""
         self.store(document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+        """Store an event when an error occurred during the processing."""
         self.failed_events.append((error_message, document_received, document_processed))
 
     def shut_down(self):

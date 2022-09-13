@@ -1,4 +1,29 @@
-"""This module contains functionality that allows to send events to Elasticsearch."""
+"""
+ElasticsearchOutput
+-------------------
+
+This section contains the connection settings for Elasticsearch, the default
+index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
+the amount of times connections are created.
+
+Example
+^^^^^^^
+..  code-block::yaml
+    :linenos:
+    output:
+        myelasticsearch_output:
+            type: elasticsearch_output
+            hosts:
+                - 127.0.0.1:9200
+            default_index: default_index
+            error_index: error_index
+            message_backlog_size: 10000
+            timeout: 10000
+            max_retries:
+            user:
+            secret:
+            cert: /path/to/cert.crt
+"""
 
 import sys
 import json
@@ -26,7 +51,7 @@ class ElasticsearchOutput(Output):
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
-        """Confluent Kafka Output Config"""
+        """Elasticsearch Output Config"""
 
         hosts: List[str] = field(
             validator=validators.deep_iterable(
@@ -35,15 +60,26 @@ class ElasticsearchOutput(Output):
             ),
             default=[],
         )
+        """Addresses of elasticsearch servers. Can be a list of hosts or one single host in the format HOST:PORT
+           without specifying a schema. The schema is set automatically to https if a certificate is being used."""
         default_index: str = field(validator=validators.instance_of(str))
+        """Default index to write to if no index was set in the document or the document could not be indexed.
+           The document will be transformed into a string to prevent rejections by the default index."""
         error_index: str = field(validator=validators.instance_of(str))
+        """Index to write documents to that could not be processed."""
         message_backlog_size: int = field(validator=validators.instance_of(int))
-        timeout: int = field(validator=validators.instance_of(int))
-        max_scroll: str = field(validator=validators.instance_of(str), default="2m")
-        max_retries: int = field(validator=validators.instance_of(int), default=1)
+        """Amount of documents to store before sending them to Elasticsearch."""
+        timeout: int = field(validator=validators.instance_of(int), default=500)
+        """Timeout for Elasticsearch connection (default: 500ms)"""
+        max_retries: int = field(validator=validators.instance_of(int), default=0)
+        """Maximum number of retries for documents rejected with code 429 (default: 0).
+           Increases backoff time by 2 seconds per try, but never exceeds 600 seconds."""
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
+        """The user used for authentication (optional)."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
+        """The secret used for authentication (optional)."""
         cert: Optional[str] = field(validator=validators.instance_of(str), default="")
+        """The path to a SSL certificate to use (optional)"""
 
     __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
 
@@ -53,7 +89,7 @@ class ElasticsearchOutput(Output):
 
     _index_cache: dict
 
-    def __init__(self, name: str, configuration: "Input.Config", logger: Logger):
+    def __init__(self, name: str, configuration: "ElasticsearchOutput.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self._message_backlog = [
             {"_index": self._config.default_index}
@@ -62,15 +98,36 @@ class ElasticsearchOutput(Output):
         self._index_cache = {}
 
     @cached_property
-    def ssl_context(self):
+    def ssl_context(self) -> ssl.SSLContext:
+        """Returns the ssl context
+
+        Returns
+        -------
+        SSLContext
+            The ssl context
+        """
         return ssl.create_default_context(cafile=self._config.cert) if self._config.cert else None
 
     @property
-    def schema(self):
+    def schema(self) -> str:
+        """Returns the shema. `https` if ssl config is set, else `http`
+
+        Returns
+        -------
+        str
+            the shema
+        """
         return "https" if self._config.cert else "http"
 
     @property
-    def http_auth(self):
+    def http_auth(self) -> tuple:
+        """Returns the credentials
+
+        Returns
+        -------
+        tuple
+            the credentials in format (user, secret)
+        """
         return (
             (self._config.user, self._config.secret)
             if self._config.user and self._config.secret
@@ -78,7 +135,14 @@ class ElasticsearchOutput(Output):
         )
 
     @cached_property
-    def _es(self):
+    def _search_context(self) -> elasticsearch.Elasticsearch:
+        """Returns a elasticsearch context
+
+        Returns
+        -------
+        elasticsearch.Elasticsearch
+            the eleasticsearch context
+        """
         return elasticsearch.Elasticsearch(
             self._config.hosts,
             scheme=self.schema,
@@ -103,7 +167,7 @@ class ElasticsearchOutput(Output):
         base_description = super().describe()
         return f"{base_description} - ElasticSearch Output: {self._config.hosts}"
 
-    def _write_to_es(self, document):
+    def _write_to_search_context(self, document):
         """Writes documents from a buffer into Elasticsearch indices.
 
         Writes documents in a bulk if the document buffer limit has been reached.
@@ -126,7 +190,7 @@ class ElasticsearchOutput(Output):
         if currently_processed_cnt == self._config.message_backlog_size:
             try:
                 helpers.bulk(
-                    self._es,
+                    self._search_context,
                     self._message_backlog,
                     max_retries=self._config.max_retries,
                     chunk_size=self._config.message_backlog_size,
@@ -164,7 +228,7 @@ class ElasticsearchOutput(Output):
             error_document = self._build_failed_index_document(data, reason)
             self._add_dates(error_document)
             error_documents.append(error_document)
-        helpers.bulk(self._es, error_documents)
+        helpers.bulk(self._search_context, error_documents)
 
     def _handle_connection_error(self, error: elasticsearch.ConnectionError):
         """Handle connection error for elasticsearch bulk indexing.
@@ -224,7 +288,7 @@ class ElasticsearchOutput(Output):
 
         self._add_dates(document)
         self.metrics.number_of_processed_events += 1
-        self._write_to_es(document)
+        self._write_to_search_context(document)
 
     def _build_failed_index_document(self, message_document: dict, reason: str):
         document = {
@@ -256,7 +320,7 @@ class ElasticsearchOutput(Output):
         document["_index"] = target
         self._add_dates(document)
         self.metrics.number_of_processed_events += 1
-        self._write_to_es(document)
+        self._write_to_search_context(document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Write errors into error topic for documents that failed processing.
@@ -279,7 +343,7 @@ class ElasticsearchOutput(Output):
             "_index": self._config.error_index,
         }
         self._add_dates(error_document)
-        self._write_to_es(error_document)
+        self._write_to_search_context(error_document)
 
     def _add_dates(self, document):
         date_format_matches = self._replace_pattern.findall(document["_index"])

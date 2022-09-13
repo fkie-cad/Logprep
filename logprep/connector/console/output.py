@@ -1,4 +1,21 @@
-"""This module contains a console output that can be used for testing purposes."""
+"""
+ConsoleOutput
+----------------------
+
+This section describes the ConsoleOutput, which pretty prints documents to the
+console and can be used for testing.
+
+..  code-block:: yaml
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    output:
+      my_console_output:
+        type: console_output     
+"""
 import sys
 from pprint import pprint
 
