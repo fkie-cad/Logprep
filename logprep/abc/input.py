@@ -99,7 +99,7 @@ class Input(Connector):
         )
         """
         All input connectors support different preprocessing methods:
-        
+
         - `version_info_target_field` - If required it is possible to automatically add the logprep
           version and the used configuration version to every incoming log message. This helps to
           keep track of the processing of the events when the configuration is changing often. To
@@ -107,39 +107,24 @@ class Input(Connector):
           has to be set under the field :code:`preprocessing`. It defines the name of the parent
           field under which the version info should be given. If the field :code:`preprocessing`
           and :code:`version_info_target_field` are not present then no version information is
-          added to the event. The following json shows a snippet of an event with the added version
-          information. The configuration was set to :code:`version_info_target_field: version_info`
-            
-          Example
-          ^^^^^^^
-          ..  code-block::json
-              :linenos:
-              
-              {
-                  "Any": "regular event information",
-                  "version_info": {
-                      "logprep": "3.0.0",
-                      "configuration": "1"
-                  },
-                  "rest_of": "event..."
-              }
-
+          added to the event.
         - `hmac` - If required it is possible to automatically attach an HMAC to incoming log
           messages. To activate this preprocessor the following options should be appended to the
           preprocessor options. This field is completely optional and can also be omitted if no
           hmac is needed.
-          - `target` - Defines a field inside the log message which should be used for the hmac
-            calculation. If the target field is not found or does not exists an error message
-            is written into the configured output field. If the hmac should be calculated on
-            the full incoming raw message instead of a subfield the target option should be set to
-            :code:`<RAW_MSG>`.
-          - `key` - The secret key that will be used to calculate the hmac.
-          - `output_field` - The parent name of the field where the hmac result should be written
-            to in the original incoming log message. As subfields the result will have a field
-            called :code:`hmac`, containing the calculated hmac, and :code:`compressed_base64`, 
-            containing the original message that was used to calculate the hmac in compressed and
-            base64 encoded. In case the output field exists already in the original message an
-            error is raised.
+
+            - `target` - Defines a field inside the log message which should be used for the hmac
+              calculation. If the target field is not found or does not exists an error message
+              is written into the configured output field. If the hmac should be calculated on
+              the full incoming raw message instead of a subfield the target option should be set to
+              :code:`<RAW_MSG>`.
+            - `key` - The secret key that will be used to calculate the hmac.
+            - `output_field` - The parent name of the field where the hmac result should be written
+              to in the original incoming log message. As subfields the result will have a field
+              called :code:`hmac`, containing the calculated hmac, and :code:`compressed_base64`,
+              containing the original message that was used to calculate the hmac in compressed and
+              base64 encoded. In case the output field exists already in the original message an
+              error is raised.
         """
 
         version_information: dict = field(
