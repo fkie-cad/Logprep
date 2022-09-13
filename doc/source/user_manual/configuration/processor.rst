@@ -15,8 +15,8 @@ Processors
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.delete.processor
-.. autoclass:: logprep.processor.delete.processor.Delete.Config
+.. automodule:: logprep.processor.deleter.processor
+.. autoclass:: logprep.processor.deleter.processor.Deleter.Config
    :members:
    :undoc-members:
    :inherited-members:
