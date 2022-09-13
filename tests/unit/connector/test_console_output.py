@@ -3,10 +3,10 @@
 import sys
 from unittest import mock
 
-from tests.unit.connector.base import BaseConnectorTestCase
+from tests.unit.connector.base import BaseOutputTestCase
 
 
-class TestConsoleOutput(BaseConnectorTestCase):
+class TestConsoleOutput(BaseOutputTestCase):
     CONFIG = {
         "type": "console_output",
     }

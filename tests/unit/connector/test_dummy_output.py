@@ -6,10 +6,10 @@ from pytest import raises, fail
 
 from logprep.abc.output import FatalOutputError
 from logprep.factory import Factory
-from tests.unit.connector.base import BaseConnectorTestCase
+from tests.unit.connector.base import BaseOutputTestCase
 
 
-class TestDummyOutput(BaseConnectorTestCase):
+class TestDummyOutput(BaseOutputTestCase):
     CONFIG = {
         "type": "dummy_output",
     }

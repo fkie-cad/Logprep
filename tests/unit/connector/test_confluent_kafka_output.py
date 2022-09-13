@@ -6,16 +6,17 @@
 # pylint: disable=no-self-use
 
 import json
-import pytest
 from unittest import mock
-from logprep.abc.output import CriticalOutputError
 
+import pytest
+
+from logprep.abc.output import CriticalOutputError
 from logprep.factory import Factory
-from tests.unit.connector.base import BaseConnectorTestCase
+from tests.unit.connector.base import BaseOutputTestCase
 from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
 
 
-class TestConfluentKafkaOutput(BaseConnectorTestCase, CommonConfluentKafkaTestCase):
+class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
     CONFIG = {
         "type": "confluentkafka_output",
         "bootstrapservers": ["testserver:9092"],
@@ -116,3 +117,15 @@ class TestConfluentKafkaOutput(BaseConnectorTestCase, CommonConfluentKafkaTestCa
         self.object._producer.produce.side_effect = BaseException
         with pytest.raises(CriticalOutputError, match=r"Error storing output document:"):
             self.object.store({"message": "test message"})
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_store_counts_processed_events(self, _):
+        assert self.object.metrics.number_of_processed_events == 0
+        self.object.store({"message": "my event message"})
+        assert self.object.metrics.number_of_processed_events == 1
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_store_calls_batch_finished_callback(self, _):
+        self.object.input_connector = mock.MagicMock()
+        self.object.store({"message": "my event message"})
+        self.object.input_connector.batch_finished_callback.assert_called()
