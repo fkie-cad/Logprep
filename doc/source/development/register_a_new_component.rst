@@ -11,14 +11,6 @@ The :py:class:`logprep.registry.Registry` contains all currently supported logpr
 attribute. This exposes it to the :py:class:`logprep.factory.Factory` which can automatically
 create the correct instances, depending on the :code:`type` inside the components configuration.
 
-Currently the following components are available through the registry:
-
-.. autoclass:: logprep.registry.Registry
-   :members:
-   :undoc-members:
-   :exclude-members: get_class
-   :noindex:
-
 Factory
 =======
 
