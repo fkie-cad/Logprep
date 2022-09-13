@@ -294,6 +294,20 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result, _ = connector.get_next(0.01)
         assert result == {"any": "content", "version_info": "something random"}
 
+    def test_pipeline_preprocessing_only_version_information(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "version_info_target_field": "version_info",
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        test_event = {"any": "content", "version_info": "something random"}
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result, _ = connector.get_next(0.01)
+        assert result == {"any": "content", "version_info": "something random"}
+
     def test_get_raw_event_is_callable(self):
         # should be overwritten for special implementation
         result = self.object._get_raw_event(0.001)
