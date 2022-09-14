@@ -380,7 +380,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert isinstance(result[target_field], float)
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_reference_field_not_found(
-            self,
+        self,
     ):
         preprocessing_config = {
             "preprocessing": {
@@ -415,7 +415,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert "arrival_time" in result
 
     def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_log_arrival_timestamp_not(
-            self,
+        self,
     ):
         preprocessing_config = {
             "preprocessing": {
