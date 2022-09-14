@@ -318,3 +318,16 @@ class TestDictStructureValidator:
         }
         reference_dict = {"some_option": str, "sub_options": Optional[SomeNestedOptionClass]}
         dict_structure_validator(None, None, value, reference_dict)
+
+    def test_does_not_raise_on_validation_of_nested_optional_config_object_while_optional_is_missing(
+            self,
+    ):
+        @define(kw_only=True)
+        class SomeNestedOptionClass:
+            expected_str_sub_field: str = field(validator=validators.instance_of(str))
+
+        value = {
+            "some_option": "with string value",
+        }
+        reference_dict = {"some_option": str, "sub_options": Optional[SomeNestedOptionClass]}
+        dict_structure_validator(None, None, value, reference_dict)

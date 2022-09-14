@@ -4,8 +4,8 @@ New input endpoint types are created by implementing it.
 
 import base64
 import hashlib
-import zlib
 import sys
+import zlib
 from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
@@ -19,9 +19,9 @@ from .connector import Connector
 from ..util.validators import dict_structure_validator
 
 if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
+    pass
 else:
-    from functools import cached_property
+    pass
 
 
 class InputError(BaseException):
@@ -140,13 +140,15 @@ class Input(Connector):
 
     @property
     def _add_hmac(self):
-        """Check and return if an hmac should be added or not."""
+        """Check and return if a hmac should be added or not."""
         hmac_options = self._config.preprocessing.get("hmac")
+        if not hmac_options:
+            return False
         return all(bool(hmac_options[option_key]) for option_key in hmac_options)
 
     @property
     def _add_version_info(self):
-        """Check and return if the version info shuold be added to the event."""
+        """Check and return if the version info should be added to the event."""
         return bool(self._config.preprocessing.get("version_info_target_field"))
 
     def _get_raw_event(self, timeout: float) -> bytearray:

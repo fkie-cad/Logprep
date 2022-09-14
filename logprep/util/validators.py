@@ -135,7 +135,7 @@ def _validate_mandatory_dict_keys(key, reference_dict, value):
 
 def _validate_optional_dict_keys(key, reference_dict, value):
     expected_type = _extract_not_none_type(reference_dict[key])
-    if hasattr(expected_type, "__attrs_attrs__"):
+    if key in value.keys() and hasattr(expected_type, "__attrs_attrs__"):
         _ = expected_type(**value[key])
     elif key in value.keys() and not isinstance(value[key], expected_type):
         raise InvalidConfigurationError(
