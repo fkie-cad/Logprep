@@ -5,17 +5,17 @@ New input endpoint types are created by implementing it.
 import base64
 import hashlib
 import zlib
-import arrow
 from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
 from typing import Tuple, Optional
 
+import arrow
 from attrs import define, field, validators
 
+from logprep.abc import Connector
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.abc import Connector
 from logprep.util.validators import dict_structure_validator
 
 
@@ -183,13 +183,17 @@ class Input(Connector):
 
     @property
     def _add_log_arrival_time_information(self):
-        """Check and return if the logarrival time info should be added to the event."""
+        """Check and return if the log arrival time info should be added to the event."""
         return bool(self._config.preprocessing.get("log_arrival_time_target_field"))
 
     @property
     def _add_log_arrival_timedelta_information(self):
-        """Check and return if the logarrival timedelta info should be added to the event."""
-        return bool(self._config.preprocessing.get("log_arrival_timedelta"))
+        """Check and return if the log arrival timedelta info should be added to the event."""
+        log_arrival_timedelta_present = self._add_log_arrival_time_information
+        log_arrival_time_target_field_present = bool(
+            self._config.preprocessing.get("log_arrival_timedelta")
+        )
+        return log_arrival_time_target_field_present & log_arrival_timedelta_present
 
     def _get_raw_event(self, timeout: float) -> bytearray:
         """Implements the details how to get the raw event

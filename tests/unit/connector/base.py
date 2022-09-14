@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import arrow
 import base64
 import json
 import zlib
@@ -9,6 +8,8 @@ from copy import deepcopy
 from logging import getLogger
 from typing import Iterable
 from unittest import mock
+
+import arrow
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import Input
@@ -354,7 +355,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         result, _ = connector.get_next(0.01)
         assert result == {"any": "content", "arrival_time": "does not matter"}
 
-    def test_pipeline_preprocessing_adds_timestamp_delta_if_configured_and_timestamp(self):
+    def test_pipeline_preprocessing_adds_timestamp_delta_if_configured(self):
         preprocessing_config = {
             "preprocessing": {
                 "log_arrival_time_target_field": "arrival_time",
@@ -376,46 +377,60 @@ class BaseInputTestCase(BaseConnectorTestCase):
             .get("target_field")
         )
         assert target_field in result
-        # assert isinstance(test_event[target_field], float)
+        assert isinstance(result[target_field], float)
 
-    def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_not_configured_and_timestamp(
-        self,
+    def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_reference_field_not_found(
+            self,
     ):
         preprocessing_config = {
-            "add_timestamp": "arrival_time",
-            "add_timestamp_delta": "delta_time",
+            "preprocessing": {
+                "log_arrival_time_target_field": "arrival_time",
+                "log_arrival_timedelta": {
+                    "target_field": "log_arrival_timedelta",
+                    "reference_field": "@timestamp",
+                },
+            }
         }
-        self.pipeline._logprep_config["connector"] = {
-            "consumer": {"preprocessing": preprocessing_config}
-        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         test_event = {"any": "content"}
-        self.pipeline._preprocess_event(test_event)
-        assert "arrival_time" in test_event
-        assert "delta_time" not in test_event
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result, _ = connector.get_next(0.01)
+        assert "arrival_time" in result
+        assert "log_arrival_timedelta" not in result
 
-    def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_and_not_timestamp(
-        self, _
-    ):
-        preprocessing_config = {"add_timestamp": "arrival_time"}
-        self.pipeline._logprep_config["connector"] = {
-            "consumer": {"preprocessing": preprocessing_config}
+    def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_not_configured(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "log_arrival_time_target_field": "arrival_time",
+            }
         }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         test_event = {"any": "content"}
-        self.pipeline._preprocess_event(test_event)
-        assert "arrival_time" in test_event
-        assert "delta_time" not in test_event
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result, _ = connector.get_next(0.01)
+        assert "arrival_time" in result
 
-    def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_and_timestamp_but_not_target_timestamp(
-        self, _
+    def test_pipeline_preprocessing_does_not_add_timestamp_delta_if_configured_but_log_arrival_timestamp_not(
+            self,
     ):
         preprocessing_config = {
-            "add_timestamp_delta": "delta_time",
+            "preprocessing": {
+                "log_arrival_timedelta": {
+                    "target_field": "log_arrival_timedelta",
+                    "reference_field": "@timestamp",
+                },
+            }
         }
-        self.pipeline._logprep_config["connector"] = {
-            "consumer": {"preprocessing": preprocessing_config}
-        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         test_event = {"any": "content"}
-        self.pipeline._preprocess_event(test_event)
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result, _ = connector.get_next(0.01)
         assert test_event == {"any": "content"}
 
 
