@@ -8,21 +8,22 @@ the amount of times connections are created.
 
 Example
 ^^^^^^^
-..  code-block::yaml
+..  code-block:: yaml
     :linenos:
+
     output:
-        myelasticsearch_output:
-            type: elasticsearch_output
-            hosts:
-                - 127.0.0.1:9200
-            default_index: default_index
-            error_index: error_index
-            message_backlog_size: 10000
-            timeout: 10000
-            max_retries:
-            user:
-            secret:
-            cert: /path/to/cert.crt
+      myelasticsearch_output:
+        type: elasticsearch_output
+        hosts:
+            - 127.0.0.1:9200
+        default_index: default_index
+        error_index: error_index
+        message_backlog_size: 10000
+        timeout: 10000
+        max_retries:
+        user:
+        secret:
+        cert: /path/to/cert.crt
 """
 
 import json
@@ -72,10 +73,10 @@ class ElasticsearchOutput(Output):
         message_backlog_size: int = field(validator=validators.instance_of(int))
         """Amount of documents to store before sending them to Elasticsearch."""
         timeout: int = field(validator=validators.instance_of(int), default=500)
-        """Timeout for Elasticsearch connection (default: 500ms)"""
+        """Timeout for Elasticsearch connection (default is 500ms)"""
         max_retries: int = field(validator=validators.instance_of(int), default=0)
-        """Maximum number of retries for documents rejected with code 429 (default: 0).
-           Increases backoff time by 2 seconds per try, but never exceeds 600 seconds."""
+        """Maximum number of retries for documents rejected with code 429 (default is 0).
+        Increases backoff time by 2 seconds per try, but never exceeds 600 seconds."""
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
         """The user used for authentication (optional)."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")

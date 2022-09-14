@@ -5,8 +5,6 @@ JsonlOutput
 The JsonlOutput Connector can be used to write processed documents to .jsonl
 files.
 
-..  code-block:: yaml
-
 Example
 ^^^^^^^
 ..  code-block:: yaml

@@ -5,8 +5,6 @@ ConsoleOutput
 This section describes the ConsoleOutput, which pretty prints documents to the
 console and can be used for testing.
 
-..  code-block:: yaml
-
 Example
 ^^^^^^^
 ..  code-block:: yaml
