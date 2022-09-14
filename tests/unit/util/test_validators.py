@@ -320,7 +320,7 @@ class TestDictStructureValidator:
         dict_structure_validator(None, None, value, reference_dict)
 
     def test_does_not_raise_on_validation_of_nested_optional_config_object_while_optional_is_missing(
-            self,
+        self,
     ):
         @define(kw_only=True)
         class SomeNestedOptionClass:
