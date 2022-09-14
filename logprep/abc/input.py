@@ -128,7 +128,7 @@ class Input(Connector):
             - `target_field` - Defines the fieldname to which the time difference should be
               written to.
             - `reference_field` - Defines a field with a timestamp that should be used for the time
-              difference. The calculation will be the arrival time minus the time of this 
+              difference. The calculation will be the arrival time minus the time of this
               reference field.
 
         - `version_info_target_field` - If required it is possible to automatically add the logprep

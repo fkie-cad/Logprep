@@ -17,12 +17,14 @@ Example
         type: jsonl_output
         output_file = path/to/output.file
         output_file_custom = ""
-        output_file_error = ""    
+        output_file_error = ""
 """
 
 import json
 from logging import Logger
+
 from attrs import define, field, validators
+
 from logprep.abc.output import Output
 
 

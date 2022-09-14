@@ -124,6 +124,7 @@ class Pipeline:
 
         self._processing_counter = counter
 
+        self.metrics = None
         self._metrics_exposer = MetricExposer(
             self._logprep_config.get("metrics", {}), metric_targets, shared_dict, lock
         )

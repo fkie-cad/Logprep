@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 
 import json
-from ruamel.yaml import YAML
 from abc import ABC
 from copy import deepcopy
 from logging import getLogger
@@ -10,12 +9,13 @@ from typing import Iterable
 from unittest import mock
 
 import pytest
+from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
-from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
+from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory

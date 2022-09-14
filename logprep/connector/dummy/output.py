@@ -14,7 +14,7 @@ Example
 
     output:
       my_dummy_output:
-        type: dummy_output    
+        type: dummy_output
 """
 from logging import Logger
 from typing import List

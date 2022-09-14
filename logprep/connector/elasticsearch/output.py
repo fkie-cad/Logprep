@@ -25,18 +25,18 @@ Example
             cert: /path/to/cert.crt
 """
 
-import sys
 import json
-from logging import Logger
 import re
 import ssl
+import sys
+from logging import Logger
 from typing import List, Optional
 
 import arrow
 import elasticsearch
-from elasticsearch import helpers
 from attr import field, define
 from attrs import validators
+from elasticsearch import helpers
 
 from logprep.abc.output import FatalOutputError, Output
 
@@ -60,11 +60,13 @@ class ElasticsearchOutput(Output):
             ),
             default=[],
         )
-        """Addresses of elasticsearch/opensearch servers. Can be a list of hosts or one single host in the format HOST:PORT
-           without specifying a schema. The schema is set automatically to https if a certificate is being used."""
+        """Addresses of elasticsearch/opensearch servers. Can be a list of hosts or one single host
+        in the format HOST:PORT without specifying a schema. The schema is set automatically to
+        https if a certificate is being used."""
         default_index: str = field(validator=validators.instance_of(str))
-        """Default index to write to if no index was set in the document or the document could not be indexed.
-           The document will be transformed into a string to prevent rejections by the default index."""
+        """Default index to write to if no index was set in the document or the document could not
+        be indexed. The document will be transformed into a string to prevent rejections by the
+        default index."""
         error_index: str = field(validator=validators.instance_of(str))
         """Index to write documents to that could not be processed."""
         message_backlog_size: int = field(validator=validators.instance_of(int))

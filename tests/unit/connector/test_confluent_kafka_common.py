@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=no-member
 from copy import deepcopy
 from socket import getfqdn
 

@@ -2,8 +2,8 @@
 ConfluentKafkaOutput
 ----------------------
 
-This section contains the connection settings for ConfluentKafka, the default 
-index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce 
+This section contains the connection settings for ConfluentKafka, the default
+index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
 the amount of times connections are created.
 
 Example
@@ -23,7 +23,7 @@ Example
         maximum_backlog: 100000
         ack_policy: -1
         linger_duration: 0.5
-        ssl: {"cafile": None, "certfile": None, "keyfile": None, "password": None}     
+        ssl: {"cafile": None, "certfile": None, "keyfile": None, "password": None}
 """
 
 import json
