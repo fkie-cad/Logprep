@@ -4,7 +4,6 @@ New input endpoint types are created by implementing it.
 
 import base64
 import hashlib
-import sys
 import zlib
 from abc import abstractmethod
 from functools import partial
@@ -17,11 +16,6 @@ from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time_measurement import TimeMeasurement
 from .connector import Connector
 from ..util.validators import dict_structure_validator
-
-if sys.version_info.minor < 8:  # pragma: no cover
-    pass
-else:
-    pass
 
 
 class InputError(BaseException):
