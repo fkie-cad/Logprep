@@ -16,6 +16,8 @@ under the subkey `preprocessing` of the `input` processor
 * Add an elasticsearch output connector that can be used to write directly into elasticsearch.
 * Split connector config into seperate config keys `input` and `output`
 * Add preprocessing capabillities to all input connectors
+* Add preprocessor for log_arrival_time
+* Add preprocessor for log_arrival_timedelta
 * Add metrics to connectors
 
 ### Improvements
