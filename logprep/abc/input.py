@@ -14,8 +14,8 @@ from attrs import define, field, validators
 
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time_measurement import TimeMeasurement
-from .connector import Connector
-from ..util.validators import dict_structure_validator
+from logprep.abc import Connector
+from logprep.util.validators import dict_structure_validator
 
 
 class InputError(BaseException):
