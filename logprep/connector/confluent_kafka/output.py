@@ -6,8 +6,6 @@ This section contains the connection settings for ConfluentKafka, the default
 index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce 
 the amount of times connections are created.
 
-..  code-block:: yaml
-
 Example
 ^^^^^^^
 ..  code-block:: yaml

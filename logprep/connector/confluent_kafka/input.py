@@ -61,18 +61,18 @@ class ConfluentKafkaInput(Input):
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
         group: str = field(validator=validators.instance_of(str))
-        """Corresponds to the Kafka configuration parameter `group.id
-        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. The individual
-        Logprep processes have the same group.id and thus belong to the same consumer group.
-        Thereby partitions of topics can be assigned to individual consumers."""
+        """Corresponds to the Kafka configuration parameter 
+        `group.id <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. The 
+        individual Logprep processes have the same group.id and thus belong to the same consumer 
+        group. Thereby partitions of topics can be assigned to individual consumers."""
         enable_auto_offset_store: bool = field(
             validator=validators.instance_of(bool), default=False
         )
-        """Corresponds to the Kafka configuration parameter `enable.auto.offset.store
-        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. This parameter
-        defines if the offset is automatically updated in memory by librdkafka. Disabling this
-        allows Logprep to update the offset itself more accurately. It is disabled per default in
-        Logprep. The default value in librdkafka it is true."""
+        """Corresponds to the Kafka configuration parameter 
+        `enable.auto.offset.store <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. 
+        This parameter defines if the offset is automatically updated in memory by librdkafka. 
+        Disabling this allows Logprep to update the offset itself more accurately. It is disabled 
+        per default in Logprep. The default value in librdkafka it is true."""
         ssl: dict = field(
             validator=[
                 validators.instance_of(dict),
@@ -91,29 +91,29 @@ class ConfluentKafkaInput(Input):
         - `password` - Password for the given key file (see ssl.key.password).
         """
         auto_commit: bool = field(validator=validators.instance_of(bool), default=True)
-        """Corresponds to the Kafka configuration parameter `enable.auto.commit
-        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`. Enabling this
-        parameter causes offsets being sent automatically and periodically. The values can be
-        either true/false or on/off. Currently, this has to be set to true, since independent
-        committing is not implemented in Logprep and it would not make sense to activate it
-        anyways. The default setting of librdkafka is true."""
+        """Corresponds to the Kafka configuration parameter 
+        `enable.auto.commit <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. 
+        Enabling this parameter causes offsets being sent automatically and periodically. The values
+        can be either true/false or on/off. Currently, this has to be set to true, since independent
+        committing is not implemented in Logprep and it would not make sense to activate it anyways.
+        The default setting of librdkafka is true."""
         session_timeout: int = field(validator=validators.instance_of(int), default=6000)
-        """Corresponds to the Kafka configuration parameter `session.timeout.ms
-        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`. This defines the
-        maximum duration a kafka consumer can be without contact to the Kafka broker. The kafka
-        consumer must regularly send a heartbeat to the group coordinator, otherwise the consumer
-        will be considered as being unavailable. In this case the group coordinator assigns the
-        partition to be processed to another computer while re-balancing. The default of
-        librdkafka is 10000 ms (10 s)."""
+        """Corresponds to the Kafka configuration parameter 
+        `session.timeout.ms <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
+        This defines the maximum duration a kafka consumer can be without contact to the Kafka
+        broker. The kafka consumer must regularly send a heartbeat to the group coordinator, 
+        otherwise the consumer will be considered as being unavailable. In this case the group 
+        coordinator assigns the partition to be processed to another computer while re-balancing. 
+        The default of librdkafka is 10000 ms (10 s)."""
         offset_reset_policy: str = field(
             default="smallest",
             validator=validators.in_(["latest", "earliest", "none", "largest", "smallest"]),
         )
-        """Corresponds to the Kafka configuration parameter `auto.offset.reset
-        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`. This parameter
-        influences from which offset the Kafka consumer starts to fetch log messages from an
-        assigned partition. The values latest/earliest/none are possible. With a value of none
-        Logprep must manage the offset by itself. However, this is not supported by Logprep,
+        """Corresponds to the Kafka configuration parameter 
+        `auto.offset.reset <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. 
+        This parameter influences from which offset the Kafka consumer starts to fetch log messages 
+        from an assigned partition. The values latest/earliest/none are possible. With a value of 
+        none Logprep must manage the offset by itself. However, this is not supported by Logprep,
         since it is not relevant for our use-case. If the value is set to latest/largest, the Kafka
         consumer starts by reading the newest log messages of a partition if a valid offset is
         missing. Thus, old log messages from that partition will not be processed. This setting can
