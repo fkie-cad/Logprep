@@ -5,6 +5,7 @@ New input endpoint types are created by implementing it.
 import base64
 import hashlib
 import zlib
+import arrow
 from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
@@ -69,6 +70,18 @@ class HmacConfig:
     field exists already in the original message an error is raised."""
 
 
+@define(kw_only=True)
+class TimeDeltaConfig:
+    """TimeDetla Configurations
+    Works only if the preprocessor log_arrival_time_target_field is set."""
+
+    target_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
+    """Defines the fieldname to which the time difference should be written to."""
+    reference_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
+    """Defines a field with a timestamp that should be used for the time difference.
+    The calculation will be the arrival time minus the time of this reference field."""
+
+
 class Input(Connector):
     """Connect to a source for log data."""
 
@@ -84,16 +97,39 @@ class Input(Connector):
                     reference_dict={
                         "version_info_target_field": Optional[str],
                         "hmac": Optional[HmacConfig],
+                        "log_arrival_time_target_field": Optional[str],
+                        "log_arrival_timedelta": Optional[TimeDeltaConfig],
                     },
                 ),
             ],
             default={
                 "version_info_target_field": "",
                 "hmac": {"target": "", "key": "", "output_field": ""},
+                "log_arrival_time_target_field": "",
             },
         )
         """
         All input connectors support different preprocessing methods:
+
+        - `log_arrival_time_target_field` - It is possible to automatically add the arrival time in
+          Logprep to every incoming log message. To enable adding arrival times to each event the
+          keyword :code:`log_arrival_time_target_field` has to be set under the field
+          :code:`preprocessing`. It defines the name of the dotted field in which the arrival
+          times should be stored. If the field :code:`preprocessing` and
+          :code:`log_arrival_time_target_field` are not present, no arrival timestamp is added
+          to the event.
+        - `log_arrival_timedelta` - It is possible to automatically calculate the difference
+          between the arrival time of logs in Logprep and their generation timestamp, which is then
+          added to every incoming log message. To enable adding delta times to each event, the
+          keyword :code:`log_arrival_time_target_field` has to be set as a precondition (see
+          above). Furthermore, two configurations for the timedelta are needed. A
+          :code:`target_field` as well as a :code:`reference_field` has to be set.
+
+            - `target_field` - Defines the fieldname to which the time difference should be
+              written to.
+            - `reference_field` - Defines a field with a timestamp that should be used for the time
+              difference. The calculation will be the arrival time minus the time of this 
+              reference field.
 
         - `version_info_target_field` - If required it is possible to automatically add the logprep
           version and the used configuration version to every incoming log message. This helps to
@@ -144,6 +180,16 @@ class Input(Connector):
     def _add_version_info(self):
         """Check and return if the version info should be added to the event."""
         return bool(self._config.preprocessing.get("version_info_target_field"))
+
+    @property
+    def _add_log_arrival_time_information(self):
+        """Check and return if the logarrival time info should be added to the event."""
+        return bool(self._config.preprocessing.get("log_arrival_time_target_field"))
+
+    @property
+    def _add_log_arrival_timedelta_information(self):
+        """Check and return if the logarrival timedelta info should be added to the event."""
+        return bool(self._config.preprocessing.get("log_arrival_timedelta"))
 
     def _get_raw_event(self, timeout: float) -> bytearray:
         """Implements the details how to get the raw event
@@ -201,16 +247,42 @@ class Input(Connector):
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
         if event and self._add_version_info:
             self._add_version_information_to_event(event)
+        if event and self._add_log_arrival_time_information:
+            self._add_arrival_time_information_to_event(event)
+        if event and self._add_log_arrival_timedelta_information:
+            self._add_arrival_timedelta_information_to_event(event)
         self.metrics.number_of_processed_events += 1
         return event, non_critical_error_msg
 
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
 
+    def _add_arrival_time_information_to_event(self, event: dict):
+        now = arrow.now()
+        target_field = self._config.preprocessing.get("log_arrival_time_target_field")
+        add_field_to(event, target_field, now.isoformat())
+
+    def _add_arrival_timedelta_information_to_event(self, event: dict):
+        log_arrival_timedelta_config = self._config.preprocessing.get("log_arrival_timedelta")
+        log_arrival_time_target_field = self._config.preprocessing.get(
+            "log_arrival_time_target_field"
+        )
+        target_field = log_arrival_timedelta_config.get("target_field")
+        reference_target_field = log_arrival_timedelta_config.get("reference_field")
+        time_reference = get_dotted_field_value(event, reference_target_field)
+        log_arrival_time = get_dotted_field_value(event, log_arrival_time_target_field)
+        if time_reference:
+            delta_time_sec = (
+                arrow.get(log_arrival_time) - arrow.get(time_reference)
+            ).total_seconds()
+            add_field_to(event, target_field, delta_time_sec)
+
     def _add_version_information_to_event(self, event: dict):
         """Add the version information to the event"""
         target_field = self._config.preprocessing.get("version_info_target_field")
+        # pylint: disable=protected-access
         add_field_to(event, target_field, self._config._version_information)
+        # pylint: enable=protected-access
 
     def _add_hmac_to(self, event_dict, raw_event) -> Tuple[dict, str]:
         """
