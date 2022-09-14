@@ -26,8 +26,8 @@ Example
         session_timeout: 6000
         offset_reset_policy: smallest
 """
-import sys
 import json
+import sys
 from functools import partial
 from logging import Logger
 from socket import getfqdn
@@ -144,7 +144,7 @@ class ConfluentKafkaInput(Input):
         """Return the client id"""
         return getfqdn()
 
-    @property
+    @cached_property
     def _consumer(self):
         """Create and return a new confluent kafka consumer"""
         consumer = Consumer(self._confluent_settings)

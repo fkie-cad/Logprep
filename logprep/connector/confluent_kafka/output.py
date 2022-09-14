@@ -28,8 +28,8 @@ Example
         ssl: {"cafile": None, "certfile": None, "keyfile": None, "password": None}     
 """
 
-import sys
 import json
+import sys
 from datetime import datetime
 from functools import partial
 from socket import getfqdn
@@ -92,7 +92,7 @@ class ConfluentKafkaOutput(Output):
     def _client_id(self):
         return getfqdn()
 
-    @property
+    @cached_property
     def _producer(self):
         return Producer(self._confluent_settings)
 
