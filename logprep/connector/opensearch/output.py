@@ -8,26 +8,29 @@ the amount of times connections are created.
 
 Example
 ^^^^^^^
-..  code-block::yaml
+..  code-block:: yaml
     :linenos:
+
     output:
-        myopensearch_output:
-            type: opensearch_output
-            hosts:
-                - 127.0.0.1:9200
-            default_index: default_index
-            error_index: error_index
-            message_backlog_size: 10000
-            timeout: 10000
-            max_retries:
-            user:
-            secret:
-            cert: /path/to/cert.crt
+      myopensearch_output:
+        type: opensearch_output
+        hosts:
+            - 127.0.0.1:9200
+        default_index: default_index
+        error_index: error_index
+        message_backlog_size: 10000
+        timeout: 10000
+        max_retries:
+        user:
+        secret:
+        cert: /path/to/cert.crt
 """
 
 import logging
 import sys
+
 import opensearchpy as opensearch
+
 from logprep.abc.output import FatalOutputError, Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 
