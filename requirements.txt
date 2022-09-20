@@ -131,3 +131,5 @@ urllib3==1.26.8
     #   requests
 yarl==1.7.2
     # via aiohttp
+fastapi==0.85.0
+uvicorn==0.18.3

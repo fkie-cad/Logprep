@@ -1,6 +1,6 @@
 """ module for http connector """
+import sys
 import contextlib
-from functools import cached_property
 import threading
 import time
 import uvicorn
@@ -10,6 +10,11 @@ import queue
 from fastapi import FastAPI, Request
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 from logprep.abc.input import Input
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
 app = FastAPI()
