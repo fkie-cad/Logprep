@@ -1,12 +1,13 @@
 """ module for http connector """
-import sys
 import contextlib
+import queue
+import sys
 import threading
 import time
-import uvicorn
-from typing import List, Mapping
 from abc import ABC, abstractmethod
-import queue
+from typing import List, Mapping
+
+import uvicorn
 from fastapi import FastAPI, Request
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 from logprep.abc.input import Input
@@ -73,11 +74,14 @@ class PlaintextHttpEndpoint(HttpEndpoint):
 
 
 class Server(uvicorn.Server):
+    """the uvicorn server"""
+
     def install_signal_handlers(self):
         pass
 
     @contextlib.contextmanager
     def run_in_thread(self):
+        """Context manager to run the server in a separate thread"""
         thread = threading.Thread(target=self.run)
         thread.start()
         try:

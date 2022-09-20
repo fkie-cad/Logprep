@@ -76,7 +76,6 @@ class Pipeline:
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
-
         # pylint: disable=not-an-iterable
         @property
         def number_of_processed_events(self):
