@@ -221,8 +221,13 @@ class Pipeline:
         try:
             if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug(f"Start iterating ({current_process().name})")
-            while self._iterate():
-                self._retrieve_and_process_data()
+            if hasattr(self._input, "server"):
+                with self._input.server.run_in_thread():
+                    while self._iterate():
+                        self._retrieve_and_process_data()
+            else:
+                while self._iterate():
+                    self._retrieve_and_process_data()
         except SourceDisconnectedError:
             self._logger.warning(
                 f"Lost or failed to establish connection to {self._input.describe()}"
