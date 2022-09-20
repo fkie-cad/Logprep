@@ -223,6 +223,6 @@ yarl==1.7.2
 zipp==3.6.0
     # via importlib-metadata
 fastapi==0.83.0
-uvicorn==0.18.3
+uvicorn==0.17.0
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

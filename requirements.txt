@@ -132,4 +132,4 @@ urllib3==1.26.8
 yarl==1.7.2
     # via aiohttp
 fastapi==0.83.0
-uvicorn==0.18.3
+uvicorn==0.17.0
