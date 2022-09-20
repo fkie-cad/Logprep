@@ -42,3 +42,36 @@ class TestHttpConnector:
         assert resp.status_code == 200
         event_from_queue = self.connector._messages.get()
         assert event_from_queue.get("message") == data
+
+    def test_get_next_returns_message_from_queue(self):
+        data = {"message": "my log message"}
+        self.client.post("/json", json.dumps(data))
+        assert self.connector.get_next(0.001) == data
+
+    def test_get_next_returns_first_in_first_out(self):
+        data = [
+            {"message": "first message"},
+            {"message": "second message"},
+            {"message": "third message"},
+        ]
+        for message in data:
+            self.client.post("/json", json.dumps(message))
+        assert self.connector.get_next(0.001) == data[0]
+        assert self.connector.get_next(0.001) == data[1]
+        assert self.connector.get_next(0.001) == data[2]
+
+    def test_get_next_returns_first_in_first_out_for_mixed_endpoints(self):
+        data = [
+            {"endpoint": "json", "data": {"message": "first message"}},
+            {"endpoint": "plaintext", "data": "second message"},
+            {"endpoint": "json", "data": {"message": "third message"}},
+        ]
+        for message in data:
+            endpoint, post_data = message.values()
+            if endpoint == "json":
+                self.client.post("/json", json.dumps(post_data))
+            if endpoint == "plaintext":
+                self.client.post("/plaintext", data=post_data)
+        assert self.connector.get_next(0.001) == data[0].get("data")
+        assert self.connector.get_next(0.001) == {"message": data[1].get("data")}
+        assert self.connector.get_next(0.001) == data[2].get("data")
