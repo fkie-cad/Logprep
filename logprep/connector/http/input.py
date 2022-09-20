@@ -3,7 +3,6 @@ import contextlib
 import queue
 import sys
 import threading
-import time
 from abc import ABC, abstractmethod
 from typing import List, Mapping
 
@@ -132,4 +131,7 @@ class HttpConnector(Input):
 
     def get_next(self, timeout: float):
         """returns the first message from the queue"""
-        return self._messages.get(timeout=timeout)
+        try:
+            return self._messages.get(timeout=timeout)
+        except queue.Empty:
+            return None

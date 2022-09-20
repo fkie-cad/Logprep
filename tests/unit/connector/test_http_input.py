@@ -79,3 +79,6 @@ class TestHttpConnector:
         assert self.connector.get_next(0.001) == data[0].get("data")
         assert self.connector.get_next(0.001) == {"message": data[1].get("data")}
         assert self.connector.get_next(0.001) == data[2].get("data")
+
+    def test_get_next_returns_none_for_empty_queue(self):
+        assert self.connector.get_next(0.001) is None
