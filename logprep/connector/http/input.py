@@ -1,4 +1,8 @@
 """ module for http connector """
+import contextlib
+import threading
+import time
+import uvicorn
 from typing import List
 from abc import ABC, abstractmethod
 import queue
@@ -40,7 +44,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 
     async def _endpoint(self, event: Event):  # pylint: disable=arguments-differ
         """json endpoint method"""
-        self._messages.put(event)
+        self._messages.put(dict(event))
 
     @property
     def _endpoint_path(self):
@@ -62,6 +66,23 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         return "/plaintext"
 
 
+class Server(uvicorn.Server):
+    def install_signal_handlers(self):
+        pass
+
+    @contextlib.contextmanager
+    def run_in_thread(self):
+        thread = threading.Thread(target=self.run)
+        thread.start()
+        try:
+            while not self.started:
+                time.sleep(1e-3)
+            yield
+        finally:
+            self.should_exit = True
+            thread.join()
+
+
 class HttpConnector(Input):
     """
     Connector to accept log messages as http post requests
@@ -81,6 +102,8 @@ class HttpConnector(Input):
             self.app.add_api_route(
                 path=f"{endpoint._endpoint_path}", endpoint=endpoint._endpoint, methods=["POST"]
             )
+        config = uvicorn.Config(self.app, port=9000, log_level="info", workers=3)
+        self.server = Server(config)
 
     def describe_endpoint(self):
         return f"{self.__class__.__name__}"
