@@ -23,7 +23,7 @@ app = FastAPI()
 class HttpEndpoint(ABC):
     """interface for http endpoints"""
 
-    _messages: queue.Queue = queue.Queue()
+    _messages: queue.Queue
 
     def __init__(self, messages: queue.Queue) -> None:
         self._messages = messages
@@ -113,6 +113,7 @@ class HttpConnector(Input):
 
     def setup(self):
         super().setup()
+
         endpoints = [
             endpoint(self._messages) for endpoint in list(self._endpoint_registry.values())
         ]
