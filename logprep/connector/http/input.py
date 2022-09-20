@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 import queue
 from fastapi import FastAPI, Request
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
-from logprep.input.input import Input
+from logprep.abc.input import Input
 
 
 app = FastAPI()
