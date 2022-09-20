@@ -1,9 +1,10 @@
 """ module for http connector """
 import contextlib
+from functools import cached_property
 import threading
 import time
 import uvicorn
-from typing import List
+from typing import List, Mapping
 from abc import ABC, abstractmethod
 import queue
 from fastapi import FastAPI, Request
@@ -23,13 +24,13 @@ class HttpEndpoint(ABC):
         self._messages = messages
 
     @abstractmethod
-    async def _endpoint(self, **kwargs):
+    async def endpoint(self, **kwargs):
         """callback method for route"""
         ...
 
     @property
     @abstractmethod
-    def _endpoint_path(self):
+    def endpoint_path(self):
         """returns the path where you want to receive"""
         ...
 
@@ -42,12 +43,12 @@ class JSONHttpEndpoint(HttpEndpoint):
 
         message: str
 
-    async def _endpoint(self, event: Event):  # pylint: disable=arguments-differ
+    async def endpoint(self, event: Event):  # pylint: disable=arguments-differ
         """json endpoint method"""
         self._messages.put(dict(event))
 
     @property
-    def _endpoint_path(self):
+    def endpoint_path(self):
         """json endpoint path"""
         return "/json"
 
@@ -55,13 +56,13 @@ class JSONHttpEndpoint(HttpEndpoint):
 class PlaintextHttpEndpoint(HttpEndpoint):
     """plaintext endpoint http connector"""
 
-    async def _endpoint(self, request: Request):  # pylint: disable=arguments-differ
+    async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         data = await request.body()
         self._messages.put({"message": data.decode("utf8")})
 
     @property
-    def _endpoint_path(self):
+    def endpoint_path(self):
         """plaintext endpoint path"""
         return "/plaintext"
 
@@ -92,18 +93,29 @@ class HttpConnector(Input):
 
     _messages: queue.Queue = queue.Queue()
 
-    _endpoints: List[HttpEndpoint] = [JSONHttpEndpoint, PlaintextHttpEndpoint]
+    _endpoint_registry: Mapping[str, HttpEndpoint] = {
+        "json": JSONHttpEndpoint,
+        "plaintext": PlaintextHttpEndpoint,
+    }
 
-    def __init__(self) -> None:
+    endpoints: List[HttpEndpoint]
 
-        self._endpoints = [endpoint(self._messages) for endpoint in self._endpoints]
-
-        for endpoint in self._endpoints:
-            self.app.add_api_route(
-                path=f"{endpoint._endpoint_path}", endpoint=endpoint._endpoint, methods=["POST"]
-            )
+    @cached_property
+    def server(self) -> uvicorn.Server:
+        """returns the server instance"""
         config = uvicorn.Config(self.app, port=9000, log_level="info", workers=3)
-        self.server = Server(config)
+        return Server(config)
+
+    def setup(self):
+        super().setup()
+        endpoints = [
+            endpoint(self._messages) for endpoint in list(self._endpoint_registry.values())
+        ]
+        for endpoint in endpoints:
+            self.app.add_api_route(
+                path=f"{endpoint.endpoint_path}", endpoint=endpoint.endpoint, methods=["POST"]
+            )
+        self.endpoints = endpoints
 
     def describe_endpoint(self):
         return f"{self.__class__.__name__}"

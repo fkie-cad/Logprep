@@ -10,6 +10,7 @@ from logprep.connector.http.input import HttpConnector
 class TestHttpConnector:
     def setup_method(self):
         self.connector = HttpConnector()
+        self.connector.setup()
         self.client = TestClient(self.connector.app)
 
     def test_create_connector(self):
