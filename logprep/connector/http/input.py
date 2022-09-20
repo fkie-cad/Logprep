@@ -86,7 +86,7 @@ class Server(uvicorn.Server):
         thread.start()
         try:
             while not self.started:
-                time.sleep(1e-3)
+                pass
             yield
         finally:
             self.should_exit = True
