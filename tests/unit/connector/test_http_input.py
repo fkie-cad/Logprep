@@ -2,6 +2,8 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import json
+import uvicorn
+import requests
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
@@ -82,3 +84,14 @@ class TestHttpConnector:
 
     def test_get_next_returns_none_for_empty_queue(self):
         assert self.connector.get_next(0.001) is None
+
+    def test_server_returns_uvicorn_server_instance(self):
+        assert isinstance(self.connector.server, uvicorn.Server)
+
+    def test_server_starts_threaded_server_with_context_manager(self):
+        with self.connector.server.run_in_thread():
+            message = {"message": "my message"}
+            for i in range(100):
+                message["message"] = f"message number {i}"
+                requests.post(url="http://127.0.0.1:9000/json", json=message)
+        assert self.connector._messages.qsize() == 100, "messages are put to queue"
