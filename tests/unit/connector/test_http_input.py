@@ -93,5 +93,5 @@ class TestHttpConnector:
             message = {"message": "my message"}
             for i in range(100):
                 message["message"] = f"message number {i}"
-                requests.post(url="http://127.0.0.1:9000/json", json=message)
+                requests.post(url="http://127.0.0.1:9000/json", json=message)  # nosemgrep
         assert self.connector._messages.qsize() == 100, "messages are put to queue"
