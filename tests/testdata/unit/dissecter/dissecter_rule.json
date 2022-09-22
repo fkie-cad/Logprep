@@ -1,0 +1,9 @@
+[
+    {
+        "filter": "message",
+        "dissecter": {
+            "pattern": ""
+        },
+        "description": "dummy rule for dissecter"
+    }
+]
