@@ -18,7 +18,7 @@ def fixture_specific_rule_definition():
             "target_field": "target_field",
             "seperator": "-",
             "overwrite_target": False,
-            "delete_source_fields": False
+            "delete_source_fields": False,
         },
         "description": "",
     }
@@ -37,7 +37,7 @@ class TestConcatenatorRule:
                         "target_field": "target_field",
                         "seperator": "-",
                         "overwrite_target": False,
-                        "delete_source_fields": False
+                        "delete_source_fields": False,
                     },
                 },
                 True,
@@ -51,7 +51,7 @@ class TestConcatenatorRule:
                         "target_field": "target_field",
                         "seperator": "-",
                         "overwrite_target": False,
-                        "delete_source_fields": False
+                        "delete_source_fields": False,
                     },
                 },
                 False,
@@ -65,7 +65,7 @@ class TestConcatenatorRule:
                         "target_field": "target_field",
                         "seperator": "-",
                         "overwrite_target": False,
-                        "delete_source_fields": False
+                        "delete_source_fields": False,
                     },
                 },
                 False,
@@ -79,7 +79,7 @@ class TestConcatenatorRule:
                         "target_field": "wrong_target_field",
                         "seperator": "-",
                         "overwrite_target": False,
-                        "delete_source_fields": False
+                        "delete_source_fields": False,
                     },
                 },
                 False,
@@ -93,38 +93,38 @@ class TestConcatenatorRule:
                         "target_field": "target_field",
                         "seperator": ".",
                         "overwrite_target": False,
-                        "delete_source_fields": False
+                        "delete_source_fields": False,
                     },
                 },
                 False,
             ),
             (
-                    "Should be not equal cause overwrite_target is true",
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a", "field.b", "other_field.c"],
-                            "target_field": "target_field",
-                            "seperator": ".",
-                            "overwrite_target": True,
-                            "delete_source_fields": False
-                        },
+                "Should be not equal cause overwrite_target is true",
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": "target_field",
+                        "seperator": ".",
+                        "overwrite_target": True,
+                        "delete_source_fields": False,
                     },
-                    False,
+                },
+                False,
             ),
             (
-                    "Should be not equal cause of delete_source_fields is true",
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a", "field.b", "other_field.c"],
-                            "target_field": "target_field",
-                            "seperator": ".",
-                            "overwrite_target": False,
-                            "delete_source_fields": True
-                        },
+                "Should be not equal cause of delete_source_fields is true",
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": "target_field",
+                        "seperator": ".",
+                        "overwrite_target": False,
+                        "delete_source_fields": True,
                     },
-                    False,
+                },
+                False,
             ),
         ],
     )
@@ -152,7 +152,7 @@ class TestConcatenatorRule:
                         "target_field": "target_field",
                         "seperator": "-",
                         "overwrite_target": False,
-                        "delete_source_fields": False
+                        "delete_source_fields": False,
                     },
                 },
                 None,
@@ -166,112 +166,112 @@ class TestConcatenatorRule:
                         "target_field": "target_field",
                         "seperator": "-",
                         "overwrite_target": "False",
-                        "delete_source_fields": False
+                        "delete_source_fields": False,
                     },
                 },
                 InvalidConcatenatorRuleDefinition,
                 "The field 'overwrite_target' should be of type 'bool', but is '<class 'str'>'",
             ),
             (
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a", "field.b", "other_field.c"],
-                            "target_field": "target_field",
-                            "seperator": "-",
-                            "overwrite_target": False,
-                            "delete_source_fields": "False"
-                        },
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": "target_field",
+                        "seperator": "-",
+                        "overwrite_target": False,
+                        "delete_source_fields": "False",
                     },
-                    InvalidConcatenatorRuleDefinition,
-                    "The field 'delete_source_fields' should be of type 'bool', "
-                    "but is '<class 'str'>'",
+                },
+                InvalidConcatenatorRuleDefinition,
+                "The field 'delete_source_fields' should be of type 'bool', "
+                "but is '<class 'str'>'",
             ),
             (
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": "i should be a list",
-                            "target_field": "target_field",
-                            "seperator": "-",
-                            "overwrite_target": False,
-                            "delete_source_fields": False
-                        },
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": "i should be a list",
+                        "target_field": "target_field",
+                        "seperator": "-",
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
                     },
-                    InvalidConcatenatorRuleDefinition,
-                    "The field 'source_fields' should be of type 'list', but is '<class 'str'>'",
+                },
+                InvalidConcatenatorRuleDefinition,
+                "The field 'source_fields' should be of type 'list', but is '<class 'str'>'",
             ),
             (
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a", 5, "other_field.c"],
-                            "target_field": "target_field",
-                            "seperator": "-",
-                            "overwrite_target": False,
-                            "delete_source_fields": False
-                        },
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", 5, "other_field.c"],
+                        "target_field": "target_field",
+                        "seperator": "-",
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
                     },
-                    InvalidConcatenatorRuleDefinition,
-                    "The given field 'source_fields' should be a list of string values, but "
-                    "the list also contains non 'str' values",
+                },
+                InvalidConcatenatorRuleDefinition,
+                "The given field 'source_fields' should be a list of string values, but "
+                "the list also contains non 'str' values",
             ),
             (
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a"],
-                            "target_field": "target_field",
-                            "seperator": "-",
-                            "overwrite_target": False,
-                            "delete_source_fields": False
-                        },
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a"],
+                        "target_field": "target_field",
+                        "seperator": "-",
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
                     },
-                    InvalidConcatenatorRuleDefinition,
-                    "At least two source fields should be given for the concatenation."
+                },
+                InvalidConcatenatorRuleDefinition,
+                "At least two source fields should be given for the concatenation.",
             ),
             (
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a", "field.b", "other_field.c"],
-                            "target_field": 5,
-                            "seperator": "-",
-                            "overwrite_target": False,
-                            "delete_source_fields": False
-                        },
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": 5,
+                        "seperator": "-",
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
                     },
-                    InvalidConcatenatorRuleDefinition,
-                    "The field 'target_field' should be of type 'str', but is '<class 'int'>'",
+                },
+                InvalidConcatenatorRuleDefinition,
+                "The field 'target_field' should be of type 'str', but is '<class 'int'>'",
             ),
             (
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a", "field.b", "other_field.c"],
-                            "target_field": "target_field",
-                            "seperator": 5,
-                            "overwrite_target": False,
-                            "delete_source_fields": False
-                        },
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": "target_field",
+                        "seperator": 5,
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
                     },
-                    InvalidConcatenatorRuleDefinition,
-                    "The field 'seperator' should be of type 'str', but is '<class 'int'>'",
+                },
+                InvalidConcatenatorRuleDefinition,
+                "The field 'seperator' should be of type 'str', but is '<class 'int'>'",
             ),
             (
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a", "field.b", "other_field.c"],
-                            "target_field": "target_field",
-                            "seperator": "-",
-                            "overwrite_target": False,
-                            "delete_source_fields": False,
-                            "some": "unknown_field"
-                        },
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": "target_field",
+                        "seperator": "-",
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
+                        "some": "unknown_field",
                     },
-                    InvalidConcatenatorRuleDefinition,
-                    "Unknown fields were given: 'some'",
+                },
+                InvalidConcatenatorRuleDefinition,
+                "Unknown fields were given: 'some'",
             ),
         ],
     )
