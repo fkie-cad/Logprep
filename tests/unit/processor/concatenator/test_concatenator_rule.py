@@ -184,8 +184,7 @@ class TestConcatenatorRule:
                     },
                 },
                 InvalidConcatenatorRuleDefinition,
-                "The field 'delete_source_fields' should be of type 'bool', "
-                "but is '<class 'str'>'",
+                "The field '.*' should be of type 'bool', but is '<class 'str'>'",
             ),
             (
                 {
@@ -213,7 +212,6 @@ class TestConcatenatorRule:
                     },
                 },
                 InvalidConcatenatorRuleDefinition,
-                "The given field 'source_fields' should be a list of string values, but "
                 "the list also contains non 'str' values",
             ),
             (
