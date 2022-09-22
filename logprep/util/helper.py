@@ -91,7 +91,9 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     return True
 
 
-def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
+def get_dotted_field_value(
+    event: dict, dotted_field: str, delete_source=False
+) -> Optional[Union[dict, list, str]]:
     """
     Returns the value of a requested dotted_field by iterating over the event dictionary until the
     field was found. In case the field could not be found None is returned.
@@ -102,23 +104,41 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         The event from which the dotted field value should be extracted
     dotted_field: str
         The dotted field name which identifies the requested value
+    delete_source: bool
+        Flag that determines whether the dotted source field should be removed after the field value
+        was retrieved
 
     Returns
     -------
     dict_: dict, list, str
         The value of the requested dotted field.
-
-    # code is originally from the Processor, such that duplicated code could be removed there.
     """
 
     fields = dotted_field.split(".")
-    dict_ = event
-    for field in fields:
-        if field in dict_ and isinstance(dict_, dict):
-            dict_ = dict_[field]
-        else:
-            return None
-    return dict_
+    return _search_for_field_value(event, fields, delete_source)
+
+
+def _search_for_field_value(sub_dict, dotted_fields_path, delete_source_field=False):
+    """
+    Iterates recursively over the given dictionary retrieving the dotted field. If set the source
+    field will be removed. When again going back up the stack trace it deletes the empty left over
+    dicts.
+    """
+    next_key = dotted_fields_path.pop(0)
+    if next_key in sub_dict and isinstance(sub_dict, dict):
+        if not dotted_fields_path:
+            field_value = sub_dict[next_key]
+            if delete_source_field:
+                del sub_dict[next_key]
+            return field_value
+        field_value = _search_for_field_value(
+            sub_dict[next_key], dotted_fields_path, delete_source_field
+        )
+        # If remaining subdict is empty delete it
+        if not sub_dict[next_key]:
+            del sub_dict[next_key]
+        return field_value
+    return None
 
 
 def recursive_compare(test_output, expected_output):

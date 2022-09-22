@@ -1,7 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 from unittest import mock
+
 import pytest
+
 from logprep.util.helper import camel_to_snake, snake_to_camel, get_dotted_field_value
 from logprep.util.json_handling import is_json
 
@@ -82,6 +84,8 @@ class TestIsJson:
         with mock.patch("builtins.open", mock.mock_open(read_data=data)):
             assert is_json("mock_path") == expected
 
+
+class TestGetDottedFieldValue:
     def test_get_dotted_field_value_nesting_depth_zero(self):
         event = {"dotted": "127.0.0.1"}
         dotted_field = "dotted"
@@ -99,6 +103,18 @@ class TestIsJson:
         dotted_field = "some.dotted.field"
         value = get_dotted_field_value(event, dotted_field)
         assert value == "127.0.0.1"
+
+    def test_get_dotted_field_retrieves_sub_dict(self):
+        event = {"some": {"dotted": {"field": "127.0.0.1"}}}
+        dotted_field = "some.dotted"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == {"field": "127.0.0.1"}
+
+    def test_get_dotted_field_retrieves_list(self):
+        event = {"some": {"dotted": ["list", "with", "values"]}}
+        dotted_field = "some.dotted"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == ["list", "with", "values"]
 
     def test_get_dotted_field_value_that_does_not_exist(self):
         event = {}
@@ -123,3 +139,24 @@ class TestIsJson:
         dotted_field = "get.dotted"
         value = get_dotted_field_value(event, dotted_field)
         assert value is None
+
+    def test_get_dotted_field_removes_source_field_in_nested_structure_but_leaves_sibling(self):
+        event = {"get": {"nested": "field", "other": "field"}}
+        dotted_field = "get.nested"
+        value = get_dotted_field_value(event, dotted_field, delete_source=True)
+        assert value == "field"
+        assert event == {"get": {"other": "field"}}
+
+    def test_get_dotted_field_removes_source_field(self):
+        event = {"get": {"nested": "field"}}
+        dotted_field = "get.nested"
+        value = get_dotted_field_value(event, dotted_field, delete_source=True)
+        assert value == "field"
+        assert not event
+
+    def test_get_dotted_field_removes_source_field2(self):
+        event = {"get": {"very": {"deeply": {"nested": {"field": "value"}}}}}
+        dotted_field = "get.very.deeply.nested"
+        value = get_dotted_field_value(event, dotted_field, delete_source=True)
+        assert value == {"field": "value"}
+        assert not event
