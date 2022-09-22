@@ -1,0 +1,13 @@
+[
+    {
+        "filter": "random_field",
+        "concatenator": {
+            "source_fields": ["field.a", "field.b", "other_field.c"],
+            "target_field": "target_field",
+            "seperator": "-",
+            "overwrite_target": false,
+            "delete_source_fields": false
+        },
+        "description": ""
+    }
+]

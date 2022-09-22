@@ -15,6 +15,7 @@ from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
 from logprep.connector.opensearch.output import OpensearchOutput
 from logprep.processor.clusterer.processor import Clusterer
+from logprep.processor.concatenator.processor import Concatenator
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.deleter.processor import Deleter
 from logprep.processor.domain_label_extractor.processor import DomainLabelExtractor
@@ -23,6 +24,7 @@ from logprep.processor.dropper.processor import Dropper
 from logprep.processor.generic_adder.processor import GenericAdder
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.geoip_enricher.processor import GeoipEnricher
+from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.list_comparison.processor import ListComparison
 from logprep.processor.normalizer.processor import Normalizer
@@ -30,7 +32,6 @@ from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.selective_extractor.processor import SelectiveExtractor
 from logprep.processor.template_replacer.processor import TemplateReplacer
-from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 
 
 class Registry:
@@ -39,6 +40,7 @@ class Registry:
     mapping = {
         # Processors
         "clusterer": Clusterer,
+        "concatenator": Concatenator,
         "datetime_extractor": DatetimeExtractor,
         "deleter": Deleter,
         "delete": Deleter,

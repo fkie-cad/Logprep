@@ -1692,3 +1692,40 @@ The example below deletes the log message if the message field equals "foo".
     filter: 'message: "foo"'
     delete: true
     description: '...'
+
+Concatenator
+============
+
+The concatenator processor allows to concat a list of source fields into one new target field. The
+concat seperator and the target field can be specified. Furthermore, it is possible to directly
+delete all given source fields, or to overwrite the specified target field.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example Rule to concat multiple source fields to one target field
+
+    filter: 'date AND time'
+    concatenator:
+      source_fields: ["date", "time"]
+      target_field: timestamp
+      seperator: " "
+      overwrite_target: True
+      delete_source_fields: True
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Example - Input document
+
+    {
+        "date": "01.01.1007",
+        "time": "13:07"
+    }
+
+..  code-block:: json
+    :linenos:
+    :caption: Example - Expected output after application of the rule
+
+    {
+        "timetsamp": "01.01.1007 13:07"
+    }
