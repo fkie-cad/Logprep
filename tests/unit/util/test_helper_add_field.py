@@ -1,3 +1,7 @@
+# pylint: disable=no-self-use
+# pylint: disable=missing-docstring
+import pytest
+
 from logprep.util.helper import add_field_to
 
 
@@ -89,3 +93,56 @@ class TestHelperAddField:
         add_was_successful = add_field_to(document, "sub.field", {"dict": "content"})
 
         assert not add_was_successful, "Found no duplicate even though there should be one"
+
+    def test_add_field_to_overwrites_output_field_in_root_level(self):
+        document = {"some": "field", "output_field": "has already content"}
+
+        add_was_successful = add_field_to(
+            document, "output_field", {"dict": "content"}, overwrite_output_field=True
+        )
+
+        assert add_was_successful, "Output field was overwritten"
+        assert document.get("output_field") == {"dict": "content"}
+
+    def test_add_field_to_overwrites_output_field_in_nested_level(self):
+        document = {"some": "field", "nested": {"output": {"field": "has already content"}}}
+
+        add_was_successful = add_field_to(
+            document, "nested.output.field", {"dict": "content"}, overwrite_output_field=True
+        )
+
+        assert add_was_successful, "Output field was overwritten"
+        assert document.get("nested", {}).get("output", {}).get("field") == {"dict": "content"}
+
+    def test_add_field_to_extends_list_when_only_given_a_string(self):
+        document = {"some": "field", "some_list": ["with a value"]}
+
+        add_was_successful = add_field_to(document, "some_list", "new value", extends_lists=True)
+
+        assert add_was_successful, "Output field was overwritten"
+        assert document.get("some_list") == ["with a value", "new value"]
+
+    def test_add_field_to_extends_list_when_given_a_list(self):
+        document = {"some": "field", "some_list": ["with a value"]}
+
+        add_was_successful = add_field_to(
+            document, "some_list", ["first", "second"], extends_lists=True
+        )
+
+        assert add_was_successful, "Output field was overwritten"
+        assert document.get("some_list") == ["with a value", "first", "second"]
+
+    def test_add_field_to_raises_if_list_should_be_extended_and_overwritten_at_the_same_time(self):
+        document = {"some": "field", "some_list": ["with a value"]}
+
+        with pytest.raises(
+            AssertionError,
+            match=r"An output field can't be overwritten and " r"extended at the same time",
+        ):
+            _ = add_field_to(
+                document,
+                "some_list",
+                ["first", "second"],
+                extends_lists=True,
+                overwrite_output_field=True,
+            )
