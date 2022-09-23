@@ -28,6 +28,13 @@ Processors
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.dissecter.processor
+.. autoclass:: logprep.processor.dissecter.processor.Dissecter.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.domain_label_extractor.processor
 .. autoclass:: logprep.processor.domain_label_extractor.processor.DomainLabelExtractor.Config
    :members:
