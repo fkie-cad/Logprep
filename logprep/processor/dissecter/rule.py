@@ -46,8 +46,8 @@ class DissecterRule(Rule):
         super().__init__(filter_rule)
         self._config = config
 
-    def __eq__(self, other: "Rule") -> bool:
-        return False
+    def __eq__(self, other: "DissecterRule") -> bool:
+        return all((self._filter == other._filter, self._config == other._config))
 
     @staticmethod
     def _create_from_dict(rule: dict) -> "DissecterRule":

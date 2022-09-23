@@ -116,5 +116,105 @@ class TestDissecterRule:
         else:
             dissecter_rule = DissecterRule._create_from_dict(rule)
             assert hasattr(dissecter_rule, "_config")
-            # for key, value in rule.items():
-            #     assert
+            for key, value in rule.get("dissecter").items():
+                assert hasattr(dissecter_rule._config, key)
+                assert value == getattr(dissecter_rule._config, key)
+
+    @pytest.mark.parametrize(
+        ["testcase", "rule1", "rule2", "equality"],
+        [
+            (
+                "should be equal, because they are the same",
+                {"filter": "message", "dissecter": {}},
+                {"filter": "message", "dissecter": {}},
+                True,
+            ),
+            (
+                "should not be equal, because other filter",
+                {"filter": "message", "dissecter": {}},
+                {"filter": "othermessage", "dissecter": {}},
+                False,
+            ),
+            (
+                "should not be equal, because other field in mapping",
+                {"filter": "message", "dissecter": {"mapping": {"field": "%{ts}:%{ts}:%{ts}"}}},
+                {
+                    "filter": "message",
+                    "dissecter": {"mapping": {"other.field": "%{ts}:%{ts}:%{ts}"}},
+                },
+                False,
+            ),
+            (
+                "should not be equal, because other dissect on same field in mapping",
+                {"filter": "message", "dissecter": {"mapping": {"field": "%{ts}:%{ts}:%{ts}"}}},
+                {
+                    "filter": "message",
+                    "dissecter": {"mapping": {"field": "%{ts}:%{+ts}:%{ts}"}},
+                },
+                False,
+            ),
+            (
+                "should not be equal, because other convert_datatype",
+                {
+                    "filter": "message",
+                    "dissecter": {"mapping": {"field": "%{ts}:%{ts}:%{ts}"}},
+                },
+                {
+                    "filter": "message",
+                    "dissecter": {
+                        "convert_datatype": {"field": "int"},
+                        "mapping": {"field": "%{ts}:%{ts}:%{ts}"},
+                    },
+                },
+                False,
+            ),
+            (
+                "should not be equal, because other convert_datatype and other field",
+                {
+                    "filter": "message",
+                    "dissecter": {"mapping": {"field": "%{ts}:%{ts}:%{ts}"}},
+                },
+                {
+                    "filter": "message",
+                    "dissecter": {
+                        "convert_datatype": {"field": "int"},
+                        "mapping": {"field1": "%{ts}:%{ts}:%{ts}"},
+                    },
+                },
+                False,
+            ),
+            (
+                "should not be equal, because other tag_on_failure",
+                {
+                    "filter": "message",
+                    "dissecter": {"mapping": {"field": "%{ts}:%{ts}:%{ts}"}},
+                },
+                {
+                    "filter": "message",
+                    "dissecter": {
+                        "mapping": {"field1": "%{ts}:%{ts}:%{ts}"},
+                        "tag_on_failure": ["_failed"],
+                    },
+                },
+                False,
+            ),
+            (
+                "should be equal, because same tag_on_failure",
+                {
+                    "filter": "message",
+                    "dissecter": {},
+                },
+                {
+                    "filter": "message",
+                    "dissecter": {
+                        "tag_on_failure": ["_dissectfailure"],
+                    },
+                },
+                True,
+            ),
+        ],
+    )
+    def test_equality(self, testcase, rule1, rule2, equality):
+        rule1 = DissecterRule._create_from_dict(rule1)
+        rule2 = DissecterRule._create_from_dict(rule2)
+        assert (rule1 == rule2) == equality, testcase
