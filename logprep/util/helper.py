@@ -42,7 +42,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     output_field: str
         Dotted subfield string indicating the target of the output value, e.g. destination.ip
     content: str, list, dict
-        Value that should be written into the output_field, can be a str or dict object
+        Value that should be written into the output_field, can be a str, list or dict object
     extends_lists: bool
         Flag that determines whether output_field lists should be extended
     overwrite_output_field: bool
