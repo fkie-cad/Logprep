@@ -291,6 +291,7 @@ class TestConfluentKafka:
         "group.id": "consumer_group",
         "enable.auto.commit": True,
         "enable.auto.offset.store": True,
+        "max.poll.interval.ms": 300000,
         "session.timeout.ms": 6000,
         "default.topic.config": {"auto.offset.reset": "smallest"},
         "acks": "all",
@@ -303,7 +304,7 @@ class TestConfluentKafka:
     def setup_method(self, _):
         self.config = deepcopy(self.default_configuration)
         self.kafka_input = ConfluentKafkaInput(
-            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
+            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True, 300000
         )
         self.kafka_output = ConfluentKafkaOutput(
             ["bootstrap1", "bootstrap2"], "producer_topic", "producer_error_topic"
@@ -409,6 +410,7 @@ class TestConfluentKafka:
                 "auto_commit": False,
                 "session_timeout": 23456,
                 "offset_reset_policy": "latest",
+                "max_poll_interval_ms": 300000,
             },
             "producer": {
                 "ack_policy": "1",
@@ -421,6 +423,7 @@ class TestConfluentKafka:
         self.kafka_input.set_option(options, "consumer")
         self.config["enable.auto.commit"] = False
         self.config["session.timeout.ms"] = 23456
+        self.config["max.poll.interval.ms"] = 300000
         self.config["default.topic.config"]["auto.offset.reset"] = "latest"
         expected_config = deepcopy(self.config)
         self._delete_producer_settings(expected_config)
@@ -448,6 +451,7 @@ class TestConfluentKafka:
         del expected_config["enable.auto.commit"]
         del expected_config["enable.auto.offset.store"]
         del expected_config["group.id"]
+        del expected_config["max.poll.interval.ms"]
         del expected_config["session.timeout.ms"]
 
     def test_store_sends_event_to_expected_topic(self):
@@ -456,7 +460,7 @@ class TestConfluentKafka:
         expected = (producer_topic, event)
 
         kafka_input = ConfluentKafkaInput(
-            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
+            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True, 300000
         )
         kafka_output = ConfluentKafkaOutputForTest(
             ["bootstrap1", "bootstrap2"], producer_topic, "producer_error_topic"
@@ -473,7 +477,7 @@ class TestConfluentKafka:
         expected = (custom_topic, event)
 
         kafka_input = ConfluentKafkaInput(
-            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
+            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True, 300000
         )
         kafka_output = ConfluentKafkaOutputForTest(
             ["bootstrap1", "bootstrap2"], "default_topic", "producer_error_topic"
@@ -501,7 +505,7 @@ class TestConfluentKafka:
         )
 
         kafka_input = ConfluentKafkaInput(
-            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
+            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True, 300000
         )
         kafka_output = ConfluentKafkaOutputForTest(
             ["bootstrap1", "bootstrap2"], "producer_topic", producer_error_topic
@@ -526,7 +530,7 @@ class TestConfluentKafka:
 
     def test_get_next_returns_none_if_no_records(self):
         kafka_input = ConfluentKafkaInput(
-            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
+            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True, 300000
         )
 
         kafka_input._consumer = ConsumerNoRecordMock()
@@ -535,7 +539,7 @@ class TestConfluentKafka:
 
     def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self):
         kafka_input = ConfluentKafkaInput(
-            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True
+            ["bootstrap1", "bootstrap2"], "consumer_topic", "consumer_group", True, 300000
         )
 
         kafka_input._consumer = ConsumerRecordWithKafkaErrorMock()

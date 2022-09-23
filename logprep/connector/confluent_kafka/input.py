@@ -1,5 +1,4 @@
 """This module contains functionality that allows to obtain records from kafka."""
-
 from typing import List, Optional
 import hashlib
 import json
@@ -55,6 +54,7 @@ class ConfluentKafkaInputFactory(ConfluentKafkaFactory):
                 configuration["consumer"]["topic"],
                 configuration["consumer"]["group"],
                 configuration["consumer"].get("enable_auto_offset_store", False),
+                configuration["consumer"].get("max_poll_interval_ms", 300000),
             )
         except KeyError as error:
             raise InvalidConfigurationError(
@@ -92,6 +92,7 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
         consumer_topic: str,
         consumer_group: str,
         enable_auto_offset_store: bool,
+        max_poll_interval_ms: int,
     ):
         ConfluentKafka.__init__(self, bootstrap_servers)
         self._consumer_topic = consumer_topic
@@ -105,6 +106,7 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             "session_timeout": 6000,
             "offset_reset_policy": "smallest",
             "enable_auto_offset_store": enable_auto_offset_store,
+            "max_poll_interval_ms": max_poll_interval_ms,
             "hmac": {"target": "", "key": "", "output_field": ""},
             "preprocessing": {
                 "version_info_target_field": "",
@@ -321,6 +323,7 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             "enable.auto.commit": self._config["consumer"]["auto_commit"],
             "session.timeout.ms": self._config["consumer"]["session_timeout"],
             "enable.auto.offset.store": self._enable_auto_offset_store,
+            "max.poll.interval.ms": self._config["consumer"].get("max_poll_interval_ms", 300000),
             "default.topic.config": {
                 "auto.offset.reset": self._config["consumer"]["offset_reset_policy"]
             },
