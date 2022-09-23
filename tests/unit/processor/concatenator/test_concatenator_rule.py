@@ -272,17 +272,17 @@ class TestConcatenatorRule:
                 "Unknown fields were given: 'some'",
             ),
             (
-                    {
-                        "filter": "field.a",
-                        "concatenator": {
-                            "source_fields": ["field.a", "field.b", "other_field.c"],
-                            "target_field": "target_field",
-                            "overwrite_target": False,
-                            "delete_source_fields": False,
-                        },
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": "target_field",
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
                     },
-                    InvalidConcatenatorRuleDefinition,
-                    "Following fields were missing: 'seperator'",
+                },
+                InvalidConcatenatorRuleDefinition,
+                "Following fields were missing: 'seperator'",
             ),
         ],
     )
