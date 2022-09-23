@@ -1,7 +1,7 @@
 """Dissecter Rule Module"""
-from typing import List
 from attrs import define, validators, field, Factory
 from logprep.processor.base.rule import Rule
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 
 
@@ -42,6 +42,10 @@ class DissecterRule(Rule):
 
     _config: "DissecterRule.Config"
 
+    def __init__(self, filter_rule: FilterExpression, config: "DissecterRule.Config"):
+        super().__init__(filter_rule)
+        self._config = config
+
     def __eq__(self, other: "Rule") -> bool:
         return False
 
@@ -52,4 +56,4 @@ class DissecterRule(Rule):
         if not isinstance(config, dict):
             raise InvalidRuleDefinitionError("config is not a dict")
         config = DissecterRule.Config(**config)
-        return DissecterRule(filter_expression)
+        return DissecterRule(filter_expression, config)

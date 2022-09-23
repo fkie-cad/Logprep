@@ -114,4 +114,7 @@ class TestDissecterRule:
             with pytest.raises(error, match=message):
                 DissecterRule._create_from_dict(rule)
         else:
-            DissecterRule._create_from_dict(rule)
+            dissecter_rule = DissecterRule._create_from_dict(rule)
+            assert hasattr(dissecter_rule, "_config")
+            # for key, value in rule.items():
+            #     assert
