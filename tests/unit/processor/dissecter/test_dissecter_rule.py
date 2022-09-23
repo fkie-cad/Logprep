@@ -3,6 +3,7 @@
 import pytest
 from logprep.processor.dissecter.rule import DissecterRule
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.util.helper import add_field_to
 
 
 class TestDissecterRule:
@@ -218,3 +219,16 @@ class TestDissecterRule:
         rule1 = DissecterRule._create_from_dict(rule1)
         rule2 = DissecterRule._create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
+
+    def test_converts_mappings_into_actions(self):
+        rule = {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {"field1": "%{ts}:%{+ts} %{ts}"},
+                "tag_on_failure": ["_failed"],
+            },
+        }
+        dissecter_rule = DissecterRule._create_from_dict(rule)
+        assert dissecter_rule.actions
+        assert dissecter_rule.actions[0] == (":", "ts", add_field_to)
+        assert dissecter_rule.actions[2] == (None, "ts", add_field_to)
