@@ -111,10 +111,16 @@ class ConcatenatorRule(Rule):
         expected_config_fields = set(ConcatenatorRule.allowed_config_fields)
 
         unknown_fields = concatenator_rule_config_fields.difference(expected_config_fields)
+        missing_fields = expected_config_fields.difference(concatenator_rule_config_fields)
 
         if unknown_fields:
             raise InvalidConcatenatorRuleDefinition(
                 f"Unknown fields were given: '{', '.join(unknown_fields)}'"
+            )
+
+        if missing_fields:
+            raise InvalidConcatenatorRuleDefinition(
+                f"Following fields were missing: '{', '.join(missing_fields)}'"
             )
 
         for key in concatenator_rule_config_fields:

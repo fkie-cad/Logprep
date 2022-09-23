@@ -271,6 +271,19 @@ class TestConcatenatorRule:
                 InvalidConcatenatorRuleDefinition,
                 "Unknown fields were given: 'some'",
             ),
+            (
+                    {
+                        "filter": "field.a",
+                        "concatenator": {
+                            "source_fields": ["field.a", "field.b", "other_field.c"],
+                            "target_field": "target_field",
+                            "overwrite_target": False,
+                            "delete_source_fields": False,
+                        },
+                    },
+                    InvalidConcatenatorRuleDefinition,
+                    "Following fields were missing: 'seperator'",
+            ),
         ],
     )
     def test_rule_create_from_dict(self, rule_definition, raised, message):
