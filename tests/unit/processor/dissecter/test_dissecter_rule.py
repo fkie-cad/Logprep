@@ -220,7 +220,7 @@ class TestDissecterRule:
         rule2 = DissecterRule._create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
 
-    def test_converts_mappings_into_actions(self):
+    def test_converts_mappings_without_operator_to_add_field_to_action(self):
         rule = {
             "filter": "message",
             "dissecter": {
@@ -233,3 +233,13 @@ class TestDissecterRule:
         assert dissecter_rule.actions[0] == (":", "field2", add_field_to)
         assert dissecter_rule.actions[1] == (" ", "field3", add_field_to)
         assert dissecter_rule.actions[2] == (None, "field4", add_field_to)
+
+    def test_converts_mappings_with_append_operator_to_append_field_to_action(self):
+        rule = {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {"field1": "%{field2}:%{field3} %{field4}"},
+                "tag_on_failure": ["_failed"],
+            },
+        }
+        dissecter_rule = DissecterRule._create_from_dict(rule)

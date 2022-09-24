@@ -26,7 +26,7 @@ from attr import define, field
 
 from logprep.abc import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
-from logprep.util.helper import add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
 
@@ -103,7 +103,7 @@ class ListComparison(Processor):
         """
 
         # get value that should be checked in the lists
-        field_value = self._get_dotted_field_value(event, rule.check_field)
+        field_value = get_dotted_field_value(event, rule.check_field)
 
         # iterate over lists and check if element is in any
         list_matches = []

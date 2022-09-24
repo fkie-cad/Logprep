@@ -38,7 +38,7 @@ from tldextract import TLDExtract
 from logprep.abc import Processor
 from logprep.util.validators import list_of_urls_validator
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
-from logprep.util.helper import add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
@@ -116,7 +116,7 @@ class DomainLabelExtractor(Processor):
         """
         if not self._field_exists:
             return
-        domain = self._get_dotted_field_value(event, rule.target_field)
+        domain = get_dotted_field_value(event, rule.target_field)
         tagging_field = event.get(self._config.tagging_field_name, [])
 
         if self._is_valid_ip(domain):
