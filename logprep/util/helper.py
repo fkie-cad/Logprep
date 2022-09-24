@@ -30,36 +30,10 @@ def print_fcolor(fore: AnsiFore, message: str):
     color_print_line(None, fore, message)
 
 
-def append_field_to(event, output_field, content):
-    """
-    Append content to an output_field in the given event. Output_field can be a dotted subfield.
-    In case of missing fields all intermediate fields will be created.
-
-    Parameters
-    ----------
-    event: dict
-        Original log-event that logprep is currently processing
-    output_field: str
-        Dotted subfield string indicating the target of the output value, e.g. destination.ip
-    content: str, dict
-        Value that should be written into the output_field, can be a str or dict object
-    extends_lists: bool
-        Flag that determines whether or not lists as existing field values should be extended
-
-    Returns
-    ------
-    This method returns true if no conflicting fields were found during the process of the creation
-    of the dotted subfields. If conflicting fields were found False is returned.
-
-    # code is originally from the generic adder, such that duplicated code could be removed there.
-    """
-
-
 def add_field_to(event, output_field, content, extends_lists=False, overwrite_output_field=False):
     """
     Add content to an output_field in the given event. Output_field can be a dotted subfield.
     In case of missing fields all intermediate fields will be created.
-
     Parameters
     ----------
     event: dict

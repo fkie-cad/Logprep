@@ -1,9 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import pytest
-from logprep.processor.dissecter.rule import DissecterRule
+from logprep.processor.dissecter.rule import DissecterRule, add_and_overwrite, append
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util.helper import add_field_to
 
 
 class TestDissecterRule:
@@ -230,16 +229,20 @@ class TestDissecterRule:
         }
         dissecter_rule = DissecterRule._create_from_dict(rule)
         assert dissecter_rule.actions
-        assert dissecter_rule.actions[0] == (":", "field2", add_field_to)
-        assert dissecter_rule.actions[1] == (" ", "field3", add_field_to)
-        assert dissecter_rule.actions[2] == (None, "field4", add_field_to)
+        assert dissecter_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite)
+        assert dissecter_rule.actions[1] == ("field1", " ", "field3", add_and_overwrite)
+        assert dissecter_rule.actions[2] == ("field1", None, "field4", add_and_overwrite)
 
     def test_converts_mappings_with_append_operator_to_append_field_to_action(self):
         rule = {
             "filter": "message",
             "dissecter": {
-                "mapping": {"field1": "%{field2}:%{field3} %{field4}"},
+                "mapping": {"field1": "%{field2}:%{+field3} %{field4}"},
                 "tag_on_failure": ["_failed"],
             },
         }
         dissecter_rule = DissecterRule._create_from_dict(rule)
+        assert dissecter_rule.actions
+        assert dissecter_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite)
+        assert dissecter_rule.actions[1] == ("field1", " ", "field3", append)
+        assert dissecter_rule.actions[2] == ("field1", None, "field4", add_and_overwrite)

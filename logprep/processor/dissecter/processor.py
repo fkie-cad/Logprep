@@ -30,4 +30,13 @@ class Dissecter(Processor):
     rule_class = DissecterRule
 
     def _apply_rules(self, event, rule):
-        pass
+        current_field = None
+        for source_field, seperator, target_field, action in rule.actions:
+            if current_field != source_field:
+                current_field = source_field
+                loop_content = event.get(current_field)
+            if seperator:
+                content, _, loop_content = loop_content.partition(seperator)
+                action(event, target_field, content, seperator)
+            else:
+                action(event, target_field, loop_content, seperator)

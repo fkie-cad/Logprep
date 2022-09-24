@@ -1,4 +1,5 @@
 """Dissecter Rule Module"""
+from functools import partial
 import re
 from typing import Callable, List, Tuple
 from attrs import define, validators, field, Factory
@@ -9,6 +10,24 @@ from logprep.util.helper import add_field_to
 
 DISSECT = r"(%\{[A-Za-z0-9+&].*\})"
 SEPERATOR = r"((?!%\{.*\}).+)"
+
+append_as_list = partial(add_field_to, extends_lists=True)
+
+
+def add_and_overwrite(event, target_field, content, _=None):
+    """wrapper for add_field_to"""
+    add_field_to(event, target_field, content, overwrite_output_field=True)
+
+
+def append(event, target_field, content, seperator):
+    """appends to event"""
+    target_value = event.get(target_field)
+    if isinstance(target_value, str):
+        seperator = " " if seperator is None else seperator
+        target_value = f"{seperator}".join([target_value, content])
+        add_and_overwrite(event, target_field, target_value)
+    else:
+        append_as_list(event, target_field, content)
 
 
 class DissecterRule(Rule):
@@ -42,12 +61,15 @@ class DissecterRule(Rule):
             validator=validators.instance_of(list), default=["_dissectfailure"]
         )
 
-    _actions_mapping: dict = {"": add_field_to}
+    _actions_mapping: dict = {
+        "": add_and_overwrite,
+        "+": append,
+    }
 
     _config: "DissecterRule.Config"
 
-    actions: List[Tuple[str, str, Callable]]
-    """ List of tuples in format (<seperator>, <target_field>, <function>) """
+    actions: List[Tuple[str, str, str, Callable]]
+    """ List of tuples in format (<source_field>, <seperator>, <target_field>, <function>) """
 
     def __init__(self, filter_rule: FilterExpression, config: "DissecterRule.Config"):
         super().__init__(filter_rule)
@@ -68,7 +90,7 @@ class DissecterRule(Rule):
 
     def _set_actions(self):
         self.actions = []
-        for _, pattern in self._config.mapping.items():
+        for source_field, pattern in self._config.mapping.items():
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(
@@ -87,5 +109,5 @@ class DissecterRule(Rule):
                 )
                 if target_field:
                     action = self._actions_mapping.get(action)
-                self.actions.append((seperator, target_field, action))
+                self.actions.append((source_field, seperator, target_field, action))
                 assert True
