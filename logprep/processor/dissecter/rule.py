@@ -6,7 +6,7 @@ from attrs import define, validators, field, Factory
 from logprep.processor.base.rule import Rule
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util.helper import add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 DISSECT = r"(%\{[A-Za-z0-9+&].*\})"
 SEPERATOR = r"((?!%\{.*\}).+)"
@@ -21,7 +21,7 @@ def add_and_overwrite(event, target_field, content, _=None):
 
 def append(event, target_field, content, seperator):
     """appends to event"""
-    target_value = event.get(target_field)
+    target_value = get_dotted_field_value(event, target_field)
     if isinstance(target_value, str):
         seperator = " " if seperator is None else seperator
         target_value = f"{seperator}".join([target_value, content])
