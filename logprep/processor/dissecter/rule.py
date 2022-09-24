@@ -68,13 +68,15 @@ class DissecterRule(Rule):
 
     def _set_actions(self):
         self.actions = []
-        for field, pattern in self._config.mapping.items():
+        for _, pattern in self._config.mapping.items():
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(
                     r"%\{(?P<action>\+?)(?P<target_field>.*)\}(?P<seperator>.*)", section
                 )
-                seperator = section_match.group("seperator")
+                seperator = (
+                    section_match.group("seperator") if section_match.group("seperator") else None
+                )
                 action = (
                     section_match.group("action") if "action" in section_match.groupdict() else None
                 )

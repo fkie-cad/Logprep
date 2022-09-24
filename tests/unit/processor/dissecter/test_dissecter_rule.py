@@ -224,11 +224,12 @@ class TestDissecterRule:
         rule = {
             "filter": "message",
             "dissecter": {
-                "mapping": {"field1": "%{ts}:%{+ts} %{ts}"},
+                "mapping": {"field1": "%{field2}:%{field3} %{field4}"},
                 "tag_on_failure": ["_failed"],
             },
         }
         dissecter_rule = DissecterRule._create_from_dict(rule)
         assert dissecter_rule.actions
-        assert dissecter_rule.actions[0] == (":", "ts", add_field_to)
-        assert dissecter_rule.actions[2] == (None, "ts", add_field_to)
+        assert dissecter_rule.actions[0] == (":", "field2", add_field_to)
+        assert dissecter_rule.actions[1] == (" ", "field3", add_field_to)
+        assert dissecter_rule.actions[2] == (None, "field4", add_field_to)
