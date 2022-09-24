@@ -166,6 +166,7 @@ class TestDissecter(BaseProcessorTestCase):
 
         # TODO add tests for multiple mappings
         # TODO add tests for dotted fields with lists
+        # TODO add tests for dotted field in mapping key
         # TODO add tests for convert_datatype
         # TODO add tests for ordered appending
         # TODO add tests for failures
