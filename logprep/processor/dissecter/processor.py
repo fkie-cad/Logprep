@@ -22,6 +22,7 @@ Example
 """
 from logprep.abc import Processor
 from logprep.processor.dissecter.rule import DissecterRule
+from logprep.util.helper import get_dotted_field_value
 
 
 class Dissecter(Processor):
@@ -34,7 +35,7 @@ class Dissecter(Processor):
         for source_field, seperator, target_field, action in rule.actions:
             if current_field != source_field:
                 current_field = source_field
-                loop_content = event.get(current_field)
+                loop_content = get_dotted_field_value(event, current_field)
             if seperator:
                 content, _, loop_content = loop_content.partition(seperator)
                 action(event, target_field, content, seperator)
