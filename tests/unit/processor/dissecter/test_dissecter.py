@@ -258,6 +258,19 @@ test_cases = [  # testcase, rule, event, expected
             "extracted": {"key1": "This This", "key2": "is is", "key3": "source1 source2"},
         },
     ),
+    (
+        "append to new field in different order",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
+                }
+            },
+        },
+        {"message": "This is the message"},
+        {"message": "This is the message", "extracted": "message the is This"},
+    ),
 ]
 
 
@@ -274,7 +287,7 @@ class TestDissecter(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-        # TODO add tests for multiple mappings
+        # TODO add more tests for ordered appending with strings
+        # TODO add more tests for ordered appending with lists
         # TODO add tests for convert_datatype
-        # TODO add tests for ordered appending
         # TODO add tests for failures

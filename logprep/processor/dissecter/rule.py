@@ -14,7 +14,7 @@ SEPERATOR = r"((?!%\{.*\}).+)"
 append_as_list = partial(add_field_to, extends_lists=True)
 
 
-def add_and_overwrite(event, target_field, content, _=None):
+def add_and_overwrite(event, target_field, content, *_):
     """wrapper for add_field_to"""
     add_field_to(event, target_field, content, overwrite_output_field=True)
 
@@ -68,8 +68,8 @@ class DissecterRule(Rule):
 
     _config: "DissecterRule.Config"
 
-    actions: List[Tuple[str, str, str, Callable]]
-    """ List of tuples in format (<source_field>, <seperator>, <target_field>, <function>) """
+    actions: List[Tuple[str, str, str, Callable, int]]
+    """list tuple format (<source_field>, <seperator>, <target_field>, <function>), <position> """
 
     def __init__(self, filter_rule: FilterExpression, config: "DissecterRule.Config"):
         super().__init__(filter_rule)
@@ -94,7 +94,8 @@ class DissecterRule(Rule):
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(
-                    r"%\{(?P<action>\+?)(?P<target_field>.*)\}(?P<seperator>.*)", section
+                    r"%\{(?P<action>\+?)(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<seperator>.*)",
+                    section,
                 )
                 seperator = (
                     section_match.group("seperator") if section_match.group("seperator") else None
@@ -107,7 +108,12 @@ class DissecterRule(Rule):
                     if "target_field" in section_match.groupdict()
                     else None
                 )
+                position = (
+                    section_match.group("position")
+                    if "position" in section_match.groupdict()
+                    else None
+                )
                 if target_field:
                     action = self._actions_mapping.get(action)
-                self.actions.append((source_field, seperator, target_field, action))
-                assert True
+                position = int(position) if position is not None else 0
+                self.actions.append((source_field, seperator, target_field, action, position))

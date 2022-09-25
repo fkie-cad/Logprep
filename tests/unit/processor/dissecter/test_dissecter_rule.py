@@ -229,9 +229,9 @@ class TestDissecterRule:
         }
         dissecter_rule = DissecterRule._create_from_dict(rule)
         assert dissecter_rule.actions
-        assert dissecter_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite)
-        assert dissecter_rule.actions[1] == ("field1", " ", "field3", add_and_overwrite)
-        assert dissecter_rule.actions[2] == ("field1", None, "field4", add_and_overwrite)
+        assert dissecter_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, 0)
+        assert dissecter_rule.actions[1] == ("field1", " ", "field3", add_and_overwrite, 0)
+        assert dissecter_rule.actions[2] == ("field1", None, "field4", add_and_overwrite, 0)
 
     def test_converts_mappings_with_append_operator_to_append_field_to_action(self):
         rule = {
@@ -243,6 +243,20 @@ class TestDissecterRule:
         }
         dissecter_rule = DissecterRule._create_from_dict(rule)
         assert dissecter_rule.actions
-        assert dissecter_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite)
-        assert dissecter_rule.actions[1] == ("field1", " ", "field3", append)
-        assert dissecter_rule.actions[2] == ("field1", None, "field4", add_and_overwrite)
+        assert dissecter_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, 0)
+        assert dissecter_rule.actions[1] == ("field1", " ", "field3", append, 0)
+        assert dissecter_rule.actions[2] == ("field1", None, "field4", add_and_overwrite, 0)
+
+    def test_converts_mappings_with_append_operator_and_order_modifier(self):
+        rule = {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {"field1": "%{field2}:%{+field3/1} %{+field4/3}"},
+                "tag_on_failure": ["_failed"],
+            },
+        }
+        dissecter_rule = DissecterRule._create_from_dict(rule)
+        assert dissecter_rule.actions
+        assert dissecter_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, 0)
+        assert dissecter_rule.actions[1] == ("field1", " ", "field3", append, 1)
+        assert dissecter_rule.actions[2] == ("field1", None, "field4", append, 3)

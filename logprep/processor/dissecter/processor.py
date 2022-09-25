@@ -31,12 +31,17 @@ class Dissecter(Processor):
 
     def _apply_rules(self, event, rule):
         current_field = None
-        for source_field, seperator, target_field, action in rule.actions:
+        actions = []
+        for source_field, seperator, target_field, action, position in rule.actions:
             if current_field != source_field:
                 current_field = source_field
                 loop_content = get_dotted_field_value(event, current_field)
             if seperator:
                 content, _, loop_content = loop_content.partition(seperator)
-                action(event, target_field, content, seperator)
             else:
-                action(event, target_field, loop_content, seperator)
+                content = loop_content
+            actions.append((action, event, target_field, content, seperator, position))
+        if actions:
+            actions.sort(key=lambda x: x[5])
+            for action, event, target_field, content, seperator, _ in actions:
+                action(event, target_field, content, seperator)
