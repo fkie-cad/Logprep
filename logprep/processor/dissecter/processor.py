@@ -4,8 +4,7 @@ Dissecter
 
 The `dissecter` is a processor that tokenizes incoming strings using defined patterns.
 The behavior is based of the logstash dissect filter plugin.
-
-For further information see: https://www.elastic.co/guide/en/logstash/current/plugins-filters-dissect.html
+Additionaly it can be used to convert datatypes in messages.
 
 
 Example

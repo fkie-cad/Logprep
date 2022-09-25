@@ -186,6 +186,78 @@ test_cases = [  # testcase, rule, event, expected
             "field4": "message",
         },
     ),
+    (
+        "processes multiple mappings to different target fields",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "source1": "%{extracted.source1.key1} %{extracted.source1.key2} %{extracted.source1.key3}",
+                    "source2": "%{extracted.source2.key1} %{extracted.source2.key2} %{extracted.source2.key3}",
+                }
+            },
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+            "extracted": {
+                "source1": {"key1": "This", "key2": "is", "key3": "source1"},
+                "source2": {"key1": "This", "key2": "is", "key3": "source2"},
+            },
+        },
+    ),
+    (
+        "processes multiple mappings to same target fields (overwrite)",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "source1": "%{extracted.key1} %{extracted.key2} %{extracted.key3}",
+                    "source2": "%{extracted.key1} %{extracted.key2} %{extracted.key3}",
+                }
+            },
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+            "extracted": {"key1": "This", "key2": "is", "key3": "source2"},
+        },
+    ),
+    (
+        "processes multiple mappings to same target fields (appending)",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "source1": "%{+extracted.key1} %{+extracted.key2} %{+extracted.key3}",
+                    "source2": "%{+extracted.key1} %{+extracted.key2} %{+extracted.key3}",
+                }
+            },
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+        },
+        {
+            "message": "This message does not matter",
+            "source1": "This is source1",
+            "source2": "This is source2",
+            "extracted": {"key1": "This This", "key2": "is is", "key3": "source1 source2"},
+        },
+    ),
 ]
 
 
