@@ -42,6 +42,6 @@ class Dissecter(Processor):
                 content = loop_content
             actions.append((action, event, target_field, content, seperator, position))
         if actions:
-            actions.sort(key=lambda x: x[5])
+            actions.sort(key=lambda x: x[5])  # sort by position
             for action, event, target_field, content, seperator, _ in actions:
                 action(event, target_field, content, seperator)

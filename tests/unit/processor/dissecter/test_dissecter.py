@@ -259,7 +259,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "append to new field in different order",
+        "append to new field in different order as string",
         {
             "filter": "message",
             "dissecter": {
@@ -270,6 +270,66 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is the message"},
         {"message": "This is the message", "extracted": "message the is This"},
+    ),
+    (
+        "append to existing field in different order as string",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
+                }
+            },
+        },
+        {"message": "This is the message", "extracted": "preexisting"},
+        {"message": "This is the message", "extracted": "preexisting message the is This"},
+    ),
+    (
+        "append to existing empty list field in different order as list",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
+                }
+            },
+        },
+        {"message": "This is the message", "extracted": []},
+        {"message": "This is the message", "extracted": ["message", "the", "is", "This"]},
+    ),
+    (
+        "append to existing prefilled field in different order as list",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
+                }
+            },
+        },
+        {"message": "This is the message", "extracted": ["preexisting"]},
+        {
+            "message": "This is the message",
+            "extracted": ["preexisting", "message", "the", "is", "This"],
+        },
+    ),
+    (
+        "append to new field in specified order as string with multiple fields",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "message": "%{}: %{+extracted/2}",
+                    "message2": "%{}: %{+extracted/1}",
+                }
+            },
+        },
+        {"message": "The first message: first", "message2": "The second message: second"},
+        {
+            "message": "The first message: first",
+            "message2": "The second message: second",
+            "extracted": "second first",
+        },
     ),
 ]
 

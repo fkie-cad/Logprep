@@ -8,7 +8,7 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
-DISSECT = r"(%\{[A-Za-z0-9+&].*\})"
+DISSECT = r"(%\{[+&]?.*\})"
 SEPERATOR = r"((?!%\{.*\}).+)"
 
 append_as_list = partial(add_field_to, extends_lists=True)
@@ -115,5 +115,7 @@ class DissecterRule(Rule):
                 )
                 if target_field:
                     action = self._actions_mapping.get(action)
+                else:
+                    action = lambda *args: None
                 position = int(position) if position is not None else 0
                 self.actions.append((source_field, seperator, target_field, action, position))
