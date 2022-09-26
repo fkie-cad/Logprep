@@ -66,10 +66,15 @@ class DissecterRule(Rule):
         "+": append,
     }
 
+    _converter_mapping: dict = {"int": int, "float": float, "string": str}
+
     _config: "DissecterRule.Config"
 
     actions: List[Tuple[str, str, str, Callable, int]]
     """list tuple format (<source_field>, <seperator>, <target_field>, <function>), <position> """
+
+    convert_actions: List[Tuple[str, Callable]]
+    """list tuple format <target_field>, <converter callable>"""
 
     def __init__(self, filter_rule: FilterExpression, config: "DissecterRule.Config"):
         super().__init__(filter_rule)
@@ -119,3 +124,10 @@ class DissecterRule(Rule):
                     action = lambda *args: None
                 position = int(position) if position is not None else 0
                 self.actions.append((source_field, seperator, target_field, action, position))
+
+    def _set_convert_actions(self):
+        self.convert_actions = []
+        for target_field, converter_string in self._config.convert_datatype:
+            self.convert_actions.append(
+                (target_field, self._converter_mapping.get(converter_string))
+            )

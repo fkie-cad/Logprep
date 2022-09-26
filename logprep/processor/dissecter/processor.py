@@ -45,3 +45,5 @@ class Dissecter(Processor):
             actions.sort(key=lambda x: x[5])  # sort by position
             for action, event, target_field, content, seperator, _ in actions:
                 action(event, target_field, content, seperator)
+        for target_field, datatype in rule.convert_actions:
+            event.update({target_field: datatype(event.get(target_field))})

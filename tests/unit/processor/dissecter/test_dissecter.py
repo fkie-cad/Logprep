@@ -331,6 +331,12 @@ test_cases = [  # testcase, rule, event, expected
             "extracted": "second first",
         },
     ),
+    (
+        "converts datatype without mapping",
+        {"filter": "message", "dissecter": {"convert_datatype": {"message": "int"}}},
+        {"message": "42"},
+        {"message": 42},
+    ),
 ]
 
 
@@ -347,7 +353,5 @@ class TestDissecter(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-        # TODO add more tests for ordered appending with strings
-        # TODO add more tests for ordered appending with lists
         # TODO add tests for convert_datatype
         # TODO add tests for failures
