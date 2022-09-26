@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+from copy import deepcopy
 import json
 import re
 import pytest
@@ -16,9 +17,9 @@ import arrow
 import elasticsearch
 import elasticsearch.helpers
 
-
-from logprep.connector.elasticsearch.output import ElasticsearchOutput
+from logprep.factory import Factory
 from logprep.abc.output import CriticalOutputError, FatalOutputError
+from tests.unit.connector.base import BaseOutputTestCase
 
 
 class NotJsonSerializableMock:
@@ -40,39 +41,34 @@ def mock_bulk(
 elasticsearch.helpers.bulk = mock_bulk
 
 
-class TestElasticsearchOutput:
-    def setup_method(self, _):
-        self.es_output = ElasticsearchOutput(
-            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
+class TestElasticsearchOutput(BaseOutputTestCase):
+
+    CONFIG = {
+        "type": "eleasticsearch_output",
+        "hosts": ["host:123"],
+        "default_index": "default_index",
+        "error_index": "error_index",
+        "message_backlog_size": 1,
+        "timeout": 5000,
+    }
+
+    def test_describe_returns_elasticsearch_output(self):
+        assert (
+            self.object.describe()
+            == "ElasticsearchOutput (Test Instance Name) - ElasticSearch Output: ['host:123']"
         )
 
-    def test_implements_abstract_methods(self):
-        try:
-            ElasticsearchOutput(
-                ["host:123"], "default_index", "error_index", 2, 5000, 0, None, None, None
-            )
-        except TypeError as err:
-            pytest.fail(f"Must implement abstract methods: {str(err)}")
-
-    def test_describe_endpoint_returns_elasticsearch_output(self):
-        assert self.es_output.describe_endpoint() == "Elasticsearch Output: ['host:123']"
-
-    def test_store_sends_event_to_expected_index_if_index_missing_in_event(self):
-        default_index = "target_index"
+    def test_store_sends_to_default_index(self):
         event = {"field": "content"}
         expected = {
-            "_index": default_index,
+            "_index": "default_index",
             "message": '{"field": "content"}',
             "reason": "Missing index in document",
         }
+        self.object.store(event)
 
-        es_output = ElasticsearchOutput(
-            ["host:123"], default_index, "error_index", 1, 5000, 0, None, None, None
-        )
-        es_output.store(event)
-
-        assert es_output._message_backlog[0].pop("@timestamp")
-        assert es_output._message_backlog[0] == expected
+        assert self.object._message_backlog[0].pop("@timestamp")
+        assert self.object._message_backlog[0] == expected
 
     def test_store_sends_event_to_expected_index_with_date_pattern_if_index_missing_in_event(self):
         default_index = "default_index-%{YYYY-MM-DD}"
@@ -85,10 +81,9 @@ class TestElasticsearchOutput:
             "message": '{"field": "content"}',
             "reason": "Missing index in document",
         }
-
-        es_output = ElasticsearchOutput(
-            ["host:123"], default_index, "error_index", 1, 5000, 0, None, None, None
-        )
+        es_config = deepcopy(self.CONFIG)
+        es_config.update({"default_index": default_index})
+        es_output = Factory.create({"elasticsearch": es_config}, self.logger)
         es_output.store(event)
 
         assert es_output._message_backlog[0].pop("@timestamp")
@@ -97,22 +92,15 @@ class TestElasticsearchOutput:
     def test_store_custom_sends_event_to_expected_index(self):
         custom_index = "custom_index"
         event = {"field": "content"}
-
         expected = {"field": "content", "_index": custom_index}
-
-        es_output = ElasticsearchOutput(
-            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
-        )
-        es_output.store_custom(event, custom_index)
-
-        assert es_output._message_backlog[0] == expected
+        self.object.store_custom(event, custom_index)
+        assert self.object._message_backlog[0] == expected
 
     def test_store_failed(self):
         error_index = "error_index"
         event_received = {"field": "received"}
         event = {"field": "content"}
         error_message = "error message"
-
         expected = {
             "error": error_message,
             "original": event_received,
@@ -121,12 +109,9 @@ class TestElasticsearchOutput:
             "@timestamp": str(datetime.now()),
         }
 
-        es_output = ElasticsearchOutput(
-            ["host:123"], "default_index", error_index, 1, 5000, 0, None, None, None
-        )
-        es_output.store_failed(error_message, event_received, event)
+        self.object.store_failed(error_message, event_received, event)
 
-        error_document = es_output._message_backlog[0]
+        error_document = self.object._message_backlog[0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
         error_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
@@ -142,7 +127,7 @@ class TestElasticsearchOutput:
             "reason": "A reason for failed indexing",
             "_index": "default_index",
         }
-        failed_document = self.es_output._build_failed_index_document(
+        failed_document = self.object._build_failed_index_document(
             {"invalid_json": NotJsonSerializableMock(), "something_valid": "im_valid!"},
             "A reason for failed indexing",
         )
@@ -156,10 +141,7 @@ class TestElasticsearchOutput:
             "message": '{"foo": "bar"}',
             "_index": "default_index",
         }
-        es_output = ElasticsearchOutput(
-            ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None
-        )
-        failed_document = es_output._build_failed_index_document(
+        failed_document = self.object._build_failed_index_document(
             {"foo": "bar"}, "A reason for failed indexing"
         )
         assert failed_document.pop("@timestamp")
@@ -169,28 +151,30 @@ class TestElasticsearchOutput:
         "logprep.connector.elasticsearch.output.helpers.bulk",
         side_effect=elasticsearch.SerializationError,
     )
-    def test_write_to_es_calls_handle_serialization_error_if_serialization_error(self, _):
-        self.es_output._handle_serialization_error = mock.MagicMock()
-        self.es_output._write_to_es({"dummy": "event"})
-        self.es_output._handle_serialization_error.assert_called()
+    def test_write_to_search_context_calls_handle_serialization_error_if_serialization_error(
+        self, _
+    ):
+        self.object._handle_serialization_error = mock.MagicMock()
+        self.object._write_to_search_context({"dummy": "event"})
+        self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
         "logprep.connector.elasticsearch.output.helpers.bulk",
         side_effect=elasticsearch.ConnectionError,
     )
-    def test_write_to_es_calls_handle_connection_error_if_connection_error(self, _):
-        self.es_output._handle_connection_error = mock.MagicMock()
-        self.es_output._write_to_es({"dummy": "event"})
-        self.es_output._handle_connection_error.assert_called()
+    def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
+        self.object._handle_connection_error = mock.MagicMock()
+        self.object._write_to_search_context({"dummy": "event"})
+        self.object._handle_connection_error.assert_called()
 
     @mock.patch(
         "logprep.connector.elasticsearch.output.helpers.bulk",
         side_effect=elasticsearch.helpers.BulkIndexError,
     )
-    def test_write_to_es_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
-        self.es_output._handle_bulk_index_error = mock.MagicMock()
-        self.es_output._write_to_es({"dummy": "event"})
-        self.es_output._handle_bulk_index_error.assert_called()
+    def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
+        self.object._handle_bulk_index_error = mock.MagicMock()
+        self.object._write_to_search_context({"dummy": "event"})
+        self.object._handle_bulk_index_error.assert_called()
 
     @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
     def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
@@ -203,11 +187,11 @@ class TestElasticsearchOutput:
                 }
             }
         ]
-        self.es_output._handle_bulk_index_error(mock_bulk_index_error)
+        self.object._handle_bulk_index_error(mock_bulk_index_error)
         fake_bulk.assert_called()
 
     @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
-    def test__handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
+    def test_handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
             {
@@ -217,7 +201,7 @@ class TestElasticsearchOutput:
                 }
             }
         ]
-        self.es_output._handle_bulk_index_error(mock_bulk_index_error)
+        self.object._handle_bulk_index_error(mock_bulk_index_error)
         call_args = fake_bulk.call_args[0][1]
         error_document = call_args[0]
         assert "reason" in error_document
@@ -227,22 +211,18 @@ class TestElasticsearchOutput:
         assert error_document.get("reason") == "myerrortype: myreason"
         assert error_document.get("message") == json.dumps({"my": "document"})
 
-    def test_write_to_es_calls_input_batch_finished_callback(self):
-        self.es_output._input = mock.MagicMock()
-        self.es_output._input.batch_finished_callback = mock.MagicMock()
-        self.es_output._write_to_es({"dummy": "event"})
-        self.es_output._input.batch_finished_callback.assert_called()
-
-    def test_write_to_es_sets_processed_cnt(self):
-        self.es_output._message_backlog_size = 2
-        current_proccessed_cnt = self.es_output._processed_cnt
-        self.es_output._write_to_es({"dummy": "event"})
-        assert current_proccessed_cnt < self.es_output._processed_cnt
+    def test_write_to_search_context_sets_processed_cnt(self):
+        es_config = deepcopy(self.CONFIG)
+        es_config.update({"message_backlog_size": 2})
+        es_output = Factory.create({"elasticsearch": es_config}, self.logger)
+        current_proccessed_cnt = es_output._processed_cnt
+        es_output._write_to_search_context({"dummy": "event"})
+        assert current_proccessed_cnt < es_output._processed_cnt
 
     def test_handle_connection_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
-            self.es_output._handle_connection_error(mock.MagicMock())
+            self.object._handle_connection_error(mock.MagicMock())
 
     def test_handle_serialization_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
-            self.es_output._handle_serialization_error(mock.MagicMock())
+            self.object._handle_serialization_error(mock.MagicMock())

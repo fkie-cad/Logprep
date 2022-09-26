@@ -4,6 +4,16 @@
 """
 import warnings
 
+from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
+from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
+from logprep.connector.console.output import ConsoleOutput
+from logprep.connector.dummy.input import DummyInput
+from logprep.connector.dummy.output import DummyOutput
+from logprep.connector.elasticsearch.output import ElasticsearchOutput
+from logprep.connector.json.input import JsonInput
+from logprep.connector.jsonl.input import JsonlInput
+from logprep.connector.jsonl.output import JsonlOutput
+from logprep.connector.opensearch.output import OpensearchOutput
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.deleter.processor import Deleter
@@ -23,10 +33,11 @@ from logprep.processor.template_replacer.processor import TemplateReplacer
 from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 
 
-class ProcessorRegistry:
-    """Processor Registry"""
+class Registry:
+    """Component Registry"""
 
     mapping = {
+        # Processors
         "clusterer": Clusterer,
         "datetime_extractor": DatetimeExtractor,
         "deleter": Deleter,
@@ -45,10 +56,21 @@ class ProcessorRegistry:
         "pseudonymizer": Pseudonymizer,
         "selective_extractor": SelectiveExtractor,
         "template_replacer": TemplateReplacer,
+        # Connectors
+        "json_input": JsonInput,
+        "jsonl_input": JsonlInput,
+        "dummy_input": DummyInput,
+        "dummy_output": DummyOutput,
+        "confluentkafka_input": ConfluentKafkaInput,
+        "confluentkafka_output": ConfluentKafkaOutput,
+        "console_output": ConsoleOutput,
+        "eleasticsearch_output": ElasticsearchOutput,
+        "jsonl_output": JsonlOutput,
+        "opensearch_output": OpensearchOutput,
     }
 
     @classmethod
-    def get_processor_class(cls, processor_type):
+    def get_class(cls, component_type):
         """return the processor class for a given type
 
         Parameters
@@ -61,9 +83,9 @@ class ProcessorRegistry:
         _type_
             _description_
         """
-        if processor_type == "delete":
+        if component_type == "delete":
             warnings.warn(
                 "delete processor is deprecated and will be removed in a future release. Please use deleter instead.",
                 UserWarning,
             )
-        return cls.mapping.get(processor_type)
+        return cls.mapping.get(component_type)

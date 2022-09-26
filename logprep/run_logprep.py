@@ -87,7 +87,7 @@ def _run_logprep(arguments, logger: Logger, status_logger: Optional[MetricTarget
         runner = Runner.get_runner()
         runner.set_logger(logger, status_logger)
         runner.load_configuration(arguments.config)
-        if logger.isEnabledFor(DEBUG):
+        if logger.isEnabledFor(DEBUG):  # pragma: no cover
             logger.debug("Configuration loaded")
         runner.start()
     # pylint: disable=broad-except
@@ -163,11 +163,10 @@ def main():
     TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)
     TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
 
-    if logger.isEnabledFor(DEBUG):
+    if logger.isEnabledFor(DEBUG):  # pragma: no cover
         logger.debug("Metric export enabled: %s", config.get("metrics", {}).get("enabled", False))
         logger.debug("Time measurement enabled: %s", TimeMeasurement.TIME_MEASUREMENT_ENABLED)
         logger.debug("Config path: %s", args.config)
-
     if args.validate_rules or args.auto_test:
         type_rule_map = get_processor_type_and_rule_class()
         rules_valid = []

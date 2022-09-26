@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from logprep.processor.processor_factory_error import ProcessorFactoryError
+from logprep.factory_error import FactoryError
 
 
 class RuleError(BaseException):
@@ -35,7 +35,7 @@ class ValueDoesnotExistInSchemaError(MismatchedRuleDefinitionError):
         super().__init__(f"Invalid value '{value}' for key '{key}'.")
 
 
-class SkipImportError(ProcessorFactoryError):
+class SkipImportError(FactoryError):
     """Raise if the processor type can't be imported."""
 
     def __init__(self, processor_type=None):  # pragma: no cover

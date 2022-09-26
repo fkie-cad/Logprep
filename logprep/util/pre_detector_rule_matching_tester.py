@@ -15,7 +15,7 @@ from ruamel.yaml import YAML, YAMLError
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.processor.processor_factory import ProcessorFactory
+from logprep.factory import Factory
 from logprep.util.helper import print_fcolor
 
 logger = logging.getLogger()
@@ -135,7 +135,7 @@ class RuleMatchingTester:
             "pre_detector_topic": "",
         }
 
-        processor = ProcessorFactory.create(processor_cfg, logger)
+        processor = Factory.create(processor_cfg, logger)
         return processor
 
     def _print_results(self):

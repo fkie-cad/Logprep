@@ -3,25 +3,34 @@ timeout: 0.1
 
 pipeline:
   - labelername:
-        type: labeler
-        schema: tests/testdata/acceptance/labeler/rules_static/labeling/schema.json
-        include_parent_labels: true
-        specific_rules:
-            - tests/testdata/acceptance/labeler/rules_static/rules/specific/
-        generic_rules:
-          - tests/testdata/acceptance/labeler/rules_static/rules/generic/
-connector:
-  type: confluentkafka
-  bootstrapservers:
-    - 172.17.0.2:9092
-  consumer:
+      type: labeler
+      schema: tests/testdata/acceptance/labeler/rules_static/labeling/schema.json
+      include_parent_labels: true
+      specific_rules:
+        - tests/testdata/acceptance/labeler/rules_static/rules/specific/
+      generic_rules:
+        - tests/testdata/acceptance/labeler/rules_static/rules/generic/
+input:
+  kafka:
+    type: confluentkafka_input
+    bootstrapservers:
+      - 172.17.0.2:9092
     topic: wineventlog_raw
     group: cgroup
     auto_commit: on
     session_timeout: 6000
     offset_reset_policy: smallest
     enable_auto_offset_store: false
-  producer:
+    ssl:
+      cafile:
+      certfile:
+      keyfile:
+      password:
+output:
+  kafka:
+    type: confluentkafka_output
+    bootstrapservers:
+      - 172.17.0.2:9092
     topic: wineventlog_labeled
     error_topic: producer_error
     ack_policy: all
@@ -30,8 +39,8 @@ connector:
     linger_duration: 0
     flush_timeout: 30
     send_timeout: 2
-  ssl:
-    cafile:
-    certfile:
-    keyfile:
-    password:
+    ssl:
+      cafile:
+      certfile:
+      keyfile:
+      password:

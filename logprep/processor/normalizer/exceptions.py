@@ -15,7 +15,7 @@ class DuplicationError(NormalizerError):
 
     def __init__(self, name: str, skipped_fields: List[str]):
         message = (
-            "The following fields already existed and " "were not overwritten by the Normalizer: "
+            "The following fields already existed and were not overwritten by the Normalizer: "
         )
         message += " ".join(skipped_fields)
 

@@ -5,12 +5,12 @@ from typing import Optional
 import pytest
 from attr import define, field, validators
 from logprep.abc.processor import Processor
-from logprep.processor.processor_configuration import ProcessorConfiguration
-from logprep.processor.processor_factory_error import (
+from logprep.configuration import Configuration
+from logprep.factory_error import (
     NoTypeSpecifiedError,
-    UnknownProcessorTypeError,
+    UnknownComponentTypeError,
 )
-from logprep.processor.processor_registry import ProcessorRegistry
+from logprep.registry import Registry
 
 
 class MockProcessor(Processor):
@@ -26,15 +26,15 @@ class MockProcessor(Processor):
         pass
 
 
-original_registry_mapping = deepcopy(ProcessorRegistry.mapping)
+original_registry_mapping = deepcopy(Registry.mapping)
 
 
-class TestProcessorConfiguration:
+class TestConfiguration:
     def setup_method(self):
-        ProcessorRegistry.mapping = {"mock_processor": MockProcessor}
+        Registry.mapping = {"mock_processor": MockProcessor}
 
     def teardown_method(self):
-        ProcessorRegistry.mapping = original_registry_mapping
+        Registry.mapping = original_registry_mapping
 
     def test_reads_test_config(self):
         test_config = {
@@ -44,7 +44,7 @@ class TestProcessorConfiguration:
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
-        config = ProcessorConfiguration.create("dummy name", test_config)
+        config = Configuration.create("dummy name", test_config)
         assert config.type == "mock_processor"
         assert config.mandatory_attribute == "I am mandatory"
         assert config.generic_rules == ["tests/testdata/unit/normalizer/rules/generic/"]
@@ -57,7 +57,7 @@ class TestProcessorConfiguration:
             "optional_attribute": "I am optional",
         }
         with pytest.raises(NoTypeSpecifiedError):
-            ProcessorConfiguration.create("dummy name", test_config)
+            Configuration.create("dummy name", test_config)
 
     def test_raises_on_unknown_processor(self):
         test_config = {
@@ -67,8 +67,8 @@ class TestProcessorConfiguration:
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
-        with pytest.raises(UnknownProcessorTypeError):
-            ProcessorConfiguration.create("dummy name", test_config)
+        with pytest.raises(UnknownComponentTypeError):
+            Configuration.create("dummy name", test_config)
 
     def test_raises_if_one_mandatory_field_is_missing(self):
         test_config = {
@@ -80,7 +80,7 @@ class TestProcessorConfiguration:
         with pytest.raises(
             TypeError, match=r"missing 1 required .* argument: 'mandatory_attribute'"
         ):
-            ProcessorConfiguration.create("dummy name", test_config)
+            Configuration.create("dummy name", test_config)
 
     def test_raises_if_mandatory_attribute_from_base_is_missing(self):
         test_config = {
@@ -92,7 +92,7 @@ class TestProcessorConfiguration:
             TypeError,
             match=r"missing 1 required .* argument: 'specific_rules'",
         ):
-            ProcessorConfiguration.create("dummy name", test_config)
+            Configuration.create("dummy name", test_config)
 
     def test_raises_if_multiple_mandatory_field_are_missing(self):
         test_config = {
@@ -103,7 +103,7 @@ class TestProcessorConfiguration:
             TypeError,
             match=r"missing 2 required .* arguments: .*'specific_rules' and 'mandatory_attribute'",
         ):
-            ProcessorConfiguration.create("dummy name", test_config)
+            Configuration.create("dummy name", test_config)
 
     def test_raises_on_unknown_field(self):
         test_config = {
@@ -115,7 +115,7 @@ class TestProcessorConfiguration:
             "i_shoul_not_be_here": "does not matter",
         }
         with pytest.raises(TypeError, match=r"unexpected keyword argument 'i_shoul_not_be_here'"):
-            ProcessorConfiguration.create("dummy name", test_config)
+            Configuration.create("dummy name", test_config)
 
     def test_init_non_mandatory_fields_with_default(self):
         test_config = {
@@ -124,7 +124,7 @@ class TestProcessorConfiguration:
             "generic_rules": ["tests/testdata/unit/normalizer/rules/generic/"],
             "mandatory_attribute": "I am mandatory",
         }
-        config = ProcessorConfiguration.create("dummy name", test_config)
+        config = Configuration.create("dummy name", test_config)
         assert config.tree_config is None
         assert config.optional_attribute is None
 
@@ -136,7 +136,7 @@ class TestProcessorConfiguration:
             "mandatory_attribute": "I am mandatory",
             "optional_attribute": "I am optional",
         }
-        config = ProcessorConfiguration.create("dummy name", test_config)
+        config = Configuration.create("dummy name", test_config)
         assert config.optional_attribute == "I am optional"
 
     def test_init_optional_field_in_base_class(self):
@@ -147,5 +147,5 @@ class TestProcessorConfiguration:
             "mandatory_attribute": "I am mandatory",
             "tree_config": "tests/testdata/unit/tree_config.json",
         }
-        config = ProcessorConfiguration.create("dummy name", test_config)
+        config = Configuration.create("dummy name", test_config)
         assert config.tree_config == "tests/testdata/unit/tree_config.json"

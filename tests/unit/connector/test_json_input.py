@@ -1,39 +1,55 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
-import json
+# pylint: disable=protected-access
 from unittest import mock
 
 import pytest
 from logprep.abc.input import CriticalInputError
-from logprep.connector.json.input import JsonInput
+from tests.unit.connector.base import BaseInputTestCase
 
 
 class DummyError(BaseException):
     pass
 
 
-class TestJsonInput:
+class TestJsonInput(BaseInputTestCase):
     timeout = 0.1
 
-    def create_input(self, documents: str) -> None:
-        mock_open = mock.mock_open(read_data=json.dumps(documents))
-        with mock.patch("builtins.open", mock_open):
-            self.input = JsonInput("")
+    CONFIG = {"type": "json_input", "documents_path": "/does/not/matter"}
 
-    def test_get_next_returns_document(self):
+    parse_function = "logprep.connector.json.input.parse_json"
+
+    @mock.patch(parse_function)
+    def test_documents_returns(self, mock_parse):
+        return_value = [{"message": "test_message"}]
+        mock_parse.return_value = return_value
+        assert self.object._documents == return_value
+
+    @mock.patch(parse_function)
+    def test_get_next_returns_document(self, mock_parse):
+        mock_parse.return_value = [{"message": "test_message"}]
         expected = {"message": "test_message"}
-        self.create_input(expected)
-        document = self.input.get_next(self.timeout)
+        document, _ = self.object.get_next(self.timeout)
         assert document == expected
 
-    def test_get_next_returns_multiple_documents(self):
-        documents = [{"order": 0}, {"order": 1}]
-        self.create_input(documents)
-        assert {"order": 0} == self.input.get_next(self.timeout)
-        assert {"order": 1} == self.input.get_next(self.timeout)
+    @mock.patch(parse_function)
+    def test_get_next_returns_multiple_documents(self, mock_parse):
+        mock_parse.return_value = [{"order": 0}, {"order": 1}]
+        event, _ = self.object.get_next(self.timeout)
+        assert {"order": 0} == event
+        event, _ = self.object.get_next(self.timeout)
+        assert {"order": 1} == event
 
-    def test_raises_exception_if_not_a_dict(self):
-        documents = ["no dict"]
-        self.create_input(documents)
+    @mock.patch(parse_function)
+    def test_raises_exception_if_not_a_dict(self, mock_parse):
+        mock_parse.return_value = ["no dict"]
         with pytest.raises(CriticalInputError, match=r"not a dict"):
-            _ = self.input.get_next(self.timeout)
+            _, _ = self.object.get_next(self.timeout)
+
+    @mock.patch(parse_function)
+    def test_raises_exception_if_one_element_is_not_a_dict(self, mock_parse):
+        mock_parse.return_value = [{"order": 0}, "not a dict", {"order": 1}]
+        with pytest.raises(CriticalInputError, match=r"not a dict"):
+            _, _ = self.object.get_next(self.timeout)
+            _, _ = self.object.get_next(self.timeout)
+            _, _ = self.object.get_next(self.timeout)

@@ -1,84 +1,94 @@
+# pylint: disable=missing-docstring
+# pylint: disable=no-self-use
+from copy import deepcopy
+
 from pytest import raises, fail
 
-from logprep.connector.dummy.output import DummyOutput
 from logprep.abc.output import FatalOutputError
+from logprep.factory import Factory
+from tests.unit.connector.base import BaseOutputTestCase
 
 
-class TestDummyOutput:
+class TestDummyOutput(BaseOutputTestCase):
+    CONFIG = {
+        "type": "dummy_output",
+    }
+
     def test_store_appends_document_to_variable(self):
-        output = DummyOutput()
         document = {"the": "document"}
-        output.store(document)
+        self.object.store(document)
 
-        assert len(output.events) == 1
-        assert output.events[0] == document
+        assert len(self.object.events) == 1
+        assert self.object.events[0] == document
 
     def test_store_custom_appends_document_to_variable(self):
-        output = DummyOutput()
         document = {"the": "document"}
-        output.store_custom(document, target="whatever")
+        self.object.store_custom(document, target="whatever")
 
-        assert len(output.events) == 1
-        assert output.events[0] == document
+        assert len(self.object.events) == 1
+        assert self.object.events[0] == document
 
     def test_increments_setup_called_count_when_setup_was_called(self):
-        output = DummyOutput()
-
-        assert output.setup_called_count == 0
-
-        output.setup()
-        assert output.setup_called_count == 1
+        assert self.object.setup_called_count == 0
+        self.object.setup()
+        assert self.object.setup_called_count == 1
 
     def test_increments_shutdown_called_count_when_shutdown_was_called(self):
-        output = DummyOutput()
-
-        assert output.shut_down_called_count == 0
-
-        output.shut_down()
-        assert output.shut_down_called_count == 1
+        assert self.object.shut_down_called_count == 0
+        self.object.shut_down()
+        assert self.object.shut_down_called_count == 1
 
     def test_store_maintains_order_of_documents(self):
-        output = DummyOutput()
         for i in range(0, 3):
-            output.store({"order": i})
-
-        assert len(output.events) == 3
+            self.object.store({"order": i})
+        assert len(self.object.events) == 3
         for order in range(0, 3):
-            assert output.events[order]["order"] == order
+            assert self.object.events[order]["order"] == order
 
     def test_raises_exception_on_call_to_store(self):
-        output = DummyOutput(exceptions=[FatalOutputError])
+        config = deepcopy(self.CONFIG)
+        config.update({"exceptions": ["FatalOutputError"]})
+        dummy_output = Factory.create({"test connector": config}, logger=self.logger)
 
-        with raises(FatalOutputError):
-            output.store({"order": 0})
+        with raises(BaseException, match="FatalOutputError"):
+            dummy_output.store({"order": 0})
 
     def test_raises_exception_on_call_to_store_custom(self):
-        output = DummyOutput(exceptions=[FatalOutputError])
+        config = deepcopy(self.CONFIG)
+        config.update({"exceptions": ["FatalOutputError"]})
+        dummy_output = Factory.create({"test connector": config}, logger=self.logger)
 
-        with raises(FatalOutputError):
-            output.store_custom({"order": 0}, target="whatever")
+        with raises(Exception, match="FatalOutputError"):
+            dummy_output.store_custom({"order": 0}, target="whatever")
 
     def test_raises_exception_only_once(self):
-        output = DummyOutput(exceptions=[FatalOutputError])
+        config = deepcopy(self.CONFIG)
+        config.update({"exceptions": ["FatalOutputError"]})
+        dummy_output = Factory.create({"test connector": config}, logger=self.logger)
 
-        with raises(FatalOutputError):
-            output.store({"order": 0})
+        with raises(Exception, match="FatalOutputError"):
+            dummy_output.store({"order": 0})
         try:
-            output.store({"order": 0})
+            dummy_output.store({"order": 0})
         except FatalOutputError:
             fail("Must not raise exception more than once")
 
     def test_raises_exception_only_when_not_none(self):
-        output = DummyOutput(exceptions=[None, FatalOutputError, None])
+        config = deepcopy(self.CONFIG)
+        config.update({"exceptions": [None, "FatalOutputError", None]})
+        dummy_output = Factory.create({"test connector": config}, logger=self.logger)
 
-        output.store({"order": 0})
-        with raises(FatalOutputError):
-            output.store({"order": 1})
-        output.store({"order": 2})
+        dummy_output.store({"order": 0})
+        with raises(Exception, match="FatalOutputError"):
+            dummy_output.store({"order": 1})
+        dummy_output.store({"order": 2})
 
     def test_stores_failed_events_in_respective_list(self):
-        output = DummyOutput()
-        output.store_failed("message", {"doc": "received"}, {"doc": "processed"})
+        self.object.store_failed("message", {"doc": "received"}, {"doc": "processed"})
 
-        assert len(output.failed_events) == 1
-        assert output.failed_events[0] == ("message", {"doc": "received"}, {"doc": "processed"})
+        assert len(self.object.failed_events) == 1
+        assert self.object.failed_events[0] == (
+            "message",
+            {"doc": "received"},
+            {"doc": "processed"},
+        )

@@ -1,203 +1,171 @@
-"""This module contains functionality that allows to obtain records from kafka."""
+"""
+ConfluentkafkaInput
+===================
 
-from typing import List, Optional
-import hashlib
+Logprep uses Confluent-Kafka-Python as client library to communicate with kafka-clusters.
+Important information sources are `Confluent-Kafka-Python-Repo
+<https://github.com/confluentinc/confluent-kafka-python>`_,
+`Confluent-Kafka-Python-Doku 1 <https://docs.confluent.io/current/clients/confluent-kafka-python/>`_
+(comprehensive but out-dated description),
+`Confluent-Kafka-Python-Doku 2 <https://docs.confluent.io/current/clients/python.html#>`_
+(currently just a brief description) and the C-library
+`librdkafka <https://github.com/edenhill/librdkafka>`_, which is built on Confluent-Kafka-Python.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    input:
+      mykafkainput:
+        type: confluentkafka_input
+        bootstrapservers: [127.0.0.1:9092]
+        topic: consumer
+        group: cgroup
+        auto_commit: on
+        session_timeout: 6000
+        offset_reset_policy: smallest
+"""
 import json
-from base64 import b64encode
-from hmac import HMAC
-from copy import deepcopy
-from zlib import compress
+import sys
+from functools import partial
+from logging import Logger
 from socket import getfqdn
+from typing import Any, List, Tuple, Union
+
+from attrs import define, field, validators
 from confluent_kafka import Consumer
 
-from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.connector.confluent_kafka.common import (
-    ConfluentKafka,
-    ConfluentKafkaFactory,
-    UnknownOptionError,
-)
-from logprep.abc.input import Input, CriticalInputError
-from logprep.abc.output import Output
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.abc.input import CriticalInputError, Input
+from logprep.util.validators import dict_with_keys_validator
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
-class ConfluentKafkaInputFactory(ConfluentKafkaFactory):
-    """Create ConfluentKafka input connector for Logprep and input communication."""
-
-    @staticmethod
-    def create_from_configuration(configuration: dict) -> "ConfluentKafkaInput":
-        """Create a ConfluentKafkaInput connector.
-
-        Parameters
-        ----------
-        configuration : dict
-           Parsed configuration YML.
-        output_connector : Output
-           Output connector to connect this output with.
-
-        Returns
-        -------
-        kafka : ConfluentKafkaInput
-            Acts as input connector.
-
-        Raises
-        ------
-        InvalidConfigurationError
-            If ConfluentKafkaInput configuration is invalid.
-
-        """
-        if not isinstance(configuration, dict):
-            raise InvalidConfigurationError("Confluent Kafka Input: Configuration is not a dict!")
-
-        try:
-            kafka_input = ConfluentKafkaInput(
-                configuration["bootstrapservers"],
-                configuration["consumer"]["topic"],
-                configuration["consumer"]["group"],
-                configuration["consumer"].get("enable_auto_offset_store", False),
-            )
-        except KeyError as error:
-            raise InvalidConfigurationError(
-                f"Confluent Kafka Input: Missing configuration " f"parameter {str(error)}!"
-            ) from error
-
-        if "ssl" in configuration:
-            ConfluentKafkaInputFactory._set_ssl_options(kafka_input, configuration["ssl"])
-
-        configuration = ConfluentKafkaInputFactory._create_copy_without_base_options(configuration)
-
-        try:
-            kafka_input.set_option(configuration, "consumer")
-        except UnknownOptionError as error:
-            raise InvalidConfigurationError(f"Confluent Kafka Input: {str(error)}")
-
-        return kafka_input
-
-    @staticmethod
-    def _create_copy_without_base_options(configuration: dict) -> dict:
-        config = deepcopy(configuration)
-        del config["consumer"]["topic"]
-        del config["consumer"]["group"]
-        ConfluentKafkaInputFactory._remove_shared_base_options(config)
-
-        return config
-
-
-class ConfluentKafkaInput(Input, ConfluentKafka):
+class ConfluentKafkaInput(Input):
     """A kafka input connector."""
 
-    def __init__(
-        self,
-        bootstrap_servers: List[str],
-        consumer_topic: str,
-        consumer_group: str,
-        enable_auto_offset_store: bool,
-    ):
-        ConfluentKafka.__init__(self, bootstrap_servers)
-        self._consumer_topic = consumer_topic
-        self._consumer_group = consumer_group
-        self._output = None
+    @define(kw_only=True, slots=False)
+    class Config(Input.Config):
+        """Kafka specific configurations"""
 
-        self.current_offset = -1
+        bootstrapservers: List[str]
+        """This field contains a list of Kafka servers (also known as Kafka brokers or Kafka nodes)
+        that can be contacted by Logprep to initiate the connection to a Kafka cluster. The list
+        does not have to be complete, since the Kafka server contains contact information for
+        other Kafka nodes after the initial connection. It is advised to list at least two Kafka
+        servers."""
+        topic: str = field(validator=validators.instance_of(str))
+        """The topic from which new log messages will be fetched."""
+        group: str = field(validator=validators.instance_of(str))
+        """Corresponds to the Kafka configuration parameter
+        `group.id <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. The
+        individual Logprep processes have the same group.id and thus belong to the same consumer
+        group. Thereby partitions of topics can be assigned to individual consumers."""
+        enable_auto_offset_store: bool = field(
+            validator=validators.instance_of(bool), default=False
+        )
+        """Corresponds to the Kafka configuration parameter
+        `enable.auto.offset.store <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
+        This parameter defines if the offset is automatically updated in memory by librdkafka.
+        Disabling this allows Logprep to update the offset itself more accurately. It is disabled
+        per default in Logprep. The default value in librdkafka it is true."""
+        ssl: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                partial(
+                    dict_with_keys_validator,
+                    expected_keys=["cafile", "certfile", "keyfile", "password"],
+                ),
+            ],
+            default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
+        )
+        """In this subsection the settings of TLS/SSL are defined.
 
-        self._config["consumer"] = {
-            "auto_commit": True,
-            "session_timeout": 6000,
-            "offset_reset_policy": "smallest",
-            "enable_auto_offset_store": enable_auto_offset_store,
-            "hmac": {"target": "", "key": "", "output_field": ""},
-            "preprocessing": {
-                "version_info_target_field": "",
-                "hmac": {"target": "", "key": "", "output_field": ""},
-            },
-        }
-
-        self._client_id = getfqdn()
-        self._consumer = None
-        self._record = None
-        self._last_valid_records = {}
-
-        self._add_hmac = False
-
-        self._enable_auto_offset_store = enable_auto_offset_store
-
-    def connect_output(self, output_connector: Output):
-        """Connect output connector.
-
-        This connector is used to store failed HMACs.
-
-        Parameters
-        ----------
-        output_connector : Output
-           Output connector to connect this input with.
+        - `cafile` -  Path to a certificate authority (see ssl.ca.location).
+        - `certfile` - Path to a file with the certificate of the client 
+          (see ssl.certificate.location).
+        - `keyfile` - Path to the key file corresponding to the given certificate file 
+          (see ssl.key.location).
+        - `password` - Password for the given key file (see ssl.key.password).
         """
-        self._output = output_connector
+        auto_commit: bool = field(validator=validators.instance_of(bool), default=True)
+        """Corresponds to the Kafka configuration parameter
+        `enable.auto.commit <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
+        Enabling this parameter causes offsets being sent automatically and periodically. The values
+        can be either true/false or on/off. Currently, this has to be set to true, since independent
+        committing is not implemented in Logprep and it would not make sense to activate it anyways.
+        The default setting of librdkafka is true."""
+        session_timeout: int = field(validator=validators.instance_of(int), default=6000)
+        """Corresponds to the Kafka configuration parameter
+        `session.timeout.ms <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
+        This defines the maximum duration a kafka consumer can be without contact to the Kafka
+        broker. The kafka consumer must regularly send a heartbeat to the group coordinator,
+        otherwise the consumer will be considered as being unavailable. In this case the group
+        coordinator assigns the partition to be processed to another computer while re-balancing.
+        The default of librdkafka is 10000 ms (10 s)."""
+        offset_reset_policy: str = field(
+            default="smallest",
+            validator=validators.in_(["latest", "earliest", "none", "largest", "smallest"]),
+        )
+        """Corresponds to the Kafka configuration parameter
+        `auto.offset.reset <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
+        This parameter influences from which offset the Kafka consumer starts to fetch log messages
+        from an assigned partition. The values latest/earliest/none are possible. With a value of
+        none Logprep must manage the offset by itself. However, this is not supported by Logprep,
+        since it is not relevant for our use-case. If the value is set to latest/largest, the Kafka
+        consumer starts by reading the newest log messages of a partition if a valid offset is
+        missing. Thus, old log messages from that partition will not be processed. This setting can
+        therefore lead to a loss of log messages. A value of earliest/smallest causes the Kafka
+        consumer to read all log messages from a partition, which can lead to a duplication of log
+        messages. Currently, the deprecated value smallest is used, which should be later changed
+        to earliest. The default value of librdkafka is largest."""
 
-    def describe_endpoint(self) -> str:
-        """Get name of Kafka endpoint with the bootstrap server.
+    current_offset: int
+
+    _record: Any
+
+    _last_valid_records: dict
+
+    __slots__ = [
+        "current_offset",
+        "_record",
+        "_last_valid_records",
+    ]
+
+    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self._last_valid_records = {}
+        self._record = None
+
+    @cached_property
+    def _client_id(self):
+        """Return the client id"""
+        return getfqdn()
+
+    @cached_property
+    def _consumer(self):
+        """Create and return a new confluent kafka consumer"""
+        consumer = Consumer(self._confluent_settings)
+        consumer.subscribe([self._config.topic])
+        return consumer
+
+    def describe(self) -> str:
+        """Get name of Kafka endpoint and the first bootstrap server.
 
         Returns
         -------
-        kafka : ConfluentKafka
-            Acts as input and output connector.
-
+        kafka : str
+            Description of the ConfluentKafkaInput connector.
         """
-        return f"Kafka Input: {self._bootstrap_servers[0]}"
+        base_description = super().describe()
+        return f"{base_description} - Kafka Input: {self._config.bootstrapservers[0]}"
 
-    def set_option(self, new_options: dict, connector_type: str):
-        """Set configuration options for kafka input.
-
-        Parameters
-        ----------
-        new_options : dict
-           New options to set.
-        connector_type : str
-           Name of the connector type. Can be either producer or consumer.
-
-        Raises
-        ------
-        UnknownOptionError
-            Raises if an option is invalid.
-
-        """
-        # DEPRECATION: HMAC-Option: Remove this with next major version update, check also the
-        # self._config dict in this class's init method
-        consumer_options = new_options.get("consumer")
-        if consumer_options and "preprocessing" not in consumer_options:
-            consumer_options["preprocessing"] = {}
-        if new_options.get("consumer", {}).get("hmac"):
-            consumer_options["preprocessing"]["hmac"] = new_options["consumer"]["hmac"]
-
-        super().set_option(new_options, connector_type)
-
-        hmac_options = new_options.get("consumer", {}).get("preprocessing", {}).get("hmac", {})
-        if hmac_options:
-            self._check_for_missing_options(hmac_options)
-            self._add_hmac = True
-
-    def _check_for_missing_options(self, hmac_options):
-        valid_hmac_options_keys = set(
-            self._config.get("consumer", {}).get("preprocessing", {}).get("hmac", {}).keys()
-        )
-
-        missing_options = valid_hmac_options_keys.difference(hmac_options)
-        if missing_options:
-            raise InvalidConfigurationError(f"Hmac option(s) missing: {missing_options}")
-
-        for option in valid_hmac_options_keys:
-            config_value = (
-                self._config.get("consumer", {})
-                .get("preprocessing", {})
-                .get("hmac", {})
-                .get(option)
-            )
-            if len(config_value) == 0:
-                raise InvalidConfigurationError(
-                    f"Hmac option '{option}' is empty: '{config_value}'"
-                )
-
-    def get_next(self, timeout: float) -> Optional[dict]:
-        """Get next document from Kafka.
+    def _get_raw_event(self, timeout: float) -> bytearray:
+        """Get next raw document from Kafka.
 
         Parameters
         ----------
@@ -206,18 +174,14 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
 
         Returns
         -------
-        json_dict : dict
-            A document obtained from Kafka.
+        record_value : bytearray
+            A raw document obtained from Kafka.
 
         Raises
         ------
         CriticalInputError
             Raises if an input is invalid or if it causes an error.
-
         """
-        if self._consumer is None:
-            self._create_consumer()
-
         self._record = self._consumer.poll(timeout=timeout)
         if self._record is None:
             return None
@@ -228,7 +192,31 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             raise CriticalInputError(
                 f"A confluent-kafka record contains an error code: ({record_error})", None
             )
-        raw_event = self._record.value()
+        return self._record.value()
+
+    def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
+        """Parse the raw document from Kafka into a json.
+
+        Parameters
+        ----------
+        timeout : float
+           Timeout for obtaining a raw document from Kafka.
+
+        Returns
+        -------
+        event_dict : dict
+            A parsed document obtained from Kafka.
+        raw_event : bytearray
+            A raw document obtained from Kafka.
+
+        Raises
+        ------
+        CriticalInputError
+            Raises if an input is invalid or if it causes an error.
+        """
+        raw_event = self._get_raw_event(timeout)
+        if raw_event is None:
+            return None, None
         try:
             event_dict = json.loads(raw_event.decode("utf-8"))
         except ValueError as error:
@@ -237,108 +225,45 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
             ) from error
         if not isinstance(event_dict, dict):
             raise CriticalInputError("Input record value could not be parsed as dict", event_dict)
-        if self._add_hmac:
-            hmac_target_field_name = (
-                self._config.get("consumer", {})
-                .get("preprocessing", {})
-                .get("hmac", {})
-                .get("target")
-            )
-            event_dict = self._add_hmac_to(event_dict, hmac_target_field_name, raw_event)
-        return event_dict
+        return event_dict, raw_event
 
-    def _add_hmac_to(self, event_dict, hmac_target_field_name, raw_event):
-        """
-        Calculates an HMAC (Hash-based message authentication code) based on a given target field
-        and adds it to the given event. If the target field has the value '<RAW_MSG>' the full raw
-        byte message is used instead as a target for the HMAC calculation. As a result the target
-        field value and the resulting hmac will be added to the original event. The target field
-        value will be compressed and base64 encoded though to reduce memory usage.
-
-        Parameters
-        ----------
-        event_dict: dict
-            The event to which the calculated hmac should be appended
-        hmac_target_field_name: str
-            The dotted field name of the target value that should be used for the hmac calculation.
-            If instead '<RAW_MSG>' is used then the hmac will be calculated over the full raw event.
-        raw_event: bytearray
-            The raw event how it is received from kafka.
+    @cached_property
+    def _confluent_settings(self) -> dict:
+        """Generate confluence settings, mapped from the given kafka logprep configuration.
 
         Returns
         -------
-        event_dict: dict
-            The original event extended with a field that has the hmac and the corresponding target
-            field, which was used to calculate the hmac.
+        configuration : dict
+            The confluence kafka settings
         """
-        hmac_options = self._config.get("consumer", {}).get("preprocessing", {}).get("hmac", {})
-        if hmac_target_field_name == "<RAW_MSG>":
-            received_orig_message = raw_event
-        else:
-            received_orig_message = get_dotted_field_value(event_dict, hmac_target_field_name)
-
-        if received_orig_message is None:
-            hmac = "error"
-            received_orig_message = (
-                f"<expected hmac target field '{hmac_target_field_name}' not found>".encode()
-            )
-            self._output.store_failed(
-                f"Couldn't find the hmac target field '{hmac_target_field_name}'",
-                event_dict,
-                event_dict,
-            )
-        else:
-            if isinstance(received_orig_message, str):
-                received_orig_message = received_orig_message.encode("utf-8")
-            hmac = HMAC(
-                key=hmac_options.get("key").encode(),
-                msg=received_orig_message,
-                digestmod=hashlib.sha256,
-            ).hexdigest()
-        compressed = compress(received_orig_message, level=-1)
-        hmac_output = {"hmac": hmac, "compressed_base64": b64encode(compressed).decode()}
-        add_was_successful = add_field_to(
-            event_dict,
-            hmac_options.get("output_field"),
-            hmac_output,
-        )
-        if not add_was_successful:
-            self._output.store_failed(
-                f"Couldn't add the hmac to the input event as the desired output "
-                f"field '{hmac_options.get('output_field')}' already exist.",
-                event_dict,
-                event_dict,
-            )
-        return event_dict
-
-    def _create_consumer(self):
-        self._consumer = Consumer(self._create_confluent_settings())
-        self._consumer.subscribe([self._consumer_topic])
-
-    def _create_confluent_settings(self):
         configuration = {
-            "group.id": self._consumer_group,
-            "enable.auto.commit": self._config["consumer"]["auto_commit"],
-            "session.timeout.ms": self._config["consumer"]["session_timeout"],
-            "enable.auto.offset.store": self._enable_auto_offset_store,
-            "default.topic.config": {
-                "auto.offset.reset": self._config["consumer"]["offset_reset_policy"]
-            },
+            "bootstrap.servers": ",".join(self._config.bootstrapservers),
+            "group.id": self._config.group,
+            "enable.auto.commit": self._config.auto_commit,
+            "session.timeout.ms": self._config.session_timeout,
+            "enable.auto.offset.store": self._config.enable_auto_offset_store,
+            "default.topic.config": {"auto.offset.reset": self._config.offset_reset_policy},
         }
-        self._set_base_confluent_settings(configuration)
-
+        ssl_settings_are_setted = any(self._config.ssl[key] for key in self._config.ssl)
+        if ssl_settings_are_setted:
+            configuration.update(
+                {
+                    "security.protocol": "SSL",
+                    "ssl.ca.location": self._config.ssl["cafile"],
+                    "ssl.certificate.location": self._config.ssl["certfile"],
+                    "ssl.key.location": self._config.ssl["keyfile"],
+                    "ssl.key.password": self._config.ssl["password"],
+                }
+            )
         return configuration
 
     def batch_finished_callback(self):
         """Store offsets for each kafka partition.
-
         Should be called by output connectors if they are finished processing a batch of records.
         This is only used if automatic offest storing is disabled in the kafka input.
-
         The last valid record for each partition is be used by this method to update all offsets.
-
         """
-        if not self._enable_auto_offset_store:
+        if not self._config.enable_auto_offset_store:
             if self._last_valid_records:
                 for last_valid_records in self._last_valid_records.values():
                     self._consumer.store_offsets(message=last_valid_records)
@@ -347,4 +272,3 @@ class ConfluentKafkaInput(Input, ConfluentKafka):
         """Close consumer, which also commits kafka offsets."""
         if self._consumer is not None:
             self._consumer.close()
-            self._consumer = None

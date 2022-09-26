@@ -1,10 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
+from typing import Optional
 from unittest import mock
 
 import pytest
+from attr import define, field
+from attrs import validators
 
-from logprep.processor.processor_factory_error import InvalidConfigurationError
+from logprep.factory_error import InvalidConfigurationError
 from logprep.util.validators import (
     json_validator,
     file_validator,
@@ -13,6 +16,7 @@ from logprep.util.validators import (
     url_validator,
     list_of_urls_validator,
     directory_validator,
+    dict_structure_validator,
 )
 
 
@@ -202,3 +206,128 @@ class TestListOfUrlsValidator:
         with pytest.raises(InvalidConfigurationError, match=r"does not exist"):
             with mock.patch("os.path.exists", return_value=False):
                 list_of_urls_validator(None, attribute(), ["i/do/not/exist"])
+
+
+class TestDictStructureValidator:
+    def test_raises_on_type_missmatch_in_non_optional_case(self):
+        value = {
+            "some_option": "with string value",
+        }
+        reference_dict = {
+            "some_option": int,
+        }
+        with pytest.raises(
+            InvalidConfigurationError,
+            match=r"some_option' has wrong type <class 'str'>, expected <class 'int'>.",
+        ):
+            dict_structure_validator(None, None, value, reference_dict)
+
+    def test_raises_on_type_missmatch_in_optional_case(self):
+        value = {
+            "some_option": "with string value",
+        }
+        reference_dict = {
+            "some_option": Optional[int],
+        }
+        with pytest.raises(
+            InvalidConfigurationError,
+            match=r"'some_option' has wrong type <class 'str'>, expected [typing\.Optional\[int\]|typing\.Union\[int, NoneType\]].",
+        ):
+            dict_structure_validator(None, None, value, reference_dict)
+
+    def test_raises_on_missing_option(self):
+        value = {
+            "some_option": "with string value",
+        }
+        reference_dict = {"some_option": str, "other_expected_option": str}
+        with pytest.raises(
+            InvalidConfigurationError,
+            match=r"following key is missing: 'other_expected_option'",
+        ):
+            dict_structure_validator(None, None, value, reference_dict)
+
+    def test_does_not_raise_on_missing_optional_option(self):
+        value = {
+            "some_option": "with string value",
+        }
+        reference_dict = {"some_option": str, "other_optional_option": Optional[str]}
+        dict_structure_validator(None, None, value, reference_dict)
+
+    def test_raises_on_unknown_option(self):
+        value = {"some_option": "with string value", "something": "unknown"}
+        reference_dict = {
+            "some_option": str,
+        }
+        with pytest.raises(
+            InvalidConfigurationError, match=r"following keys are unknown: \{'something'\}"
+        ):
+            dict_structure_validator(None, None, value, reference_dict)
+
+    def test_raises_on_validation_of_nested_non_optional_config_object(self):
+        @define(kw_only=True)
+        class SomeNestedOptionClass:
+            expected_str_sub_field: str = field(validator=validators.instance_of(str))
+
+        value = {
+            "some_option": "with string value",
+            "sub_options": {"expected_str_sub_field": 12},  # should be string
+        }
+        reference_dict = {"some_option": str, "sub_options": SomeNestedOptionClass}
+        with pytest.raises(TypeError, match=r"expected_str_sub_field' must be <class 'str'>"):
+            dict_structure_validator(None, None, value, reference_dict)
+
+    def test_raises_on_validation_of_nested_optional_config_object(self):
+        @define(kw_only=True)
+        class SomeNestedOptionClass:
+            expected_str_sub_field: str = field(validator=validators.instance_of(str))
+
+        value = {
+            "some_option": "with string value",
+            "sub_options": {
+                "expected_str_sub_field": 12,  # should be string
+            },
+        }
+        reference_dict = {"some_option": str, "sub_options": Optional[SomeNestedOptionClass]}
+        with pytest.raises(TypeError, match=r"expected_str_sub_field' must be <class 'str'>"):
+            dict_structure_validator(None, None, value, reference_dict)
+
+    def test_does_not_raise_on_validation_of_nested_config_object(self):
+        @define(kw_only=True)
+        class SomeNestedOptionClass:
+            expected_str_sub_field: str = field(validator=validators.instance_of(str))
+
+        value = {
+            "some_option": "with string value",
+            "sub_options": {
+                "expected_str_sub_field": "i am really a str",
+            },
+        }
+        reference_dict = {"some_option": str, "sub_options": SomeNestedOptionClass}
+        dict_structure_validator(None, None, value, reference_dict)
+
+    def test_does_not_raise_on_validation_of_nested_optional_config_object(self):
+        @define(kw_only=True)
+        class SomeNestedOptionClass:
+            expected_str_sub_field: str = field(validator=validators.instance_of(str))
+
+        value = {
+            "some_option": "with string value",
+            "sub_options": {
+                "expected_str_sub_field": "i am really a str",
+            },
+        }
+        reference_dict = {"some_option": str, "sub_options": Optional[SomeNestedOptionClass]}
+        dict_structure_validator(None, None, value, reference_dict)
+
+    def test_does_not_raise_on_validation_of_nested_optional_config_object_while_optional_is_missing(
+        self,
+    ):
+        @define(kw_only=True)
+        class SomeNestedOptionClass:
+            expected_str_sub_field: str = field(validator=validators.instance_of(str))
+
+        value = {
+            "some_option": "with string value",
+        }
+        reference_dict = {"some_option": str, "sub_options": Optional[SomeNestedOptionClass]}
+        dict_structure_validator(None, None, value, reference_dict)

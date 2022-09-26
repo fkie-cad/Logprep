@@ -1,141 +1,73 @@
-"""This module contains functionality that allows to send events to OpenSearch."""
+"""
+OpensearchOutput
+-------------------
 
-import json
+This section contains the connection settings for Elasticsearch, the default
+index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
+the amount of times connections are created.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    output:
+      myopensearch_output:
+        type: opensearch_output
+        hosts:
+            - 127.0.0.1:9200
+        default_index: default_index
+        error_index: error_index
+        message_backlog_size: 10000
+        timeout: 10000
+        max_retries:
+        user:
+        secret:
+        cert: /path/to/cert.crt
+"""
+
 import logging
-import re
-from ssl import create_default_context
-from typing import List, Optional
+import sys
 
-import arrow
-from opensearchpy import OpenSearch, helpers, SerializationError
-from opensearchpy.exceptions import ConnectionError
-from opensearchpy.helpers import BulkIndexError
+import opensearchpy as opensearch
 
-from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.abc.input import Input
-from logprep.abc.output import Output, FatalOutputError
+from logprep.abc.output import FatalOutputError, Output
+from logprep.connector.elasticsearch.output import ElasticsearchOutput
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
 
 
-class OpenSearchOutputFactory:
-    """Create OpenSearchOutput for logprep and output communication."""
-
-    @staticmethod
-    def create_from_configuration(configuration: dict) -> "OpenSearchOutput":
-        """Create a OpenSearchOutput connector.
-
-        Parameters
-        ----------
-        configuration : dict
-           Parsed configuration YML.
-
-        Returns
-        -------
-        opensearch_output : OpenSearchOutput
-            Acts as output connector for OpenSearch.
-
-        Raises
-        ------
-        InvalidConfigurationError
-            If OpenSearch configuration is invalid.
-
-        """
-        if not isinstance(configuration, dict):
-            raise InvalidConfigurationError("OpenSearchOutput: Configuration is not a dict!")
-
-        try:
-            os_output = OpenSearchOutput(
-                configuration["opensearch"]["hosts"],
-                configuration["opensearch"]["default_index"],
-                configuration["opensearch"]["error_index"],
-                configuration["opensearch"]["message_backlog"],
-                configuration["opensearch"].get("timeout", 500),
-                configuration["opensearch"].get("max_retries", 0),
-                configuration["opensearch"].get("user"),
-                configuration["opensearch"].get("secret"),
-                configuration["opensearch"].get("cert"),
-                configuration["opensearch"].get("check_hostname"),
-            )
-        except KeyError as error:
-            raise InvalidConfigurationError(
-                f"OpenSearch: Missing configuration parameter {str(error)}!"
-            ) from error
-
-        return os_output
-
-
-class OpenSearchOutput(Output):
+class OpensearchOutput(ElasticsearchOutput):
     """An OpenSearch output connector."""
 
-    def __init__(
-        self,
-        hosts: List[str],
-        default_index: str,
-        error_index: str,
-        message_backlog_size: int,
-        timeout: int,
-        max_retries: int,
-        user: Optional[str],
-        secret: Optional[str],
-        cert: Optional[str],
-        check_hostname: Optional[bool],
-    ):
-        self._input = None
-
-        self._hosts = hosts
-        self._default_index = default_index
-        self._error_index = error_index
-        self._max_retries = max_retries
-
-        ssl_context = create_default_context(cafile=cert) if cert else None
-        if ssl_context and check_hostname is not None:
-            ssl_context.check_hostname = check_hostname
-
-        scheme = "https" if cert else "http"
-        http_auth = (user, secret) if user and secret else None
-
-        self._os = OpenSearch(
-            hosts,
-            scheme=scheme,
-            http_auth=http_auth,
-            ssl_context=ssl_context,
-            timeout=timeout,
+    @cached_property
+    def _search_context(self):
+        return opensearch.OpenSearch(
+            self._config.hosts,
+            scheme=self.schema,
+            http_auth=self.http_auth,
+            ssl_context=self.ssl_context,
+            timeout=self._config.timeout,
         )
 
-        self._max_scroll = "2m"
-
-        self._message_backlog_size = message_backlog_size
-        self._message_backlog = [{"_index": default_index}] * self._message_backlog_size
-        self._processed_cnt = 0
-
-        self._index_cache = {}
-        self._replace_pattern = re.compile(r"%{\S+?}")
-
-    def connect_input(self, input_connector: Input):
-        """Connect input connector.
-
-        This connector is used for callbacks.
-
-        Parameters
-        ----------
-        input_connector : Input
-           Input connector to connect this output with.
-        """
-        self._input = input_connector
-
-    def describe_endpoint(self) -> str:
-        """Get name of OpenSearch endpoint with the host.
+    def describe(self) -> str:
+        """Get name of Elasticsearch endpoint with the host.
 
         Returns
         -------
-        opensearch_output : OpenSearchOutput
-            Acts as output connector for OpenSearch.
+        opensearch_output : OpensearchOutput
+            Acts as output connector for Elasticsearch.
 
         """
-        return f"OpenSearch Output: {self._hosts}"
+        base_description = Output.describe(self)
+        return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
-    def _write_to_os(self, document):
+    def _write_to_search_context(self, document):
         """Writes documents from a buffer into OpenSearch indices.
 
         Writes documents in a bulk if the document buffer limit has been reached.
@@ -151,28 +83,27 @@ class OpenSearchOutput(Output):
         """
         self._message_backlog[self._processed_cnt] = document
         currently_processed_cnt = self._processed_cnt + 1
-        if currently_processed_cnt == self._message_backlog_size:
+        if currently_processed_cnt == self._config.message_backlog_size:
             try:
-                helpers.bulk(
-                    self._os,
+                opensearch.helpers.bulk(
+                    self._search_context,
                     self._message_backlog,
-                    max_retries=self._max_retries,
-                    chunk_size=self._message_backlog_size,
+                    max_retries=self._config.max_retries,
+                    chunk_size=self._config.message_backlog_size,
                 )
-            except SerializationError as error:
+            except opensearch.SerializationError as error:
                 self._handle_serialization_error(error)
-            except ConnectionError as error:
+            except opensearch.ConnectionError as error:
                 self._handle_connection_error(error)
-            except BulkIndexError as error:
+            except opensearch.helpers.BulkIndexError as error:
                 self._handle_bulk_index_error(error)
             self._processed_cnt = 0
-
-            if self._input:
-                self._input.batch_finished_callback()
+            if self.input_connector:
+                self.input_connector.batch_finished_callback()
         else:
             self._processed_cnt = currently_processed_cnt
 
-    def _handle_bulk_index_error(self, error: BulkIndexError):
+    def _handle_bulk_index_error(self, error: opensearch.helpers.BulkIndexError):
         """Handle bulk indexing error for OpenSearch bulk indexing.
 
         Documents that could not be sent to OpenSearch due to index errors are collected and
@@ -194,29 +125,9 @@ class OpenSearchOutput(Output):
             self._add_dates(error_document)
             error_documents.append(error_document)
 
-        helpers.bulk(self._os, error_documents)
+        opensearch.helpers.bulk(self._search_context, error_documents)
 
-    def _handle_connection_error(self, error: ConnectionError):
-        """Handle connection error for OpenSearch bulk indexing.
-
-        No documents will be sent if there is no connection to begin with.
-        Therefore, it won't result in duplicates once the the data is resent.
-        If the connection is lost during indexing, duplicate documents could be sent.
-
-        Parameters
-        ----------
-        error : ConnectionError
-           ConnectionError for the error message.
-
-        Raises
-        ------
-        FatalOutputError
-            This causes a pipeline rebuild and gives an appropriate error log message.
-
-        """
-        raise FatalOutputError(error.error)
-
-    def _handle_serialization_error(self, error: SerializationError):
+    def _handle_serialization_error(self, error: opensearch.SerializationError):
         """Handle serialization error for OpenSearch bulk indexing.
 
         If at least one document in a chunk can't be serialized, no events will be sent.
@@ -235,80 +146,3 @@ class OpenSearchOutput(Output):
 
         """
         raise FatalOutputError(f"{error.args[1]} in document {error.args[0]}")
-
-    def store(self, document: dict):
-        """Store a document in the index.
-
-        Parameters
-        ----------
-        document : dict
-           Document to store.
-
-        """
-        if document.get("_index") is None:
-            document = self._build_failed_index_document(document, "Missing index in document")
-
-        self._add_dates(document)
-        self._write_to_os(document)
-
-    def _build_failed_index_document(self, message_document: dict, reason: str):
-        document = {
-            "reason": reason,
-            "@timestamp": arrow.now().isoformat(),
-            "_index": self._default_index,
-        }
-        try:
-            document["message"] = json.dumps(message_document)
-        except TypeError:
-            document["message"] = str(message_document)
-        return document
-
-    def store_custom(self, document: dict, target: str):
-        """Write document to OpenSearch into the target index.
-
-        Parameters
-        ----------
-        document : dict
-            Document to be stored into the target index.
-        target : str
-            Index to store the document in.
-        Raises
-        ------
-        CriticalOutputError
-            Raises if any error except a BufferError occurs while writing into OpenSearch.
-
-        """
-        document["_index"] = target
-        self._add_dates(document)
-        self._write_to_os(document)
-
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
-        """Write errors into error topic for documents that failed processing.
-
-        Parameters
-        ----------
-        error_message : str
-           Error message to write into Kafka document.
-        document_received : dict
-            Document as it was before processing.
-        document_processed : dict
-            Document after processing until an error occurred.
-
-        """
-        error_document = {
-            "error": error_message,
-            "original": document_received,
-            "processed": document_processed,
-            "@timestamp": arrow.now().isoformat(),
-            "_index": self._error_index,
-        }
-        self._add_dates(error_document)
-        self._write_to_os(error_document)
-
-    def _add_dates(self, document):
-        date_format_matches = self._replace_pattern.findall(document["_index"])
-        if date_format_matches:
-            now = arrow.now()
-            for date_format_match in date_format_matches:
-                formatted_date = now.format(date_format_match[2:-1])
-                document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])

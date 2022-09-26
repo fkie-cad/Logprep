@@ -5,16 +5,18 @@ from logging import getLogger
 from random import sample
 from string import ascii_letters
 from unittest import mock
+import warnings
 
 from pytest import raises
-
+from logprep.abc.input import Input
+from logprep.registry import Registry
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
-from logprep.processor.processor_factory import ProcessorFactory
-from logprep.processor.processor_factory_error import (
+from logprep.factory import Factory
+from logprep.factory_error import (
     InvalidConfigurationError,
-    UnknownProcessorTypeError,
+    UnknownComponentTypeError,
     NotExactlyOneEntryInConfigurationError,
     NoTypeSpecifiedError,
     InvalidConfigSpecificationError,
@@ -28,34 +30,34 @@ logger = getLogger()
 def test_create_fails_for_an_empty_section():
     with raises(
         NotExactlyOneEntryInConfigurationError,
-        match="There must be exactly one processor definition per pipeline entry.",
+        match="There must be exactly one definition per pipeline entry.",
     ):
-        ProcessorFactory.create({}, logger)
+        Factory.create({}, logger)
 
 
 def test_create_fails_if_config_is_not_an_object():
     with raises(
         InvalidConfigSpecificationError,
-        match="The processor configuration must be specified as an object.",
+        match="The configuration must be specified as an object.",
     ):
-        ProcessorFactory.create({"processorname": "string"}, logger)
+        Factory.create({"processorname": "string"}, logger)
 
 
 def test_create_fails_if_config_does_not_contain_type():
-    with raises(NoTypeSpecifiedError, match="The processor type specification is missing"):
-        ProcessorFactory.create({"processorname": {"other": "value"}}, logger)
+    with raises(NoTypeSpecifiedError, match="The type specification is missing"):
+        Factory.create({"processorname": {"other": "value"}}, logger)
 
 
 def test_create_fails_for_unknown_type():
     for type_name in ["unknown", "no such processor"] + [
         "".join(sample(ascii_letters, 6)) for i in range(5)
     ]:
-        with raises(UnknownProcessorTypeError):
-            ProcessorFactory.create({"processorname": {"type": type_name}}, logger)
+        with raises(UnknownComponentTypeError):
+            Factory.create({"processorname": {"type": type_name}}, logger)
 
 
 def test_create_pseudonymizer_returns_pseudonymizer_processor():
-    processor = ProcessorFactory.create(
+    processor = Factory.create(
         {
             "pseudonymizer": {
                 "type": "pseudonymizer",
@@ -77,7 +79,7 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
 
 
 def test_create_normalizer_returns_normalizer_processor():
-    processor = ProcessorFactory.create(
+    processor = Factory.create(
         {
             "normalizer": {
                 "type": "normalizer",
@@ -93,7 +95,7 @@ def test_create_normalizer_returns_normalizer_processor():
 
 
 def test_create_clusterer_returns_clusterer_processor():
-    processor = ProcessorFactory.create(
+    processor = Factory.create(
         {
             "clusterer": {
                 "type": "clusterer",
@@ -111,13 +113,13 @@ def test_create_clusterer_returns_clusterer_processor():
 def test_fails_when_section_contains_more_than_one_element():
     with raises(
         InvalidConfigurationError,
-        match="There must be exactly one processor definition per pipeline entry.",
+        match="There must be exactly one definition per pipeline entry.",
     ):
-        ProcessorFactory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
+        Factory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
 
 
 def test_create_labeler_creates_labeler_processor():
-    processor = ProcessorFactory.create(
+    processor = Factory.create(
         {
             "labelername": {
                 "type": "labeler",
@@ -130,3 +132,23 @@ def test_create_labeler_creates_labeler_processor():
     )
 
     assert isinstance(processor, Labeler)
+
+
+def test_dummy_input_creates_dummy_input_connector():
+    processor = Factory.create(
+        {"labelername": {"type": "dummy_input", "documents": [{}, {}]}},
+        logger,
+    )
+
+    assert isinstance(processor, Input)
+
+
+def test_get_processor_class_throws_deprecation_warning():
+    with warnings.catch_warnings(record=True) as warning_messages:
+        Registry.get_class("delete")
+        assert len(warning_messages) == 1
+        assert isinstance(warning_messages[0], warnings.WarningMessage)
+        assert (
+            str(warning_messages[0].message)
+            == "delete processor is deprecated and will be removed in a future release. Please use deleter instead."
+        )

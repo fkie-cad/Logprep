@@ -1,38 +1,44 @@
-"""This module contains a dummy input that can be used for testing purposes."""
+"""
+DummyInput
+==========
 
+A dummy input that returns the documents it was initialized with.
+
+If a "document" is derived from BaseException, that exception will be thrown instead of
+returning a document. The exception will be removed and subsequent calls may return documents or
+throw other exceptions in the given order.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    input:
+      mydummyinput:
+        type: dummy_input
+        documents: [{"document":"one"}, "Exception", {"document":"two"}]
+"""
 from typing import List, Union
+from attrs import define
 from logprep.abc.input import Input, SourceDisconnectedError
 
 
 class DummyInput(Input):
-    """A dummy input that returns the documents it was initialized with.
+    """DummyInput Connector"""
 
-    If a "document" is derived from BaseException, that exception will be thrown instead of
-    returning a document. The exception will be removed and subsequent calls may return documents or
-    throw other exceptions in the given order.
+    @define(kw_only=True)
+    class Config(Input.Config):
+        """DummyInput specific configuration"""
 
-    Parameters
-    ----------
-    documents : list
-       A list of documents that should be returned.
+        documents: List[Union[dict, type, BaseException]]
+        """A list of documents that should be returned."""
 
-    """
+    @property
+    def _documents(self):
+        return self._config.documents
 
-    def __init__(self, documents: List[Union[dict, type, BaseException]]):
-        self._documents = documents
-
-        self.last_timeout = None
-        self.setup_called_count = 0
-        self.shut_down_called_count = 0
-
-    def describe_endpoint(self) -> str:
-        return "dummy"
-
-    def setup(self):
-        self.setup_called_count += 1
-
-    def get_next(self, timeout: float):
-        self.last_timeout = timeout
+    def _get_event(self, timeout: float) -> tuple:
+        """Retriev next document from configuration and raise error if found"""
         if not self._documents:
             raise SourceDisconnectedError
 
@@ -40,7 +46,4 @@ class DummyInput(Input):
 
         if (document.__class__ == type) and issubclass(document, BaseException):
             raise document
-        return document
-
-    def shut_down(self):
-        self.shut_down_called_count += 1
+        return document, None

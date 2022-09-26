@@ -1,118 +1,129 @@
-"""This module contains functionality that allows to establish a connection with kafka."""
+"""
+ConfluentKafkaOutput
+----------------------
 
-from typing import List
-from copy import deepcopy
-from datetime import datetime
+This section contains the connection settings for ConfluentKafka, the default
+index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
+the amount of times connections are created.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    output:
+      my_confluent_kafka_output:
+        type: confluentkafka_output
+        bootstrapservers: [127.0.0.1:9200]
+        topic: my_default_topic
+        error_topic: my_error_topic
+        flush_timeout: 0.2
+        send_timeout: 0
+        compression: gzip
+        maximum_backlog: 100000
+        ack_policy: -1
+        linger_duration: 0.5
+        ssl: {"cafile": None, "certfile": None, "keyfile": None, "password": None}
+"""
+
 import json
+import sys
+from datetime import datetime
+from functools import partial
 from socket import getfqdn
+from typing import List, Optional
 
+from attrs import define, field, validators
 from confluent_kafka import Producer
 
-from logprep.connector.connector_factory_error import InvalidConfigurationError
-from logprep.abc.input import Input
-from logprep.connector.confluent_kafka.common import (
-    ConfluentKafka,
-    ConfluentKafkaFactory,
-    UnknownOptionError,
-)
 from logprep.abc.output import Output, CriticalOutputError
+from logprep.util.validators import dict_with_keys_validator
+
+if sys.version_info.minor < 8:  # pragma: no cover
+    from backports.cached_property import cached_property  # pylint: disable=import-error
+else:
+    from functools import cached_property
 
 
-class ConfluentKafkaOutputFactory(ConfluentKafkaFactory):
-    """Create ConfluentKafka connector for output communication."""
+class ConfluentKafkaOutput(Output):
+    """A kafka connector that serves as output connector."""
 
-    @staticmethod
-    def create_from_configuration(configuration: dict) -> "ConfluentKafkaOutput":
-        """Create a ConfluentKafkaOutput connector.
+    @define(kw_only=True, slots=False)
+    class Config(Output.Config):
+        """Confluent Kafka Output Config"""
 
-        Parameters
-        ----------
-        configuration : dict
-           Parsed configuration YML.
+        bootstrapservers: List[str]
+        topic: str = field(validator=validators.instance_of(str))
+        error_topic: str
+        flush_timeout: float
+        send_timeout: int = field(validator=validators.instance_of(int), default=0)
+        compression: str = field(
+            validator=[
+                validators.instance_of(str),
+                validators.in_(["snappy", "gzip", "lz4", "zstd", "none"]),
+            ],
+            default="none",
+        )
+        maximum_backlog: int = field(
+            validator=[validators.instance_of(int), validators.gt(0)], default=100000
+        )
+        ack_policy: int = field(
+            validator=[validators.instance_of(int), validators.in_([0, 1, -1])],
+            converter=lambda x: -1 if x == "all" else x,
+            default=-1,
+        )
+        linger_duration: float = field(
+            validator=[validators.instance_of(float)], converter=float, default=0.5
+        )
+        ssl: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                partial(
+                    dict_with_keys_validator,
+                    expected_keys=["cafile", "certfile", "keyfile", "password"],
+                ),
+            ],
+            default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
+        )
+
+    @cached_property
+    def _client_id(self):
+        return getfqdn()
+
+    @cached_property
+    def _producer(self):
+        return Producer(self._confluent_settings)
+
+    @cached_property
+    def _confluent_settings(self) -> dict:
+        """generate confluence settings mapping
 
         Returns
         -------
-        kafka : ConfluentKafka
-            Acts as input and output connector.
-
-        Raises
-        ------
-        InvalidConfigurationError
-            If ConfluentKafka configuration is invalid.
-
+        dict
+            the translated confluence settings
         """
-        if not isinstance(configuration, dict):
-            raise InvalidConfigurationError("Confluent Kafka: Configuration is not a dict!")
-
-        try:
-            kafka = ConfluentKafkaOutput(
-                configuration["bootstrapservers"],
-                configuration["producer"]["topic"],
-                configuration["producer"]["error_topic"],
-            )
-        except KeyError as error:
-            raise InvalidConfigurationError(
-                f"Confluent Kafka: Missing configuration parameter " f"{str(error)}!"
-            ) from error
-
-        if "ssl" in configuration:
-            ConfluentKafkaOutputFactory._set_ssl_options(kafka, configuration["ssl"])
-
-        configuration = ConfluentKafkaOutputFactory._create_copy_without_base_options(configuration)
-
-        try:
-            kafka.set_option(configuration, "producer")
-        except UnknownOptionError as error:
-            raise InvalidConfigurationError(f"Confluent Kafka: {str(error)}") from error
-
-        return kafka
-
-    @staticmethod
-    def _create_copy_without_base_options(configuration: dict) -> dict:
-        config = deepcopy(configuration)
-        del config["producer"]["topic"]
-        del config["producer"]["error_topic"]
-        ConfluentKafkaOutputFactory._remove_shared_base_options(config)
-
-        return config
-
-
-class ConfluentKafkaOutput(Output, ConfluentKafka):
-    """A kafka connector that serves as output connector."""
-
-    def __init__(
-        self, bootstrap_servers: List[str], producer_topic: str, producer_error_topic: str
-    ):
-        ConfluentKafka.__init__(self, bootstrap_servers)
-        self._producer_topic = producer_topic
-        self._producer_error_topic = producer_error_topic
-        self._input = None
-
-        self._config["producer"] = {
-            "ack_policy": "all",
-            "compression": "none",
-            "maximum_backlog": 10 * 1000,
-            "linger_duration": 0,
-            "send_timeout": 0,
-            "flush_timeout": 30.0,  # may require adjustment
+        configuration = {
+            "bootstrap.servers": ",".join(self._config.bootstrapservers),
+            "queue.buffering.max.messages": self._config.maximum_backlog,
+            "compression.type": self._config.compression,
+            "acks": self._config.ack_policy,
+            "linger.ms": self._config.linger_duration,
         }
+        ssl_settings_are_setted = any(self._config.ssl[key] for key in self._config.ssl)
+        if ssl_settings_are_setted:
+            configuration.update(
+                {
+                    "security.protocol": "SSL",
+                    "ssl.ca.location": self._config.ssl["cafile"],
+                    "ssl.certificate.location": self._config.ssl["certfile"],
+                    "ssl.key.location": self._config.ssl["keyfile"],
+                    "ssl.key.password": self._config.ssl["password"],
+                }
+            )
+        return configuration
 
-        self._client_id = getfqdn()
-        self._producer = None
-
-    def connect_input(self, input_connector: Input):
-        """Connect input connector.
-
-        This connector is used for callbacks.
-
-        Parameters
-        ----------
-        input_connector : Input
-           Input connector to connect this output with.
-        """
-        self._input = input_connector
-
-    def describe_endpoint(self) -> str:
+    def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
 
         Returns
@@ -121,9 +132,10 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
             Acts as input and output connector.
 
         """
-        return f"Kafka Output: {self._bootstrap_servers[0]}"
+        base_description = super().describe()
+        return f"{base_description} - Kafka Output: {self._config.bootstrapservers[0]}"
 
-    def store(self, document: dict):
+    def store(self, document: dict) -> Optional[bool]:
         """Store a document in the producer topic.
 
         Parameters
@@ -131,12 +143,17 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
         document : dict
            Document to store.
 
+        Returns
+        -------
+        Returns True to inform the pipeline to call the batch_finished_callback method in the
+        configured input
         """
-        self.store_custom(document, self._producer_topic)
-        if self._input:
-            self._input.batch_finished_callback()
+        self.store_custom(document, self._config.topic)
+        self.metrics.number_of_processed_events += 1
+        if self.input_connector:
+            self.input_connector.batch_finished_callback()
 
-    def store_custom(self, document: dict, target: str):
+    def store_custom(self, document: dict, target: str) -> None:
         """Write document to Kafka into target topic.
 
         Parameters
@@ -151,23 +168,22 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
             Raises if any error except a BufferError occurs while writing into Kafka.
 
         """
-        if self._producer is None:
-            self._create_producer()
-
         try:
             self._producer.produce(
                 target, value=json.dumps(document, separators=(",", ":")).encode("utf-8")
             )
-            self._producer.poll(0)
+            self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty
-            self._producer.flush(timeout=self._config["producer"]["flush_timeout"])
+            self._producer.flush(timeout=self._config.flush_timeout)
         except BaseException as error:
             raise CriticalOutputError(
-                f"Error storing output document: ({self._format_error(error)})", document
+                f"Error storing output document: ({error})", document
             ) from error
 
-    def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+    def store_failed(
+        self, error_message: str, document_received: dict, document_processed: dict
+    ) -> None:
         """Write errors into error topic for documents that failed processing.
 
         Parameters
@@ -180,9 +196,6 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
             Document after processing until an error occurred.
 
         """
-        if self._producer is None:
-            self._create_producer()
-
         value = {
             "error": error_message,
             "original": document_received,
@@ -191,29 +204,15 @@ class ConfluentKafkaOutput(Output, ConfluentKafka):
         }
         try:
             self._producer.produce(
-                self._producer_error_topic,
+                self._config.error_topic,
                 value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
             )
-            self._producer.poll(0)
+            self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty
-            self._producer.flush(timeout=self._config["producer"]["flush_timeout"])
+            self._producer.flush(timeout=self._config.flush_timeout)
 
-    def _create_producer(self):
-        self._producer = Producer(self._create_confluent_settings())
-
-    def _create_confluent_settings(self):
-        configuration = {
-            "acks": self._config["producer"]["ack_policy"],
-            "compression.type": self._config["producer"]["compression"],
-            "queue.buffering.max.messages": self._config["producer"]["maximum_backlog"],
-            "linger.ms": self._config["producer"]["linger_duration"],
-        }
-        self._set_base_confluent_settings(configuration)
-
-        return configuration
-
-    def shut_down(self):
+    def shut_down(self) -> None:
+        """ensures that all messages are flushed"""
         if self._producer is not None:
-            self._producer.flush(self._config["producer"]["flush_timeout"])
-            self._producer = None
+            self._producer.flush(self._config.flush_timeout)

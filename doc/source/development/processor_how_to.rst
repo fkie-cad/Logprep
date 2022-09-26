@@ -1,85 +1,9 @@
 Implementing a new Processor
 ============================
 
-.. mermaid::
-
-    classDiagram
-        Processor <-- Normalizer : implements
-        Processor <-- Pseudonymizer : implements
-        ProcessorConfiguration
-        Rule <-- NormalizerRule : inherit
-        Rule <-- PseudonymizerRule : inherit
-        BaseProcessorTestCase <-- NormalizerTestCase : implements
-        BaseProcessorTestCase <-- PseudonymizerTestCase : implements
-        class Processor{
-            <<interface>>
-            +rule_class
-            +Config
-            +String name
-            +Processor.Config _config
-            +String describe()
-            +add_rules_from_directories()
-            +process()
-            +apply_rules()*
-        }
-        class Normalizer{
-            +Config
-            +rule_class = NormalizerRule
-            +_config: Normalizer.Config
-            +apply_rules()
-        }
-
-        class Pseudonymizer{
-            +Config
-            +rule_class = PseudonymizerRule
-            +_config: Pseudonymizer.Config
-            +apply_rules()
-        }
-
-        class ProcessorConfiguration{
-            <<adapter>>
-            +create
-        }
-        class ProcessorRegistry{
-            +mapping : dict
-        }
-
-        class ProcessorFactory{
-            +create()
-        }
-
-
-        class TestProcessorFactory{
-            +test_check()
-            +test_create_normalizer()
-            +test_create_pseudonymizer()
-        }
-
-        class BaseProcessorTestCase{
-            +test_describe()
-            +test_add_rules_from_diretories()
-            +test_process()
-            +test_apply_rules()*
-        }
-
-        class NormalizerTestCase{
-            +test_apply_rules()
-        }
-
-        class PseudonymizerTestCase{
-            +test_apply_rules()
-        }
-
-
 A processor is used to process log messages.
-Basically, a processor is called for every incoming log message (see :ref:`pipelines`), which it then can modify.
-For this, some directions have to be considered.
-
-Firstly, you have to register your processor in the :py:class:`ProcessorRegistry` by importing it and adding it to the `mapping` attribute.
-This exposes your processor to the :py:class:`ProcessorFactory` and you can reference it as the processor type in your processor config.
-
-Then you have to create a test class unter `tests.unit.processor.yourprocessor_package.processor`. Your test class has to inherit from `BaseProcessorTestCase`.
-It will help you, implement the necessary methods the right way. Make all test green and you are ready to implement your specific processor in `apply_rules` method.
+Basically, a processor is called for every incoming log message (see :ref:`pipelines`), which it
+then can modify. For this, some directions have to be considered.
 
 
 Concurrency/IPC
@@ -90,11 +14,6 @@ Therefore, it is not guaranteed that a specific processor will see all incoming 
 Inter-process-communication (IPC) must be used if information of log messages has the be shared between multiple processor instances.
 IPC is relatively slow and can not be used if the processor instances are located on different machines.
 In those cases it should be reconsidered if it is necessary that information is being shared or if an implementation of the functionality is generally sensible in the context of ths framework.
-
-Factory
--------
-
-Processors are being created by the factory :py:class:`~logprep.processor.processor_factory.ProcessorFactory`. There is no need to implement anything here after registering your processor in the :py:class:`ProcessorRegistry`
 
 .. _implementing_a_new_processor:
 
@@ -272,5 +191,14 @@ For example, the following code will increase the metrics inside the apply_rules
 
 If the processor already has processor specific metrics and only one new metric value is needed,
 it can simply be created by adding a new attribute to the ProcessorMetrics class.
-Once the new attribute exists it can be accessed and updated when needed.
+Once the new attribute exists, it can be accessed and updated when needed.
 The exporter will automatically recognize it as a new metric and will expose it as such.
+
+Tests
+-----
+
+While developing the new processor you have to create a test class under 
+`tests.unit.processor.yourprocessor_package.processor`. Your test class has to inherit from
+`BaseProcessorTestCase`. It will help you to implement the necessary methods the right way. All
+tests should pass successfully. Appropriate tests for the processor specific functions have to 
+be implemented independently.

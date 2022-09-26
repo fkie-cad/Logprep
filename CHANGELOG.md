@@ -1,23 +1,30 @@
 ## Upcoming Changes
 
-### Breaking
-
-* Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
-under the subkey `preprocessing`
-
-* Removal of Deprecated Feature: `delete` processor was renamed to `deleter`
 
 ## Next Release
+### Breaking
+
+* Splitting the general `connector` config into `input` and `output` to compose connector config independendly
+* Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
+under the subkey `preprocessing` of the `input` processor
+* Removal of Deprecated Feature: `delete` processor was renamed to `deleter`
+* Rename `writing_output` connector to `jsonl_output`
 
 ### Features
 
 * Add an opensearch output connector that can be used to write directly into opensearch.
 * Add an elasticsearch output connector that can be used to write directly into elasticsearch.
-* Add a connector that combines a confluentkafka input and an elasticsearch output.
+* Split connector config into seperate config keys `input` and `output`
+* Add preprocessing capabillities to all input connectors
+* Add preprocessor for log_arrival_time
+* Add preprocessor for log_arrival_timedelta
+* Add metrics to connectors
 
 ### Improvements
-* Internally separate confluentkafka connector into an input and output connector,
-so that it is possible to combine those with other inputs and outputs.
+* Validate connector config on class level via attrs classes
+* Implement a common interface to all connectors
+* Refactor connector code
+* Revise the documentation
 
 ### Bugfixes
 ### Breaking
@@ -122,7 +129,7 @@ version if found
 * Add `ProcessorRegistry` to register all processors
 * Remove plugins feature
 * Add `ProcessorConfiguration` as an adapter to create configuration for processors
-* Remove all specific processor factories in favor of `logprep.processor.processor_factory.ProcessorFactory`
+* Remove all specific processor factories in favor of `logprep.pipeline_component_factory.ProcessorFactory`
 * Rewrite `ProcessorFactory`
 * Automate processor configuration documentation
 * generalize config parameter for using tld lists to `tld_lists` for `domain_resolver`, `domain_label_extractor`, `pseudonymizer`

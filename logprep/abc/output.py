@@ -1,10 +1,12 @@
 """This module provides the abstract base class for all output endpoints.
-
 New output endpoint types are created by implementing it.
-
 """
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
+from logging import Logger
+from typing import Optional
+
+from .connector import Connector
 
 
 class OutputError(BaseException):
@@ -27,47 +29,31 @@ class WarningOutputError(OutputError):
     """May be catched but must be displayed to the user/logged."""
 
 
-class Output(metaclass=ABCMeta):
-    """Connect to a source for log data."""
+class Output(Connector):
+    """Connect to a output destination."""
 
-    def setup(self):
-        """Set the output up, e.g. connect to a database.
+    __slots__ = {"input_connector"}
 
-        This is optional.
+    input_connector: Connector
 
-        """
-
-    @abstractmethod
-    def describe_endpoint(self) -> str:
-        """Return a brief description of the endpoint for this output.
-
-        This may be used as a word in a sentence.
-        Setting a description is optional.
-
-        """
+    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self.input_connector = None
 
     @abstractmethod
-    def store(self, document: dict):
-        """Store the document.
+    def store(self, document: dict) -> Optional[bool]:
+        """Store the document in the output destination.
 
         Parameters
         ----------
         document : dict
            Processed log event that will be stored.
-
         """
 
     @abstractmethod
     def store_custom(self, document: dict, target: str):
-        """Store additional data in a custom location."""
+        """Store additional data in a custom location inside the output destination."""
 
     @abstractmethod
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Store an event when an error occurred during the processing."""
-
-    def shut_down(self):
-        """Close the output down, e.g. close all connections.
-
-        This is optional.
-
-        """

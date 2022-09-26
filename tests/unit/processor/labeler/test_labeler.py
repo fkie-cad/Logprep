@@ -12,7 +12,7 @@ from pytest import raises
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelingRule
-from logprep.processor.processor_factory import ProcessorFactory
+from logprep.factory import Factory
 from tests.testdata.metadata import path_to_schema, path_to_schema2
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -239,7 +239,7 @@ class TestLabeler(BaseProcessorTestCase):
             TypeError,
             match="'include_parent_labels' must be <class 'bool'>",
         ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config}, self.logger)
 
     def test_create_fails_when_rules_do_not_conform_to_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
@@ -247,12 +247,12 @@ class TestLabeler(BaseProcessorTestCase):
         with raises(
             ValueDoesnotExistInSchemaError, match="Invalid value 'windows' for key 'reporter'."
         ):
-            ProcessorFactory.create({"test instance": config}, self.logger)
+            Factory.create({"test instance": config}, self.logger)
 
     def test_create_loads_the_specified_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
         config["schema"] = path_to_schema
         expected_schema = LabelingSchema.create_from_file(path_to_schema)
-        labeler = ProcessorFactory.create({"test instance": config}, self.logger)
+        labeler = Factory.create({"test instance": config}, self.logger)
 
         assert labeler._schema == expected_schema

@@ -3,25 +3,38 @@
 # pylint: disable=missing-docstring
 import json
 from copy import deepcopy
-from logging import getLogger, DEBUG, basicConfig, Handler
-from multiprocessing import Lock
+from logging import getLogger, DEBUG, basicConfig
 from os import path, makedirs
-from os.path import join
 
-from logprep.connector.confluent_kafka.input import (
-    ConfluentKafkaInputFactory,
-)
-from logprep.connector.confluent_kafka.output import (
-    ConfluentKafkaOutputFactory,
-)
-from logprep.framework.pipeline import Pipeline, SharedCounter
-from logprep.util.helper import recursive_compare, remove_file_if_exists
-from logprep.util.json_handling import parse_jsonl
-from logprep.util.rule_dry_runner import get_patched_runner
-from tests.unit.connector.test_confluent_kafka import RecordMock
+from logprep.util.helper import recursive_compare
+from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
+
+
+class RecordMock:
+    def __init__(self, record_value, record_error):
+        self.record_value = record_value
+        self.record_error = record_error
+
+    @staticmethod
+    def partition():
+        return 0
+
+    def value(self):
+        if self.record_value is None:
+            return None
+        return self.record_value.encode("utf-8")
+
+    def error(self):
+        if self.record_error is None:
+            return None
+        return self.record_error
+
+    @staticmethod
+    def offset():
+        return -1
 
 
 def get_difference(test_output, expected_output):
@@ -55,16 +68,7 @@ def store_latest_test_output(target_output_identifier, output_of_test):
 
 def get_test_output(config_path):
     patched_runner = get_patched_runner(config_path, logger)
-
-    test_output_path = patched_runner._configuration["connector"]["output_path"]
-    remove_file_if_exists(test_output_path)
-
-    patched_runner.start()
-    parsed_test_output = parse_jsonl(test_output_path)
-
-    remove_file_if_exists(test_output_path)
-
-    return parsed_test_output
+    return get_runner_outputs(patched_runner=patched_runner)
 
 
 class SingleMessageConsumerJsonMock:
@@ -90,68 +94,36 @@ class TmpFileProducerMock:
         ...
 
 
-def mock_kafka_and_run_pipeline(config, input_test_event, mock_connector_factory, tmp_path):
-    # create kafka connector manually and add custom mock consumer and mock producer objects
-    kafka_in = ConfluentKafkaInputFactory.create_from_configuration(config["connector"])
-    kafka_out = ConfluentKafkaOutputFactory.create_from_configuration(config["connector"])
-    kafka_out.connect_input(kafka_in)
-    kafka_in.connect_output(kafka_out)
-    kafka_in._consumer = SingleMessageConsumerJsonMock(input_test_event)
-    output_file_path = join(tmp_path, "kafka_out.txt")
-    kafka_out._producer = TmpFileProducerMock(output_file_path)
-
-    mock_connector_factory.return_value = (kafka_in, kafka_out)
-
-    # Create, setup and execute logprep pipeline
-    pipeline = Pipeline(
-        pipeline_index=1,
-        config=config,
-        counter=SharedCounter(),
-        log_handler=Handler(),
-        lock=Lock(),
-        shared_dict={},
-    )
-    pipeline._setup()
-    pipeline._retrieve_and_process_data()
-
-    return output_file_path
-
-
 def get_default_logprep_config(pipeline_config, with_hmac=True):
     config_yml = {
         "process_count": 1,
         "timeout": 0.1,
         "profile_pipelines": False,
         "pipeline": pipeline_config,
-        "connector": {
-            "type": "confluentkafka",
-            "bootstrapservers": ["testserver:9092"],
-            "consumer": {
-                "topic": "test_input_raw",
-                "group": "test_consumergroup",
-                "auto_commit": False,
-                "session_timeout": 654321,
-                "enable_auto_offset_store": True,
-                "offset_reset_policy": "latest",
-            },
-            "producer": {
-                "topic": "test_input_processed",
-                "error_topic": "test_error_producer",
-                "ack_policy": "1",
-                "compression": "gzip",
-                "maximum_backlog": 987654,
-                "send_timeout": 2,
-                "flush_timeout": 30,
-                "linger_duration": 4321,
-            },
+        "input": {
+            "jsonl": {
+                "type": "jsonl_input",
+                "documents_path": "tests/testdata/input_logdata/kafka_raw_event_for_pre_detector.jsonl",
+            }
+        },
+        "output": {
+            "jsonl": {
+                "type": "jsonl_output",
+                "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
+                "output_file_custom": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
+                "output_file_error": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_error.out",
+            }
         },
     }
 
     if with_hmac:
-        config_yml["connector"]["consumer"]["hmac"] = {
-            "target": "<RAW_MSG>",
-            "key": "secret",
-            "output_field": "hmac",
+        input_config = config_yml.get("input").get("jsonl")
+        input_config["preprocessing"] = {
+            "hmac": {
+                "target": "<RAW_MSG>",
+                "key": "secret",
+                "output_field": "hmac",
+            }
         }
 
     return config_yml

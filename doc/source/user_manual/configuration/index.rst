@@ -9,7 +9,8 @@ Configuration
 
    configurationdata
    logprep
-   connector
+   input
+   output
    pipeline
    processor
    metrics

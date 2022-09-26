@@ -104,7 +104,7 @@ class PreDetector(Processor):
             self._ip_alerter.has_ip_fields(rule)
             and not self._ip_alerter.is_in_alerts_list(rule, event)
         ):
-            if self._logger.isEnabledFor(DEBUG):
+            if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug(f"{self.describe()} processing matching event")
             self._get_detection_result(rule, self.detection_results)
         if "@timestamp" in event:

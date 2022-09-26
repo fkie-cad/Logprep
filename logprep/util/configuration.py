@@ -6,11 +6,10 @@ from typing import List
 from colorama import Fore
 from yaml import safe_load
 
-from logprep.connector.connector_factory import ConnectorFactory
-from logprep.connector.connector_factory_error import ConnectorFactoryError
-from logprep.processor.processor_factory import ProcessorFactory
-from logprep.processor.processor_factory_error import (
-    UnknownProcessorTypeError,
+from logprep.factory_error import FactoryError
+from logprep.factory import Factory
+from logprep.factory_error import (
+    UnknownComponentTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,
 )
 from logprep.util.helper import print_fcolor
@@ -181,18 +180,11 @@ class Configuration(dict):
             raise InvalidConfigurationErrors(errors)
 
     def _verify_connector(self, logger):
-        # DEPRECATION: HMAC-Option: Remove this if with next major version update
-        if self.get("connector", {}).get("consumer", {}).get("hmac", {}):
-            logger.warning(
-                "[Deprecation]: you are currently using a configuration format that will be "
-                "outdated in the next major release (version 4.0.0). The hmac options will move "
-                "from the keyword 'consumer' to the subkey 'preprocessing', consider changing to "
-                "the new config format. [Expires with logprep=4.0.0]"
-            )
-
         try:
-            _, _ = ConnectorFactory.create(self["connector"])
-        except ConnectorFactoryError as error:
+            _ = Factory.create(self["input"], logger)
+            _ = Factory.create(self["output"], logger)
+
+        except FactoryError as error:
             raise InvalidConnectorConfigurationError(str(error)) from error
         except KeyError as error:
             raise RequiredConfigurationKeyMissingError("connector") from error
@@ -204,10 +196,10 @@ class Configuration(dict):
         errors = []
         for processor_config in self["pipeline"]:
             try:
-                ProcessorFactory.create(processor_config, logger)
+                Factory.create(processor_config, logger)
             except (
                 FactoryInvalidConfigurationError,
-                UnknownProcessorTypeError,
+                UnknownComponentTypeError,
                 TypeError,
             ) as error:
                 errors.append(

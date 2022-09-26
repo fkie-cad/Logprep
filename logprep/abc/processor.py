@@ -1,33 +1,29 @@
 """ abstract module for processors"""
 import copy
-import os
-import sys
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from logging import DEBUG, Logger
 from multiprocessing import current_process
 from typing import List, Optional, Union
 
-from attr import define, field, validators
+from attr import define, field
+from logprep.abc import Component
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.processor.base.rule import Rule
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
-from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import file_validator, list_of_dirs_validator
 
 
-class Processor(ABC):
+class Processor(Component):
     """Abstract Processor Class to define the Interface"""
 
     @define(kw_only=True, slots=False)
-    class Config:
+    class Config(Component.Config):
         """Common Configurations"""
 
-        type: str = field(validator=validators.instance_of(str))
-        """ The type value defines the processor type that is being configured. """
         specific_rules: List[str] = field(validator=list_of_dirs_validator)
         """List of directory paths with generic rule files that can match multiple event types"""
         generic_rules: List[str] = field(validator=list_of_dirs_validator)
@@ -66,28 +62,19 @@ class Processor(ABC):
             self._mean_processing_time_sample_counter = new_sample_counter
 
     __slots__ = [
-        "name",
         "rule_class",
         "has_custom_tests",
         "metrics",
         "metric_labels",
-        "_logger",
         "_event",
         "_specific_tree",
         "_generic_tree",
-        "_config",
     ]
 
-    if not sys.version_info.minor < 7:
-        __slots__.append("__dict__")
-
-    name: str
     rule_class: Rule
     has_custom_tests: bool
     metrics: ProcessorMetrics
     metric_labels: dict
-    _config: Config
-    _logger: Logger
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
@@ -95,9 +82,7 @@ class Processor(ABC):
     _strategy = SpecificGenericProcessStrategy()
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
-        self._logger = logger
-        self._config = configuration
-        self.name = name
+        super().__init__(name, configuration, logger)
         self.metric_labels, specific_tree_labels, generic_tree_labels = self._create_metric_labels()
         self._specific_tree = RuleTree(
             config_path=self._config.tree_config, metric_labels=specific_tree_labels
@@ -115,16 +100,6 @@ class Processor(ABC):
             specific_rule_tree=self._specific_tree.metrics,
         )
         self.has_custom_tests = False
-
-    def __repr__(self):
-        return camel_to_snake(self.__class__.__name__)
-
-    def setup(self):
-        """Set the processor up.
-
-        Optional: Called before processing starts.
-
-        """
 
     def _create_metric_labels(self):
         """Reads out the metrics from the configuration and sets up labels for the rule trees"""
@@ -166,19 +141,6 @@ class Processor(ABC):
         """
         return [*self._generic_rules, *self._specific_rules]
 
-    def describe(self) -> str:
-        """Provide a brief name-like description of the processor.
-
-        The description is indicating its type _and_ the name provided when creating it.
-
-        Examples
-        --------
-
-        >>> Labeler(name)
-
-        """
-        return f"{self.__class__.__name__} ({self.name})"
-
     @TimeMeasurement.measure_time()
     def process(self, event: dict):
         """Process a log event by calling the implemented `process` method of the
@@ -190,7 +152,7 @@ class Processor(ABC):
            A dictionary representing a log event.
 
         """
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug("%s process event %s", self, event)
         self._strategy.process(
             event,
@@ -203,13 +165,6 @@ class Processor(ABC):
     @abstractmethod
     def _apply_rules(self, event, rule):
         ...  # pragma: no cover
-
-    def shut_down(self):
-        """Stop processing of this processor.
-
-        Optional: Called when stopping the pipeline
-
-        """
 
     def test_rules(self) -> dict:
         """Perform custom rule tests.
@@ -236,7 +191,7 @@ class Processor(ABC):
                 rules = self.rule_class.create_rules_from_file(rule_path)
                 for rule in rules:
                     self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             number_specific_rules = self._specific_tree.metrics.number_of_rules
             self._logger.debug(
                 f"{self.describe()} loaded {number_specific_rules} "

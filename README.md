@@ -184,16 +184,19 @@ pipeline:
       generic_rules:
         - rules/03_dropper/generic/
               
-connector:
-  type: confluentkafka
-  bootstrapservers: [127.0.0.1:9092]
-  consumer:
+input:
+  mykafka:
+    type: confluentkafka_input
+    bootstrapservers: [127.0.0.1:9092]
     topic: consumer
     group: cgroup
     auto_commit: on
     session_timeout: 6000
     offset_reset_policy: smallest
-  producer:
+output:
+  myotherkafka:
+    type: confluentkafka_output
+    bootstrapservers: [127.0.0.2:9092]
     topic: producer
     error_topic: producer_error
     ack_policy: all

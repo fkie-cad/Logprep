@@ -65,7 +65,7 @@ Processors
    
    logprep.processor.clusterer.processor
    logprep.processor.datetime_extractor.processor
-   logprep.processor.delete.processor
+   logprep.processor.deleter.processor
    logprep.processor.domain_label_extractor.processor
    logprep.processor.domain_resolver.processor
    logprep.processor.dropper.processor

@@ -55,7 +55,7 @@ class PipelineManager:
            The pipeline count will be incrementally changed until it reaches this value.
 
         """
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Getting pipeline count: {len(self._pipelines)}")
         return len(self._pipelines)
 

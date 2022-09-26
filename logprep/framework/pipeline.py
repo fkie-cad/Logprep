@@ -12,23 +12,22 @@ from multiprocessing import Lock, Process, Value, current_process
 from time import time
 from typing import List, TYPE_CHECKING
 
+import attrs
 import numpy as np
-from attr import define, Factory
 
 from logprep._version import get_versions
-from logprep.connector.connector_factory import ConnectorFactory
+from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
     FatalInputError,
     SourceDisconnectedError,
     WarningInputError,
 )
+from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
+from logprep.factory import Factory
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
-from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
-from logprep.processor.processor_factory import ProcessorFactory
-from logprep.util.helper import add_field_to
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.time_measurement import TimeMeasurement
@@ -59,13 +58,17 @@ class Pipeline:
     # pylint: disable=logging-not-lazy
     # Would require too much change in the tests.
 
-    @define(kw_only=True)
+    @attrs.define(kw_only=True)
     class PipelineMetrics(Metric):
         """Tracks statistics about a pipeline"""
 
         _prefix: str = "logprep_pipeline_"
 
-        pipeline: List["Processor.ProcessorMetrics"] = Factory(list)
+        input: Connector.ConnectorMetrics
+        """Input metrics"""
+        output: Connector.ConnectorMetrics
+        """Output metrics"""
+        pipeline: List["Processor.ProcessorMetrics"] = attrs.Factory(list)
         """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
         """The current offset of the kafka input reader"""
@@ -121,11 +124,12 @@ class Pipeline:
 
         self._processing_counter = counter
 
+        self.metrics = None
         self._metrics_exposer = MetricExposer(
             self._logprep_config.get("metrics", {}), metric_targets, shared_dict, lock
         )
         self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
-        self.metrics = self.PipelineMetrics(labels=self._metric_labels)
+        # self.metrics = self.PipelineMetrics(labels=self._metric_labels)
 
         self._event_version_information = {
             "logprep": get_versions().get("version"),
@@ -134,43 +138,57 @@ class Pipeline:
 
     def _setup(self):
         self._create_logger()
-        self._build_pipeline()
         self._create_connectors()
+        self._create_metrics()
+        self._build_pipeline()
+
+    def _create_metrics(self):
+        self.metrics = self.PipelineMetrics(
+            input=self._input.metrics, output=self._output.metrics, labels=self._metric_labels
+        )
 
     def _build_pipeline(self):
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Building '{current_process().name}'")
         self._pipeline = []
         for entry in self._logprep_config.get("pipeline"):
             processor_name = list(entry.keys())[0]
             entry[processor_name]["metric_labels"] = self._metric_labels
-            processor = ProcessorFactory.create(entry, self._logger)
+            processor = Factory.create(entry, self._logger)
             self._pipeline.append(processor)
             self.metrics.pipeline.append(processor.metrics)
-            if self._logger.isEnabledFor(DEBUG):
+            if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
             self._pipeline[-1].setup()
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Finished building pipeline ({current_process().name})")
 
     def _create_connectors(self):
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Creating connectors ({current_process().name})")
-        self._input, self._output = ConnectorFactory.create(self._logprep_config.get("connector"))
-        if self._logger.isEnabledFor(DEBUG):
+        input_connector_config = self._logprep_config.get("input")
+        connector_name = list(input_connector_config.keys())[0]
+        input_connector_config[connector_name]["metric_labels"] = self._metric_labels
+        self._input = Factory.create(input_connector_config, self._logger)
+        input_connector_config.update({"version_information": self._event_version_information})
+        output_connector_config = self._logprep_config.get("output")
+        connector_name = list(output_connector_config.keys())[0]
+        output_connector_config[connector_name]["metric_labels"] = self._metric_labels
+        self._output = Factory.create(output_connector_config, self._logger)
+        self._output.input_connector = self._input
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(
-                f"Created input connector '{self._input.describe_endpoint()}' "
-                f"({current_process().name})"
+                f"Created input connector '{self._input.describe()}' " f"({current_process().name})"
             )
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(
-                f"Created output connector '{self._output.describe_endpoint()}' "
+                f"Created output connector '{self._output.describe()}' "
                 f"({current_process().name})"
             )
 
         self._input.setup()
         self._output.setup()
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Finished creating connectors ({current_process().name})")
 
     def _create_logger(self):
@@ -188,18 +206,18 @@ class Pipeline:
         self._setup()
         self._enable_iteration()
         try:
-            if self._logger.isEnabledFor(DEBUG):
+            if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug("Start iterating (%s)", current_process().name)
             while self._iterate():
                 self._retrieve_and_process_data()
         except SourceDisconnectedError:
             self._logger.warning(
-                f"Lost or failed to establish connection to {self._input.describe_endpoint()}"
+                f"Lost or failed to establish connection to {self._input.describe()}"
             )
         except FatalInputError as error:
-            self._logger.error(f"Input {self._input.describe_endpoint()} failed: {error}")
+            self._logger.error(f"Input {self._input.describe()} failed: {error}")
         except FatalOutputError as error:
-            self._logger.error(f"Output {self._output.describe_endpoint()} failed: {error}")
+            self._logger.error(f"Output {self._output.describe()} failed: {error}")
 
         self._shut_down()
 
@@ -213,7 +231,11 @@ class Pipeline:
         event = {}
         try:
             self._metrics_exposer.expose(self.metrics)
-            event = self._input.get_next(self._logprep_config.get("timeout"))
+            event, non_critical_error_msg = self._input.get_next(
+                self._logprep_config.get("timeout")
+            )
+            if non_critical_error_msg:
+                self._output.store_failed(non_critical_error_msg, event, None)
 
             try:
                 self.metrics.kafka_offset = self._input.current_offset
@@ -221,47 +243,33 @@ class Pipeline:
                 pass
 
             if event:
-                self._preprocess_event(event)
                 self._process_event(event)
                 self._processing_counter.increment()
                 self._processing_counter.print_if_ready()
                 if event:
                     self._output.store(event)
-                    if self._logger.isEnabledFor(DEBUG):
+                    if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                         self._logger.debug("Stored output")
         except SourceDisconnectedError as error:
             raise error
         except WarningInputError as error:
-            self._logger.warning(
-                f"An error occurred for input {self._input.describe_endpoint()}: {error}"
-            )
+            self._logger.warning(f"An error occurred for input {self._input.describe()}: {error}")
+            self._input.metrics.number_of_warnings += 1
         except WarningOutputError as error:
-            self._logger.warning(
-                f"An error occurred for output {self._output.describe_endpoint()}: {error}"
-            )
+            self._logger.warning(f"An error occurred for output {self._output.describe()}: {error}")
+            self._output.metrics.number_of_warnings += 1
         except CriticalInputError as error:
-            msg = f"A critical error occurred for input {self._input.describe_endpoint()}: {error}"
+            msg = f"A critical error occurred for input {self._input.describe()}: {error}"
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, event)
+            self._input.metrics.number_of_errors += 1
         except CriticalOutputError as error:
-            msg = (
-                f"A critical error occurred for output "
-                f"{self._output.describe_endpoint()}: {error}"
-            )
+            msg = f"A critical error occurred for output " f"{self._output.describe()}: {error}"
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})
-
-    def _preprocess_event(self, event):
-        consumer_config = self._logprep_config.get("connector").get("consumer", {})
-        preprocessing_config = consumer_config.get("preprocessing", {})
-        if preprocessing_config.get("version_info_target_field"):
-            self._add_version_information_to_event(event, preprocessing_config)
-
-    def _add_version_information_to_event(self, event: dict, preprocessing_config: dict):
-        target_field = preprocessing_config.get("version_info_target_field")
-        add_field_to(event, target_field, self._event_version_information)
+            self._output.metrics.number_of_errors += 1
 
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):
@@ -294,7 +302,7 @@ class Pipeline:
                         processor.metrics.number_of_warnings += 1
 
                 if not event:
-                    if self._logger.isEnabledFor(DEBUG):
+                    if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                         self._logger.debug(f"Event deleted by processor {processor}")
                     return
         # pylint: disable=broad-except
@@ -314,7 +322,7 @@ class Pipeline:
         # pylint: enable=broad-except
 
     def _store_extra_data(self, extra_data: tuple):
-        if self._logger.isEnabledFor(DEBUG):
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug("Storing extra data")
         documents = extra_data[0]
         target = extra_data[1]
