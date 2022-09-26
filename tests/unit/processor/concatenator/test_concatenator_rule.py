@@ -6,7 +6,7 @@ from typing import Hashable
 import pytest
 
 from logprep.filter.lucene_filter import LuceneFilter
-from logprep.processor.concatenator.rule import InvalidConcatenatorRuleDefinition, ConcatenatorRule
+from logprep.processor.concatenator.rule import ConcatenatorRule
 
 
 @pytest.fixture(name="specific_rule_definition")
@@ -131,13 +131,15 @@ class TestConcatenatorRule:
     def test_rules_equality(
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
+        rule1_config = ConcatenatorRule.Config(specific_rule_definition["concatenator"])
         rule1 = ConcatenatorRule(
             LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["concatenator"],
+            rule1_config,
         )
+        rule2_config = ConcatenatorRule.Config(other_rule_definition["concatenator"])
         rule2 = ConcatenatorRule(
             LuceneFilter.create(other_rule_definition["filter"]),
-            other_rule_definition["concatenator"],
+            rule2_config,
         )
         assert (rule1 == rule2) == is_equal, testcase
 
@@ -159,7 +161,7 @@ class TestConcatenatorRule:
                 "correct rule definition",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -169,11 +171,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "The field 'overwrite_target' should be of type 'bool', but is '<class 'str'>'",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -183,11 +185,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": "False",
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "The field '.*' should be of type 'bool', but is '<class 'str'>'",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": "i should be a list",
@@ -197,11 +199,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "The field 'source_fields' should be of type 'list', but is '<class 'str'>'",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", 5, "other_field.c"],
@@ -211,11 +213,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "the list also contains non 'str' values",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a"],
@@ -225,11 +227,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "At least two source fields should be given for the concatenation.",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -239,11 +241,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "The field 'target_field' should be of type 'str', but is '<class 'int'>'",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -253,11 +255,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "The field 'seperator' should be of type 'str', but is '<class 'int'>'",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -268,11 +270,11 @@ class TestConcatenatorRule:
                         "some": "unknown_field",
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "Unknown fields were given: 'some'",
             ),
             (
-                {
+                    {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -281,7 +283,7 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                InvalidConcatenatorRuleDefinition,
+                    ValueError,
                 "Following fields were missing: 'seperator'",
             ),
         ],
