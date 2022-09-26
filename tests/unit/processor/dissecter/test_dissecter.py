@@ -357,6 +357,72 @@ test_cases = [  # testcase, rule, event, expected
             "extracted": {"message_float": 1.23, "message_int": 1337},
         },
     ),
+    (
+        "Tags failure if convert is not possible",
+        {
+            "filter": "message",
+            "dissecter": {
+                "convert_datatype": {
+                    "message": "int",
+                },
+            },
+        },
+        {"message": "I cant't be converted into int"},
+        {
+            "message": "I cant't be converted into int",
+            "tags": ["_dissectfailure"],
+        },
+    ),
+    (
+        "Tags failure if convert is not possible and extends tags list",
+        {
+            "filter": "message",
+            "dissecter": {
+                "convert_datatype": {
+                    "message": "int",
+                },
+            },
+        },
+        {"message": "I cant't be converted into int", "tags": ["preexisting"]},
+        {
+            "message": "I cant't be converted into int",
+            "tags": ["preexisting", "_dissectfailure"],
+        },
+    ),
+    (
+        "Tags custom failure if convert is not possible",
+        {
+            "filter": "message",
+            "dissecter": {
+                "convert_datatype": {
+                    "message": "int",
+                },
+                "tag_on_failure": ["custom_tag_1", "custom_tag2"],
+            },
+        },
+        {"message": "I cant't be converted into int"},
+        {
+            "message": "I cant't be converted into int",
+            "tags": ["custom_tag_1", "custom_tag2"],
+        },
+    ),
+    (
+        "Tags custom failure if convert is not possible and extends tag list",
+        {
+            "filter": "message",
+            "dissecter": {
+                "convert_datatype": {
+                    "message": "int",
+                },
+                "tag_on_failure": ["custom_tag_1", "custom_tag2"],
+            },
+        },
+        {"message": "I cant't be converted into int", "tags": ["preexisting1", "preexisting2"]},
+        {
+            "message": "I cant't be converted into int",
+            "tags": ["preexisting1", "preexisting2", "custom_tag_1", "custom_tag2"],
+        },
+    ),
 ]
 
 

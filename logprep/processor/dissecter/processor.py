@@ -46,5 +46,8 @@ class Dissecter(Processor):
             for action, event, target_field, content, seperator, _ in actions:
                 action(event, target_field, content, seperator)
         for target_field, converter in rule.convert_actions:
-            target_value = converter(get_dotted_field_value(event, target_field))
-            add_field_to(event, target_field, target_value, overwrite_output_field=True)
+            try:
+                target_value = converter(get_dotted_field_value(event, target_field))
+                add_field_to(event, target_field, target_value, overwrite_output_field=True)
+            except ValueError:
+                add_field_to(event, "tags", rule.failure_tags, extends_lists=True)

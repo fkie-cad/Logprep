@@ -1,4 +1,40 @@
-"""Dissecter Rule Module"""
+"""
+Dissecter Rule
+--------------
+
+The dissecter processor tokenizes values from fields into new fields or appends the value to
+existing fields.
+
+A speaking example:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Given dissecter rule
+
+    filter: message
+    dissecter:
+        mapping:
+            message: "%{}of %{extracted.message_float} and a int of %{extracted.message_int}"
+        convert_datatype:
+            extracted.message_int: "int"
+            extracted.message_float: "float"
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incomming event
+
+    {"message": "This message has a float of 1.23 and a int of 1337"}
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    {
+        "message": "This message has a float of 1.23 and a int of 1337",
+        "extracted": {"message_float": 1.23, "message_int": 1337},
+    }
+"""
 from functools import partial
 import re
 from typing import Callable, List, Tuple
@@ -75,6 +111,11 @@ class DissecterRule(Rule):
 
     convert_actions: List[Tuple[str, Callable]]
     """list tuple format <target_field>, <converter callable>"""
+
+    @property
+    def failure_tags(self):
+        """Returns the failure tags"""
+        return self._config.tag_on_failure
 
     def __init__(self, filter_rule: FilterExpression, config: "DissecterRule.Config"):
         super().__init__(filter_rule)
