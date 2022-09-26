@@ -21,7 +21,7 @@ Example
 """
 from logprep.abc import Processor
 from logprep.processor.dissecter.rule import DissecterRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, add_field_to
 
 
 class Dissecter(Processor):
@@ -45,5 +45,6 @@ class Dissecter(Processor):
             actions.sort(key=lambda x: x[5])  # sort by position
             for action, event, target_field, content, seperator, _ in actions:
                 action(event, target_field, content, seperator)
-        for target_field, datatype in rule.convert_actions:
-            event.update({target_field: datatype(event.get(target_field))})
+        for target_field, converter in rule.convert_actions:
+            target_value = converter(get_dotted_field_value(event, target_field))
+            add_field_to(event, target_field, target_value, overwrite_output_field=True)

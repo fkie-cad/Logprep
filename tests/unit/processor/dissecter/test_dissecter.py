@@ -192,8 +192,8 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "dissecter": {
                 "mapping": {
-                    "source1": "%{extracted.source1.key1} %{extracted.source1.key2} %{extracted.source1.key3}",
-                    "source2": "%{extracted.source2.key1} %{extracted.source2.key2} %{extracted.source2.key3}",
+                    "source1": "%{extracted.source1.key1} %{extracted.source1.key2} %{extracted.source1.key3}",  # pylint: disable=line-too-long
+                    "source2": "%{extracted.source2.key1} %{extracted.source2.key2} %{extracted.source2.key3}",  # pylint: disable=line-too-long
                 }
             },
         },
@@ -337,6 +337,26 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "42"},
         {"message": 42},
     ),
+    (
+        "converts datatype with mapping in dotted field notation",
+        {
+            "filter": "message",
+            "dissecter": {
+                "mapping": {
+                    "message": "%{}of %{extracted.message_float} and a int of %{extracted.message_int}"  # pylint: disable=line-too-long
+                },
+                "convert_datatype": {
+                    "extracted.message_int": "int",
+                    "extracted.message_float": "float",
+                },
+            },
+        },
+        {"message": "This message has a float of 1.23 and a int of 1337"},
+        {
+            "message": "This message has a float of 1.23 and a int of 1337",
+            "extracted": {"message_float": 1.23, "message_int": 1337},
+        },
+    ),
 ]
 
 
@@ -353,5 +373,4 @@ class TestDissecter(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-        # TODO add tests for convert_datatype
         # TODO add tests for failures

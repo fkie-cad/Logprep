@@ -80,6 +80,7 @@ class DissecterRule(Rule):
         super().__init__(filter_rule)
         self._config = config
         self._set_actions()
+        self._set_convert_actions()
 
     def __eq__(self, other: "DissecterRule") -> bool:
         return all((self._filter == other._filter, self._config == other._config))
@@ -127,7 +128,7 @@ class DissecterRule(Rule):
 
     def _set_convert_actions(self):
         self.convert_actions = []
-        for target_field, converter_string in self._config.convert_datatype:
+        for target_field, converter_string in self._config.convert_datatype.items():
             self.convert_actions.append(
                 (target_field, self._converter_mapping.get(converter_string))
             )
