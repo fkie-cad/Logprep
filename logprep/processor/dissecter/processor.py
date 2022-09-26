@@ -22,6 +22,7 @@ Example
 from logprep.abc import Processor
 from logprep.processor.dissecter.rule import DissecterRule
 from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.processor.base.exceptions import ProcessingWarning
 
 
 class Dissecter(Processor):
@@ -36,6 +37,12 @@ class Dissecter(Processor):
             if current_field != source_field:
                 current_field = source_field
                 loop_content = get_dotted_field_value(event, current_field)
+                if loop_content is None:
+                    self._handle_warning_error(
+                        event,
+                        rule,
+                        BaseException(f"dissecter: mapping field '{source_field}' does not exist"),
+                    )
             if seperator:
                 content, _, loop_content = loop_content.partition(seperator)
             else:
@@ -49,5 +56,10 @@ class Dissecter(Processor):
             try:
                 target_value = converter(get_dotted_field_value(event, target_field))
                 add_field_to(event, target_field, target_value, overwrite_output_field=True)
-            except ValueError:
-                add_field_to(event, "tags", rule.failure_tags, extends_lists=True)
+            except ValueError as error:
+                self._handle_warning_error(event, rule, error)
+
+    @staticmethod
+    def _handle_warning_error(event, rule, error):
+        add_field_to(event, "tags", rule.failure_tags, extends_lists=True)
+        raise ProcessingWarning(str(error)) from error

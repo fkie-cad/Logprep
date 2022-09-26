@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 import pytest
 from tests.unit.processor.base import BaseProcessorTestCase
+from logprep.processor.base.exceptions import ProcessingWarning
 
 test_cases = [  # testcase, rule, event, expected
     (
@@ -357,6 +358,8 @@ test_cases = [  # testcase, rule, event, expected
             "extracted": {"message_float": 1.23, "message_int": 1337},
         },
     ),
+]
+failure_test_cases = [  # testcase, rule, event, expected
     (
         "Tags failure if convert is not possible",
         {
@@ -423,6 +426,12 @@ test_cases = [  # testcase, rule, event, expected
             "tags": ["preexisting1", "preexisting2", "custom_tag_1", "custom_tag2"],
         },
     ),
+    (
+        "Tags  failure if mapping field does not exist",
+        {"filter": "message", "dissecter": {"mapping": {"doesnotexist": "%{} %{}"}}},
+        {"message": "This is the message which does not matter"},
+        {"message": "This is the message which does not matter", "tags": ["_dissectfailure"]},
+    ),
 ]
 
 
@@ -439,4 +448,13 @@ class TestDissecter(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-        # TODO add tests for failures
+    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
+    def test_testcases_failure_handling(
+        self, testcase, rule, event, expected
+    ):  # pylint: disable=unused-argument
+        self._load_specific_rule(rule)
+        with pytest.raises(ProcessingWarning):
+            self.object.process(event)
+        assert event == expected
+
+        # TODO add indirect field notation
