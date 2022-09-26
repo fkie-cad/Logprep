@@ -19,6 +19,7 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
+from typing import Callable, List, Tuple
 from logprep.abc import Processor
 from logprep.processor.dissecter.rule import DissecterRule
 from logprep.util.helper import get_dotted_field_value, add_field_to
@@ -31,27 +32,33 @@ class Dissecter(Processor):
     rule_class = DissecterRule
 
     def _apply_rules(self, event, rule):
+        self._apply_mapping(event, rule)
+        self._apply_convert_datatype(event, rule)
+
+    def _apply_mapping(self, event, rule):
+        event_mappings = [mapping for mapping in self._get_mappings(event, rule)]
+        event_mappings.sort(key=lambda x: x[5])  # sort by position
+        _ = [caller(*args) for caller, *args, _ in event_mappings]
+
+    def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, str, str, str, int]]:
         current_field = None
-        actions = []
-        for source_field, seperator, target_field, action, position in rule.actions:
+        for rule_action in rule.actions:
+            source_field, seperator, target_field, rule_action, position = rule_action
             if current_field != source_field:
                 current_field = source_field
                 loop_content = get_dotted_field_value(event, current_field)
                 if loop_content is None:
-                    self._handle_warning_error(
-                        event,
-                        rule,
-                        BaseException(f"dissecter: mapping field '{source_field}' does not exist"),
+                    error = BaseException(
+                        f"dissecter: mapping field '{source_field}' does not exist"
                     )
+                    self._handle_warning_error(event, rule, error)
             if seperator:
                 content, _, loop_content = loop_content.partition(seperator)
             else:
                 content = loop_content
-            actions.append((action, event, target_field, content, seperator, position))
-        if actions:
-            actions.sort(key=lambda x: x[5])  # sort by position
-            for action, event, target_field, content, seperator, _ in actions:
-                action(event, target_field, content, seperator)
+            yield rule_action, event, target_field, content, seperator, position
+
+    def _apply_convert_datatype(self, event, rule):
         for target_field, converter in rule.convert_actions:
             try:
                 target_value = converter(get_dotted_field_value(event, target_field))
