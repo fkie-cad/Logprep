@@ -44,7 +44,7 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
-DISSECT = r"(%\{[+&]?.*\})"
+DISSECT = r"(%\{[+&?]?[^%{]*\})"
 SEPERATOR = r"((?!%\{.*\}).+)"
 
 append_as_list = partial(add_field_to, extends_lists=True)

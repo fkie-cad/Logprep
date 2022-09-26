@@ -107,6 +107,32 @@ class TestDissecterRule:
                 ValueError,
                 "must match regex",
             ),
+            (
+                {
+                    "filter": "message",
+                    "dissecter": {"mapping": {"field": "%{{prog} %{pid}:%{msg}"}},
+                },
+                ValueError,
+                "must match regex",
+            ),
+            (
+                {"filter": "message", "dissecter": {"convert_datatype": {"field1": "int"}}},
+                None,
+                None,
+            ),
+            (
+                {"filter": "message", "dissecter": {"convert_datatype": {"field1": "char"}}},
+                ValueError,
+                r"'convert_datatype' must be in \['float', 'int', 'string'\]",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissecter": {"mapping": {"field": "%{?prog} %{&pid}:%{msg}"}},
+                },
+                None,
+                None,
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
