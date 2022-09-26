@@ -42,6 +42,7 @@ class Dissecter(Processor):
 
     def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, str, str, str, int]]:
         current_field = None
+        target_field_mapping = {}
         for rule_action in rule.actions:
             source_field, seperator, target_field, rule_action, position = rule_action
             if current_field != source_field:
@@ -56,6 +57,12 @@ class Dissecter(Processor):
                 content, _, loop_content = loop_content.partition(seperator)
             else:
                 content = loop_content
+            if target_field.startswith("?"):
+                target_field_mapping[target_field.lstrip("?")] = content
+                target_field = content
+                content = ""
+            if target_field.startswith("&"):
+                target_field = target_field_mapping.get(target_field.lstrip("&"))
             yield rule_action, event, target_field, content, seperator, position
 
     def _apply_convert_datatype(self, event, rule):

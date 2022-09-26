@@ -66,6 +66,11 @@ def append(event, target_field, content, seperator):
         append_as_list(event, target_field, content)
 
 
+def add_key_from_content(event, _, content, seperator):
+    """creates the key from content"""
+    add_and_overwrite(event, content, "", seperator)
+
+
 class DissecterRule(Rule):
     """dissecter rule"""
 
@@ -141,7 +146,7 @@ class DissecterRule(Rule):
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(
-                    r"%\{(?P<action>\+?)(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<seperator>.*)",
+                    r"%\{(?P<action>[+]?)(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<seperator>.*)",
                     section,
                 )
                 seperator = (

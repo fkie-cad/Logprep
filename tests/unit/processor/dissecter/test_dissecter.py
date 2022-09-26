@@ -358,6 +358,21 @@ test_cases = [  # testcase, rule, event, expected
             "extracted": {"message_float": 1.23, "message_int": 1337},
         },
     ),
+    (
+        "indirect field notation: uses captured field as key",
+        {"filter": "message", "dissecter": {"mapping": {"message": "%{?key} %{&key}"}}},
+        {"message": "This is the message"},
+        {"message": "This is the message", "This": "is the message"},
+    ),
+    (
+        "indirect field notation: uses captured field as key and append to it",
+        {
+            "filter": "message",
+            "dissecter": {"mapping": {"message": "%{?key} %{&key} %{} %{+&key}"}},
+        },
+        {"message": "This is the message"},
+        {"message": "This is the message", "This": "is message"},
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (
@@ -456,5 +471,3 @@ class TestDissecter(BaseProcessorTestCase):
         with pytest.raises(ProcessingWarning):
             self.object.process(event)
         assert event == expected
-
-        # TODO add indirect field notation
