@@ -23,7 +23,7 @@ from logprep.util.json_handling import dump_config_as_file, parse_jsonl, parse_j
 yaml = YAML(typ="safe", pure=True)
 
 
-def get_runner_outputs(patched_runner):
+def get_runner_outputs(patched_runner, remove_on_finish=True):
     # pylint: disable=protected-access
     """
     Extracts the outputs of a patched logprep runner.
@@ -32,6 +32,8 @@ def get_runner_outputs(patched_runner):
     ----------
     patched_runner : Runner
         The patched logprep runner
+    remove_on_finish : bool
+        Remove output files after processing
 
     Returns
     -------
@@ -52,7 +54,8 @@ def get_runner_outputs(patched_runner):
 
     for index, output_path in enumerate(output_paths):
         parsed_outputs[index] = parse_jsonl(output_path)
-        remove_file_if_exists(output_path)
+        if remove_on_finish:
+            remove_file_if_exists(output_path)
 
     return parsed_outputs
 

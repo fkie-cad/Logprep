@@ -3,8 +3,8 @@
 # pylint: disable=missing-docstring
 import json
 from copy import deepcopy
-from logging import getLogger, DEBUG, basicConfig
-from os import path, makedirs
+from logging import DEBUG, basicConfig, getLogger
+from os import makedirs, path
 
 from logprep.util.helper import recursive_compare
 from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
@@ -66,9 +66,9 @@ def store_latest_test_output(target_output_identifier, output_of_test):
             latest_output.write(json.dumps(test_output_line) + "\n")
 
 
-def get_test_output(config_path):
+def get_test_output(config_path, remove_on_finish=True):
     patched_runner = get_patched_runner(config_path, logger)
-    return get_runner_outputs(patched_runner=patched_runner)
+    return get_runner_outputs(patched_runner=patched_runner, remove_on_finish=remove_on_finish)
 
 
 class SingleMessageConsumerJsonMock:
