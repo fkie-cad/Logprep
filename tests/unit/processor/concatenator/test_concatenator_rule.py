@@ -5,7 +5,7 @@ from typing import Hashable
 
 import pytest
 
-from logprep.filter.lucene_filter import LuceneFilter
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.concatenator.rule import ConcatenatorRule
 
 
@@ -131,17 +131,9 @@ class TestConcatenatorRule:
     def test_rules_equality(
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule1_config = ConcatenatorRule.Config(specific_rule_definition["concatenator"])
-        rule1 = ConcatenatorRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            rule1_config,
-        )
-        rule2_config = ConcatenatorRule.Config(other_rule_definition["concatenator"])
-        rule2 = ConcatenatorRule(
-            LuceneFilter.create(other_rule_definition["filter"]),
-            rule2_config,
-        )
-        assert (rule1 == rule2) == is_equal, testcase
+        rule_1 = ConcatenatorRule._create_from_dict(specific_rule_definition)
+        rule_2 = ConcatenatorRule._create_from_dict(other_rule_definition)
+        assert (rule_1 == rule_2) == is_equal, testcase
 
     @pytest.mark.parametrize(
         "rule_definition, raised, message",
@@ -161,7 +153,7 @@ class TestConcatenatorRule:
                 "correct rule definition",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -171,11 +163,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                    ValueError,
-                "The field 'overwrite_target' should be of type 'bool', but is '<class 'str'>'",
+                TypeError,
+                "'overwrite_target' must be <class 'bool'>",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -185,11 +177,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": "False",
                     },
                 },
-                    ValueError,
-                "The field '.*' should be of type 'bool', but is '<class 'str'>'",
+                TypeError,
+                "'delete_source_fields' must be <class 'bool'>",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": "i should be a list",
@@ -199,11 +191,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                    ValueError,
-                "The field 'source_fields' should be of type 'list', but is '<class 'str'>'",
+                TypeError,
+                "'source_fields' must be <class 'list'>",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", 5, "other_field.c"],
@@ -213,11 +205,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                    ValueError,
-                "the list also contains non 'str' values",
+                TypeError,
+                "'source_fields' must be <class 'str'>",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a"],
@@ -227,11 +219,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                    ValueError,
-                "At least two source fields should be given for the concatenation.",
+                ValueError,
+                "Length of 'source_fields' must be => 2: 1",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -241,11 +233,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                    ValueError,
-                "The field 'target_field' should be of type 'str', but is '<class 'int'>'",
+                TypeError,
+                "'target_field' must be <class 'str'>",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -255,11 +247,11 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                    ValueError,
-                "The field 'seperator' should be of type 'str', but is '<class 'int'>'",
+                TypeError,
+                "'seperator' must be <class 'str'>",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -270,11 +262,11 @@ class TestConcatenatorRule:
                         "some": "unknown_field",
                     },
                 },
-                    ValueError,
-                "Unknown fields were given: 'some'",
+                TypeError,
+                "got an unexpected keyword argument 'some'",
             ),
             (
-                    {
+                {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
@@ -283,8 +275,16 @@ class TestConcatenatorRule:
                         "delete_source_fields": False,
                     },
                 },
-                    ValueError,
-                "Following fields were missing: 'seperator'",
+                TypeError,
+                "missing 1 required keyword-only argument: 'seperator'",
+            ),
+            (
+                {
+                    "filter": "field.a",
+                    "concatenator": ["Not a dict configuration ..."],
+                },
+                InvalidRuleDefinitionError,
+                "config is not a dict",
             ),
         ],
     )

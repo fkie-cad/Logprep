@@ -38,10 +38,13 @@ A speaking example:
         "timetsamp": "01.01.1007 13:07"
     }
 """
+from functools import partial
+
 from attrs import define, field, validators
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
+from logprep.util.validators import min_len_validator
 
 
 class ConcatenatorRule(Rule):
@@ -52,10 +55,13 @@ class ConcatenatorRule(Rule):
         """RuleConfig for Concatenator"""
 
         source_fields: list = field(
-            validator=validators.deep_iterable(
-                member_validator=validators.instance_of(str),
-                iterable_validator=validators.instance_of(list),
-            )
+            validator=[
+                validators.deep_iterable(
+                    member_validator=validators.instance_of(str),
+                    iterable_validator=validators.instance_of(list),
+                ),
+                partial(min_len_validator, min_length=2),
+            ]
         )
         """The source fields that should be concatenated, can contain dotted field paths."""
         target_field: str = field(validator=validators.instance_of(str))
@@ -85,16 +91,7 @@ class ConcatenatorRule(Rule):
         self._config = config
 
     def __eq__(self, other: "ConcatenatorRule") -> bool:
-        return all(
-            [
-                other.filter == self._filter,
-                self.source_fields == other.source_fields,
-                self.target_field == other.target_field,
-                self.seperator == other.seperator,
-                self.overwrite_target == other.overwrite_target,
-                self.delete_source_fields == other.delete_source_fields,
-            ]
-        )
+        return all([other.filter == self._filter, other._config == self._config])
 
     @property
     def source_fields(self) -> list:  # pylint: disable=missing-docstring
