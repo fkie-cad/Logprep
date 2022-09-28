@@ -34,6 +34,40 @@ A speaking example:
         "message": "This message has a float of 1.23 and a int of 1337",
         "extracted": {"message_float": 1.23, "message_int": 1337},
     }
+
+Dissect Pattern Language
+------------------------
+
+The dissect pattern describes the textual format of the source field.
+
+Given a dissect pattern of :code:`%{field1} %{field2}` the source field value will be dissected into
+everything before the first whitespace which would be written into the field `field1` and everything
+after the first whitespace which would be written into the field `field2`.
+
+The string surrounded by :code:`%{}` is the desired target field. This can be declared in dotted
+field notation. (e.g. :code:`%{target.subfield1.subfield2}`). Every subfield between the first and
+the last subfield will be created.
+
+In default the target field will always be overwritten with the captured value. If you want to
+append to a preexisting target field value as string or list you have to use the :code:`+` operator.
+
+It is possible to capture the target field name from the source field value with the notation
+:code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). This can be referred to with the
+notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`) afterwards in the same dissection pattern.
+References can be combined with the append operator.
+
+.. autoclass:: logprep.processor.dissecter.rule.DissecterRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+Examples for dissection and datatype conversion:
+------------------------------------------------
+
+.. datatemplate:json:: ../../../tests/unit/processor/dissecter/testcases.json
+   :template: /home/vagrant/external_work/Logprep/doc/source/testcase-renderer.tmpl
+
 """
 from functools import partial
 import re
@@ -83,8 +117,8 @@ class DissecterRule(Rule):
             ],
             default=Factory(dict),
         )
-        """A mapping from source fields to a dissect pattern
-        
+        """A mapping from source fields to a dissect pattern [optional]
+        Dotted field notation is possible in key and in the dissect pattern.
         """
         convert_datatype: dict = field(
             validator=[
@@ -96,12 +130,14 @@ class DissecterRule(Rule):
             ],
             default=Factory(dict),
         )
-        """
-        
+        """A mapping from source field and desired datatype [optional]
+        the datatypes could be [`float`, `int`, `string`]
         """
         tag_on_failure: list = field(
             validator=validators.instance_of(list), default=["_dissectfailure"]
         )
+        """A list of tags which will be appended to the event on non critical errors [default=`_dissectfailure`]
+        """
 
     _actions_mapping: dict = {
         "": add_and_overwrite,

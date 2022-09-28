@@ -1,10 +1,10 @@
 """
 Dissecter
----------
+=========
 
 The `dissecter` is a processor that tokenizes incoming strings using defined patterns.
 The behavior is based of the logstash dissect filter plugin.
-Additionaly it can be used to convert datatypes in messages.
+Additionaly it can be used to convert datatypes in fields.
 
 
 Example

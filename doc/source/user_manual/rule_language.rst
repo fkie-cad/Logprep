@@ -1701,8 +1701,4 @@ The example below deletes the log message if the message field equals "foo".
    :noindex:
 
 .. automodule:: logprep.processor.dissecter.rule
-.. autoclass:: logprep.processor.dissecter.rule.DissecterRule.Config
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :noindex:
+
