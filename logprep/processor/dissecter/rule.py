@@ -53,8 +53,8 @@ append to a preexisting target field value as string or list you have to use the
 
 It is possible to capture the target field name from the source field value with the notation
 :code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). This can be referred to with the
-notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`) afterwards in the same dissection pattern.
-References can be combined with the append operator.
+notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`) afterwards in the same dissection
+pattern. References can be combined with the append operator.
 
 .. autoclass:: logprep.processor.dissecter.rule.DissecterRule.Config
    :members:
