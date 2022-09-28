@@ -65,7 +65,7 @@ References can be combined with the append operator.
 Examples for dissection and datatype conversion:
 ------------------------------------------------
 
-.. datatemplate:json:: ../../../tests/unit/processor/dissecter/testcases.json
+.. datatemplate:import-module:: tests.unit.processor.dissecter.test_dissecter
    :template: /home/vagrant/external_work/Logprep/doc/source/testcase-renderer.tmpl
 
 """
