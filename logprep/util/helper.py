@@ -91,9 +91,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     return True
 
 
-def get_dotted_field_value(
-    event: dict, dotted_field: str, delete_source=False
-) -> Optional[Union[dict, list, str]]:
+def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
     """
     Returns the value of a requested dotted_field by iterating over the event dictionary until the
     field was found. In case the field could not be found None is returned.
@@ -104,9 +102,6 @@ def get_dotted_field_value(
         The event from which the dotted field value should be extracted
     dotted_field: str
         The dotted field name which identifies the requested value
-    delete_source: bool
-        Flag that determines whether the dotted source field should be removed after the field value
-        was retrieved
 
     Returns
     -------
@@ -115,10 +110,36 @@ def get_dotted_field_value(
     """
 
     fields = dotted_field.split(".")
-    return _search_for_field_value(event, fields, delete_source)
+    return _retrieve_field_value_and_delete_field_if_configured(
+        event, fields, delete_source_field=False
+    )
 
 
-def _search_for_field_value(sub_dict, dotted_fields_path, delete_source_field=False):
+def pop_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
+    """
+    Remove and return dotted field. Returns None is field does not exist.
+
+    Parameters
+    ----------
+    event: dict
+        The event from which the dotted field value should be extracted
+    dotted_field: str
+        The dotted field name which identifies the requested value
+
+    Returns
+    -------
+    dict_: dict, list, str
+        The value of the requested dotted field.
+    """
+    fields = dotted_field.split(".")
+    return _retrieve_field_value_and_delete_field_if_configured(
+        event, fields, delete_source_field=True
+    )
+
+
+def _retrieve_field_value_and_delete_field_if_configured(
+    sub_dict, dotted_fields_path, delete_source_field=False
+):
     """
     Iterates recursively over the given dictionary retrieving the dotted field. If set the source
     field will be removed. When again going back up the stack trace it deletes the empty left over
@@ -131,7 +152,7 @@ def _search_for_field_value(sub_dict, dotted_fields_path, delete_source_field=Fa
             if delete_source_field:
                 del sub_dict[next_key]
             return field_value
-        field_value = _search_for_field_value(
+        field_value = _retrieve_field_value_and_delete_field_if_configured(
             sub_dict[next_key], dotted_fields_path, delete_source_field
         )
         # If remaining subdict is empty delete it
@@ -148,7 +169,7 @@ def recursive_compare(test_output, expected_output):
     if not isinstance(test_output, type(expected_output)):
         return test_output, expected_output
 
-    elif isinstance(test_output, dict) and isinstance(expected_output, dict):
+    if isinstance(test_output, dict) and isinstance(expected_output, dict):
         if sorted(test_output.keys()) != sorted(expected_output.keys()):
             return sorted(test_output.keys()), sorted(expected_output.keys())
 

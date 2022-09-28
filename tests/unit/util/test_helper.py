@@ -4,7 +4,12 @@ from unittest import mock
 
 import pytest
 
-from logprep.util.helper import camel_to_snake, snake_to_camel, get_dotted_field_value
+from logprep.util.helper import (
+    camel_to_snake,
+    snake_to_camel,
+    get_dotted_field_value,
+    pop_dotted_field_value,
+)
 from logprep.util.json_handling import is_json
 
 
@@ -140,23 +145,25 @@ class TestGetDottedFieldValue:
         value = get_dotted_field_value(event, dotted_field)
         assert value is None
 
+
+class TestPopDottedFieldValue:
     def test_get_dotted_field_removes_source_field_in_nested_structure_but_leaves_sibling(self):
         event = {"get": {"nested": "field", "other": "field"}}
         dotted_field = "get.nested"
-        value = get_dotted_field_value(event, dotted_field, delete_source=True)
+        value = pop_dotted_field_value(event, dotted_field)
         assert value == "field"
         assert event == {"get": {"other": "field"}}
 
     def test_get_dotted_field_removes_source_field(self):
         event = {"get": {"nested": "field"}}
         dotted_field = "get.nested"
-        value = get_dotted_field_value(event, dotted_field, delete_source=True)
+        value = pop_dotted_field_value(event, dotted_field)
         assert value == "field"
         assert not event
 
     def test_get_dotted_field_removes_source_field2(self):
         event = {"get": {"very": {"deeply": {"nested": {"field": "value"}}}}}
         dotted_field = "get.very.deeply.nested"
-        value = get_dotted_field_value(event, dotted_field, delete_source=True)
+        value = pop_dotted_field_value(event, dotted_field)
         assert value == {"field": "value"}
         assert not event
