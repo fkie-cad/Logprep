@@ -3,7 +3,7 @@ Dissecter Rule
 --------------
 
 The dissecter processor tokenizes values from fields into new fields or appends the value to
-existing fields.
+existing fields. Additionaly it can be used to convert datatypes in field values.
 
 A speaking example:
 
@@ -66,11 +66,6 @@ def append(event, target_field, content, seperator):
         append_as_list(event, target_field, content)
 
 
-def add_key_from_content(event, _, content, seperator):
-    """creates the key from content"""
-    add_and_overwrite(event, content, "", seperator)
-
-
 class DissecterRule(Rule):
     """dissecter rule"""
 
@@ -88,6 +83,9 @@ class DissecterRule(Rule):
             ],
             default=Factory(dict),
         )
+        """A mapping from source fields to a dissect pattern
+        
+        """
         convert_datatype: dict = field(
             validator=[
                 validators.instance_of(dict),
@@ -98,6 +96,9 @@ class DissecterRule(Rule):
             ],
             default=Factory(dict),
         )
+        """
+        
+        """
         tag_on_failure: list = field(
             validator=validators.instance_of(list), default=["_dissectfailure"]
         )
@@ -125,7 +126,7 @@ class DissecterRule(Rule):
     def __init__(self, filter_rule: FilterExpression, config: "DissecterRule.Config"):
         super().__init__(filter_rule)
         self._config = config
-        self._set_actions()
+        self._set_mapping_actions()
         self._set_convert_actions()
 
     def __eq__(self, other: "DissecterRule") -> bool:
@@ -140,7 +141,7 @@ class DissecterRule(Rule):
         config = DissecterRule.Config(**config)
         return DissecterRule(filter_expression, config)
 
-    def _set_actions(self):
+    def _set_mapping_actions(self):
         self.actions = []
         for source_field, pattern in self._config.mapping.items():
             sections = re.findall(r"%\{[^%]+", pattern)
