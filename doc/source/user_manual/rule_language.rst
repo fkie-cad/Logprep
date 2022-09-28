@@ -1692,3 +1692,10 @@ The example below deletes the log message if the message field equals "foo".
     filter: 'message: "foo"'
     delete: true
     description: '...'
+
+.. automodule:: logprep.processor.concatenator.rule
+.. autoclass:: logprep.processor.concatenator.rule.ConcatenatorRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:

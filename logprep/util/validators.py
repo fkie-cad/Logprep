@@ -155,3 +155,12 @@ def _is_optional_type(given_type):
             if type(None) in getattr(given_type, "__args__"):
                 return True
     return False
+
+
+def min_len_validator(_, attribute, value, min_length):
+    """Temporary Validator to check for min length"""
+    # TODO: This validator is available in attrs 22.1.0, currently semgrep depends on attrs 21.3,
+    #  meaning this custom validator can be removed once the semgrep incompatibility is resolved
+    #  (including the tests).
+    if len(value) < min_length:
+        raise ValueError(f"Length of '{attribute.name}' must be => {min_length}: {len(value)}")

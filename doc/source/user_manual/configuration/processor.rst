@@ -8,6 +8,12 @@ Processors
    :undoc-members:
    :inherited-members:
 
+.. automodule:: logprep.processor.concatenator.processor
+.. autoclass:: logprep.processor.concatenator.processor.Concatenator.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+
 .. automodule:: logprep.processor.datetime_extractor.processor
 .. autoclass:: logprep.processor.datetime_extractor.processor.DatetimeExtractor.Config
    :members:

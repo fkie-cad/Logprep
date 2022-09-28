@@ -19,6 +19,7 @@ under the subkey `preprocessing` of the `input` processor
 * Add preprocessor for log_arrival_time
 * Add preprocessor for log_arrival_timedelta
 * Add metrics to connectors
+* Add concatenator processor that can combine multiple source fields
 
 ### Improvements
 * Validate connector config on class level via attrs classes
@@ -129,7 +130,7 @@ version if found
 * Add `ProcessorRegistry` to register all processors
 * Remove plugins feature
 * Add `ProcessorConfiguration` as an adapter to create configuration for processors
-* Remove all specific processor factories in favor of `logprep.pipeline_component_factory.ProcessorFactory`
+* Remove all specific processor factories in favor of `logprep.processor.processor_factory.ProcessorFactory`
 * Rewrite `ProcessorFactory`
 * Automate processor configuration documentation
 * generalize config parameter for using tld lists to `tld_lists` for `domain_resolver`, `domain_label_extractor`, `pseudonymizer`
