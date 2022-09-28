@@ -66,7 +66,7 @@ Examples for dissection and datatype conversion:
 ------------------------------------------------
 
 .. datatemplate:import-module:: tests.unit.processor.dissecter.test_dissecter
-   :template: /home/vagrant/external_work/Logprep/doc/source/testcase-renderer.tmpl
+   :template: testcase-renderer.tmpl
 
 """
 from functools import partial
