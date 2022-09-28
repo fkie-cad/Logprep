@@ -27,6 +27,7 @@ under the subkey `preprocessing` of the `input` processor
 * Implement a common interface to all connectors
 * Refactor connector code
 * Revise the documentation
+* Add sphinxcontrib.datatemplates and testcase-renderer to docs
 
 ### Bugfixes
 ### Breaking
