@@ -20,7 +20,7 @@ under the subkey `preprocessing` of the `input` processor
 * Add preprocessor for log_arrival_timedelta
 * Add metrics to connectors
 * Add concatenator processor that can combine multiple source fields
-* Add a dissecter processor that tokinize messages into new or existing fields
+* Add dissecter processor that tokenizes messages into new or existing fields
 
 ### Improvements
 * Validate connector config on class level via attrs classes
