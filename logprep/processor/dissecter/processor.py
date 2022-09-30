@@ -3,8 +3,9 @@ Dissecter
 =========
 
 The `dissecter` is a processor that tokenizes incoming strings using defined patterns.
-The behavior is based of the logstash dissect filter plugin.
-Additionaly it can be used to convert datatypes in fields.
+The behavior is based of the logstash dissect filter plugin and has the same advantage that for the event processing no
+regular expressions are used.
+Additionally it can be used to convert datatypes of given fields.
 
 
 Example
@@ -20,10 +21,11 @@ Example
             - tests/testdata/rules/generic/
 """
 from typing import Callable, List, Tuple
+
 from logprep.abc import Processor
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.dissecter.rule import DissecterRule
 from logprep.util.helper import get_dotted_field_value, add_field_to
-from logprep.processor.base.exceptions import ProcessingWarning
 
 
 class Dissecter(Processor):
@@ -36,7 +38,7 @@ class Dissecter(Processor):
         self._apply_convert_datatype(event, rule)
 
     def _apply_mapping(self, event, rule):
-        event_mappings = [mapping for mapping in self._get_mappings(event, rule)]
+        event_mappings = list(self._get_mappings(event, rule))
         event_mappings.sort(key=lambda x: x[5])  # sort by position
         _ = [caller(*args) for caller, *args, _ in event_mappings]
 

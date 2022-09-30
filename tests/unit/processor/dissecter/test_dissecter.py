@@ -1,7 +1,8 @@
 # pylint: disable=missing-docstring
 import pytest
-from tests.unit.processor.base import BaseProcessorTestCase
+
 from logprep.processor.base.exceptions import ProcessingWarning
+from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
     (
@@ -171,7 +172,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "processes dotted field source",
+        "processes dotted source field",
         {
             "filter": "message",
             "dissecter": {
@@ -365,7 +366,7 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "This is the message", "This": "is the message"},
     ),
     (
-        "indirect field notation: uses captured field as key and append to it",
+        "indirect field notation: uses captured field as key and appends to it",
         {
             "filter": "message",
             "dissecter": {"mapping": {"message": "%{?key} %{&key} %{} %{+&key}"}},
@@ -442,7 +443,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "Tags  failure if mapping field does not exist",
+        "Tags failure if mapping field does not exist",
         {"filter": "message", "dissecter": {"mapping": {"doesnotexist": "%{} %{}"}}},
         {"message": "This is the message which does not matter"},
         {"message": "This is the message which does not matter", "tags": ["_dissectfailure"]},
@@ -464,10 +465,8 @@ class TestDissecter(BaseProcessorTestCase):
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(
-        self, testcase, rule, event, expected
-    ):  # pylint: disable=unused-argument
+    def test_testcases_failure_handling(self, testcase, rule, event, expected):
         self._load_specific_rule(rule)
         with pytest.raises(ProcessingWarning):
             self.object.process(event)
-        assert event == expected
+        assert event == expected, testcase

@@ -3,7 +3,7 @@ Dissecter Rule
 --------------
 
 The dissecter processor tokenizes values from fields into new fields or appends the value to
-existing fields. Additionaly it can be used to convert datatypes in field values.
+existing fields. Additionally it can be used to convert datatypes of field values.
 
 A speaking example:
 
@@ -14,7 +14,7 @@ A speaking example:
     filter: message
     dissecter:
         mapping:
-            message: "%{}of %{extracted.message_float} and a int of %{extracted.message_int}"
+            message: "%{}of %{extracted.message_float} and an int of %{extracted.message_int}"
         convert_datatype:
             extracted.message_int: "int"
             extracted.message_float: "float"
@@ -22,16 +22,16 @@ A speaking example:
 
 ..  code-block:: json
     :linenos:
-    :caption: Incomming event
+    :caption: Incoming event
 
-    {"message": "This message has a float of 1.23 and a int of 1337"}
+    {"message": "This message has a float of 1.23 and an int of 1337"}
 
 ..  code-block:: json
     :linenos:
     :caption: Processed event
 
     {
-        "message": "This message has a float of 1.23 and a int of 1337",
+        "message": "This message has a float of 1.23 and an int of 1337",
         "extracted": {"message_float": 1.23, "message_int": 1337},
     }
 
@@ -44,17 +44,17 @@ Given a dissect pattern of :code:`%{field1} %{field2}` the source field value wi
 everything before the first whitespace which would be written into the field `field1` and everything
 after the first whitespace which would be written into the field `field2`.
 
-The string surrounded by :code:`%{}` is the desired target field. This can be declared in dotted
-field notation. (e.g. :code:`%{target.subfield1.subfield2}`). Every subfield between the first and
-the last subfield will be created.
+The string surrounded by :code:`%{` and :code:`}` is the desired target field. This can be declared in dotted
+field notation (e.g. :code:`%{target.subfield1.subfield2}`). Every subfield between the first and
+the last subfield will be created if necessary.
 
-In default the target field will always be overwritten with the captured value. If you want to
-append to a preexisting target field value as string or list you have to use the :code:`+` operator.
+By default the target field will always be overwritten with the captured value. If you want to
+append to a preexisting target field value, as string or list, you have to use the :code:`+` operator.
 
 It is possible to capture the target field name from the source field value with the notation
-:code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). This can be referred to with the
-notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`) afterwards in the same dissection
-pattern. References can be combined with the append operator.
+:code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern 
+this can be referred to with the notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`).
+References can be combined with the append operator.
 
 .. autoclass:: logprep.processor.dissecter.rule.DissecterRule.Config
    :members:
@@ -69,13 +69,15 @@ Examples for dissection and datatype conversion:
    :template: testcase-renderer.tmpl
 
 """
-from functools import partial
 import re
+from functools import partial
 from typing import Callable, List, Tuple
+
 from attrs import define, validators, field, Factory
-from logprep.processor.base.rule import Rule
+
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.base.rule import Rule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
@@ -94,7 +96,7 @@ def append(event, target_field, content, seperator):
     target_value = get_dotted_field_value(event, target_field)
     if isinstance(target_value, str):
         seperator = " " if seperator is None else seperator
-        target_value = f"{seperator}".join([target_value, content])
+        target_value = f"{target_value}{seperator}{content}"
         add_and_overwrite(event, target_field, target_value)
     else:
         append_as_list(event, target_field, content)
@@ -117,7 +119,7 @@ class DissecterRule(Rule):
             ],
             default=Factory(dict),
         )
-        """A mapping from source fields to a dissect pattern [optional]
+        """A mapping from source fields to a dissect pattern [optional].
         Dotted field notation is possible in key and in the dissect pattern.
         """
         convert_datatype: dict = field(
@@ -130,13 +132,14 @@ class DissecterRule(Rule):
             ],
             default=Factory(dict),
         )
-        """A mapping from source field and desired datatype [optional]
-        the datatypes could be [`float`, `int`, `string`]
+        """A mapping from source field and desired datatype [optional].
+        The datatypes could be [`float`, `int`, `string`]
         """
         tag_on_failure: list = field(
             validator=validators.instance_of(list), default=["_dissectfailure"]
         )
-        """A list of tags which will be appended to the event on non critical errors [default=`_dissectfailure`]
+        """A list of tags which will be appended to the event on non critical errors 
+        [default=`_dissectfailure`]
         """
 
     _actions_mapping: dict = {
@@ -189,7 +192,7 @@ class DissecterRule(Rule):
                 seperator = (
                     section_match.group("seperator") if section_match.group("seperator") else None
                 )
-                action = (
+                action_key = (
                     section_match.group("action") if "action" in section_match.groupdict() else None
                 )
                 target_field = (
@@ -203,7 +206,7 @@ class DissecterRule(Rule):
                     else None
                 )
                 if target_field:
-                    action = self._actions_mapping.get(action)
+                    action = self._actions_mapping.get(action_key)
                 else:
                     action = lambda *args: None
                 position = int(position) if position is not None else 0

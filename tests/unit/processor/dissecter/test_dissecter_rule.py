@@ -1,8 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=no-self-use
 import pytest
-from logprep.processor.dissecter.rule import DissecterRule, add_and_overwrite, append
+
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.dissecter.rule import DissecterRule, add_and_overwrite, append
 
 
 class TestDissecterRule:

@@ -17,7 +17,7 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import ProcessStrategy
-from logprep.util.helper import camel_to_snake, get_dotted_field_value
+from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
 
