@@ -374,6 +374,36 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "This is the message"},
         {"message": "This is the message", "This": "is message"},
     ),
+    (
+        "handles special chars as captured content",
+        {
+            "filter": "message",
+            "dissecter": {"mapping": {"message": "%{field1} %{field2} %{field3} %{+field4}"}},
+        },
+        {"message": "This is \\a + message"},
+        {
+            "message": "This is \\a + message",
+            "field1": "This",
+            "field2": "is",
+            "field3": "\\a",
+            "field4": "+ message",
+        },
+    ),
+    (
+        "handles special chars in captured content and target field names",
+        {
+            "filter": "message",
+            "dissecter": {"mapping": {"message": "%{~field1} %{fie ld2} %{-fie}ld3} %{+field4}"}},
+        },
+        {"message": "&This is\2 a mess}age /1"},
+        {
+            "message": "&This is\2 a mess}age /1",
+            "~field1": "&This",
+            "fie ld2": "is\2",
+            "-fie}ld3": "a",
+            "field4": "mess}age /1",
+        },
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (
