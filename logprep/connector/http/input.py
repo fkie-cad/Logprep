@@ -1,4 +1,19 @@
-""" module for http connector """
+"""
+HTTPInput
+==========
+
+A http input connector that spawns an uvicorn server and accepts http requests, parses them,
+put them to an internal queue and pops them via get_next method.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    input:
+      myhttpinput:
+        type: http_input
+"""
 import contextlib
 import json
 import queue
@@ -113,9 +128,7 @@ class Server(uvicorn.Server):
 
 
 class HttpConnector(Input):
-    """
-    Connector to accept log messages as http post requests
-    """
+    """Connector to accept log messages as http post requests"""
 
     app: FastAPI = app
 

@@ -16,6 +16,13 @@ Input
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.connector.http.input
+.. autoclass:: logprep.connector.http.input.HTTPInput.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.connector.json.input
 .. autoclass:: logprep.connector.json.input.JsonInput.Config
    :members:
