@@ -4,7 +4,7 @@ import queue
 import sys
 import threading
 from abc import ABC, abstractmethod
-from typing import List, Mapping
+from typing import List, Mapping, Tuple
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -126,12 +126,9 @@ class HttpConnector(Input):
             )
         self.endpoints = endpoints
 
-    def describe_endpoint(self):
-        return f"{self.__class__.__name__}"
-
-    def get_next(self, timeout: float):
+    def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
         try:
-            return self._messages.get(timeout=timeout)
+            return self._messages.get(timeout=timeout), None
         except queue.Empty:
-            return None
+            return None, None
