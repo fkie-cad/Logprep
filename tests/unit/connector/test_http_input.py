@@ -2,15 +2,18 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import json
-import uvicorn
-import requests
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
+import sys
 
+import pytest
+import requests
+import uvicorn
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from logprep.connector.http.input import HttpConnector
 from tests.unit.connector.base import BaseInputTestCase
 
 
+@pytest.mark.skipif(sys.version_info.minor < 8, "not supported for python 3.6")
 class TestHttpConnector(BaseInputTestCase):
     def setup_method(self):
         super().setup_method()
