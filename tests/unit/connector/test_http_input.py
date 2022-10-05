@@ -13,7 +13,7 @@ from logprep.connector.http.input import HttpConnector
 from tests.unit.connector.base import BaseInputTestCase
 
 
-@pytest.mark.skipif(sys.version_info.minor < 6, reason="not supported for python 3.6")
+@pytest.mark.skipif(sys.version_info.minor < 7, reason="not supported for python 3.6")
 class TestHttpConnector(BaseInputTestCase):
     def setup_method(self):
         super().setup_method()
