@@ -52,6 +52,22 @@ class TestHttpConnector(BaseInputTestCase):
         event_from_queue = self.object._messages.get(timeout=0.001)
         assert event_from_queue.get("message") == data
 
+    def test_jsonl_messages_are_put_in_queue(self):
+        data = """
+        {"message": "my first log message"}
+        {"message": "my second log message"}
+        {"message": "my third log message"}
+        """
+        resp = self.client.post("/jsonl", data=data)
+        assert resp.status_code == 200
+        assert self.object._messages.qsize() == 3
+        event_from_queue = self.object._messages.get(timeout=0.001)
+        assert event_from_queue == {"message": "my first log message"}
+        event_from_queue = self.object._messages.get(timeout=0.001)
+        assert event_from_queue == {"message": "my second log message"}
+        event_from_queue = self.object._messages.get(timeout=0.001)
+        assert event_from_queue == {"message": "my third log message"}
+
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
         self.client.post("/json", json.dumps(data))

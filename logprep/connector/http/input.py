@@ -1,5 +1,6 @@
 """ module for http connector """
 import contextlib
+import json
 import queue
 import sys
 import threading
@@ -58,6 +59,25 @@ class JSONHttpEndpoint(HttpEndpoint):
         return "/json"
 
 
+class JSONLHttpEndpoint(HttpEndpoint):
+    """json endpoint http connector"""
+
+    async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
+        """jsonl endpoint method"""
+        data = await request.body()
+        data = data.decode("utf8")
+        for line in data.splitlines():
+            line = line.strip()
+            if line:
+                event = json.loads(line)
+                self._messages.put(event)
+
+    @property
+    def endpoint_path(self):
+        """json endpoint path"""
+        return "/jsonl"
+
+
 class PlaintextHttpEndpoint(HttpEndpoint):
     """plaintext endpoint http connector"""
 
@@ -104,9 +124,12 @@ class HttpConnector(Input):
     _endpoint_registry: Mapping[str, HttpEndpoint] = {
         "json": JSONHttpEndpoint,
         "plaintext": PlaintextHttpEndpoint,
+        "jsonl": JSONLHttpEndpoint,
     }
 
     endpoints: List[HttpEndpoint]
+
+    __slots__ = ["endpoints"]
 
     @cached_property
     def server(self) -> uvicorn.Server:
