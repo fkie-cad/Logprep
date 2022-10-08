@@ -15,6 +15,8 @@ Example
     input:
       myhttpinput:
         type: http_input
+        host: 0.0.0.0
+        port: 9000
 """
 import contextlib
 import json
@@ -144,8 +146,12 @@ class HttpConnector(Input):
         """Config for HTTPInput"""
 
         port: int = field(validator=validators.instance_of(int))
-        """The Port the server will listen on"""
+        """The Port the server will listen on.
+        For process_count greater than 1 this port is for the first pipeline. All other pipelines
+        will bind to an incremented number from this port on.
+        """
         host: str = field(validator=validators.instance_of(str))
+        """The host where to listen on"""
 
     endpoints: List[HttpEndpoint]
     app: FastAPI

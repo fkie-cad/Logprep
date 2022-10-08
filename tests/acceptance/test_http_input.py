@@ -70,7 +70,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
 
 
 @pytest.mark.skipif(sys.version_info.minor < 7, reason="not supported for python 3.6")
-def test_http_input_accepts_message_for_multiple_pipelines(tmp_path, config):
+def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
     config["process_count"] = 2
     output_path = tmp_path / "output.jsonl"
     config["input"] = {"testinput": {"type": "http_input", "host": "127.0.0.1", "port": 9000}}
@@ -90,3 +90,28 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path, config):
     output_content = output_path.read_text()
     assert "my first message" in output_content
     assert "my second message" in output_content
+
+
+@pytest.mark.skipif(sys.version_info.minor < 7, reason="not supported for python 3.6")
+def test_http_input_accepts_message_for_thre_pipelines(tmp_path, config):
+    config["process_count"] = 3
+    output_path = tmp_path / "output.jsonl"
+    config["input"] = {"testinput": {"type": "http_input", "host": "127.0.0.1", "port": 9000}}
+    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
+    config_path = str(tmp_path / "generated_config.yml")
+    dump_config_as_file(config_path, config)
+    environment = {"PYTHONPATH": "."}
+    _ = subprocess.Popen(  # nosemgrep
+        f"{sys.executable} logprep/run_logprep.py {config_path}",
+        shell=True,
+        env=environment,
+    )
+    time.sleep(3)  # nosemgrep
+    requests.post("http://127.0.0.1:9000/plaintext", data="my first message")  # nosemgrep
+    requests.post("http://127.0.0.1:9001/plaintext", data="my second message")  # nosemgrep
+    requests.post("http://127.0.0.1:9002/plaintext", data="my third message")  # nosemgrep
+    time.sleep(3)  # nosemgrep
+    output_content = output_path.read_text()
+    assert "my first message" in output_content
+    assert "my second message" in output_content
+    assert "my third message" in output_content

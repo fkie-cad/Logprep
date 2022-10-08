@@ -200,7 +200,7 @@ class Pipeline:
         self._input.setup()
         self._output.setup()
         if hasattr(self._input, "server"):
-            if self._input.server.config.port in self._used_server_ports:
+            while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
             self._used_server_ports.append(self._input.server.config.port)
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
