@@ -164,7 +164,7 @@ class HttpConnector(Input):
     app: FastAPI
     server: uvicorn.Server
 
-    __slots__ = ["endpoints", "app", "server", "server_process"]
+    __slots__ = ["endpoints", "app", "server"]
 
     def setup(self):
         super().setup()
