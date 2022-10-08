@@ -112,6 +112,7 @@ class Pipeline:
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
+        used_server_ports: list,
         metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, Handler):
@@ -128,6 +129,7 @@ class Pipeline:
         self._shared_dict = shared_dict
         self._processing_counter = counter
         self.metrics = None
+        self._used_server_ports = used_server_ports
         self._metric_targets = metric_targets
         self._metrics_exposer = None
         self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
@@ -197,6 +199,10 @@ class Pipeline:
 
         self._input.setup()
         self._output.setup()
+        if hasattr(self._input, "server"):
+            if self._input.server.config.port in self._used_server_ports:
+                self._input.server.config.port += 1
+            self._used_server_ports.append(self._input.server.config.port)
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Finished creating connectors ({current_process().name})")
 
@@ -429,6 +435,7 @@ class MultiprocessingPipeline(Process, Pipeline):
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
+        used_server_ports: list,
         metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, MultiprocessingLogHandler):
@@ -446,6 +453,7 @@ class MultiprocessingPipeline(Process, Pipeline):
             log_handler=log_handler,
             lock=lock,
             shared_dict=shared_dict,
+            used_server_ports=used_server_ports,
             metric_targets=metric_targets,
         )
 

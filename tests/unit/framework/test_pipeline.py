@@ -69,6 +69,7 @@ class TestPipeline(ConfigurationForTests):
             log_handler=self.log_handler,
             lock=self.lock,
             shared_dict=self.shared_dict,
+            used_server_ports=mock.MagicMock(),
             metric_targets=self.metric_targets,
         )
 
@@ -82,6 +83,7 @@ class TestPipeline(ConfigurationForTests):
                     log_handler=not_a_log_handler,
                     lock=self.lock,
                     shared_dict=self.shared_dict,
+                    used_server_ports=mock.MagicMock(),
                     metric_targets=self.metric_targets,
                 )
 
@@ -559,6 +561,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                     config=self.logprep_config,
                     log_handler=not_a_log_handler,
                     lock=self.lock,
+                    used_server_ports=mock.MagicMock(),
                     shared_dict=self.shared_dict,
                 )
 
@@ -569,6 +572,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 config=self.logprep_config,
                 log_handler=self.log_handler,
                 lock=self.lock,
+                used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
             )
         except MustProvideAnMPLogHandlerError:
@@ -582,6 +586,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 config=self.logprep_config,
                 log_handler=self.log_handler,
                 lock=self.lock,
+                used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
             )
         )
@@ -595,6 +600,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 config=self.logprep_config,
                 log_handler=self.log_handler,
                 lock=self.lock,
+                used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
             )
         )
@@ -608,6 +614,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             config=self.logprep_config,
             log_handler=self.log_handler,
             lock=self.lock,
+            used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
         )
         assert not pipeline._iterate()

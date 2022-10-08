@@ -16,11 +16,13 @@ Example
 """
 import contextlib
 import json
+import multiprocessing
 import queue
 import sys
 import threading
+from attrs import define, field, validators
 from abc import ABC, abstractmethod
-from typing import List, Mapping, Tuple
+from typing import List, Mapping, Optional, Tuple
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -31,9 +33,6 @@ if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property
-
-
-app = FastAPI()
 
 
 class HttpEndpoint(ABC):
@@ -130,8 +129,6 @@ class Server(uvicorn.Server):
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
 
-    app: FastAPI = app
-
     _messages: queue.Queue = queue.Queue()
 
     _endpoint_registry: Mapping[str, HttpEndpoint] = {
@@ -140,19 +137,24 @@ class HttpConnector(Input):
         "jsonl": JSONLHttpEndpoint,
     }
 
+    @define(kw_only=True)
+    class Config(Input.Config):
+        """Config for HTTPInput"""
+
+        port: int = field(validator=validators.instance_of(int))
+        """The Port the server will listen on"""
+        host: str = field(validator=validators.instance_of(str))
+
     endpoints: List[HttpEndpoint]
+    app: FastAPI
+    server: uvicorn.Server
+    server_process: multiprocessing.Process
 
-    __slots__ = ["endpoints"]
-
-    @cached_property
-    def server(self) -> uvicorn.Server:
-        """returns the server instance"""
-        config = uvicorn.Config(self.app, port=9000, log_level="info", workers=3)
-        return Server(config)
+    __slots__ = ["endpoints", "app", "server", "server_process"]
 
     def setup(self):
         super().setup()
-
+        self.app = FastAPI()
         endpoints = [
             endpoint(self._messages) for endpoint in list(self._endpoint_registry.values())
         ]
@@ -161,6 +163,14 @@ class HttpConnector(Input):
                 path=f"{endpoint.endpoint_path}", endpoint=endpoint.endpoint, methods=["POST"]
             )
         self.endpoints = endpoints
+        config = uvicorn.Config(
+            self.app,
+            port=self._config.port,
+            host=self._config.host,
+            log_level=self._logger.level,
+            workers=3,
+        )
+        self.server = Server(config)
 
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""

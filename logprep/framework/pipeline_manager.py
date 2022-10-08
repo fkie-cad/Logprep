@@ -35,6 +35,7 @@ class PipelineManager:
 
         self._lock = Lock()
         self._shared_dict = None
+        self._used_server_ports = None
 
     def set_configuration(self, configuration: Configuration):
         """Verify the configuration and set it in the pipeline manager."""
@@ -43,6 +44,7 @@ class PipelineManager:
 
         manager = Manager()
         self._shared_dict = manager.dict()
+        self._used_server_ports = manager.list()
         for idx in range(configuration["process_count"]):
             self._shared_dict[idx] = None
 
@@ -137,5 +139,6 @@ class PipelineManager:
             log_handler=self._log_handler,
             lock=self._lock,
             shared_dict=self._shared_dict,
+            used_server_ports=self._used_server_ports,
             metric_targets=self.metric_targets,
         )
