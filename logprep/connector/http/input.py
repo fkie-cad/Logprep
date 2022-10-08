@@ -15,8 +15,14 @@ Example
     input:
       myhttpinput:
         type: http_input
-        host: 0.0.0.0
-        port: 9000
+        uvicorn_config:
+            host: 0.0.0.0
+            port: 9000
+        endpoints:
+            firstendpoint: json
+            seccondendpoint: plaintext
+            thirdendpoint: jsonl
+            
 """
 import contextlib
 import json
@@ -25,7 +31,7 @@ import queue
 import sys
 import threading
 from abc import ABC, abstractmethod
-from typing import List, Mapping, Optional, Tuple
+from typing import Mapping, Tuple, Union
 
 import uvicorn
 from attrs import define, field, validators
@@ -56,12 +62,6 @@ class HttpEndpoint(ABC):
         """callback method for route"""
         ...
 
-    @property
-    @abstractmethod
-    def endpoint_path(self):
-        """returns the path where you want to receive"""
-        ...
-
 
 class JSONHttpEndpoint(HttpEndpoint):
     """json endpoint http connector"""
@@ -74,11 +74,6 @@ class JSONHttpEndpoint(HttpEndpoint):
     async def endpoint(self, event: Event):  # pylint: disable=arguments-differ
         """json endpoint method"""
         self._messages.put(dict(event))
-
-    @property
-    def endpoint_path(self):
-        """json endpoint path"""
-        return "/json"
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -94,11 +89,6 @@ class JSONLHttpEndpoint(HttpEndpoint):
                 event = json.loads(line)
                 self._messages.put(event)
 
-    @property
-    def endpoint_path(self):
-        """json endpoint path"""
-        return "/jsonl"
-
 
 class PlaintextHttpEndpoint(HttpEndpoint):
     """plaintext endpoint http connector"""
@@ -107,11 +97,6 @@ class PlaintextHttpEndpoint(HttpEndpoint):
         """plaintext endpoint method"""
         data = await request.body()
         self._messages.put({"message": data.decode("utf8")})
-
-    @property
-    def endpoint_path(self):
-        """plaintext endpoint path"""
-        return "/plaintext"
 
 
 class Server(uvicorn.Server):
@@ -149,7 +134,7 @@ class HttpConnector(Input):
     class Config(Input.Config):
         """Config for HTTPInput"""
 
-        uvicorn_config: uvicorn.Config = field(
+        uvicorn_config: Mapping[str, Union[str, int]] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
@@ -159,24 +144,35 @@ class HttpConnector(Input):
             ]
         )
         """Configure uvicorn server: see: https://www.uvicorn.org/settings/"""
+        endpoints: Mapping[str, HttpEndpoint] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.in_(["json", "plaintext", "jsonl"]),
+                ),
+            ]
+        )
+        """Configure endpoint routes with a Mapping of an path to an endpoint. Possible endpoints
+        are: `json`, `jsonl`, `plaintext`
+        """
 
-    endpoints: List[HttpEndpoint]
     app: FastAPI
     server: uvicorn.Server
 
-    __slots__ = ["endpoints", "app", "server"]
+    __slots__ = ["app", "server"]
 
     def setup(self):
         super().setup()
         self.app = FastAPI()
         endpoints = [
-            endpoint(self._messages) for endpoint in list(self._endpoint_registry.values())
+            self._endpoint_registry.get(endpoint)(self._messages)
+            for endpoint in self._config.endpoints
         ]
         for endpoint in endpoints:
             self.app.add_api_route(
                 path=f"{endpoint.endpoint_path}", endpoint=endpoint.endpoint, methods=["POST"]
             )
-        self.endpoints = endpoints
         config = uvicorn.Config(
             **self._config.uvicorn_config, app=self.app, log_level=self._logger.level
         )

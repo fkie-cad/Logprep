@@ -26,6 +26,7 @@ class TestHttpConnector(BaseInputTestCase):
     CONFIG: dict = {
         "type": "http_input",
         "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
+        "endpoints": {"json": "json", "jsonl": "jsonl", "plaintext": "plaintext"},
     }
 
     def test_create_connector(self):
