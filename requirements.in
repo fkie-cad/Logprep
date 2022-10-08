@@ -22,4 +22,3 @@ opensearch-py
 mysql-connector-python
 fastapi
 uvicorn
-uvloop
