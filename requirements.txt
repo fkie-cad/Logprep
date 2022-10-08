@@ -133,3 +133,4 @@ yarl==1.7.2
     # via aiohttp
 fastapi==0.83.0
 uvicorn==0.17.0
+uvloop==0.17.0

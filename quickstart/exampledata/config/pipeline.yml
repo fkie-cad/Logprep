@@ -55,11 +55,35 @@ pipeline:
 
 input:
   kafka:
-    type: http_input
-    port: 9000
-    host: "127.0.0.1"
+    type: confluentkafka_input
+    bootstrapservers:
+      - 172.21.0.5:9092
+    topic: consumer
+    group: cgroup3
+    auto_commit: on
+    session_timeout: 6000
+    offset_reset_policy: smallest
+    ssl:
+      cafile:
+      certfile:
+      keyfile:
+      password:
 
 output:
   kafka:
-    type: jsonl_output
-    output_file: ./outputfile.jsonl
+    type: confluentkafka_output
+    bootstrapservers:
+      - 172.21.0.5:9092
+    topic: producer
+    error_topic: producer_error
+    ack_policy: all
+    compression: none
+    maximum_backlog: 10000
+    linger_duration: 0
+    flush_timeout: 30
+    send_timeout: 2
+    ssl:
+      cafile:
+      certfile:
+      keyfile:
+      password:

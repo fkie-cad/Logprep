@@ -23,7 +23,10 @@ class TestHttpConnector(BaseInputTestCase):
             self.object._messages.get(timeout=0.001)
         self.client = TestClient(self.object.app)
 
-    CONFIG: dict = {"type": "http_input", "port": 9000, "host": "127.0.0.1"}
+    CONFIG: dict = {
+        "type": "http_input",
+        "uvicorn_config": {"port": 9000, "host": "127.0.0.1"},
+    }
 
     def test_create_connector(self):
         assert isinstance(self.object, HttpConnector)

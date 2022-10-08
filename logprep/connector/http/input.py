@@ -20,12 +20,12 @@ Example
 """
 import contextlib
 import json
-import multiprocessing
+import inspect
 import queue
 import sys
 import threading
 from abc import ABC, abstractmethod
-from typing import List, Mapping, Tuple
+from typing import List, Mapping, Optional, Tuple
 
 import uvicorn
 from attrs import define, field, validators
@@ -37,6 +37,10 @@ if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property
+uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
+UVICORN_CONFIG_KEYS = [
+    parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
+]
 
 
 class HttpEndpoint(ABC):
@@ -145,18 +149,20 @@ class HttpConnector(Input):
     class Config(Input.Config):
         """Config for HTTPInput"""
 
-        port: int = field(validator=validators.instance_of(int))
-        """The Port the server will listen on.
-        For process_count greater than 1 this port is for the first pipeline. All other pipelines
-        will bind to an incremented number from this port on.
-        """
-        host: str = field(validator=validators.instance_of(str))
-        """The host where to listen on"""
+        uvicorn_config: uvicorn.Config = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.in_(UVICORN_CONFIG_KEYS),
+                    value_validator=lambda x, y, z: True,
+                ),
+            ]
+        )
+        """Configure uvicorn server: see: https://www.uvicorn.org/settings/"""
 
     endpoints: List[HttpEndpoint]
     app: FastAPI
     server: uvicorn.Server
-    server_process: multiprocessing.Process
 
     __slots__ = ["endpoints", "app", "server", "server_process"]
 
@@ -172,11 +178,7 @@ class HttpConnector(Input):
             )
         self.endpoints = endpoints
         config = uvicorn.Config(
-            self.app,
-            port=self._config.port,
-            host=self._config.host,
-            log_level=self._logger.level,
-            workers=3,
+            **self._config.uvicorn_config, app=self.app, log_level=self._logger.level
         )
         self.server = Server(config)
 
