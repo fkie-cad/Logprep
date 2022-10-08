@@ -63,7 +63,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
         shell=True,
         env=environment,
     )
-    time.sleep(2)  # nosemgrep
+    time.sleep(3)  # nosemgrep
     requests.post("http://127.0.0.1:9000/plaintext", data="my message")
     process.send_signal(signal.SIGINT)
     process.kill()
@@ -84,7 +84,7 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path, config):
         shell=True,
         env=environment,
     )
-    time.sleep(2)  # nosemgrep
+    time.sleep(3)  # nosemgrep
     requests.post("http://127.0.0.1:9000/plaintext", data="my first message")
     requests.post("http://127.0.0.1:9001/plaintext", data="my second message")
     process.send_signal(signal.SIGINT)
