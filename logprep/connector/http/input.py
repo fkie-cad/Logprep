@@ -143,7 +143,10 @@ class HttpConnector(Input):
                 ),
             ]
         )
-        """Configure uvicorn server: see: https://www.uvicorn.org/settings/"""
+        """Configure uvicorn server. For possible settings see `uvicorn settings page`_
+        
+        .. _uvicorn settings page: https://www.uvicorn.org/settings
+        """
         endpoints: Mapping[str, str] = field(
             validator=[
                 validators.instance_of(dict),
@@ -154,7 +157,7 @@ class HttpConnector(Input):
             ]
         )
         """Configure endpoint routes with a Mapping of an path to an endpoint. Possible endpoints
-        are: `json`, `jsonl`, `plaintext`
+        are: :code:`json`, :code:`jsonl`, :code:`plaintext`
         """
 
     app: FastAPI
