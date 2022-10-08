@@ -64,7 +64,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
         env=environment,
     )
     time.sleep(3)  # nosemgrep
-    requests.post("http://127.0.0.1:9000/plaintext", data="my message")
+    requests.post("http://127.0.0.1:9000/plaintext", data="my message")  # nosemgrep
     time.sleep(3)  # nosemgrep
     assert "my message" in output_path.read_text()
 
@@ -84,8 +84,8 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path, config):
         env=environment,
     )
     time.sleep(3)  # nosemgrep
-    requests.post("http://127.0.0.1:9000/plaintext", data="my first message")
-    requests.post("http://127.0.0.1:9001/plaintext", data="my second message")
+    requests.post("http://127.0.0.1:9000/plaintext", data="my first message")  # nosemgrep
+    requests.post("http://127.0.0.1:9001/plaintext", data="my second message")  # nosemgrep
     time.sleep(3)  # nosemgrep
     output_content = output_path.read_text()
     assert "my first message" in output_content
