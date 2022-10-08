@@ -49,6 +49,7 @@ def teardown_function():
             pass
 
 
+@pytest.mark.skipif(sys.version_info.minor < 7, reason="not supported for python 3.6")
 def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     output_path = tmp_path / "output.jsonl"
     config["input"] = {"testinput": {"type": "http_input", "host": "127.0.0.1", "port": 9000}}
@@ -68,6 +69,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     assert "my message" in output_path.read_text()
 
 
+@pytest.mark.skipif(sys.version_info.minor < 7, reason="not supported for python 3.6")
 def test_http_input_accepts_message_for_multiple_pipelines(tmp_path, config):
     config["process_count"] = 2
     output_path = tmp_path / "output.jsonl"

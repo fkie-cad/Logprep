@@ -1,6 +1,8 @@
 version: 1
 process_count: 2
 timeout: 0.1
+logger:
+  level: INFO
 
 pipeline:
   - labelername:
@@ -53,35 +55,11 @@ pipeline:
 
 input:
   kafka:
-    type: confluentkafka_input
-    bootstrapservers:
-      - 172.21.0.5:9092
-    topic: consumer
-    group: cgroup3
-    auto_commit: on
-    session_timeout: 6000
-    offset_reset_policy: smallest
-    ssl:
-      cafile:
-      certfile:
-      keyfile:
-      password:
+    type: http_input
+    port: 9000
+    host: "127.0.0.1"
 
 output:
   kafka:
-    type: confluentkafka_output
-    bootstrapservers:
-      - 172.21.0.5:9092
-    topic: producer
-    error_topic: producer_error
-    ack_policy: all
-    compression: none
-    maximum_backlog: 10000
-    linger_duration: 0
-    flush_timeout: 30
-    send_timeout: 2
-    ssl:
-      cafile:
-      certfile:
-      keyfile:
-      password:
+    type: jsonl_output
+    output_file: ./outputfile.jsonl
