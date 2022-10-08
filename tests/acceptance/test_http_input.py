@@ -36,7 +36,15 @@ def config_fixture():
             }
         },
     ]
-    return get_default_logprep_config(pipeline, with_hmac=False)
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+    config["input"] = {
+        "testinput": {
+            "type": "http_input",
+            "uvicorn_config": {"host": "127.0.0.1", "port": 9000},
+            "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
+        }
+    }
+    return config
 
 
 def teardown_function():
@@ -53,9 +61,6 @@ def teardown_function():
 @pytest.mark.skipif(sys.version_info.minor < 7, reason="not supported for python 3.6")
 def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     output_path = tmp_path / "output.jsonl"
-    config["input"] = {
-        "testinput": {"type": "http_input", "uvicorn_config": {"host": "127.0.0.1", "port": 9000}}
-    }
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
@@ -75,9 +80,6 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
 def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
     config["process_count"] = 2
     output_path = tmp_path / "output.jsonl"
-    config["input"] = {
-        "testinput": {"type": "http_input", "uvicorn_config": {"host": "127.0.0.1", "port": 9000}}
-    }
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
@@ -100,9 +102,6 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
 def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
     config["process_count"] = 3
     output_path = tmp_path / "output.jsonl"
-    config["input"] = {
-        "testinput": {"type": "http_input", "uvicorn_config": {"host": "127.0.0.1", "port": 9000}}
-    }
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)

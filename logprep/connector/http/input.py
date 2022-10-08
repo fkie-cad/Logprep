@@ -19,9 +19,9 @@ Example
             host: 0.0.0.0
             port: 9000
         endpoints:
-            firstendpoint: json
-            seccondendpoint: plaintext
-            thirdendpoint: jsonl
+            /firstendpoint: json
+            /seccondendpoint: plaintext
+            /thirdendpoint: jsonl
             
 """
 import contextlib
@@ -144,11 +144,11 @@ class HttpConnector(Input):
             ]
         )
         """Configure uvicorn server: see: https://www.uvicorn.org/settings/"""
-        endpoints: Mapping[str, HttpEndpoint] = field(
+        endpoints: Mapping[str, str] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
-                    key_validator=validators.instance_of(str),
+                    key_validator=validators.matches_re(r"^\/.+"),
                     value_validator=validators.in_(["json", "plaintext", "jsonl"]),
                 ),
             ]
@@ -165,13 +165,11 @@ class HttpConnector(Input):
     def setup(self):
         super().setup()
         self.app = FastAPI()
-        endpoints = [
-            self._endpoint_registry.get(endpoint)(self._messages)
-            for endpoint in self._config.endpoints
-        ]
-        for endpoint in endpoints:
+        for endpoint_path, endpoint_name in self._config.endpoints.items():
+            endpoint_class = self._endpoint_registry.get(endpoint_name)
+            endpoint = endpoint_class(self._messages)
             self.app.add_api_route(
-                path=f"{endpoint.endpoint_path}", endpoint=endpoint.endpoint, methods=["POST"]
+                path=f"{endpoint_path}", endpoint=endpoint.endpoint, methods=["POST"]
             )
         config = uvicorn.Config(
             **self._config.uvicorn_config, app=self.app, log_level=self._logger.level
