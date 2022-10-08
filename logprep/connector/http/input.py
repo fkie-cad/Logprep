@@ -5,6 +5,8 @@ HTTPInput
 A http input connector that spawns an uvicorn server and accepts http requests, parses them,
 put them to an internal queue and pops them via get_next method.
 
+This Processor is not supported for python 3.6 and lower versions.
+
 Example
 ^^^^^^^
 ..  code-block:: yaml
@@ -20,11 +22,11 @@ import multiprocessing
 import queue
 import sys
 import threading
-from attrs import define, field, validators
 from abc import ABC, abstractmethod
-from typing import List, Mapping, Optional, Tuple
+from typing import List, Mapping, Tuple
 
 import uvicorn
+from attrs import define, field, validators
 from fastapi import FastAPI, Request
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
 from logprep.abc.input import Input

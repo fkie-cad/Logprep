@@ -6,11 +6,12 @@ import signal
 import subprocess
 import sys
 import time
-import requests
 from logging import DEBUG, basicConfig, getLogger
+
 import pytest
-from tests.acceptance.util import get_default_logprep_config
+import requests
 from logprep.util.json_handling import dump_config_as_file
+from tests.acceptance.util import get_default_logprep_config
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
