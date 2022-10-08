@@ -41,7 +41,7 @@ def config_fixture():
 
 def teardown_function():
     # cleanup processes
-    output = subprocess.check_output("ps -x | grep run_logprep", shell=True)
+    output = subprocess.check_output("ps -x | grep run_logprep", shell=True)  # nosemgrep
     for line in output.decode("utf8").splitlines():
         process_id = re.match(r"^\s+(\d+)\s.+", line).group(1)
         try:
@@ -58,7 +58,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     environment = {"PYTHONPATH": "."}
-    _ = subprocess.Popen(
+    _ = subprocess.Popen(  # nosemgrep
         f"{sys.executable} logprep/run_logprep.py {config_path}",
         shell=True,
         env=environment,
@@ -78,7 +78,7 @@ def test_http_input_accepts_message_for_multiple_pipelines(tmp_path, config):
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     environment = {"PYTHONPATH": "."}
-    _ = subprocess.Popen(
+    _ = subprocess.Popen(  # nosemgrep
         f"{sys.executable} logprep/run_logprep.py {config_path}",
         shell=True,
         env=environment,
