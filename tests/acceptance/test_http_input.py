@@ -95,11 +95,10 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
         env=environment,
     )
     time.sleep(3)  # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False  # nosemgrep
-    )
-    requests.post(
-        "https://127.0.0.1:9001/plaintext", data="my second message", verify=False  # nosemgrep
+    requests.post(  # nosemgrep
+        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False 
+    requests.post(  # nosemgrep
+        "https://127.0.0.1:9001/plaintext", data="my second message", verify=False
     )
     time.sleep(3)  # nosemgrep
     output_content = output_path.read_text()
@@ -121,14 +120,14 @@ def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
         env=environment,
     )
     time.sleep(3)  # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False  # nosemgrep
+    requests.post(  # nosemgrep
+        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False
     )
-    requests.post(
-        "https://127.0.0.1:9001/plaintext", data="my second message", verify=False  # nosemgrep
+    requests.post(  # nosemgrep
+        "https://127.0.0.1:9001/plaintext", data="my second message", verify=False
     )
-    requests.post(
-        "https://127.0.0.1:9002/plaintext", data="my third message", verify=False  # nosemgrep
+    requests.post(  # nosemgrep
+        "https://127.0.0.1:9002/plaintext", data="my third message", verify=False
     )
     time.sleep(3)  # nosemgrep
     output_content = output_path.read_text()
