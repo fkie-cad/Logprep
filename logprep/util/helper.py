@@ -1,4 +1,5 @@
 """This module contains helper functions that are shared by different modules."""
+from functools import partial
 import re
 from os import remove
 from typing import Optional, Union
@@ -218,3 +219,22 @@ def snake_to_camel(snake: str) -> str:
 
     camel = "".join(component.title() for component in components)
     return camel
+
+
+append_as_list = partial(add_field_to, extends_lists=True)
+
+
+def add_and_overwrite(event, target_field, content, *_):
+    """wrapper for add_field_to"""
+    add_field_to(event, target_field, content, overwrite_output_field=True)
+
+
+def append(event, target_field, content, seperator):
+    """appends to event"""
+    target_value = get_dotted_field_value(event, target_field)
+    if isinstance(target_value, str):
+        seperator = " " if seperator is None else seperator
+        target_value = f"{target_value}{seperator}{content}"
+        add_and_overwrite(event, target_field, target_value)
+    else:
+        append_as_list(event, target_field, content)
