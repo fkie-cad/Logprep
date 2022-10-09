@@ -54,9 +54,9 @@ after which the pipeline will take the next message, repeating the processing cy
 
 ```mermaid
 flowchart LR
-A[Input\nConnector] --> B
-A[Input\nConnector] --> C
-A[Input\nConnector] --> D
+A1[Input\nConnector] --> B
+A2[Input\nConnector] --> C
+A3[Input\nConnector] --> D
 subgraph Pipeline 1
 B[Normalizer] --> E[Geo-IP Enricher]
 E --> F[Dropper] 
@@ -69,9 +69,9 @@ subgraph Pipeline n
 D[Normalizer] --> I[Geo-IP Enricher]
 I --> J[Dropper] 
 end
-F --> K[Output\nConnector]
-H --> K[Output\nConnector]
-J --> K[Output\nConnector]
+F --> K1[Output\nConnector]
+H --> K2[Output\nConnector]
+J --> K3[Output\nConnector]
 ```
 
 ### Processors
@@ -141,11 +141,14 @@ in two rule trees.
 ### Connectors
 
 Connectors are responsible for reading the input and writing the result to a desired output. 
-The main connector that is currently used and implemented is a kafka-connector allowing to 
-receive messages from a kafka-topic and write messages into a kafka-topic. 
+The main connectors that are currently used and implemented are a kafka-input-connector and a
+kafka-output-connector allowing to receive messages from a kafka-topic and write messages into a
+kafka-topic. 
 
 The details regarding the connectors can be found in the
-[connector documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/connector.html).
+[input connector documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/input.html)
+and
+[output connector documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/output.html).
 
 ### Configuration
 
@@ -228,7 +231,7 @@ Details about the rule language and how to write rules for the processors can be
 ### Installation
 
 Python should be present on the system, currently supported are the versions 3.6 - 3.9.
-To install Logprep you have three options:
+To install Logprep you have following options:
 
 **1. Option:** Installation via PyPI: 
 
@@ -252,6 +255,14 @@ pip install -r requirements.txt
 This option is recommended if you just want to try out the latest developments.
 ```
 pip install git+https://github.com/fkie-cad/Logprep.git@latest
+```
+
+**4. Option:** Docker build from current commit
+
+This option can be used to build a container image from a specific commit
+```
+docker build -t logprep .
+docker run logprep --help
 ```
 
 ### Testing
