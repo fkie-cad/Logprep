@@ -14,6 +14,6 @@ COPY --from=build /logprep/dist/logprep-0+unknown-py3-none-any.whl /
 RUN pip install logprep-0+unknown-py3-none-any.whl
 ENV PROMETHEUS_MULTIPROC_DIR=/tmp/logprep/prometheus_multiproc/
 ENV TLDEXTRACT_CACHE=/tmp/logprep/tld_extract_cache/
-WORKDIR /logprep
+WORKDIR /home/logprep
 
 ENTRYPOINT ["logprep"]
