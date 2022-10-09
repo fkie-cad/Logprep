@@ -96,7 +96,8 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
     )
     time.sleep(3)  # nosemgrep
     requests.post(  # nosemgrep
-        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False 
+        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False
+    )
     requests.post(  # nosemgrep
         "https://127.0.0.1:9001/plaintext", data="my second message", verify=False
     )
