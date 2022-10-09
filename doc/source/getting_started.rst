@@ -6,7 +6,7 @@ Installation
 ============
 
 Python should be present on the system, currently supported are the versions 3.6 - 3.9.
-To install Logprep you have three options:
+To install Logprep you have following options:
 
 **1. Option:** Installation via PyPI:
 
@@ -42,6 +42,16 @@ This option is recommended if you just want to try out the latest developments.
 
 To see if the installation was successful run :code:`logprep --version`.
 
+**4. Option:** Docker build
+
+This option can be used to build a container image from a specific commit
+
+..  code-block:: bash
+    git clone https://github.com/fkie-cad/Logprep.git
+    cd Logprep
+    docker build -t logprep .
+
+To see if the installation was successful run :code:`docker run logprep --version`.
 
 Run Logprep
 ===========
