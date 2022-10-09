@@ -40,7 +40,12 @@ def config_fixture():
     config["input"] = {
         "testinput": {
             "type": "http_input",
-            "uvicorn_config": {"host": "127.0.0.1", "port": 9000},
+            "uvicorn_config": {
+                "host": "127.0.0.1",
+                "port": 9000,
+                "ssl_certfile": "tests/testdata/acceptance/http_input/cert.crt",
+                "ssl_keyfile": "tests/testdata/acceptance/http_input/cert.key",
+            },
             "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
         }
     }
@@ -71,7 +76,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
         env=environment,
     )
     time.sleep(3)  # nosemgrep
-    requests.post("http://127.0.0.1:9000/plaintext", data="my message")  # nosemgrep
+    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False)  # nosemgrep
     time.sleep(3)  # nosemgrep
     assert "my message" in output_path.read_text()
 
@@ -90,8 +95,12 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
         env=environment,
     )
     time.sleep(3)  # nosemgrep
-    requests.post("http://127.0.0.1:9000/plaintext", data="my first message")  # nosemgrep
-    requests.post("http://127.0.0.1:9001/plaintext", data="my second message")  # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False
+    )  # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9001/plaintext", data="my second message", verify=False
+    )  # nosemgrep
     time.sleep(3)  # nosemgrep
     output_content = output_path.read_text()
     assert "my first message" in output_content
@@ -112,9 +121,15 @@ def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
         env=environment,
     )
     time.sleep(3)  # nosemgrep
-    requests.post("http://127.0.0.1:9000/plaintext", data="my first message")  # nosemgrep
-    requests.post("http://127.0.0.1:9001/plaintext", data="my second message")  # nosemgrep
-    requests.post("http://127.0.0.1:9002/plaintext", data="my third message")  # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False
+    )  # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9001/plaintext", data="my second message", verify=False
+    )  # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9002/plaintext", data="my third message", verify=False
+    )  # nosemgrep
     time.sleep(3)  # nosemgrep
     output_content = output_path.read_text()
     assert "my first message" in output_content
