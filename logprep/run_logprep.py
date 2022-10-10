@@ -164,9 +164,9 @@ def main():
     TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
 
     if logger.isEnabledFor(DEBUG):  # pragma: no cover
-        logger.debug("Metric export enabled: %s", config.get("metrics", {}).get("enabled", False))
-        logger.debug("Time measurement enabled: %s", TimeMeasurement.TIME_MEASUREMENT_ENABLED)
-        logger.debug("Config path: %s", args.config)
+        logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
+        logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
+        logger.debug(f"Config path: {args.config}")
     if args.validate_rules or args.auto_test:
         type_rule_map = get_processor_type_and_rule_class()
         rules_valid = []

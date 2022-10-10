@@ -153,7 +153,7 @@ class Processor(Component):
 
         """
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"%s processing event %s", self.describe(), event)
+            self._logger.debug(f"{self.describe()} processing event {event}")
         self._strategy.process(
             event,
             generic_tree=self._generic_tree,

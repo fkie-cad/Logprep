@@ -207,7 +207,7 @@ class Pipeline:
         self._enable_iteration()
         try:
             if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-                self._logger.debug("Start iterating (%s)", current_process().name)
+                self._logger.debug(f"Start iterating ({current_process().name})")
             while self._iterate():
                 self._retrieve_and_process_data()
         except SourceDisconnectedError:
