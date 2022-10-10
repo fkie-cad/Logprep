@@ -3,7 +3,7 @@
 from unittest import mock
 
 from logprep.processor.clusterer.rule import ClustererRule
-from tests.unit.processor.base import BaseProcessorTestCase
+from tests.unit.processor.base.processor import BaseProcessorTestCase
 
 
 class TestClusterer(BaseProcessorTestCase):

@@ -4,7 +4,7 @@
 # pylint: disable=wrong-import-order
 import pytest
 
-from tests.unit.processor.base import BaseProcessorTestCase
+from tests.unit.processor.base.processor import BaseProcessorTestCase
 
 pytest.importorskip("logprep.processor.datetime_extractor")
 

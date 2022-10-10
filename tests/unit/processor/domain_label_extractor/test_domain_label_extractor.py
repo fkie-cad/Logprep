@@ -6,7 +6,7 @@ import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_label_extractor.processor import DuplicationError
 from logprep.factory import Factory
-from tests.unit.processor.base import BaseProcessorTestCase
+from tests.unit.processor.base.processor import BaseProcessorTestCase
 
 
 class TestDomainLabelExtractor(BaseProcessorTestCase):

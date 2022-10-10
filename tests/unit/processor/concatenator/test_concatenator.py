@@ -3,7 +3,7 @@
 import pytest
 
 from logprep.processor.concatenator.processor import DuplicationError
-from tests.unit.processor.base import BaseProcessorTestCase
+from tests.unit.processor.base.processor import BaseProcessorTestCase
 
 
 class TestConcatenator(BaseProcessorTestCase):

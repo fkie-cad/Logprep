@@ -3,7 +3,7 @@
 import re
 from copy import deepcopy
 
-from tests.unit.processor.base import BaseProcessorTestCase
+from tests.unit.processor.base.processor import BaseProcessorTestCase
 
 
 class TestPreDetector(BaseProcessorTestCase):

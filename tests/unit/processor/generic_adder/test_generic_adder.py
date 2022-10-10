@@ -14,7 +14,7 @@ from logprep.processor.generic_adder.processor import DuplicationError
 from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from tests.unit.processor.base import BaseProcessorTestCase
+from tests.unit.processor.base.processor import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
 RULES_DIR_INVALID = "tests/testdata/unit/generic_adder/rules_invalid"
