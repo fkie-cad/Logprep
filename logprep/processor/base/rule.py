@@ -1,7 +1,6 @@
 """This module is the superclass for all rule classes."""
 
 import json
-from abc import abstractmethod
 from os.path import basename, splitext
 from typing import Set, Optional
 
@@ -13,6 +12,7 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.json_handling import is_json
+from logprep.util.helper import camel_to_snake
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -95,7 +95,7 @@ class Rule:
     @classmethod
     def _create_from_dict(cls, rule: dict) -> "Rule":
         filter_expression = Rule._create_filter_expression(rule)
-        rule_type = cls.__name__.strip("Rule").lower()
+        rule_type = camel_to_snake(cls.__name__.strip("Rule"))
         config = rule.get(rule_type)
         if config is None:
             raise InvalidRuleDefinitionError(f"config not under key {rule_type}")

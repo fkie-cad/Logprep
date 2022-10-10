@@ -1,3 +1,5 @@
+# pylint: disable=no-docstring
+# pylint: disable=protected-access
 import copy
 from pathlib import Path
 
