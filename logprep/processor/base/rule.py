@@ -20,6 +20,11 @@ yaml = YAML(typ="safe", pure=True)
 class Rule:
     """Check if documents match a filter and add labels them."""
 
+    class Config:
+        """Config for Rule"""
+
+        pass
+
     @define(kw_only=True)
     class RuleMetrics(Metric):
         """Tracks statistics about the current rule"""
@@ -39,7 +44,7 @@ class Rule:
 
     special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields"]
 
-    def __init__(self, filter_rule: FilterExpression):
+    def __init__(self, filter_rule: FilterExpression, config: dict):
         self.__class__.__hash__ = Rule.__hash__
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
@@ -47,10 +52,10 @@ class Rule:
         self.file_name = None
         self._tests = []
         self.metrics = self.RuleMetrics(labels={"type": "rule"})
+        self._config = config
 
-    @abstractmethod
-    def __eq__(self, other: "Rule"):
-        pass
+    def __eq__(self, other: "Rule") -> bool:
+        return all([other.filter == self._filter, other._config == self._config])
 
     def __hash__(self) -> int:  # pylint: disable=function-redefined
         return hash(repr(self))
@@ -87,9 +92,17 @@ class Rule:
 
         return rules
 
-    @staticmethod
-    def _create_from_dict(rule: dict):
-        raise NotImplementedError
+    @classmethod
+    def _create_from_dict(cls, rule: dict) -> "Rule":
+        filter_expression = Rule._create_filter_expression(rule)
+        rule_type = cls.__name__.strip("Rule").lower()
+        config = rule.get(rule_type)
+        if config is None:
+            raise InvalidRuleDefinitionError(f"config not under key {rule_type}")
+        if not isinstance(config, dict):
+            raise InvalidRuleDefinitionError("config is not a dict")
+        config = cls.Config(**config)
+        return cls(filter_expression, config)
 
     @staticmethod
     def _check_rule_validity(
