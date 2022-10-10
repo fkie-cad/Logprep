@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
+# pylint: disable=logging-fstring-interpolation
 import inspect
 import os
 import sys
@@ -140,7 +141,7 @@ def main():
     try:
         AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
         logger = AggregatingLogger.create("Logprep")
-    except BaseException as error:
+    except BaseException as error:  # pylint: disable=broad-except
         getLogger("Logprep").exception(error)
         sys.exit(1)
 
@@ -151,7 +152,7 @@ def main():
             config.verify(logger)
     except InvalidConfigurationError:
         sys.exit(1)
-    except BaseException as error:
+    except BaseException as error:  # pylint: disable=broad-except
         logger.exception(error)
         sys.exit(1)
 
@@ -164,9 +165,9 @@ def main():
     TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
 
     if logger.isEnabledFor(DEBUG):  # pragma: no cover
-        logger.debug("Metric export enabled: %s", config.get("metrics", {}).get("enabled", False))
-        logger.debug("Time measurement enabled: %s", TimeMeasurement.TIME_MEASUREMENT_ENABLED)
-        logger.debug("Config path: %s", args.config)
+        logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
+        logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
+        logger.debug(f"Config path: {args.config}")
     if args.validate_rules or args.auto_test:
         type_rule_map = get_processor_type_and_rule_class()
         rules_valid = []
