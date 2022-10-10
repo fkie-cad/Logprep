@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
+# pylint: disable=logging-fstring-interpolation
 import inspect
 import os
 import sys
@@ -140,7 +141,7 @@ def main():
     try:
         AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
         logger = AggregatingLogger.create("Logprep")
-    except BaseException as error:
+    except BaseException as error:  # pylint: disable=broad-except
         getLogger("Logprep").exception(error)
         sys.exit(1)
 
@@ -151,7 +152,7 @@ def main():
             config.verify(logger)
     except InvalidConfigurationError:
         sys.exit(1)
-    except BaseException as error:
+    except BaseException as error:  # pylint: disable=broad-except
         logger.exception(error)
         sys.exit(1)
 
