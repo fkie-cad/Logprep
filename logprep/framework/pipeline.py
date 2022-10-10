@@ -76,6 +76,7 @@ class Pipeline:
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
 
+        # pylint: disable=not-an-iterable
         @property
         def number_of_processed_events(self):
             """Sum of all processed events of all processors"""
@@ -90,6 +91,8 @@ class Pipeline:
         def number_of_errors(self):
             """Sum of all errors of all processors"""
             return np.sum([processor.number_of_errors for processor in self.pipeline])
+
+        # pylint: enable=not-an-iterable
 
         def update_mean_processing_time_per_event(self, new_sample):
             """Updates the mean processing time per event"""
