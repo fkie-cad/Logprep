@@ -213,14 +213,3 @@ class Processor(Component):
             else:
                 return False
         return True
-
-    @staticmethod
-    def _get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
-        fields = dotted_field.split(".")
-        dict_ = event
-        for field_ in fields:
-            if field_ in dict_ and isinstance(dict_, dict):
-                dict_ = dict_[field_]
-            else:
-                return None
-        return dict_

@@ -1,5 +1,5 @@
 """
-Delete
+Deleter
 -------
 
 The `deleter` is a processor that removes an entire event from further pipeline processing.

@@ -1699,3 +1699,6 @@ The example below deletes the log message if the message field equals "foo".
    :undoc-members:
    :inherited-members:
    :noindex:
+
+.. automodule:: logprep.processor.dissecter.rule
+

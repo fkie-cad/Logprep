@@ -36,6 +36,7 @@ from ruamel.yaml import YAML
 from logprep.abc import Processor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.validators import file_validator
+from logprep.util.helper import get_dotted_field_value
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -137,7 +138,7 @@ class TemplateReplacer(Processor):
     def _get_replacement_value(self, event: dict) -> Optional[str]:
         replacement = self._mapping
         for field_ in self._fields:
-            dotted_field_value = self._get_dotted_field_value(event, field_)
+            dotted_field_value = get_dotted_field_value(event, field_)
             if dotted_field_value is None:
                 return None
 

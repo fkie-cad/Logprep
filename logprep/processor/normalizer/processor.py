@@ -47,7 +47,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
-from logprep.util.helper import add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import file_validator, directory_validator
 
 yaml = YAML(typ="safe", pure=True)
@@ -173,7 +173,7 @@ class Normalizer(Processor):
         target, value = self._get_transformed_value(target, value)
 
         if self._field_exists(event, target):
-            if self._get_dotted_field_value(event, target) != value:
+            if get_dotted_field_value(event, target) != value:
                 self._conflicting_fields.append(target)
         else:
             self._add_field(event, target, value)
@@ -252,7 +252,7 @@ class Normalizer(Processor):
         one_matched = False
         source_field, source_value = None, None
         for source_field, grok in rule.grok.items():
-            source_value = self._get_dotted_field_value(event, source_field)
+            source_value = get_dotted_field_value(event, source_field)
             if source_value is None:
                 continue
             matches = self._get_grok_matches(grok, source_value)
@@ -303,7 +303,7 @@ class Normalizer(Processor):
         Normalizes the timestamps of an event by applying the given rule.
         """
         for source_field, normalization in rule.timestamps.items():
-            source_timestamp = self._get_dotted_field_value(event, source_field)
+            source_timestamp = get_dotted_field_value(event, source_field)
             if source_timestamp is None:
                 continue
 
@@ -367,7 +367,7 @@ class Normalizer(Processor):
 
     def _apply_field_copy(self, event: dict, source_field: str, target_field: str):
         if self._field_exists(event, source_field):
-            source_value = self._get_dotted_field_value(event, source_field)
+            source_value = get_dotted_field_value(event, source_field)
             self._try_add_field(event, target_field, source_value)
 
     def _raise_warning_if_fields_already_existed(self):

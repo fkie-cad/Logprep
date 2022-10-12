@@ -27,6 +27,7 @@ from dateutil.tz import tzlocal
 
 from logprep.abc import Processor
 from logprep.processor.datetime_extractor.rule import DateTimeExtractorRule
+from logprep.util.helper import get_dotted_field_value
 
 
 class DateTimeExtractorError(BaseException):
@@ -63,7 +64,7 @@ class DatetimeExtractor(Processor):
         destination_field = rule.destination_field
 
         if destination_field and self._field_exists(event, datetime_field):
-            datetime_value = self._get_dotted_field_value(event, datetime_field)
+            datetime_value = get_dotted_field_value(event, datetime_field)
 
             parsed_timestamp = parse(datetime_value).astimezone(self._local_timezone)
 

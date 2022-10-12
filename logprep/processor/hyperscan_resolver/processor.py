@@ -30,7 +30,7 @@ from attr import define, field
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import SkipImportError
 from logprep.util.validators import directory_validator
-
+from logprep.util.helper import get_dotted_field_value
 
 # pylint: disable=no-name-in-module
 try:
@@ -120,7 +120,7 @@ class HyperscanResolver(Processor):
         hyperscan_db, pattern_id_to_dest_val_map = self._get_hyperscan_database(rule)
 
         for resolve_source, resolve_target in rule.field_mapping.items():
-            src_val = self._get_dotted_field_value(event, resolve_source)
+            src_val = get_dotted_field_value(event, resolve_source)
             result = self._match_with_hyperscan(hyperscan_db, src_val)
 
             if result:

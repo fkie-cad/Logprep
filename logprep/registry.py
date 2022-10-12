@@ -18,6 +18,7 @@ from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.concatenator.processor import Concatenator
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from logprep.processor.deleter.processor import Deleter
+from logprep.processor.dissecter.processor import Dissecter
 from logprep.processor.domain_label_extractor.processor import DomainLabelExtractor
 from logprep.processor.domain_resolver.processor import DomainResolver
 from logprep.processor.dropper.processor import Dropper
@@ -44,6 +45,7 @@ class Registry:
         "datetime_extractor": DatetimeExtractor,
         "deleter": Deleter,
         "delete": Deleter,
+        "dissecter": Dissecter,
         "domain_label_extractor": DomainLabelExtractor,
         "domain_resolver": DomainResolver,
         "dropper": Dropper,

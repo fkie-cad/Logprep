@@ -24,7 +24,7 @@ from ruamel.yaml import YAML
 
 from logprep.abc import Processor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-
+from logprep.util.helper import get_dotted_field_value
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -74,7 +74,7 @@ class GenericResolver(Processor):
 
         for resolve_source, resolve_target in rule.field_mapping.items():
             keys = resolve_target.split(".")
-            src_val = self._get_dotted_field_value(event, resolve_source)
+            src_val = get_dotted_field_value(event, resolve_source)
 
             if rule.resolve_from_file and src_val:
                 pattern = f'^{rule.resolve_from_file["pattern"]}$'

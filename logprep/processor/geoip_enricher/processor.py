@@ -19,14 +19,14 @@ Example
 import sys
 from ipaddress import ip_address
 from typing import List
-from attr import define, field, validators
+from attr import define, field
 
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
 from logprep.abc import Processor
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
-from logprep.util.helper import add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import url_validator
 
 if sys.version_info.minor < 8:  # pragma: no cover
@@ -143,7 +143,7 @@ class GeoipEnricher(Processor):
         source_ip = rule.source_ip
         output_field = rule.output_field
         if source_ip:
-            ip_string = self._get_dotted_field_value(event, source_ip)
+            ip_string = get_dotted_field_value(event, source_ip)
             geoip_data = self._try_getting_geoip_data(ip_string)
             if geoip_data:
                 adding_was_successful = add_field_to(event, output_field, geoip_data)

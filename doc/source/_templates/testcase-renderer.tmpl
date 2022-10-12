@@ -1,0 +1,10 @@
+.. -*- mode: rst -*-
+{% for item in data.test_cases %}
+
+*{{ item[0] }}:*
+
+- rule: :code:`{{ item[1] }}`
+- message: :code:`{{ item[2] }}`
+- processed: :code:`{{ item[3] }}`
+
+{% endfor %}

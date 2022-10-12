@@ -20,12 +20,14 @@ under the subkey `preprocessing` of the `input` processor
 * Add preprocessor for log_arrival_timedelta
 * Add metrics to connectors
 * Add concatenator processor that can combine multiple source fields
+* Add dissecter processor that tokinizes messages into new or existing fields
 
 ### Improvements
 * Validate connector config on class level via attrs classes
 * Implement a common interface to all connectors
 * Refactor connector code
 * Revise the documentation
+* Add `sphinxcontrib.datatemplates` and `testcase-renderer` to docs
 
 ### Bugfixes
 ### Breaking

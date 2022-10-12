@@ -148,33 +148,6 @@ class BaseProcessorTestCase(ABC):
                 pass
             assert self.object.metrics.number_of_processed_events == i
 
-    def test_get_dotted_field_value_returns_none_if_not_found(self):
-        event = {"some": "i do not matter"}
-        dotted_field = "i.do.not.exist"
-        value = self.object._get_dotted_field_value(event, dotted_field)
-        assert value is None
-
-    def test_get_dotted_field_value_returns_value(self):
-        event = {
-            "winlog": {
-                "api": "wineventlog",
-                "event_id": 1111,
-                "event_data": {
-                    "param1": "Do not normalize me!",
-                    "test1": "Normalize me!",
-                },
-            }
-        }
-        dotted_field = "winlog.event_data.test1"
-        value = self.object._get_dotted_field_value(event, dotted_field)
-        assert value == "Normalize me!"
-
-    def test_get_dotted_field_value_key_matches_value(self):
-        event = {"get": "dotted"}
-        dotted_field = "get.dotted"
-        value = self.object._get_dotted_field_value(event, dotted_field)
-        assert value is None
-
     def test_field_exists(self):
         event = {"a": {"b": "I do not matter"}}
         assert self.object._field_exists(event, "a.b")
