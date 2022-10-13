@@ -28,7 +28,7 @@ class TimeMeasurement:
             def inner(*args, **kwargs):  # nosemgrep
                 if TimeMeasurement.TIME_MEASUREMENT_ENABLED:
                     caller = args[0]
-                    event = args[1]
+                    first_argument = args[1]
                     begin = time()
                     result = func(*args, **kwargs)
                     end = time()
@@ -39,8 +39,8 @@ class TimeMeasurement:
                         if hasattr(caller.metrics, "update_mean_processing_time_per_event"):
                             caller.metrics.update_mean_processing_time_per_event(processing_time)
 
-                    if TimeMeasurement.APPEND_TO_EVENT:
-                        add_processing_times_to_event(event, processing_time, caller, name)
+                    if TimeMeasurement.APPEND_TO_EVENT and isinstance(first_argument, dict):
+                        add_processing_times_to_event(first_argument, processing_time, caller, name)
                     return result
                 return func(*args, **kwargs)
 
