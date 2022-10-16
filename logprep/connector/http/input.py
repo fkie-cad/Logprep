@@ -173,10 +173,10 @@ class HttpConnector(Input):
             self.app.add_api_route(
                 path=f"{endpoint_path}", endpoint=endpoint.endpoint, methods=["POST"]
             )
-        config = uvicorn.Config(
+        uvicorn_config = uvicorn.Config(
             **self._config.uvicorn_config, app=self.app, log_level=self._logger.level
         )
-        self.server = Server(config)
+        self.server = Server(uvicorn_config)
 
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
