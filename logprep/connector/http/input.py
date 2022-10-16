@@ -143,9 +143,8 @@ class HttpConnector(Input):
                 ),
             ]
         )
-        """Configure uvicorn server. For possible settings see `uvicorn settings page`_
-        
-        .. _uvicorn settings page: https://www.uvicorn.org/settings
+        """Configure uvicorn server. For possible settings see
+        `uvicorn settings page <https://www.uvicorn.org/settings>`_.
         """
         endpoints: Mapping[str, str] = field(
             validator=[
