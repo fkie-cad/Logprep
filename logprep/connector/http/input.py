@@ -155,8 +155,8 @@ class HttpConnector(Input):
                 ),
             ]
         )
-        """Configure endpoint routes with a Mapping of an path to an endpoint. Possible endpoints
-        are: :code:`json`, :code:`jsonl`, :code:`plaintext`
+        """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
+        are: :code:`json`, :code:`jsonl`, :code:`plaintext`.
         """
 
     app: FastAPI
