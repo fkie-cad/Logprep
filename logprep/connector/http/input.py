@@ -22,7 +22,6 @@ Example
             /firstendpoint: json
             /seccondendpoint: plaintext
             /thirdendpoint: jsonl
-            
 """
 import contextlib
 import json
