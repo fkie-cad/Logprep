@@ -24,8 +24,8 @@ Example
             /thirdendpoint: jsonl
 """
 import contextlib
-import json
 import inspect
+import json
 import queue
 import sys
 import threading
