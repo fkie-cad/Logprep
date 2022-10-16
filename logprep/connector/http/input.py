@@ -60,7 +60,7 @@ class HttpEndpoint(ABC):
     @abstractmethod
     async def endpoint(self, **kwargs):
         """callback method for route"""
-        ...
+        ...  # pragma: no cover
 
 
 class JSONHttpEndpoint(HttpEndpoint):
