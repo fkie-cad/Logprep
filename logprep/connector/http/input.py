@@ -36,6 +36,7 @@ import uvicorn
 from attrs import define, field, validators
 from fastapi import FastAPI, Request
 from pydantic import BaseModel  # pylint: disable=no-name-in-module
+
 from logprep.abc.input import Input
 
 if sys.version_info.minor < 8:  # pragma: no cover
