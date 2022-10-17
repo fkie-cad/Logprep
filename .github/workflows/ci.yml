@@ -108,6 +108,7 @@ jobs:
 
       - name: build docs
         run: |
+          cd doc
           sphinx-apidoc -fT -o source/module_reference ../logprep
           make clean html
 
