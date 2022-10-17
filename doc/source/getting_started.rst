@@ -47,6 +47,7 @@ To see if the installation was successful run :code:`logprep --version`.
 This option can be used to build a container image from a specific commit
 
 ..  code-block:: bash
+
     git clone https://github.com/fkie-cad/Logprep.git
     cd Logprep
     docker build -t logprep .
