@@ -118,9 +118,11 @@ class OpensearchOutput(ElasticsearchOutput):
         """
         error_documents = []
         for bulk_error in error.errors:
-            error_info = bulk_error.get("index", {})
-            data = error_info.get("data")
-            reason = f'{error_info["error"]["type"]}: {error_info["error"]["reason"]}'
+            _, error_info = bulk_error.popitem()
+            data = error_info.get("data") if "data" in error_info else None
+            error_type = error_info.get("error").get("type")
+            error_reason = error_info.get("error").get("reason")
+            reason = f"{error_type}: {error_reason}"
             error_document = self._build_failed_index_document(data, reason)
             self._add_dates(error_document)
             error_documents.append(error_document)
