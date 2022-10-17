@@ -46,8 +46,7 @@ from elasticsearch import helpers
 from logprep.abc.output import FatalOutputError, Output
 
 if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import \
-        cached_property  # pylint: disable=import-error
+    from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property
 
@@ -114,7 +113,11 @@ class ElasticsearchOutput(Output):
         SSLContext
             The ssl context
         """
-        return ssl.create_default_context(cafile=self._config.ca_cert) if self._config.ca_cert else None
+        return (
+            ssl.create_default_context(cafile=self._config.ca_cert)
+            if self._config.ca_cert
+            else None
+        )
 
     @property
     def schema(self) -> str:

@@ -39,8 +39,7 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 
 if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import \
-        cached_property  # pylint: disable=import-error
+    from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property
 
