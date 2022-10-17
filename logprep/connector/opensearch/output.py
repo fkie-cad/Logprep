@@ -6,6 +6,10 @@ This section contains the connection settings for Elasticsearch, the default
 index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
 the amount of times connections are created.
 
+The documents desired index is the field :code:`_index` in the document. It is deleted afterwards.
+If you want to send documents to datastreams, you have to set the field :code:`_op_type: create` in
+the document.
+
 Example
 ^^^^^^^
 ..  code-block:: yaml
@@ -35,7 +39,8 @@ from logprep.abc.output import FatalOutputError, Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 
 if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
+    from backports.cached_property import \
+        cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property
 
