@@ -1,6 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
-from functools import partial
 import re
+from functools import partial
 from os import remove
 from typing import Optional, Union
 
@@ -229,12 +229,12 @@ def add_and_overwrite(event, target_field, content, *_):
     add_field_to(event, target_field, content, overwrite_output_field=True)
 
 
-def append(event, target_field, content, seperator):
+def append(event, target_field, content, separator):
     """appends to event"""
     target_value = get_dotted_field_value(event, target_field)
     if isinstance(target_value, str):
-        seperator = " " if seperator is None else seperator
-        target_value = f"{target_value}{seperator}{content}"
+        separator = " " if separator is None else separator
+        target_value = f"{target_value}{separator}{content}"
         add_and_overwrite(event, target_field, target_value)
     else:
         append_as_list(event, target_field, content)

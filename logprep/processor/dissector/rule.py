@@ -80,7 +80,7 @@ from logprep.processor.base.rule import Rule
 from logprep.util.helper import append, add_and_overwrite
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
-SEPERATOR = r"((?!%\{.*\}).+)"
+SEPARATOR = r"((?!%\{.*\}).+)"
 
 
 class DissectorRule(Rule):
@@ -95,7 +95,7 @@ class DissectorRule(Rule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.matches_re(rf"^({DISSECT}{SEPERATOR})+{DISSECT}$"),
+                    value_validator=validators.matches_re(rf"^({DISSECT}{SEPARATOR})+{DISSECT}$"),
                 ),
             ],
             default=Factory(dict),
@@ -133,7 +133,7 @@ class DissectorRule(Rule):
     _config: "DissectorRule.Config"
 
     actions: List[Tuple[str, str, str, Callable, int]]
-    """list tuple format (<source_field>, <seperator>, <target_field>, <function>), <position> """
+    """list tuple format (<source_field>, <separator>, <target_field>, <function>), <position> """
 
     convert_actions: List[Tuple[str, Callable]]
     """list tuple format <target_field>, <converter callable>"""
@@ -167,11 +167,11 @@ class DissectorRule(Rule):
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(
-                    r"%\{(?P<action>[+]?)(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<seperator>.*)",
+                    r"%\{(?P<action>[+]?)(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<separator>.*)",
                     section,
                 )
-                seperator = (
-                    section_match.group("seperator") if section_match.group("seperator") else None
+                separator = (
+                    section_match.group("separator") if section_match.group("separator") else None
                 )
                 action_key = (
                     section_match.group("action") if "action" in section_match.groupdict() else None
@@ -191,7 +191,7 @@ class DissectorRule(Rule):
                 else:
                     action = lambda *args: None
                 position = int(position) if position is not None else 0
-                self.actions.append((source_field, seperator, target_field, action, position))
+                self.actions.append((source_field, separator, target_field, action, position))
 
     def _set_convert_actions(self):
         self.convert_actions = []

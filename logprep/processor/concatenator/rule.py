@@ -3,7 +3,7 @@ Concatenator Rule
 -----------------
 
 The concatenator processor allows to concat a list of source fields into one new target field. The
-seperator and the target field can be specified. Furthermore, it is possible to directly delete
+separator and the target field can be specified. Furthermore, it is possible to directly delete
 all given source fields, or to overwrite the specified target field.
 
 A speaking example:
@@ -16,7 +16,7 @@ A speaking example:
     concatenator:
       source_fields: ["date", "time"]
       target_field: timestamp
-      seperator: " "
+      separator: " "
       overwrite_target: True
       delete_source_fields: True
     description: '...'
@@ -66,7 +66,7 @@ class ConcatenatorRule(Rule):
         """The source fields that should be concatenated, can contain dotted field paths."""
         target_field: str = field(validator=validators.instance_of(str))
         """The field in which the result should be written to."""
-        seperator: str = field(validator=validators.instance_of(str))
+        separator: str = field(validator=validators.instance_of(str))
         """The character(s) that should be used between the combined source field values."""
         overwrite_target: bool = field(validator=validators.instance_of(bool))
         """Defines whether the target field should be overwritten if it exists already."""
@@ -102,8 +102,8 @@ class ConcatenatorRule(Rule):
         return self._config.target_field
 
     @property
-    def seperator(self) -> str:  # pylint: disable=missing-docstring
-        return self._config.seperator
+    def separator(self) -> str:  # pylint: disable=missing-docstring
+        return self._config.separator
 
     @property
     def overwrite_target(self) -> bool:  # pylint: disable=missing-docstring
