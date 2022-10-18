@@ -17,6 +17,26 @@ basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(me
 logger = getLogger("Logprep-Test")
 
 
+def start_logprep(config_path: str) -> subprocess.Popen:
+    environment = {"PYTHONPATH": "."}
+    return subprocess.Popen(  # nosemgrep
+        f"{sys.executable} logprep/run_logprep.py {config_path}",
+        shell=True,
+        env=environment,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        close_fds=True,
+    )
+
+
+def wait_for_output(proc, expected_output):
+    output = proc.stdout.readline()
+    while not expected_output in output.decode("utf8"):
+        output = proc.stdout.readline()
+        time.sleep(0.1)
+
+
 @pytest.fixture(name="config")
 def config_fixture():
     pipeline = [
@@ -69,15 +89,10 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
-    environment = {"PYTHONPATH": "."}
-    _ = subprocess.Popen(  # nosemgrep
-        f"{sys.executable} logprep/run_logprep.py {config_path}",
-        shell=True,
-        env=environment,
-    )
-    time.sleep(3)  # nosemgrep
+    proc = start_logprep(config_path)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000")
     requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False)  # nosemgrep
-    time.sleep(3)  # nosemgrep
+    time.sleep(0.5)  # nosemgrep
     assert "my message" in output_path.read_text()
 
 
@@ -88,20 +103,15 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
-    environment = {"PYTHONPATH": "."}
-    _ = subprocess.Popen(  # nosemgrep
-        f"{sys.executable} logprep/run_logprep.py {config_path}",
-        shell=True,
-        env=environment,
-    )
-    time.sleep(3)  # nosemgrep
+    proc = start_logprep(config_path)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9001")
     requests.post(  # nosemgrep
         "https://127.0.0.1:9000/plaintext", data="my first message", verify=False
     )
     requests.post(  # nosemgrep
         "https://127.0.0.1:9001/plaintext", data="my second message", verify=False
     )
-    time.sleep(3)  # nosemgrep
+    time.sleep(0.5)  # nosemgrep
     output_content = output_path.read_text()
     assert "my first message" in output_content
     assert "my second message" in output_content
@@ -114,13 +124,8 @@ def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
-    environment = {"PYTHONPATH": "."}
-    _ = subprocess.Popen(  # nosemgrep
-        f"{sys.executable} logprep/run_logprep.py {config_path}",
-        shell=True,
-        env=environment,
-    )
-    time.sleep(3)  # nosemgrep
+    proc = start_logprep(config_path)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9002")
     requests.post(  # nosemgrep
         "https://127.0.0.1:9000/plaintext", data="my first message", verify=False
     )
@@ -130,7 +135,7 @@ def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
     requests.post(  # nosemgrep
         "https://127.0.0.1:9002/plaintext", data="my third message", verify=False
     )
-    time.sleep(3)  # nosemgrep
+    time.sleep(0.5)  # nosemgrep
     output_content = output_path.read_text()
     assert "my first message" in output_content
     assert "my second message" in output_content
