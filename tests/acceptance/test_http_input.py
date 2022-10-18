@@ -34,7 +34,7 @@ def wait_for_output(proc, expected_output):
     output = proc.stdout.readline()
     while not expected_output in output.decode("utf8"):
         output = proc.stdout.readline()
-        time.sleep(0.1)
+        time.sleep(0.1)  # nosemgrep
 
 
 @pytest.fixture(name="config")
