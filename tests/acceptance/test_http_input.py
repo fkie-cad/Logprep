@@ -10,6 +10,7 @@ from logging import DEBUG, basicConfig, getLogger
 
 import pytest
 import requests
+
 from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import get_default_logprep_config
 
