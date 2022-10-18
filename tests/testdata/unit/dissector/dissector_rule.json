@@ -1,0 +1,7 @@
+[
+    {
+        "filter": "message",
+        "dissector": {},
+        "description": "do nothing rule for dissector"
+    }
+]
