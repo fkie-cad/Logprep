@@ -16,7 +16,7 @@ def fixture_specific_rule_definition():
         "concatenator": {
             "source_fields": ["field.a", "field.b", "other_field.c"],
             "target_field": "target_field",
-            "seperator": "-",
+            "separator": "-",
             "overwrite_target": False,
             "delete_source_fields": False,
         },
@@ -35,7 +35,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -49,7 +49,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -63,7 +63,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "even_another_field"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -77,7 +77,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "wrong_target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -85,13 +85,13 @@ class TestConcatenatorRule:
                 False,
             ),
             (
-                "Should be not equal cause of other seperator",
+                "Should be not equal cause of other separator",
                 {
                     "filter": "field.a",
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": ".",
+                        "separator": ".",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -105,7 +105,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": ".",
+                        "separator": ".",
                         "overwrite_target": True,
                         "delete_source_fields": False,
                     },
@@ -119,7 +119,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": ".",
+                        "separator": ".",
                         "overwrite_target": False,
                         "delete_source_fields": True,
                     },
@@ -144,7 +144,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -158,7 +158,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": "False",
                         "delete_source_fields": False,
                     },
@@ -172,7 +172,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": "False",
                     },
@@ -186,7 +186,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": "i should be a list",
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -200,7 +200,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", 5, "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -214,7 +214,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -228,7 +228,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": 5,
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -242,13 +242,13 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": 5,
+                        "separator": 5,
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
                 },
                 TypeError,
-                "'seperator' must be <class 'str'>",
+                "'separator' must be <class 'str'>",
             ),
             (
                 {
@@ -256,7 +256,7 @@ class TestConcatenatorRule:
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                         "some": "unknown_field",
@@ -276,7 +276,7 @@ class TestConcatenatorRule:
                     },
                 },
                 TypeError,
-                "missing 1 required keyword-only argument: 'seperator'",
+                "missing 1 required keyword-only argument: 'separator'",
             ),
             (
                 {

@@ -3,7 +3,7 @@ Concatenator
 ------------
 
 The `concatenator` processor allows to concat a list of source fields into one new target field. The
-concat seperator and the target field can be specified. Furthermore, it is possible to directly
+concat separator and the target field can be specified. Furthermore, it is possible to directly
 delete all given source fields, or to overwrite the specified target field.
 
 
@@ -54,7 +54,7 @@ class Concatenator(Processor):
         """
         Apply matching rule to given log event.
         In the process of doing so, concat all found source fields into the new target field,
-        separated by a given seperator.
+        separated by a given separator.
 
         Parameters
         ----------
@@ -73,7 +73,7 @@ class Concatenator(Processor):
             source_field_values.append(field_value)
 
         source_field_values = [field for field in source_field_values if field is not None]
-        target_value = f"{rule.seperator}".join(source_field_values)
+        target_value = f"{rule.separator}".join(source_field_values)
 
         adding_was_successful = add_field_to(
             event, rule.target_field, target_value, overwrite_output_field=rule.overwrite_target

@@ -32,7 +32,7 @@ class TestConcatenator(BaseProcessorTestCase):
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "other_field.c"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -51,7 +51,7 @@ class TestConcatenator(BaseProcessorTestCase):
                     "concatenator": {
                         "source_fields": ["field.a", "field.b", "will.be.ignored"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
                     },
@@ -66,7 +66,7 @@ class TestConcatenator(BaseProcessorTestCase):
                     "concatenator": {
                         "source_fields": ["field.a", "field.b"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": True,
                         "delete_source_fields": False,
                     },
@@ -81,7 +81,7 @@ class TestConcatenator(BaseProcessorTestCase):
                     "concatenator": {
                         "source_fields": ["field.a", "field.b"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": True,
                     },
@@ -100,7 +100,7 @@ class TestConcatenator(BaseProcessorTestCase):
                     "concatenator": {
                         "source_fields": ["field.a", "field.b"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": True,
                     },
@@ -115,7 +115,7 @@ class TestConcatenator(BaseProcessorTestCase):
                     "concatenator": {
                         "source_fields": ["field.a", "field.b"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": True,
                     },
@@ -130,7 +130,7 @@ class TestConcatenator(BaseProcessorTestCase):
                     "concatenator": {
                         "source_fields": ["field.a", "field.b"],
                         "target_field": "target_field",
-                        "seperator": "-",
+                        "separator": "-",
                         "overwrite_target": True,
                         "delete_source_fields": True,
                     },
@@ -156,7 +156,7 @@ class TestConcatenator(BaseProcessorTestCase):
             "concatenator": {
                 "source_fields": ["field.a", "field.b"],
                 "target_field": "target_field",
-                "seperator": "-",
+                "separator": "-",
                 "overwrite_target": False,
                 "delete_source_fields": False,
             },

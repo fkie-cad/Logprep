@@ -6,7 +6,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
     (
-        "writes new fields with same seperator",
+        "writes new fields with same separator",
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} %{field2} %{field3} %{field4}"}},
@@ -21,7 +21,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "writes new fields with different seperator",
+        "writes new fields with different separator",
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} %{field2}:%{field3} %{field4}"}},
@@ -36,7 +36,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "writes new fields with long seperator",
+        "writes new fields with long separator",
         {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{field1} is %{field3} %{field4}"}},

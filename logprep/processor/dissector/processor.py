@@ -46,7 +46,7 @@ class Dissector(Processor):
         current_field = None
         target_field_mapping = {}
         for rule_action in rule.actions:
-            source_field, seperator, target_field, rule_action, position = rule_action
+            source_field, separator, target_field, rule_action, position = rule_action
             if current_field != source_field:
                 current_field = source_field
                 loop_content = get_dotted_field_value(event, current_field)
@@ -55,8 +55,8 @@ class Dissector(Processor):
                         f"dissector: mapping field '{source_field}' does not exist"
                     )
                     self._handle_warning_error(event, rule, error)
-            if seperator:
-                content, _, loop_content = loop_content.partition(seperator)
+            if separator:
+                content, _, loop_content = loop_content.partition(separator)
             else:
                 content = loop_content
             if target_field.startswith("?"):
@@ -65,7 +65,7 @@ class Dissector(Processor):
                 content = ""
             if target_field.startswith("&"):
                 target_field = target_field_mapping.get(target_field.lstrip("&"))
-            yield rule_action, event, target_field, content, seperator, position
+            yield rule_action, event, target_field, content, separator, position
 
     def _apply_convert_datatype(self, event, rule):
         for target_field, converter in rule.convert_actions:
