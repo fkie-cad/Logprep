@@ -9,7 +9,7 @@ test_cases = [  # testcase, rule, event, expected
         "writes new fields with same seperator",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{field1} %{field2} %{field3} %{field4}"}},
+            "dissector": {"mapping": {"message": "%{field1} %{field2} %{field3} %{field4}"}},
         },
         {"message": "This is a message"},
         {
@@ -24,7 +24,7 @@ test_cases = [  # testcase, rule, event, expected
         "writes new fields with different seperator",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{field1} %{field2}:%{field3} %{field4}"}},
+            "dissector": {"mapping": {"message": "%{field1} %{field2}:%{field3} %{field4}"}},
         },
         {"message": "This is:a message"},
         {
@@ -39,7 +39,7 @@ test_cases = [  # testcase, rule, event, expected
         "writes new fields with long seperator",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{field1} is %{field3} %{field4}"}},
+            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{field4}"}},
         },
         {"message": "This is a message"},
         {
@@ -53,7 +53,7 @@ test_cases = [  # testcase, rule, event, expected
         "writes new fields and appends to existing list",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
         },
         {"message": "This is a message", "field4": ["preexisting"]},
         {
@@ -67,7 +67,7 @@ test_cases = [  # testcase, rule, event, expected
         "writes new fields and appends to existing empty list",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
         },
         {"message": "This is a message", "field4": []},
         {
@@ -81,7 +81,7 @@ test_cases = [  # testcase, rule, event, expected
         "writes new fields and appends to existing string",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
         },
         {"message": "This is a message", "field4": "preexisting"},
         {
@@ -95,7 +95,7 @@ test_cases = [  # testcase, rule, event, expected
         "writes new dotted fields",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {"message": "%{field1} %{my.new.field2} %{field3} %{+field4}"}
             },
         },
@@ -112,7 +112,7 @@ test_cases = [  # testcase, rule, event, expected
         "overwrites dotted fields",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {"message": "%{field1} %{my.new.field2} %{field3} %{+field4}"}
             },
         },
@@ -133,7 +133,7 @@ test_cases = [  # testcase, rule, event, expected
         "appends to dotted fields preexisting string",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {"message": "%{field1} %{+my.new.field2} %{field3} %{+field4}"}
             },
         },
@@ -154,7 +154,7 @@ test_cases = [  # testcase, rule, event, expected
         "appends to dotted fields preexisting list",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {"message": "%{field1} %{+my.new.field2} %{field3} %{+field4}"}
             },
         },
@@ -175,7 +175,7 @@ test_cases = [  # testcase, rule, event, expected
         "processes dotted source field",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {"message.key1.key2": "%{field1} %{field2} %{field3} %{field4}"}
             },
         },
@@ -192,7 +192,7 @@ test_cases = [  # testcase, rule, event, expected
         "processes multiple mappings to different target fields",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "source1": "%{extracted.source1.key1} %{extracted.source1.key2} %{extracted.source1.key3}",  # pylint: disable=line-too-long
                     "source2": "%{extracted.source2.key1} %{extracted.source2.key2} %{extracted.source2.key3}",  # pylint: disable=line-too-long
@@ -218,7 +218,7 @@ test_cases = [  # testcase, rule, event, expected
         "processes multiple mappings to same target fields (overwrite)",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "source1": "%{extracted.key1} %{extracted.key2} %{extracted.key3}",
                     "source2": "%{extracted.key1} %{extracted.key2} %{extracted.key3}",
@@ -241,7 +241,7 @@ test_cases = [  # testcase, rule, event, expected
         "processes multiple mappings to same target fields (appending)",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "source1": "%{+extracted.key1} %{+extracted.key2} %{+extracted.key3}",
                     "source2": "%{+extracted.key1} %{+extracted.key2} %{+extracted.key3}",
@@ -264,7 +264,7 @@ test_cases = [  # testcase, rule, event, expected
         "append to new field in different order as string",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
                 }
@@ -277,7 +277,7 @@ test_cases = [  # testcase, rule, event, expected
         "append to existing field in different order as string",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
                 }
@@ -290,7 +290,7 @@ test_cases = [  # testcase, rule, event, expected
         "append to existing empty list field in different order as list",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
                 }
@@ -303,7 +303,7 @@ test_cases = [  # testcase, rule, event, expected
         "append to existing prefilled field in different order as list",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
                 }
@@ -319,7 +319,7 @@ test_cases = [  # testcase, rule, event, expected
         "append to new field in specified order as string with multiple fields",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "message": "%{}: %{+extracted/2}",
                     "message2": "%{}: %{+extracted/1}",
@@ -335,7 +335,7 @@ test_cases = [  # testcase, rule, event, expected
     ),
     (
         "converts datatype without mapping",
-        {"filter": "message", "dissecter": {"convert_datatype": {"message": "int"}}},
+        {"filter": "message", "dissector": {"convert_datatype": {"message": "int"}}},
         {"message": "42"},
         {"message": 42},
     ),
@@ -343,7 +343,7 @@ test_cases = [  # testcase, rule, event, expected
         "converts datatype with mapping in dotted field notation",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "mapping": {
                     "message": "%{}of %{extracted.message_float} and a int of %{extracted.message_int}"  # pylint: disable=line-too-long
                 },
@@ -361,7 +361,7 @@ test_cases = [  # testcase, rule, event, expected
     ),
     (
         "indirect field notation: uses captured field as key",
-        {"filter": "message", "dissecter": {"mapping": {"message": "%{?key} %{&key}"}}},
+        {"filter": "message", "dissector": {"mapping": {"message": "%{?key} %{&key}"}}},
         {"message": "This is the message"},
         {"message": "This is the message", "This": "is the message"},
     ),
@@ -369,7 +369,7 @@ test_cases = [  # testcase, rule, event, expected
         "indirect field notation: uses captured field as key and appends to it",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{?key} %{&key} %{} %{+&key}"}},
+            "dissector": {"mapping": {"message": "%{?key} %{&key} %{} %{+&key}"}},
         },
         {"message": "This is the message"},
         {"message": "This is the message", "This": "is message"},
@@ -378,7 +378,7 @@ test_cases = [  # testcase, rule, event, expected
         "handles special chars as captured content",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{field1} %{field2} %{field3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{field1} %{field2} %{field3} %{+field4}"}},
         },
         {"message": "This is \\a + message"},
         {
@@ -393,7 +393,7 @@ test_cases = [  # testcase, rule, event, expected
         "handles special chars in captured content and target field names",
         {
             "filter": "message",
-            "dissecter": {"mapping": {"message": "%{~field1} %{fie ld2} %{-fie}ld3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{~field1} %{fie ld2} %{-fie}ld3} %{+field4}"}},
         },
         {"message": "&This is\2 a mess}age /1"},
         {
@@ -410,7 +410,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         "Tags failure if convert is not possible",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "convert_datatype": {
                     "message": "int",
                 },
@@ -426,7 +426,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         "Tags failure if convert is not possible and extends tags list",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "convert_datatype": {
                     "message": "int",
                 },
@@ -442,7 +442,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         "Tags custom failure if convert is not possible",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "convert_datatype": {
                     "message": "int",
                 },
@@ -459,7 +459,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         "Tags custom failure if convert is not possible and extends tag list",
         {
             "filter": "message",
-            "dissecter": {
+            "dissector": {
                 "convert_datatype": {
                     "message": "int",
                 },
@@ -474,18 +474,18 @@ failure_test_cases = [  # testcase, rule, event, expected
     ),
     (
         "Tags failure if mapping field does not exist",
-        {"filter": "message", "dissecter": {"mapping": {"doesnotexist": "%{} %{}"}}},
+        {"filter": "message", "dissector": {"mapping": {"doesnotexist": "%{} %{}"}}},
         {"message": "This is the message which does not matter"},
         {"message": "This is the message which does not matter", "tags": ["_dissectfailure"]},
     ),
 ]
 
 
-class TestDissecter(BaseProcessorTestCase):
+class TestDissector(BaseProcessorTestCase):
     CONFIG: dict = {
-        "type": "dissecter",
-        "generic_rules": ["tests/testdata/unit/dissecter"],
-        "specific_rules": ["tests/testdata/unit/dissecter"],
+        "type": "dissector",
+        "generic_rules": ["tests/testdata/unit/dissector"],
+        "specific_rules": ["tests/testdata/unit/dissector"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)

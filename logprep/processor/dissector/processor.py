@@ -1,8 +1,8 @@
 """
-Dissecter
+Dissector
 =========
 
-The `dissecter` is a processor that tokenizes incoming strings using defined patterns.
+The `dissector` is a processor that tokenizes incoming strings using defined patterns.
 The behavior is based of the logstash dissect filter plugin and has the same advantage that for the event processing no
 regular expressions are used.
 Additionally it can be used to convert datatypes of given fields.
@@ -13,8 +13,8 @@ Example
 ..  code-block:: yaml
     :linenos:
 
-    - dissectername:
-        type: dissecter
+    - dissectorname:
+        type: dissector
         specific_rules:
             - tests/testdata/rules/specific/
         generic_rules:
@@ -24,14 +24,14 @@ from typing import Callable, List, Tuple
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.dissecter.rule import DissecterRule
+from logprep.processor.dissector.rule import DissectorRule
 from logprep.util.helper import get_dotted_field_value, add_field_to
 
 
-class Dissecter(Processor):
+class Dissector(Processor):
     """A processor that tokenizes field values to new fields and converts datatypes"""
 
-    rule_class = DissecterRule
+    rule_class = DissectorRule
 
     def _apply_rules(self, event, rule):
         self._apply_mapping(event, rule)
@@ -52,7 +52,7 @@ class Dissecter(Processor):
                 loop_content = get_dotted_field_value(event, current_field)
                 if loop_content is None:
                     error = BaseException(
-                        f"dissecter: mapping field '{source_field}' does not exist"
+                        f"dissector: mapping field '{source_field}' does not exist"
                     )
                     self._handle_warning_error(event, rule, error)
             if seperator:

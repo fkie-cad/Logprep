@@ -1,18 +1,18 @@
 """
-Dissecter Rule
+Dissector Rule
 --------------
 
-The dissecter processor tokenizes values from fields into new fields or appends the value to
+The dissector processor tokenizes values from fields into new fields or appends the value to
 existing fields. Additionally it can be used to convert datatypes of field values.
 
 A speaking example:
 
 ..  code-block:: yaml
     :linenos:
-    :caption: Given dissecter rule
+    :caption: Given dissector rule
 
     filter: message
-    dissecter:
+    dissector:
         mapping:
             message: "%{}of %{extracted.message_float} and an int of %{extracted.message_int}"
         convert_datatype:
@@ -56,7 +56,7 @@ It is possible to capture the target field name from the source field value with
 this can be referred to with the notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`).
 References can be combined with the append operator.
 
-.. autoclass:: logprep.processor.dissecter.rule.DissecterRule.Config
+.. autoclass:: logprep.processor.dissector.rule.DissectorRule.Config
    :members:
    :undoc-members:
    :inherited-members:
@@ -65,7 +65,7 @@ References can be combined with the append operator.
 Examples for dissection and datatype conversion:
 ------------------------------------------------
 
-.. datatemplate:import-module:: tests.unit.processor.dissecter.test_dissecter
+.. datatemplate:import-module:: tests.unit.processor.dissector.test_dissector
    :template: testcase-renderer.tmpl
 
 """
@@ -83,12 +83,12 @@ DISSECT = r"(%\{[+&?]?[^%{]*\})"
 SEPERATOR = r"((?!%\{.*\}).+)"
 
 
-class DissecterRule(Rule):
-    """dissecter rule"""
+class DissectorRule(Rule):
+    """dissector rule"""
 
     @define(kw_only=True)
     class Config:
-        """Config for Dissecter"""
+        """Config for Dissector"""
 
         mapping: dict = field(
             validator=[
@@ -130,7 +130,7 @@ class DissecterRule(Rule):
 
     _converter_mapping: dict = {"int": int, "float": float, "string": str}
 
-    _config: "DissecterRule.Config"
+    _config: "DissectorRule.Config"
 
     actions: List[Tuple[str, str, str, Callable, int]]
     """list tuple format (<source_field>, <seperator>, <target_field>, <function>), <position> """
@@ -143,23 +143,23 @@ class DissecterRule(Rule):
         """Returns the failure tags"""
         return self._config.tag_on_failure
 
-    def __init__(self, filter_rule: FilterExpression, config: "DissecterRule.Config"):
+    def __init__(self, filter_rule: FilterExpression, config: "DissectorRule.Config"):
         super().__init__(filter_rule)
         self._config = config
         self._set_mapping_actions()
         self._set_convert_actions()
 
-    def __eq__(self, other: "DissecterRule") -> bool:
+    def __eq__(self, other: "DissectorRule") -> bool:
         return all((self._filter == other._filter, self._config == other._config))
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> "DissecterRule":
+    def _create_from_dict(rule: dict) -> "DissectorRule":
         filter_expression = Rule._create_filter_expression(rule)
-        config = rule.get("dissecter")
+        config = rule.get("dissector")
         if not isinstance(config, dict):
             raise InvalidRuleDefinitionError("config is not a dict")
-        config = DissecterRule.Config(**config)
-        return DissecterRule(filter_expression, config)
+        config = DissectorRule.Config(**config)
+        return DissectorRule(filter_expression, config)
 
     def _set_mapping_actions(self):
         self.actions = []

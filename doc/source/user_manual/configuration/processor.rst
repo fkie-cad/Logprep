@@ -28,8 +28,8 @@ Processors
    :inherited-members:
    :noindex:
 
-.. automodule:: logprep.processor.dissecter.processor
-.. autoclass:: logprep.processor.dissecter.processor.Dissecter.Config
+.. automodule:: logprep.processor.dissector.processor
+.. autoclass:: logprep.processor.dissector.processor.Dissector.Config
    :members:
    :undoc-members:
    :inherited-members:
