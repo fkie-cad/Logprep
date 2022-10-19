@@ -42,8 +42,7 @@ from functools import partial
 
 from attrs import define, field, validators
 
-from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
+from logprep.processor.base.rule import Rule
 from logprep.util.validators import min_len_validator
 
 
