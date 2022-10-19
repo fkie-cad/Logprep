@@ -6,6 +6,10 @@ This section contains the connection settings for Elasticsearch, the default
 index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
 the amount of times connections are created.
 
+The documents desired index is the field :code:`_index` in the document. It is deleted afterwards.
+If you want to send documents to datastreams, you have to set the field :code:`_op_type: create` in
+the document.
+
 Example
 ^^^^^^^
 ..  code-block:: yaml
@@ -35,7 +39,7 @@ from typing import List, Optional
 
 import arrow
 import elasticsearch
-from attr import field, define
+from attr import define, field
 from attrs import validators
 from elasticsearch import helpers
 
@@ -81,8 +85,8 @@ class ElasticsearchOutput(Output):
         """The user used for authentication (optional)."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
         """The secret used for authentication (optional)."""
-        cert: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """The path to a SSL certificate to use (optional)"""
+        ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
+        """The path to a SSL ca certificate to verify the ssl context (optional)"""
 
     __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
 
@@ -109,7 +113,11 @@ class ElasticsearchOutput(Output):
         SSLContext
             The ssl context
         """
-        return ssl.create_default_context(cafile=self._config.cert) if self._config.cert else None
+        return (
+            ssl.create_default_context(cafile=self._config.ca_cert)
+            if self._config.ca_cert
+            else None
+        )
 
     @property
     def schema(self) -> str:
@@ -120,7 +128,7 @@ class ElasticsearchOutput(Output):
         str
             the shema
         """
-        return "https" if self._config.cert else "http"
+        return "https" if self._config.ca_cert else "http"
 
     @property
     def http_auth(self) -> tuple:
