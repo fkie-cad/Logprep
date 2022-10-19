@@ -2,6 +2,7 @@
 
 from typing import List, Union, Dict, Pattern
 import re
+from attrs import define, field, validators
 
 from logprep.filter.expression.filter_expression import FilterExpression
 
@@ -26,56 +27,30 @@ class InvalidClusteringDefinition(ClustererRuleError):
 class ClustererRule(Rule):
     """Check if documents match a filter."""
 
-    def __init__(
-        self,
-        filter_rule: FilterExpression,
-        clusterer_cfg: dict,
-        tests: Union[List[Dict[str, str]], Dict[str, str]] = None,
-    ):
-        super().__init__(filter_rule)
-        self._target = clusterer_cfg["target"]
-        self._pattern = re.compile(clusterer_cfg["pattern"])
-        self._repl = clusterer_cfg["repl"]
+    @define(kw_only=True)
+    class Config:
+        """RuleConfig for Clusterer"""
 
-        if isinstance(tests, list):
-            self._tests = tests
-        elif isinstance(tests, dict):
-            self._tests = [tests]
-        else:
-            self._tests = []
-
-    def __eq__(self, other: "ClustererRule") -> bool:
-        return all(
-            [
-                self._filter == other.filter,
-                self._target == other.target,
-                self._pattern == other.pattern,
-                self._repl == other.repl,
-            ]
+        target: str = field(validator=validators.instance_of(str))
+        pattern: re.Pattern = field(
+            validator=validators.instance_of(re.Pattern), converter=re.compile
         )
+        repl: str = field(validator=validators.instance_of(str))
 
     # pylint: disable=C0111
     @property
     def target(self) -> str:
-        return self._target
+        return self._config.target
 
     @property
     def pattern(self) -> Pattern:
-        return self._pattern
+        return self._config.pattern
 
     @property
     def repl(self) -> str:
-        return self._repl
+        return self._config.repl
 
     # pylint: enable=C0111
-
-    @staticmethod
-    def _create_from_dict(rule: dict) -> "ClustererRule":
-        ClustererRule._check_rule_validity(rule, "clusterer", optional_keys={"tests"})
-        ClustererRule._check_if_clusterer_data_valid(rule)
-
-        filter_expression = Rule._create_filter_expression(rule)
-        return ClustererRule(filter_expression, rule["clusterer"], rule.get("tests"))
 
     @staticmethod
     def _check_if_clusterer_data_valid(rule: dict):
