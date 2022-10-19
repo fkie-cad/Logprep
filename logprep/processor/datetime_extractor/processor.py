@@ -26,7 +26,7 @@ from dateutil.parser import parse
 from dateutil.tz import tzlocal
 
 from logprep.abc import Processor
-from logprep.processor.datetime_extractor.rule import DateTimeExtractorRule
+from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
 from logprep.util.helper import get_dotted_field_value
 
 
@@ -44,7 +44,7 @@ class DatetimeExtractor(Processor):
 
     _local_timezone_name: str
 
-    rule_class = DateTimeExtractorRule
+    rule_class = DatetimeExtractorRule
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
