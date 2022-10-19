@@ -2,11 +2,8 @@
 This module is used to split domains in a given field into it's corresponding labels/parts.
 """
 
-from ruamel.yaml import YAML
 from attrs import define, field, validators
 from logprep.processor.base.rule import Rule
-
-yaml = YAML(typ="safe", pure=True)
 
 
 class DomainLabelExtractorRule(Rule):
