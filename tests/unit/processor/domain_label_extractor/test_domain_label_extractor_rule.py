@@ -1,123 +1,167 @@
-# pylint: disable=no-docstring
+# pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import copy
-from pathlib import Path
 
+from typing import Hashable
 import pytest
-from logprep.filter.lucene_filter import LuceneFilter
+from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 
-pytest.importorskip("logprep.processor.domain_label_extractor")
 
-from logging import getLogger
-
-from logprep.processor.domain_label_extractor.rule import (
-    DomainLabelExtractorRule,
-    InvalidDomainLabelExtractorDefinition,
-)
-
-logger = getLogger()
-rel_tld_list_path = "tests/testdata/external/public_suffix_list.dat"
-tld_list = f"file://{Path().absolute().joinpath(rel_tld_list_path).as_posix()}"
+@pytest.fixture(name="specific_rule_definition")
+def fixture_specific_rule_definition():
+    return {
+        "filter": "field.a",
+        "domain_label_extractor": {
+            "target_field": "field.a",
+            "output_field": "datetime",
+        },
+        "description": "",
+    }
 
 
 class TestDomainLabelExtractorRule:
+    @pytest.mark.parametrize(
+        "testcase, other_rule_definition, is_equal",
+        [
+            (
+                "Equal because the same",
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "target_field": "field.a",
+                        "output_field": "datetime",
+                    },
+                    "description": "",
+                },
+                True,
+            ),
+            (
+                "Not equal because of different filter",
+                {
+                    "filter": "field.b",
+                    "domain_label_extractor": {
+                        "target_field": "field.a",
+                        "output_field": "datetime",
+                    },
+                    "description": "",
+                },
+                False,
+            ),
+            (
+                "Not equal because of different target_field",
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "target_field": "field.b",
+                        "output_field": "datetime",
+                    },
+                    "description": "",
+                },
+                False,
+            ),
+            (
+                "Not equal because different destination",
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "target_field": "field.a",
+                        "output_field": "other",
+                    },
+                    "description": "",
+                },
+                False,
+            ),
+            (
+                "Not equal because different destination and target_field",
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "target_field": "field.b",
+                        "output_field": "other",
+                    },
+                    "description": "",
+                },
+                False,
+            ),
+        ],
+    )
+    def test_rules_equality(
+        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+    ):
+        rule_1 = DomainLabelExtractorRule._create_from_dict(specific_rule_definition)
+        rule_2 = DomainLabelExtractorRule._create_from_dict(other_rule_definition)
+        assert (rule_1 == rule_2) == is_equal, testcase
 
-    RULE = {
-        "filter": "url.domain",
-        "domain_label_extractor": {"target_field": "url.domain", "output_field": "url"},
-        "description": "insert a description text",
-    }
+    @pytest.mark.parametrize(
+        "rule_definition, raised, message",
+        [
+            (
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "target_field": "field.b",
+                        "output_field": "other",
+                    },
+                    "description": "",
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "target_field": "field.b",
+                    },
+                    "description": "",
+                },
+                TypeError,
+                "missing 1 required keyword-only argument: 'output_field'",
+            ),
+            (
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "output_field": "other",
+                    },
+                    "description": "",
+                },
+                TypeError,
+                "missing 1 required keyword-only argument: 'target_field'",
+            ),
+            (
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "target_field": ["field.b"],
+                        "output_field": "other",
+                    },
+                    "description": "",
+                },
+                TypeError,
+                "must be <class 'str'>",
+            ),
+            (
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
+                        "target_field": "field.b",
+                        "output_field": 111,
+                    },
+                    "description": "",
+                },
+                TypeError,
+                "must be <class 'str'>",
+            ),
+        ],
+    )
+    def test_rule_create_from_dict(self, rule_definition, raised, message):
+        if raised:
+            with pytest.raises(raised, match=message):
+                _ = DomainLabelExtractorRule._create_from_dict(rule_definition)
+        else:
+            extractor_rule = DomainLabelExtractorRule._create_from_dict(rule_definition)
+            assert isinstance(extractor_rule, DomainLabelExtractorRule)
 
-    def test_valid_rule(self):
-        DomainLabelExtractorRule._create_from_dict(self.RULE)
-
-    def test_rules_are_equal(self):
-        rule1 = DomainLabelExtractorRule(
-            LuceneFilter.create(self.RULE["filter"]),
-            self.RULE["domain_label_extractor"],
-        )
-
-        rule2 = DomainLabelExtractorRule(
-            LuceneFilter.create(self.RULE["filter"]),
-            self.RULE["domain_label_extractor"],
-        )
-
-        assert rule1 == rule2
-
-    def test_rules_are_not_equal_filter_different(self):
-        rule1 = DomainLabelExtractorRule(
-            LuceneFilter.create(self.RULE["filter"]),
-            self.RULE["domain_label_extractor"],
-        )
-
-        rule2 = DomainLabelExtractorRule(
-            LuceneFilter.create("diff_domain"),
-            self.RULE["domain_label_extractor"],
-        )
-
-        assert rule1 != rule2
-
-    def test_rules_are_not_equal_target_field_different(self):
-        rule1 = DomainLabelExtractorRule(
-            LuceneFilter.create(self.RULE["filter"]),
-            self.RULE["domain_label_extractor"],
-        )
-
-        rule2 = DomainLabelExtractorRule(
-            LuceneFilter.create(self.RULE["filter"]),
-            self.RULE["domain_label_extractor"],
-        )
-
-        rule2._target_field = ["diff_field"]
-
-        assert rule1 != rule2
-
-    def test_missing_target_field(self):
-        rule = copy.deepcopy(self.RULE)
-        del rule["domain_label_extractor"]["target_field"]
-
-        with pytest.raises(
-            InvalidDomainLabelExtractorDefinition,
-            match=r"DomainLabelExtractor rule \(The following "
-            r"DomainLabelExtractor definition is invalid: "
-            r"Missing 'target_field' in rule "
-            r"configuration\.\)",
-        ):
-            DomainLabelExtractorRule._create_from_dict(rule)
-
-    def test_wrong_target_field_type(self):
-        rule = copy.deepcopy(self.RULE)
-        rule["domain_label_extractor"]["target_field"] = 123
-
-        with pytest.raises(
-            InvalidDomainLabelExtractorDefinition,
-            match=r"DomainLabelExtractor definition is invalid: "
-            r"'target_field' should be 'str' and not "
-            r"'<class 'int'>'",
-        ):
-            DomainLabelExtractorRule._create_from_dict(rule)
-
-    def test_missing_output_field(self):
-        rule = copy.deepcopy(self.RULE)
-        del rule["domain_label_extractor"]["output_field"]
-
-        with pytest.raises(
-            InvalidDomainLabelExtractorDefinition,
-            match=r"DomainLabelExtractor rule \(The following "
-            r"DomainLabelExtractor definition is invalid: "
-            r"Missing 'output_field' in rule "
-            r"configuration\.\)",
-        ):
-            DomainLabelExtractorRule._create_from_dict(rule)
-
-    def test_wrong_output_field_type(self):
-        rule = copy.deepcopy(self.RULE)
-        rule["domain_label_extractor"]["output_field"] = 123
-
-        with pytest.raises(
-            InvalidDomainLabelExtractorDefinition,
-            match=r"DomainLabelExtractor definition is invalid: "
-            r"'output_field' should be 'str' and not "
-            r"'<class 'int'>'",
-        ):
-            DomainLabelExtractorRule._create_from_dict(rule)
+    def test_rule_is_hashable(self, specific_rule_definition):
+        rule = DomainLabelExtractorRule._create_from_dict(specific_rule_definition)
+        assert isinstance(rule, Hashable)

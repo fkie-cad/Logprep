@@ -4,30 +4,15 @@ This module is used to split domains in a given field into it's corresponding la
 
 from ruamel.yaml import YAML
 from attrs import define, field, validators
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
+from logprep.processor.base.rule import Rule
 
 yaml = YAML(typ="safe", pure=True)
-
-
-class DomainLabelExtractorRuleError(InvalidRuleDefinitionError):
-    """Base class for DomainLabelExtractor rule related exceptions."""
-
-    def __init__(self, message: str):
-        super().__init__(f"DomainLabelExtractor rule ({message})")
-
-
-class InvalidDomainLabelExtractorDefinition(DomainLabelExtractorRuleError):
-    """Raise if DomainLabelExtractor definition invalid."""
-
-    def __init__(self, definition):
-        message = f"The following DomainLabelExtractor definition is invalid: {definition}"
-        super().__init__(message)
 
 
 class DomainLabelExtractorRule(Rule):
     """Check if documents match a filter."""
 
-    @define
+    @define(kw_only=True)
     class Config(Rule.Config):
         """DomainLabelExtractorRule Config"""
 
