@@ -144,22 +144,9 @@ class DissectorRule(Rule):
         return self._config.tag_on_failure
 
     def __init__(self, filter_rule: FilterExpression, config: "DissectorRule.Config"):
-        super().__init__(filter_rule)
-        self._config = config
+        super().__init__(filter_rule, config)
         self._set_mapping_actions()
         self._set_convert_actions()
-
-    def __eq__(self, other: "DissectorRule") -> bool:
-        return all((self._filter == other._filter, self._config == other._config))
-
-    @staticmethod
-    def _create_from_dict(rule: dict) -> "DissectorRule":
-        filter_expression = Rule._create_filter_expression(rule)
-        config = rule.get("dissector")
-        if not isinstance(config, dict):
-            raise InvalidRuleDefinitionError("config is not a dict")
-        config = DissectorRule.Config(**config)
-        return DissectorRule(filter_expression, config)
 
     def _set_mapping_actions(self):
         self.actions = []
