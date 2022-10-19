@@ -1,11 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
-from logprep.filter.lucene_filter import LuceneFilter
 
 import pytest
-
-pytest.importorskip("logprep.processor.clusterer")
-
 from logprep.processor.clusterer.rule import ClustererRule, ClustererRuleError
 
 

@@ -1,10 +1,9 @@
 """This module is used to get documents that match a clusterer filter."""
 
-from typing import List, Union, Dict, Pattern
+from typing import Pattern
 import re
 from attrs import define, field, validators
 
-from logprep.filter.expression.filter_expression import FilterExpression
 
 from logprep.processor.base.rule import Rule
 
