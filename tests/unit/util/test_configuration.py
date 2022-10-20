@@ -82,9 +82,16 @@ class TestConfiguration:
             "pipeline", [], '"pipeline" must contain at least one item!'
         )
 
-    def test_verify_verifies_connector_config(self):
+    def test_verify_verifies_input_config(self):
         self.assert_fails_when_replacing_key_with_value(
             "input",
+            {"random_name": {"type": "unknown"}},
+            "Invalid connector configuration: Unknown type 'unknown'",
+        )
+
+    def test_verify_verifies_output_config(self):
+        self.assert_fails_when_replacing_key_with_value(
+            "output",
             {"random_name": {"type": "unknown"}},
             "Invalid connector configuration: Unknown type 'unknown'",
         )
@@ -497,3 +504,19 @@ class TestConfiguration:
             assert errors_set == raised_errors, f"For test case '{test_case}'!"
         else:
             config._verify_metrics_config()
+
+    def test_verify_input_raises_missing_input_key(self):
+        config = deepcopy(self.config)
+        del config["input"]
+        with pytest.raises(
+            RequiredConfigurationKeyMissingError, match="Required option is missing: input"
+        ):
+            config._verify_input(logger)
+
+    def test_verify_output_raises_missing_output_key(self):
+        config = deepcopy(self.config)
+        del config["output"]
+        with pytest.raises(
+            RequiredConfigurationKeyMissingError, match="Required option is missing: output"
+        ):
+            config._verify_output(logger)
