@@ -6,8 +6,8 @@ from typing import List
 from colorama import Fore
 from yaml import safe_load
 
-from logprep.factory_error import FactoryError
 from logprep.factory import Factory
+from logprep.factory_error import FactoryError
 from logprep.factory_error import (
     UnknownComponentTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,
@@ -138,7 +138,11 @@ class Configuration(dict):
         except InvalidConfigurationError as error:
             errors.append(error)
         try:
-            self._verify_connector(logger)
+            self._verify_input(logger)
+        except InvalidConfigurationError as error:
+            errors.append(error)
+        try:
+            self._verify_output(logger)
         except InvalidConfigurationError as error:
             errors.append(error)
         try:
@@ -179,15 +183,21 @@ class Configuration(dict):
         if errors:
             raise InvalidConfigurationErrors(errors)
 
-    def _verify_connector(self, logger):
+    def _verify_input(self, logger):
         try:
             _ = Factory.create(self["input"], logger)
-            _ = Factory.create(self["output"], logger)
-
         except FactoryError as error:
             raise InvalidConnectorConfigurationError(str(error)) from error
         except KeyError as error:
-            raise RequiredConfigurationKeyMissingError("connector") from error
+            raise RequiredConfigurationKeyMissingError("input") from error
+
+    def _verify_output(self, logger):
+        try:
+            _ = Factory.create(self["output"], logger)
+        except FactoryError as error:
+            raise InvalidConnectorConfigurationError(str(error)) from error
+        except KeyError as error:
+            raise RequiredConfigurationKeyMissingError("output") from error
 
     def _verify_pipeline(self, logger: Logger):
         if not self.get("pipeline"):

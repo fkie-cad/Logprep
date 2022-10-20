@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
-import logging
 from copy import deepcopy
 from logging import getLogger
 
@@ -83,9 +82,16 @@ class TestConfiguration:
             "pipeline", [], '"pipeline" must contain at least one item!'
         )
 
-    def test_verify_verifies_connector_config(self):
+    def test_verify_verifies_input_config(self):
         self.assert_fails_when_replacing_key_with_value(
             "input",
+            {"random_name": {"type": "unknown"}},
+            "Invalid connector configuration: Unknown type 'unknown'",
+        )
+
+    def test_verify_verifies_output_config(self):
+        self.assert_fails_when_replacing_key_with_value(
+            "output",
             {"random_name": {"type": "unknown"}},
             "Invalid connector configuration: Unknown type 'unknown'",
         )
@@ -499,15 +505,18 @@ class TestConfiguration:
         else:
             config._verify_metrics_config()
 
-    def test_set_option_does_not_raise_deprecation_warning_on_new_hmac_option_position(
-        self, caplog
-    ):
+    def test_verify_input_raises_missing_input_key(self):
         config = deepcopy(self.config)
-        config["input"]["kafka_input"]["preprocessing"] = {
-            "hmac": {"target": "foo", "key": "bar", "output_field": "bu"}
-        }
+        del config["input"]
+        with pytest.raises(
+            RequiredConfigurationKeyMissingError, match="Required option is missing: input"
+        ):
+            config._verify_input(logger)
 
-        with caplog.at_level(logging.WARNING):
-            config._verify_connector(logger)
-
-        assert len(caplog.messages) == 0
+    def test_verify_output_raises_missing_output_key(self):
+        config = deepcopy(self.config)
+        del config["output"]
+        with pytest.raises(
+            RequiredConfigurationKeyMissingError, match="Required option is missing: output"
+        ):
+            config._verify_output(logger)
