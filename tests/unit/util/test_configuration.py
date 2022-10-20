@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
-import logging
 from copy import deepcopy
 from logging import getLogger
 
@@ -498,16 +497,3 @@ class TestConfiguration:
             assert errors_set == raised_errors, f"For test case '{test_case}'!"
         else:
             config._verify_metrics_config()
-
-    def test_set_option_does_not_raise_deprecation_warning_on_new_hmac_option_position(
-        self, caplog
-    ):
-        config = deepcopy(self.config)
-        config["input"]["kafka_input"]["preprocessing"] = {
-            "hmac": {"target": "foo", "key": "bar", "output_field": "bu"}
-        }
-
-        with caplog.at_level(logging.WARNING):
-            config._verify_connector(logger)
-
-        assert len(caplog.messages) == 0
