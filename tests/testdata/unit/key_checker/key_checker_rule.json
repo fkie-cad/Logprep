@@ -1,0 +1,7 @@
+[
+    {
+        "filter": "message",
+        "key_checker": {},
+        "description": "do nothing rule for dissector"
+    }
+]

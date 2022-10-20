@@ -1,0 +1,2 @@
+class TestKeyCheckerRule:
+    pass

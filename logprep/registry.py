@@ -25,6 +25,7 @@ from logprep.processor.generic_adder.processor import GenericAdder
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.geoip_enricher.processor import GeoipEnricher
 from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
+from logprep.processor.key_checker.processor import KeyChecker
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.list_comparison.processor import ListComparison
 from logprep.processor.normalizer.processor import Normalizer
@@ -51,6 +52,7 @@ class Registry:
         "generic_resolver": GenericResolver,
         "geoip_enricher": GeoipEnricher,
         "hyperscan_resolver": HyperscanResolver,
+        "key_checker": KeyChecker,
         "labeler": Labeler,
         "list_comparison": ListComparison,
         "normalizer": Normalizer,
