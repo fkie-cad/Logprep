@@ -2,7 +2,6 @@
     it is used to check if a processor is known to the system.
     you have to register new processors here by import them and add to `ProcessorRegistry.mapping`
 """
-import warnings
 
 from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
@@ -44,7 +43,6 @@ class Registry:
         "concatenator": Concatenator,
         "datetime_extractor": DatetimeExtractor,
         "deleter": Deleter,
-        "delete": Deleter,
         "dissector": Dissector,
         "domain_label_extractor": DomainLabelExtractor,
         "domain_resolver": DomainResolver,
@@ -87,9 +85,4 @@ class Registry:
         _type_
             _description_
         """
-        if component_type == "delete":
-            warnings.warn(
-                "delete processor is deprecated and will be removed in a future release. Please use deleter instead.",
-                UserWarning,
-            )
         return cls.mapping.get(component_type)
