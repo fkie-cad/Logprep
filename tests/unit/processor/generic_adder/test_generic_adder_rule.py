@@ -1,8 +1,10 @@
 # pylint: disable=missing-docstring
+from typing import Hashable
 import pytest
 
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.filter.lucene_filter import LuceneFilter
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 
 pytest.importorskip("logprep.processor.normalizer")
 
@@ -86,12 +88,22 @@ class TestGenericAdderRule:
         other_rule_definition,
         is_equal,
     ):
-        rule1 = GenericAdderRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["generic_adder"],
-        )
-        rule2 = GenericAdderRule(
-            LuceneFilter.create(other_rule_definition["filter"]),
-            other_rule_definition["generic_adder"],
-        )
+        rule1 = GenericAdderRule._create_from_dict(specific_rule_definition)
+        rule2 = GenericAdderRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
+
+    # @pytest.mark.parametrize(
+    #     "rule_definition, raised, message",
+    #     [{"filter": "message", "generic_adder": {"add": {" "}}}],
+    # )
+    # def test_rule_create_from_dict(self, rule_definition, raised, message):
+    #     if raised:
+    #         with pytest.raises(raised, match=message):
+    #             _ = GenericAdderRule._create_from_dict(rule_definition)
+    #     else:
+    #         extractor_rule = GenericAdderRule._create_from_dict(rule_definition)
+    #         assert isinstance(extractor_rule, GenericAdderRule)
+
+    # def test_rule_is_hashable(self, specific_rule_definition):
+    #     rule = GenericAdderRule._create_from_dict(specific_rule_definition)
+    #     assert isinstance(rule, Hashable)
