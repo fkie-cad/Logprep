@@ -1,78 +1,63 @@
 """This module is used to resolve field values from documents via a list."""
+from attrs import define, field, validators
 
-from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
-
-
-class GenericResolverRuleError(InvalidRuleDefinitionError):
-    """Base class for GenericResolver rule related exceptions."""
-
-    def __init__(self, message: str):
-        super().__init__(f"GenericResolver rule ({message}): ")
-
-
-class InvalidGenericResolverDefinition(GenericResolverRuleError):
-    """Raise if GenericResolver definition invalid."""
-
-    def __init__(self, definition):
-        message = f"The following GenericResolver definition is invalid: {definition}"
-        super().__init__(message)
+from logprep.processor.base.rule import Rule
 
 
 class GenericResolverRule(Rule):
     """Check if documents match a filter."""
 
-    def __init__(self, filter_rule: FilterExpression, generic_resolver_cfg: dict):
-        super().__init__(filter_rule)
+    @define(kw_only=True)
+    class Config:
+        """RuleConfig for GenericResolver"""
 
-        self._field_mapping = generic_resolver_cfg["field_mapping"]
-        self._resolve_list = generic_resolver_cfg.get("resolve_list", {})
-        self._resolve_from_file = generic_resolver_cfg.get("resolve_from_file", {})
-        self._append_to_list = generic_resolver_cfg.get("append_to_list", False)
-
-    def __eq__(self, other: "GenericResolverRule") -> bool:
-        return all(
-            [
-                other.filter == self._filter,
-                self._field_mapping == other.field_mapping,
-                self._resolve_list == other.resolve_list,
-                self._resolve_from_file == other.resolve_from_file,
-                self._append_to_list == other.append_to_list,
+        field_mapping: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
             ]
         )
+        resolve_list: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        resolve_from_file: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.in_(["path", "pattern"]),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        append_to_list: bool = field(validator=validators.instance_of(bool), default=False)
 
-    # pylint: disable=C0111
     @property
     def field_mapping(self) -> dict:
-        return self._field_mapping
+        """Returns the field mapping"""
+        return self._config.field_mapping
 
     @property
     def resolve_list(self) -> dict:
-        return self._resolve_list
+        """Returns the resolve list"""
+        return self._config.resolve_list
 
     @property
     def resolve_from_file(self) -> dict:
-        return self._resolve_from_file
+        """Returns the resolve file"""
+        return self._config.resolve_from_file
 
     @property
     def append_to_list(self) -> bool:
-        return self._append_to_list
-
-    # pylint: enable=C0111
-
-    @staticmethod
-    def _create_from_dict(rule: dict) -> "GenericResolverRule":
-        GenericResolverRule._check_rule_validity(rule, "generic_resolver")
-        GenericResolverRule._check_if_valid(rule)
-
-        filter_expression = Rule._create_filter_expression(rule)
-        return GenericResolverRule(filter_expression, rule["generic_resolver"])
-
-    @staticmethod
-    def _check_if_valid(rule: dict):
-        generic_resolver_cfg = rule["generic_resolver"]
-        for field in ("field_mapping",):
-            if not isinstance(generic_resolver_cfg[field], dict):
-                raise InvalidGenericResolverDefinition(
-                    f'"{field}" value "{generic_resolver_cfg[field]}" is not a string!'
-                )
+        """Returns if it should append to a list"""
+        return self._config.append_to_list

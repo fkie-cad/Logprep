@@ -4,10 +4,7 @@
 # pylint: disable=wrong-import-order
 import pytest
 
-from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-
-pytest.importorskip("logprep.processor.normalizer")
 
 
 @pytest.fixture(name="specific_rule_definition")
@@ -158,12 +155,6 @@ class TestGenericResolverRule:
     def test_rules_equality(
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule1 = GenericResolverRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["generic_resolver"],
-        )
-        rule2 = GenericResolverRule(
-            LuceneFilter.create(other_rule_definition["filter"]),
-            other_rule_definition["generic_resolver"],
-        )
+        rule1 = GenericResolverRule._create_from_dict(specific_rule_definition)
+        rule2 = GenericResolverRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
