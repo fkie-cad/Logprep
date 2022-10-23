@@ -2,14 +2,12 @@
 
 import re
 from os.path import isfile
-from typing import Any, Union, List
+from typing import Any
 from attrs import define, field, validators
 
 from ruamel.yaml import YAML
 
-from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
-from logprep.util.validators import list_of_files_validator
 
 yaml = YAML(typ="safe", pure=True)
 
