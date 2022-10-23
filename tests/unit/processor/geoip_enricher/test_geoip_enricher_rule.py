@@ -1,10 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
-from unittest import mock
 
 import pytest
-from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 
 
