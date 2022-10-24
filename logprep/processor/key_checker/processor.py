@@ -48,11 +48,11 @@ class KeyChecker(Processor):
                 not_existing_fields.append(dotted_field)
 
         if not_existing_fields:
-            error_field = get_dotted_field_value(event=event, dotted_field="error_field")
-            if error_field:
-                merged_lists = list(set(error_field).union(set(not_existing_fields)))
+            output_field = get_dotted_field_value(event=event, dotted_field="output_field")
+            if output_field:
+                merged_lists = list(set(output_field).union(set(not_existing_fields)))
                 merged_lists.sort()
-                add_field_to(event, rule.error_field, merged_lists)
+                add_field_to(event, rule.output_field, merged_lists)
             else:
                 not_existing_fields.sort()
-                add_field_to(event, rule.error_field, not_existing_fields)
+                add_field_to(event, rule.output_field, not_existing_fields)

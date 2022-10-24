@@ -15,7 +15,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": ["key1", "key2", "key1.key2"],
-                        "error_field": "",
+                        "output_field": "",
                     },
                 },
                 None,
@@ -26,7 +26,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": ["key1"],
-                        "error_field": "",
+                        "output_field": "",
                     },
                 },
                 None,
@@ -37,7 +37,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": ["key1.key2"],
-                        "error_field": "",
+                        "output_field": "",
                     },
                 },
                 None,
@@ -46,14 +46,14 @@ class TestKeyCheckerRule:
             (
                 {"filter": "message", "key_checker": {}},
                 TypeError,
-                "missing 2 required keyword-only arguments: 'key_list' and 'error_field'",
+                "missing 2 required keyword-only arguments: 'key_list' and 'output_field'",
             ),
             (
                 {
                     "filter": "message",
                     "key_checker": {
                         "key_list": [],
-                        "error_field": "",
+                        "output_field": "",
                     },
                 },
                 ValueError,
@@ -64,7 +64,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": "not a list",
-                        "error_field": "",
+                        "output_field": "",
                     },
                 },
                 TypeError,
@@ -75,7 +75,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": [1, 2, 3],
-                        "error_field": False,
+                        "output_field": "",
                     },
                 },
                 TypeError,

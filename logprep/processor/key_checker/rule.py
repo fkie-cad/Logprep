@@ -34,7 +34,7 @@ class KeyCheckerRule(Rule):
             ]
         )
 
-        error_field: str = field(validator=validators.instance_of(str))
+        output_field: str = field(validator=validators.instance_of(str))
 
     def __eq__(self, other: "KeyCheckerRule") -> bool:
         return all([other.filter == self._filter, other._config == self._config])
@@ -48,8 +48,8 @@ class KeyCheckerRule(Rule):
         return self._config.key_list
 
     @property
-    def error_field(self) -> str:  # pylint: disable=missing-docstring
-        return self._config.error_field
+    def output_field(self) -> str:  # pylint: disable=missing-docstring
+        return self._config.output_field
 
     @staticmethod
     def _create_from_dict(rule: dict) -> "KeyCheckerRule":
