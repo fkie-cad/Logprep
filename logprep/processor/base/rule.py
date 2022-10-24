@@ -95,7 +95,7 @@ class Rule:
     @classmethod
     def _create_from_dict(cls, rule: dict) -> "Rule":
         filter_expression = Rule._create_filter_expression(rule)
-        rule_type = camel_to_snake(cls.__name__.strip("Rule"))
+        rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
         config = rule.get(rule_type)
         if config is None:
             raise InvalidRuleDefinitionError(f"config not under key {rule_type}")
