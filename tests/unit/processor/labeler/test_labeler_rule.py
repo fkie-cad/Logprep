@@ -11,7 +11,7 @@ from pytest import raises, fail
 from logprep.filter.expression.filter_expression import StringFilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
-from logprep.processor.labeler.rule import LabelingRule
+from logprep.processor.labeler.rule import LabelerRule
 from tests.testdata.FilledTempFile import JsonTempFile
 from tests.testdata.ruledata import (
     simple_rule,
@@ -39,16 +39,16 @@ class MockLabelingSchema(LabelingSchema):
 class TestRule:
     def setup_class(self):
         with JsonTempFile(simple_rule) as rule_path:
-            self.rule = list(LabelingRule.create_rules_from_file(rule_path))[0]
+            self.rule = list(LabelerRule.create_rules_from_file(rule_path))[0]
 
         with JsonTempFile(simple_regex_rule) as rule_path:
-            self.regex_rule = list(LabelingRule.create_rules_from_file(rule_path))[0]
+            self.regex_rule = list(LabelerRule.create_rules_from_file(rule_path))[0]
 
         with JsonTempFile(complex_regex_rule) as rule_path:
-            self.complex_regex_rule = list(LabelingRule.create_rules_from_file(rule_path))[0]
+            self.complex_regex_rule = list(LabelerRule.create_rules_from_file(rule_path))[0]
 
         with JsonTempFile(null_rule) as rule_path:
-            self.null_rule = list(LabelingRule.create_rules_from_file(rule_path))[0]
+            self.null_rule = list(LabelerRule.create_rules_from_file(rule_path))[0]
 
     def test_create_from_file_fails_if_document_contains_unexpected_field(self):
         for unexpected_field in ["filters", "labels", "unexpected", "whatever"]:
@@ -57,12 +57,12 @@ class TestRule:
 
             with raises(InvalidRuleDefinitionError):
                 with JsonTempFile([invalid_rule_dict]) as rule_path:
-                    LabelingRule.create_rules_from_file(rule_path)
+                    LabelerRule.create_rules_from_file(rule_path)
 
     def test_create_from_file_fails_if_document_does_not_contain_filter_and_label(self):
         with raises(InvalidRuleDefinitionError):
             with JsonTempFile({}) as rule_path:
-                LabelingRule.create_rules_from_file(rule_path)
+                LabelerRule.create_rules_from_file(rule_path)
 
         for missing_field in ["filter", "label"]:
             invalid_rule_dict = deepcopy(simple_rule_dict)
@@ -70,7 +70,7 @@ class TestRule:
 
             with raises(InvalidRuleDefinitionError):
                 with JsonTempFile([invalid_rule_dict]) as rule_path:
-                    LabelingRule.create_rules_from_file(rule_path)
+                    LabelerRule.create_rules_from_file(rule_path)
 
     def test_create_from_file_creates_expected_rule(self):
         assert self.rule._filter == StringFilterExpression(["applyrule"], "yes")
@@ -82,21 +82,21 @@ class TestRule:
             invalid_rule_dict[unexpected_field] = "value"
 
             with raises(InvalidRuleDefinitionError):
-                LabelingRule._create_from_dict(invalid_rule_dict)
+                LabelerRule._create_from_dict(invalid_rule_dict)
 
     def test_create_from_dict_fails_if_document_does_not_contain_filter_and_label(self):
         with raises(InvalidRuleDefinitionError):
-            LabelingRule._create_from_dict({})
+            LabelerRule._create_from_dict({})
 
         for missing_field in ["filter", "label"]:
             invalid_rule_dict = deepcopy(simple_rule_dict)
             del invalid_rule_dict[missing_field]
 
             with raises(InvalidRuleDefinitionError):
-                LabelingRule._create_from_dict(invalid_rule_dict)
+                LabelerRule._create_from_dict(invalid_rule_dict)
 
     def test_create_from_dict_creates_expected_rule(self):
-        rule = LabelingRule._create_from_dict(simple_rule_dict)
+        rule = LabelerRule._create_from_dict(simple_rule_dict)
 
         assert rule._filter == StringFilterExpression(["applyrule"], "yes")
         assert rule._label == simple_rule_dict["label"]
@@ -117,7 +117,7 @@ class TestRule:
 
         try:
             with JsonTempFile([rule_with_description]) as rule_path:
-                self.rule = LabelingRule.create_rules_from_file(rule_path)[0]
+                self.rule = LabelerRule.create_rules_from_file(rule_path)[0]
         except InvalidRuleDefinitionError:
             fail("Rules with description field should be accepted as valid rules.")
 
@@ -132,24 +132,24 @@ class TestRule:
             assert not self.rule.matches(document)
 
     def test_rules_are_different_if_their_filters_differ(self):
-        rule1 = LabelingRule._create_from_dict(simple_rule_dict)
+        rule1 = LabelerRule._create_from_dict(simple_rule_dict)
         rule2_dict = deepcopy(simple_rule_dict)
         rule2_dict["filter"] = 'applyrule: "no"'
-        rule2 = LabelingRule._create_from_dict(rule2_dict)
+        rule2 = LabelerRule._create_from_dict(rule2_dict)
 
         assert rule1 != rule2
 
     def test_rules_are_different_if_their_assigned_labels_differ(self):
-        rule1 = LabelingRule._create_from_dict(simple_rule_dict)
+        rule1 = LabelerRule._create_from_dict(simple_rule_dict)
         rule2_dict = deepcopy(simple_rule_dict)
         rule2_dict["label"]["reporter"] = ["mac"]
-        rule2 = LabelingRule._create_from_dict(rule2_dict)
+        rule2 = LabelerRule._create_from_dict(rule2_dict)
 
         assert rule1 != rule2
 
     def test_rules_are_equal_if_their_filters_and_labes_are_the_same(self):
-        rule1 = LabelingRule._create_from_dict(simple_rule_dict)
-        rule2 = LabelingRule._create_from_dict(deepcopy(simple_rule_dict))
+        rule1 = LabelerRule._create_from_dict(simple_rule_dict)
+        rule2 = LabelerRule._create_from_dict(deepcopy(simple_rule_dict))
 
         assert rule1 == rule2
 
@@ -158,11 +158,11 @@ class TestRule:
     ):
         rule_dict1 = deepcopy(simple_rule_dict)
         rule_dict1["description"] = "This is the first description"
-        rule1 = LabelingRule._create_from_dict(rule_dict1)
+        rule1 = LabelerRule._create_from_dict(rule_dict1)
 
         rule_dict2 = deepcopy(simple_rule_dict)
         rule_dict2["description"] = "This is the second description"
-        rule2 = LabelingRule._create_from_dict(rule_dict2)
+        rule2 = LabelerRule._create_from_dict(rule_dict2)
 
         assert rule1 == rule2
 

@@ -5,14 +5,14 @@ from logprep.processor.base.rule import Rule
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 
 
-class LabelingRule(Rule):
+class LabelerRule(Rule):
     """Check if documents match a filter and add labels them."""
 
     def __init__(self, filter_rule: FilterExpression, label: dict):
         super().__init__(filter_rule)
         self._label = label
 
-    def __eq__(self, other: "LabelingRule"):
+    def __eq__(self, other: "LabelerRule"):
         return all([self._filter == other.filter, self._label == other.label])
 
     # pylint: disable=C0111
@@ -23,11 +23,11 @@ class LabelingRule(Rule):
     # pylint: enable=C0111
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> "LabelingRule":
-        LabelingRule._check_rule_validity(rule, "label")
+    def _create_from_dict(rule: dict) -> "LabelerRule":
+        LabelerRule._check_rule_validity(rule, "label")
 
         filter_expression = Rule._create_filter_expression(rule)
-        return LabelingRule(filter_expression, rule["label"])
+        return LabelerRule(filter_expression, rule["label"])
 
     def conforms_to_schema(self, schema: LabelingSchema) -> bool:
         """Check if labels are valid."""
