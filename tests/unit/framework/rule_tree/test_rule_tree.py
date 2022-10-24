@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 # pylint: disable=line-too-long
+
 from logprep.filter.expression.filter_expression import Exists, StringFilterExpression
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_tree import RuleTree
@@ -108,7 +109,7 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"winlog": "123"}) == {rule}
+        assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
 
     def test_match_complex_case(self):
         rule_tree = RuleTree()
@@ -126,10 +127,10 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"winlog": "123", "test": "Good"}) == {rule}
-        assert rule_tree.get_matching_rules({"winlog": "123", "test": "Okay"}) == {rule}
-        assert rule_tree.get_matching_rules({"winlog": "123", "test": "Bad"}) == {rule}
-        assert rule_tree.get_matching_rules({"foo": "bar"}) == {rule}
+        assert rule_tree.get_matching_rules({"winlog": "123", "test": "Good"}) == [rule]
+        assert rule_tree.get_matching_rules({"winlog": "123", "test": "Okay"}) == [rule]
+        assert rule_tree.get_matching_rules({"winlog": "123", "test": "Bad"}) == [rule]
+        assert rule_tree.get_matching_rules({"foo": "bar"}) == [rule]
 
     def test_match_event_matches_multiple_rules(self):
         rule_tree = RuleTree()
@@ -160,11 +161,8 @@ class TestRuleTree:
             }
         )
         rule_tree.add_rule(rule2)
-
-        assert rule_tree.get_matching_rules({"winlog": "123", "test": "Good", "foo": "bar"}) == {
-            rule,
-            rule2,
-        }
+        matchings_rules = rule_tree.get_matching_rules({"winlog": "123", "test": "Good", "foo": "bar"})
+        assert matchings_rules == [rule, rule2]
 
     def test_match_rule_once_with_conjunction_like_sub_rule(self):
         rule_tree = RuleTree()
@@ -182,7 +180,7 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"winlog": "123"}) == {rule}
+        assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
 
     def test_match_rule_once_with_conjunction_same(self):
         rule_tree = RuleTree()
@@ -200,7 +198,7 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"winlog": "123"}) == {rule}
+        assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
 
     def test_match_rule_once_with_conjunction_both_match(self):
         rule_tree = RuleTree()
@@ -218,7 +216,7 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"foo": "123", "bar": "123"}) == {rule}
+        assert rule_tree.get_matching_rules({"foo": "123", "bar": "123"}) == [rule]
 
     def test_match_rule_with_conjunction_for_different_events(self):
         rule_tree = RuleTree()
@@ -236,8 +234,8 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"winlog": "123"}) == {rule}
-        assert rule_tree.get_matching_rules({"winlog": "456"}) == {rule}
+        assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
+        assert rule_tree.get_matching_rules({"winlog": "456"}) == [rule]
 
     def test_match_two_identical_rules(self):
         rule_tree = RuleTree()
@@ -256,7 +254,29 @@ class TestRuleTree:
         rule_tree.add_rule(rule)
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"winlog": "123"}) == {rule}
+        assert rule_tree.get_matching_rules({"winlog": "123"}) == [rule]
+
+    def test_get_matching_rules_has_deterministic_order(self):
+        rule_tree = RuleTree()
+        test_rules = 5
+        for i in range(test_rules):
+            rule = PreDetectorRule._create_from_dict(
+                {
+                    "filter": "foo: 123 OR bar: 123",
+                    "pre_detector": {
+                        "id": i,
+                        "title": f"{i}",
+                        "severity": "0",
+                        "case_condition": "directly",
+                        "mitre": [],
+                    },
+                }
+            )
+            rule_tree.add_rule(rule)
+
+        matching_rules = rule_tree.get_matching_rules({"foo": "123", "bar": "123"})
+        rule_ids = [rule.detection_data["id"] for rule in matching_rules]
+        assert rule_ids == list(range(test_rules))
 
     def test_match_exists_filter_is_subfield(self):
         rule_tree = RuleTree()
@@ -273,7 +293,7 @@ class TestRuleTree:
             }
         )
         rule_tree.add_rule(rule)
-        assert rule_tree.get_matching_rules({"foo": {"bar": "123"}}) == {rule}
+        assert rule_tree.get_matching_rules({"foo": {"bar": "123"}}) == [rule]
 
         rule = PreDetectorRule._create_from_dict(
             {
@@ -288,7 +308,7 @@ class TestRuleTree:
             }
         )
         rule_tree.add_rule(rule)
-        assert rule_tree.get_matching_rules({"foo": {"bar": {"test": "123"}}}) == {rule}
+        assert rule_tree.get_matching_rules({"foo": {"bar": {"test": "123"}}}) == [rule]
 
         rule = PreDetectorRule._create_from_dict(
             {
@@ -304,9 +324,7 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"abc": "DEF", "foo": {"bar": {"test": "567"}}}) == {
-            rule
-        }
+        assert rule_tree.get_matching_rules({"abc": "DEF", "foo": {"bar": {"test": "567"}}}) == [rule]
 
     def test_match_including_tags(self):
         tag_map = {"winlog": "WINDOWS"}
@@ -388,7 +406,7 @@ class TestRuleTree:
         )
         rule_tree.add_rule(subrule)
 
-        assert rule_tree.get_matching_rules({"EventID": "1", "winlog": "123"}) == {subrule, rule}
+        assert rule_tree.get_matching_rules({"EventID": "1", "winlog": "123"}) == [subrule, rule]
 
     def test_get_size(self):
         rule_tree = RuleTree()

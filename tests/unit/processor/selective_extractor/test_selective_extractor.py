@@ -94,7 +94,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         assert len(rule_trees) > 0
         for tree in rule_trees:
             matching_rules = tree.get_matching_rules({"message": "the message"})
-            assert isinstance(matching_rules, set)
+            assert isinstance(matching_rules, list)
             assert len(matching_rules) > 0
 
     def test_apply_rules_is_called(self):
