@@ -1,7 +1,14 @@
 [
     {
-        "filter": "message",
-        "key_checker": {},
-        "description": "do nothing rule for dissector"
+        "filter": "*",
+        "key_checker": {
+            "key_list": [
+                "key1",
+                "key2",
+                "key1.key2"
+            ],
+            "error_field": "error_field"
+        },
+        "description": "rule for key_checker"
     }
 ]
