@@ -23,8 +23,6 @@ class Rule:
     class Config:
         """Config for Rule"""
 
-        pass
-
     @define(kw_only=True)
     class RuleMetrics(Metric):
         """Tracks statistics about the current rule"""
@@ -124,6 +122,8 @@ class Rule:
     @classmethod
     def _create_filter_expression(cls, rule: dict) -> FilterExpression:
         special_fields = cls._get_special_fields_for_rule_matching(rule)
+        if not "filter" in rule:
+            raise InvalidRuleDefinitionError("no filter defined")
         return LuceneFilter.create(rule["filter"], special_fields)
 
     @staticmethod
