@@ -161,7 +161,9 @@ class TestRuleTree:
             }
         )
         rule_tree.add_rule(rule2)
-        matchings_rules = rule_tree.get_matching_rules({"winlog": "123", "test": "Good", "foo": "bar"})
+        matchings_rules = rule_tree.get_matching_rules(
+            {"winlog": "123", "test": "Good", "foo": "bar"}
+        )
         assert matchings_rules == [rule, rule2]
 
     def test_match_rule_once_with_conjunction_like_sub_rule(self):
@@ -324,7 +326,10 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.get_matching_rules({"abc": "DEF", "foo": {"bar": {"test": "567"}}}) == [rule]
+        matching_rules = rule_tree.get_matching_rules(
+            {"abc": "DEF", "foo": {"bar": {"test": "567"}}}
+        )
+        assert matching_rules == [rule]
 
     def test_match_including_tags(self):
         tag_map = {"winlog": "WINDOWS"}
