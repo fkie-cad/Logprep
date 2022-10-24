@@ -88,13 +88,23 @@ class NormalizerRule(Rule):
     extract_field_pattern = re.compile(r"%{(\w+):([\w\[\]]+)(?::\w+)?}")
     sub_fields_pattern = re.compile(r"(\[(\w+)\])")
 
+    # pylint: disable=super-init-not-called
+    # TODO: this is not refactored, because this processor should be dissected
     def __init__(self, filter_rule: FilterExpression, normalizations: dict):
-        super().__init__(filter_rule)
+        self.__class__.__hash__ = Rule.__hash__
+        self.filter_str = str(filter_rule)
+        self._filter = filter_rule
+        self._special_fields = None
+        self.file_name = None
+        self._tests = []
+        self.metrics = self.RuleMetrics(labels={"type": "rule"})
         self._substitutions = {}
         self._grok = {}
         self._timestamps = {}
 
         self._parse_normalizations(normalizations)
+
+    # pylint: enable=super-init-not-called
 
     def _parse_normalizations(self, normalizations):
         for source_field, normalization in normalizations.items():

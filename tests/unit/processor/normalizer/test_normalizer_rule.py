@@ -1,9 +1,8 @@
-from logprep.filter.lucene_filter import LuceneFilter
+# pylint: disable=missing-docstring
 
 import pytest
 
-pytest.importorskip("logprep.processor.normalizer")
-
+from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.normalizer.rule import NormalizerRule
 
 
