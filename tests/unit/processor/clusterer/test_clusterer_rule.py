@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 
 import pytest
-from logprep.processor.clusterer.rule import ClustererRule, ClustererRuleError
+from logprep.processor.clusterer.rule import ClustererRule
 
 
 @pytest.fixture()
@@ -25,15 +25,6 @@ class TestClustererRule:
         rule2 = ClustererRule._create_from_dict(rule_definition)
 
         assert rule1 == rule2
-
-    def test_if_clusterer_data_valid(self, rule_definition):
-        rule_definition["clusterer"]["target"] = None
-        with pytest.raises(ClustererRuleError, match=r"is not a string"):
-            ClustererRule._check_if_clusterer_data_valid(rule_definition)
-
-        del rule_definition["clusterer"]["target"]
-        with pytest.raises(ClustererRuleError, match=r"is missing in Clusterer-Rule"):
-            ClustererRule._check_if_clusterer_data_valid(rule_definition)
 
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
