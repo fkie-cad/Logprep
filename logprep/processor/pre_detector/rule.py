@@ -2,14 +2,7 @@
 
 from attrs import define, field, validators, asdict
 
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
-
-
-class PreDetectorRuleError(InvalidRuleDefinitionError):
-    """Base class for pre-detector rule related exceptions."""
-
-    def __init__(self, message: str):
-        super().__init__(f"PreDetector rule ({message}): ")
+from logprep.processor.base.rule import Rule
 
 
 class PreDetectorRule(Rule):
