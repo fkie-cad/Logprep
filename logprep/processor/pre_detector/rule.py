@@ -1,9 +1,7 @@
 """This module is used to get documents that match a pre-detector filter."""
 
-from typing import Optional
 from attrs import define, field, validators, asdict
 
-from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 
 
