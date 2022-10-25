@@ -19,7 +19,7 @@ class PreDetectorRule(Rule):
     class Config(Rule.Config):
         """RuleConfig for Predetector"""
 
-        id: str = field(validator=validators.instance_of(str), converter=str)
+        id: str = field(validator=validators.instance_of((str, int)))
         title: str = field(validator=validators.instance_of(str))
         severity: str = field(validator=validators.instance_of(str))
         mitre: list = field(validator=validators.instance_of(list))
