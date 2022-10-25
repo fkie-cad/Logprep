@@ -1,6 +1,7 @@
 """This module is used to get documents that match a clusterer filter."""
 
 import re
+from typing import Pattern
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule
@@ -14,9 +15,7 @@ class ClustererRule(Rule):
         """RuleConfig for Clusterer"""
 
         target: str = field(validator=validators.instance_of(str))
-        pattern: re.Pattern = field(
-            validator=validators.instance_of(re.Pattern), converter=re.compile
-        )
+        pattern: Pattern = field(validator=validators.instance_of(Pattern), converter=re.compile)
         repl: str = field(validator=validators.instance_of(str))
 
     # pylint: disable=C0111
@@ -25,7 +24,7 @@ class ClustererRule(Rule):
         return self._config.target
 
     @property
-    def pattern(self) -> re.Pattern:
+    def pattern(self) -> Pattern:
         return self._config.pattern
 
     @property
