@@ -128,3 +128,10 @@ Processors
    :undoc-members:
    :inherited-members:
    :noindex:
+
+.. automodule:: logprep.processor.key_checker.processor
+.. autoclass:: logprep.processor.key_checker.processor.KeyChecker.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:

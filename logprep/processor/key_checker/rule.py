@@ -3,8 +3,43 @@ KeyCheckerRule
 ------------
 
 The `key_checker` processor needs a list with atleast one element in it.
+The Rule contains this list and it also contains a missing field where the processor
+can store all missing keys.
 
+..  code-block:: yaml
+    :linenos:
+    :caption: Given key_checker rule
+
+    filter: *
+    key_checker: {
+            key_list: [
+                "key1",
+                "key2",
+            ],
+            output_field: "missing_fields"
+        },
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incoming event
+
+    {
+        testkey: "key1_value",
+        _index: "value",
+    }
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    {
+        testkey: "key1_value",
+        _index: "value",
+        missing_fields: "key1","key2"
+    }
 """
+
 from functools import partial
 
 from attrs import define, field, validators

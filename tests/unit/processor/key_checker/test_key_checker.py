@@ -132,6 +132,55 @@ test_cases = [  # testcase, rule, event, expected
             }
         },
     ),
+    (
+        "Detect key duplication",
+        {
+            "filter": "*",
+            "key_checker": {
+                "key_list": ["key1", "key1"],
+                "output_field": "missing_fields",
+            },
+        },
+        {
+            "randomkey": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+        },
+        {
+            "randomkey": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+            "missing_fields": ["key1"],
+        },
+    ),
+    (
+        "Detect key duplication2",
+        {
+            "filter": "*",
+            "key_checker": {
+                "key_list": ["key1", "key1"],
+                "output_field": "missing_fields",
+            },
+        },
+        {
+            "key1": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+        },
+        {
+            "key1": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+        },
+    ),
 ]
 
 

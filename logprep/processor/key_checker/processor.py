@@ -3,7 +3,19 @@ KeyChecker
 ------------
 
 The `key_checker` processor checks for an event if all field-names in
-the given list are in the Event. If thats not the case it......
+the given list are in the Event.
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - keycheckername:
+        type: key_checker
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
 
 """
 
@@ -20,18 +32,23 @@ class KeyChecker(Processor):
 
     def _apply_rules(self, event, rule):
 
-        not_existing_fields = []
+        not_existing_fields = set([])
 
         for dotted_field in rule.key_list:
             if not self._field_exists(event=event, dotted_field=dotted_field):
-                not_existing_fields.append(dotted_field)
+                not_existing_fields.add(dotted_field)
 
         if not_existing_fields:
             output_field = get_dotted_field_value(event=event, dotted_field="output_field")
             if output_field:
-                merged_lists = list(set(output_field).union(set(not_existing_fields)))
-                merged_lists.sort()
-                add_field_to(event, rule.output_field, merged_lists)
+                missing_fields = list(set(output_field).union(not_existing_fields))
+                missing_fields.sort()
+                add_field_to(
+                    event,
+                    rule.output_field,
+                    missing_fields,
+                )
             else:
-                not_existing_fields.sort()
-                add_field_to(event, rule.output_field, not_existing_fields)
+                missing_fields = list(not_existing_fields)
+                missing_fields.sort()
+                add_field_to(event, rule.output_field, missing_fields)

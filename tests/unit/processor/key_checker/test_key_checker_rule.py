@@ -15,7 +15,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": ["key1", "key2", "key1.key2"],
-                        "output_field": "",
+                        "output_field": "missing_fields",
                     },
                 },
                 None,
@@ -26,7 +26,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": ["key1"],
-                        "output_field": "",
+                        "output_field": "missing_fields",
                     },
                 },
                 None,
@@ -37,7 +37,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": ["key1.key2"],
-                        "output_field": "",
+                        "output_field": "missing_fields",
                     },
                 },
                 None,
@@ -53,7 +53,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": [],
-                        "output_field": "",
+                        "output_field": "missing_fields",
                     },
                 },
                 ValueError,
@@ -64,7 +64,7 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": "not a list",
-                        "output_field": "",
+                        "output_field": "missing_fields",
                     },
                 },
                 TypeError,
@@ -75,11 +75,21 @@ class TestKeyCheckerRule:
                     "filter": "message",
                     "key_checker": {
                         "key_list": [1, 2, 3],
-                        "output_field": "",
+                        "output_field": "missing_fields",
                     },
                 },
                 TypeError,
                 "'key_list' must be <class 'str'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "key_checker": {
+                        "key_list": ["key1"],
+                    },
+                },
+                TypeError,
+                "missing 1 required keyword-only argument: 'output_field'",
             ),
         ],
     )
@@ -93,3 +103,67 @@ class TestKeyCheckerRule:
             for key, value in rule.get("key_checker").items():
                 assert hasattr(keychecker_rule._config, key)
                 assert value == getattr(keychecker_rule._config, key)
+
+    @pytest.mark.parametrize(
+        ["testcase", "rule1", "rule2", "equality"],
+        [
+            (
+                "should be equal, because only the name has changed",
+                {
+                    "filter": "*",
+                    "key_checker": {
+                        "key_list": ["key1"],
+                        "output_field": "",
+                    },
+                },
+                {
+                    "filter": "*",
+                    "key_checker": {
+                        "key_list": ["key2"],
+                        "output_field": "missing_fields",
+                    },
+                },
+                True,
+            ),
+            (
+                "should be equal, because only the order has changed",
+                {
+                    "filter": "*",
+                    "key_checker": {
+                        "key_list": ["key1", "key2"],
+                        "output_field": "",
+                    },
+                },
+                {
+                    "filter": "*",
+                    "key_checker": {
+                        "key_list": ["key2", "key1"],
+                        "output_field": "missing_fields",
+                    },
+                },
+                True,
+            ),
+            (
+                "should not be equal, because the keys are different",
+                {
+                    "filter": "*",
+                    "key_checker": {
+                        "key_list": ["key1.key2"],
+                        "output_field": "missing_fields",
+                    },
+                },
+                {
+                    "filter": "*",
+                    "key_checker": {
+                        "key_list": ["key1"],
+                        "output_field": "missing_fields",
+                    },
+                },
+                False,
+            ),
+        ],
+    )
+    def test_equality(self, testcase, rule1, rule2, equality):
+        rule1 = KeyCheckerRule._create_from_dict(rule1)
+        rule2 = KeyCheckerRule._create_from_dict(rule2)
+        assert (rule1 == rule2) == equality, testcase
