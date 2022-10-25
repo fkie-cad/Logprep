@@ -9,7 +9,7 @@ import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.factory import Factory
 from logprep.processor.pseudonymizer.rule import PseudonymizeRule
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 CAP_GROUP_REGEX_MAPPING = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
 

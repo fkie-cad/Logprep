@@ -10,7 +10,7 @@ from requests import Response
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.factory import Factory
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
 TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"

@@ -19,7 +19,7 @@ from logprep.processor.normalizer.rule import (
     NormalizerRule,
 )
 from logprep.factory import Factory
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestNormalizer(BaseProcessorTestCase):

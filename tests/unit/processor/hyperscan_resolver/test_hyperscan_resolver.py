@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("hyperscan")
 
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 from logprep.processor.hyperscan_resolver.rule import (
     InvalidHyperscanResolverDefinition,

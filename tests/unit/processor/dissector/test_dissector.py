@@ -2,7 +2,7 @@
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
     (

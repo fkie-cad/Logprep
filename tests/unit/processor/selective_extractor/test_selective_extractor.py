@@ -4,7 +4,7 @@ import uuid
 from unittest import mock
 
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):

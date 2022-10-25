@@ -5,7 +5,7 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.processor.template_replacer.processor import TemplateReplacerError
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestTemplateReplacer(BaseProcessorTestCase):

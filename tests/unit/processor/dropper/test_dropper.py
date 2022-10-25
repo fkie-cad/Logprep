@@ -3,7 +3,7 @@
 from unittest import mock
 
 from logprep.processor.dropper.processor import Dropper
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDropper(BaseProcessorTestCase):

@@ -14,7 +14,7 @@ from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelRule
 from logprep.factory import Factory
 from tests.testdata.metadata import path_to_schema, path_to_schema2
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 @pytest.fixture(name="reporter_schema")

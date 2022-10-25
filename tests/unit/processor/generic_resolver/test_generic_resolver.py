@@ -9,7 +9,7 @@ from logprep.processor.generic_resolver.processor import (
     GenericResolver,
     GenericResolverError,
 )
-from tests.unit.processor.base.processor import BaseProcessorTestCase
+from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestGenericResolver(BaseProcessorTestCase):
