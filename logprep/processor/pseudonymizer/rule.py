@@ -7,21 +7,6 @@ from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 from logprep.processor.base.rule import Rule
 
 
-class PseudonymizerRuleError(BaseException):
-    """Base class for Pseudonymizer rule related exceptions."""
-
-    def __init__(self, message):
-        super().__init__(f"Normalizer rule ({message}): ")
-
-
-class InvalidPseudonymizationDefinition(PseudonymizerRuleError):
-    """Raise if pseudonymization definition invalid."""
-
-    def __init__(self, definition):
-        message = f"The following pseudonymization definition is invalid: {definition}"
-        super().__init__(message)
-
-
 class PseudonymizeRule(Rule):
     """Check if documents match a filter."""
 
