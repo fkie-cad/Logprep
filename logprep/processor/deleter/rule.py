@@ -7,7 +7,7 @@ class DeleterRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """Config for DeleterRule"""
 
         delete: bool = field(validator=validators.instance_of(bool))

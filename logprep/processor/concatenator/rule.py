@@ -50,7 +50,7 @@ class ConcatenatorRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for Concatenator"""
 
         source_fields: list = field(

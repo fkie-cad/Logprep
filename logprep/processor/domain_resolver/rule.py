@@ -8,7 +8,7 @@ class DomainResolverRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for DomainResolver"""
 
         source_url_or_domain: str = field(validator=validators.instance_of(str))

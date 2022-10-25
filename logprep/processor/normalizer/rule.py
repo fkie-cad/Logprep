@@ -90,7 +90,9 @@ class NormalizerRule(Rule):
 
     # pylint: disable=super-init-not-called
     # TODO: this is not refactored, because this processor should be dissected
-    def __init__(self, filter_rule: FilterExpression, normalizations: dict):
+    def __init__(
+        self, filter_rule: FilterExpression, normalizations: dict, description: str = None
+    ):
         self.__class__.__hash__ = Rule.__hash__
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
@@ -101,6 +103,7 @@ class NormalizerRule(Rule):
         self._substitutions = {}
         self._grok = {}
         self._timestamps = {}
+        self.description = description
 
         self._parse_normalizations(normalizations)
 
@@ -183,7 +186,8 @@ class NormalizerRule(Rule):
         NormalizerRule._check_if_normalization_valid(rule)
 
         filter_expression = Rule._create_filter_expression(rule)
-        return NormalizerRule(filter_expression, rule["normalize"])
+        description = rule.get("description")
+        return NormalizerRule(filter_expression, rule["normalize"], description)
 
     @staticmethod
     def _check_if_normalization_valid(rule: dict):

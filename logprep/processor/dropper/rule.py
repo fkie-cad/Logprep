@@ -11,7 +11,7 @@ class DropperRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for Concatenator"""
 
         fields_to_drop: list = field(validator=validators.instance_of(list))

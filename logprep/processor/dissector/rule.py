@@ -87,7 +87,7 @@ class DissectorRule(Rule):
     """dissector rule"""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """Config for Dissector"""
 
         mapping: dict = field(

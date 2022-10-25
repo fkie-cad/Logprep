@@ -4,7 +4,8 @@ import json
 from os.path import basename, splitext
 from typing import Set, Optional
 
-from attr import define
+from attrs import define, field, validators
+
 from ruamel.yaml import YAML
 
 from logprep.metrics.metric import Metric, calculate_new_average
@@ -20,8 +21,15 @@ yaml = YAML(typ="safe", pure=True)
 class Rule:
     """Check if documents match a filter and add labels them."""
 
+    @define(kw_only=True)
     class Config:
         """Config for Rule"""
+
+        description: str = field(validator=validators.instance_of(str), default="", eq=False)
+        ip_fields: list = field(validator=validators.instance_of(list), factory=list)
+        regex_fields: list = field(validator=validators.instance_of(list), factory=list)
+        wildcard_fields: list = field(validator=validators.instance_of(list), factory=list)
+        sigma_fields: list = field(validator=validators.instance_of(list), factory=list)
 
     @define(kw_only=True)
     class RuleMetrics(Metric):
@@ -99,6 +107,11 @@ class Rule:
             raise InvalidRuleDefinitionError(f"config not under key {rule_type}")
         if not isinstance(config, dict):
             raise InvalidRuleDefinitionError("config is not a dict")
+        config.update({"description": rule.get("description", "")})
+        for special_field in cls.special_field_types:
+            special_field_value = rule.get(special_field)
+            if special_field_value is not None:
+                config.update({special_field: special_field_value})
         config = cls.Config(**config)
         return cls(filter_expression, config)
 

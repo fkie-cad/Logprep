@@ -17,7 +17,7 @@ class ListComparisonRule(Rule):
     _compare_sets: dict
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for ListComparisonRule"""
 
         check_field: str = field(validator=validators.instance_of(str))

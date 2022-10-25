@@ -9,7 +9,7 @@ class LabelRule(Rule):
     """Check if documents match a filter and add labels them."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for Concatenator"""
 
         label: dict = field(validator=validators.instance_of(dict))

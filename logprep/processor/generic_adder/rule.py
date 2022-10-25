@@ -31,7 +31,7 @@ class GenericAdderRule(Rule):
     """Check if documents match a filter and initialize the fields and values can be added."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """Config for GenericAdderRule"""
 
         add: dict = field(

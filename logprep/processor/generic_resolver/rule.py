@@ -8,7 +8,7 @@ class GenericResolverRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for GenericResolver"""
 
         field_mapping: dict = field(

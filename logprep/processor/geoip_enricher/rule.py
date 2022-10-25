@@ -10,7 +10,7 @@ class GeoipEnricherRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for GeoipEnricher"""
 
         source_ip: str = field(validator=validators.instance_of(str))

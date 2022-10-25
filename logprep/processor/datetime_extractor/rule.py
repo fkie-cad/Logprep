@@ -8,7 +8,7 @@ class DatetimeExtractorRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for DateTimeExtractor"""
 
         datetime_field: str = field(validator=validators.instance_of(str))
