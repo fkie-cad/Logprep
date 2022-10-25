@@ -2,7 +2,7 @@
 
 import json
 from os.path import basename, splitext
-from typing import Set, Optional, Union
+from typing import List, Set, Optional, Union, Dict
 
 from attrs import define, field, validators
 
@@ -32,6 +32,23 @@ class Rule:
         sigma_fields: Union[list, bool] = field(
             validator=validators.instance_of((list, bool)), factory=list
         )
+        tests: List[Dict[str, str]] = field(
+            validator=[
+                validators.instance_of((list)),
+                validators.deep_iterable(
+                    member_validator=validators.instance_of(dict),
+                    iterable_validator=validators.instance_of(list),
+                ),
+                validators.deep_iterable(
+                    member_validator=validators.deep_mapping(
+                        key_validator=validators.instance_of(str),
+                        value_validator=validators.instance_of(str),
+                    )
+                ),
+            ],
+            converter=lambda x: [x] if isinstance(x, dict) else x,
+            factory=list,
+        )
 
     @define(kw_only=True)
     class RuleMetrics(Metric):
@@ -50,7 +67,7 @@ class Rule:
             self._mean_processing_time = new_avg
             self._mean_processing_time_sample_counter = new_sample_counter
 
-    special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields"]
+    special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields", "tests"]
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         if not isinstance(config, self.Config):
@@ -60,7 +77,6 @@ class Rule:
         self._filter = filter_rule
         self._special_fields = None
         self.file_name = None
-        self._tests = []
         self.metrics = self.RuleMetrics(labels={"type": "rule"})
         self._config = config
 
@@ -77,7 +93,7 @@ class Rule:
 
     @property
     def tests(self) -> list:
-        return self._tests
+        return self._config.tests
 
     # pylint: enable=C0111
 
@@ -155,6 +171,8 @@ class Rule:
         special_fields = {}
 
         for field_type in Rule.special_field_types:
+            if field_type == "tests":
+                continue
             special_fields[field_type] = rule.get(field_type, [])
             if special_fields[field_type] and not (
                 isinstance(special_fields[field_type], list) or special_fields[field_type] is True

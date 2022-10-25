@@ -1,6 +1,5 @@
 """This module is used to get documents that match a clusterer filter."""
 
-from typing import Pattern
 import re
 from attrs import define, field, validators
 
@@ -26,7 +25,7 @@ class ClustererRule(Rule):
         return self._config.target
 
     @property
-    def pattern(self) -> Pattern:
+    def pattern(self) -> re.Pattern:
         return self._config.pattern
 
     @property
