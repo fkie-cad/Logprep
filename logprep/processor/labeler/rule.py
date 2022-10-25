@@ -1,11 +1,12 @@
 """This module is used to apply configured labeling rules on given documents."""
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
+from logprep.processor.base.rule import Rule
 from logprep.processor.labeler.labeling_schema import LabelingSchema
+from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
-class LabelRule(Rule):
+class LabelerRule(Rule):
     """Check if documents match a filter and add labels them."""
 
     @define(kw_only=True)
@@ -22,15 +23,11 @@ class LabelRule(Rule):
     # pylint: enable=C0111
 
     @classmethod
-    def _create_from_dict(cls, rule: dict) -> "Rule":
-        filter_expression = Rule._create_filter_expression(rule)
-        config = rule.get("label")
-        if config is None:
-            raise InvalidRuleDefinitionError("config not under key label")
-        if not isinstance(config, dict):
-            raise InvalidRuleDefinitionError("config is not a dict")
-        config = cls.Config(label=config)
-        return cls(filter_expression, config)
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        """normalizes rule dict to stay backwards compatible"""
+        if rule.get("label") is not None:
+            label_value = pop_dotted_field_value(rule, "label")
+            add_and_overwrite(rule, "labeler.label", label_value)
 
     def conforms_to_schema(self, schema: LabelingSchema) -> bool:
         """Check if labels are valid."""
