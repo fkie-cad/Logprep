@@ -8,14 +8,6 @@ from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.base.rule import Rule
 
 
-def _create_from_dict(rule: dict) -> Rule:
-    filter_expression = Rule._create_filter_expression(rule)
-    return Rule(filter_expression)
-
-
-Rule._create_from_dict = _create_from_dict
-
-
 class TestRule:
     @pytest.mark.parametrize(
         "file_data, raises",
@@ -23,9 +15,9 @@ class TestRule:
             (
                 """
                 filter: test_filter
-                processor:
-                    key1:
-                    - key2: value2
+                rule:
+                    regex_fields: []
+                description: this is a test rule
                 """,
                 None,
             ),
@@ -34,10 +26,7 @@ class TestRule:
                 [
                     {
                         "filter": "test_filter",
-                        "json_list": [
-                            "list_element1",
-                            "list_element2"
-                            ]
+                        "rule": {}
                     }
                 ]
                 """,
@@ -45,7 +34,6 @@ class TestRule:
             ),
             (
                 """
-
                 """,
                 (InvalidRuleDefinitionError, "no rules in file"),
             ),

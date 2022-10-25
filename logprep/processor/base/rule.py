@@ -2,7 +2,7 @@
 
 import json
 from os.path import basename, splitext
-from typing import Set, Optional
+from typing import Set, Optional, Union
 
 from attrs import define, field, validators
 
@@ -29,7 +29,9 @@ class Rule:
         ip_fields: list = field(validator=validators.instance_of(list), factory=list)
         regex_fields: list = field(validator=validators.instance_of(list), factory=list)
         wildcard_fields: list = field(validator=validators.instance_of(list), factory=list)
-        sigma_fields: list = field(validator=validators.instance_of(list), factory=list)
+        sigma_fields: Union[list, bool] = field(
+            validator=validators.instance_of((list, bool)), factory=list
+        )
 
     @define(kw_only=True)
     class RuleMetrics(Metric):
@@ -109,6 +111,8 @@ class Rule:
         cls.normalize_rule_dict(rule)
         filter_expression = Rule._create_filter_expression(rule)
         rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
+        if not rule_type:
+            rule_type = "rule"
         config = rule.get(rule_type)
         if config is None:
             raise InvalidRuleDefinitionError(f"config not under key {rule_type}")
