@@ -28,4 +28,5 @@ class Deleter(Processor):
     rule_class = DeleterRule
 
     def _apply_rules(self, event, rule):
-        event.clear()
+        if rule.delete_or_not:
+            event.clear()
