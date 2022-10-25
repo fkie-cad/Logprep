@@ -20,10 +20,6 @@ class ClustererRule(Rule):
 
     # pylint: disable=C0111
     @property
-    def target(self) -> str:
-        return self._config.target
-
-    @property
     def pattern(self) -> Pattern:
         return self._config.pattern
 
