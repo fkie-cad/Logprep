@@ -13,27 +13,6 @@ from logprep.processor.key_checker.rule import KeyCheckerRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class KeyCheckerError(BaseException):
-    """Base class for KeyChecker related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"KeyChecker ({name}): {message}")
-
-
-class FieldNotExistingError(KeyCheckerError):
-    """Raise if Key in List isnt in Event."""
-
-    def __init__(self, name: str, not_existing_fields: list):
-        message = "The following fields arent in the Event Log: "
-        for fields in not_existing_fields:
-            if fields == not_existing_fields[-1]:
-                message += fields
-            else:
-                message += fields + ", "
-
-        super().__init__(name, message)
-
-
 class KeyChecker(Processor):
     """Checks if all keys of an given List are in the event"""
 
