@@ -51,6 +51,8 @@ class Rule:
     special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields"]
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
+        if not isinstance(config, self.Config):
+            raise InvalidRuleDefinitionError("config is not a Config class")
         self.__class__.__hash__ = Rule.__hash__
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
@@ -99,7 +101,12 @@ class Rule:
         return rules
 
     @classmethod
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        """normalizes rule dict to stay backwards compatible"""
+
+    @classmethod
     def _create_from_dict(cls, rule: dict) -> "Rule":
+        cls.normalize_rule_dict(rule)
         filter_expression = Rule._create_filter_expression(rule)
         rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
         config = rule.get(rule_type)

@@ -1,14 +1,12 @@
-from logprep.filter.lucene_filter import LuceneFilter
-
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
 import pytest
 
-pytest.importorskip("logprep.processor.pseudonymizer")
-
-from logprep.processor.pseudonymizer.rule import PseudonymizerRule
+from logprep.processor.pseudonymizer.rule import PseudonymizeRule
 
 
-@pytest.fixture()
-def specific_rule_definition():
+@pytest.fixture(name="specific_rule_definition")
+def get_specific_rule_definition():
     return {
         "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
         "pseudonymize": {
@@ -20,38 +18,50 @@ def specific_rule_definition():
 
 
 class TestPseudonomyzerRule:
-    def test_rules_are_equal(self, specific_rule_definition):
-        rule1 = PseudonymizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["pseudonymize"],
-        )
-
-        rule2 = PseudonymizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["pseudonymize"],
-        )
-
-        assert rule1 == rule2
-
-    def test_rules_are_not_equal(self, specific_rule_definition):
-        rule = PseudonymizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["pseudonymize"],
-        )
-
-        rule_diff_pseudo = PseudonymizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["pseudonymize"],
-        )
-
-        rule_diff_filter = PseudonymizerRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["pseudonymize"],
-        )
-
-        rule_diff_pseudo._pseudonyms = ["I am different!"]
-        rule_diff_filter._filter = ["I am different!"]
-
-        assert rule != rule_diff_pseudo
-        assert rule != rule_diff_filter
-        assert rule_diff_pseudo != rule_diff_filter
+    @pytest.mark.parametrize(
+        "testcase, other_rule_definition, is_equal",
+        [
+            (
+                "equal cause the same",
+                {
+                    "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
+                    "pseudonymize": {
+                        "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                        "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                    },
+                    "description": "insert a description text",
+                },
+                True,
+            ),
+            (
+                "not equal cause other filter",
+                {
+                    "filter": "otherfilter",
+                    "pseudonymize": {
+                        "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                        "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                    },
+                    "description": "insert a description text",
+                },
+                False,
+            ),
+            (
+                "not equal cause other pseudonyms",
+                {
+                    "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
+                    "pseudonymize": {
+                        "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                        "winlog.event_data.paramother": "RE_WHOLE_FIELD",
+                    },
+                    "description": "insert a description text",
+                },
+                False,
+            ),
+        ],
+    )
+    def test_rules_equality(
+        self, specific_rule_definition, testcase, other_rule_definition, is_equal
+    ):
+        rule_1 = PseudonymizeRule._create_from_dict(specific_rule_definition)
+        rule_2 = PseudonymizeRule._create_from_dict(other_rule_definition)
+        assert (rule_1 == rule_2) == is_equal, testcase

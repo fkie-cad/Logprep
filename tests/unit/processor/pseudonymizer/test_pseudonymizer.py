@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.factory import Factory
-from logprep.processor.pseudonymizer.rule import PseudonymizerRule
+from logprep.processor.pseudonymizer.rule import PseudonymizeRule
 from tests.unit.processor.base.processor import BaseProcessorTestCase
 
 CAP_GROUP_REGEX_MAPPING = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
@@ -58,9 +58,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         with pytest.raises(
             InvalidRuleDefinitionError,
-            match=r"Keys \[\'filter\', \'something\'\] must be \[\'filter\', \'pseudonymize\'\]",
+            match=r"config not under key pseudonymize",
         ):
-            PseudonymizerRule._create_from_dict(rule_dict)
+            PseudonymizeRule._create_from_dict(rule_dict)
 
     def test_rule_has_pseudonymize_field_and_rule_creation_succeeds(self):
         rule_dict = {
@@ -69,7 +69,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "description": "description content irrelevant for these tests",
         }
 
-        PseudonymizerRule._create_from_dict(rule_dict)
+        PseudonymizeRule._create_from_dict(rule_dict)
 
     def test_pseudonymization_of_field_succeeds(self):
         event = {"event_id": 1234, "something": "something"}
