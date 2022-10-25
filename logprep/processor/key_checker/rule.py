@@ -59,14 +59,15 @@ class KeyCheckerRule(Rule):
     class Config:
         """key_checker rule config"""
 
-        key_list: list = field(
+        key_list: set = field(
             validator=[
                 validators.deep_iterable(
                     member_validator=validators.instance_of(str),
-                    iterable_validator=validators.instance_of(list),
+                    iterable_validator=validators.instance_of(set),
                 ),
                 partial(min_len_validator, min_length=1),
-            ]
+            ],
+            converter=set,
         )
 
         output_field: str = field(validator=validators.instance_of(str))

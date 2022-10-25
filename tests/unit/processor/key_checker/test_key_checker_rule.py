@@ -63,17 +63,6 @@ class TestKeyCheckerRule:
                 {
                     "filter": "message",
                     "key_checker": {
-                        "key_list": "not a list",
-                        "output_field": "missing_fields",
-                    },
-                },
-                TypeError,
-                "'key_list' must be <class 'list'",
-            ),
-            (
-                {
-                    "filter": "message",
-                    "key_checker": {
                         "key_list": [1, 2, 3],
                         "output_field": "missing_fields",
                     },
@@ -102,18 +91,27 @@ class TestKeyCheckerRule:
             assert hasattr(keychecker_rule, "_config")
             for key, value in rule.get("key_checker").items():
                 assert hasattr(keychecker_rule._config, key)
-                assert value == getattr(keychecker_rule._config, key)
+                sad = type(value)
+                temp_list = list(getattr(keychecker_rule._config, key))
+                temp_list.sort()
+                if isinstance(value, list):
+                    temp_list = list(getattr(keychecker_rule._config, key))
+                    temp_list.sort()
+                    value.sort()
+                    assert value == temp_list
+                else:
+                    assert value == getattr(keychecker_rule._config, key)
 
     @pytest.mark.parametrize(
         ["testcase", "rule1", "rule2", "equality"],
         [
             (
-                "should be equal, because only the name has changed",
+                "should not be equal, because the name is different",
                 {
                     "filter": "*",
                     "key_checker": {
                         "key_list": ["key1"],
-                        "output_field": "",
+                        "output_field": "missing_fields",
                     },
                 },
                 {
@@ -123,7 +121,7 @@ class TestKeyCheckerRule:
                         "output_field": "missing_fields",
                     },
                 },
-                True,
+                False,
             ),
             (
                 "should be equal, because only the order has changed",
@@ -131,7 +129,7 @@ class TestKeyCheckerRule:
                     "filter": "*",
                     "key_checker": {
                         "key_list": ["key1", "key2"],
-                        "output_field": "",
+                        "output_field": "missing_fields",
                     },
                 },
                 {
