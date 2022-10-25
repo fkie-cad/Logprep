@@ -1,7 +1,6 @@
 """This module is used to extract fields from documents via a given list."""
 
 from functools import partial
-import os
 from pathlib import Path
 from typing import List, Optional
 from attrs import define, field, validators
@@ -15,14 +14,6 @@ class SelectiveExtractorRuleError(InvalidRuleDefinitionError):
 
     def __init__(self, message: str):
         super().__init__(f"SelectiveExtractor rule ({message})")
-
-
-class InvalidSelectiveExtractorDefinition(SelectiveExtractorRuleError):
-    """Raise if SelectiveExtractor definition invalid."""
-
-    def __init__(self, definition):
-        message = f"The following SelectiveExtractor definition is invalid: {definition}"
-        super().__init__(message)
 
 
 class SelectiveExtractorRule(Rule):
