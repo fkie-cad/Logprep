@@ -5,6 +5,7 @@ from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class DropperRule(Rule):
@@ -12,23 +13,20 @@ class DropperRule(Rule):
 
     @define(kw_only=True)
     class Config(Rule.Config):
-        """RuleConfig for Concatenator"""
+        """RuleConfig for DroperRule"""
 
         fields_to_drop: list = field(validator=validators.instance_of(list))
         drop_full: bool = field(validator=validators.instance_of(bool), default=True)
 
     @classmethod
-    def _create_from_dict(cls, rule: dict) -> "Rule":
-        filter_expression = Rule._create_filter_expression(rule)
-        drop_fields = rule.get("drop")
-        drop_full = rule.get("drop_full")
-        drop_full = drop_full if drop_full is not None else True
-        if drop_fields is None:
-            raise InvalidRuleDefinitionError("config not under key drop")
-        if not isinstance(drop_fields, list):
-            raise InvalidRuleDefinitionError("config is not a list")
-        config = cls.Config(fields_to_drop=drop_fields, drop_full=drop_full)
-        return cls(filter_expression, config)
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        if rule.get("dropper") is None:
+            drop_fields = pop_dotted_field_value(rule, "drop")
+            if drop_fields is not None:
+                add_and_overwrite(rule, "dropper.fields_to_drop", drop_fields)
+            drop_full = pop_dotted_field_value(rule, "drop_full")
+            if drop_full is not None:
+                add_and_overwrite(rule, "dropper.drop_full", drop_full)
 
     @property
     def fields_to_drop(self) -> List[str]:

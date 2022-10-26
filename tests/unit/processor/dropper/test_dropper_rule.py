@@ -80,7 +80,7 @@ class TestDropperRule:
             (
                 {"filter": "test", "drop": ["field1", "field2"]},
                 None,
-                "drop field with list exists",
+                "'fields_to_drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test"},
@@ -89,13 +89,13 @@ class TestDropperRule:
             ),
             (
                 {"filter": "test", "drop": "field1, field2"},
-                InvalidRuleDefinitionError,
-                "is not a list",
+                TypeError,
+                "'fields_to_drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test", "drop": {"field1": "field2"}},
-                InvalidRuleDefinitionError,
-                "is not a list",
+                TypeError,
+                "'fields_to_drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test", "drop": ["field1", "field2"], "drop_full": True},
