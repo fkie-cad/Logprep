@@ -3,7 +3,6 @@
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
 # pylint: disable=wrong-import-position
-# pylint: disable=wrong-import-order
 from copy import deepcopy
 
 from pytest import raises

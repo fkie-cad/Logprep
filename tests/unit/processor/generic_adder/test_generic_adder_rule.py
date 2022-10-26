@@ -1,9 +1,8 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
 import pytest
 
 from logprep.processor.generic_adder.rule import GenericAdderRule
-
-pytest.importorskip("logprep.processor.normalizer")
 
 
 @pytest.fixture(name="specific_rule_definition")

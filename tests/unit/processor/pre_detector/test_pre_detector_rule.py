@@ -3,8 +3,6 @@
 
 import pytest
 
-pytest.importorskip("logprep.processor.pre_detector")
-
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
 
@@ -24,7 +22,7 @@ def specific_rule_definition():
     }
 
 
-class TestPredetectorRule:
+class TestPreDetectorRule:
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
         [
