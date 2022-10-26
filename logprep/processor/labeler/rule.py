@@ -11,7 +11,7 @@ class LabelerRule(Rule):
 
     @define(kw_only=True)
     class Config(Rule.Config):
-        """RuleConfig for Concatenator"""
+        """RuleConfig for Labeler"""
 
         label: dict = field(validator=validators.instance_of(dict))
 

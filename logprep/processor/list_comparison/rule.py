@@ -43,7 +43,7 @@ class ListComparisonRule(Rule):
         return list_search_base_path
 
     def init_list_comparison(self, list_search_base_path: Optional[str] = None):
-        """init method for list_comparision"""
+        """init method for list_comparision lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         absolute_list_paths = [
             list_path for list_path in self._config.list_file_paths if list_path.is_absolute()

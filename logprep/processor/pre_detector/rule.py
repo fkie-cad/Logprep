@@ -38,7 +38,6 @@ class PreDetectorRule(Rule):
     def ip_fields(self) -> list:
         return self._config.ip_fields
 
-    # Not used to check for equality, since it has not effect on the rule effects
     @property
     def description(self) -> str:
         return self._config.description
