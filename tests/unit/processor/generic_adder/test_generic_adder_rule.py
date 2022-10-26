@@ -91,19 +91,3 @@ class TestGenericAdderRule:
         rule1 = GenericAdderRule._create_from_dict(specific_rule_definition)
         rule2 = GenericAdderRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
-
-    # @pytest.mark.parametrize(
-    #     "rule_definition, raised, message",
-    #     [{"filter": "message", "generic_adder": {"add": {" "}}}],
-    # )
-    # def test_rule_create_from_dict(self, rule_definition, raised, message):
-    #     if raised:
-    #         with pytest.raises(raised, match=message):
-    #             _ = GenericAdderRule._create_from_dict(rule_definition)
-    #     else:
-    #         extractor_rule = GenericAdderRule._create_from_dict(rule_definition)
-    #         assert isinstance(extractor_rule, GenericAdderRule)
-
-    # def test_rule_is_hashable(self, specific_rule_definition):
-    #     rule = GenericAdderRule._create_from_dict(specific_rule_definition)
-    #     assert isinstance(rule, Hashable)
