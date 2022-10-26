@@ -1,10 +1,7 @@
 # pylint: disable=missing-docstring
-from typing import Hashable
 import pytest
 
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.filter.lucene_filter import LuceneFilter
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 
 pytest.importorskip("logprep.processor.normalizer")
 
