@@ -18,8 +18,7 @@ class DeleterRule(Rule):
         config = cls.Config(delete=rule.get("delete"))
         return cls(filter_expression, config)
 
-    # pylint: disable=C0111
     @property
-    def delete_or_not(self) -> bool:
+    def delete_event(self) -> bool:
         """Returns delete_or_not"""
         return self._config.delete

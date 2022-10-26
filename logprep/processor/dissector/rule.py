@@ -75,7 +75,6 @@ from typing import Callable, List, Tuple
 from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.base.rule import Rule
 from logprep.util.helper import append, add_and_overwrite
 
