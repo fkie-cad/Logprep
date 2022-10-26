@@ -66,7 +66,7 @@ class SelectiveExtractorRule(Rule):
             if extract_list is None:
                 extract_list = []
             lines_from_file = self.extract_from_file.read_text(encoding="utf8").splitlines()
-            extract_list = list(set([*extract_list, *lines_from_file]))
+            extract_list = list({*extract_list, *lines_from_file})
             self.extract = {**self.extract, **{"extracted_field_list": extract_list}}
 
     @property
