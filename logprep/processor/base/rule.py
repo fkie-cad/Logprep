@@ -34,7 +34,7 @@ class Rule:
         )
         tests: List[Dict[str, str]] = field(
             validator=[
-                validators.instance_of((list)),
+                validators.instance_of(list),
                 validators.deep_iterable(
                     member_validator=validators.instance_of(dict),
                     iterable_validator=validators.instance_of(list),
@@ -69,7 +69,7 @@ class Rule:
 
     special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields", "tests"]
 
-    def __init__(self, filter_rule: FilterExpression, config: dict):
+    def __init__(self, filter_rule: FilterExpression, config: Config):
         if not isinstance(config, self.Config):
             raise InvalidRuleDefinitionError("config is not a Config class")
         self.__class__.__hash__ = Rule.__hash__
@@ -120,7 +120,7 @@ class Rule:
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:
-        """normalizes rule dict to stay backwards compatible"""
+        """normalizes rule dict before create rule config object"""
 
     @classmethod
     def _create_from_dict(cls, rule: dict) -> "Rule":
@@ -162,7 +162,7 @@ class Rule:
     @classmethod
     def _create_filter_expression(cls, rule: dict) -> FilterExpression:
         special_fields = cls._get_special_fields_for_rule_matching(rule)
-        if not "filter" in rule:
+        if "filter" not in rule:
             raise InvalidRuleDefinitionError("no filter defined")
         return LuceneFilter.create(rule["filter"], special_fields)
 
