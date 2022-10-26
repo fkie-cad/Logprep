@@ -26,13 +26,13 @@ from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class KeyChecker(Processor):
-    """Checks if all keys of an given List are in the event"""
+    """Checks if all keys of a given List are in the event"""
 
     rule_class: Rule = KeyCheckerRule
 
     def _apply_rules(self, event, rule):
 
-        not_existing_fields = set([])
+        not_existing_fields = set()
 
         for dotted_field in rule.key_list:
             if not self._field_exists(event=event, dotted_field=dotted_field):

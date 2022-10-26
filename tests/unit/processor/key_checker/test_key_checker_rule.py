@@ -91,7 +91,6 @@ class TestKeyCheckerRule:
             assert hasattr(keychecker_rule, "_config")
             for key, value in rule.get("key_checker").items():
                 assert hasattr(keychecker_rule._config, key)
-                sad = type(value)
                 temp_list = list(getattr(keychecker_rule._config, key))
                 temp_list.sort()
                 if isinstance(value, list):
@@ -158,6 +157,24 @@ class TestKeyCheckerRule:
                     },
                 },
                 False,
+            ),
+            (
+                "should be equal, because unique keys are the same",
+                {
+                    "filter": "*",
+                    "key_checker": {
+                        "key_list": ["key1", "key2", "key2"],
+                        "output_field": "missing_fields",
+                    },
+                },
+                {
+                    "filter": "*",
+                    "key_checker": {
+                        "key_list": ["key1", "key1", "key2"],
+                        "output_field": "missing_fields",
+                    },
+                },
+                True,
             ),
         ],
     )
