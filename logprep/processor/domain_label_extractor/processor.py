@@ -36,6 +36,7 @@ from tldextract import TLDExtract
 
 
 from logprep.abc import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.util.validators import list_of_urls_validator
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -51,19 +52,6 @@ class DomainLabelExtractorError(BaseException):
 
     def __init__(self, name: str, message: str):
         super().__init__(f"DomainLabelExtractor ({name}): {message}")
-
-
-class DuplicationError(DomainLabelExtractorError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and "
-            "were not overwritten by the DomainLabelExtractor: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 class DomainLabelExtractor(Processor):
@@ -133,7 +121,12 @@ class DomainLabelExtractor(Processor):
             }
             for label, _ in labels_dict.items():
                 output_field = f"{rule.output_field}.{label}"
-                adding_was_successful = add_field_to(event, output_field, labels_dict[label])
+                adding_was_successful = add_field_to(
+                    event,
+                    output_field,
+                    labels_dict[label],
+                    overwrite_output_field=rule.overwrite_target,
+                )
 
                 if not adding_was_successful:
                     raise DuplicationError(self.name, [output_field])
