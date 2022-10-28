@@ -19,11 +19,10 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
-from typing import List
-
 from logprep.abc import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.concatenator.rule import ConcatenatorRule
-from logprep.util.helper import add_field_to, get_dotted_field_value, pop_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class ConcatenatorError(BaseException):
@@ -31,18 +30,6 @@ class ConcatenatorError(BaseException):
 
     def __init__(self, name: str, message: str):
         super().__init__(f"Concatenator ({name}): {message}")
-
-
-class DuplicationError(ConcatenatorError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields could not be written, because "
-            "one or more subfields existed and could not be extended: "
-        )
-        message += " ".join(skipped_fields)
-        super().__init__(name, message)
 
 
 class Concatenator(Processor):

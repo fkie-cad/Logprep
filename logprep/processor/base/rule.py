@@ -117,6 +117,14 @@ class Rule:
             return self._config.source_fields
         return []
 
+    @property
+    def target_field(self):
+        return self._config.target_field
+
+    @property
+    def overwrite_target(self):
+        return self._config.overwrite_target
+
     # pylint: enable=C0111
 
     @classmethod

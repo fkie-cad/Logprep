@@ -1,6 +1,6 @@
 """This module contains exceptions for rules."""
 
-from typing import Any
+from typing import Any, List
 
 from logprep.factory_error import FactoryError
 
@@ -65,3 +65,15 @@ class ProcessingWarningCollection(ProcessingError):
     def __init__(self, name: str, message: str, processing_warnings):
         super().__init__(name, message)
         self.processing_warnings = processing_warnings
+
+
+class DuplicationError(BaseException):
+    """Raise if field already exists."""
+
+    def __init__(self, name: str, skipped_fields: List[str]):
+        message = (
+            "The following fields could not be written, because "
+            "one or more subfields existed and could not be extended: "
+        )
+        message += " ".join(skipped_fields)
+        super().__init__(name, message)

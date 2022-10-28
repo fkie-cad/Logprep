@@ -26,8 +26,9 @@ from dateutil.parser import parse
 from dateutil.tz import tzlocal
 
 from logprep.abc import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class DateTimeExtractorError(BaseException):
@@ -81,5 +82,11 @@ class DatetimeExtractor(Processor):
             }
 
             if split_timestamp:
-                if destination_field not in event.keys():
-                    event[destination_field] = split_timestamp
+                adding_was_successful = add_field_to(
+                    event,
+                    rule.target_field,
+                    split_timestamp,
+                    overwrite_output_field=rule.overwrite_target,
+                )
+                if not adding_was_successful:
+                    raise DuplicationError(self.name, [rule.target_field])

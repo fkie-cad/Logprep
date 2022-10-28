@@ -44,15 +44,16 @@ Given a dissect pattern of :code:`%{field1} %{field2}` the source field value wi
 everything before the first whitespace which would be written into the field `field1` and everything
 after the first whitespace which would be written into the field `field2`.
 
-The string surrounded by :code:`%{` and :code:`}` is the desired target field. This can be declared in dotted
-field notation (e.g. :code:`%{target.subfield1.subfield2}`). Every subfield between the first and
-the last subfield will be created if necessary.
+The string surrounded by :code:`%{` and :code:`}` is the desired target field. This can be declared
+in dotted field notation (e.g. :code:`%{target.subfield1.subfield2}`). Every subfield between the
+first and the last subfield will be created if necessary.
 
 By default the target field will always be overwritten with the captured value. If you want to
-append to a preexisting target field value, as string or list, you have to use the :code:`+` operator.
+append to a preexisting target field value, as string or list, you have to use
+the :code:`+` operator.
 
 It is possible to capture the target field name from the source field value with the notation
-:code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern 
+:code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern
 this can be referred to with the notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`).
 References can be combined with the append operator.
 
@@ -118,7 +119,7 @@ class DissectorRule(Rule):
         tag_on_failure: list = field(
             validator=validators.instance_of(list), default=["_dissectfailure"]
         )
-        """A list of tags which will be appended to the event on non critical errors 
+        """A list of tags which will be appended to the event on non critical errors
         [default=`_dissectfailure`]
         """
 
