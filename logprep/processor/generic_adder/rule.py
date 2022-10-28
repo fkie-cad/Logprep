@@ -76,7 +76,7 @@ class GenericAdderRule(Rule):
             missing_files = []
             existing_files = []
 
-            for add_path in self.add_from_file:
+            for add_path in self.add_from_file:  # pylint: disable=not-an-iterable
                 if not isfile(add_path):
                     missing_files.append(add_path)
                 else:

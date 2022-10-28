@@ -127,3 +127,37 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
         self.object.process(document)
         assert document.get("source", {}).get("geo", {}).get("ip") is not None
+
+    def test_delete_source_field(self):
+        document = {
+            "client": {"ip": "8.8.8.8", "other_key": "I am here to keep client field alive"}
+        }
+        rule_dict = {
+            "filter": "client",
+            "geoip_enricher": {
+                "source_fields": ["client.ip"],
+                "target_field": "source.geo.ip",
+                "delete_source_fields": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        assert "client" in document
+        assert "ip" not in document.get("client")
+
+    def test_overwrite_target_field(self):
+        document = {"client": {"ip": "8.8.8.8"}}
+        rule_dict = {
+            "filter": "client",
+            "geoip_enricher": {
+                "source_fields": ["client.ip"],
+                "target_field": "client.ip",
+                "overwrite_target": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        assert "client" in document
+        assert document.get("client").get("ip").get("type") is not None

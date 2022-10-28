@@ -16,7 +16,7 @@ class DatetimeExtractorRule(SourceTargetRule):
             warnings.warn(
                 (
                     "datetime_extractor.datetime_field is deprecated. "
-                    "Use datetime.source_fields instead"
+                    "Use datetime_extractor.source_fields instead"
                 ),
                 DeprecationWarning,
             )
@@ -28,7 +28,7 @@ class DatetimeExtractorRule(SourceTargetRule):
             warnings.warn(
                 (
                     "datetime_extractor.destination_field is deprecated. "
-                    "Use datetime.target_field instead"
+                    "Use datetime_extractor.target_field instead"
                 ),
                 DeprecationWarning,
             )
