@@ -35,6 +35,7 @@ class PreDetectorRule(Rule):
             "source_field",
             "target_field",
             "delete_source_field",
+            "overwrite_target_field",
         ]:
             detection_data.pop(special_field)
         return detection_data
