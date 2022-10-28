@@ -63,15 +63,8 @@ class ConcatenatorRule(Rule):
             ]
         )
         """The source fields that should be concatenated, can contain dotted field paths."""
-        target_field: str = field(validator=validators.instance_of(str))
-        """The field in which the result should be written to."""
         separator: str = field(validator=validators.instance_of(str))
         """The character(s) that should be used between the combined source field values."""
-        overwrite_target: bool = field(validator=validators.instance_of(bool))
-        """Defines whether the target field should be overwritten if it exists already."""
-        delete_source_fields: bool = field(validator=validators.instance_of(bool))
-        """Defines whether the source fields should be deleted after they have been combined
-        to the new field."""
 
     _config: "ConcatenatorRule.Config"
 
