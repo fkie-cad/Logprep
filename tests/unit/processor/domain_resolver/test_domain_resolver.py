@@ -8,7 +8,7 @@ from unittest import mock
 import pytest
 from requests import Response
 
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -228,10 +228,9 @@ sth.ac.at
 
         # Due to duplication error logprep raises an ProcessingWarning
         with pytest.raises(
-            ProcessingWarning,
-            match=r"DomainResolver \(.+\): The "
-            r"following fields already existed and were not overwritten by the "
-            r"DomainResolver: resolved_ip",
+            DuplicationError,
+            match=r"\('Test Instance Name', 'The following fields could not be written, "
+            r"because one or more subfields existed and could not be extended: resolved_ip'\)",
         ):
             self.object.process(document)
 
@@ -241,5 +240,40 @@ sth.ac.at
         expected = {"client_2": "google.de", "resolved_ip": "1.2.3.4"}
 
         # Rules have same effect, but are equal and thus one is ignored
+        self.object.process(document)
+        assert document == expected
+
+    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
+    def test_overwrite_target_field(self, _):
+        document = {"client": "google.de", "resolved": "this will be overwritten"}
+        expected = {"client": "google.de", "resolved": "1.2.3.4"}
+        rule_dict = {
+            "filter": "client",
+            "domain_resolver": {
+                "source_fields": ["client"],
+                "target_field": "resolved",
+                "overwrite_target": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        assert document == expected
+
+    @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
+    def test_delete_source_field(self, _):
+        document = {"client": "google.de", "resolved": "this will be overwritten"}
+        expected = {"resolved": "1.2.3.4"}
+        rule_dict = {
+            "filter": "client",
+            "domain_resolver": {
+                "source_fields": ["client"],
+                "target_field": "resolved",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
         self.object.process(document)
         assert document == expected

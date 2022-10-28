@@ -37,7 +37,7 @@ from attr import define, field, validators
 from tldextract import TLDExtract
 
 from logprep.abc import Processor
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
@@ -144,9 +144,10 @@ class DomainResolver(Processor):
         return TLDExtract()
 
     def _apply_rules(self, event, rule):
-        domain_or_url = rule.source_url_or_domain
-        output_field = rule.output_field
-        domain_or_url_str = get_dotted_field_value(event, domain_or_url)
+        source_field = rule.source_fields[0]
+        target_field = rule.target_field
+        overwrite_target = rule.overwrite_target
+        domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
             return
         domain = self._tld_extractor(domain_or_url_str).fqdn
@@ -163,25 +164,21 @@ class DomainResolver(Processor):
             else:
                 resolved_ip = self._domain_ip_map.get(hash_string)
                 self.metrics.resolved_cached += 1
-            self._add_resolve_infos_to_event(event, output_field, resolved_ip)
+            self._add_resolve_infos_to_event(event, target_field, resolved_ip, overwrite_target)
             if self._config.debug_cache:
                 self._store_debug_infos(event, requires_storing)
         else:
             resolved_ip = self._resolve_ip(domain)
-            self._add_resolve_infos_to_event(event, output_field, resolved_ip)
+            self._add_resolve_infos_to_event(event, target_field, resolved_ip, overwrite_target)
 
-    def _add_resolve_infos_to_event(self, event, output_field, resolved_ip):
+    def _add_resolve_infos_to_event(self, event, output_field, resolved_ip, overwrite_target):
         if resolved_ip:
-            adding_was_successful = add_field_to(event, output_field, resolved_ip)
+            adding_was_successful = add_field_to(
+                event, output_field, resolved_ip, overwrite_output_field=overwrite_target
+            )
 
             if not adding_was_successful:
-                message = (
-                    f"DomainResolver ({self.name}): The following "
-                    f"fields already existed and "
-                    f"were not overwritten by the DomainResolver: "
-                    f"{output_field}"
-                )
-                raise ProcessingWarning(message=message)
+                raise DuplicationError(self.name, [output_field])
 
     def _resolve_ip(self, domain, hash_string=None):
         try:

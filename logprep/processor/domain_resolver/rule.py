@@ -1,7 +1,8 @@
 """This module is used to resolve domains."""
-
-from attrs import define, field, validators
+import warnings
+from attrs import define, field, fields
 from logprep.processor.base.rule import Rule
+from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class DomainResolverRule(Rule):
@@ -11,15 +12,33 @@ class DomainResolverRule(Rule):
     class Config(Rule.Config):
         """RuleConfig for DomainResolver"""
 
-        source_url_or_domain: str = field(validator=validators.instance_of(str))
-        output_field: str = field(validator=validators.instance_of(str), default="resolved_ip")
+        source_fields: list = field(validator=fields(Rule.Config).source_fields.validator)
+        target_field: list = field(
+            validator=fields(Rule.Config).target_field.validator, default="resolved_ip"
+        )
 
-    @property
-    def source_url_or_domain(self) -> str:
-        """Returns the source_url_or_domain"""
-        return self._config.source_url_or_domain
-
-    @property
-    def output_field(self) -> str:
-        """Returns the output_field"""
-        return self._config.output_field
+    @classmethod
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        """normalizes rule dict before create rule config object"""
+        if rule.get("domain_resolver", {}).get("source_url_or_domain") is not None:
+            source_field_value = pop_dotted_field_value(
+                rule, "domain_resolver.source_url_or_domain"
+            )
+            add_and_overwrite(rule, "domain_resolver.source_fields", [source_field_value])
+            warnings.warn(
+                (
+                    "domain_resolver.source_url_or_domain is deprecated. "
+                    "Use datetime.source_fields instead"
+                ),
+                DeprecationWarning,
+            )
+        if rule.get("domain_resolver", {}).get("output_field") is not None:
+            target_field_value = pop_dotted_field_value(rule, "domain_resolver.output_field")
+            add_and_overwrite(rule, "domain_resolver.target_field", target_field_value)
+            warnings.warn(
+                (
+                    "domain_resolver.output_field is deprecated. "
+                    "Use datetime.target_field instead"
+                ),
+                DeprecationWarning,
+            )
