@@ -32,9 +32,9 @@ class PreDetectorRule(Rule):
         detection_data = asdict(self._config)
         for special_field in [
             *Rule.special_field_types,
-            "source_field",
+            "source_fields",
             "target_field",
-            "delete_source_field",
+            "delete_source_fields",
             "overwrite_target_field",
         ]:
             detection_data.pop(special_field)

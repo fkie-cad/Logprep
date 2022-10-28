@@ -25,9 +25,15 @@ class Rule:
     class Config:
         """Config for Rule"""
 
-        source_field: str = field(validator=validators.instance_of(str), default="")
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ],
+            factory=list,
+        )
         target_field: str = field(validator=validators.instance_of(str), default="")
-        delete_source_field: str = field(validator=validators.instance_of(bool), default=False)
+        delete_source_fields: str = field(validator=validators.instance_of(bool), default=False)
         overwrite_target_field: str = field(validator=validators.instance_of(bool), default=False)
         description: str = field(validator=validators.instance_of(str), default="", eq=False)
         ip_fields: list = field(validator=validators.instance_of(list), factory=list)
