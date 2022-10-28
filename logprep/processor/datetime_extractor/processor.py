@@ -61,8 +61,8 @@ class DatetimeExtractor(Processor):
         return local_timezone_name
 
     def _apply_rules(self, event, rule):
-        datetime_field = rule.datetime_field
-        destination_field = rule.destination_field
+        datetime_field = rule.source_fields[0]
+        destination_field = rule.target_field
 
         if destination_field and self._field_exists(event, datetime_field):
             datetime_value = get_dotted_field_value(event, datetime_field)

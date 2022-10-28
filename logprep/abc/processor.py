@@ -165,6 +165,8 @@ class Processor(Component):
 
     def _apply_rules_wrapper(self, event, rule):
         self._apply_rules(event, rule)
+        if not hasattr(rule, "delete_source_fields"):
+            return
         if rule.delete_source_fields:
             for dotted_field in rule.source_fields:
                 pop_dotted_field_value(event, dotted_field)

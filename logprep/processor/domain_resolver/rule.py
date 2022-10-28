@@ -1,20 +1,20 @@
 """This module is used to resolve domains."""
 import warnings
 from attrs import define, field, fields
-from logprep.processor.base.rule import Rule
+from logprep.processor.base.rule import SimpleSourceTargetRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
-class DomainResolverRule(Rule):
+class DomainResolverRule(SimpleSourceTargetRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(SimpleSourceTargetRule.Config):
         """RuleConfig for DomainResolver"""
 
-        source_fields: list = field(validator=fields(Rule.Config).source_fields.validator)
         target_field: list = field(
-            validator=fields(Rule.Config).target_field.validator, default="resolved_ip"
+            validator=fields(SimpleSourceTargetRule.Config).target_field.validator,
+            default="resolved_ip",
         )
 
     @classmethod

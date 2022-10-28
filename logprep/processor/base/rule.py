@@ -25,16 +25,6 @@ class Rule:
     class Config:
         """Config for Rule"""
 
-        source_fields: list = field(
-            validator=[
-                validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of(str)),
-            ],
-            factory=list,
-        )
-        target_field: str = field(validator=validators.instance_of(str), default="")
-        delete_source_fields: str = field(validator=validators.instance_of(bool), default=False)
-        overwrite_target: str = field(validator=validators.instance_of(bool), default=False)
         description: str = field(validator=validators.instance_of(str), default="", eq=False)
         ip_fields: list = field(validator=validators.instance_of(list), factory=list)
         regex_fields: list = field(validator=validators.instance_of(list), factory=list)
@@ -104,26 +94,6 @@ class Rule:
     @property
     def tests(self) -> list:
         return self._config.tests
-
-    @property
-    def delete_source_fields(self):
-        if hasattr(self, "_config"):
-            return self._config.delete_source_fields
-        return False
-
-    @property
-    def source_fields(self):
-        if hasattr(self, "_config"):
-            return self._config.source_fields
-        return []
-
-    @property
-    def target_field(self):
-        return self._config.target_field
-
-    @property
-    def overwrite_target(self):
-        return self._config.overwrite_target
 
     # pylint: enable=C0111
 
@@ -210,3 +180,44 @@ class Rule:
                 raise ValueError
 
         return special_fields
+
+
+class SimpleSourceTargetRule(Rule):
+    """Interface for a simple Rule with source_fields and target_field"""
+
+    @define(kw_only=True)
+    class Config(Rule.Config):
+        """Config for SimpleSourceTargetRule"""
+
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ]
+        )
+        target_field: str = field(validator=validators.instance_of(str))
+        delete_source_fields: str = field(validator=validators.instance_of(bool), default=False)
+        overwrite_target: str = field(validator=validators.instance_of(bool), default=False)
+
+    # pylint: disable=missing-function-docstring
+    @property
+    def delete_source_fields(self):
+        if hasattr(self, "_config"):
+            return self._config.delete_source_fields
+        return False
+
+    @property
+    def source_fields(self):
+        if hasattr(self, "_config"):
+            return self._config.source_fields
+        return []
+
+    @property
+    def target_field(self):
+        return self._config.target_field
+
+    @property
+    def overwrite_target(self):
+        return self._config.overwrite_target
+
+    # pylint: enable=missing-function-docstring

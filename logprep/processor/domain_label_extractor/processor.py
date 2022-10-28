@@ -104,11 +104,11 @@ class DomainLabelExtractor(Processor):
         """
         if not self._field_exists:
             return
-        domain = get_dotted_field_value(event, rule.target_field)
+        domain = get_dotted_field_value(event, rule.source_fields[0])
         tagging_field = event.get(self._config.tagging_field_name, [])
 
         if self._is_valid_ip(domain):
-            tagging_field.append(f"ip_in_{rule.target_field.replace('.', '_')}")
+            tagging_field.append(f"ip_in_{rule.source_fields[0].replace('.', '_')}")
             event[self._config.tagging_field_name] = tagging_field
             return
 
@@ -120,7 +120,7 @@ class DomainLabelExtractor(Processor):
                 "subdomain": labels.subdomain,
             }
             for label, _ in labels_dict.items():
-                output_field = f"{rule.output_field}.{label}"
+                output_field = f"{rule.target_field}.{label}"
                 adding_was_successful = add_field_to(
                     event,
                     output_field,
@@ -131,7 +131,7 @@ class DomainLabelExtractor(Processor):
                 if not adding_was_successful:
                     raise DuplicationError(self.name, [output_field])
         else:
-            tagging_field.append(f"invalid_domain_in_{rule.target_field.replace('.', '_')}")
+            tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
             event[self._config.tagging_field_name] = tagging_field
 
     @staticmethod

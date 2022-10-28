@@ -76,19 +76,22 @@ from typing import Callable, List, Tuple
 from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import Rule
+from logprep.processor.base.rule import SimpleSourceTargetRule
 from logprep.util.helper import append, add_and_overwrite
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
 SEPARATOR = r"((?!%\{.*\}).+)"
 
 
-class DissectorRule(Rule):
+class DissectorRule(SimpleSourceTargetRule):
     """dissector rule"""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(SimpleSourceTargetRule.Config):
         """Config for Dissector"""
+
+        source_fields: list = field(factory=list)
+        target_field: str = field(default="")
 
         mapping: dict = field(
             validator=[

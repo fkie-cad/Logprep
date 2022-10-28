@@ -40,33 +40,28 @@ A speaking example:
 """
 from functools import partial
 
-from attrs import define, field, validators
+from attrs import define, field, fields, validators
 
-from logprep.processor.base.rule import Rule
+from logprep.processor.base.rule import SimpleSourceTargetRule
 from logprep.util.validators import min_len_validator
 
 
-class ConcatenatorRule(Rule):
+class ConcatenatorRule(SimpleSourceTargetRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(SimpleSourceTargetRule.Config):
         """RuleConfig for Concatenator"""
 
         source_fields: list = field(
             validator=[
-                validators.deep_iterable(
-                    member_validator=validators.instance_of(str),
-                    iterable_validator=validators.instance_of(list),
-                ),
+                fields(SimpleSourceTargetRule.Config).source_fields.validator,
                 partial(min_len_validator, min_length=2),
             ]
         )
         """The source fields that should be concatenated, can contain dotted field paths."""
         separator: str = field(validator=validators.instance_of(str))
         """The character(s) that should be used between the combined source field values."""
-
-    _config: "ConcatenatorRule.Config"
 
     @property
     def source_fields(self) -> list:  # pylint: disable=missing-docstring
