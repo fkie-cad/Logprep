@@ -80,7 +80,7 @@ class TestDropperRule:
             (
                 {"filter": "test", "drop": ["field1", "field2"]},
                 None,
-                "'fields_to_drop' must be <class 'list'>",
+                "'drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test"},
@@ -90,12 +90,12 @@ class TestDropperRule:
             (
                 {"filter": "test", "drop": "field1, field2"},
                 TypeError,
-                "'fields_to_drop' must be <class 'list'>",
+                "'drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test", "drop": {"field1": "field2"}},
                 TypeError,
-                "'fields_to_drop' must be <class 'list'>",
+                "'drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test", "drop": ["field1", "field2"], "drop_full": True},
@@ -122,3 +122,12 @@ class TestDropperRule:
     def test_rule_is_hashable(self, specific_rule_definition):
         rule = DropperRule._create_from_dict(specific_rule_definition)
         assert isinstance(rule, Hashable)
+
+    def test_deprecation_warning(self):
+        rule_dict = {"filter": "test", "drop": ["field1", "field2"], "drop_full": True}
+        with pytest.deprecated_call() as w:
+            DropperRule._create_from_dict(rule_dict)
+            assert len(w.list) == 2
+            matches = [warning.message.args[0] for warning in w.list]
+            assert "Use dropper.drop instead" in matches[0]
+            assert "Use dropper.drop_full instead" in matches[1]
