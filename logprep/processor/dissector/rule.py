@@ -123,6 +123,9 @@ class DissectorRule(Rule):
         [default=`_dissectfailure`]
         """
 
+        def __attrs_post_init__(self):
+            self.source_fields = list(self.mapping.keys())  # pylint: disable=no-member
+
     _actions_mapping: dict = {
         "": add_and_overwrite,
         "+": append,
