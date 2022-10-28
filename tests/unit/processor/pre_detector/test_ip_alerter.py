@@ -25,12 +25,35 @@ def fixture_ip_alerter():
 
 @pytest.fixture(name="rule_without_fields")
 def fixture_rule_without_fields():
-    return PreDetectorRule(None, {"anything": "something"})
+    return PreDetectorRule._create_from_dict(
+        {
+            "filter": "message",
+            "pre_detector": {
+                "id": "does not matter",
+                "title": "does not matter",
+                "severity": "doesnotcare",
+                "mitre": [],
+                "case_condition": "does not care",
+            },
+        }
+    )
 
 
 @pytest.fixture(name="rule_with_fields")
 def fixture_rule_with_fields():
-    return PreDetectorRule(None, {"anything": "something"}, ip_fields_to_check=["ip_field"])
+    return PreDetectorRule._create_from_dict(
+        {
+            "filter": "message",
+            "pre_detector": {
+                "id": "does not matter",
+                "title": "does not matter",
+                "severity": "doesnotcare",
+                "mitre": [],
+                "case_condition": "does not care",
+            },
+            "ip_fields": ["ip_field"],
+        }
+    )
 
 
 class TestIPAlerter:

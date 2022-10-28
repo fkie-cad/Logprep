@@ -101,7 +101,7 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
             self.runner.start()
 
     def test_fails_when_rules_are_invalid(self):
-        with raises(InvalidRuleDefinitionError, match=r"Keys \[\] must be \['filter', 'label'\]"):
+        with raises(InvalidRuleDefinitionError, match=r"no filter defined"):
             with ConfigurationForTest(
                 inject_changes=[
                     {

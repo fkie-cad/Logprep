@@ -108,8 +108,8 @@ def fixture_specific_rule_with_resolve_file_definition():
                     "resolve_list": {
                         "to_resolve": "resolved",
                         "other_to_resolve": "other_resolved",
-                        "store_db_persistent": True,
                     },
+                    "store_db_persistent": True,
                 },
             },
             False,
@@ -177,7 +177,7 @@ def test_rules_with_differently_defined_but_equivalent_regex_pattern_definition_
 
 
 def test_replace_pattern_with_parenthesis_after_closing_parenthesis_not_included_in_replacement():
-    replaced_pattern = HyperscanResolverRule._replace_pattern(
+    replaced_pattern = HyperscanResolverRule.Config._replace_pattern(
         "123abc456",
         r"\d*(?P<mapping>[a-z]+)c)\d*",
     )
@@ -186,7 +186,7 @@ def test_replace_pattern_with_parenthesis_after_closing_parenthesis_not_included
 
 
 def test_replace_pattern_with_escaped_parenthesis_is_included_in_replacement():
-    replaced_pattern = HyperscanResolverRule._replace_pattern(
+    replaced_pattern = HyperscanResolverRule.Config._replace_pattern(
         r"123ab\)c123", r"\d*(?P<mapping>[a-z]+\)c)\d*"
     )
 

@@ -5,12 +5,8 @@ from typing import Hashable
 from unittest import mock
 import pytest
 
-from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.dropper.rule import (
-    DropperRule,
-    InvalidDropperDefinition,
-)
+from logprep.processor.dropper.rule import DropperRule
 
 
 @pytest.fixture(name="specific_rule_definition")
@@ -24,10 +20,7 @@ def fixture_specific_rule_definition():
 
 class TestDropperRule:
     def test_rule_has_fields_to_drop(self, specific_rule_definition):
-        rule = DropperRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["drop"],
-        )
+        rule = DropperRule._create_from_dict(specific_rule_definition)
         fields_to_drop = rule.fields_to_drop
         assert isinstance(fields_to_drop, list)
         assert "field1" in fields_to_drop
@@ -87,22 +80,22 @@ class TestDropperRule:
             (
                 {"filter": "test", "drop": ["field1", "field2"]},
                 None,
-                "drop field with list exists",
+                "'fields_to_drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test"},
                 InvalidRuleDefinitionError,
-                r"Keys \['filter'\] must be \['filter', 'drop'\]",
+                "config not under key drop",
             ),
             (
                 {"filter": "test", "drop": "field1, field2"},
-                InvalidDropperDefinition,
-                "is not a list",
+                TypeError,
+                "'fields_to_drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test", "drop": {"field1": "field2"}},
-                InvalidDropperDefinition,
-                "is not a list",
+                TypeError,
+                "'fields_to_drop' must be <class 'list'>",
             ),
             (
                 {"filter": "test", "drop": ["field1", "field2"], "drop_full": True},
@@ -111,8 +104,8 @@ class TestDropperRule:
             ),
             (
                 {"filter": "test", "drop": ["field1", "field2"], "drop_full": "True"},
-                InvalidDropperDefinition,
-                'drop_full value "True" is not a bool!',
+                TypeError,
+                "'drop_full' must be <class 'bool'>",
             ),
         ],
     )

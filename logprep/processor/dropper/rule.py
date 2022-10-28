@@ -1,69 +1,39 @@
 """This module is used to drop specified fields that match a dropper filter."""
 
 from typing import List
-from logprep.filter.expression.filter_expression import FilterExpression
+from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
-
-
-class DropperRuleError(InvalidRuleDefinitionError):
-    """Base class for Dropper rule related exceptions."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Dropper rule ({message}): ")
-
-
-class InvalidDropperDefinition(DropperRuleError):
-    """Raise if Dropper definition invalid."""
-
-    def __init__(self, definition):
-        message = f"The following Dropper definition is invalid: {definition}"
-        super().__init__(message)
+from logprep.processor.base.rule import Rule
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class DropperRule(Rule):
     """Check if documents match a filter."""
 
-    def __init__(self, filter_rule: FilterExpression, drop: List[str], drop_full=True):
-        super().__init__(filter_rule)
-        self._fields_to_drop = drop
-        self._drop_full = drop_full
+    @define(kw_only=True)
+    class Config(Rule.Config):
+        """RuleConfig for DroperRule"""
 
-    def __eq__(self, other: "DropperRule") -> bool:
-        return all(
-            [
-                other.filter == self._filter,
-                self._fields_to_drop == other.fields_to_drop,
-                self._drop_full == other.drop_full,
-            ]
-        )
+        fields_to_drop: list = field(validator=validators.instance_of(list))
+        drop_full: bool = field(validator=validators.instance_of(bool), default=True)
 
-    # pylint: disable=C0111
+    @classmethod
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        if rule.get("dropper") is None:
+            drop_fields = pop_dotted_field_value(rule, "drop")
+            if drop_fields is not None:
+                add_and_overwrite(rule, "dropper.fields_to_drop", drop_fields)
+            drop_full = pop_dotted_field_value(rule, "drop_full")
+            if drop_full is not None:
+                add_and_overwrite(rule, "dropper.drop_full", drop_full)
+
     @property
     def fields_to_drop(self) -> List[str]:
-        return self._fields_to_drop
+        """Returns fields_to_drop"""
+        return self._config.fields_to_drop
 
     @property
     def drop_full(self) -> bool:
-        return self._drop_full
-
-    # pylint: enable=C0111
-
-    @staticmethod
-    def _create_from_dict(rule: dict) -> "DropperRule":
-        DropperRule._check_rule_validity(rule, "drop", optional_keys={"drop_full"})
-        DropperRule._check_if_drops_valid(rule)
-
-        filter_expression = Rule._create_filter_expression(rule)
-        return DropperRule(filter_expression, rule["drop"], rule.get("drop_full", True))
-
-    @staticmethod
-    def _check_if_drops_valid(rule: dict):
-        if not isinstance(rule["drop"], list):
-            raise InvalidDropperDefinition(f'Drop value "{rule["drop"]}" is not a list!')
-
-        if not all(isinstance(value, str) for value in rule["drop"]):
-            raise InvalidDropperDefinition(f'Drop values {rule["drop"]} are not a list of strings!')
-
-        if not isinstance(rule.get("drop_full", True), bool):
-            raise InvalidDropperDefinition(f'drop_full value "{rule["drop_full"]}" is not a bool!')
+        """Returns drop_full"""
+        return self._config.drop_full

@@ -75,7 +75,6 @@ from typing import Callable, List, Tuple
 from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.base.rule import Rule
 from logprep.util.helper import append, add_and_overwrite
 
@@ -87,7 +86,7 @@ class DissectorRule(Rule):
     """dissector rule"""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """Config for Dissector"""
 
         mapping: dict = field(
@@ -144,22 +143,9 @@ class DissectorRule(Rule):
         return self._config.tag_on_failure
 
     def __init__(self, filter_rule: FilterExpression, config: "DissectorRule.Config"):
-        super().__init__(filter_rule)
-        self._config = config
+        super().__init__(filter_rule, config)
         self._set_mapping_actions()
         self._set_convert_actions()
-
-    def __eq__(self, other: "DissectorRule") -> bool:
-        return all((self._filter == other._filter, self._config == other._config))
-
-    @staticmethod
-    def _create_from_dict(rule: dict) -> "DissectorRule":
-        filter_expression = Rule._create_filter_expression(rule)
-        config = rule.get("dissector")
-        if not isinstance(config, dict):
-            raise InvalidRuleDefinitionError("config is not a dict")
-        config = DissectorRule.Config(**config)
-        return DissectorRule(filter_expression, config)
 
     def _set_mapping_actions(self):
         self.actions = []

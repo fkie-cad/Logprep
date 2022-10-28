@@ -1,10 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
-from unittest import mock
 
 import pytest
-from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.list_comparison.rule import ListComparisonRule
 
 
@@ -90,26 +88,17 @@ class TestListComparisonRule:
     def test_rules_equality(
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule1 = ListComparisonRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["list_comparison"],
-        )
-        rule2 = ListComparisonRule(
-            LuceneFilter.create(other_rule_definition["filter"]),
-            other_rule_definition["list_comparison"],
-        )
+        rule1 = ListComparisonRule._create_from_dict(specific_rule_definition)
+        rule2 = ListComparisonRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
 
     def test_compare_set_not_empty_for_valid_rule_def_after_init_list_comparison(
         self, specific_rule_definition
     ):
-        rule = ListComparisonRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["list_comparison"],
-        )
+        rule = ListComparisonRule._create_from_dict(specific_rule_definition)
 
         rule.init_list_comparison("tests/testdata/unit/list_comparison/rules")
 
-        assert rule._compare_sets is not None
-        assert isinstance(rule._compare_sets, dict)
-        assert len(rule._compare_sets.keys()) > 0
+        assert rule.compare_sets is not None
+        assert isinstance(rule.compare_sets, dict)
+        assert len(rule.compare_sets.keys()) > 0

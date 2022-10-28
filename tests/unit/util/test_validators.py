@@ -13,6 +13,7 @@ from logprep.util.validators import (
     file_validator,
     list_of_dirs_validator,
     list_of_files_validator,
+    one_of_validator,
     url_validator,
     list_of_urls_validator,
     directory_validator,
@@ -347,3 +348,35 @@ class TestMinLenValidator:
         attribute = type("myclass", (), {"name": "testname", "default": None})
         with pytest.raises(ValueError, match=r"Length of 'testname' must be => 2: 1"):
             min_len_validator(None, attribute(), ["only one element"], min_length=2)
+
+
+class TestOneOfValidator:
+    def test_member_list_item_is_a_dict_key(self):
+        attribute = type("myclass", (), {"name": "testname", "default": None})
+        value = {"item1": "does not matter"}
+        member_list = ["item1", "item2"]
+        one_of_validator(None, attribute, value, member_list)
+
+    def test_member_list_item_is_a_list_member(self):
+        attribute = type("myclass", (), {"name": "testname", "default": None})
+        value = ["item1", "does not matter"]
+        member_list = ["item1", "item2"]
+        one_of_validator(None, attribute, value, member_list)
+
+    def test_member_list_item_is_not_a_dict_key(self):
+        attribute = type("myclass", (), {"name": "testname", "default": None})
+        value = {"item1": "does not matter"}
+        member_list = ["item2", "item3"]
+        with pytest.raises(
+            ValueError, match=r"testname has to contain one of these members \['item2', 'item3'\]"
+        ):
+            one_of_validator(None, attribute, value, member_list)
+
+    def test_member_list_item_is_not_a_list_member(self):
+        attribute = type("myclass", (), {"name": "testname", "default": None})
+        value = ["item1", "does not matter"]
+        member_list = ["item2", "item3"]
+        with pytest.raises(
+            ValueError, match=r"testname has to contain one of these members \['item2', 'item3'\]"
+        ):
+            one_of_validator(None, attribute, value, member_list)

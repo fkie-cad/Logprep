@@ -5,10 +5,7 @@ from typing import Hashable
 from unittest import mock
 import pytest
 
-from logprep.processor.deleter.rule import (
-    DeleterRule,
-    InvalidDeleterDefinition,
-)
+from logprep.processor.deleter.rule import DeleterRule
 
 
 @pytest.fixture(name="specific_rule_definition")
@@ -70,8 +67,8 @@ class TestDeleterRule:
             ),
             (
                 {"filter": "test", "delete": "yes", "description": "my reference rule"},
-                InvalidDeleterDefinition,
-                'Delete value "yes" is not a boolean!',
+                TypeError,
+                "'delete' must be <class 'bool'>",
             ),
         ],
     )

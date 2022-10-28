@@ -11,7 +11,7 @@ from pytest import raises
 
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
-from logprep.processor.labeler.rule import LabelingRule
+from logprep.processor.labeler.rule import LabelerRule
 from logprep.factory import Factory
 from tests.testdata.metadata import path_to_schema, path_to_schema2
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -75,8 +75,8 @@ class TestLabeler(BaseProcessorTestCase):
         """Return path to generic rule directories"""
         return self.CONFIG["generic_rules"]
 
-    def _load_specific_rule(self, rule, schema=None):
-        specific_rule = LabelingRule._create_from_dict(rule)
+    def _load_specific_rule(self, rule, schema=None):  # pylint: disable=arguments-differ
+        specific_rule = LabelerRule._create_from_dict(rule)
         if schema:
             specific_rule.add_parent_labels_from_schema(schema)
         self.object._specific_tree.add_rule(specific_rule, self.logger)

@@ -1,14 +1,12 @@
 """This module is used to extract fields from documents via a given list."""
 
-import os
-from typing import List
+from functools import partial
+from pathlib import Path
+from typing import List, Optional
+from attrs import define, field, validators
 
-from ruamel.yaml import YAML
-
-from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
-
-yaml = YAML(typ="safe", pure=True)
+from logprep.util.validators import dict_structure_validator, one_of_validator
 
 
 class SelectiveExtractorRuleError(InvalidRuleDefinitionError):
@@ -18,31 +16,58 @@ class SelectiveExtractorRuleError(InvalidRuleDefinitionError):
         super().__init__(f"SelectiveExtractor rule ({message})")
 
 
-class InvalidSelectiveExtractorDefinition(SelectiveExtractorRuleError):
-    """Raise if SelectiveExtractor definition invalid."""
-
-    def __init__(self, definition):
-        message = f"The following SelectiveExtractor definition is invalid: {definition}"
-        super().__init__(message)
-
-
 class SelectiveExtractorRule(Rule):
     """Check if documents match a filter."""
 
-    _extract: dict = None
+    @define(kw_only=True)
+    class Config(Rule.Config):
+        """RuleConfig for SelectiveExtractor"""
 
-    _extract_from_file: os.PathLike = None
+        extract: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.in_(
+                        ["extract_from_file", "target_topic", "extracted_field_list"]
+                    ),
+                    value_validator=validators.instance_of((str, list)),
+                ),
+                partial(
+                    one_of_validator, member_list=["extracted_field_list", "extract_from_file"]
+                ),
+                partial(
+                    dict_structure_validator,
+                    reference_dict={
+                        "extract_from_file": Optional[str],
+                        "target_topic": str,
+                        "extracted_field_list": Optional[list],
+                    },
+                ),
+            ]
+        )
 
-    _target_topic: str = None
+        @property
+        def extract_from_file(self) -> Path:
+            """Returns the PosixPath representation of extract_from_file"""
+            extract_from_file = self.extract.get("extract_from_file")
+            if extract_from_file is None:
+                return None
+            return Path(extract_from_file)
 
-    def __init__(self, filter_rule: FilterExpression, selective_extractor_cfg: dict):
-        super().__init__(filter_rule)
-
-        self._extract = selective_extractor_cfg.get("extract")
-        self._target_topic = self._extract.get("target_topic")
-        self._extract_from_file = self._extract.get("extract_from_file")
-        if self._extract_from_file:
+        def __attrs_post_init__(self):
             self._add_from_file()
+
+        def _add_from_file(self):
+            if self.extract_from_file is None:
+                return
+            if not self.extract_from_file.is_file():
+                raise SelectiveExtractorRuleError("extract_from_file is not a valid file handle")
+            extract_list = self.extract.get("extracted_field_list")
+            if extract_list is None:
+                extract_list = []
+            lines_from_file = self.extract_from_file.read_text(encoding="utf8").splitlines()
+            extract_list = list({*extract_list, *lines_from_file})
+            self.extract = {**self.extract, **{"extracted_field_list": extract_list}}
 
     @property
     def target_topic(self) -> str:
@@ -51,7 +76,7 @@ class SelectiveExtractorRule(Rule):
         --------
         target_topic: the topic where to write the extracted fields to
         """
-        return self._target_topic
+        return self._config.extract.get("target_topic")
 
     @property
     def extracted_field_list(self) -> List[str]:
@@ -60,18 +85,7 @@ class SelectiveExtractorRule(Rule):
         --------
         extracted_field_list: a list with extraction field names
         """
-        return self._extract.get("extracted_field_list")
-
-    def _add_from_file(self):
-        if not os.path.isfile(self._extract_from_file):
-            raise SelectiveExtractorRuleError("extract_from_file is not a valid file handle")
-        extract_list = self._extract.get("extracted_field_list")
-        if extract_list is None:
-            extract_list = []
-        with open(self._extract_from_file, "r", encoding="utf8") as extract_file:
-            lines_from_file = extract_file.read().splitlines()
-            extract_list = list(set([*extract_list, *lines_from_file]))
-        self._extract["extracted_field_list"] = extract_list
+        return self._config.extract.get("extracted_field_list")
 
     def __eq__(self, other: "SelectiveExtractorRule") -> bool:
         return all(
@@ -81,46 +95,3 @@ class SelectiveExtractorRule(Rule):
                 self.target_topic == other.target_topic,
             ]
         )
-
-    @staticmethod
-    def _create_from_dict(rule: dict) -> "SelectiveExtractorRule":
-        SelectiveExtractorRule._check_rule_validity(rule, "selective_extractor")
-        SelectiveExtractorRule._check_if_valid(rule)
-
-        filter_expression = Rule._create_filter_expression(rule)
-        return SelectiveExtractorRule(filter_expression, rule["selective_extractor"])
-
-    @staticmethod
-    def _check_if_valid(rule: dict):
-        selective_extractor_cfg = rule.get("selective_extractor")
-        if not isinstance(selective_extractor_cfg, dict):
-            raise InvalidSelectiveExtractorDefinition(
-                "'selective_extractor' definition has to be a dict"
-            )
-        if not "extract" in selective_extractor_cfg:
-            raise InvalidSelectiveExtractorDefinition(
-                "'selective_extractor' must contain 'extract'!"
-            )
-        extract = selective_extractor_cfg.get("extract")
-        if not isinstance(extract, dict):
-            raise InvalidSelectiveExtractorDefinition("'extract' definition has to be a dict")
-        extract_from_file = extract.get("extract_from_file")
-        extracted_field_list = extract.get("extracted_field_list")
-        target_topic = extract.get("target_topic")
-        if not (extract_from_file or extracted_field_list):
-            raise InvalidSelectiveExtractorDefinition(
-                (
-                    "'selective_extractor' has no 'extracted_field_list' "
-                    "or 'extract_from_file' field"
-                )
-            )
-        if not target_topic:
-            raise InvalidSelectiveExtractorDefinition("'selective_extractor' has no 'target_topic'")
-        if not isinstance(target_topic, str):
-            raise InvalidSelectiveExtractorDefinition("'target_topic' has to be a string")
-        if extracted_field_list:
-            if not isinstance(extracted_field_list, list):
-                raise InvalidSelectiveExtractorDefinition("'extracted_field_list' has to be a list")
-        if extract_from_file:
-            if not isinstance(extract_from_file, str):
-                raise InvalidSelectiveExtractorDefinition("'extract_from_file' has to be a string")

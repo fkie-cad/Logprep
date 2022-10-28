@@ -38,7 +38,7 @@ from attr import define, field, validators
 from logprep.abc import Processor
 from logprep.util.validators import file_validator, json_validator
 from logprep.processor.labeler.labeling_schema import LabelingSchema
-from logprep.processor.labeler.rule import LabelingRule
+from logprep.processor.labeler.rule import LabelerRule
 
 
 class Labeler(Processor):
@@ -63,7 +63,7 @@ class Labeler(Processor):
 
     _schema: LabelingSchema
 
-    rule_class = LabelingRule
+    rule_class = LabelerRule
 
     def __init__(
         self,
@@ -85,7 +85,7 @@ class Labeler(Processor):
         self._convert_label_categories_to_sorted_list(event)
 
     @staticmethod
-    def _add_label_fields(event: dict, rule: LabelingRule):
+    def _add_label_fields(event: dict, rule: LabelerRule):
         """Prepares the event by adding empty label fields"""
         if "label" not in event:
             event["label"] = {}
@@ -95,7 +95,7 @@ class Labeler(Processor):
                 event["label"][key] = set()
 
     @staticmethod
-    def _add_label_values(event: dict, rule: LabelingRule):
+    def _add_label_values(event: dict, rule: LabelerRule):
         """Adds the labels from the rule to the event"""
         for key in rule.label:
             if not isinstance(event["label"][key], set):

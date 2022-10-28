@@ -164,3 +164,13 @@ def min_len_validator(_, attribute, value, min_length):
     #  (including the tests).
     if len(value) < min_length:
         raise ValueError(f"Length of '{attribute.name}' must be => {min_length}: {len(value)}")
+
+
+def one_of_validator(_, attribute, value, member_list):
+    """validates if the value contains one element of the given list"""
+    contains = False
+    for member in member_list:
+        if member in value:
+            contains = True
+    if not contains:
+        raise ValueError(f"{attribute.name} has to contain one of these members {member_list}")

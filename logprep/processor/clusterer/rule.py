@@ -1,88 +1,30 @@
 """This module is used to get documents that match a clusterer filter."""
 
-from typing import List, Union, Dict, Pattern
 import re
-
-from logprep.filter.expression.filter_expression import FilterExpression
+from typing import Pattern
+from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule
-
-
-class ClustererRuleError(BaseException):
-    """Base class for Clusterer rule related exceptions."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Clusterer rule ({message}): ")
-
-
-class InvalidClusteringDefinition(ClustererRuleError):
-    """Raise if clustering definition is invalid."""
-
-    def __init__(self, definition: str):
-        message = f"The following clustering definition is invalid: {definition}"
-        super().__init__(message)
 
 
 class ClustererRule(Rule):
     """Check if documents match a filter."""
 
-    def __init__(
-        self,
-        filter_rule: FilterExpression,
-        clusterer_cfg: dict,
-        tests: Union[List[Dict[str, str]], Dict[str, str]] = None,
-    ):
-        super().__init__(filter_rule)
-        self._target = clusterer_cfg["target"]
-        self._pattern = re.compile(clusterer_cfg["pattern"])
-        self._repl = clusterer_cfg["repl"]
+    @define(kw_only=True)
+    class Config(Rule.Config):
+        """RuleConfig for Clusterer"""
 
-        if isinstance(tests, list):
-            self._tests = tests
-        elif isinstance(tests, dict):
-            self._tests = [tests]
-        else:
-            self._tests = []
-
-    def __eq__(self, other: "ClustererRule") -> bool:
-        return all(
-            [
-                self._filter == other.filter,
-                self._target == other.target,
-                self._pattern == other.pattern,
-                self._repl == other.repl,
-            ]
-        )
+        target: str = field(validator=validators.instance_of(str))
+        pattern: Pattern = field(validator=validators.instance_of(Pattern), converter=re.compile)
+        repl: str = field(validator=validators.instance_of(str))
 
     # pylint: disable=C0111
     @property
-    def target(self) -> str:
-        return self._target
-
-    @property
     def pattern(self) -> Pattern:
-        return self._pattern
+        return self._config.pattern
 
     @property
     def repl(self) -> str:
-        return self._repl
+        return self._config.repl
 
     # pylint: enable=C0111
-
-    @staticmethod
-    def _create_from_dict(rule: dict) -> "ClustererRule":
-        ClustererRule._check_rule_validity(rule, "clusterer", optional_keys={"tests"})
-        ClustererRule._check_if_clusterer_data_valid(rule)
-
-        filter_expression = Rule._create_filter_expression(rule)
-        return ClustererRule(filter_expression, rule["clusterer"], rule.get("tests"))
-
-    @staticmethod
-    def _check_if_clusterer_data_valid(rule: dict):
-        for item in ("target", "pattern", "repl"):
-            if item not in rule["clusterer"]:
-                raise ClustererRuleError(f'Item "{item}" is missing in Clusterer-Rule')
-            if not isinstance(rule["clusterer"][item], str):
-                raise ClustererRuleError(
-                    f'Value "{rule["clusterer"][item]}" in "{item}" ' f"is not a string"
-                )

@@ -1,24 +1,24 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-
+# pylint: disable=no-self-use
 from typing import Hashable
+
 import pytest
-from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
+
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
 
 
 @pytest.fixture(name="specific_rule_definition")
 def fixture_specific_rule_definition():
     return {
         "filter": "field.a",
-        "domain_label_extractor": {
-            "target_field": "field.a",
-            "output_field": "datetime",
-        },
+        "datetime_extractor": {"datetime_field": "field.a", "destination_field": "datetime"},
         "description": "",
     }
 
 
-class TestDomainLabelExtractorRule:
+class TestDatetimeExtractorRule:
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
         [
@@ -26,9 +26,9 @@ class TestDomainLabelExtractorRule:
                 "Equal because the same",
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "target_field": "field.a",
-                        "output_field": "datetime",
+                    "datetime_extractor": {
+                        "datetime_field": "field.a",
+                        "destination_field": "datetime",
                     },
                     "description": "",
                 },
@@ -38,21 +38,21 @@ class TestDomainLabelExtractorRule:
                 "Not equal because of different filter",
                 {
                     "filter": "field.b",
-                    "domain_label_extractor": {
-                        "target_field": "field.a",
-                        "output_field": "datetime",
+                    "datetime_extractor": {
+                        "datetime_field": "field.a",
+                        "destination_field": "datetime",
                     },
                     "description": "",
                 },
                 False,
             ),
             (
-                "Not equal because of different target_field",
+                "Not equal because of different datetime_field",
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "target_field": "field.b",
-                        "output_field": "datetime",
+                    "datetime_extractor": {
+                        "datetime_field": "field.b",
+                        "destination_field": "datetime",
                     },
                     "description": "",
                 },
@@ -62,21 +62,21 @@ class TestDomainLabelExtractorRule:
                 "Not equal because different destination",
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "target_field": "field.a",
-                        "output_field": "other",
+                    "datetime_extractor": {
+                        "datetime_field": "field.a",
+                        "destination_field": "other",
                     },
                     "description": "",
                 },
                 False,
             ),
             (
-                "Not equal because different destination and target_field",
+                "Not equal because different destination and datetime_field",
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "target_field": "field.b",
-                        "output_field": "other",
+                    "datetime_extractor": {
+                        "datetime_field": "field.b",
+                        "destination_field": "other",
                     },
                     "description": "",
                 },
@@ -87,8 +87,8 @@ class TestDomainLabelExtractorRule:
     def test_rules_equality(
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule_1 = DomainLabelExtractorRule._create_from_dict(specific_rule_definition)
-        rule_2 = DomainLabelExtractorRule._create_from_dict(other_rule_definition)
+        rule_1 = DatetimeExtractorRule._create_from_dict(specific_rule_definition)
+        rule_2 = DatetimeExtractorRule._create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase
 
     @pytest.mark.parametrize(
@@ -97,9 +97,9 @@ class TestDomainLabelExtractorRule:
             (
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "target_field": "field.b",
-                        "output_field": "other",
+                    "datetime_extractor": {
+                        "datetime_field": "field.b",
+                        "destination_field": "other",
                     },
                     "description": "",
                 },
@@ -109,31 +109,31 @@ class TestDomainLabelExtractorRule:
             (
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "target_field": "field.b",
+                    "datetime_extractor": {
+                        "datetime_field": "field.b",
                     },
                     "description": "",
                 },
                 TypeError,
-                "missing 1 required keyword-only argument: 'output_field'",
+                "missing 1 required keyword-only argument: 'destination_field'",
             ),
             (
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "output_field": "other",
+                    "datetime_extractor": {
+                        "destination_field": "other",
                     },
                     "description": "",
                 },
                 TypeError,
-                "missing 1 required keyword-only argument: 'target_field'",
+                "missing 1 required keyword-only argument: 'datetime_field'",
             ),
             (
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "target_field": ["field.b"],
-                        "output_field": "other",
+                    "datetime_extractor": {
+                        "datetime_field": ["field.b"],
+                        "destination_field": "other",
                     },
                     "description": "",
                 },
@@ -143,9 +143,9 @@ class TestDomainLabelExtractorRule:
             (
                 {
                     "filter": "field.a",
-                    "domain_label_extractor": {
-                        "target_field": "field.b",
-                        "output_field": 111,
+                    "datetime_extractor": {
+                        "datetime_field": "field.b",
+                        "destination_field": 111,
                     },
                     "description": "",
                 },
@@ -157,11 +157,11 @@ class TestDomainLabelExtractorRule:
     def test_rule_create_from_dict(self, rule_definition, raised, message):
         if raised:
             with pytest.raises(raised, match=message):
-                _ = DomainLabelExtractorRule._create_from_dict(rule_definition)
+                _ = DatetimeExtractorRule._create_from_dict(rule_definition)
         else:
-            extractor_rule = DomainLabelExtractorRule._create_from_dict(rule_definition)
-            assert isinstance(extractor_rule, DomainLabelExtractorRule)
+            extractor_rule = DatetimeExtractorRule._create_from_dict(rule_definition)
+            assert isinstance(extractor_rule, DatetimeExtractorRule)
 
     def test_rule_is_hashable(self, specific_rule_definition):
-        rule = DomainLabelExtractorRule._create_from_dict(specific_rule_definition)
+        rule = DatetimeExtractorRule._create_from_dict(specific_rule_definition)
         assert isinstance(rule, Hashable)

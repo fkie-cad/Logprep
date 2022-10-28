@@ -1,10 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
-from unittest import mock
 
 import pytest
-from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 
 
@@ -72,12 +70,6 @@ class TestListComparisonRule:
     def test_rules_equality(
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule1 = GeoipEnricherRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["geoip_enricher"],
-        )
-        rule2 = GeoipEnricherRule(
-            LuceneFilter.create(other_rule_definition["filter"]),
-            other_rule_definition["geoip_enricher"],
-        )
+        rule1 = GeoipEnricherRule._create_from_dict(specific_rule_definition)
+        rule2 = GeoipEnricherRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase

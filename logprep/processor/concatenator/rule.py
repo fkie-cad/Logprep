@@ -42,8 +42,7 @@ from functools import partial
 
 from attrs import define, field, validators
 
-from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
+from logprep.processor.base.rule import Rule
 from logprep.util.validators import min_len_validator
 
 
@@ -51,7 +50,7 @@ class ConcatenatorRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config:
+    class Config(Rule.Config):
         """RuleConfig for Concatenator"""
 
         source_fields: list = field(
@@ -76,23 +75,6 @@ class ConcatenatorRule(Rule):
 
     _config: "ConcatenatorRule.Config"
 
-    def __init__(self, filter_rule: FilterExpression, config: "ConcatenatorRule.Config"):
-        """
-        Instantiate ConcatenatorRule based on a given filter and processor configuration.
-
-        Parameters
-        ----------
-        filter_rule : FilterExpression
-            Given lucene filter expression as a representation of the rule's logic.
-        config : "ConcatenatorRule.Config"
-            Configuration fields from a given pipeline that refer to the processor instance.
-        """
-        super().__init__(filter_rule)
-        self._config = config
-
-    def __eq__(self, other: "ConcatenatorRule") -> bool:
-        return all([other.filter == self._filter, other._config == self._config])
-
     @property
     def source_fields(self) -> list:  # pylint: disable=missing-docstring
         return self._config.source_fields
@@ -112,12 +94,3 @@ class ConcatenatorRule(Rule):
     @property
     def delete_source_fields(self) -> bool:  # pylint: disable=missing-docstring
         return self._config.delete_source_fields
-
-    @staticmethod
-    def _create_from_dict(rule: dict) -> "ConcatenatorRule":
-        filter_expression = Rule._create_filter_expression(rule)
-        config = rule.get("concatenator")
-        if not isinstance(config, dict):
-            raise InvalidRuleDefinitionError("config is not a dict")
-        config = ConcatenatorRule.Config(**config)
-        return ConcatenatorRule(filter_expression, config)

@@ -1,8 +1,7 @@
-from logprep.filter.lucene_filter import LuceneFilter
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
 
 import pytest
-
-pytest.importorskip("logprep.processor.pre_detector")
 
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
@@ -23,7 +22,7 @@ def specific_rule_definition():
     }
 
 
-class TestNormalizerRule:
+class TestPreDetectorRule:
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
         [
@@ -167,14 +166,6 @@ class TestNormalizerRule:
     def test_rules_equality(
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
-        rule1 = PreDetectorRule(
-            LuceneFilter.create(specific_rule_definition["filter"]),
-            specific_rule_definition["pre_detector"],
-            specific_rule_definition.get("ip_fields"),
-        )
-        rule2 = PreDetectorRule(
-            LuceneFilter.create(other_rule_definition["filter"]),
-            other_rule_definition["pre_detector"],
-            other_rule_definition.get("ip_fields"),
-        )
+        rule1 = PreDetectorRule._create_from_dict(specific_rule_definition)
+        rule2 = PreDetectorRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase

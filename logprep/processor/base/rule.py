@@ -1,11 +1,11 @@
 """This module is the superclass for all rule classes."""
 
 import json
-from abc import abstractmethod
 from os.path import basename, splitext
-from typing import Set, Optional
+from typing import List, Set, Optional, Union, Dict
 
-from attr import define
+from attrs import define, field, validators
+
 from ruamel.yaml import YAML
 
 from logprep.metrics.metric import Metric, calculate_new_average
@@ -13,12 +13,42 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.json_handling import is_json
+from logprep.util.helper import camel_to_snake
 
 yaml = YAML(typ="safe", pure=True)
 
 
 class Rule:
     """Check if documents match a filter and add labels them."""
+
+    @define(kw_only=True)
+    class Config:
+        """Config for Rule"""
+
+        description: str = field(validator=validators.instance_of(str), default="", eq=False)
+        ip_fields: list = field(validator=validators.instance_of(list), factory=list)
+        regex_fields: list = field(validator=validators.instance_of(list), factory=list)
+        wildcard_fields: list = field(validator=validators.instance_of(list), factory=list)
+        sigma_fields: Union[list, bool] = field(
+            validator=validators.instance_of((list, bool)), factory=list
+        )
+        tests: List[Dict[str, str]] = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(
+                    member_validator=validators.instance_of(dict),
+                    iterable_validator=validators.instance_of(list),
+                ),
+                validators.deep_iterable(
+                    member_validator=validators.deep_mapping(
+                        key_validator=validators.instance_of(str),
+                        value_validator=validators.instance_of(str),
+                    )
+                ),
+            ],
+            converter=lambda x: [x] if isinstance(x, dict) else x,
+            factory=list,
+        )
 
     @define(kw_only=True)
     class RuleMetrics(Metric):
@@ -37,20 +67,21 @@ class Rule:
             self._mean_processing_time = new_avg
             self._mean_processing_time_sample_counter = new_sample_counter
 
-    special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields"]
+    special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields", "tests"]
 
-    def __init__(self, filter_rule: FilterExpression):
+    def __init__(self, filter_rule: FilterExpression, config: Config):
+        if not isinstance(config, self.Config):
+            raise InvalidRuleDefinitionError("config is not a Config class")
         self.__class__.__hash__ = Rule.__hash__
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
         self._special_fields = None
         self.file_name = None
-        self._tests = []
         self.metrics = self.RuleMetrics(labels={"type": "rule"})
+        self._config = config
 
-    @abstractmethod
-    def __eq__(self, other: "Rule"):
-        pass
+    def __eq__(self, other: "Rule") -> bool:
+        return all([other.filter == self._filter, other._config == self._config])
 
     def __hash__(self) -> int:  # pylint: disable=function-redefined
         return hash(repr(self))
@@ -62,7 +93,7 @@ class Rule:
 
     @property
     def tests(self) -> list:
-        return self._tests
+        return self._config.tests
 
     # pylint: enable=C0111
 
@@ -87,9 +118,29 @@ class Rule:
 
         return rules
 
-    @staticmethod
-    def _create_from_dict(rule: dict):
-        raise NotImplementedError
+    @classmethod
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        """normalizes rule dict before create rule config object"""
+
+    @classmethod
+    def _create_from_dict(cls, rule: dict) -> "Rule":
+        cls.normalize_rule_dict(rule)
+        filter_expression = Rule._create_filter_expression(rule)
+        rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
+        if not rule_type:
+            rule_type = "rule"
+        config = rule.get(rule_type)
+        if config is None:
+            raise InvalidRuleDefinitionError(f"config not under key {rule_type}")
+        if not isinstance(config, dict):
+            raise InvalidRuleDefinitionError("config is not a dict")
+        config.update({"description": rule.get("description", "")})
+        for special_field in cls.special_field_types:
+            special_field_value = rule.get(special_field)
+            if special_field_value is not None:
+                config.update({special_field: special_field_value})
+        config = cls.Config(**config)
+        return cls(filter_expression, config)
 
     @staticmethod
     def _check_rule_validity(
@@ -111,6 +162,8 @@ class Rule:
     @classmethod
     def _create_filter_expression(cls, rule: dict) -> FilterExpression:
         special_fields = cls._get_special_fields_for_rule_matching(rule)
+        if "filter" not in rule:
+            raise InvalidRuleDefinitionError("no filter defined")
         return LuceneFilter.create(rule["filter"], special_fields)
 
     @staticmethod
@@ -118,6 +171,8 @@ class Rule:
         special_fields = {}
 
         for field_type in Rule.special_field_types:
+            if field_type == "tests":
+                continue
             special_fields[field_type] = rule.get(field_type, [])
             if special_fields[field_type] and not (
                 isinstance(special_fields[field_type], list) or special_fields[field_type] is True
