@@ -3,11 +3,11 @@ This module is used to split domains in a given field into it's corresponding la
 """
 import warnings
 
-from logprep.processor.base.rule import SimpleSourceTargetRule
+from logprep.processor.base.rule import SourceTargetRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
-class DomainLabelExtractorRule(SimpleSourceTargetRule):
+class DomainLabelExtractorRule(SourceTargetRule):
     """Check if documents match a filter."""
 
     @classmethod
