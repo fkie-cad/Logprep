@@ -3,7 +3,7 @@ import copy
 from abc import abstractmethod
 from logging import DEBUG, Logger
 from multiprocessing import current_process
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from attr import define, field
 from logprep.abc import Component
@@ -15,6 +15,7 @@ from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import file_validator, list_of_dirs_validator
+from logprep.util.helper import pop_dotted_field_value
 
 
 class Processor(Component):
@@ -158,9 +159,15 @@ class Processor(Component):
             event,
             generic_tree=self._generic_tree,
             specific_tree=self._specific_tree,
-            callback=self._apply_rules,
+            callback=self._apply_rules_wrapper,
             processor_metrics=self.metrics,
         )
+
+    def _apply_rules_wrapper(self, event, rule):
+        self._apply_rules(event, rule)
+        if rule.delete_source_fields:
+            for dotted_field in rule.source_fields:
+                pop_dotted_field_value(event, dotted_field)
 
     @abstractmethod
     def _apply_rules(self, event, rule):

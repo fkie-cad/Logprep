@@ -2,10 +2,9 @@
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
 from typing import Hashable
-
+import warnings
 import pytest
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
 
 
@@ -110,12 +109,24 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
+                        "source_fields": ["field.b"],
+                        "target_field": "other",
+                    },
+                    "description": "",
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "field.a",
+                    "datetime_extractor": {
                         "datetime_field": "field.b",
                     },
                     "description": "",
                 },
                 TypeError,
-                "missing 1 required keyword-only argument: 'destination_field'",
+                "missing 1 required keyword-only argument: 'target_field'",
             ),
             (
                 {
@@ -126,7 +137,7 @@ class TestDatetimeExtractorRule:
                     "description": "",
                 },
                 TypeError,
-                "missing 1 required keyword-only argument: 'datetime_field'",
+                "missing 1 required keyword-only argument: 'source_fields'",
             ),
             (
                 {
@@ -165,3 +176,19 @@ class TestDatetimeExtractorRule:
     def test_rule_is_hashable(self, specific_rule_definition):
         rule = DatetimeExtractorRule._create_from_dict(specific_rule_definition)
         assert isinstance(rule, Hashable)
+
+    def test_deprecation_warning(self):
+        rule_dict = {
+            "filter": "field.a",
+            "datetime_extractor": {
+                "datetime_field": "field.b",
+                "destination_field": "other",
+            },
+            "description": "",
+        }
+        with pytest.deprecated_call() as w:
+            DatetimeExtractorRule._create_from_dict(rule_dict)
+            assert len(w.list) == 2
+            matches = [warning.message.args[0] for warning in w.list]
+            assert "Use datetime.target_field instead" in matches[1]
+            assert "Use datetime.source_fields instead" in matches[0]

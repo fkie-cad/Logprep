@@ -105,6 +105,18 @@ class Rule:
     def tests(self) -> list:
         return self._config.tests
 
+    @property
+    def delete_source_fields(self):
+        if hasattr(self, "_config"):
+            return self._config.delete_source_fields
+        return False
+
+    @property
+    def source_fields(self):
+        if hasattr(self, "_config"):
+            return self._config.source_fields
+        return []
+
     # pylint: enable=C0111
 
     @classmethod

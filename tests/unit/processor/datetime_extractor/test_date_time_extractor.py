@@ -134,6 +134,35 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         }
         assert document == expected
 
+    def test_deletes_source_field(self):
+        document = {"@timestamp": "2019-07-30T14:37:42.861+00:00", "winlog": {"event_id": 123}}
+        rule = {
+            "filter": "@timestamp",
+            "datetime_extractor": {
+                "source_fields": ["@timestamp"],
+                "target_field": "split_@timestamp",
+                "delete_source_fields": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule)
+        self.object.process(document)
+        expected = {
+            "winlog": {"event_id": 123},
+            "split_@timestamp": {
+                "year": 2019,
+                "month": 7,
+                "day": 30,
+                "hour": 14,
+                "minute": 37,
+                "second": 42,
+                "microsecond": 861000,
+                "weekday": "Tuesday",
+                "timezone": "UTC",
+            },
+        }
+        assert document == expected
+
     @staticmethod
     def _parse_local_tz(tz_local_name):
         sign = tz_local_name[:1]
