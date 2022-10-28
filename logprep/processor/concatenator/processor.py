@@ -66,10 +66,7 @@ class Concatenator(Processor):
 
         source_field_values = []
         for source_field in rule.source_fields:
-            if rule.delete_source_fields:
-                field_value = pop_dotted_field_value(event, source_field)
-            else:
-                field_value = get_dotted_field_value(event, source_field)
+            field_value = get_dotted_field_value(event, source_field)
             source_field_values.append(field_value)
 
         source_field_values = [field for field in source_field_values if field is not None]
