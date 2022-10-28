@@ -9,7 +9,6 @@ import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.factory_error import InvalidConfigurationError
-from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.selective_extractor.rule import (
     SelectiveExtractorRule,
     SelectiveExtractorRuleError,

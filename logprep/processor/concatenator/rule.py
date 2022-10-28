@@ -64,21 +64,5 @@ class ConcatenatorRule(SourceTargetRule):
         """The character(s) that should be used between the combined source field values."""
 
     @property
-    def source_fields(self) -> list:  # pylint: disable=missing-docstring
-        return self._config.source_fields
-
-    @property
-    def target_field(self) -> str:  # pylint: disable=missing-docstring
-        return self._config.target_field
-
-    @property
     def separator(self) -> str:  # pylint: disable=missing-docstring
         return self._config.separator
-
-    @property
-    def overwrite_target(self) -> bool:  # pylint: disable=missing-docstring
-        return self._config.overwrite_target
-
-    @property
-    def delete_source_fields(self) -> bool:  # pylint: disable=missing-docstring
-        return self._config.delete_source_fields
