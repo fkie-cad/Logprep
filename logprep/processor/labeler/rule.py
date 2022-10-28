@@ -1,4 +1,5 @@
 """This module is used to apply configured labeling rules on given documents."""
+import warnings
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule
@@ -28,6 +29,7 @@ class LabelerRule(Rule):
         if rule.get("label") is not None:
             label_value = pop_dotted_field_value(rule, "label")
             add_and_overwrite(rule, "labeler.label", label_value)
+            warnings.warn("label is deprecated. Use labeler.label instead", DeprecationWarning)
 
     def conforms_to_schema(self, schema: LabelingSchema) -> bool:
         """Check if labels are valid."""
