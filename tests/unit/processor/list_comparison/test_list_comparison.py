@@ -15,25 +15,11 @@ class TestListComparison(BaseProcessorTestCase):
         "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
     }
 
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG["generic_rules"]
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG["specific_rules"]
-
     def test_element_in_list(self):
-        # Tests if user Franz is in user list
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"user": "Franz"}
-
+        expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
         self.object.process(document)
-
-        assert document.get("user_results") is not None
-        assert isinstance(document.get("user_results"), dict)
-        assert document.get("user_results").get("in_list") is not None
-        assert document.get("user_results").get("not_in_list") is None
+        assert document == expected
 
     def test_element_not_in_list(self):
         # Test if user Charlotte is not in user list
@@ -170,3 +156,42 @@ class TestListComparison(BaseProcessorTestCase):
 
         assert len(document.get("user_results", {}).get("not_in_list")) == 1
         assert document.get("user_results", {}).get("in_list") is None
+
+    def test_delete_source_field(self):
+        document = {"user": "Franz"}
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+                "delete_source_fields": True,
+            },
+            "description": "",
+        }
+        expected = {"user_results": {"in_list": ["user_list.txt"]}}
+        self._load_specific_rule(rule_dict)
+        self.object._init_rules_list_comparison()
+        self.object.process(document)
+        assert document == expected
+
+    def test_overwrite_target_field(self):
+        document = {"user": "Franz"}
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user",
+                "list_file_paths": ["../lists/user_list.txt"],
+                "overwrite_target": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object._init_rules_list_comparison()
+        match = (
+            r"\('Test Instance Name', 'The following fields could not be written, because one "
+            r"or more subfields existed and could not be extended: user.in_list'\)"
+        )
+        with pytest.raises(DuplicationError, match=match):
+            self.object.process(document)

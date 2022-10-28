@@ -28,7 +28,7 @@ class DomainResolverRule(SourceTargetRule):
             warnings.warn(
                 (
                     "domain_resolver.source_url_or_domain is deprecated. "
-                    "Use datetime.source_fields instead"
+                    "Use domain_resolver.source_fields instead"
                 ),
                 DeprecationWarning,
             )
@@ -38,7 +38,7 @@ class DomainResolverRule(SourceTargetRule):
             warnings.warn(
                 (
                     "domain_resolver.output_field is deprecated. "
-                    "Use datetime.target_field instead"
+                    "Use domain_resolver.target_field instead"
                 ),
                 DeprecationWarning,
             )

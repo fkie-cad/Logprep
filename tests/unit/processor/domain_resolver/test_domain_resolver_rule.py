@@ -99,5 +99,5 @@ def test_deprecation_warning():
         DomainResolverRule._create_from_dict(rule_dict)
         assert len(w.list) == 2
         matches = [warning.message.args[0] for warning in w.list]
-        assert "Use datetime.target_field instead" in matches[1]
-        assert "Use datetime.source_fields instead" in matches[0]
+        assert "Use domain_resolver.target_field instead" in matches[1]
+        assert "Use domain_resolver.source_fields instead" in matches[0]
