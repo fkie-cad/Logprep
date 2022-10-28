@@ -25,6 +25,9 @@ class Rule:
     class Config:
         """Config for Rule"""
 
+        source_field: str = field(validator=validators.instance_of(str), default="")
+        target_field: str = field(validator=validators.instance_of(str), default="")
+        delete_source_field: str = field(validator=validators.instance_of(bool), default=False)
         description: str = field(validator=validators.instance_of(str), default="", eq=False)
         ip_fields: list = field(validator=validators.instance_of(list), factory=list)
         regex_fields: list = field(validator=validators.instance_of(list), factory=list)
