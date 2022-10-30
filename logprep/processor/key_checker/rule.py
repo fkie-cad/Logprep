@@ -2,8 +2,8 @@
 KeyCheckerRule
 ------------
 
-The `key_checker` processor needs a list with atleast one element in it.
-The Rule contains this list and it also contains a missing field where the processor
+The `key_checker` processor needs a list with at least one element in it.
+The Rule contains this list and it also contains a custom field where the processor
 can store all missing keys.
 
 ..  code-block:: yaml

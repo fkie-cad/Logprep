@@ -2,8 +2,8 @@
 KeyChecker
 ------------
 
-The `key_checker` processor checks for an event if all field-names in
-the given list are in the Event.
+The `key_checker` processor checks if all field names in a provided list are
+given in the processed event.
 
 Example
 ^^^^^^^

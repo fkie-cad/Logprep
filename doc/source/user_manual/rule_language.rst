@@ -1704,9 +1704,9 @@ The example below deletes the log message if the message field equals "foo".
 
 Key Checker
 =======
-The :code:`Key Checker` checks if the Event has all fields definded in :code:`key_list`. In the example below
-the processor checks if the event has the key :code:`key1`. Because of this is not the case the processor 
-creates the new field :code:`missing_fields` and writes the missing key :code:`key1` in the field.
+The :code:`Key Checker` checks if the Event has all fields definded in :code:`key_list`. In the example below,
+the processor checks if the event has the key :code:`key1`. If this is not the case, the processor 
+creates the new field :code:`missing_fields` and appends the missing key :code:`key1` in the field.
 
 ..  code-block:: yaml
     :linenos:
