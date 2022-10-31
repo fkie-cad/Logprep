@@ -125,3 +125,4 @@ Development
    processor_how_to
    register_a_new_component
    requirements
+   testing

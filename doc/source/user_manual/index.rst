@@ -11,5 +11,3 @@ User Manual
    validation
    dry_run
    configuration/index
-   testing
-   rule_language

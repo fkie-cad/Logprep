@@ -14,3 +14,4 @@ Configuration
    pipeline
    processor
    metrics
+   rules

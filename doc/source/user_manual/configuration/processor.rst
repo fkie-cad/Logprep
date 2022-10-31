@@ -7,12 +7,14 @@ Processors
    :members:
    :undoc-members:
    :inherited-members:
+   :noindex:
 
 .. automodule:: logprep.processor.concatenator.processor
 .. autoclass:: logprep.processor.concatenator.processor.Concatenator.Config
    :members:
    :undoc-members:
    :inherited-members:
+   :noindex:
 
 .. automodule:: logprep.processor.datetime_extractor.processor
 .. autoclass:: logprep.processor.datetime_extractor.processor.DatetimeExtractor.Config
@@ -61,6 +63,7 @@ Processors
    :members:
    :undoc-members:
    :inherited-members:
+   :noindex:
 
 .. automodule:: logprep.processor.generic_resolver.processor
 .. autoclass:: logprep.processor.generic_resolver.processor.GenericResolver.Config
@@ -74,9 +77,17 @@ Processors
    :members:
    :undoc-members:
    :inherited-members:
+   :noindex:
 
 .. automodule:: logprep.processor.hyperscan_resolver.processor
 .. autoclass:: logprep.processor.hyperscan_resolver.processor.HyperscanResolver.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.key_checker.processor
+.. autoclass:: logprep.processor.key_checker.processor.KeyChecker.Config
    :members:
    :undoc-members:
    :inherited-members:
@@ -87,6 +98,7 @@ Processors
    :members:
    :undoc-members:
    :inherited-members:
+   :noindex:
 
 .. automodule:: logprep.processor.list_comparison.processor
 .. autoclass:: logprep.processor.list_comparison.processor.ListComparison.Config
@@ -100,6 +112,7 @@ Processors
    :members:
    :undoc-members:
    :inherited-members:
+   :noindex:
 
 .. automodule:: logprep.processor.pre_detector.processor
 .. autoclass:: logprep.processor.pre_detector.processor.PreDetector.Config
@@ -124,13 +137,6 @@ Processors
 
 .. automodule:: logprep.processor.template_replacer.processor
 .. autoclass:: logprep.processor.template_replacer.processor.TemplateReplacer.Config
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :noindex:
-
-.. automodule:: logprep.processor.key_checker.processor
-.. autoclass:: logprep.processor.key_checker.processor.KeyChecker.Config
    :members:
    :undoc-members:
    :inherited-members:
