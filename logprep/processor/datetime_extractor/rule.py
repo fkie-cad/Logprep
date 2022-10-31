@@ -1,4 +1,26 @@
-"""This module is used to extract date times and split them into multiple fields."""
+"""
+Datetime Extractor
+==================
+
+The datetime extractor requires the additional field :code:`datetime_extractor`.
+The additional fields :code:`datetime_extractor.source_field` and
+:code:`datetime_extractor.target_field` must be defined.
+The first one contains the name of the field from which the timestamp should be taken
+and the last one contains the name of the field under which a split timestamp should be written.
+
+In the following example the timestamp will be extracted from 
+:code:`@timestamp` and written to :code:`split_@timestamp`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: '@timestamp'
+    datetime_extractor:
+      source_field: '@timestamp'
+      target_field: 'split_@timestamp'
+    description: '...'
+"""
 import warnings
 from logprep.processor.base.rule import SourceTargetRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite

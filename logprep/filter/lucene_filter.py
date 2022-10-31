@@ -1,4 +1,84 @@
-"""This module contains functionality that allows interpreting lucene queries."""
+"""
+Filter
+======
+
+The filters are based on the Lucene query language, but contain some additional enhancements.
+It is possible to filter for keys and values in log messages.
+**Dot notation** is used to access subfields in log messages.
+A filter for :code:`{'field': {'subfield': 'value'}}` can be specified by
+:code:`field.subfield': 'value`.
+
+If a key without a value is given it is filtered for the existence of the key.
+The existence of a specific field can therefore be checked by a key without a value.
+The filter :code:`filter: field.subfield` would match for every value :code:`subfield` in
+:code:`{'field': {'subfield': 'value'}}`.
+The special key :code:`*` can be used to always match on any input.
+Thus, the filter :code:`filter: *` would match any input document.
+
+The filter in the following example would match fields :code:`ip_address` with the
+value :code:`192.168.0.1`.
+Meaning all following transformations done by this rule would be applied only
+on log messages that match this criterion.
+This example is not complete, since rules are specific to processors and require additional options.
+
+
+..  code-block:: json
+    :linenos:
+    :caption: Example
+
+    { "filter": "ip_address: 192.168.0.1" }
+
+It is possible to use filters with field names that contain white spaces or use special symbols
+of the Lucene syntax. However, this has to be escaped.
+The filter :code:`filter: 'field.a subfield(test): value'` must be escaped as
+:code:`filter: 'field.a\ subfield\(test\): value'`.
+Other references to this field do not require such escaping.
+This is *only* necessary for the filter.
+It is necessary to escape twice if the file is in the JSON format - once for
+the filter itself and once for JSON.
+
+Operators
+---------
+
+A subset of Lucene query operators is supported:
+
+- **NOT**: Condition is not true.
+- **AND**: Connects two conditions. Both conditions must be true.
+- **OR**: Connects two conditions. At least one them must be true.
+
+In the following example log messages are filtered for which :code:`event_id: 1` is true and
+:code:`ip_address: 192.168.0.1` is false.
+This example is not complete, since rules are specific to processors and require additional options.
+
+
+..  code-block:: json
+    :linenos:
+    :caption: Example
+
+    { "filter": "event_id: 1 AND NOT ip_address: 192.168.0.1" }
+
+RegEx-Filter
+------------
+
+It is possible use regex expressions to match values.
+For this, the field with the regex pattern must be added to the optional field
+:code:`regex_fields` in the rule definition.
+
+In the following example the field :code:`ip_address` is defined as regex field.
+It would be filtered for log messages in which the value :code:`ip_address` starts with
+:code:`192.168.0.`.
+This example is not complete, since rules are specific to processors and
+require additional options.
+
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'ip_address: "192\.168\.0\..*"'
+    regex_fields:
+    - ip_address
+"""
 
 from typing import List, Union, Optional
 import re

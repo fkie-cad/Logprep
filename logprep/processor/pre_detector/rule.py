@@ -1,5 +1,6 @@
 """This module is used to get documents that match a pre-detector filter."""
 
+from typing import Union
 from attrs import define, field, validators, asdict
 
 from logprep.processor.base.rule import Rule
@@ -17,6 +18,12 @@ class PreDetectorRule(Rule):
         severity: str = field(validator=validators.instance_of(str))
         mitre: list = field(validator=validators.instance_of(list))
         case_condition: str = field(validator=validators.instance_of(str))
+        ip_fields: list = field(validator=validators.instance_of(list), factory=list)
+        """Used by the predetector to select ip_fields"""
+        wildcard_fields: list = field(validator=validators.instance_of(list), factory=list)
+        sigma_fields: Union[list, bool] = field(
+            validator=validators.instance_of((list, bool)), factory=list
+        )
 
     def __eq__(self, other: "PreDetectorRule") -> bool:
         return all(
