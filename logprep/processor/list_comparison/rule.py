@@ -1,6 +1,39 @@
 """
-This module is used to check if values within a specified field of a given log message
-are elements of a given list.
+List Comparison
+===============
+
+The list comparison enricher requires the additional field :code:`list_comparison`.
+The mandatory keys under :code:`list_comparison` are :code:`source_fields`
+and :code:`target_field`. Former
+is used to identify the field which is to be checked against the provided lists.
+And the latter is used to define the parent field where the results should
+be written to. Both fields can be dotted subfields.
+
+Additionally, a list or array of lists can be provided underneath the
+required field :code:`list_file_paths`.
+
+In the following example, the field :code:`user_agent` will be checked againstthe provided list
+(:code:`priviliged_users.txt`).
+Assuming that the value :code:`non_privileged_user` will match the provided list,
+the result of the list comparison (:code:`in_list`) will be added to the
+output field :code:`List_comparison.example`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example Rule to compare a single field against a provided list.
+
+    filter: 'user_agent'
+    list_comparison:
+        source_fields: ['user_agent']
+        target_field: 'List_comparison.example'
+        list_file_paths:
+            - lists/privileged_users.txt
+    description: '...'
+
+.. note::
+
+    Currently it is not possible to check in more than one source_field per rule
+
 """
 import warnings
 from pathlib import Path
@@ -25,9 +58,11 @@ class ListComparisonRule(SourceTargetRule):
             validator=validators.deep_iterable(member_validator=validators.instance_of(Path)),
             converter=lambda paths: [Path(path) for path in paths],
         )
+        """List of files in relative or absolute notation"""
         list_search_base_path: Path = field(
             validator=validators.instance_of(Path), factory=Path, converter=Path
         )
+        """Base Pathe from where to find relative files from :code:`list_file_paths` (Optional)"""
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)
