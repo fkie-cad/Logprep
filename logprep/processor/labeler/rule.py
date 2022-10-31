@@ -1,4 +1,26 @@
-"""This module is used to apply configured labeling rules on given documents."""
+"""
+Labeler
+=======
+
+The labeler requires the additional field :code:`label`.
+The keys under :code:`label` define the categories under which a label should be added.
+The values are a list of labels that should be added under a category.
+
+In the following example, the label :code:`execute` will be added
+to the labels of the category :code:`action`:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: 'command: "executing something"'
+    labeler:
+        label:
+            action:
+            - execute
+    description: '...'
+
+"""
 import warnings
 from attrs import define, field, validators
 
@@ -14,7 +36,16 @@ class LabelerRule(Rule):
     class Config(Rule.Config):
         """RuleConfig for Labeler"""
 
-        label: dict = field(validator=validators.instance_of(dict))
+        label: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(list),
+                ),
+            ]
+        )
+        """Mapping of a cathegory and a list of labels to add"""
 
     # pylint: disable=C0111
     @property

@@ -1,4 +1,26 @@
-"""This module is used to resolve domains."""
+"""
+Domain Resolver
+===============
+
+The domain resolver requires the additional field :code:`domain_resolver`.
+The additional field :code:`domain_resolver.source_url_or_domain` must be defined.
+It contains the field from which an URL should be parsed and then written to :code:`resolved_ip`.
+The URL can be located in continuous text insofar the URL is valid.
+
+Optionally, the output field can be configured (overriding the default :code:`resolved_ip`) using the parameter :code:`output_field`.
+This can be a dotted subfield.
+
+In the following example the URL from the field :code:`url` will be extracted and written to :code:`resolved_ip`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+      filter: url
+      domain_resolver:
+        source_fields: [url]
+      description: '...'
+"""
 import warnings
 from attrs import define, field, fields
 from logprep.processor.base.rule import SourceTargetRule
@@ -16,6 +38,7 @@ class DomainResolverRule(SourceTargetRule):
             validator=fields(SourceTargetRule.Config).target_field.validator,
             default="resolved_ip",
         )
+        """The field where to write the processor output to. defaults to [resovled_ip]"""
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:

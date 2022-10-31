@@ -1,4 +1,21 @@
-"""This module is used to resolve field values from documents via a list."""
+"""
+Hyperscan Resolver
+==================
+
+The hyperscan resolver requires the additional field :code:`hyperscan_resolver`.
+It works similarly to the generic resolver, but utilized hyperscan to process resolve lists.
+
+For further information see: :ref:`generic-resolver-rule`
+
+The hyperscan resolver uses the
+`Python Hyperscan library <https://python-hyperscan.readthedocs.io/en/latest/>`_
+to check regex patterns.
+By default, the compiled Hyperscan databases will be stored persistently in the directory
+specified in the :code:`pipeline.yml`.
+The field :code:`store_db_persistent` can be used to configure
+if a database compiled from a rule's :code:`resolve_list` should be stored persistently.
+
+"""
 import re
 from typing import Tuple
 from attrs import define, field, validators
@@ -46,7 +63,17 @@ class HyperscanResolverRule(Rule):
             factory=dict,
             eq=False,
         )
+        """A YML file with a resolve list and an optional regex pattern can
+        be used to resolve values.
+        For this, either a field :code:`resolve_from_file` with a path to a resolve list
+        file must be added or dictionary field :code:`resolve_from_file` with the subfields
+        :code:`path` and :code:`pattern`.
+        Using the :code:`pattern` option allows to define one regex pattern that
+        can be used on all entries within a resolve list instead of having
+        to write a regex pattern for each entry in the list."""
         store_db_persistent: bool = field(validator=validators.instance_of(bool), default=False)
+        """Can be used to configure if a database compiled from
+        a rule's :code:`resolve_list` should be stored persistently."""
 
         def __attrs_post_init__(self):
             if self.resolve_from_file:

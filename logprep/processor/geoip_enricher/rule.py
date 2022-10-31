@@ -1,4 +1,24 @@
-"""This module is used to resolve field values from documents via a list."""
+"""
+Geoip Enricher
+==============
+
+The geoip enricher requires the additional field :code:`geoip`.
+The default output_field can be overridden using the optional parameter
+:code:`output_field`. This can be a dotted
+subfield. The additional field :code:`geoip.source_ip` must be given.
+It contains the IP for which the geoip data should be added.
+
+In the following example the IP in :code:`client.ip` will be enriched with geoip data.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: client.ip
+    geoip:
+      source_fields: [client.ip]
+    description: '...'
+"""
 
 import warnings
 from attrs import define, field, validators
@@ -16,6 +36,7 @@ class GeoipEnricherRule(SourceTargetRule):
         """RuleConfig for GeoipEnricher"""
 
         target_field: str = field(validator=validators.instance_of(str), default="geoip")
+        """Field for the output informations. Defaults to [geoip]"""
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:

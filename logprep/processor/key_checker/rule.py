@@ -1,6 +1,6 @@
 """
-KeyCheckerRule
-------------
+Key Checker
+===========
 
 The `key_checker` processor needs a list with at least one element in it.
 The Rule contains this list and it also contains a custom field where the processor
@@ -10,14 +10,12 @@ can store all missing keys.
     :linenos:
     :caption: Given key_checker rule
 
-    filter: *
-    key_checker: {
-            key_list: [
-                "key1",
-                "key2",
-            ],
-            output_field: "missing_fields"
-        },
+    filter: testkey
+    key_checker:
+        source_fields:
+            - key1
+            - key2
+        target_field: "missing_fields"
     description: '...'
 
 ..  code-block:: json
@@ -25,8 +23,8 @@ can store all missing keys.
     :caption: Incoming event
 
     {
-        testkey: "key1_value",
-        _index: "value",
+        "testkey": "key1_value",
+        "_index": "value"
     }
 
 ..  code-block:: json
@@ -34,19 +32,17 @@ can store all missing keys.
     :caption: Processed event
 
     {
-        testkey: "key1_value",
-        _index: "value",
-        missing_fields: "key1","key2"
+        "testkey": "key1_value",
+        "_index": "value",
+        "missing_fields": "key1","key2"
     }
+
 """
 
 from functools import partial
-
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import SourceTargetRule
-
-
 from logprep.util.validators import min_len_validator
 
 
@@ -67,3 +63,4 @@ class KeyCheckerRule(SourceTargetRule):
             ],
             converter=set,
         )
+        """List of fields to check for."""

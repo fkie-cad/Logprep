@@ -93,7 +93,7 @@ Further details can be found in the section for processors.
 from functools import partial
 import json
 from os.path import basename, splitext
-from typing import List, Set, Optional, Union, Dict
+from typing import List, Set, Optional, Dict
 
 from attrs import define, field, validators
 

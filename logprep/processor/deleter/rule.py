@@ -1,4 +1,18 @@
-"""This module is used to delete full events matching a given filter."""
+"""
+Deleter
+=======
+The deleter processor deletes the entire log message if the filter produces a match.
+The example below deletes the log message if the message field equals "foo".
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example delete rule
+
+    filter: 'message: "foo"'
+    deleter:
+        delete: true
+    description: '...'
+"""
 import warnings
 from attrs import define, field, validators
 from logprep.processor.base.rule import Rule
@@ -13,6 +27,7 @@ class DeleterRule(Rule):
         """Config for DeleterRule"""
 
         delete: bool = field(validator=validators.instance_of(bool))
+        """Delete or not"""
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:

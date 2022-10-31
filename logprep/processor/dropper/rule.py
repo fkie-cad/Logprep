@@ -1,4 +1,46 @@
-"""This module is used to drop specified fields that match a dropper filter."""
+"""
+Dropper
+=======
+
+Which fields are removed is defined in the additional field :code:`drop`.
+It contains a list of fields in dot notation.
+For nested fields all subfields are also removed if they are empty.
+If only the specified subfield should be removed, then this can be achieved by setting
+the option :code:`drop_full: false`.
+
+In the following example the field :code:`keep_me.drop_me` is deleted while
+the fields :code:`keep_me` and :code:`keep_me.keep_me_too` are kept.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example - Rule
+
+    filter: keep_me.drop_me
+    dropper:
+        drop:
+        - keep_me.drop_me
+
+..  code-block:: json
+    :linenos:
+    :caption: Example - Input document
+
+    [{
+        "keep_me": {
+            "drop_me": "something",
+            "keep_me_too": "something"
+        }
+    }]
+
+..  code-block:: json
+    :linenos:
+    :caption: Example - Expected output after application of the rule
+
+    [{
+        "keep_me": {
+            "keep_me_too": "something"
+        }
+    }]
+"""
 
 from typing import List
 import warnings
@@ -16,7 +58,9 @@ class DropperRule(Rule):
         """RuleConfig for DroperRule"""
 
         drop: list = field(validator=validators.instance_of(list))
+        """List of fields to drop"""
         drop_full: bool = field(validator=validators.instance_of(bool), default=True)
+        """Drop recursive? defaults to [True]"""
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:

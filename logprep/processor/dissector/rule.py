@@ -1,6 +1,6 @@
 """
-Dissector Rule
---------------
+Dissector
+=========
 
 The dissector processor tokenizes values from fields into new fields or appends the value to
 existing fields. Additionally it can be used to convert datatypes of field values.
@@ -60,7 +60,6 @@ References can be combined with the append operator.
 .. autoclass:: logprep.processor.dissector.rule.DissectorRule.Config
    :members:
    :undoc-members:
-   :inherited-members:
    :noindex:
 
 Examples for dissection and datatype conversion:
