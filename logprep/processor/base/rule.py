@@ -1,5 +1,6 @@
 """This module is the superclass for all rule classes."""
 
+from functools import partial
 import json
 from os.path import basename, splitext
 from typing import List, Set, Optional, Union, Dict
@@ -14,6 +15,7 @@ from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.json_handling import is_json
 from logprep.util.helper import camel_to_snake
+from logprep.util.validators import min_len_validator
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -193,6 +195,7 @@ class SourceTargetRule(Rule):
             validator=[
                 validators.instance_of(list),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
+                partial(min_len_validator, min_length=1),
             ]
         )
         target_field: str = field(validator=validators.instance_of(str))

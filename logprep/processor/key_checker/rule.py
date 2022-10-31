@@ -44,20 +44,20 @@ from functools import partial
 
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule
+from logprep.processor.base.rule import SourceTargetRule
 
 
 from logprep.util.validators import min_len_validator
 
 
-class KeyCheckerRule(Rule):
+class KeyCheckerRule(SourceTargetRule):
     """key_checker rule"""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(SourceTargetRule.Config):
         """key_checker rule config"""
 
-        key_list: set = field(
+        source_fields: set = field(
             validator=[
                 validators.deep_iterable(
                     member_validator=validators.instance_of(str),
@@ -67,13 +67,3 @@ class KeyCheckerRule(Rule):
             ],
             converter=set,
         )
-
-        output_field: str = field(validator=validators.instance_of(str))
-
-    @property
-    def key_list(self) -> list:  # pylint: disable=missing-docstring
-        return self._config.key_list
-
-    @property
-    def output_field(self) -> str:  # pylint: disable=missing-docstring
-        return self._config.output_field

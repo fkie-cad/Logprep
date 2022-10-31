@@ -11,8 +11,8 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "*",
             "key_checker": {
-                "key_list": ["key2"],
-                "output_field": "missing_fields",
+                "source_fields": ["key2"],
+                "target_field": "missing_fields",
             },
         },
         {
@@ -30,8 +30,8 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "*",
             "key_checker": {
-                "key_list": ["testkey.key2"],
-                "output_field": "missing_fields",
+                "source_fields": ["testkey.key2"],
+                "target_field": "missing_fields",
             },
         },
         {"testkey": {"key1": "key1_value", "_index": "value"}},
@@ -48,8 +48,8 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "*",
             "key_checker": {
-                "key_list": ["key1.key2", "key1", "key1.key2.key3", "key4"],
-                "output_field": "missing_fields",
+                "source_fields": ["key1.key2", "key1", "key1.key2.key3", "key4"],
+                "target_field": "missing_fields",
             },
         },
         {
@@ -71,8 +71,8 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "*",
             "key_checker": {
-                "key_list": ["key1"],
-                "output_field": "missing_fields",
+                "source_fields": ["key1"],
+                "target_field": "missing_fields",
             },
         },
         {
@@ -93,8 +93,8 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "*",
             "key_checker": {
-                "key_list": ["testkey.key2"],
-                "output_field": "missing_fields",
+                "source_fields": ["testkey.key2"],
+                "target_field": "missing_fields",
             },
         },
         {
@@ -115,8 +115,8 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "*",
             "key_checker": {
-                "key_list": ["key1.key2", "key1", "key1.key2.key3"],
-                "output_field": "missing_fields",
+                "source_fields": ["key1.key2", "key1", "key1.key2.key3"],
+                "target_field": "missing_fields",
             },
         },
         {
@@ -137,8 +137,8 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "*",
             "key_checker": {
-                "key_list": ["key1", "key1"],
-                "output_field": "missing_fields",
+                "source_fields": ["key1", "key1"],
+                "target_field": "missing_fields",
             },
         },
         {
@@ -162,8 +162,8 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "*",
             "key_checker": {
-                "key_list": ["key1", "key1"],
-                "output_field": "missing_fields",
+                "source_fields": ["key1", "key1"],
+                "target_field": "missing_fields",
             },
         },
         {
@@ -181,25 +181,70 @@ test_cases = [  # testcase, rule, event, expected
             "randomkey2": "randomvalue2",
         },
     ),
+    (
+        "Extends existing output field list by setting overwrite_target",
+        {
+            "filter": "*",
+            "key_checker": {
+                "source_fields": ["not.existing.key"],
+                "target_field": "missing_fields",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "key1": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+            "missing_fields": ["i.exists.already"],
+        },
+        {
+            "key1": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+            "missing_fields": ["i.exists.already", "not.existing.key"],
+        },
+    ),
+    (
+        "Prevents duplicates in output field by setting overwrite_target to True",
+        {
+            "filter": "*",
+            "key_checker": {
+                "source_fields": ["not.existing.key"],
+                "target_field": "missing_fields",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "key1": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+            "missing_fields": ["not.existing.key"],
+        },
+        {
+            "key1": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+            "missing_fields": ["not.existing.key"],
+        },
+    ),
 ]
 
 
 class TestKeyChecker(BaseProcessorTestCase):
-    timeout = 0.01
 
     CONFIG = {
         "type": "key_checker",
-        "specific_rules": ["tests/testdata/unit/key_checker/"],
-        "generic_rules": ["tests/testdata/unit/key_checker/"],
+        "specific_rules": ["tests/testdata/unit/key_checker/specific_rules/"],
+        "generic_rules": ["tests/testdata/unit/key_checker/generic_rules/"],
     }
-
-    @property
-    def generic_rules_dirs(self):
-        return self.CONFIG["generic_rules"]
-
-    @property
-    def specific_rules_dirs(self):
-        return self.CONFIG["specific_rules"]
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases_positiv(
