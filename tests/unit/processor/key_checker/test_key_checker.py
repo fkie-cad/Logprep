@@ -4,6 +4,7 @@
 import pytest
 
 from tests.unit.processor.base import BaseProcessorTestCase
+from logprep.processor.base.exceptions import DuplicationError
 
 test_cases = [  # testcase, rule, event, expected
     (
@@ -253,3 +254,23 @@ class TestKeyChecker(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         assert event == expected
+
+    def test_raises_duplication_error(self):
+        rule_dict = {
+            "filter": "*",
+            "key_checker": {
+                "source_fields": ["not.existing.key"],
+                "target_field": "missing_fields",
+            },
+        }
+        self._load_specific_rule(rule_dict)
+        document = {
+            "key1": {
+                "key2": {"key3": {"key3": "key3_value"}, "random_key": "random_key_value"},
+                "_index": "value",
+            },
+            "randomkey2": "randomvalue2",
+            "missing_fields": ["i.exists.already"],
+        }
+        with pytest.raises(DuplicationError):
+            self.object.process(document)
