@@ -149,7 +149,6 @@ class LuceneFilter:
         for idx, match in enumerate(matches):
             length = len(match) - 1
             if length > 1:
-                matches[idx] = matches[idx][:-1] + matches[idx]
                 matches[idx] = "\\" + matches[idx]
         split = re.split(r'(?:\\)+"', query_string)
         query_string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
