@@ -1702,3 +1702,32 @@ The example below deletes the log message if the message field equals "foo".
 
 .. automodule:: logprep.processor.dissector.rule
 
+Key Checker
+=======
+The :code:`Key Checker` checks if the Event has all fields definded in :code:`key_list`. In the example below,
+the processor checks if the event has the key :code:`key1`. If this is not the case, the processor 
+creates the new field :code:`missing_fields` and appends the missing key :code:`key1` in the field.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: *
+    key_checker:
+      key_list: [
+        'key1'
+      ]
+      output_field: 'missing_fields'
+    description: '...'
+    tests: 
+      raw:  
+            {
+              "testkey": "key1_value",
+              "_index": "value",
+            }
+      result: 
+            {
+              "testkey": "key1_value",
+              "_index": "value",
+              "missing_fields":"key1"
+            }

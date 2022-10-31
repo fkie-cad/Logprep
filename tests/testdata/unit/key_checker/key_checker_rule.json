@@ -1,0 +1,14 @@
+[
+    {
+        "filter": "*",
+        "key_checker": {
+            "key_list": [
+                "key1",
+                "key2",
+                "key1.key2"
+            ],
+            "output_field": "missing_fields"
+        },
+        "description": "rule for key_checker"
+    }
+]
