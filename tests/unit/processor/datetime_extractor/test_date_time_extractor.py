@@ -144,6 +144,10 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule)
+        self.object._local_timezone = tzutc()
+        self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
+            self.object._local_timezone
+        )
         self.object.process(document)
         expected = {
             "winlog": {"event_id": 123},
@@ -173,6 +177,10 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule)
+        self.object._local_timezone = tzutc()
+        self.object._local_timezone_name = DatetimeExtractor._get_timezone_name(
+            self.object._local_timezone
+        )
         self.object.process(document)
         expected = {
             "winlog": {"event_id": 123},
