@@ -293,7 +293,7 @@ class SourceTargetRule(Rule):
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to"""
         delete_source_fields: str = field(validator=validators.instance_of(bool), default=False)
-        """Delete all the source fields or not. defaults to [False]"""
+        """Whether to delete all the source fields or not. Defaults to :code:`False`"""
         overwrite_target: str = field(validator=validators.instance_of(bool), default=False)
         """Overwrite the target field value if exists. defaults to [False]"""
 
