@@ -125,8 +125,8 @@ class BaseInputTestCase(BaseConnectorTestCase):
         ), f"Wrong compression: {calculated_compression}"
 
     def test_get_next_with_hmac_of_raw_message(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update(
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(
             {
                 "preprocessing": {
                     "hmac": {
@@ -137,10 +137,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = Factory.create({"test connector": kafka_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         test_event = {"message": "with_content"}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
-        kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
+        connector._get_event = mock.MagicMock(
+            return_value=(test_event.copy(), raw_encoded_test_event)
+        )
         expected_event = {
             "message": "with_content",
             "Hmac": {
@@ -148,18 +150,18 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 "hmac": "dfe78753da634d7b76760488dbb2cf7bfe1b0e4e794930c36e98a984b6b6be63",
             },
         }
-        kafka_next_msg, _ = kafka.get_next(1)
-        assert kafka_next_msg == expected_event, "Output event with hmac is not as expected"
+        connector_next_msg, _ = connector.get_next(1)
+        assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
 
-        decoded = base64.b64decode(kafka_next_msg["Hmac"]["compressed_base64"])
+        decoded = base64.b64decode(connector_next_msg["Hmac"]["compressed_base64"])
         decoded_message = zlib.decompress(decoded)
         assert test_event == json.loads(
             decoded_message.decode("utf-8")
         ), "The hmac base massage was not correctly encoded and compressed. "
 
     def test_get_next_with_hmac_of_subfield(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update(
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(
             {
                 "preprocessing": {
                     "hmac": {
@@ -170,10 +172,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = Factory.create({"test connector": kafka_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
-        kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
+        connector._get_event = mock.MagicMock(
+            return_value=(test_event.copy(), raw_encoded_test_event)
+        )
         expected_event = {
             "message": {"with_subfield": "content"},
             "Hmac": {
@@ -182,18 +186,18 @@ class BaseInputTestCase(BaseConnectorTestCase):
             },
         }
 
-        kafka_next_msg, _ = kafka.get_next(1)
-        assert kafka_next_msg == expected_event
+        connector_next_msg, _ = connector.get_next(1)
+        assert connector_next_msg == expected_event
 
-        decoded = base64.b64decode(kafka_next_msg["Hmac"]["compressed_base64"])
+        decoded = base64.b64decode(connector_next_msg["Hmac"]["compressed_base64"])
         decoded_message = zlib.decompress(decoded)
         assert test_event["message"]["with_subfield"] == decoded_message.decode(
             "utf-8"
         ), "The hmac base massage was not correctly encoded and compressed. "
 
     def test_get_next_with_hmac_of_non_existing_subfield(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update(
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(
             {
                 "preprocessing": {
                     "hmac": {
@@ -204,10 +208,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = Factory.create({"test connector": kafka_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
-        kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
+        connector._get_event = mock.MagicMock(
+            return_value=(test_event.copy(), raw_encoded_test_event)
+        )
         expected_output_event = {
             "message": {"with_subfield": "content"},
             "Hmac": {
@@ -216,16 +222,16 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 "6kr5OUDpfNL81LsAJILFeQ=",
             },
         }
-        kafka_next_msg, non_critical_error_msg = kafka.get_next(1)
-        assert kafka_next_msg == expected_output_event
-        decoded = base64.b64decode(kafka_next_msg["Hmac"]["compressed_base64"])
+        connector_next_msg, non_critical_error_msg = connector.get_next(1)
+        assert connector_next_msg == expected_output_event
+        decoded = base64.b64decode(connector_next_msg["Hmac"]["compressed_base64"])
         decoded_message = zlib.decompress(decoded).decode("utf8")
         assert decoded_message == "<expected hmac target field 'non_existing_field' not found>"
         assert non_critical_error_msg == "Couldn't find the hmac target field 'non_existing_field'"
 
     def test_get_next_with_hmac_result_in_dotted_subfield(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update(
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(
             {
                 "preprocessing": {
                     "hmac": {
@@ -236,10 +242,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = Factory.create({"test connector": kafka_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         test_event = {"message": "with_content"}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
-        kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
+        connector._get_event = mock.MagicMock(
+            return_value=(test_event.copy(), raw_encoded_test_event)
+        )
         expected_event = {
             "message": "with_content",
             "Hmac": {
@@ -252,10 +260,10 @@ class BaseInputTestCase(BaseConnectorTestCase):
             },
         }
 
-        kafka_next_msg, _ = kafka.get_next(1)
-        assert kafka_next_msg == expected_event
+        connector_next_msg, _ = connector.get_next(1)
+        assert connector_next_msg == expected_event
         decoded = base64.b64decode(
-            kafka_next_msg["Hmac"]["dotted"]["subfield"]["compressed_base64"]
+            connector_next_msg["Hmac"]["dotted"]["subfield"]["compressed_base64"]
         )
         decoded_message = zlib.decompress(decoded)
         assert test_event == json.loads(
@@ -263,8 +271,8 @@ class BaseInputTestCase(BaseConnectorTestCase):
         ), "The hmac base massage was not correctly encoded and compressed. "
 
     def test_get_next_with_hmac_result_in_already_existing_subfield(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update(
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(
             {
                 "preprocessing": {
                     "hmac": {
@@ -275,25 +283,29 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        kafka = Factory.create({"test connector": kafka_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
-        kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
-        _, non_critical_error_msg = kafka.get_next(1)
+        connector._get_event = mock.MagicMock(
+            return_value=(test_event.copy(), raw_encoded_test_event)
+        )
+        _, non_critical_error_msg = connector.get_next(1)
         assert (
             non_critical_error_msg
             == "Couldn't add the hmac to the input event as the desired output field 'message' already exist."
         )
 
     def test_get_next_without_hmac(self):
-        kafka_config = deepcopy(self.CONFIG)
-        assert not kafka_config.get("preprocessing", {}).get("hmac")
+        connector_config = deepcopy(self.CONFIG)
+        assert not connector_config.get("preprocessing", {}).get("hmac")
         test_event = {"message": "with_content"}
-        kafka = Factory.create({"test connector": kafka_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
-        kafka._get_event = mock.MagicMock(return_value=(test_event.copy(), raw_encoded_test_event))
-        kafka_next_msg, _ = kafka.get_next(1)
-        assert kafka_next_msg == test_event
+        connector._get_event = mock.MagicMock(
+            return_value=(test_event.copy(), raw_encoded_test_event)
+        )
+        connector_next_msg, _ = connector.get_next(1)
+        assert connector_next_msg == test_event
 
     def test_preprocessing_version_info_is_added_if_configured(self):
         preprocessing_config = {
