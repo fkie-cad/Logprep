@@ -200,8 +200,8 @@ class TestRule:
             "label": {"reporter": ["windows"]},
             "description": "",
         }
-        with pytest.deprecated_call() as w:
+        with pytest.deprecated_call() as warnings:
             LabelerRule._create_from_dict(rule_dict)
-            assert len(w.list) == 1
-            matches = [warning.message.args[0] for warning in w.list]
+            assert len(warnings.list) == 1
+            matches = [warning.message.args[0] for warning in warnings.list]
             assert "Use labeler.label instead" in matches[0]

@@ -12,7 +12,7 @@ be written to. Both fields can be dotted subfields.
 Additionally, a list or array of lists can be provided underneath the
 required field :code:`list_file_paths`.
 
-In the following example, the field :code:`user_agent` will be checked againstthe provided list
+In the following example, the field :code:`user_agent` will be checked against the provided list
 (:code:`priviliged_users.txt`).
 Assuming that the value :code:`non_privileged_user` will match the provided list,
 the result of the list comparison (:code:`in_list`) will be added to the

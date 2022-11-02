@@ -36,7 +36,7 @@ class GeoipEnricherRule(SourceTargetRule):
         """RuleConfig for GeoipEnricher"""
 
         target_field: str = field(validator=validators.instance_of(str), default="geoip")
-        """Field for the output informations. Defaults to [geoip]"""
+        """Field for the output information. Defaults to :code:`geoip`"""
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:

@@ -10,7 +10,7 @@ If dot notation is being used, then all fields on the path are being automatical
 
 In the following example, the field :code:`field.extract` with
 the value :code:`extracted value` is being extracted
-and send to the topic :code:`topcic_to_send_to`.
+and send to the topic :code:`topic_to_send_to`.
 
 ..  code-block:: yaml
     :linenos:

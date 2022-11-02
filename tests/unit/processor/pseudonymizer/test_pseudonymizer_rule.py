@@ -76,9 +76,9 @@ class TestPseudonomyzerRule:
             "url_fields": ["test"],
             "description": "insert a description text",
         }
-        with pytest.deprecated_call() as w:
+        with pytest.deprecated_call() as warnings:
             PseudonymizeRule._create_from_dict(rule_dict)
-            assert len(w.list) == 2
-            matches = [warning.message.args[0] for warning in w.list]
+            assert len(warnings.list) == 2
+            matches = [warning.message.args[0] for warning in warnings.list]
             assert "Use pseudonymizer.pseudonyms instead" in matches[0]
             assert "Use pseudonymizer.url_fields instead" in matches[1]

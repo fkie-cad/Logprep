@@ -38,7 +38,7 @@ class DomainResolverRule(SourceTargetRule):
             validator=fields(SourceTargetRule.Config).target_field.validator,
             default="resolved_ip",
         )
-        """The field where to write the processor output to. defaults to [resovled_ip]"""
+        """The field where to write the processor output to. Defaults to :code:`resovled_ip`"""
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:

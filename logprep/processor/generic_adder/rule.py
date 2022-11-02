@@ -138,7 +138,7 @@ class GenericAdderRule(Rule):
             factory=list,
             eq=False,
         )
-        """Contains the path to a file with a YML file that contains a dictionary of field names 
+        """Contains the path to a file with a YML file that contains a dictionary of field names
         and values that should be added to the document.
         Instead of a path, a list of paths can be used to add multiple files.
         All of those files must exist."""

@@ -45,7 +45,7 @@ class LabelerRule(Rule):
                 ),
             ]
         )
-        """Mapping of a cathegory and a list of labels to add"""
+        """Mapping of a category and a list of labels to add"""
 
     # pylint: disable=C0111
     @property

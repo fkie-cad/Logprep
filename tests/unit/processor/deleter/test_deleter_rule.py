@@ -92,8 +92,8 @@ class TestDeleterRule:
             "delete": True,
             "description": "",
         }
-        with pytest.deprecated_call() as w:
+        with pytest.deprecated_call() as warnings:
             DeleterRule._create_from_dict(rule_dict)
-            assert len(w.list) == 1
-            matches = [warning.message.args[0] for warning in w.list]
+            assert len(warnings.list) == 1
+            matches = [warning.message.args[0] for warning in warnings.list]
             assert "delete is deprecated. Use deleter.delete instead" in matches[0]

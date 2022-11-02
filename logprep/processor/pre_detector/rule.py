@@ -24,7 +24,7 @@ The following example shows a complete rule:
       - attack.something2
       severity: critical
       title: Rule one
-    description: Some malicous event.
+    description: Some malicious event.
 
 Additionally the optional field :code:`ip_fields` can be specified.
 It allows to specify a list of fields that can be compared to a list of IPs,

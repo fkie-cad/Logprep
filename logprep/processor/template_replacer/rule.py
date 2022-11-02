@@ -1,5 +1,5 @@
 """Template Replacer
-=================
+====================
 
 The template replacer requires the additional field :code:`template_replacer`.
 No additional configuration parameters are required for the rules.

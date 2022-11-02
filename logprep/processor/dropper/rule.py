@@ -55,7 +55,7 @@ class DropperRule(Rule):
 
     @define(kw_only=True)
     class Config(Rule.Config):
-        """RuleConfig for DroperRule"""
+        """RuleConfig for DropperRule"""
 
         drop: list = field(validator=validators.instance_of(list))
         """List of fields to drop"""
