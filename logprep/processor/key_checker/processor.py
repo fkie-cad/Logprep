@@ -52,7 +52,7 @@ class KeyChecker(Processor):
         else:
             output_value = not_existing_fields
 
-        add_successful = add_field_to(
+        add_successfull = add_field_to(
             event,
             rule.target_field,
             sorted(output_value),
