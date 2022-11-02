@@ -181,6 +181,8 @@ class HttpConnector(Input):
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
         try:
-            return self._messages.get(timeout=timeout), None
+            message = self._messages.get(timeout=timeout)
+            raw_message = str(message).encode("utf8")
+            return message, raw_message
         except queue.Empty:
             return None, None

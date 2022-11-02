@@ -1,8 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import base64
+from copy import deepcopy
 import json
 import sys
+import zlib
 
 import pytest
 import requests
@@ -10,6 +13,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from logprep.connector.http.input import HttpConnector
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -121,3 +125,32 @@ class TestHttpConnector(BaseInputTestCase):
                 message["message"] = f"message number {i}"
                 requests.post(url="http://127.0.0.1:9000/json", json=message)  # nosemgrep
         assert self.object._messages.qsize() == 100, "messages are put to queue"
+
+    def test_get_next_with_hmac_of_raw_message(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(
+            {
+                "preprocessing": {
+                    "hmac": {
+                        "target": "<RAW_MSG>",
+                        "key": "hmac-test-key",
+                        "output_field": "Hmac",
+                    }
+                }
+            }
+        )
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector.setup()
+        test_event = "the content"
+        with connector.server.run_in_thread():
+            requests.post(url="http://127.0.0.1:9000/plaintext", data=test_event)  # nosemgrep
+
+        expected_event = {
+            "message": "the content",
+            "Hmac": {
+                "compressed_base64": "eJyrVs9NLS5OTE9Vt1JQL8lIVUjOzytJzStRrwUAem8JMA==",
+                "hmac": "f0221a62c4ea38a4cc3af176faba010212e0ce7e0052c71fe726cbf3cb03dfd1",
+            },
+        }
+        connector_next_msg, _ = connector.get_next(1)
+        assert connector_next_msg == expected_event, "Output event with hmac is not as expected"
