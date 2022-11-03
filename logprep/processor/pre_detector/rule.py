@@ -77,8 +77,6 @@ class PreDetectorRule(Rule):
         which can be configured in the pipeline for the predetector.
         If this field was specified, then the rule will *only* trigger in case one of
         the IPs from the list is also available in the specified fields."""
-        wildcard_fields: list = field(validator=validators.instance_of(list), factory=list)
-        """tbd"""
         sigma_fields: Union[list, bool] = field(
             validator=validators.instance_of((list, bool)), factory=list
         )

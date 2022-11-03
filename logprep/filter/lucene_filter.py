@@ -162,7 +162,6 @@ class LuceneTransformer:
 
     _special_fields_map = {
         "regex_fields": RegExFilterExpression,
-        "wildcard_fields": WildcardStringFilterExpression,
         "sigma_fields": SigmaFilterExpression,
     }
 

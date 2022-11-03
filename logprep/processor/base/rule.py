@@ -160,7 +160,7 @@ class Rule:
             self._mean_processing_time = new_avg
             self._mean_processing_time_sample_counter = new_sample_counter
 
-    special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields", "tests"]
+    special_field_types = ["regex_fields", "sigma_fields", "ip_fields", "tests"]
 
     def __init__(self, filter_rule: FilterExpression, config: Config):
         if not isinstance(config, self.Config):
