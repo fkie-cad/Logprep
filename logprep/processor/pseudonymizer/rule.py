@@ -65,7 +65,7 @@ class PseudonymizeRule(Rule):
             validator=validators.deep_iterable(member_validator=validators.instance_of(str)),
             factory=list,
         )
-        """tbd"""
+        """url fields to pseudonymize"""
 
     @classmethod
     def normalize_rule_dict(cls, rule):
