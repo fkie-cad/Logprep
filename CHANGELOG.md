@@ -1,5 +1,7 @@
 ## Upcoming Changes
 
+* Remove rules deprecations
+
 
 ## Next Release
 ### Breaking
