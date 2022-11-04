@@ -8,7 +8,7 @@ The additional fields :code:`datetime_extractor.source_field` and
 The first one contains the name of the field from which the timestamp should be taken
 and the last one contains the name of the field under which a split timestamp should be written.
 
-In the following example the timestamp will be extracted from 
+In the following example the timestamp will be extracted from
 :code:`@timestamp` and written to :code:`split_@timestamp`.
 
 ..  code-block:: yaml
