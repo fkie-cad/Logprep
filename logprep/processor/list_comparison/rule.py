@@ -62,7 +62,7 @@ class ListComparisonRule(SourceTargetRule):
         list_search_base_path: Path = field(
             validator=validators.instance_of(Path), factory=Path, converter=Path
         )
-        """Base Pathe from where to find relative files from :code:`list_file_paths` (Optional)"""
+        """Base Path from where to find relative files from :code:`list_file_paths` (Optional)"""
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)
