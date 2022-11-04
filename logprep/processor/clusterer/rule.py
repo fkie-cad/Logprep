@@ -110,8 +110,7 @@ class ClustererRule(Rule):
         target: str = field(validator=validators.instance_of(str))
         """Defines which field should be used for clustering.
         pattern: Pattern = field(validator=validators.instance_of(Pattern), converter=re.compile)
-        """The field :code:`clusterer.pattern` contains a regex pattern that will be matched on
-        :code:`clusterer.target`."""
+        """Defines the regex pattern that will be matched on the :code:`clusterer.target`."""
         repl: str = field(validator=validators.instance_of(str))
         """Anything within a capture group in :code:`clusterer.pattern` will be substituted with
         values defined in :code:`clusterer.repl`.
