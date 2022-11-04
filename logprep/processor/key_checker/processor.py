@@ -60,5 +60,5 @@ class KeyChecker(Processor):
             overwrite_output_field=rule.overwrite_target,
         )
 
-        if not add_successfull:
+        if not add_successful:
             raise DuplicationError(self.name, [rule.target_field])
