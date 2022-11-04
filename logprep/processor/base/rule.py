@@ -15,7 +15,8 @@ Rules can be distributed over different files or multiple rules can reside withi
 Each file contains multiple YAML documents or a JSON array of JSON objects.
 The YAML format is preferred, since it is a superset of JSON and has better readability.
 
-Depending on the filter, a rule can trigger for different types of messages or just for specific log messages.
+Depending on the filter, a rule can trigger for different types of messages or just for specific log
+messages.
 In general, specific rules are being applied first.
 It depends on the directory where the rule is located if it is considered specific or generic.
 
