@@ -296,7 +296,7 @@ class SourceTargetRule(Rule):
         delete_source_fields: str = field(validator=validators.instance_of(bool), default=False)
         """Whether to delete all the source fields or not. Defaults to :code:`False`"""
         overwrite_target: str = field(validator=validators.instance_of(bool), default=False)
-        """Overwrite the target field value if exists. defaults to [False]"""
+        """Overwrite the target field value if exists. Defaults to :code:`False`"""
 
     # pylint: disable=missing-function-docstring
     @property
