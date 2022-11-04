@@ -67,7 +67,7 @@ class PreDetectorRule(Rule):
         title: str = field(validator=validators.instance_of(str))
         """A description for the triggered rule."""
         severity: str = field(validator=validators.instance_of(str))
-        """Rating how dangerous an Event is. i.e. `critical`"""
+        """Rating how dangerous an Event is, i.e. `critical`."""
         mitre: list = field(validator=validators.instance_of(list))
         """A list of MITRE ATT&CK tags."""
         case_condition: str = field(validator=validators.instance_of(str))
