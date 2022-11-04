@@ -120,9 +120,9 @@ class Rule:
         description: str = field(validator=validators.instance_of(str), default="", eq=False)
         """A description for the Rule. This has only documentation character."""
         regex_fields: list = field(validator=validators.instance_of(list), factory=list)
-        """It is possible use regex expressions to match values.
-        For this, the field with the regex pattern must be added to the optional field
-        :code:`regex_fields` in the rule definition."""
+        """It is possible to use regex expressions to match values.
+        For this, the field name with the regex pattern in the rule filter must be added to the
+        optional field :code:`regex_fields` in the rule definition."""
 
         tests: List[Dict[str, str]] = field(
             validator=[
