@@ -290,7 +290,7 @@ class SourceTargetRule(Rule):
                 partial(min_len_validator, min_length=1),
             ]
         )
-        """The fields from where to get the values to be processed"""
+        """The fields from where to get the values which should be processed"""
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to"""
         delete_source_fields: str = field(validator=validators.instance_of(bool), default=False)
