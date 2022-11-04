@@ -1,8 +1,100 @@
-"""This module is the superclass for all rule classes."""
+"""
+Basic Functionality
+===================
 
+How processors process log messages is defined via configurable rules.
+Each rule contains a filter that is used to select log messages.
+Other parameters within the rules define how certain log messages should be transformed.
+Those parameters depend on the processor for which they were created.
+
+Rule Files
+==========
+
+Rules are defined as YAML objects or JSON objects.
+Rules can be distributed over different files or multiple rules can reside within one file.
+Each file contains multiple YAML documents or a JSON array of JSON objects.
+The YAML format is preferred, since it is a superset of JSON and has better readability.
+
+Depending on the filter, a rule can trigger for different types of messages or just for specific log
+messages.
+In general, specific rules are being applied first.
+It depends on the directory where the rule is located if it is considered specific or generic.
+
+Further details can be found in the section for processors.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example structure of a YAML file with a rule for the labeler processor
+
+    filter: 'command: execute'  # A comment
+    labeler:
+      label:
+        action:
+        - execute
+    description: '...'
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example structure of a YAML file containing multiple rules for the labeler processor
+
+    filter: 'command: "execute something"'
+    labeler:
+      label:
+        action:
+        - execute
+    description: '...'
+    ---
+    filter: 'command: "terminate something"'
+    labeler:
+      label:
+        action:
+        - execute
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Example structure of a JSON file with a rule for the labeler processor
+
+    {
+      "filter": "command: execute",
+      "labeler": {
+        "label": {
+          "action": ["execute"]
+        }
+      }
+      "description": "..."
+    }
+
+..  code-block:: json
+    :linenos:
+    :caption: Example structure of a JSON file containing multiple rules for the labeler processor
+
+    [
+      {
+        "filter": "command: execute",
+        "labeler": {
+          "label": {
+            "action": ["execute"]
+          }
+        }
+        "description": "..."
+      },
+      {
+        "filter": "command: execute",
+        "labeler": {
+          "label": {
+            "action": ["execute"]
+          }
+        }
+        "description": "..."
+      }
+    ]
+"""
+
+from functools import partial
 import json
 from os.path import basename, splitext
-from typing import List, Set, Optional, Union, Dict
+from typing import List, Set, Optional, Dict
 
 from attrs import define, field, validators
 
@@ -14,6 +106,7 @@ from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.json_handling import is_json
 from logprep.util.helper import camel_to_snake
+from logprep.util.validators import min_len_validator
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -26,12 +119,12 @@ class Rule:
         """Config for Rule"""
 
         description: str = field(validator=validators.instance_of(str), default="", eq=False)
-        ip_fields: list = field(validator=validators.instance_of(list), factory=list)
+        """A description for the Rule. This has only documentation character."""
         regex_fields: list = field(validator=validators.instance_of(list), factory=list)
-        wildcard_fields: list = field(validator=validators.instance_of(list), factory=list)
-        sigma_fields: Union[list, bool] = field(
-            validator=validators.instance_of((list, bool)), factory=list
-        )
+        """It is possible to use regex expressions to match values.
+        For this, the field name with the regex pattern in the rule filter must be added to the
+        optional field :code:`regex_fields` in the rule definition."""
+
         tests: List[Dict[str, str]] = field(
             validator=[
                 validators.instance_of(list),
@@ -49,6 +142,7 @@ class Rule:
             converter=lambda x: [x] if isinstance(x, dict) else x,
             factory=list,
         )
+        """Custom tests for this rule."""
 
     @define(kw_only=True)
     class RuleMetrics(Metric):
@@ -67,7 +161,7 @@ class Rule:
             self._mean_processing_time = new_avg
             self._mean_processing_time_sample_counter = new_sample_counter
 
-    special_field_types = ["regex_fields", "wildcard_fields", "sigma_fields", "ip_fields", "tests"]
+    special_field_types = ["regex_fields", "sigma_fields", "ip_fields", "tests"]
 
     def __init__(self, filter_rule: FilterExpression, config: Config):
         if not isinstance(config, self.Config):
@@ -180,3 +274,49 @@ class Rule:
                 raise ValueError
 
         return special_fields
+
+
+class SourceTargetRule(Rule):
+    """Interface for a simple Rule with source_fields and target_field"""
+
+    @define(kw_only=True)
+    class Config(Rule.Config):
+        """Config for SimpleSourceTargetRule"""
+
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                partial(min_len_validator, min_length=1),
+            ]
+        )
+        """The fields from where to get the values which should be processed"""
+        target_field: str = field(validator=validators.instance_of(str))
+        """The field where to write the processed values to"""
+        delete_source_fields: str = field(validator=validators.instance_of(bool), default=False)
+        """Whether to delete all the source fields or not. Defaults to :code:`False`"""
+        overwrite_target: str = field(validator=validators.instance_of(bool), default=False)
+        """Overwrite the target field value if exists. Defaults to :code:`False`"""
+
+    # pylint: disable=missing-function-docstring
+    @property
+    def delete_source_fields(self):
+        if hasattr(self, "_config"):
+            return self._config.delete_source_fields
+        return False
+
+    @property
+    def source_fields(self):
+        if hasattr(self, "_config"):
+            return self._config.source_fields
+        return []
+
+    @property
+    def target_field(self):
+        return self._config.target_field
+
+    @property
+    def overwrite_target(self):
+        return self._config.overwrite_target
+
+    # pylint: enable=missing-function-docstring

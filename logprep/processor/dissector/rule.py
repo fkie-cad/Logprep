@@ -1,6 +1,6 @@
 """
-Dissector Rule
---------------
+Dissector
+=========
 
 The dissector processor tokenizes values from fields into new fields or appends the value to
 existing fields. Additionally it can be used to convert datatypes of field values.
@@ -44,22 +44,22 @@ Given a dissect pattern of :code:`%{field1} %{field2}` the source field value wi
 everything before the first whitespace which would be written into the field `field1` and everything
 after the first whitespace which would be written into the field `field2`.
 
-The string surrounded by :code:`%{` and :code:`}` is the desired target field. This can be declared in dotted
-field notation (e.g. :code:`%{target.subfield1.subfield2}`). Every subfield between the first and
-the last subfield will be created if necessary.
+The string surrounded by :code:`%{` and :code:`}` is the desired target field. This can be declared
+in dotted field notation (e.g. :code:`%{target.subfield1.subfield2}`). Every subfield between the
+first and the last subfield will be created if necessary.
 
 By default the target field will always be overwritten with the captured value. If you want to
-append to a preexisting target field value, as string or list, you have to use the :code:`+` operator.
+append to a preexisting target field value, as string or list, you have to use
+the :code:`+` operator.
 
 It is possible to capture the target field name from the source field value with the notation
-:code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern 
+:code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern
 this can be referred to with the notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`).
 References can be combined with the append operator.
 
 .. autoclass:: logprep.processor.dissector.rule.DissectorRule.Config
    :members:
    :undoc-members:
-   :inherited-members:
    :noindex:
 
 Examples for dissection and datatype conversion:
@@ -75,19 +75,22 @@ from typing import Callable, List, Tuple
 from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import Rule
+from logprep.processor.base.rule import SourceTargetRule
 from logprep.util.helper import append, add_and_overwrite
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
 SEPARATOR = r"((?!%\{.*\}).+)"
 
 
-class DissectorRule(Rule):
+class DissectorRule(SourceTargetRule):
     """dissector rule"""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(SourceTargetRule.Config):
         """Config for Dissector"""
+
+        source_fields: list = field(factory=list)
+        target_field: str = field(default="")
 
         mapping: dict = field(
             validator=[
@@ -118,9 +121,12 @@ class DissectorRule(Rule):
         tag_on_failure: list = field(
             validator=validators.instance_of(list), default=["_dissectfailure"]
         )
-        """A list of tags which will be appended to the event on non critical errors 
+        """A list of tags which will be appended to the event on non critical errors
         [default=`_dissectfailure`]
         """
+
+        def __attrs_post_init__(self):
+            self.source_fields = list(self.mapping.keys())  # pylint: disable=no-member
 
     _actions_mapping: dict = {
         "": add_and_overwrite,

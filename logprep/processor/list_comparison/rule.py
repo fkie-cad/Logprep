@@ -1,34 +1,68 @@
 """
-This module is used to check if values within a specified field of a given log message
-are elements of a given list.
-"""
+List Comparison
+===============
 
+The list comparison enricher requires the additional field :code:`list_comparison`.
+The mandatory keys under :code:`list_comparison` are :code:`source_fields`
+and :code:`target_field`. Former
+is used to identify the field which is to be checked against the provided lists.
+And the latter is used to define the parent field where the results should
+be written to. Both fields can be dotted subfields.
+
+Additionally, a list or array of lists can be provided underneath the
+required field :code:`list_file_paths`.
+
+In the following example, the field :code:`user_agent` will be checked against the provided list
+(:code:`priviliged_users.txt`).
+Assuming that the value :code:`non_privileged_user` will match the provided list,
+the result of the list comparison (:code:`in_list`) will be added to the
+output field :code:`List_comparison.example`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example Rule to compare a single field against a provided list.
+
+    filter: 'user_agent'
+    list_comparison:
+        source_fields: ['user_agent']
+        target_field: 'List_comparison.example'
+        list_file_paths:
+            - lists/privileged_users.txt
+    description: '...'
+
+.. note::
+
+    Currently it is not possible to check in more than one source_field per rule
+
+"""
+import warnings
 from pathlib import Path
 from typing import List, Optional
 from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 
-from logprep.processor.base.rule import Rule
+from logprep.processor.base.rule import SourceTargetRule
+from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
-class ListComparisonRule(Rule):
+class ListComparisonRule(SourceTargetRule):
     """Check if documents match a filter."""
 
     _compare_sets: dict
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(SourceTargetRule.Config):
         """RuleConfig for ListComparisonRule"""
 
-        check_field: str = field(validator=validators.instance_of(str))
-        output_field: str = field(validator=validators.instance_of(str))
         list_file_paths: List[Path] = field(
             validator=validators.deep_iterable(member_validator=validators.instance_of(Path)),
             converter=lambda paths: [Path(path) for path in paths],
         )
+        """List of files in relative or absolute notation"""
         list_search_base_path: Path = field(
             validator=validators.instance_of(Path), factory=Path, converter=Path
         )
+        """Base Path from where to find relative files from :code:`list_file_paths` (Optional)"""
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)
@@ -63,10 +97,26 @@ class ListComparisonRule(Rule):
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
         return self._compare_sets
 
-    @property
-    def check_field(self) -> str:  # pylint: disable=missing-docstring
-        return self._config.check_field
-
-    @property
-    def list_comparison_output_field(self) -> str:  # pylint: disable=missing-docstring
-        return self._config.output_field
+    @classmethod
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        """normalizes rule dict before create rule config object"""
+        if rule.get("list_comparison", {}).get("check_field") is not None:
+            source_field_value = pop_dotted_field_value(rule, "list_comparison.check_field")
+            add_and_overwrite(rule, "list_comparison.source_fields", [source_field_value])
+            warnings.warn(
+                (
+                    "list_comparison.check_field is deprecated. "
+                    "Use list_comparison.source_fields instead"
+                ),
+                DeprecationWarning,
+            )
+        if rule.get("list_comparison", {}).get("output_field") is not None:
+            target_field_value = pop_dotted_field_value(rule, "list_comparison.output_field")
+            add_and_overwrite(rule, "list_comparison.target_field", target_field_value)
+            warnings.warn(
+                (
+                    "list_comparison.output_field is deprecated. "
+                    "Use list_comparison.target_field instead"
+                ),
+                DeprecationWarning,
+            )

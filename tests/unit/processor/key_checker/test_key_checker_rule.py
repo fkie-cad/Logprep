@@ -14,8 +14,8 @@ class TestKeyCheckerRule:
                 {
                     "filter": "message",
                     "key_checker": {
-                        "key_list": ["key1", "key2", "key1.key2"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1", "key2", "key1.key2"],
+                        "target_field": "missing_fields",
                     },
                 },
                 None,
@@ -25,8 +25,8 @@ class TestKeyCheckerRule:
                 {
                     "filter": "message",
                     "key_checker": {
-                        "key_list": ["key1"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1"],
+                        "target_field": "missing_fields",
                     },
                 },
                 None,
@@ -36,8 +36,8 @@ class TestKeyCheckerRule:
                 {
                     "filter": "message",
                     "key_checker": {
-                        "key_list": ["key1.key2"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1.key2"],
+                        "target_field": "missing_fields",
                     },
                 },
                 None,
@@ -46,39 +46,39 @@ class TestKeyCheckerRule:
             (
                 {"filter": "message", "key_checker": {}},
                 TypeError,
-                "missing 2 required keyword-only arguments: 'key_list' and 'output_field'",
+                "missing 2 required keyword-only arguments",
             ),
             (
                 {
                     "filter": "message",
                     "key_checker": {
-                        "key_list": [],
-                        "output_field": "missing_fields",
+                        "source_fields": [],
+                        "target_field": "missing_fields",
                     },
                 },
                 ValueError,
-                "Length of 'key_list' must be => 1: 0",
+                "Length of 'source_fields' must be => 1: 0",
             ),
             (
                 {
                     "filter": "message",
                     "key_checker": {
-                        "key_list": [1, 2, 3],
-                        "output_field": "missing_fields",
+                        "source_fields": [1, 2, 3],
+                        "target_field": "missing_fields",
                     },
                 },
                 TypeError,
-                "'key_list' must be <class 'str'",
+                "'source_fields' must be <class 'str'",
             ),
             (
                 {
                     "filter": "message",
                     "key_checker": {
-                        "key_list": ["key1"],
+                        "source_fields": ["key1"],
                     },
                 },
                 TypeError,
-                "missing 1 required keyword-only argument: 'output_field'",
+                "missing 1 required keyword-only argument: 'target_field'",
             ),
         ],
     )
@@ -109,15 +109,15 @@ class TestKeyCheckerRule:
                 {
                     "filter": "*",
                     "key_checker": {
-                        "key_list": ["key1"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1"],
+                        "target_field": "missing_fields",
                     },
                 },
                 {
                     "filter": "*",
                     "key_checker": {
-                        "key_list": ["key2"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key2"],
+                        "target_field": "missing_fields",
                     },
                 },
                 False,
@@ -127,15 +127,15 @@ class TestKeyCheckerRule:
                 {
                     "filter": "*",
                     "key_checker": {
-                        "key_list": ["key1", "key2"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1", "key2"],
+                        "target_field": "missing_fields",
                     },
                 },
                 {
                     "filter": "*",
                     "key_checker": {
-                        "key_list": ["key2", "key1"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key2", "key1"],
+                        "target_field": "missing_fields",
                     },
                 },
                 True,
@@ -145,15 +145,15 @@ class TestKeyCheckerRule:
                 {
                     "filter": "*",
                     "key_checker": {
-                        "key_list": ["key1.key2"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1.key2"],
+                        "target_field": "missing_fields",
                     },
                 },
                 {
                     "filter": "*",
                     "key_checker": {
-                        "key_list": ["key1"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1"],
+                        "target_field": "missing_fields",
                     },
                 },
                 False,
@@ -163,15 +163,15 @@ class TestKeyCheckerRule:
                 {
                     "filter": "*",
                     "key_checker": {
-                        "key_list": ["key1", "key2", "key2"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1", "key2", "key2"],
+                        "target_field": "missing_fields",
                     },
                 },
                 {
                     "filter": "*",
                     "key_checker": {
-                        "key_list": ["key1", "key1", "key2"],
-                        "output_field": "missing_fields",
+                        "source_fields": ["key1", "key1", "key2"],
+                        "target_field": "missing_fields",
                     },
                 },
                 True,

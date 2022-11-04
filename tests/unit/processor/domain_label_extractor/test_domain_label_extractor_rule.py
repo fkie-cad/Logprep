@@ -110,12 +110,24 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
+                        "source_fields": ["field.b"],
+                        "target_field": "other",
+                    },
+                    "description": "",
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "field.a",
+                    "domain_label_extractor": {
                         "target_field": "field.b",
                     },
                     "description": "",
                 },
                 TypeError,
-                "missing 1 required keyword-only argument: 'output_field'",
+                "missing 1 required keyword-only argument: 'source_fields'",
             ),
             (
                 {
@@ -126,7 +138,7 @@ class TestDomainLabelExtractorRule:
                     "description": "",
                 },
                 TypeError,
-                "missing 1 required keyword-only argument: 'target_field'",
+                "missing 1 required keyword-only argument: 'source_fields'",
             ),
             (
                 {

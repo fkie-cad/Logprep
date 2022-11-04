@@ -2,7 +2,7 @@
 ListComparison
 --------------
 
-The `list_comparison` processor allows to compare values of a target field against lists provided
+The `list_comparison` processor allows to compare values of source fields against lists provided
 as files.
 
 
@@ -20,7 +20,6 @@ Example
         list_search_base_path: /path/to/list/dir
 """
 from logging import Logger
-from typing import List
 
 from attr import define, field
 
@@ -28,6 +27,7 @@ from logprep.abc import Processor
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
+from logprep.processor.base.exceptions import DuplicationError
 
 
 class ListComparisonError(BaseException):
@@ -35,19 +35,6 @@ class ListComparisonError(BaseException):
 
     def __init__(self, name: str, message: str):
         super().__init__(f"ListComparison ({name}): {message}")
-
-
-class DuplicationError(ListComparisonError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields could not be written, because "
-            "one or more subfields existed and could not be extended: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 class ListComparison(Processor):
@@ -90,7 +77,7 @@ class ListComparison(Processor):
         comparison_result, comparison_key = self._list_comparison(rule, event)
 
         if comparison_result is not None:
-            output_field = f"{ rule.list_comparison_output_field }.{ comparison_key }"
+            output_field = f"{ rule.target_field }.{ comparison_key }"
             field_possible = add_field_to(event, output_field, comparison_result, True)
             if not field_possible:
                 raise DuplicationError(self.name, [output_field])
@@ -103,11 +90,11 @@ class ListComparison(Processor):
         """
 
         # get value that should be checked in the lists
-        field_value = get_dotted_field_value(event, rule.check_field)
+        field_value = get_dotted_field_value(event, rule.source_fields[0])
 
         # iterate over lists and check if element is in any
         list_matches = []
-        for compare_list in rule.compare_sets.keys():
+        for compare_list in rule.compare_sets:
             if field_value in rule.compare_sets[compare_list]:
                 list_matches.append(compare_list)
 

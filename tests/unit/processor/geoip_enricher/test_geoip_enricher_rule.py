@@ -73,3 +73,19 @@ class TestListComparisonRule:
         rule1 = GeoipEnricherRule._create_from_dict(specific_rule_definition)
         rule2 = GeoipEnricherRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
+
+    def test_deprecation_warning(self):
+        rule_dict = {
+            "filter": "other_message",
+            "geoip_enricher": {
+                "source_ip": "other_source",
+                "output_field": "geoip",
+            },
+            "description": "",
+        }
+        with pytest.deprecated_call() as warnings:
+            GeoipEnricherRule._create_from_dict(rule_dict)
+            assert len(warnings.list) == 2
+            matches = [warning.message.args[0] for warning in warnings.list]
+            assert "Use geoip_enricher.target_field instead" in matches[1]
+            assert "Use geoip_enricher.source_fields instead" in matches[0]

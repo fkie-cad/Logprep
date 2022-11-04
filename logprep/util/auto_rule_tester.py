@@ -547,18 +547,6 @@ class AutoRuleTester:
     def _get_processor_instance(name, processor_cfg, logger_):
         cfg = {name: processor_cfg}
         processor = Factory.create(cfg, logger_)
-        processor_plugin_path = str(pathlib.Path(inspect.getfile(processor.__class__)).parent)
-
-        rule_class_path = path.join(processor_plugin_path, "rule.py")
-        loaded_rule_classes_map = {
-            inspect.getfile(rule_class): rule_class for rule_class in Rule.__subclasses__()
-        }
-        rule_class = loaded_rule_classes_map.get(rule_class_path)
-        if rule_class is None and isinstance(processor, Processor):
-            raise AutoRuleTesterException(
-                f"Rule class missing for processor: " f"{processor.describe()}"
-            )
-
         return processor
 
     @staticmethod

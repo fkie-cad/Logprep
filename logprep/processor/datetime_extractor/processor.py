@@ -26,8 +26,9 @@ from dateutil.parser import parse
 from dateutil.tz import tzlocal
 
 from logprep.abc import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class DateTimeExtractorError(BaseException):
@@ -60,8 +61,8 @@ class DatetimeExtractor(Processor):
         return local_timezone_name
 
     def _apply_rules(self, event, rule):
-        datetime_field = rule.datetime_field
-        destination_field = rule.destination_field
+        datetime_field = rule.source_fields[0]
+        destination_field = rule.target_field
 
         if destination_field and self._field_exists(event, datetime_field):
             datetime_value = get_dotted_field_value(event, datetime_field)
@@ -81,5 +82,11 @@ class DatetimeExtractor(Processor):
             }
 
             if split_timestamp:
-                if destination_field not in event.keys():
-                    event[destination_field] = split_timestamp
+                adding_was_successful = add_field_to(
+                    event,
+                    rule.target_field,
+                    split_timestamp,
+                    overwrite_output_field=rule.overwrite_target,
+                )
+                if not adding_was_successful:
+                    raise DuplicationError(self.name, [rule.target_field])

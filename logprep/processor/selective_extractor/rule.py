@@ -1,4 +1,97 @@
-"""This module is used to extract fields from documents via a given list."""
+"""
+Selective Extractor
+===================
+
+The selective extractor requires the additional field :code:`selective_extractor`.
+The field :code:`selective_extractor.extract` has to be defined.
+It contains a dictionary of field names that should be extracted and
+a target topic to which they should be send to.
+If dot notation is being used, then all fields on the path are being automatically created.
+
+In the following example, the field :code:`field.extract` with
+the value :code:`extracted value` is being extracted
+and send to the topic :code:`topic_to_send_to`.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from field list
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extracted_field_list: ["field.extract", "field2", "field3"]
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: json
+    :caption: Example event
+
+    {
+      "extract_test": {
+        "field": {
+          "extract": "extracted value"
+        }
+      }
+    }
+
+..  code-block:: json
+    :caption: Extracted event from Example
+
+    {
+      "extract": "extracted value"
+    }
+
+
+
+Alternatively, the additional field :code:`selective_extractor.extract.extract_from_file`
+can be added.
+It contains the path to a text file with a list of fields per line to be extracted.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from file
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extract_from_file: /path/to/file
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: text
+    :caption: Example of file with field list
+
+    field1
+    field2
+    field3
+
+The file has to exist.
+
+It is possible to mix both extraction sources. They will be merged to one list without duplicates.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example rule with extract from file
+
+    filter: extract_test
+    selective_extractor:
+      extract:
+        extract_from_file: /path/to/file
+        extracted_field_list: ["field1", "field2", "field4"]
+        target_topic: topic_to_send_to
+    description: '...'
+
+
+..  code-block:: text
+    :caption: Example of file with field list
+
+    field1
+    field2
+    field3
+
+"""
 
 from functools import partial
 from pathlib import Path
@@ -45,6 +138,7 @@ class SelectiveExtractorRule(Rule):
                 ),
             ]
         )
+        """the extraction mapping"""
 
         @property
         def extract_from_file(self) -> Path:

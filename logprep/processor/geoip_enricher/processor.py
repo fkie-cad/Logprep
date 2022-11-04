@@ -140,13 +140,17 @@ class GeoipEnricher(Processor):
             return {}
 
     def _apply_rules(self, event, rule):
-        source_ip = rule.source_ip
-        output_field = rule.output_field
-        if source_ip:
-            ip_string = get_dotted_field_value(event, source_ip)
-            geoip_data = self._try_getting_geoip_data(ip_string)
-            if geoip_data:
-                adding_was_successful = add_field_to(event, output_field, geoip_data)
+        source_ip = rule.source_fields[0]
+        output_field = rule.target_field
+        if not source_ip:
+            return
+        ip_string = get_dotted_field_value(event, source_ip)
+        geoip_data = self._try_getting_geoip_data(ip_string)
+        if not geoip_data:
+            return
+        adding_was_successful = add_field_to(
+            event, output_field, geoip_data, overwrite_output_field=rule.overwrite_target
+        )
 
-                if not adding_was_successful:
-                    raise DuplicationError(self.name, [output_field])
+        if not adding_was_successful:
+            raise DuplicationError(self.name, [output_field])

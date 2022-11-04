@@ -4,8 +4,7 @@
 # pylint: disable=missing-function-docstring
 # pylint: disable=wrong-import-position
 from copy import deepcopy
-
-from pytest import raises
+import pytest
 
 from logprep.filter.expression.filter_expression import StringFilterExpression
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
@@ -31,7 +30,7 @@ class MockLabelingSchema(LabelingSchema):
 
 class TestRule:
     def test_create_from_file_fails_if_document_does_not_contain_filter_and_label(self):
-        with raises(InvalidRuleDefinitionError):
+        with pytest.raises(InvalidRuleDefinitionError):
             with JsonTempFile({}) as rule_path:
                 LabelerRule.create_rules_from_file(rule_path)
 
@@ -39,7 +38,7 @@ class TestRule:
             invalid_rule_dict = deepcopy(simple_rule_dict)
             del invalid_rule_dict[missing_field]
 
-            with raises(InvalidRuleDefinitionError):
+            with pytest.raises(InvalidRuleDefinitionError):
                 with JsonTempFile([invalid_rule_dict]) as rule_path:
                     LabelerRule.create_rules_from_file(rule_path)
 
@@ -50,14 +49,14 @@ class TestRule:
         assert rule._config.label == simple_rule_dict["label"]
 
     def test_create_from_dict_fails_if_document_does_not_contain_filter_and_label(self):
-        with raises(InvalidRuleDefinitionError):
+        with pytest.raises(InvalidRuleDefinitionError):
             LabelerRule._create_from_dict({})
 
         for missing_field in ["filter", "label"]:
             invalid_rule_dict = deepcopy(simple_rule_dict)
             del invalid_rule_dict[missing_field]
 
-            with raises(InvalidRuleDefinitionError):
+            with pytest.raises(InvalidRuleDefinitionError):
                 LabelerRule._create_from_dict(invalid_rule_dict)
 
     def test_conforms_to_schema_is_false_when_labels_do_not_conform_to_schema(self):
@@ -194,3 +193,15 @@ class TestRule:
         document = {"applyrule": None}
 
         assert rule.matches(document)
+
+    def test_deprecation_warning(self):
+        rule_dict = {
+            "filter": "other_message",
+            "label": {"reporter": ["windows"]},
+            "description": "",
+        }
+        with pytest.deprecated_call() as warnings:
+            LabelerRule._create_from_dict(rule_dict)
+            assert len(warnings.list) == 1
+            matches = [warning.message.args[0] for warning in warnings.list]
+            assert "Use labeler.label instead" in matches[0]

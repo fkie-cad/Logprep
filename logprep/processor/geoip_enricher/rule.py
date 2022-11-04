@@ -1,27 +1,63 @@
-"""This module is used to resolve field values from documents via a list."""
+"""
+Geoip Enricher
+==============
 
+The geoip enricher requires the additional field :code:`geoip`.
+The default output_field can be overridden using the optional parameter
+:code:`output_field`. This can be a dotted
+subfield. The additional field :code:`geoip.source_ip` must be given.
+It contains the IP for which the geoip data should be added.
+
+In the following example the IP in :code:`client.ip` will be enriched with geoip data.
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Example
+
+    filter: client.ip
+    geoip:
+      source_fields: [client.ip]
+    description: '...'
+"""
+
+import warnings
 from attrs import define, field, validators
 
 
-from logprep.processor.base.rule import Rule
+from logprep.processor.base.rule import SourceTargetRule
+from logprep.util.helper import add_and_overwrite, pop_dotted_field_value
 
 
-class GeoipEnricherRule(Rule):
+class GeoipEnricherRule(SourceTargetRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(SourceTargetRule.Config):
         """RuleConfig for GeoipEnricher"""
 
-        source_ip: str = field(validator=validators.instance_of(str))
-        output_field: str = field(validator=validators.instance_of(str), default="geoip")
+        target_field: str = field(validator=validators.instance_of(str), default="geoip")
+        """Field for the output information. Defaults to :code:`geoip`"""
 
-    @property
-    def source_ip(self) -> dict:
-        """Returns the source IP"""
-        return self._config.source_ip
-
-    @property
-    def output_field(self) -> str:
-        """Returns the output field"""
-        return self._config.output_field
+    @classmethod
+    def normalize_rule_dict(cls, rule: dict) -> None:
+        """normalizes rule dict before create rule config object"""
+        if rule.get("geoip_enricher", {}).get("source_ip") is not None:
+            source_field_value = pop_dotted_field_value(rule, "geoip_enricher.source_ip")
+            add_and_overwrite(rule, "geoip_enricher.source_fields", [source_field_value])
+            warnings.warn(
+                (
+                    "geoip_enricher.source_ip is deprecated. "
+                    "Use geoip_enricher.source_fields instead"
+                ),
+                DeprecationWarning,
+            )
+        if rule.get("geoip_enricher", {}).get("output_field") is not None:
+            target_field_value = pop_dotted_field_value(rule, "geoip_enricher.output_field")
+            add_and_overwrite(rule, "geoip_enricher.target_field", target_field_value)
+            warnings.warn(
+                (
+                    "geoip_enricher.output_field is deprecated. "
+                    "Use geoip_enricher.target_field instead"
+                ),
+                DeprecationWarning,
+            )

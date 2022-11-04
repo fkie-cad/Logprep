@@ -404,6 +404,30 @@ test_cases = [  # testcase, rule, event, expected
             "field4": "mess}age /1",
         },
     ),
+    (
+        "deletes source fields",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "%{field1} %{field2} %{field3} %{field4}",
+                    "message2": "%{field21} %{field22} %{field23} %{field24}",
+                },
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "This is a message", "message2": "This is a message"},
+        {
+            "field1": "This",
+            "field2": "is",
+            "field3": "a",
+            "field4": "message",
+            "field21": "This",
+            "field22": "is",
+            "field23": "a",
+            "field24": "message",
+        },
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (

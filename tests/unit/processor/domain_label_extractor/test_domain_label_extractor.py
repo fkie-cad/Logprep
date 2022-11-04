@@ -253,8 +253,53 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
         with pytest.raises(
             DuplicationError,
-            match=r"DomainLabelExtractor \(Test Instance Name\): The "
-            r"following fields already existed and were not overwritten by the "
-            r"DomainLabelExtractor: url\.subdomain",
+            match=r"\('Test Instance Name', 'The following fields could not be written, "
+            r"because one or more subfields existed and could not be extended: url.subdomain'\)",
         ):
             self.object.process(document)
+
+    def test_domain_extraction_overwrites_target_field(self):
+        document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
+        expected = {
+            "url": {
+                "domain": "test.domain.de",
+                "registered_domain": "domain.de",
+                "subdomain": "test",
+                "top_level_domain": "de",
+            }
+        }
+        rule_dict = {
+            "filter": "url",
+            "domain_label_extractor": {
+                "source_fields": ["url.domain"],
+                "target_field": "url",
+                "overwrite_target": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        assert document == expected
+
+    def test_domain_extraction_delete_source_fields(self):
+        document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
+        expected = {
+            "url": {
+                "registered_domain": "domain.de",
+                "subdomain": "test",
+                "top_level_domain": "de",
+            }
+        }
+        rule_dict = {
+            "filter": "url",
+            "domain_label_extractor": {
+                "source_fields": ["url.domain"],
+                "target_field": "url",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        assert document == expected

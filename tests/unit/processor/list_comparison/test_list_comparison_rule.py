@@ -102,3 +102,20 @@ class TestListComparisonRule:
         assert rule.compare_sets is not None
         assert isinstance(rule.compare_sets, dict)
         assert len(rule.compare_sets.keys()) > 0
+
+    def test_deprecation_warning(self):
+        rule_dict = {
+            "filter": "other_message",
+            "list_comparison": {
+                "check_field": "user",
+                "output_field": "other_user_results",
+                "list_file_paths": ["../lists/other_user_list.txt"],
+            },
+            "description": "",
+        }
+        with pytest.deprecated_call() as warnings:
+            ListComparisonRule._create_from_dict(rule_dict)
+            assert len(warnings.list) == 2
+            matches = [warning.message.args[0] for warning in warnings.list]
+            assert "Use list_comparison.target_field instead" in matches[1]
+            assert "Use list_comparison.source_fields instead" in matches[0]

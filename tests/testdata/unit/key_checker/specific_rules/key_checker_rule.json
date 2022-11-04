@@ -2,12 +2,13 @@
     {
         "filter": "*",
         "key_checker": {
-            "key_list": [
+            "source_fields": [
                 "key1",
                 "key2",
                 "key1.key2"
             ],
-            "output_field": "missing_fields"
+            "target_field": "missing_fields",
+            "overwrite_target": true
         },
         "description": "rule for key_checker"
     }

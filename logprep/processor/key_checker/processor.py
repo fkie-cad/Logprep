@@ -19,10 +19,12 @@ Example
 
 """
 
+from typing import Iterable
 from logprep.abc import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.key_checker.rule import KeyCheckerRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.processor.base.exceptions import DuplicationError
 
 
 class KeyChecker(Processor):
@@ -32,23 +34,31 @@ class KeyChecker(Processor):
 
     def _apply_rules(self, event, rule):
 
-        not_existing_fields = set()
+        not_existing_fields = list(
+            {
+                dotted_field
+                for dotted_field in rule.source_fields
+                if not self._field_exists(event, dotted_field)
+            }
+        )
 
-        for dotted_field in rule.key_list:
-            if not self._field_exists(event=event, dotted_field=dotted_field):
-                not_existing_fields.add(dotted_field)
+        if not not_existing_fields:
+            return
 
-        if not_existing_fields:
-            output_field = get_dotted_field_value(event=event, dotted_field="output_field")
-            if output_field:
-                missing_fields = list(set(output_field).union(not_existing_fields))
-                missing_fields.sort()
-                add_field_to(
-                    event,
-                    rule.output_field,
-                    missing_fields,
-                )
-            else:
-                missing_fields = list(not_existing_fields)
-                missing_fields.sort()
-                add_field_to(event, rule.output_field, missing_fields)
+        output_value = get_dotted_field_value(event, rule.target_field)
+
+        if isinstance(output_value, Iterable):
+            output_value = list({*not_existing_fields, *output_value})
+        else:
+            output_value = not_existing_fields
+
+        add_successful = add_field_to(
+            event,
+            rule.target_field,
+            sorted(output_value),
+            extends_lists=False,
+            overwrite_output_field=rule.overwrite_target,
+        )
+
+        if not add_successful:
+            raise DuplicationError(self.name, [rule.target_field])

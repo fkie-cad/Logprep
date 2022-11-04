@@ -87,7 +87,7 @@ Some processors can not be tested with regular auto-tests.
 Therefore, it is possible to implement custom tests for there processors.
 Processors that use custom tests must have set the instance variable :code:`has_custom_tests` to `True` and they must implement the method :code:`test_rules`.
 Custom tests are performed before other auto-tests and they do not require additional test files.
-One processor that uses custom tests is the clusterer (see :doc:`rule_language`).
+One processor that uses custom tests is the clusterer (see :ref:`rules`).
 
 Example Tests
 -------------
