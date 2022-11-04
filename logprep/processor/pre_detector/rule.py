@@ -71,7 +71,7 @@ class PreDetectorRule(Rule):
         mitre: list = field(validator=validators.instance_of(list))
         """A list of MITRE ATT&CK tags."""
         case_condition: str = field(validator=validators.instance_of(str))
-        """The type of the triggered rule. mostly `directly`"""
+        """The type of the triggered rule, mostly `directly`."""
         ip_fields: list = field(validator=validators.instance_of(list), factory=list)
         """Specify a list of fields that can be compared to a list of IPs,
         which can be configured in the pipeline for the predetector.
