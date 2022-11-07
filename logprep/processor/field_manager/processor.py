@@ -1,6 +1,7 @@
 from logprep.abc import Processor
 from logprep.processor.base.rule import SourceTargetRule
 from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_overwrite
+from logprep.processor.base.exceptions import DuplicationError
 
 
 class FieldManager(Processor):
@@ -11,11 +12,19 @@ class FieldManager(Processor):
         field_values = [
             get_dotted_field_value(event, source_field) for source_field in rule.source_fields
         ]
+        if None in field_values:
+            missing_fields = [
+                rule.source_fields[index]
+                for value, index in enumerate(field_values)
+                if value is None
+            ]
+            error = BaseException(f"{self.name}: missing source_fields: {missing_fields}")
+            self._handle_warning_error(event, rule, error)
+
         if len(field_values) == 1 and not rule.extend_target_list:
             field_values = field_values.pop()
         extend_target_list = rule.extend_target_list
         overwrite_target = rule.overwrite_target
-
         if extend_target_list and overwrite_target:
             field_values_lists = list(filter(lambda x: isinstance(x, list), field_values))
             field_values_not_list = list(filter(lambda x: not isinstance(x, list), field_values))
@@ -37,13 +46,15 @@ class FieldManager(Processor):
         if not extend_target_list and overwrite_target:
             add_and_overwrite(event, rule.target_field, field_values)
         if not extend_target_list and not overwrite_target:
-            add_field_to(
+            successfull = add_field_to(
                 event,
                 rule.target_field,
                 field_values,
-                extends_lists=rule.extend_target_list,
+                extends_lists=extend_target_list,
                 overwrite_output_field=overwrite_target,
             )
+            if not successfull:
+                raise DuplicationError(self.name, [rule.target_field])
 
     @staticmethod
     def _get_deduplicated_sorted_flatten_list(lists: list[list], not_lists: list[any]) -> list:

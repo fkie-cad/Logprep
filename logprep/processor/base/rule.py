@@ -143,6 +143,14 @@ class Rule:
             factory=list,
         )
         """Custom tests for this rule."""
+        tag_on_failure: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ],
+            factory=list,
+            converter=lambda x: list(set(x)),
+        )
 
     @define(kw_only=True)
     class RuleMetrics(Metric):
@@ -161,11 +169,13 @@ class Rule:
             self._mean_processing_time = new_avg
             self._mean_processing_time_sample_counter = new_sample_counter
 
-    special_field_types = ["regex_fields", "sigma_fields", "ip_fields", "tests"]
+    special_field_types = ["regex_fields", "sigma_fields", "ip_fields", "tests", "tag_on_failure"]
 
     def __init__(self, filter_rule: FilterExpression, config: Config):
         if not isinstance(config, self.Config):
             raise InvalidRuleDefinitionError("config is not a Config class")
+        if not config.tag_on_failure:
+            config.tag_on_failure = [f"_{self.rule_type}_failure"]
         self.__class__.__hash__ = Rule.__hash__
         self.filter_str = str(filter_rule)
         self._filter = filter_rule
@@ -188,6 +198,10 @@ class Rule:
     @property
     def tests(self) -> list:
         return self._config.tests
+
+    @property
+    def failure_tags(self):
+        return self._config.tag_on_failure
 
     # pylint: enable=C0111
 
@@ -220,12 +234,12 @@ class Rule:
     def _create_from_dict(cls, rule: dict) -> "Rule":
         cls.normalize_rule_dict(rule)
         filter_expression = Rule._create_filter_expression(rule)
-        rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
-        if not rule_type:
-            rule_type = "rule"
-        config = rule.get(rule_type)
+        cls.rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
+        if not cls.rule_type:
+            cls.rule_type = "rule"
+        config = rule.get(cls.rule_type)
         if config is None:
-            raise InvalidRuleDefinitionError(f"config not under key {rule_type}")
+            raise InvalidRuleDefinitionError(f"config not under key {cls.rule_type}")
         if not isinstance(config, dict):
             raise InvalidRuleDefinitionError("config is not a dict")
         config.update({"description": rule.get("description", "")})

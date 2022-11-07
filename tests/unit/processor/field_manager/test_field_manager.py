@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
 import pytest
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -215,7 +215,44 @@ test_cases = [  # testcase, rule, event, expected
     ),
 ]
 
-failure_test_cases = []  # testcase, rule, event, expected
+failure_test_cases = [
+    (
+        "single source field not found",
+        {
+            "filter": "message",
+            "source_target": {
+                "source_fields": ["do.not.exits"],
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "tags": ["_source_target_failure"]},
+    ),
+    (
+        "single source field not found and preexisting tags",
+        {
+            "filter": "message",
+            "source_target": {
+                "source_fields": ["do.not.exits"],
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "tags": ["preexisting"]},
+        {"message": "This is a message", "tags": ["_source_target_failure", "preexisting"]},
+    ),
+    (
+        "single source field not found and preexisting tags with deduplication",
+        {
+            "filter": "message",
+            "source_target": {
+                "source_fields": ["do.not.exits"],
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "tags": ["_source_target_failure", "preexisting"]},
+        {"message": "This is a message", "tags": ["_source_target_failure", "preexisting"]},
+    ),
+]  # testcase, rule, event, expected
 
 
 class TestFieldManager(BaseProcessorTestCase):
@@ -238,3 +275,26 @@ class TestFieldManager(BaseProcessorTestCase):
         with pytest.raises(ProcessingWarning):
             self.object.process(event)
         assert event == expected, testcase
+
+    def test_process_raises_duplication_error_if_target_field_exists_and_should_not_be_overwritten(
+        self,
+    ):
+        rule = {
+            "filter": "field.a",
+            "source_target": {
+                "source_fields": ["field.a", "field.b"],
+                "target_field": "target_field",
+                "overwrite_target": False,
+                "delete_source_fields": False,
+            },
+        }
+        self._load_specific_rule(rule)
+        document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
+        with pytest.raises(
+            DuplicationError,
+            match=r"('Test Instance Name', 'The following fields could not be written, "
+            r"because one or more subfields existed and could not be extended: target_field')",
+        ):
+            self.object.process(document)
+        assert "target_field" in document
+        assert document.get("target_field") == "has already content"

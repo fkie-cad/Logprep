@@ -459,7 +459,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         {"message": "I can't be converted into int", "tags": ["preexisting"]},
         {
             "message": "I can't be converted into int",
-            "tags": ["preexisting", "_dissectfailure"],
+            "tags": ["_dissectfailure", "preexisting"],
         },
     ),
     (
@@ -487,13 +487,13 @@ failure_test_cases = [  # testcase, rule, event, expected
                 "convert_datatype": {
                     "message": "int",
                 },
-                "tag_on_failure": ["custom_tag_1", "custom_tag2"],
+                "tag_on_failure": ["custom_tag_1", "custom_tag_2"],
             },
         },
         {"message": "I can't be converted into int", "tags": ["preexisting1", "preexisting2"]},
         {
             "message": "I can't be converted into int",
-            "tags": ["preexisting1", "preexisting2", "custom_tag_1", "custom_tag2"],
+            "tags": ["custom_tag_1", "custom_tag_2", "preexisting1", "preexisting2"],
         },
     ),
     (
