@@ -131,6 +131,25 @@ test_cases = [  # testcase, rule, event, expected
         {"new_field": ["i exist", "value1", "value2", "value3"]},
     ),
     (
+        "moves multiple fields and writes them to a existing target field as list",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "field_manager": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+            "new_field": "i exist",
+        },
+        {"new_field": ["i exist", "value1", "value2", "value3"]},
+    ),
+    (
         "moves multiple fields and merges to target list",
         {
             "filter": "field1 OR field2 OR field3",
