@@ -1,11 +1,11 @@
 """
 FieldManager
-=========
+============
 
-The `dissector` is a processor that tokenizes incoming strings using defined patterns.
-The behavior is based of the logstash dissect filter plugin and has the same advantage that
-for the event processing no regular expressions are used.
-Additionally it can be used to convert datatypes of given fields.
+The `field_manager` processor copies or moves values from multiple source fields to one
+target field.
+Additionaly it can be used to merge multiple source field values into one target field value.
+In this process, source field lists will be merged.
 
 
 Example

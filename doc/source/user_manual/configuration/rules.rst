@@ -59,6 +59,8 @@ Rules
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.field_manager.rule
+
 .. automodule:: logprep.processor.generic_adder.rule
 .. autoclass:: logprep.processor.generic_adder.rule.GenericAdderRule.Config
    :members:
