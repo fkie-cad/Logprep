@@ -1,6 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 import re
-from functools import partial
+from functools import partial, reduce
 from os import remove
 from typing import Optional, Union
 
@@ -109,10 +109,13 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         The value of the requested dotted field.
     """
 
-    fields = dotted_field.split(".")
-    return _retrieve_field_value_and_delete_field_if_configured(
-        event, fields, delete_source_field=False
-    )
+    fields = [event, *dotted_field.split(".")]
+    try:
+        return reduce(dict.__getitem__, fields)
+    except KeyError:
+        return None
+    except TypeError:
+        return None
 
 
 def pop_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
