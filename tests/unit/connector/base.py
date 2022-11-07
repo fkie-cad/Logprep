@@ -272,7 +272,8 @@ class BaseInputTestCase(BaseConnectorTestCase):
             "preprocessing": {
                 "version_info_target_field": "version_info",
                 "hmac": {"target": "", "key": "", "output_field": ""},
-            }
+            },
+            "version_information": {"logprep": "3.3.0", "configuration": "unset"},
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
@@ -280,7 +281,8 @@ class BaseInputTestCase(BaseConnectorTestCase):
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
-        assert result.get("version_info")
+        assert result.get("version_info", {}).get("logprep") == "3.3.0"
+        assert result.get("version_info", {}).get("configuration") == "unset"
 
     def test_pipeline_preprocessing_does_not_add_versions_if_target_field_exists_already(self):
         preprocessing_config = {

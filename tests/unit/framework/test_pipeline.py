@@ -510,7 +510,7 @@ class TestPipeline(ConfigurationForTests):
     ):
         self.pipeline._create_logger()
         self.pipeline._create_connectors()
-        called_input_config = mock_create.call_args_list[0][0][0]
+        called_input_config = mock_create.call_args_list[0][0][0]["dummy"]
         assert "version_information" in called_input_config, "ensure version_information is added"
         assert "logprep" in called_input_config.get("version_information"), "ensure logprep key"
         assert "configuration" in called_input_config.get("version_information"), "ensure config"
