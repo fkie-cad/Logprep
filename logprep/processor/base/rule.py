@@ -297,6 +297,13 @@ class SourceTargetRule(Rule):
         """Whether to delete all the source fields or not. Defaults to :code:`False`"""
         overwrite_target: str = field(validator=validators.instance_of(bool), default=False)
         """Overwrite the target field value if exists. Defaults to :code:`False`"""
+        extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
+        """If the target field exists and is a list, the list will be extended with the value
+        of the source fields. If the source field is a list, the lists will be merged.
+        If the target field does not exist. A new field will will be added with the
+        source field value as list. Defaults
+        to :code:`False`
+        """
 
     # pylint: disable=missing-function-docstring
     @property
@@ -318,5 +325,9 @@ class SourceTargetRule(Rule):
     @property
     def overwrite_target(self):
         return self._config.overwrite_target
+
+    @property
+    def extend_target_list(self):
+        return self._config.extend_target_list
 
     # pylint: enable=missing-function-docstring

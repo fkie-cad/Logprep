@@ -9,7 +9,10 @@ test_cases = [  # testcase, rule, event, expected
         "copies single field to non existing target field",
         {
             "filter": "message",
-            "source_target": {"source_fields": ["message"], "target_field": "new_field"},
+            "source_target": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+            },
         },
         {"message": "This is a message"},
         {"message": "This is a message", "new_field": "This is a message"},
@@ -53,6 +56,60 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "This is a message", "new_field": "existing content"},
         {"new_field": "This is a message"},
+    ),
+    (
+        "moves field and writes as list to target field",
+        {
+            "filter": "message",
+            "source_target": {
+                "source_fields": ["message"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "message": "This is a message",
+        },
+        {"new_field": ["This is a message"]},
+    ),
+    (
+        "moves multiple fields and writes them as list to non existing target field",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "source_target": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+        },
+        {"new_field": ["value1", "value2", "value3"]},
+    ),
+    (
+        "moves multiple fields and writes them as list to existing target field",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "source_target": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+                "overwrite_target": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+            "new_field": "i exist",
+        },
+        {"new_field": ["value1", "value2", "value3"]},
     ),
 ]
 
