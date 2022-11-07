@@ -24,15 +24,15 @@ import warnings
 from attrs import define, field, validators
 
 
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.base.rule import FieldManagerRule
 from logprep.util.helper import add_and_overwrite, pop_dotted_field_value
 
 
-class GeoipEnricherRule(SourceTargetRule):
+class GeoipEnricherRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(SourceTargetRule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for GeoipEnricher"""
 
         target_field: str = field(validator=validators.instance_of(str), default="geoip")

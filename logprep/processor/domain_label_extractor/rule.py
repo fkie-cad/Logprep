@@ -49,11 +49,11 @@ will result in the following output
 """
 import warnings
 
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.base.rule import FieldManagerRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
-class DomainLabelExtractorRule(SourceTargetRule):
+class DomainLabelExtractorRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @classmethod

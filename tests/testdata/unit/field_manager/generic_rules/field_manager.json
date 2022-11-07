@@ -1,7 +1,7 @@
 [
     {
         "filter": "message",
-        "source_target": {
+        "field_manager": {
             "source_fields": [
                 "message"
             ],

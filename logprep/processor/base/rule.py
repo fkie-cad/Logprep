@@ -290,7 +290,7 @@ class Rule:
         return special_fields
 
 
-class SourceTargetRule(Rule):
+class FieldManagerRule(Rule):
     """Interface for a simple Rule with source_fields and target_field"""
 
     @define(kw_only=True)

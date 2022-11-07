@@ -9,7 +9,7 @@ test_cases = [  # testcase, rule, event, expected
         "copies single field to non existing target field",
         {
             "filter": "message",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["message"],
                 "target_field": "new_field",
             },
@@ -21,7 +21,7 @@ test_cases = [  # testcase, rule, event, expected
         "copies single field to existing target field",
         {
             "filter": "message",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["message"],
                 "target_field": "new_field",
                 "overwrite_target": True,
@@ -34,7 +34,7 @@ test_cases = [  # testcase, rule, event, expected
         "moves single field to non existing target field",
         {
             "filter": "message",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["message"],
                 "target_field": "new_field",
                 "delete_source_fields": True,
@@ -47,7 +47,7 @@ test_cases = [  # testcase, rule, event, expected
         "moves single field to existing target field",
         {
             "filter": "message",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["message"],
                 "target_field": "new_field",
                 "delete_source_fields": True,
@@ -61,7 +61,7 @@ test_cases = [  # testcase, rule, event, expected
         "moves field and writes as list to target field",
         {
             "filter": "message",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["message"],
                 "target_field": "new_field",
                 "extend_target_list": True,
@@ -77,7 +77,7 @@ test_cases = [  # testcase, rule, event, expected
         "moves multiple fields and writes them as list to non existing target field",
         {
             "filter": "field1 OR field2 OR field3",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
                 "extend_target_list": True,
@@ -95,7 +95,7 @@ test_cases = [  # testcase, rule, event, expected
         "moves multiple fields and writes them as list to existing target field",
         {
             "filter": "field1 OR field2 OR field3",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
                 "extend_target_list": True,
@@ -115,7 +115,7 @@ test_cases = [  # testcase, rule, event, expected
         "moves multiple fields and writes them to a existing list",
         {
             "filter": "field1 OR field2 OR field3",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
                 "extend_target_list": True,
@@ -134,7 +134,7 @@ test_cases = [  # testcase, rule, event, expected
         "moves multiple fields and merges to target list",
         {
             "filter": "field1 OR field2 OR field3",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
                 "extend_target_list": True,
@@ -153,7 +153,7 @@ test_cases = [  # testcase, rule, event, expected
         "moves multiple fields and merges to target list with different source types",
         {
             "filter": "field1 OR field2 OR field3",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
                 "extend_target_list": True,
@@ -175,7 +175,7 @@ test_cases = [  # testcase, rule, event, expected
         ),
         {
             "filter": "field1 OR field2 OR field3",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
                 "extend_target_list": True,
@@ -197,7 +197,7 @@ test_cases = [  # testcase, rule, event, expected
         ),
         {
             "filter": "field1 OR field2 OR field3",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["field1", "field2", "field3"],
                 "target_field": "new_field",
                 "extend_target_list": True,
@@ -220,37 +220,37 @@ failure_test_cases = [
         "single source field not found",
         {
             "filter": "message",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["do.not.exits"],
                 "target_field": "new_field",
             },
         },
         {"message": "This is a message"},
-        {"message": "This is a message", "tags": ["_source_target_failure"]},
+        {"message": "This is a message", "tags": ["_field_manager_failure"]},
     ),
     (
         "single source field not found and preexisting tags",
         {
             "filter": "message",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["do.not.exits"],
                 "target_field": "new_field",
             },
         },
         {"message": "This is a message", "tags": ["preexisting"]},
-        {"message": "This is a message", "tags": ["_source_target_failure", "preexisting"]},
+        {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
     ),
     (
         "single source field not found and preexisting tags with deduplication",
         {
             "filter": "message",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["do.not.exits"],
                 "target_field": "new_field",
             },
         },
-        {"message": "This is a message", "tags": ["_source_target_failure", "preexisting"]},
-        {"message": "This is a message", "tags": ["_source_target_failure", "preexisting"]},
+        {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
+        {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
     ),
 ]  # testcase, rule, event, expected
 
@@ -281,7 +281,7 @@ class TestFieldManager(BaseProcessorTestCase):
     ):
         rule = {
             "filter": "field.a",
-            "source_target": {
+            "field_manager": {
                 "source_fields": ["field.a", "field.b"],
                 "target_field": "target_field",
                 "overwrite_target": False,

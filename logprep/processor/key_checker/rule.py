@@ -42,15 +42,15 @@ can store all missing keys.
 from functools import partial
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.base.rule import FieldManagerRule
 from logprep.util.validators import min_len_validator
 
 
-class KeyCheckerRule(SourceTargetRule):
+class KeyCheckerRule(FieldManagerRule):
     """key_checker rule"""
 
     @define(kw_only=True)
-    class Config(SourceTargetRule.Config):
+    class Config(FieldManagerRule.Config):
         """key_checker rule config"""
 
         source_fields: set = field(

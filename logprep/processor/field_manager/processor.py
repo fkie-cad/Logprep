@@ -22,7 +22,7 @@ Example
 """
 from typing import List
 from logprep.abc import Processor
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.base.rule import FieldManagerRule
 from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_overwrite
 from logprep.processor.base.exceptions import DuplicationError
 
@@ -30,7 +30,7 @@ from logprep.processor.base.exceptions import DuplicationError
 class FieldManager(Processor):
     """A processor that copies, moves or merges source fields to one target field"""
 
-    rule_class = SourceTargetRule
+    rule_class = FieldManagerRule
 
     def _apply_rules(self, event, rule):
         field_values = [

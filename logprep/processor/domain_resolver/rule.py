@@ -23,19 +23,19 @@ In the following example the URL from the field :code:`url` will be extracted an
 """
 import warnings
 from attrs import define, field, fields
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.base.rule import FieldManagerRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
-class DomainResolverRule(SourceTargetRule):
+class DomainResolverRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(SourceTargetRule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for DomainResolver"""
 
         target_field: list = field(
-            validator=fields(SourceTargetRule.Config).target_field.validator,
+            validator=fields(FieldManagerRule.Config).target_field.validator,
             default="resolved_ip",
         )
         """The field where to write the processor output to. Defaults to :code:`resovled_ip`"""
