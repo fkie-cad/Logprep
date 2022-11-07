@@ -30,17 +30,22 @@ def get_config():
 
 
 class TestVersionInfoTargetField:
-
     def test_preprocessor_adds_version_information(self, tmp_path, config):
-        config["input"]["jsonl"].update({
-            "documents_path": "tests/testdata/input_logdata/selective_extractor_events.jsonl",
-            "preprocessing": {"version_info_target_field": "version_info"}
-        })
+        config["input"]["jsonl"].update(
+            {
+                "documents_path": "tests/testdata/input_logdata/selective_extractor_events.jsonl",
+                "preprocessing": {"version_info_target_field": "version_info"},
+            }
+        )
 
         config_path = str(tmp_path / "generated_config.yml")
         dump_config_as_file(config_path, config)
         test_output, _, __ = get_test_output(config_path)
         assert test_output, "should not be empty"
         processed_event = test_output[0]
-        assert processed_event.get("version_info", {}).get("logprep"), "no logprep version info found"
-        assert processed_event.get("version_info", {}).get("configuration"), "no config version info found"
+        assert processed_event.get("version_info", {}).get(
+            "logprep"
+        ), "no logprep version info found"
+        assert processed_event.get("version_info", {}).get(
+            "configuration"
+        ), "no config version info found"
