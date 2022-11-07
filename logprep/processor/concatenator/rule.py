@@ -42,7 +42,7 @@ from functools import partial
 
 from attrs import define, field, fields, validators
 
-from logprep.processor.base.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.validators import min_len_validator
 
 

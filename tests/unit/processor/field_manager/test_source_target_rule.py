@@ -2,7 +2,7 @@
 # pylint: disable=missing-docstring
 import pytest
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.base.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 
 
 class TestSourceTargetRule:

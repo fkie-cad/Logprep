@@ -49,7 +49,7 @@ will result in the following output
 """
 import warnings
 
-from logprep.processor.base.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 

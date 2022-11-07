@@ -24,7 +24,7 @@ import warnings
 from attrs import define, field, validators
 
 
-from logprep.processor.base.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import add_and_overwrite, pop_dotted_field_value
 
 

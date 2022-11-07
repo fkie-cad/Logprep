@@ -41,7 +41,7 @@ from typing import List, Optional
 from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 
-from logprep.processor.base.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 

@@ -75,7 +75,7 @@ from typing import Callable, List, Tuple
 from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import append, add_and_overwrite
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
