@@ -228,7 +228,7 @@ class Processor(Component):
     def _handle_warning_error(event, rule, error):
         tags = get_dotted_field_value(event, "tags")
         if tags is None:
-            add_and_overwrite(event, "tags", rule.failure_tags)
+            add_and_overwrite(event, "tags", sorted(list({*rule.failure_tags})))
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *rule.failure_tags})))
         raise ProcessingWarning(str(error)) from error

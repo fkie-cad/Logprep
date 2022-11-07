@@ -470,13 +470,13 @@ failure_test_cases = [  # testcase, rule, event, expected
                 "convert_datatype": {
                     "message": "int",
                 },
-                "tag_on_failure": ["custom_tag_1", "custom_tag2"],
+                "tag_on_failure": ["custom_tag_1", "custom_tag_2"],
             },
         },
         {"message": "I can't be converted into int"},
         {
             "message": "I can't be converted into int",
-            "tags": ["custom_tag_1", "custom_tag2"],
+            "tags": ["custom_tag_1", "custom_tag_2"],
         },
     ),
     (
