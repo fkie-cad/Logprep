@@ -1,3 +1,26 @@
+"""
+FieldManager
+=========
+
+The `dissector` is a processor that tokenizes incoming strings using defined patterns.
+The behavior is based of the logstash dissect filter plugin and has the same advantage that
+for the event processing no regular expressions are used.
+Additionally it can be used to convert datatypes of given fields.
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - fieldmanagername:
+        type: field_manager
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
+from typing import List
 from logprep.abc import Processor
 from logprep.processor.base.rule import SourceTargetRule
 from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_overwrite
@@ -5,6 +28,7 @@ from logprep.processor.base.exceptions import DuplicationError
 
 
 class FieldManager(Processor):
+    """A processor that copies, moves or merges source fields to one target field"""
 
     rule_class = SourceTargetRule
 
@@ -57,5 +81,5 @@ class FieldManager(Processor):
                 raise DuplicationError(self.name, [rule.target_field])
 
     @staticmethod
-    def _get_deduplicated_sorted_flatten_list(lists: list[list], not_lists: list[any]) -> list:
+    def _get_deduplicated_sorted_flatten_list(lists: List[List], not_lists: List[any]) -> list:
         return sorted(list({*sum(lists, []), *not_lists}))

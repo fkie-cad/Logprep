@@ -3,8 +3,8 @@ Dissector
 =========
 
 The `dissector` is a processor that tokenizes incoming strings using defined patterns.
-The behavior is based of the logstash dissect filter plugin and has the same advantage that for the event processing no
-regular expressions are used.
+The behavior is based of the logstash dissect filter plugin and has the same advantage that
+for the event processing no regular expressions are used.
 Additionally it can be used to convert datatypes of given fields.
 
 

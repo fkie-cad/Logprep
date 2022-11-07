@@ -314,9 +314,8 @@ class SourceTargetRule(Rule):
         extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the value
         of the source fields. If the source field is a list, the lists will be merged.
-        If the target field does not exist. A new field will will be added with the
-        source field value as list. Defaults
-        to :code:`False`
+        If the target field does not exist, a new field will be added with the
+        source field value as list. Defaults to :code:`False`
         """
 
     # pylint: disable=missing-function-docstring
