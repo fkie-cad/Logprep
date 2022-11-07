@@ -235,7 +235,7 @@ class TestDissectorRule:
                 {
                     "filter": "message",
                     "dissector": {
-                        "tag_on_failure": ["_dissectfailure"],
+                        "tag_on_failure": ["_dissector_failure"],
                     },
                 },
                 True,

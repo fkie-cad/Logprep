@@ -60,6 +60,7 @@ References can be combined with the append operator.
 .. autoclass:: logprep.processor.dissector.rule.DissectorRule.Config
    :members:
    :undoc-members:
+   :inherited-members:
    :noindex:
 
 Examples for dissection and datatype conversion:
@@ -117,12 +118,6 @@ class DissectorRule(FieldManagerRule):
         )
         """A mapping from source field and desired datatype [optional].
         The datatypes could be [`float`, `int`, `string`]
-        """
-        tag_on_failure: list = field(
-            validator=validators.instance_of(list), default=["_dissectfailure"]
-        )
-        """A list of tags which will be appended to the event on non critical errors
-        [default=`_dissectfailure`]
         """
 
         def __attrs_post_init__(self):

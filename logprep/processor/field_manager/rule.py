@@ -69,6 +69,7 @@ A speaking example:
 .. autoclass:: logprep.processor.field_manager.rule.FieldManagerRule.Config
    :members:
    :undoc-members:
+   :inherited-members:
    :noindex:
 
 Examples for field_manager:

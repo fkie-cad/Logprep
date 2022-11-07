@@ -149,6 +149,10 @@ class Rule:
             factory=list,
             converter=lambda x: list(set(x)),
         )
+        """A list of tags which will be appended to the event on non critical errors
+        Defaults to :code:`["_<rule_type>_failure"]`
+        Will currently only handled by the Dissector and FieldManager.
+        """
 
     @define(kw_only=True)
     class RuleMetrics(Metric):

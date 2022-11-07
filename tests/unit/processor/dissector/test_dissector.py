@@ -443,7 +443,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         {"message": "I can't be converted into int"},
         {
             "message": "I can't be converted into int",
-            "tags": ["_dissectfailure"],
+            "tags": ["_dissector_failure"],
         },
     ),
     (
@@ -459,7 +459,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         {"message": "I can't be converted into int", "tags": ["preexisting"]},
         {
             "message": "I can't be converted into int",
-            "tags": ["_dissectfailure", "preexisting"],
+            "tags": ["_dissector_failure", "preexisting"],
         },
     ),
     (
@@ -500,7 +500,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         "Tags failure if mapping field does not exist",
         {"filter": "message", "dissector": {"mapping": {"doesnotexist": "%{} %{}"}}},
         {"message": "This is the message which does not matter"},
-        {"message": "This is the message which does not matter", "tags": ["_dissectfailure"]},
+        {"message": "This is the message which does not matter", "tags": ["_dissector_failure"]},
     ),
 ]
 
