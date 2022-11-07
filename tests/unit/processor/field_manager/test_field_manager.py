@@ -111,6 +111,85 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"new_field": ["value1", "value2", "value3"]},
     ),
+    (
+        "moves multiple fields and writes them to a existing list",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "source_target": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": "value1",
+            "field2": "value2",
+            "field3": "value3",
+            "new_field": ["i exist"],
+        },
+        {"new_field": ["i exist", "value1", "value2", "value3"]},
+    ),
+    (
+        "moves multiple fields and merges to target list",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "source_target": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": ["value1", "value2", "value3"],
+            "field2": ["value4"],
+            "field3": ["value5", "value6"],
+            "new_field": ["i exist"],
+        },
+        {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
+    ),
+    (
+        "moves multiple fields and merges to target list with different source types",
+        {
+            "filter": "field1 OR field2 OR field3",
+            "source_target": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": ["value1", "value2", "value3"],
+            "field2": "value4",
+            "field3": ["value5", "value6"],
+            "new_field": ["i exist"],
+        },
+        {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
+    ),
+    (
+        (
+            "moves multiple fields and merges to target list "
+            "with different source types and filters duplicates"
+        ),
+        {
+            "filter": "field1 OR field2 OR field3",
+            "source_target": {
+                "source_fields": ["field1", "field2", "field3"],
+                "target_field": "new_field",
+                "extend_target_list": True,
+                "delete_source_fields": True,
+            },
+        },
+        {
+            "field1": ["value1", "value2", "value3", "value5"],
+            "field2": "value4",
+            "field3": ["value5", "value6", "value4"],
+            "new_field": ["i exist"],
+        },
+        {"new_field": ["i exist", "value1", "value2", "value3", "value4", "value5", "value6"]},
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected
