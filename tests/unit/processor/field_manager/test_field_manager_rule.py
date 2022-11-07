@@ -5,7 +5,7 @@ from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
-class TestSourceTargetRule:
+class TestFieldManagerRule:
     def test_create_from_dict_returns_dissector_rule(self):
         rule = {
             "filter": "message",
