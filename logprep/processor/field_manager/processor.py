@@ -65,7 +65,9 @@ class FieldManager(Processor):
                     field_values_lists, [*target_field_value, *field_values_not_list]
                 )
             else:
-                target_field_value = field_values
+                target_field_value = self._get_deduplicated_sorted_flatten_list(
+                    field_values_lists, [*field_values_not_list]
+                )
             add_and_overwrite(event, rule.target_field, target_field_value)
         if not extend_target_list and overwrite_target:
             add_and_overwrite(event, rule.target_field, field_values)

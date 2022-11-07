@@ -91,7 +91,6 @@ Further details can be found in the section for processors.
     ]
 """
 
-from functools import partial
 import json
 from os.path import basename, splitext
 from typing import List, Set, Optional, Dict
@@ -106,7 +105,6 @@ from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.json_handling import is_json
 from logprep.util.helper import camel_to_snake
-from logprep.util.validators import min_len_validator
 
 yaml = YAML(typ="safe", pure=True)
 

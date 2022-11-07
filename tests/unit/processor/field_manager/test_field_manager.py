@@ -170,8 +170,8 @@ test_cases = [  # testcase, rule, event, expected
     ),
     (
         (
-            "moves multiple fields and merges to target list "
-            "with different source types and filters duplicates"
+            "moves multiple fields and merges to target list ",
+            "with different source types and filters duplicates",
         ),
         {
             "filter": "field1 OR field2 OR field3",
@@ -212,6 +212,54 @@ test_cases = [  # testcase, rule, event, expected
             "new_field": ["i exist"],
         },
         {"new_field": ["value1", "value2", "value3", "value4", "value5", "value6"]},
+    ),
+    (
+        "real world example from documentation",
+        {
+            "filter": "client.ip",
+            "field_manager": {
+                "source_fields": [
+                    "client.ip",
+                    "destination.ip",
+                    "host.ip",
+                    "observer.ip",
+                    "server.ip",
+                    "source.ip",
+                    "server.nat.ip",
+                    "client.nat.ip",
+                ],
+                "target_field": "related.ip",
+                "extend_target_list": True,
+            },
+        },
+        {
+            "client": {"ip": ["127.0.0.1", "fe89::", "192.168.5.1"], "nat": {"ip": "223.2.3.2"}},
+            "destination": {"ip": "8.8.8.8"},
+            "host": {"ip": ["192.168.5.1", "180.22.66.3"]},
+            "observer": {"ip": "10.10.2.33"},
+            "server": {"ip": "10.10.2.33", "nat": {"ip": "180.22.66.1"}},
+            "source": {"ip": "10.10.2.33"},
+        },
+        {
+            "client": {"ip": ["127.0.0.1", "fe89::", "192.168.5.1"], "nat": {"ip": "223.2.3.2"}},
+            "destination": {"ip": "8.8.8.8"},
+            "host": {"ip": ["192.168.5.1", "180.22.66.3"]},
+            "observer": {"ip": "10.10.2.33"},
+            "server": {"ip": "10.10.2.33", "nat": {"ip": "180.22.66.1"}},
+            "source": {"ip": "10.10.2.33"},
+            "related": {
+                "ip": [
+                    "10.10.2.33",
+                    "127.0.0.1",
+                    "180.22.66.1",
+                    "180.22.66.3",
+                    "192.168.5.1",
+                    "223.2.3.2",
+                    "8.8.8.8",
+                    "fe89::",
+                ]
+            },
+        },
     ),
 ]
 

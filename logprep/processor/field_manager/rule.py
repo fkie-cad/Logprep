@@ -1,3 +1,83 @@
+"""
+FieldManager
+=========
+
+The field_manager processor copies or moves field from multiple source fields to one target field.
+The field_manager processor can be used to merge multiple source fields into a list in one target
+field.
+
+A speaking example:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Given field_manager rule
+
+    filter: client.ip
+    field_manager:
+        source_fields:
+            - client.ip
+            - destination.ip
+            - host.ip
+            - observer.ip
+            - server.ip
+            - source.ip
+            - server.nat.ip
+            - client.nat.ip
+        target_field: related.ip
+        extend_target_list: True
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incoming event
+
+    {
+        "client": {"ip": ["127.0.0.1", "fe89::", "192.168.5.1"], "nat": {"ip": "223.2.3.2"}},
+        "destination": {"ip": "8.8.8.8"},
+        "host": {"ip": ["192.168.5.1", "180.22.66.3"]},
+        "observer": {"ip": "10.10.2.33"},
+        "server": {"ip": "10.10.2.33", "nat": {"ip": "180.22.66.1"}},
+        "source": {"ip": "10.10.2.33"}
+    }
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    {
+        "client": {"ip": ["127.0.0.1", "fe89::", "192.168.5.1"], "nat": {"ip": "223.2.3.2"}},
+        "destination": {"ip": "8.8.8.8"},
+        "host": {"ip": ["192.168.5.1", "180.22.66.3"]},
+        "observer": {"ip": "10.10.2.33"},
+        "server": {"ip": "10.10.2.33", "nat": {"ip": "180.22.66.1"}},
+        "source": {"ip": "10.10.2.33"},
+        "related": {
+            "ip": [
+                "10.10.2.33",
+                "127.0.0.1",
+                "180.22.66.1",
+                "180.22.66.3",
+                "192.168.5.1",
+                "223.2.3.2",
+                "8.8.8.8",
+                "fe89::"
+            ]
+        }
+    }
+
+
+.. autoclass:: logprep.processor.field_manager.rule.FieldManager.Config
+   :members:
+   :undoc-members:
+   :noindex:
+
+Examples for field_manager:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.field_manager.test_field_manager
+   :template: testcase-renderer.tmpl
+
+"""
 from functools import partial
 from attrs import define, field, validators
 from logprep.util.validators import min_len_validator
