@@ -192,8 +192,8 @@ test_cases = [  # testcase, rule, event, expected
     ),
     (
         (
-            "moves multiple fields and merges to target list "
-            "with different source types and filters duplicates and overwrites target"
+            "moves multiple fields and merges to target list ",
+            "with different source types and filters duplicates and overwrites target",
         ),
         {
             "filter": "field1 OR field2 OR field3",
