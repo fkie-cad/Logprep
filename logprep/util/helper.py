@@ -61,30 +61,29 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     conflicting_fields = []
 
     keys = output_field.split(".")
-    dict_ = event
     for idx, key in enumerate(keys):
-        if key not in dict_:
+        if key not in event:
             if idx == len(keys) - 1:
-                dict_[key] = content
+                event[key] = content
                 break
-            dict_[key] = {}
+            event[key] = {}
 
-        if isinstance(dict_[key], dict) and idx < len(keys) - 1:
-            dict_ = dict_[key]
+        if isinstance(event[key], dict) and idx < len(keys) - 1:
+            event = event[key]
         elif (
-            isinstance(dict_[key], list)
+            isinstance(event[key], list)
             and extends_lists
             and idx == len(keys) - 1
             and not overwrite_output_field
         ):
             if isinstance(content, str):
                 content = [content]
-            dict_[key].extend(content)
+            event[key].extend(content)
         else:
             if not overwrite_output_field:
                 conflicting_fields.append(keys[idx])
                 break
-            dict_[key] = content
+            event[key] = content
 
     if conflicting_fields:
         return False
