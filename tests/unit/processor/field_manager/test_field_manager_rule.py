@@ -6,7 +6,7 @@ from logprep.processor.field_manager.rule import FieldManagerRule
 
 
 class TestFieldManagerRule:
-    def test_create_from_dict_returns_dissector_rule(self):
+    def test_create_from_dict_returns_field_manager_rule(self):
         rule = {
             "filter": "message",
             "field_manager": {"source_fields": ["message"], "target_field": "new_field"},
