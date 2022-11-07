@@ -25,6 +25,54 @@ class TestSourceTargetRule:
                 None,
                 None,
             ),
+            (
+                {
+                    "filter": "message",
+                    "source_target": "im a not valid input",
+                },
+                InvalidRuleDefinitionError,
+                "config is not a dict",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "source_target": {"source_field": "message", "target_field": "new_field"},
+                },
+                TypeError,
+                "unexpected keyword argument 'source_field'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "source_target": {"source_fields": ["message"], "target_fields": ["new_field"]},
+                },
+                TypeError,
+                "unexpected keyword argument 'target_fields'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "source_target": {
+                        "source_fields": ["message"],
+                        "target_field": "new_field",
+                        "overwrite_target": "yes",
+                    },
+                },
+                TypeError,
+                "'overwrite_target' must be <class 'bool'>",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "source_target": {
+                        "source_fields": ["message"],
+                        "target_field": "new_field",
+                        "delte_source_field": True,
+                    },
+                },
+                TypeError,
+                "got an unexpected keyword argument 'delte_source_field'",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
