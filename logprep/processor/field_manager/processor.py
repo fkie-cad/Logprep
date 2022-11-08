@@ -20,7 +20,7 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
-from typing import List
+from typing import List, Tuple, Any
 from logprep.abc import Processor
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_overwrite
@@ -33,54 +33,75 @@ class FieldManager(Processor):
     rule_class = FieldManagerRule
 
     def _apply_rules(self, event, rule):
-        field_values = [
-            get_dotted_field_value(event, source_field) for source_field in rule.source_fields
-        ]
-        if None in field_values:
-            missing_fields = [
-                rule.source_fields[index]
-                for value, index in enumerate(field_values)
-                if value is None
-            ]
-            error = BaseException(f"{self.name}: missing source_fields: {missing_fields}")
-            self._handle_warning_error(event, rule, error)
-
-        if len(field_values) == 1 and not rule.extend_target_list:
-            field_values = field_values.pop()
+        source_fields = rule.source_fields
+        target_field = rule.target_field
+        field_values = self._get_field_values(event, rule)
+        self._check_for_missing_fields(event, rule, source_fields, field_values)
         extend_target_list = rule.extend_target_list
         overwrite_target = rule.overwrite_target
+        args = (event, target_field, field_values)
         if extend_target_list and overwrite_target:
-            field_values_lists = list(filter(lambda x: isinstance(x, list), field_values))
-            field_values_not_list = list(filter(lambda x: not isinstance(x, list), field_values))
-            target_field_value = self._get_deduplicated_sorted_flatten_list(
-                field_values_lists, field_values_not_list
-            )
-            add_and_overwrite(event, rule.target_field, target_field_value)
+            self._overwrite_with_list_from_source_field_values(*args)
         if extend_target_list and not overwrite_target:
-            target_field_value = get_dotted_field_value(event, rule.target_field)
-            field_values_lists = list(filter(lambda x: isinstance(x, list), field_values))
-            field_values_not_list = list(filter(lambda x: not isinstance(x, list), field_values))
-            if target_field_value is None:
-                target_field_value = []
-            if not isinstance(target_field_value, list):
-                target_field_value = [target_field_value]
-            target_field_value = self._get_deduplicated_sorted_flatten_list(
-                field_values_lists, [*target_field_value, *field_values_not_list]
-            )
-            add_and_overwrite(event, rule.target_field, target_field_value)
+            self._overwrite_with_list_from_source_field_values_include_target_field_value(*args)
         if not extend_target_list and overwrite_target:
-            add_and_overwrite(event, rule.target_field, field_values)
+            self._overwrite_target_with_source_field_values(*args)
         if not extend_target_list and not overwrite_target:
-            successful = add_field_to(
-                event,
-                rule.target_field,
-                field_values,
-                extends_lists=extend_target_list,
-                overwrite_output_field=overwrite_target,
-            )
-            if not successful:
-                raise DuplicationError(self.name, [rule.target_field])
+            self._add_field_to(*args)
+
+    def _add_field_to(self, *args):
+        event, target_field, field_values = args
+        if len(field_values) == 1:
+            field_values = field_values.pop()
+        successful = add_field_to(event, target_field, field_values, False, False)
+        if not successful:
+            raise DuplicationError(self.name, [target_field])
+
+    def _overwrite_target_with_source_field_values(self, event, target_field, field_values):
+        if len(field_values) == 1:
+            field_values = field_values.pop()
+        add_and_overwrite(event, target_field, field_values)
+
+    def _overwrite_with_list_from_source_field_values_include_target_field_value(self, *args):
+        event, target_field, field_values = args
+        origin_field_value = get_dotted_field_value(event, target_field)
+        lists, other = self._separate_lists_form_other_types(field_values)
+        if isinstance(origin_field_value, list):
+            lists.append(origin_field_value)
+        elif origin_field_value is not None:
+            other.append(origin_field_value)
+        self._overwrite_with_list(event, target_field, lists, other)
+
+    def _overwrite_with_list_from_source_field_values(self, *args):
+        event, target_field, field_values = args
+        lists, other = self._separate_lists_form_other_types(field_values)
+        self._overwrite_with_list(event, target_field, lists, other)
+
+    def _overwrite_with_list(self, event, target_field, lists, other):
+        target_field_value = self._get_deduplicated_sorted_flatten_list(lists, other)
+        add_and_overwrite(event, target_field, target_field_value)
+
+    def _check_for_missing_fields(self, event, rule, source_fields, field_values):
+        if None in field_values:
+            error = self._get_missing_fields_error(source_fields, field_values)
+            self._handle_warning_error(event, rule, error)
+
+    def _get_field_values(self, event, rule):
+        return [get_dotted_field_value(event, source_field) for source_field in rule.source_fields]
+
+    def _get_missing_fields_error(self, source_fields, field_values):
+        missing_fields = [
+            source_fields[index] for value, index in enumerate(field_values) if value is None
+        ]
+        error = BaseException(f"{self.name}: missing source_fields: {missing_fields}")
+        return error
 
     @staticmethod
-    def _get_deduplicated_sorted_flatten_list(lists: List[List], not_lists: List[any]) -> list:
+    def _separate_lists_form_other_types(field_values: List[Any]) -> Tuple[List[List], List[Any]]:
+        field_values_lists = list(filter(lambda x: isinstance(x, list), field_values))
+        field_values_not_list = list(filter(lambda x: not isinstance(x, list), field_values))
+        return field_values_lists, field_values_not_list
+
+    @staticmethod
+    def _get_deduplicated_sorted_flatten_list(lists: List[List], not_lists: List[Any]) -> List:
         return sorted(list({*sum(lists, []), *not_lists}))
