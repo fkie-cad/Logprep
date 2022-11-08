@@ -65,19 +65,13 @@ class FieldManager(Processor):
     def _overwrite_with_list_from_source_field_values_include_target_field_value(self, *args):
         event, target_field, field_values = args
         origin_field_value = get_dotted_field_value(event, target_field)
-        lists, other = self._separate_lists_form_other_types(field_values)
-        if isinstance(origin_field_value, list):
-            lists.append(origin_field_value)
-        elif origin_field_value is not None:
-            other.append(origin_field_value)
-        self._overwrite_with_list(event, target_field, lists, other)
+        if origin_field_value is not None:
+            field_values.append(origin_field_value)
+        self._overwrite_with_list_from_source_field_values(event, target_field, field_values)
 
     def _overwrite_with_list_from_source_field_values(self, *args):
         event, target_field, field_values = args
         lists, other = self._separate_lists_form_other_types(field_values)
-        self._overwrite_with_list(event, target_field, lists, other)
-
-    def _overwrite_with_list(self, event, target_field, lists, other):
         target_field_value = self._get_deduplicated_sorted_flatten_list(lists, other)
         add_and_overwrite(event, target_field, target_field_value)
 
