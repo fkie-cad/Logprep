@@ -28,7 +28,7 @@ from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value
 
 
 class Dropper(Processor):
-    """Normalize log events by copying specific values to standardized fields."""
+    """Drop log events."""
 
     rule_class = DropperRule
 
