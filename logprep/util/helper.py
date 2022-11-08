@@ -58,36 +58,31 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
         extends_lists & overwrite_output_field
     ), "An output field can't be overwritten and extended at the same time"
 
-    conflicting_fields = []
+    output_field_path = [event, *output_field.split(".")]
+    target_key = output_field_path.pop()
 
-    keys = output_field.split(".")
-    for idx, key in enumerate(keys):
-        if key not in event:
-            if idx == len(keys) - 1:
-                event[key] = content
-                break
-            event[key] = {}
+    def add_key(sub_dict, key):
+        current_value = sub_dict.get(key)
+        if isinstance(current_value, dict):
+            return current_value
+        sub_dict.update({key: {}})
+        return sub_dict.get(key)
 
-        if isinstance(event[key], dict) and idx < len(keys) - 1:
-            event = event[key]
-        elif (
-            isinstance(event[key], list)
-            and extends_lists
-            and idx == len(keys) - 1
-            and not overwrite_output_field
-        ):
-            if isinstance(content, str):
-                content = [content]
-            event[key].extend(content)
+    target_field = reduce(add_key, output_field_path)
+    if overwrite_output_field:
+        target_field.update({target_key: content})
+        return True
+    target_field_value = target_field.get(target_key)
+    if extends_lists and isinstance(target_field_value, list):
+        if isinstance(content, list):
+            target_field.update({target_key: [*target_field_value, *content]})
         else:
-            if not overwrite_output_field:
-                conflicting_fields.append(keys[idx])
-                break
-            event[key] = content
-
-    if conflicting_fields:
-        return False
-    return True
+            target_field_value.append(content)
+        return True
+    if target_field_value is None:
+        target_field.update({target_key: content})
+        return True
+    return False
 
 
 def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
