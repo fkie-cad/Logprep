@@ -35,12 +35,11 @@ class Dropper(Processor):
     def _apply_rules(self, event: dict, rule: DropperRule):
         """Drops fields from event Logs."""
 
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"{self.describe()} processing matching event")
-
-        if rule.drop_full:
+        self._logger.debug(f"{self.describe()} processing matching event")
+        drop_full = rule.drop_full
+        if drop_full:
             reduce(self._drop_full, [event, *rule.fields_to_drop])
-        else:
+        if not drop_full:
             reduce(self._drop, [event, *rule.fields_to_drop])
 
     @staticmethod
