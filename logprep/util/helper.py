@@ -31,6 +31,24 @@ def print_fcolor(fore: AnsiFore, message: str):
     color_print_line(None, fore, message)
 
 
+def _add_and_overwrite_key(sub_dict, key):
+    current_value = sub_dict.get(key)
+    if isinstance(current_value, dict):
+        return current_value
+    sub_dict.update({key: {}})
+    return sub_dict.get(key)
+
+
+def _add_and_not_overwrite_key(sub_dict, key):
+    current_value = sub_dict.get(key)
+    if isinstance(current_value, dict):
+        return current_value
+    if key in sub_dict:
+        raise KeyError("key exists")
+    sub_dict.update({key: {}})
+    return sub_dict.get(key)
+
+
 def add_field_to(event, output_field, content, extends_lists=False, overwrite_output_field=False):
     """
     Add content to an output_field in the given event. Output_field can be a dotted subfield.
@@ -61,17 +79,16 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     output_field_path = [event, *output_field.split(".")]
     target_key = output_field_path.pop()
 
-    def add_key(sub_dict, key):
-        current_value = sub_dict.get(key)
-        if isinstance(current_value, dict):
-            return current_value
-        sub_dict.update({key: {}})
-        return sub_dict.get(key)
-
-    target_field = reduce(add_key, output_field_path)
     if overwrite_output_field:
+        target_field = reduce(_add_and_overwrite_key, output_field_path)
         target_field.update({target_key: content})
         return True
+
+    try:
+        target_field = reduce(_add_and_not_overwrite_key, output_field_path)
+    except KeyError:
+        return False
+
     target_field_value = target_field.get(target_key)
     if extends_lists and isinstance(target_field_value, list):
         if isinstance(content, list):
