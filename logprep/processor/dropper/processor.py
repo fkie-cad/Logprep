@@ -19,8 +19,7 @@ Example
             - tests/testdata/rules/generic/
 """
 
-from functools import reduce
-from logging import DEBUG
+from functools import partial
 from logprep.abc.processor import Processor
 
 from logprep.processor.dropper.rule import DropperRule
@@ -34,22 +33,19 @@ class Dropper(Processor):
 
     def _apply_rules(self, event: dict, rule: DropperRule):
         """Drops fields from event Logs."""
-
         self._logger.debug(f"{self.describe()} processing matching event")
         drop_full = rule.drop_full
         if drop_full:
-            reduce(self._drop_full, [event, *rule.fields_to_drop])
+            drop_function = partial(pop_dotted_field_value, event)
         if not drop_full:
-            reduce(self._drop, [event, *rule.fields_to_drop])
+            drop_function = partial(self._drop, event)
+        list(map(drop_function, rule.fields_to_drop))
 
     @staticmethod
     def _drop(event, dotted_field):
         parent_field, _, key = dotted_field.rpartition(".")
         parent_field_value = get_dotted_field_value(event, parent_field)
-        parent_field_value.pop(key)
-        return event
-
-    @staticmethod
-    def _drop_full(event, dotted_field):
-        pop_dotted_field_value(event, dotted_field)
-        return event
+        if not parent_field_value:
+            return
+        if key in parent_field_value:
+            parent_field_value.pop(key)

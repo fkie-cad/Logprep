@@ -134,3 +134,34 @@ class TestDropper(BaseProcessorTestCase):
         ) as mock_apply_rules:
             self.object.process(document)
             mock_apply_rules.assert_called()
+
+    def test_subkey_not_in_event(self):
+        document = {
+            "list": ["existing"],
+            "key1": {
+                "a": {"b": "value"},
+            },
+        }
+        rule = {
+            "filter": "key1",
+            "dropper": {
+                "drop": ["key1.a", "key1.b", "key1.key2.a", "key1.key2.key3.b"],
+                "drop_full": False,
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(document)
+
+    def test_key_not_in_event(self):
+        document = {
+            "list": ["existing"],
+        }
+        rule = {
+            "filter": "list",
+            "dropper": {
+                "drop": ["key1.a"],
+                "drop_full": False,
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(document)
