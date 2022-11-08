@@ -73,7 +73,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     """
 
     assert not (
-        extends_lists & overwrite_output_field
+        extends_lists and overwrite_output_field
     ), "An output field can't be overwritten and extended at the same time"
 
     output_field_path = [event, *output_field.split(".")]
@@ -90,14 +90,16 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
         return False
 
     target_field_value = target_field.get(target_key)
-    if extends_lists and isinstance(target_field_value, list):
+    if target_field_value is None:
+        target_field.update({target_key: content})
+        return True
+    if extends_lists:
+        if not isinstance(target_field_value, list):
+            return False
         if isinstance(content, list):
             target_field.update({target_key: [*target_field_value, *content]})
         else:
             target_field_value.append(content)
-        return True
-    if target_field_value is None:
-        target_field.update({target_key: content})
         return True
     return False
 
