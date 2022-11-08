@@ -85,9 +85,7 @@ class FieldManager(Processor):
         return [get_dotted_field_value(event, source_field) for source_field in rule.source_fields]
 
     def _get_missing_fields_error(self, source_fields, field_values):
-        missing_fields = [
-            source_fields[index] for value, index in enumerate(field_values) if value is None
-        ]
+        missing_fields = [key for key, value in zip(source_fields, field_values) if value is None]
         error = BaseException(f"{self.name}: missing source_fields: {missing_fields}")
         return error
 
