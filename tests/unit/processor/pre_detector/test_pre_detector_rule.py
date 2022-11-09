@@ -6,8 +6,8 @@ import pytest
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
 
-@pytest.fixture()
-def specific_rule_definition():
+@pytest.fixture(name="specific_rule_definition")
+def fixture_specific_rule_definition():
     return {
         "filter": "message",
         "pre_detector": {
@@ -169,3 +169,20 @@ class TestPreDetectorRule:
         rule1 = PreDetectorRule._create_from_dict(specific_rule_definition)
         rule2 = PreDetectorRule._create_from_dict(other_rule_definition)
         assert (rule1 == rule2) == is_equal, testcase
+
+        specific_rule_definition["pre_detector"]["link"] = "some_link"
+        other_rule_definition["pre_detector"]["link"] = "some_link"
+        rule1 = PreDetectorRule._create_from_dict(specific_rule_definition)
+        rule2 = PreDetectorRule._create_from_dict(other_rule_definition)
+        assert (rule1 == rule2) == is_equal, f"{testcase} (with link)"
+
+    def test_detection_data_link_is_not_none_does_exists(self, specific_rule_definition):
+        specific_rule_definition["pre_detector"]["link"] = "some_link"
+        rule = PreDetectorRule._create_from_dict(specific_rule_definition)
+        assert "link" in rule.detection_data
+        assert rule.detection_data["link"] == "some_link"
+
+    def test_detection_data_link_is_none_does_not_exist(self, specific_rule_definition):
+        specific_rule_definition["pre_detector"]["link"] = None
+        rule = PreDetectorRule._create_from_dict(specific_rule_definition)
+        assert "link" not in rule.detection_data
