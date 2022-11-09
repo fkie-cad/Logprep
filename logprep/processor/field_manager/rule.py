@@ -90,7 +90,7 @@ class FieldManagerRule(Rule):
 
     @define(kw_only=True)
     class Config(Rule.Config):
-        """Config for SimpleSourceTargetRule"""
+        """Config for FieldManagerRule"""
 
         source_fields: list = field(
             validator=[
