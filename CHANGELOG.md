@@ -24,6 +24,7 @@ under the subkey `preprocessing` of the `input` processor
 * Add concatenator processor that can combine multiple source fields
 * Add dissector processor that tokinizes messages into new or existing fields
 * Add key_checker processor that checks if all dotted fields from a list are present in the event
+* Add field_manager processor that copies or moves fields and merges lists
 * Add ability to delete source fields to `concatenator`, `datetime_extractor`, `dissector`, `domain_label_extractor`, `domain_resolver`, `geoip_enricher` and `list_comparison`
 * Add ability to overwrite target field to `datetime_extractor`, `domain_label_extractor`, `domain_resolver`, `geoip_enricher` and `list_comparison`
 
@@ -33,6 +34,7 @@ under the subkey `preprocessing` of the `input` processor
 * Refactor connector code
 * Revise the documentation
 * Add `sphinxcontrib.datatemplates` and `testcase-renderer` to docs
+* Reimplement `get_dotted_field_value` helper method which should lead to increased performance
 
 ### Deprecations
 

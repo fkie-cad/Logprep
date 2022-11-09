@@ -60,6 +60,7 @@ References can be combined with the append operator.
 .. autoclass:: logprep.processor.dissector.rule.DissectorRule.Config
    :members:
    :undoc-members:
+   :inherited-members:
    :noindex:
 
 Examples for dissection and datatype conversion:
@@ -75,18 +76,18 @@ from typing import Callable, List, Tuple
 from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import append, add_and_overwrite
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
 SEPARATOR = r"((?!%\{.*\}).+)"
 
 
-class DissectorRule(SourceTargetRule):
+class DissectorRule(FieldManagerRule):
     """dissector rule"""
 
     @define(kw_only=True)
-    class Config(SourceTargetRule.Config):
+    class Config(FieldManagerRule.Config):
         """Config for Dissector"""
 
         source_fields: list = field(factory=list)
@@ -117,12 +118,6 @@ class DissectorRule(SourceTargetRule):
         )
         """A mapping from source field and desired datatype [optional].
         The datatypes could be [`float`, `int`, `string`]
-        """
-        tag_on_failure: list = field(
-            validator=validators.instance_of(list), default=["_dissectfailure"]
-        )
-        """A list of tags which will be appended to the event on non critical errors
-        [default=`_dissectfailure`]
         """
 
         def __attrs_post_init__(self):

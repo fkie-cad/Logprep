@@ -58,6 +58,13 @@ Processors
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.field_manager.processor
+.. autoclass:: logprep.processor.field_manager.processor.FieldManager.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.generic_adder.processor
 .. autoclass:: logprep.processor.generic_adder.processor.GenericAdder.Config
    :members:

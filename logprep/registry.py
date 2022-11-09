@@ -21,6 +21,7 @@ from logprep.processor.dissector.processor import Dissector
 from logprep.processor.domain_label_extractor.processor import DomainLabelExtractor
 from logprep.processor.domain_resolver.processor import DomainResolver
 from logprep.processor.dropper.processor import Dropper
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_adder.processor import GenericAdder
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.geoip_enricher.processor import GeoipEnricher
@@ -48,6 +49,7 @@ class Registry:
         "domain_label_extractor": DomainLabelExtractor,
         "domain_resolver": DomainResolver,
         "dropper": Dropper,
+        "field_manager": FieldManager,
         "generic_adder": GenericAdder,
         "generic_resolver": GenericResolver,
         "geoip_enricher": GeoipEnricher,

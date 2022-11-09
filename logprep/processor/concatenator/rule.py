@@ -42,20 +42,20 @@ from functools import partial
 
 from attrs import define, field, fields, validators
 
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.validators import min_len_validator
 
 
-class ConcatenatorRule(SourceTargetRule):
+class ConcatenatorRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(SourceTargetRule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for Concatenator"""
 
         source_fields: list = field(
             validator=[
-                fields(SourceTargetRule.Config).source_fields.validator,
+                fields(FieldManagerRule.Config).source_fields.validator,
                 partial(min_len_validator, min_length=2),
             ]
         )

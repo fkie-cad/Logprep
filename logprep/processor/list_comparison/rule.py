@@ -41,17 +41,17 @@ from typing import List, Optional
 from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
-class ListComparisonRule(SourceTargetRule):
+class ListComparisonRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     _compare_sets: dict
 
     @define(kw_only=True)
-    class Config(SourceTargetRule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for ListComparisonRule"""
 
         list_file_paths: List[Path] = field(

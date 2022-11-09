@@ -22,11 +22,11 @@ In the following example the timestamp will be extracted from
     description: '...'
 """
 import warnings
-from logprep.processor.base.rule import SourceTargetRule
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
-class DatetimeExtractorRule(SourceTargetRule):
+class DatetimeExtractorRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @classmethod

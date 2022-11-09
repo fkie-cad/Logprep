@@ -11,7 +11,7 @@ class TestDissectorRule:
 
     rule = {"filter": "message", "dissector": {"mapping": {}}}
 
-    def test_create_from_dict_retuns_dissector_rule(self):
+    def test_create_from_dict_returns_dissector_rule(self):
         dissector_rule = DissectorRule._create_from_dict(self.rule)
         assert isinstance(dissector_rule, DissectorRule)
 
@@ -235,7 +235,7 @@ class TestDissectorRule:
                 {
                     "filter": "message",
                     "dissector": {
-                        "tag_on_failure": ["_dissectfailure"],
+                        "tag_on_failure": ["_dissector_failure"],
                     },
                 },
                 True,

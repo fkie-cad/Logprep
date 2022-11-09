@@ -1,0 +1,11 @@
+[
+    {
+        "filter": "message",
+        "field_manager": {
+            "source_fields": [
+                "message"
+            ],
+            "target_field": "other_field"
+        }
+    }
+]

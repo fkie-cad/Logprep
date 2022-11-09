@@ -11,11 +11,12 @@ from logprep.abc import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.processor.base.rule import Rule
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import file_validator, list_of_dirs_validator
-from logprep.util.helper import pop_dotted_field_value
+from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
 
 
 class Processor(Component):
@@ -222,3 +223,12 @@ class Processor(Component):
             else:
                 return False
         return True
+
+    @staticmethod
+    def _handle_warning_error(event, rule, error):
+        tags = get_dotted_field_value(event, "tags")
+        if tags is None:
+            add_and_overwrite(event, "tags", sorted(list({*rule.failure_tags})))
+        else:
+            add_and_overwrite(event, "tags", sorted(list({*tags, *rule.failure_tags})))
+        raise ProcessingWarning(str(error)) from error

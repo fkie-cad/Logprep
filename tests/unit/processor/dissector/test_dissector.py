@@ -443,7 +443,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         {"message": "I can't be converted into int"},
         {
             "message": "I can't be converted into int",
-            "tags": ["_dissectfailure"],
+            "tags": ["_dissector_failure"],
         },
     ),
     (
@@ -459,7 +459,7 @@ failure_test_cases = [  # testcase, rule, event, expected
         {"message": "I can't be converted into int", "tags": ["preexisting"]},
         {
             "message": "I can't be converted into int",
-            "tags": ["preexisting", "_dissectfailure"],
+            "tags": ["_dissector_failure", "preexisting"],
         },
     ),
     (
@@ -470,13 +470,13 @@ failure_test_cases = [  # testcase, rule, event, expected
                 "convert_datatype": {
                     "message": "int",
                 },
-                "tag_on_failure": ["custom_tag_1", "custom_tag2"],
+                "tag_on_failure": ["custom_tag_1", "custom_tag_2"],
             },
         },
         {"message": "I can't be converted into int"},
         {
             "message": "I can't be converted into int",
-            "tags": ["custom_tag_1", "custom_tag2"],
+            "tags": ["custom_tag_1", "custom_tag_2"],
         },
     ),
     (
@@ -487,20 +487,20 @@ failure_test_cases = [  # testcase, rule, event, expected
                 "convert_datatype": {
                     "message": "int",
                 },
-                "tag_on_failure": ["custom_tag_1", "custom_tag2"],
+                "tag_on_failure": ["custom_tag_1", "custom_tag_2"],
             },
         },
         {"message": "I can't be converted into int", "tags": ["preexisting1", "preexisting2"]},
         {
             "message": "I can't be converted into int",
-            "tags": ["preexisting1", "preexisting2", "custom_tag_1", "custom_tag2"],
+            "tags": ["custom_tag_1", "custom_tag_2", "preexisting1", "preexisting2"],
         },
     ),
     (
         "Tags failure if mapping field does not exist",
         {"filter": "message", "dissector": {"mapping": {"doesnotexist": "%{} %{}"}}},
         {"message": "This is the message which does not matter"},
-        {"message": "This is the message which does not matter", "tags": ["_dissectfailure"]},
+        {"message": "This is the message which does not matter", "tags": ["_dissector_failure"]},
     ),
 ]
 
