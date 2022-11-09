@@ -72,14 +72,14 @@ class FieldManager(Processor):
         if not extend_target_list and overwrite_target:
             add_and_overwrite(event, rule.target_field, field_values)
         if not extend_target_list and not overwrite_target:
-            successfull = add_field_to(
+            successful = add_field_to(
                 event,
                 rule.target_field,
                 field_values,
                 extends_lists=extend_target_list,
                 overwrite_output_field=overwrite_target,
             )
-            if not successfull:
+            if not successful:
                 raise DuplicationError(self.name, [rule.target_field])
 
     @staticmethod
