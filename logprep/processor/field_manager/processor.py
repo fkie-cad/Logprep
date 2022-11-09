@@ -4,7 +4,7 @@ FieldManager
 
 The `field_manager` processor copies or moves values from multiple source fields to one
 target field.
-Additionaly it can be used to merge multiple source field values into one target field value.
+Additionally, it can be used to merge multiple source field values into one target field value.
 In this process, source field lists will be merged.
 
 
@@ -21,10 +21,11 @@ Example
             - tests/testdata/rules/generic/
 """
 from typing import List, Tuple, Any
+
 from logprep.abc import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_overwrite
-from logprep.processor.base.exceptions import DuplicationError
 
 
 class FieldManager(Processor):
