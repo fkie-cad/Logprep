@@ -1,3 +1,4 @@
+# pylint: disable=anomalous-backslash-in-string
 """
 Generic Adder
 =============
@@ -84,6 +85,7 @@ It is also possible to use a table from a MySQL database to add fields to an eve
         destination_field_prefix: nested.dict
     description: '...'
 """
+# pylint: enable=anomalous-backslash-in-string
 
 import re
 from os.path import isfile
@@ -122,7 +124,7 @@ class GenericAdderRule(Rule):
         add: dict = field(
             validator=validators.deep_mapping(
                 key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of(str),
+                value_validator=validators.instance_of((str, bool)),
             ),
             default={},
         )
@@ -160,6 +162,7 @@ class GenericAdderRule(Rule):
             ],
             factory=dict,
         )
+        # pylint: disable=anomalous-backslash-in-string
         """ sql config for generic adder (Optional)
         If a specified field in the table matches a condition, the remaining fields,
         except for the ID field, will be added to the event.
@@ -185,6 +188,8 @@ class GenericAdderRule(Rule):
         Since :code:`destination_field_prefix: nested.dict` is set,
         a newly added field :code:`FOO_NEW` would be placed under :code:`nested.dict.FOO_NEW`.
         """
+
+        # pylint: enable=anomalous-backslash-in-string
 
         def __attrs_post_init__(self):
             if self.add_from_file:
