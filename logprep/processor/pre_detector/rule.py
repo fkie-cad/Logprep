@@ -49,7 +49,7 @@ the IPs from the list is also available in the specified fields.
     - some_ip_field
 """
 
-from typing import Union
+from typing import Union, Optional
 from attrs import define, field, validators, asdict
 
 from logprep.processor.base.rule import Rule
@@ -81,6 +81,10 @@ class PreDetectorRule(Rule):
             validator=validators.instance_of((list, bool)), factory=list
         )
         """tbd"""
+        link: Optional[str] = field(
+            validator=validators.optional(validators.instance_of(str)), default=None
+        )
+        """A link to the rule if applicable."""
 
     def __eq__(self, other: "PreDetectorRule") -> bool:
         return all(
@@ -94,6 +98,8 @@ class PreDetectorRule(Rule):
     @property
     def detection_data(self) -> dict:
         detection_data = asdict(self._config)
+        if self._config.link is None:
+            del detection_data["link"]
         for special_field in Rule.special_field_types:
             detection_data.pop(special_field)
         return detection_data
