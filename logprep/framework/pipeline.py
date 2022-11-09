@@ -172,8 +172,10 @@ class Pipeline:
         input_connector_config = self._logprep_config.get("input")
         connector_name = list(input_connector_config.keys())[0]
         input_connector_config[connector_name]["metric_labels"] = self._metric_labels
+        input_connector_config[connector_name].update(
+            {"version_information": self._event_version_information}
+        )
         self._input = Factory.create(input_connector_config, self._logger)
-        input_connector_config.update({"version_information": self._event_version_information})
         output_connector_config = self._logprep_config.get("output")
         connector_name = list(output_connector_config.keys())[0]
         output_connector_config[connector_name]["metric_labels"] = self._metric_labels

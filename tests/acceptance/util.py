@@ -96,6 +96,7 @@ class TmpFileProducerMock:
 
 def get_default_logprep_config(pipeline_config, with_hmac=True):
     config_yml = {
+        "version": "1",
         "process_count": 1,
         "timeout": 0.1,
         "profile_pipelines": False,
