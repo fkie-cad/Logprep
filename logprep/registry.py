@@ -70,7 +70,7 @@ class Registry:
         "confluentkafka_input": ConfluentKafkaInput,
         "confluentkafka_output": ConfluentKafkaOutput,
         "console_output": ConsoleOutput,
-        "eleasticsearch_output": ElasticsearchOutput,
+        "elasticsearch_output": ElasticsearchOutput,
         "jsonl_output": JsonlOutput,
         "opensearch_output": OpensearchOutput,
     }
