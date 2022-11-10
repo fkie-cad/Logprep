@@ -20,7 +20,6 @@ class TestHelperAddField:
         expected_document = {"source": {"ip": "8.8.8.8"}, "sub": {"field": "content"}}
 
         add_was_successful = add_field_to(document, "sub.field", "content")
-
         assert add_was_successful, "Found duplicate even though there shouldn't be one"
         assert document == expected_document
 
@@ -146,3 +145,26 @@ class TestHelperAddField:
                 extends_lists=True,
                 overwrite_output_field=True,
             )
+
+    def test_returns_false_if_dotted_field_value_key_exists(self):
+        document = {"user": "Franz"}
+        content = ["user_inlist"]
+        add_was_successful = add_field_to(document, "user.in_list", content)
+        assert not add_was_successful
+
+    def test_add_list_with_nested_keys(self):
+        testdict = {
+            "key1": {"key2": {"key3": {"key4": {"key5": {"list": ["existing"], "key6": "value"}}}}}
+        }
+        expected = {
+            "key1": {
+                "key2": {
+                    "key3": {"key4": {"key5": {"list": ["existing", "content"], "key6": "value"}}}
+                }
+            }
+        }
+        add_was_successful = add_field_to(
+            testdict, "key1.key2.key3.key4.key5.list", ["content"], extends_lists=True
+        )
+        assert add_was_successful
+        assert testdict == expected

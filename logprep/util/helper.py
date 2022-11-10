@@ -31,6 +31,24 @@ def print_fcolor(fore: AnsiFore, message: str):
     color_print_line(None, fore, message)
 
 
+def _add_and_overwrite_key(sub_dict, key):
+    current_value = sub_dict.get(key)
+    if isinstance(current_value, dict):
+        return current_value
+    sub_dict.update({key: {}})
+    return sub_dict.get(key)
+
+
+def _add_and_not_overwrite_key(sub_dict, key):
+    current_value = sub_dict.get(key)
+    if isinstance(current_value, dict):
+        return current_value
+    if key in sub_dict:
+        raise KeyError("key exists")
+    sub_dict.update({key: {}})
+    return sub_dict.get(key)
+
+
 def add_field_to(event, output_field, content, extends_lists=False, overwrite_output_field=False):
     """
     Add content to an output_field in the given event. Output_field can be a dotted subfield.
@@ -55,39 +73,35 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     """
 
     assert not (
-        extends_lists & overwrite_output_field
+        extends_lists and overwrite_output_field
     ), "An output field can't be overwritten and extended at the same time"
 
-    conflicting_fields = []
+    output_field_path = [event, *output_field.split(".")]
+    target_key = output_field_path.pop()
 
-    keys = output_field.split(".")
-    for idx, key in enumerate(keys):
-        if key not in event:
-            if idx == len(keys) - 1:
-                event[key] = content
-                break
-            event[key] = {}
+    if overwrite_output_field:
+        target_field = reduce(_add_and_overwrite_key, output_field_path)
+        target_field.update({target_key: content})
+        return True
 
-        if isinstance(event[key], dict) and idx < len(keys) - 1:
-            event = event[key]
-        elif (
-            isinstance(event[key], list)
-            and extends_lists
-            and idx == len(keys) - 1
-            and not overwrite_output_field
-        ):
-            if isinstance(content, str):
-                content = [content]
-            event[key].extend(content)
-        else:
-            if not overwrite_output_field:
-                conflicting_fields.append(keys[idx])
-                break
-            event[key] = content
-
-    if conflicting_fields:
+    try:
+        target_field = reduce(_add_and_not_overwrite_key, output_field_path)
+    except KeyError:
         return False
-    return True
+
+    target_field_value = target_field.get(target_key)
+    if target_field_value is None:
+        target_field.update({target_key: content})
+        return True
+    if extends_lists:
+        if not isinstance(target_field_value, list):
+            return False
+        if isinstance(content, list):
+            target_field.update({target_key: [*target_field_value, *content]})
+        else:
+            target_field_value.append(content)
+        return True
+    return False
 
 
 def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
