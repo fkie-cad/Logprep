@@ -27,6 +27,7 @@ from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOut
 from logprep.factory import Factory
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
+from logprep.metrics.metric_targets import get_metric_targets
 from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
@@ -124,15 +125,12 @@ class Pipeline:
         self._pipeline = []
         self._input = None
         self._output = None
-
+        self._lock = lock
+        self._shared_dict = shared_dict
         self._processing_counter = counter
-
         self.metrics = None
-        self._metrics_exposer = MetricExposer(
-            self._logprep_config.get("metrics", {}), metric_targets, shared_dict, lock
-        )
+        self._metrics_exposer = None
         self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
-        # self.metrics = self.PipelineMetrics(labels=self._metric_labels)
 
         self._event_version_information = {
             "logprep": get_versions().get("version"),
@@ -146,6 +144,10 @@ class Pipeline:
         self._build_pipeline()
 
     def _create_metrics(self):
+        metric_targets = get_metric_targets(self._logprep_config, self._logger)
+        self._metrics_exposer = MetricExposer(
+            self._logprep_config.get("metrics", {}), metric_targets, self._shared_dict, self._lock
+        )
         self.metrics = self.PipelineMetrics(
             input=self._input.metrics, output=self._output.metrics, labels=self._metric_labels
         )

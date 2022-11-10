@@ -3,7 +3,7 @@
 # pylint: disable=missing-docstring
 import json
 from copy import deepcopy
-from logging import getLogger, DEBUG, basicConfig
+from logging import getLogger, basicConfig, DEBUG
 from os import path, makedirs
 
 from logprep.util.helper import recursive_compare
