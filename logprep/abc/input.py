@@ -4,6 +4,7 @@ New input endpoint types are created by implementing it.
 
 import base64
 import hashlib
+import json
 import zlib
 from abc import abstractmethod
 from functools import partial
@@ -292,16 +293,17 @@ class Input(Connector):
         """
         Calculates an HMAC (Hash-based message authentication code) based on a given target field
         and adds it to the given event. If the target field has the value '<RAW_MSG>' the full raw
-        byte message is used instead as a target for the HMAC calculation. As a result the target
-        field value and the resulting hmac will be added to the original event. The target field
-        value will be compressed and base64 encoded though to reduce memory usage.
+        byte message is used instead as a target for the HMAC calculation. If no raw_event was given
+        the HMAC is calculated on the parsed event_dict as a fallback. As a result this preprocessor
+        the target field value and the resulting hmac will be added to the original event. The
+        target field value will be compressed and base64 encoded to reduce memory usage.
 
         Parameters
         ----------
         event_dict: dict
             The event to which the calculated hmac should be appended
-        raw_event: bytearray
-            The raw event how it is received from kafka.
+        raw_event: bytearray, None
+            The raw event how it is received from the input.
 
         Returns
         -------
@@ -312,6 +314,9 @@ class Input(Connector):
         hmac_options = self._config.preprocessing.get("hmac", {})
         hmac_target_field_name = hmac_options.get("target")
         non_critical_error_msg = None
+
+        if raw_event is None:
+            raw_event = json.dumps(event_dict).encode("utf-8")
 
         if hmac_target_field_name == "<RAW_MSG>":
             received_orig_message = raw_event

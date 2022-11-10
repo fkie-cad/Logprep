@@ -96,6 +96,34 @@ class BaseInputTestCase(BaseConnectorTestCase):
             processed_event.get("Hmac").get("compressed_base64") == "eJwrSS0uUchNLS5OTE8FAB8fBMY="
         )
 
+    def test_add_hmac_to_adds_hmac_even_if_no_raw_message_was_given(self):
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(
+            {
+                "preprocessing": {
+                    "hmac": {
+                        "target": "<RAW_MSG>",
+                        "key": "hmac-test-key",
+                        "output_field": "Hmac",
+                    }
+                }
+            }
+        )
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        processed_event, non_critical_error_msg = connector._add_hmac_to(
+            {"message": "test message"}, None
+        )
+        assert non_critical_error_msg is None
+        assert processed_event.get("Hmac")
+        calculated_hmac = processed_event.get("Hmac").get("hmac")
+        assert (
+            calculated_hmac == "142454394037b655ec0663867172738319dbdbe669dedb7ccf8a69875f9fcd08"
+        ), f"Wrong hmac: '{calculated_hmac}'"
+        calculated_compression = processed_event.get("Hmac").get("compressed_base64")
+        assert (
+            calculated_compression == "eJyrVspNLS5OTE9VslJQKkktLlGA8WsBg/YJhQ=="
+        ), f"Wrong compression: {calculated_compression}"
+
     def test_get_next_with_hmac_of_raw_message(self):
         kafka_config = deepcopy(self.CONFIG)
         kafka_config.update(
