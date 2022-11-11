@@ -32,12 +32,11 @@ from json import JSONDecodeError
 
 import yaml
 from deepdiff import DeepDiff, grep
-from rich.console import Console
-from rich.pretty import pprint
-
 from logprep.framework.pipeline import Pipeline, SharedCounter
 from logprep.util.configuration import Configuration
 from logprep.util.json_handling import parse_json, parse_jsonl
+from rich.console import Console
+from rich.pretty import pprint
 
 
 class RuleCorpusTester:
@@ -166,6 +165,9 @@ class RuleCorpusTester:
         pipeline["input"] = input_config
         pipeline["output"] = output_config
         pipeline["process_count"] = 1
+
+        if "metrics" in pipeline:
+            del pipeline["metrics"]
 
         config_path = f"{self.tmp_dir}/pipeline_config.yml"
         with open(config_path, "w", encoding="utf8") as generated_config_file:
