@@ -365,3 +365,20 @@ class TestFieldManager(BaseProcessorTestCase):
             self.object.process(document)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
+
+    def test_process_raises_processing_warning_with_missing_fields(
+        self,
+    ):
+        rule = {
+            "filter": "field.a",
+            "field_manager": {
+                "source_fields": ["does.not.exists"],
+                "target_field": "target_field",
+            },
+        }
+        self._load_specific_rule(rule)
+        document = {"field": {"a": "first", "b": "second"}}
+        with pytest.raises(
+            ProcessingWarning, match=r"missing source_fields: \['does.not.exists'\]"
+        ):
+            self.object.process(document)
