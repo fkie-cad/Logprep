@@ -63,6 +63,8 @@ class Metric:
         """Resets the statistics of self and children to 0"""
         for attribute in get_settable_metrics(self):
             attribute_value = self.__getattribute__(attribute)
+            if isinstance(attribute_value, Metric):
+                attribute_value = attribute_value.reset_statistics()
             if isinstance(attribute_value, list):
                 attribute_value = [child.reset_statistics() for child in attribute_value]
             if isinstance(attribute_value, int):

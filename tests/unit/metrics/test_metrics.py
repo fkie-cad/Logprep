@@ -31,6 +31,7 @@ class MockChildMetric(Metric):
 @define(kw_only=True)
 class MockParentMetric(Metric):
     data: List[MockChildMetric]
+    direct_non_list_metric: MockChildMetric
     more_data: int = 0
 
 
@@ -58,34 +59,56 @@ class TestMetric:
 
     def test_expose_includes_child_metrics_given_in_lists(self):
         mock_child_metric = MockChildMetric(labels={"type": "child"})
-        mock_parent_metric = MockParentMetric(labels={"type": "parent"}, data=[mock_child_metric])
+        mock_child_metric_two = MockChildMetric(labels={"type": "child2"})
+        mock_parent_metric = MockParentMetric(
+            labels={"type": "parent"},
+            data=[mock_child_metric],
+            direct_non_list_metric=mock_child_metric_two,
+        )
         mock_child_metric.metric_a += 1
         mock_child_metric.metric_b += 1
         mock_parent_metric.more_data += 1
         mock_child_metric.calculated_metric += 2
+        mock_child_metric_two.metric_a += 1
+        mock_child_metric_two.calculated_metric += 1
 
         exposed_metrics = mock_parent_metric.expose()
         expected_metrics = {
-            "logprep_metric_a;type:child": 1,
-            "logprep_metric_b;type:child": 1.0,
+            "logprep_calculated_metric;type:child": 4.0,
+            "logprep_calculated_metric;type:child2": 2.0,
             "logprep_combined_metric;type:child": 2.0,
-            "logprep_calculated_metric;type:child": 4,
-            "logprep_more_data;type:parent": 1,
+            "logprep_combined_metric;type:child2": 1.0,
+            "logprep_metric_a;type:child": 1.0,
+            "logprep_metric_a;type:child2": 1.0,
+            "logprep_metric_b;type:child": 1.0,
+            "logprep_metric_b;type:child2": 0.0,
+            "logprep_more_data;type:parent": 1.0,
         }
         assert exposed_metrics == expected_metrics
 
     def test_resets_statistic_sets_everything_to_zero(self):
         mock_child_metric = MockChildMetric(labels={"type": "child"})
-        mock_parent_metric = MockParentMetric(labels={"type": "parent"}, data=[mock_child_metric])
+        mock_child_metric_two = MockChildMetric(labels={"type": "child2"})
+        mock_parent_metric = MockParentMetric(
+            labels={"type": "parent"},
+            data=[mock_child_metric],
+            direct_non_list_metric=mock_child_metric_two,
+        )
         mock_child_metric.metric_a += 1
         mock_child_metric.metric_b += 1.2
         mock_parent_metric.more_data += 1
         mock_child_metric.calculated_metric += 2
+        mock_child_metric_two.metric_a += 1
+        mock_child_metric_two.calculated_metric += 1
 
         assert mock_child_metric.metric_a == 1
         assert mock_child_metric.metric_b == 1.2
         assert mock_child_metric.combined_metric == 2.2
         assert mock_child_metric.calculated_metric == 4
+        assert mock_child_metric_two.metric_a == 1
+        assert mock_child_metric_two.metric_b == 0
+        assert mock_child_metric_two.combined_metric == 1
+        assert mock_child_metric_two.calculated_metric == 2
         assert mock_parent_metric.more_data == 1
 
         mock_parent_metric.reset_statistics()
@@ -94,6 +117,10 @@ class TestMetric:
         assert mock_child_metric.metric_b == 0.0
         assert mock_child_metric.combined_metric == 0
         assert mock_child_metric.calculated_metric == 0
+        assert mock_child_metric_two.metric_a == 0
+        assert mock_child_metric_two.metric_b == 0
+        assert mock_child_metric_two.combined_metric == 0
+        assert mock_child_metric_two.calculated_metric == 0
         assert mock_parent_metric.more_data == 0
 
     def test_calculate_new_average_returns_correct_result(self):

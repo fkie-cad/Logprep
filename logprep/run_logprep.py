@@ -8,13 +8,10 @@ from argparse import ArgumentParser
 from logging import getLogger, Logger, DEBUG, ERROR
 from os.path import basename
 from pathlib import Path
-from typing import Optional
 
 from colorama import Fore
 
 from logprep._version import get_versions
-from logprep.metrics.metric import MetricTargets
-from logprep.metrics.metric_targets import get_metric_targets
 from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
 from logprep.util.aggregating_logger import AggregatingLogger
@@ -82,11 +79,11 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger, status_logger: Optional[MetricTargets]):
+def _run_logprep(arguments, logger: Logger):
     runner = None
     try:
         runner = Runner.get_runner()
-        runner.set_logger(logger, status_logger)
+        runner.set_logger(logger)
         runner.load_configuration(arguments.config)
         if logger.isEnabledFor(DEBUG):  # pragma: no cover
             logger.debug("Configuration loaded")
@@ -156,10 +153,6 @@ def main():
         logger.exception(error)
         sys.exit(1)
 
-    metric_targets = None
-    if not args.disable_logging:
-        metric_targets = get_metric_targets(config, logger)
-
     measure_time_config = config.get("metrics", {}).get("measure_time", {})
     TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)
     TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
@@ -195,7 +188,7 @@ def main():
     elif args.verify_config:
         print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
     else:
-        _run_logprep(args, logger, metric_targets)
+        _run_logprep(args, logger)
 
 
 if __name__ == "__main__":

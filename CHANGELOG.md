@@ -59,6 +59,9 @@ under the subkey `preprocessing` of the `input` processor
 
 
 ### Bugfixes
+
+* Fix resetting of some metric, e.g. `number_of_matches`.
+
 ### Breaking
 
 ## v3.3.0

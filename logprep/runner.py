@@ -8,7 +8,6 @@ from multiprocessing import Value, current_process
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
-from logprep.metrics.metric import MetricTargets
 
 
 class RunnerError(BaseException):
@@ -104,16 +103,13 @@ class Runner:
         if not bypass_check_to_obtain_non_singleton_instance:
             raise UseGetRunnerToCreateRunnerSingleton
 
-    def set_logger(self, logger: Logger, status_logger: MetricTargets = None):
+    def set_logger(self, logger: Logger):
         """Setup logging for any "known" errors from any part of the software.
 
         Parameters
         ----------
         logger: Logger
             An instance of logging.Logger.
-        status_logger: List (optional)
-            List of status loggers. Rotating file logger and/or prometheus exporter for processor
-            status information.
 
         Raises
         ------
@@ -121,7 +117,6 @@ class Runner:
             If 'logger' is not an instance of Logger.
         MustNotSetLoggerTwiceError
             If 'self._logger' was already set.
-
         """
         if not isinstance(logger, Logger):
             raise NotALoggerError
@@ -129,7 +124,6 @@ class Runner:
             raise MustNotSetLoggerTwiceError
 
         self._logger = logger
-        self._metric_targets = status_logger
         self._log_handler = MultiprocessingLogHandler(logger.level)
 
     def load_configuration(self, yaml_file: str):
