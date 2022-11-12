@@ -29,7 +29,7 @@ Example
 import sys
 import ipaddress
 
-from typing import List, Optional
+from typing import Optional
 from attr import define, field, validators
 
 from tldextract import TLDExtract
