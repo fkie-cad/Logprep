@@ -303,3 +303,20 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)
         self.object.process(document)
         assert document == expected
+
+    def test_does_nothing_if_source_field_not_exits(self):
+        document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
+        expected = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
+        rule_dict = {
+            "filter": "url",
+            "domain_label_extractor": {
+                "source_fields": ["url.not_existing"],
+                "target_field": "url",
+                "overwrite_target": True,
+                "delete_source_fields": True,
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        assert document == expected

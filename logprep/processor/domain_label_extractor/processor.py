@@ -47,13 +47,6 @@ else:
     from functools import cached_property
 
 
-class DomainLabelExtractorError(BaseException):
-    """Base class for DomainLabelExtractor related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"DomainLabelExtractor ({name}): {message}")
-
-
 class DomainLabelExtractor(Processor):
     """Splits a domain into it's parts/labels."""
 
@@ -102,9 +95,9 @@ class DomainLabelExtractor(Processor):
         rule :
             Currently applied domain label extractor rule.
         """
-        if not self._field_exists:
-            return
         domain = get_dotted_field_value(event, rule.source_fields[0])
+        if domain is None:
+            return
         tagging_field = event.get(self._config.tagging_field_name, [])
 
         if self._is_valid_ip(domain):
@@ -119,16 +112,13 @@ class DomainLabelExtractor(Processor):
                 "top_level_domain": labels.suffix,
                 "subdomain": labels.subdomain,
             }
-            for label, _ in labels_dict.items():
+            for label, value in labels_dict.items():
                 output_field = f"{rule.target_field}.{label}"
-                adding_was_successful = add_field_to(
-                    event,
-                    output_field,
-                    labels_dict[label],
-                    overwrite_output_field=rule.overwrite_target,
+                add_successful = add_field_to(
+                    event, output_field, value, overwrite_output_field=rule.overwrite_target
                 )
 
-                if not adding_was_successful:
+                if not add_successful:
                     raise DuplicationError(self.name, [output_field])
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
