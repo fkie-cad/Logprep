@@ -33,11 +33,9 @@ class Dropper(Processor):
 
     def _apply_rules(self, event: dict, rule: DropperRule):
         """Drops fields from event Logs."""
-        self._logger.debug(f"{self.describe()} processing matching event")
-        drop_full = rule.drop_full
-        if drop_full:
+        if rule.drop_full:
             drop_function = partial(pop_dotted_field_value, event)
-        if not drop_full:
+        else:
             drop_function = partial(self._drop, event)
         list(map(drop_function, rule.fields_to_drop))
 
