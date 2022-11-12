@@ -320,3 +320,27 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)
         self.object.process(document)
         assert document == expected
+
+    def test_raises_duplication_error_if_target_field_exits(self):
+        document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
+        expected = {
+            "url": {
+                "domain": "test.domain.de",
+                "subdomain": "exists already",
+                "registered_domain": "domain.de",
+                "top_level_domain": "de",
+            }
+        }
+
+        rule_dict = {
+            "filter": "url",
+            "domain_label_extractor": {
+                "source_fields": ["url.domain"],
+                "target_field": "url",
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        with pytest.raises(DuplicationError):
+            self.object.process(document)
+        assert document == expected
