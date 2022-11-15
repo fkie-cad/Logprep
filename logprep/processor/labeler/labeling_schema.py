@@ -3,12 +3,13 @@
 from json import JSONDecodeError
 from typing import Optional, List, Any
 
-from jsonref import load
+from jsonref import loads
 
 from logprep.processor.base.exceptions import (
     KeyDoesnotExistInSchemaError,
     ValueDoesnotExistInSchemaError,
 )
+from logprep.util.getter import GetterFactory
 
 
 class LabelingSchemaError(BaseException):
@@ -48,8 +49,8 @@ class LabelingSchema:
     def create_from_file(path: str) -> "LabelingSchema":
         """Create a schema from a file at a given path."""
         try:
-            with open(path, "r", encoding="utf-8") as file:
-                schema = load(file)
+            content = GetterFactory.from_string(path).get()
+            schema = loads(content)
             if not schema:
                 raise LabelingSchemaError()
             labeling_schema = LabelingSchema()
