@@ -1,14 +1,15 @@
+"""module for content getters"""
 import re
 from typing import Tuple
-from attrs import define, field, validators
-from logprep.abc import Getter
+from pathlib import Path
+from logprep.abc.getter import Getter
 
 
 class GetterFactory:
     """provides methods to create getters"""
 
     @classmethod
-    def from_string(cls, getter_string: str) -> "Getter":
+    def from_string(cls, getter_string: str) -> "FileGetter":
         """factory method to get a getter
 
         Parameters
@@ -38,4 +39,4 @@ class FileGetter(Getter):
 
     def get(self):
         """opens file and returns its content"""
-        return None
+        return Path(self.target).read_text(encoding="utf8")
