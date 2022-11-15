@@ -221,8 +221,8 @@ class TestPipelineManager:
         self, prometheus_exporter_mock
     ):
         failed_pipeline = mock.MagicMock()
-        failed_pipeline.is_alive = mock.MagicMock()
-        failed_pipeline.is_alive.return_value = False
+        failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
+        failed_pipeline.is_alive.return_value = False  # nosemgrep
         failed_pipeline.pid = 42
         metric_targets = MetricTargets(None, prometheus_exporter_mock)
         manager = PipelineManager(self.logger, metric_targets)
@@ -239,8 +239,8 @@ class TestPipelineManager:
     ):
         failed_pipeline = mock.MagicMock()
         failed_pipeline.metric_targets = None
-        failed_pipeline.is_alive = mock.MagicMock()
-        failed_pipeline.is_alive.return_value = False
+        failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
+        failed_pipeline.is_alive.return_value = False  # nosemgrep
         manager = PipelineManager(self.logger, None)
         manager._pipelines = [failed_pipeline]
 
