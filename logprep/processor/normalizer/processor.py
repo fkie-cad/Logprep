@@ -127,8 +127,8 @@ class Normalizer(Processor):
         self._regex_mapping = yaml.safe_load(content)
 
         if self._html_replace_fields:
-            with open(self._html_replace_fields, "r", encoding="utf8") as file:
-                self._html_replace_fields = yaml.load(file)
+            content = GetterFactory.from_string(self._html_replace_fields).get()
+            self._html_replace_fields = yaml.safe_load(content)
         super().__init__(name=name, configuration=configuration, logger=logger)
 
     # pylint: enable=arguments-differ
