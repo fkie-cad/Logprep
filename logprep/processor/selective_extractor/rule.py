@@ -100,6 +100,7 @@ from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 from logprep.util.validators import dict_structure_validator, one_of_validator
+from logprep.util.getter import GetterFactory
 
 
 class SelectiveExtractorRuleError(InvalidRuleDefinitionError):
@@ -141,12 +142,9 @@ class SelectiveExtractorRule(Rule):
         """the extraction mapping"""
 
         @property
-        def extract_from_file(self) -> Path:
+        def extract_from_file(self) -> str:
             """Returns the PosixPath representation of extract_from_file"""
-            extract_from_file = self.extract.get("extract_from_file")
-            if extract_from_file is None:
-                return None
-            return Path(extract_from_file)
+            return self.extract.get("extract_from_file")
 
         def __attrs_post_init__(self):
             self._add_from_file()
@@ -154,12 +152,16 @@ class SelectiveExtractorRule(Rule):
         def _add_from_file(self):
             if self.extract_from_file is None:
                 return
-            if not self.extract_from_file.is_file():
-                raise SelectiveExtractorRuleError("extract_from_file is not a valid file handle")
+            try:
+                content = GetterFactory.from_string(self.extract_from_file).get()
+            except FileNotFoundError as error:
+                raise SelectiveExtractorRuleError(
+                    "extract_from_file is not a valid file handle"
+                ) from error
             extract_list = self.extract.get("extracted_field_list")
             if extract_list is None:
                 extract_list = []
-            lines_from_file = self.extract_from_file.read_text(encoding="utf8").splitlines()
+            lines_from_file = content.splitlines()
             extract_list = list({*extract_list, *lines_from_file})
             self.extract = {**self.extract, **{"extracted_field_list": extract_list}}
 
