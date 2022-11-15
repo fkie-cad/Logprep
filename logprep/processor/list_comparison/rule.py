@@ -36,13 +36,13 @@ target field :code:`List_comparison.example`.
 
 """
 import warnings
-from pathlib import Path
 from typing import List, Optional
 from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
+from logprep.util.getter import GetterFactory
 
 
 class ListComparisonRule(FieldManagerRule):
@@ -54,14 +54,11 @@ class ListComparisonRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for ListComparisonRule"""
 
-        list_file_paths: List[Path] = field(
-            validator=validators.deep_iterable(member_validator=validators.instance_of(Path)),
-            converter=lambda paths: [Path(path) for path in paths],
+        list_file_paths: List[str] = field(
+            validator=validators.deep_iterable(member_validator=validators.instance_of(str))
         )
         """List of files in relative or absolute notation"""
-        list_search_base_path: Path = field(
-            validator=validators.instance_of(Path), factory=Path, converter=Path
-        )
+        list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
         """Base Path from where to find relative files from :code:`list_file_paths` (Optional)"""
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
@@ -71,7 +68,6 @@ class ListComparisonRule(FieldManagerRule):
     def _get_list_search_base_path(self, list_search_base_path):
         if list_search_base_path is None:
             return self._config.list_search_base_path
-        list_search_base_path = Path(list_search_base_path)
         if self._config.list_search_base_path > list_search_base_path:
             return self._config.list_search_base_path
         return list_search_base_path
@@ -80,18 +76,22 @@ class ListComparisonRule(FieldManagerRule):
         """init method for list_comparision lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
         absolute_list_paths = [
-            list_path for list_path in self._config.list_file_paths if list_path.is_absolute()
+            list_path for list_path in self._config.list_file_paths if list_path.startswith("/")
         ]
+        if not list_search_base_path.endswith("/"):
+            list_search_base_path = list_search_base_path + "/"
         converted_absolute_list_paths = [
-            list_search_base_path / list_path
+            list_search_base_path + list_path
             for list_path in self._config.list_file_paths
-            if not list_path.is_absolute()
+            if not list_path.startswith("/")
         ]
         list_paths = [*absolute_list_paths, *converted_absolute_list_paths]
         for list_path in list_paths:
-            compare_elements = list_path.read_text().splitlines()
+            content = GetterFactory.from_string(list_path).get()
+            compare_elements = content.splitlines()
             file_elem_tuples = [elem for elem in compare_elements if not elem.startswith("#")]
-            self._compare_sets.update({list_path.name: set(file_elem_tuples)})
+            *_, filename = list_path.rpartition("/")
+            self._compare_sets.update({filename: set(file_elem_tuples)})
 
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
