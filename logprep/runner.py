@@ -6,6 +6,7 @@ from logging import Logger, DEBUG
 from multiprocessing import Value, current_process
 
 from logprep.framework.pipeline_manager import PipelineManager
+from logprep.metrics.metric_targets import get_metric_targets
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
@@ -232,7 +233,8 @@ class Runner:
     def _create_manager(self):
         if self._manager is not None:
             raise MustNotCreateMoreThanOneManagerError
-        self._manager = PipelineManager(self._logger, self._metric_targets)
+        metric_targets = get_metric_targets(self._configuration, self._logger)
+        self._manager = PipelineManager(self._logger, metric_targets)
 
     def stop(self):
         """Stop the current process"""
