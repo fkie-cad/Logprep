@@ -31,14 +31,13 @@ from typing import Optional
 
 from attr import define, field, validators
 
-from ruamel.yaml import YAML
+from ruamel import yaml
 
 from logprep.abc import Processor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
+from logprep.util.getter import GetterFactory
 from logprep.util.validators import file_validator
 from logprep.util.helper import get_dotted_field_value
-
-yaml = YAML(typ="safe", pure=True)
 
 
 class TemplateReplacerError(BaseException):
@@ -96,8 +95,8 @@ class TemplateReplacer(Processor):
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
 
         self._mapping = {}
-        with open(template_path, "r", encoding="utf8") as template_file:
-            template = yaml.load(template_file)
+        content = GetterFactory.from_string(template_path).get()
+        template = yaml.safe_load(content)
 
         for key, value in template.items():
             split_key = key.split(delimiter)
