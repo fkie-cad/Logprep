@@ -7,12 +7,11 @@ from datetime import datetime
 from os.path import isfile
 
 from dateutil import parser, tz
-from ruamel.yaml import YAML
+from ruamel import yaml
 
 from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
-
-yaml = YAML(typ="safe", pure=True)
 
 
 class IPAlerter:
@@ -38,7 +37,8 @@ class IPAlerter:
         for alert_ip_list in alert_ip_lists:
             if alert_ip_list and isfile(alert_ip_list):
                 with open(alert_ip_list, "r", encoding="utf8") as alert_ip_list_file:
-                    full_alert_ip_list = yaml.load(alert_ip_list_file)
+                    content = GetterFactory.from_string(alert_ip_list).get()
+                    full_alert_ip_list = yaml.safe_load(content)
                     self._filter_non_expired_alert_ips(full_alert_ip_list)
                     self._single_alert_ips.update(
                         set(ip_string for ip_string in self._alert_ips_map if "/" not in ip_string)
