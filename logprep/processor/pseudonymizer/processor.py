@@ -35,7 +35,7 @@ from typing import Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs
 
 from attr import define, field, validators
-from ruamel.yaml import YAML
+from ruamel import yaml
 from tldextract import TLDExtract
 from urlextract import URLExtract
 
@@ -45,13 +45,12 @@ from logprep.processor.pseudonymizer.rule import PseudonymizeRule
 from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.validators import file_validator, list_of_urls_validator
+from logprep.util.getter import GetterFactory
 
 if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
 else:
     from functools import cached_property
-
-yaml = YAML(typ="safe", pure=True)
 
 
 class Pseudonymizer(Processor):
@@ -180,8 +179,8 @@ class Pseudonymizer(Processor):
             self._tld_extractor = TLDExtract()
 
     def _load_regex_mapping(self, regex_mapping_path: str):
-        with open(regex_mapping_path, "r", encoding="utf8") as file:
-            self._regex_mapping = yaml.load(file)
+        content = GetterFactory.from_string(regex_mapping_path).get()
+        self._regex_mapping = yaml.safe_load(content)
 
     def process(self, event: dict):
         self.pseudonymized_fields = set()

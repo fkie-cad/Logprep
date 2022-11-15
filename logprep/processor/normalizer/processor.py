@@ -41,16 +41,15 @@ from attr import define, field, validators
 from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
-from ruamel.yaml import YAML
+from ruamel import yaml
 
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
+from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import file_validator, directory_validator
-
-yaml = YAML(typ="safe", pure=True)
 
 
 class Normalizer(Processor):
@@ -124,8 +123,8 @@ class Normalizer(Processor):
 
         NormalizerRule.additional_grok_patterns = configuration.grok_patterns
 
-        with open(self._regex_mapping, "r", encoding="utf8") as file:
-            self._regex_mapping = yaml.load(file)
+        content = GetterFactory.from_string(self._regex_mapping).get()
+        self._regex_mapping = yaml.safe_load(content)
 
         if self._html_replace_fields:
             with open(self._html_replace_fields, "r", encoding="utf8") as file:
