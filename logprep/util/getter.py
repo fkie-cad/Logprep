@@ -5,6 +5,13 @@ from pathlib import Path
 from logprep.abc.getter import Getter
 
 
+class GetterNotFoundError(BaseException):
+    """is raised if getter is not found"""
+
+    def __init__(self, message) -> None:
+        self.message = message
+
+
 class GetterFactory:
     """provides methods to create getters"""
 
@@ -25,7 +32,9 @@ class GetterFactory:
         protocol, target = cls._dissect(getter_string)
         if protocol is None:
             protocol = "file"
-        return FileGetter(protocol=protocol, target=target)
+        if protocol == "file":
+            return FileGetter(protocol=protocol, target=target)
+        raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
 
     @staticmethod
     def _dissect(getter_string: str) -> Tuple[str, str]:
