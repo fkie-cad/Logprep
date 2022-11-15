@@ -94,7 +94,6 @@ It is possible to mix both extraction sources. They will be merged to one list w
 """
 
 from functools import partial
-from pathlib import Path
 from typing import List, Optional
 from attrs import define, field, validators
 

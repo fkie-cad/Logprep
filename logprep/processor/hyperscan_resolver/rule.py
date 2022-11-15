@@ -20,7 +20,7 @@ import re
 from typing import Tuple
 from attrs import define, field, validators
 
-import ruamel.yaml as yaml
+from ruamel import yaml
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 from logprep.processor.generic_resolver.rule import GenericResolverRule

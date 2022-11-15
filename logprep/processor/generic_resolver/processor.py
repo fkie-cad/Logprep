@@ -20,7 +20,7 @@ import re
 from logging import Logger
 from typing import List
 
-import ruamel.yaml as yaml
+from ruamel import yaml
 
 from logprep.abc import Processor
 from logprep.processor.generic_resolver.rule import GenericResolverRule

@@ -91,7 +91,7 @@ import re
 from typing import Any
 from attrs import define, field, validators
 
-import ruamel.yaml as yaml
+from ruamel import yaml
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
