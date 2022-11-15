@@ -3,6 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 from logging import WARNING, Logger, INFO, ERROR
 from time import time, sleep
+from unittest import mock
 
 from pytest import raises
 
@@ -214,3 +215,34 @@ class TestPipelineManager:
 
         for logprep_instance in logprep_instances:
             assert logprep_instance.was_started and logprep_instance.was_stopped
+
+    @mock.patch("logprep.util.prometheus_exporter.PrometheusStatsExporter")
+    def test_remove_failed_pipelines_removes_metrics_database_if_prometheus_target_is_configured(
+        self, prometheus_exporter_mock
+    ):
+        failed_pipeline = mock.MagicMock()
+        failed_pipeline.is_alive = mock.MagicMock()
+        failed_pipeline.is_alive.return_value = False
+        failed_pipeline.pid = 42
+        metric_targets = MetricTargets(None, prometheus_exporter_mock)
+        manager = PipelineManager(self.logger, metric_targets)
+        manager._pipelines = [failed_pipeline]
+
+        manager.remove_failed_pipeline()
+        prometheus_exporter_mock.prometheus_exporter.remove_metrics_from_process.assert_called()
+        prometheus_exporter_mock.prometheus_exporter.remove_metrics_from_process.assert_called_with(
+            42
+        )
+
+    def test_remove_failed_pipelines_skips_removal_of_metrics_database_if_no_metric_target_is_configured(
+        self,
+    ):
+        failed_pipeline = mock.MagicMock()
+        failed_pipeline.metric_targets = None
+        failed_pipeline.is_alive = mock.MagicMock()
+        failed_pipeline.is_alive.return_value = False
+        manager = PipelineManager(self.logger, None)
+        manager._pipelines = [failed_pipeline]
+
+        manager.remove_failed_pipeline()
+        assert failed_pipeline.metric_targets is None

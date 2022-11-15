@@ -105,7 +105,7 @@ class PipelineManager:
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
 
-            if self.metric_targets.prometheus_target is not None:
+            if self.metric_targets and self.metric_targets.prometheus_target:
                 self.metric_targets.prometheus_target.prometheus_exporter.remove_metrics_from_process(
                     failed_pipeline.pid
                 )
