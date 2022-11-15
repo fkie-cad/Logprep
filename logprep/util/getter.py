@@ -9,6 +9,7 @@ class GetterNotFoundError(BaseException):
     """is raised if getter is not found"""
 
     def __init__(self, message) -> None:
+        super().__init__()
         self.message = message
 
 
