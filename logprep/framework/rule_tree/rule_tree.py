@@ -1,6 +1,6 @@
 """This module contains the rule tree functionality."""
 
-from json import load
+import json
 from logging import Logger
 from typing import List
 
@@ -11,6 +11,7 @@ from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.metrics.metric import Metric
 from logprep.processor.base.rule import Rule
+from logprep.util.getter import GetterFactory
 
 
 class RuleTree:
@@ -80,9 +81,8 @@ class RuleTree:
         self.tag_map = {}
 
         if self._config_path:
-            with open(self._config_path, "r", encoding="utf8") as file:
-                config_data = load(file)
-
+            content = GetterFactory.from_string(self._config_path).get()
+            config_data = json.loads(content)
             self.priority_dict = config_data["priority_dict"]
             self.tag_map = config_data["tag_map"]
 
