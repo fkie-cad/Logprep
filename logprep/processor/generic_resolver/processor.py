@@ -20,12 +20,14 @@ import re
 from logging import Logger
 from typing import List
 
-from ruamel import yaml
+from ruamel.yaml import YAML
 
 from logprep.abc import Processor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.getter import GetterFactory
+
+yaml = YAML(typ="safe", pure=True)
 
 
 class GenericResolverError(BaseException):
@@ -135,7 +137,7 @@ class GenericResolver(Processor):
             if rule.resolve_from_file["path"] not in self._replacements_from_file:
                 try:
                     content = GetterFactory.from_string(rule.resolve_from_file["path"]).get()
-                    add_dict = yaml.safe_load(content)
+                    add_dict = yaml.load(content)
                     if isinstance(add_dict, dict) and all(
                         isinstance(value, str) for value in add_dict.values()
                     ):
