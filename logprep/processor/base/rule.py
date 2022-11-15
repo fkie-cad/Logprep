@@ -192,6 +192,11 @@ class Rule:
     def __hash__(self) -> int:  # pylint: disable=function-redefined
         return hash(repr(self))
 
+    def __repr__(self) -> str:
+        if hasattr(self, "_config"):
+            return f"filter={self.filter}, {self._config}"
+        return super().__repr__()
+
     # pylint: disable=C0111
     @property
     def filter(self):
