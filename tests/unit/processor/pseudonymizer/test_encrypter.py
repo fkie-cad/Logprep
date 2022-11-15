@@ -1,9 +1,10 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+
 import re
 from unittest import mock
 
 import pytest
-
-pytest.importorskip("logprep.processor.pseudonymizer")
 
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 
@@ -37,7 +38,7 @@ class TestDualPKCS1HybridEncrypter:
         with pytest.raises(ValueError):
             encrypter.encrypt("foo")
 
-    @mock.patch("logprep.processor.pseudonymizer.encrypter.open")
+    @mock.patch("io.open")
     def test_load_public_keys_successfully(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data=MOCK_PUBKEY_1024).return_value,
@@ -48,7 +49,7 @@ class TestDualPKCS1HybridEncrypter:
         assert len(str(encrypter._pubkey_analyst.n)) == 309
         assert len(str(encrypter._pubkey_depseudo.n)) == 617
 
-    @mock.patch("logprep.processor.pseudonymizer.encrypter.open")
+    @mock.patch("io.open")
     def test_load_public_keys_invalid_key(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data="foo").return_value,
@@ -63,7 +64,7 @@ class TestDualPKCS1HybridEncrypter:
         with pytest.raises(FileNotFoundError):
             encrypter.load_public_keys("non_existent_file_1", "non_existent_file_1")
 
-    @mock.patch("logprep.processor.pseudonymizer.encrypter.open")
+    @mock.patch("io.open")
     def test_encrypt(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data=MOCK_PUBKEY_1024).return_value,
