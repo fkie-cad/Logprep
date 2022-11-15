@@ -20,12 +20,11 @@ import re
 from typing import Tuple
 from attrs import define, field, validators
 
-from ruamel.yaml import YAML
+import ruamel.yaml as yaml
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-
-yaml = YAML(typ="safe", pure=True)
+from logprep.util.getter import GetterFactory
 
 
 class HyperscanResolverRuleError(InvalidRuleDefinitionError):
@@ -82,18 +81,18 @@ class HyperscanResolverRule(Rule):
         def _init_resolve_from_file(self):
             pattern, resolve_file_path = self._get_resolve_file_path_and_pattern()
             try:
-                with open(resolve_file_path, "r", encoding="utf8") as add_file:
-                    add_dict = yaml.load(add_file)
+                content = GetterFactory.from_string(resolve_file_path).get()
+                add_dict = yaml.safe_load(content)
 
-                    if isinstance(add_dict, dict) and all(
-                        isinstance(value, str) for value in add_dict.values()
-                    ):
-                        self._add_dict_to_resolve_list(add_dict, pattern)
-                    else:
-                        raise InvalidHyperscanResolverDefinition(
-                            f"Additions file '{self.resolve_from_file} must be a dictionary with "
-                            f"string values!"
-                        )
+                if isinstance(add_dict, dict) and all(
+                    isinstance(value, str) for value in add_dict.values()
+                ):
+                    self._add_dict_to_resolve_list(add_dict, pattern)
+                else:
+                    raise InvalidHyperscanResolverDefinition(
+                        f"Additions file '{self.resolve_from_file} must be a dictionary with "
+                        f"string values!"
+                    )
             except FileNotFoundError as error:
                 raise InvalidHyperscanResolverDefinition(
                     f"Additions file '{self.resolve_from_file}' not found!"
