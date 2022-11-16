@@ -2,6 +2,7 @@
 """This module can be used to start the logprep."""
 # pylint: disable=logging-fstring-interpolation
 import inspect
+import logging
 import os
 import sys
 from argparse import ArgumentParser
@@ -21,6 +22,8 @@ from logprep.util.helper import print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement
+
+logging.captureWarnings(True)
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)

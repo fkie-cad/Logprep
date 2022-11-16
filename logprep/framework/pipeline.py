@@ -11,6 +11,7 @@ from logging import DEBUG, INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 from time import time
 from typing import List, TYPE_CHECKING
+import warnings
 
 import attrs
 import numpy as np
@@ -212,7 +213,10 @@ class Pipeline:
 
     def run(self):
         """Start processing processors in the Pipeline."""
-        self._setup()
+        with self._lock:
+            with warnings.catch_warnings():
+                warnings.simplefilter("default")
+                self._setup()
         self._enable_iteration()
         try:
             if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
@@ -444,7 +448,6 @@ class MultiprocessingPipeline(Process, Pipeline):
         self._continue_iterating = Value(c_bool)
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
-
         Process.__init__(self)
 
     def run(self):
