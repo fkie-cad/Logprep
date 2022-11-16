@@ -26,10 +26,3 @@ filter: client_2
 domain_resolver:
   source_url_or_domain: client_2
 description: ""
----
-# Equal to rule above
-filter: client_2
-domain_resolver:
-  source_url_or_domain: client_2
-  output_field: resolved_ip
-description: ""
