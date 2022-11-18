@@ -38,7 +38,7 @@ class Processor(Component):
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
-        """List of directory paths with generic rule files that can match multiple event types"""
+        """List of rule locations to load. Can be directories, files or http endpoints."""
         generic_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
@@ -46,8 +46,10 @@ class Processor(Component):
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
-        """List of directory paths with generic rule files that can match multiple event types"""
-        tree_config: Optional[str] = field(default=None, validator=[file_validator])
+        """List of rule locations to load. Can be directories, files or http endpoints."""
+        tree_config: Optional[str] = field(
+            default=None, validator=[file_validator]
+        )  # TODO test load tree_config from http
         """ Path to a JSON file with a valid rule tree configuration. """
 
     @define(kw_only=True)

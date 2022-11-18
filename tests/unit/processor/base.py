@@ -195,7 +195,7 @@ class BaseProcessorTestCase(ABC):
             {"generic_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
         )
         with mock.patch("requests.get") as mock_request_get:
-            with pytest.raises(TypeError, match="not MagicMock"):
+            with pytest.raises(TypeError, match="not .*MagicMock.*"):
                 Factory.create({"http_rule_processor": myconfig}, self.logger)
                 mock_request_get.assert_called()
 
