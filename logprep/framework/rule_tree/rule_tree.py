@@ -2,7 +2,7 @@
 
 import json
 from logging import Logger
-from typing import List
+from typing import List, TYPE_CHECKING
 
 import numpy as np
 from attr import define, Factory
@@ -10,8 +10,10 @@ from attr import define, Factory
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.metrics.metric import Metric
-from logprep.processor.base.rule import Rule
-from logprep.util.getter import GetterFactory
+from logprep.util import getter
+
+if TYPE_CHECKING:
+    from logprep.processor.base.rule import Rule
 
 
 class RuleTree:
@@ -23,7 +25,7 @@ class RuleTree:
 
         number_of_rules: int = 0
         """Number of rules configured in the current rule tree"""
-        rules: List[Rule.RuleMetrics] = Factory(list)
+        rules: List["Rule.RuleMetrics"] = Factory(list)
         """List of rule metrics"""
 
         # pylint: disable=not-an-iterable
@@ -81,12 +83,12 @@ class RuleTree:
         self.tag_map = {}
 
         if self._config_path:
-            content = GetterFactory.from_string(self._config_path).get()
+            content = getter.GetterFactory.from_string(self._config_path).get()
             config_data = json.loads(content)
             self.priority_dict = config_data["priority_dict"]
             self.tag_map = config_data["tag_map"]
 
-    def add_rule(self, rule: Rule, logger: Logger = None):
+    def add_rule(self, rule: "Rule", logger: Logger = None):
         """Add rule to rule tree.
 
         Add a new rule to the rule tree.
@@ -157,7 +159,7 @@ class RuleTree:
 
         return current_node
 
-    def get_rule_id(self, rule: Rule) -> int:
+    def get_rule_id(self, rule: "Rule") -> int:
         """Returns ID of given rule.
 
         This function returns the ID of a given rule. It is used by the processors to get the ID of
@@ -176,7 +178,7 @@ class RuleTree:
         """
         return self._rule_mapping[rule]
 
-    def get_matching_rules(self, event: dict) -> List[Rule]:
+    def get_matching_rules(self, event: dict) -> List["Rule"]:
         """Get all rules in the tree that match given event.
 
         This function gets all rules that were added to the rule tree that match a given event.
@@ -204,7 +206,7 @@ class RuleTree:
         return matching_rules
 
     def _retrieve_matching_rules(
-        self, event: dict, current_node: Node = None, matches: List[Rule] = None
+        self, event: dict, current_node: Node = None, matches: List["Rule"] = None
     ) -> list:
         """Recursively iterate through the rule tree to retrieve matching rules."""
         for child in current_node.children:
@@ -271,7 +273,7 @@ class RuleTree:
 
         return size
 
-    def _get_rules_as_list(self) -> List[Rule]:
+    def _get_rules_as_list(self) -> List["Rule"]:
         """get all rules
         Returns
         -------

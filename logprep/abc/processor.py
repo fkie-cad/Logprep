@@ -3,20 +3,22 @@ import copy
 from abc import abstractmethod
 from logging import DEBUG, Logger
 from multiprocessing import current_process
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from attr import define, field
 from logprep.abc import Component
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import Metric, calculate_new_average
-from logprep.processor.base.rule import Rule
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import file_validator, list_of_dirs_validator
 from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
+
+if TYPE_CHECKING:
+    from logprep.processor.base.rule import Rule
 
 
 class Processor(Component):
@@ -73,7 +75,7 @@ class Processor(Component):
         "_generic_tree",
     ]
 
-    rule_class: Rule
+    rule_class: "Rule"
     has_custom_tests: bool
     metrics: ProcessorMetrics
     metric_labels: dict
