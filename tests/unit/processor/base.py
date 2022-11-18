@@ -154,14 +154,14 @@ class BaseProcessorTestCase(ABC):
 
     @mock.patch("logging.Logger.isEnabledFor", return_value=True)
     @mock.patch("logging.Logger.debug")
-    def test_add_rules_from_directory_with_debug(self, mock_debug, _):
+    def test_load_rules_with_debug(self, mock_debug, _):
         self.object.load_rules(
             specific_rules_targets=self.specific_rules_dirs,
             generic_rules_targets=self.generic_rules_dirs,
         )
         mock_debug.assert_called()
 
-    def test_add_rules_from_directory(self):
+    def test_load_rules(self):
         self.object._generic_tree = RuleTree()
         self.object._specific_tree = RuleTree()
         generic_rules_size = self.object._generic_tree.get_size()

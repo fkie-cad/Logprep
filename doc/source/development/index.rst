@@ -32,7 +32,7 @@ Development
             <<interface>>
             +rule_class
             +Config
-            +add_rules_from_directories()
+            +load_rules()
             +process()
             +apply_rules()*
         }
@@ -104,7 +104,7 @@ Development
 
         class BaseProcessorTestCase{
             +test_describe()
-            +test_add_rules_from_diretories()
+            +test_load_rules()
             +test_process()
             +test_apply_rules()*
         }
