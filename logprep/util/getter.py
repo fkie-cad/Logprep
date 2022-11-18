@@ -62,6 +62,7 @@ class HttpGetter(Getter):
 
     def get(self):
         """gets the content from a http server via uri"""
-        resp = requests.get(url=f"{self.protocol}://{self.target}")
+        resp = requests.get(url=f"{self.protocol}://{self.target}", timeout=5)
+        resp.raise_for_status()
         content = resp.text
         return content
