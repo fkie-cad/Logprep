@@ -350,11 +350,11 @@ class AutoRuleTester:
 
     def _add_rules_from_directory(self, processor: Processor, rule_type: str):
         if rule_type == "rules":
-            processor.add_rules_from_directory(self._empty_rules_dirs)
+            processor.load_rules(self._empty_rules_dirs)
         elif rule_type == "specific_rules":
-            processor.add_rules_from_directory(self._empty_rules_dirs, [])
+            processor.load_rules(self._empty_rules_dirs, [])
         elif rule_type == "generic_rules":
-            processor.add_rules_from_directory([], self._empty_rules_dirs)
+            processor.load_rules([], self._empty_rules_dirs)
         self._do_processor_specific_setup(processor)
 
     @staticmethod

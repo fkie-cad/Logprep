@@ -1,5 +1,6 @@
 """module for content getters"""
 import re
+import requests
 from typing import Tuple
 from pathlib import Path
 from logprep.abc.getter import Getter
@@ -35,6 +36,10 @@ class GetterFactory:
             protocol = "file"
         if protocol == "file":
             return FileGetter(protocol=protocol, target=target)
+        if protocol == "http":
+            return HttpGetter(protocol=protocol, target=target)
+        if protocol == "https":
+            return HttpGetter(protocol=protocol, target=target)
         raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
 
     @staticmethod
@@ -50,3 +55,13 @@ class FileGetter(Getter):
     def get(self):
         """opens file and returns its content"""
         return Path(self.target).read_text(encoding="utf8")
+
+
+class HttpGetter(Getter):
+    """Http getter"""
+
+    def get(self):
+        """gets the content from a http server via uri"""
+        resp = requests.get(url=f"{self.protocol}://{self.target}")
+        content = resp.text
+        return content

@@ -155,8 +155,9 @@ class BaseProcessorTestCase(ABC):
     @mock.patch("logging.Logger.isEnabledFor", return_value=True)
     @mock.patch("logging.Logger.debug")
     def test_add_rules_from_directory_with_debug(self, mock_debug, _):
-        self.object.add_rules_from_directory(
-            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
+        self.object.load_rules(
+            specific_rules_targets=self.specific_rules_dirs,
+            generic_rules_targets=self.generic_rules_dirs,
         )
         mock_debug.assert_called()
 
@@ -165,8 +166,9 @@ class BaseProcessorTestCase(ABC):
         self.object._specific_tree = RuleTree()
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
-        self.object.add_rules_from_directory(
-            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
+        self.object.load_rules(
+            specific_rules_targets=self.specific_rules_dirs,
+            generic_rules_targets=self.generic_rules_dirs,
         )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
@@ -175,11 +177,25 @@ class BaseProcessorTestCase(ABC):
 
     def test_add_rules_from_directory_calls_getter_factory(self):
         with mock.patch("logprep.util.getter.GetterFactory.from_string") as getter_factory:
-            self.object.add_rules_from_directory(
-                specific_rules_dirs=self.specific_rules_dirs,
-                generic_rules_dirs=self.generic_rules_dirs,
-            )
+            with pytest.raises(TypeError, match="must be str, bytes or bytearray, not MagicMock"):
+                self.object.load_rules(
+                    specific_rules_targets=self.specific_rules_dirs,
+                    generic_rules_targets=self.generic_rules_dirs,
+                )
             getter_factory.assert_called()
+
+    def test_accepts_http_in_rules_config(self):
+        myconfig = deepcopy(self.CONFIG)
+        myconfig.update(
+            {"specific_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
+        )
+        myconfig.update(
+            {"generic_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
+        )
+        with mock.patch("requests.get") as mock_request_get:
+            with pytest.raises(TypeError, match="not MagicMock"):
+                Factory.create({"http_rule_processor": myconfig}, self.logger)
+                mock_request_get.assert_called()
 
     def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
@@ -187,13 +203,15 @@ class BaseProcessorTestCase(ABC):
         in the rules directories
         ensures that every rule in rule tree is unique
         """
-        self.object.add_rules_from_directory(
-            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
+        self.object.load_rules(
+            specific_rules_targets=self.specific_rules_dirs,
+            generic_rules_targets=self.generic_rules_dirs,
         )
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
-        self.object.add_rules_from_directory(
-            specific_rules_dirs=self.specific_rules_dirs, generic_rules_dirs=self.generic_rules_dirs
+        self.object.load_rules(
+            specific_rules_targets=self.specific_rules_dirs,
+            generic_rules_targets=self.generic_rules_dirs,
         )
         new_generic_rules_size = self.object._generic_tree.get_size()
         new_specific_rules_size = self.object._specific_tree.get_size()
@@ -269,34 +287,21 @@ class BaseProcessorTestCase(ABC):
     def test_validation_raises_if_not_a_list(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: "i am not a list"})
-        with pytest.raises(InvalidConfigurationError, match=r"not a list"):
+        with pytest.raises(TypeError, match=r"must be <class 'list'>"):
             Factory.create({"test instance": config}, self.logger)
 
     @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
     def test_validation_raises_on_empty_rules_list(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: []})
-        with pytest.raises(InvalidConfigurationError, match=rf"{rule_list} is empty"):
+        with pytest.raises(ValueError, match=rf"Length of '{rule_list}' must be => 1: 0"):
             Factory.create({"test instance": config}, self.logger)
 
     @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
     def test_validation_raises_if_elements_does_not_exist(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: ["/i/do/not/exist"]})
-        with pytest.raises(
-            InvalidConfigurationError, match=r"'\/i\/do\/not\/exist' does not exist"
-        ):
-            Factory.create({"test instance": config}, self.logger)
-
-    @mock.patch("os.path.exists", return_value=True)
-    @mock.patch("os.path.isdir", return_value=False)
-    def test_validation_raises_if_element_is_not_a_directory(self, _, __):
-        config = deepcopy(self.CONFIG)
-        config.update({"specific_rules": ["/i/am/not/a/directory"]})
-        config.update({"generic_rules": ["/i/am/not/a/directory"]})
-        with pytest.raises(
-            InvalidConfigurationError, match=r"'\/i\/am\/not\/a\/directory' is not a directory"
-        ):
+        with pytest.raises(FileNotFoundError):
             Factory.create({"test instance": config}, self.logger)
 
     def test_validation_raises_if_tree_config_is_not_a_str(self):

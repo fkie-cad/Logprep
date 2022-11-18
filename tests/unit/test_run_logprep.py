@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 import os.path
+from pathlib import Path
 import sys
 from unittest import mock
 
@@ -58,6 +59,20 @@ class TestRunLogprep:
             "almighty_protocol://quickstart/exampledata/config/pipeline.yml",
         ]
         with pytest.raises(GetterNotFoundError, match="No getter for protocol 'almighty_protocol'"):
+            run_logprep.main()
+
+    @mock.patch("requests.get")
+    def test_gets_config_from_https(self, mock_request):
+        """ensures rule validation is called"""
+        pipeline_config = Path("quickstart/exampledata/config/pipeline.yml").read_text()
+        mock_request.return_value.text = pipeline_config
+        sys.argv = [
+            "logprep",
+            "--disable-logging",
+            "--validate-rules",
+            "https://does.not.exits/pipline.yml",
+        ]
+        with pytest.raises(SystemExit, match="0"):
             run_logprep.main()
 
     def test_quickstart_rules_are_valid(self):

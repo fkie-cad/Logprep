@@ -1,8 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
+import json
+from pathlib import Path
 import pytest
+from ruamel.yaml import YAML
 from unittest import mock
-from logprep.util.getter import FileGetter, GetterFactory, GetterNotFoundError
+from logprep.util.getter import FileGetter, GetterFactory, GetterNotFoundError, HttpGetter
+
+yaml = YAML(pure=True, typ="safe")
 
 
 class TestGetterFactory:
@@ -17,6 +22,8 @@ class TestGetterFactory:
             ("file:///my/file", "file", "/my/file"),
             ("/my/file", "file", "/my/file"),
             ("my/file", "file", "my/file"),
+            ("http://my/file", "http", "my/file"),
+            ("https://my/file", "https", "my/file"),
         ],
     )
     def test_from_string_sets_protocol_and_target(
@@ -41,3 +48,35 @@ class TestFileGetter:
         with mock.patch("io.open", mock.mock_open(read_data="my content")):
             content = file_getter.get()
             assert content == "my content"
+
+
+class TestHttpGetter:
+    def test_factory_returns_http_getter_for_http(self):
+        http_getter = GetterFactory.from_string("http://testfile.json")
+        assert isinstance(http_getter, HttpGetter)
+
+    def test_factory_returns_http_getter_for_https(self):
+        http_getter = GetterFactory.from_string("https://testfile.json")
+        assert isinstance(http_getter, HttpGetter)
+
+    def test_get_returns_json_parsable_from_plaintext(self):
+        http_getter = GetterFactory.from_string(
+            "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/unit/tree_config.json"
+        )
+        resp_text = Path("tests/testdata/unit/tree_config.json").read_text()
+        with mock.patch("requests.get") as mock_request_get:
+            mock_request_get.return_value.text = resp_text
+            content = json.loads(http_getter.get())
+        assert "priority_dict" in content
+
+    def test_get_returns_yaml_parsable_from_plaintext(self):
+        http_getter = GetterFactory.from_string(
+            "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/config/config.yml"
+        )
+        resp_text = Path("tests/testdata/config/config.yml").read_text()
+        with mock.patch("requests.get") as mock_request_get:
+            mock_request_get.return_value.text = resp_text
+            content = yaml.load(http_getter.get())
+        assert "pipeline" in content
+        assert "input" in content
+        assert "output" in content
