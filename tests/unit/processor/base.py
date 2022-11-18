@@ -173,6 +173,14 @@ class BaseProcessorTestCase(ABC):
         assert new_generic_rules_size > generic_rules_size
         assert new_specific_rules_size > specific_rules_size
 
+    def test_add_rules_from_directory_calls_getter_factory(self):
+        with mock.patch("logprep.util.getter.GetterFactory.from_string") as getter_factory:
+            self.object.add_rules_from_directory(
+                specific_rules_dirs=self.specific_rules_dirs,
+                generic_rules_dirs=self.generic_rules_dirs,
+            )
+            getter_factory.assert_called()
+
     def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
         prevents a kind of DDOS where a big amount of same rules are placed into
