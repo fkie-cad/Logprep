@@ -10,6 +10,7 @@ from yaml import safe_load
 from logprep import run_logprep
 from logprep._version import get_versions
 from logprep.run_logprep import DEFAULT_LOCATION_CONFIG
+from logprep.util.getter import GetterNotFoundError
 
 
 class TestRunLogprep:
@@ -36,6 +37,28 @@ class TestRunLogprep:
         with pytest.raises(SystemExit):
             run_logprep.main()
         mock_validate_rules.assert_called()
+
+    def test_uses_getter_to_get_config(self):
+        """ensures rule validation is called"""
+        sys.argv = [
+            "logprep",
+            "--disable-logging",
+            "--validate-rules",
+            "file://quickstart/exampledata/config/pipeline.yml",
+        ]
+        with pytest.raises(SystemExit, match="0"):
+            run_logprep.main()
+
+    def test_raises_getter_error_for_not_existing_protocol(self):
+        """ensures rule validation is called"""
+        sys.argv = [
+            "logprep",
+            "--disable-logging",
+            "--validate-rules",
+            "almighty_protocol://quickstart/exampledata/config/pipeline.yml",
+        ]
+        with pytest.raises(GetterNotFoundError, match="No getter for protocol 'almighty_protocol'"):
+            run_logprep.main()
 
     def test_quickstart_rules_are_valid(self):
         """ensures the quickstart rules are valid"""
