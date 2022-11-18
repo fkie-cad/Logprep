@@ -175,9 +175,11 @@ class BaseProcessorTestCase(ABC):
         assert new_generic_rules_size > generic_rules_size
         assert new_specific_rules_size > specific_rules_size
 
-    def test_add_rules_from_directory_calls_getter_factory(self):
+    def test_load_rules_calls_getter_factory(self):
         with mock.patch("logprep.util.getter.GetterFactory.from_string") as getter_factory:
-            with pytest.raises(TypeError, match="must be str, bytes or bytearray, not MagicMock"):
+            with pytest.raises(
+                TypeError, match="must be str, bytes or bytearray, not .*MagicMock.*"
+            ):
                 self.object.load_rules(
                     specific_rules_targets=self.specific_rules_dirs,
                     generic_rules_targets=self.generic_rules_dirs,
