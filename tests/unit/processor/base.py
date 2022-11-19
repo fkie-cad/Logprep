@@ -5,6 +5,7 @@ import json
 from abc import ABC
 from copy import deepcopy
 from logging import getLogger
+from pathlib import Path
 from typing import Iterable
 from unittest import mock
 
@@ -337,3 +338,17 @@ class BaseProcessorTestCase(ABC):
         self.object.process(event)
         assert self.object.metrics.mean_processing_time_per_event > 0
         assert self.object.metrics._mean_processing_time_sample_counter == 2
+
+    def test_accepts_tree_config_from_http(self):
+        config = deepcopy(self.CONFIG)
+        config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
+        tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
+        with mock.patch("requests.get") as mock_request_get:
+            mock_request_get.return_value.text = tree_config
+            processor = Factory.create({"test instance": config}, self.logger)
+            assert (
+                processor._specific_tree._config_path
+                == "http://does.not.matter.bla/tree_config.yml"
+            )
+            tree_config = json.loads(tree_config)
+            assert processor._specific_tree.priority_dict == tree_config.get("priority_dict")

@@ -48,7 +48,7 @@ class Processor(Component):
         )
         """List of rule locations to load. Can be directories, files or http endpoints."""
         tree_config: Optional[str] = field(
-            default=None, validator=[file_validator]
+            default=None, validator=[validators.optional(validators.instance_of(str))]
         )  # TODO test load tree_config from http
         """ Path to a JSON file with a valid rule tree configuration. """
 
