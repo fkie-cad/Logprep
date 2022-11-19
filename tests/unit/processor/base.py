@@ -310,16 +310,13 @@ class BaseProcessorTestCase(ABC):
     def test_validation_raises_if_tree_config_is_not_a_str(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": 12})
-        with pytest.raises(InvalidConfigurationError, match=r"tree_config is not a str"):
+        with pytest.raises(TypeError, match=r"must be <class 'str'>"):
             Factory.create({"test instance": config}, self.logger)
 
     def test_validation_raises_if_tree_config_is_not_exist(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "/i/am/not/a/file/path"})
-        with pytest.raises(
-            InvalidConfigurationError,
-            match=r"tree_config file '\/i\/am\/not\/a\/file\/path' does not exist",
-        ):
+        with pytest.raises(FileNotFoundError):
             Factory.create({"test instance": config}, self.logger)
 
     def test_processor_metrics_counts_processed_events(self):

@@ -95,13 +95,6 @@ class TestHttpGetter:
             user_agent = mock_request_get.call_args.kwargs.get("headers").get("User-Agent")
             assert re.search(r"Logprep version \d+\.\d+.\d+", user_agent)
 
-    def test_raises_for_bad_status(self):
-        http_getter = GetterFactory.from_string(
-            "https://raw.githubusercontent.com/fkie-cad/Logprep/main/do_not_exits"
-        )
-        with pytest.raises(requests.exceptions.HTTPError):
-            http_getter.get()
-
     def test_provides_oauth_compliant_headers(self):
         http_getter = GetterFactory.from_string(
             "https://oauth:ajhsdfpoweiurjdfs239487@the.target.url/targetfile"
