@@ -1,13 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 import json
-import requests
 from pathlib import Path
-import re
+from requests.auth import HTTPBasicAuth
 import pytest
 from ruamel.yaml import YAML
 from unittest import mock
 from logprep.util.getter import FileGetter, GetterFactory, GetterNotFoundError, HttpGetter
+from logprep._version import get_versions
 
 yaml = YAML(pure=True, typ="safe")
 
@@ -84,16 +84,19 @@ class TestHttpGetter:
         assert "output" in content
 
     def test_sends_logprep_version_in_user_agent(self):
-        http_getter = GetterFactory.from_string(
-            "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/config/config.yml"
-        )
+        http_getter = GetterFactory.from_string("https://the-target/file")
         resp_text = Path("tests/testdata/config/config.yml").read_text()
         with mock.patch("requests.get") as mock_request_get:
             mock_request_get.return_value.text = resp_text
             http_getter.get()
-            assert "headers" in mock_request_get.call_args.kwargs
-            user_agent = mock_request_get.call_args.kwargs.get("headers").get("User-Agent")
-            assert re.search(r"Logprep version \d+", user_agent)
+            logprep_version = get_versions().get("version")
+            mock_request_get.assert_called_with(
+                url="https://the-target/file",
+                timeout=5,
+                allow_redirects=True,
+                headers={"User-Agent": f"Logprep version {logprep_version}"},
+                auth=None,
+            )
 
     def test_provides_oauth_compliant_headers(self):
         http_getter = GetterFactory.from_string(
@@ -101,12 +104,16 @@ class TestHttpGetter:
         )
         with mock.patch("requests.get") as mock_request_get:
             http_getter.get()
-            assert "headers" in mock_request_get.call_args.kwargs
-            headers = mock_request_get.call_args.kwargs.get("headers")
-            assert headers.get("Authorization") == "Bearer ajhsdfpoweiurjdfs239487"
-            assert mock_request_get.call_args.kwargs.get("auth") is None
-            assert (
-                mock_request_get.call_args.kwargs.get("url") == "https://the.target.url/targetfile"
+            logprep_version = get_versions().get("version")
+            mock_request_get.assert_called_with(
+                url="https://the.target.url/targetfile",
+                timeout=5,
+                allow_redirects=True,
+                headers={
+                    "User-Agent": f"Logprep version {logprep_version}",
+                    "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
+                },
+                auth=None,
             )
 
     def test_provides_basic_authentication(self):
@@ -115,10 +122,14 @@ class TestHttpGetter:
         )
         with mock.patch("requests.get") as mock_request_get:
             http_getter.get()
-            assert "auth" in mock_request_get.call_args.kwargs
-            auth_info = mock_request_get.call_args.kwargs.get("auth")
-            assert auth_info.username == "myusername"
-            assert auth_info.password == "mypassword"
-            assert (
-                mock_request_get.call_args.kwargs.get("url") == "https://the.target.url/targetfile"
+            logprep_version = get_versions().get("version")
+            auth = HTTPBasicAuth("myusername", "mypassword")
+            mock_request_get.assert_called_with(
+                url="https://the.target.url/targetfile",
+                timeout=5,
+                allow_redirects=True,
+                headers={
+                    "User-Agent": f"Logprep version {logprep_version}",
+                },
+                auth=auth,
             )
