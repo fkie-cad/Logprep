@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 import json
+import requests
 from pathlib import Path
 import re
 import pytest
@@ -90,6 +91,13 @@ class TestHttpGetter:
         with mock.patch("requests.get") as mock_request_get:
             mock_request_get.return_value.text = resp_text
             content = yaml.load(http_getter.get())
-            assert "user_agent" in mock_request_get.call_args.kwargs
-            user_agent = mock_request_get.call_args.kwargs.get("user_agent")
+            assert "headers" in mock_request_get.call_args.kwargs
+            user_agent = mock_request_get.call_args.kwargs.get("headers").get("User-Agent")
             assert re.search(r"Logprep version \d+\.\d+.\d+", user_agent)
+
+    def test_raises_for_bad_status(self):
+        http_getter = GetterFactory.from_string(
+            "https://raw.githubusercontent.com/fkie-cad/Logprep/main/do_not_exits"
+        )
+        with pytest.raises(requests.exceptions.HTTPError):
+            http_getter.get()
