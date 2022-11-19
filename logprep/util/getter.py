@@ -4,6 +4,7 @@ import requests
 from typing import Tuple
 from pathlib import Path
 from logprep.abc.getter import Getter
+from logprep._version import get_versions
 
 
 class GetterNotFoundError(BaseException):
@@ -62,7 +63,13 @@ class HttpGetter(Getter):
 
     def get(self):
         """gets the content from a http server via uri"""
-        resp = requests.get(url=f"{self.protocol}://{self.target}", timeout=5)
+        user_agent = f"Logprep version {get_versions().get('version')}"
+        resp = requests.get(
+            url=f"{self.protocol}://{self.target}",
+            timeout=5,
+            allow_redirects=True,
+            user_agent=user_agent,
+        )
         resp.raise_for_status()
         content = resp.text
         return content

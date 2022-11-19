@@ -2,6 +2,7 @@
 # pylint: disable=no-self-use
 import json
 from pathlib import Path
+import re
 import pytest
 from ruamel.yaml import YAML
 from unittest import mock
@@ -80,3 +81,15 @@ class TestHttpGetter:
         assert "pipeline" in content
         assert "input" in content
         assert "output" in content
+
+    def test_sends_logprep_version_in_user_agent(self):
+        http_getter = GetterFactory.from_string(
+            "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/config/config.yml"
+        )
+        resp_text = Path("tests/testdata/config/config.yml").read_text()
+        with mock.patch("requests.get") as mock_request_get:
+            mock_request_get.return_value.text = resp_text
+            content = yaml.load(http_getter.get())
+            assert "user_agent" in mock_request_get.call_args.kwargs
+            user_agent = mock_request_get.call_args.kwargs.get("user_agent")
+            assert re.search(r"Logprep version \d+\.\d+.\d+", user_agent)

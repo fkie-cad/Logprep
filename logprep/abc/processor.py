@@ -17,7 +17,7 @@ from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util import getter
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.validators import file_validator, min_len_validator
+from logprep.util.validators import min_len_validator
 from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
 
 if TYPE_CHECKING:
