@@ -1,6 +1,7 @@
 """module for content getters"""
 import re
 import requests
+from requests.auth import HTTPBasicAuth
 from typing import Tuple
 from pathlib import Path
 from logprep.abc.getter import Getter
@@ -65,8 +66,25 @@ class HttpGetter(Getter):
         """gets the content from a http server via uri"""
         user_agent = f"Logprep version {get_versions().get('version')}"
         headers = {"User-Agent": user_agent}
+        basic_auth = None
+        target = self.target
+
+        auth_match = re.match(r"^((?P<username>.+):(?P<password>.+)@)?(?P<target>.+)", target)
+        target = auth_match.group("target")
+        username = auth_match.group("username")
+        password = auth_match.group("password")
+
+        if username == "oauth":
+            headers.update({"Authorization": f"Bearer {password}"})
+        if username is not None and username != "oauth":
+            basic_auth = HTTPBasicAuth(username, password)
+
         resp = requests.get(
-            url=f"{self.protocol}://{self.target}", timeout=5, allow_redirects=True, headers=headers
+            url=f"{self.protocol}://{target}",
+            timeout=5,
+            allow_redirects=True,
+            headers=headers,
+            auth=basic_auth,
         )
         resp.raise_for_status()
         content = resp.text
