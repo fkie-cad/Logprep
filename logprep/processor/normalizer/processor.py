@@ -63,9 +63,9 @@ class Normalizer(Processor):
 
         regex_mapping: str = field(validator=file_validator)
         """Path to regex mapping file with regex keywords that are replaced with regex expressions
-            by the normalizer."""
+            by the normalizer. For string format see :ref:`getters`."""
         html_replace_fields: Optional[str] = field(default=None, validator=file_validator)
-        """Path to yaml file with html replace fields"""
+        """Path to yaml file with html replace fields. For string format see :ref:`getters`"""
         count_grok_pattern_matches: Optional[dict] = field(
             default=None, validator=validators.optional(validators.instance_of(dict))
         )

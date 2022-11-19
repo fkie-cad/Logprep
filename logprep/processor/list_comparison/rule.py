@@ -57,9 +57,9 @@ class ListComparisonRule(FieldManagerRule):
         list_file_paths: List[str] = field(
             validator=validators.deep_iterable(member_validator=validators.instance_of(str))
         )
-        """List of files in relative or absolute notation"""
+        """List of files in relative or absolute notation. For string format see :ref:`getters`"""
         list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
-        """Base Path from where to find relative files from :code:`list_file_paths` (Optional)"""
+        """Base Path from where to find relative files from :code:`list_file_paths` For string format see :ref:`getters`. (Optional)"""
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)

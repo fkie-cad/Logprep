@@ -49,7 +49,7 @@ class Labeler(Processor):
         """Labeler Configurations"""
 
         schema: str = field(validator=[file_validator, json_validator])
-        """Path to a labeling schema file"""
+        """Path to a labeling schema file. For string format see :ref:`getters`"""
         include_parent_labels: Optional[bool] = field(
             default=False, validator=validators.optional(validator=validators.instance_of(bool))
         )

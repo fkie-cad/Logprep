@@ -143,7 +143,7 @@ class GenericAdderRule(Rule):
         """Contains the path to a file with a YML file that contains a dictionary of field names
         and values that should be added to the document.
         Instead of a path, a list of paths can be used to add multiple files.
-        All of those files must exist."""
+        All of those files must exist. For string format see :ref:`getters`"""
         only_first_existing_file: bool = field(
             validator=validators.instance_of(bool), default=False, eq=False
         )

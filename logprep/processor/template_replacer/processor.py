@@ -58,7 +58,7 @@ class TemplateReplacer(Processor):
 
         template: str = field(validator=file_validator)
         """
-        Path to a YML file with a list of replacements in the format
+        Path to a YML file (For path format see :ref:`getters`) with a list of replacements in the format
         `%{provider_name}-%{event_id}: %{new_message}`.
         """
 

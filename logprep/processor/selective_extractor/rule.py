@@ -70,6 +70,7 @@ It contains the path to a text file with a list of fields per line to be extract
 The file has to exist.
 
 It is possible to mix both extraction sources. They will be merged to one list without duplicates.
+For string format of :code:`extract_from_file` see :ref:`getters`.
 
 ..  code-block:: yaml
     :linenos:

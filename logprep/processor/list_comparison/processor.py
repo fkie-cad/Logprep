@@ -46,7 +46,7 @@ class ListComparison(Processor):
 
         list_search_base_path: str = field(validator=directory_validator)
         """Relative list paths in rules will be relative to this path if this is set.
-        This parameter is optional."""
+        This parameter is optional. For string format see :ref:`getters`"""
 
     rule_class = ListComparisonRule
 

@@ -70,12 +70,12 @@ class Pseudonymizer(Processor):
         """
         pubkey_analyst: str = field(validator=file_validator)
         """
-        Path to the public key of an analyst.
+        Path to the public key of an analyst. For string format see :ref:`getters`.
 
         * /var/git/analyst_pub.pem"""
         pubkey_depseudo: str = field(validator=file_validator)
         """
-        Path to the public key for depseudonymization
+        Path to the public key for depseudonymization. For string format see :ref:`getters`.
 
         * /var/git/depseudo_pub.pem
         """
@@ -83,7 +83,7 @@ class Pseudonymizer(Processor):
         """A salt that is used for hashing."""
         regex_mapping: str = field(validator=file_validator)
         """
-        Path to a file with a regex mapping for pseudonymization, i.e.:
+        Path to a file (For string format see :ref:`getters`) with a regex mapping for pseudonymization, i.e.:
 
         * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
         """

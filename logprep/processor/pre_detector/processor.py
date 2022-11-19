@@ -62,6 +62,7 @@ class PreDetector(Processor):
         alert_ip_list_path: str = field(default=None, validator=file_validator)
         """
         Path to a YML file or a list of paths to YML files with dictionaries of IPs.
+        For string format see :ref:`getters`.
         It is used by the Predetector to throw alerts if one of the IPs is found
         in fields that were defined in a rule.
 

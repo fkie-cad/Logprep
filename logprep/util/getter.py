@@ -1,4 +1,6 @@
-"""module for content getters"""
+"""Content getters are provide a shared interface to get content from targets.
+They are returned by the GetterFactory.
+"""
 import re
 import requests
 from requests.auth import HTTPBasicAuth
@@ -21,7 +23,7 @@ class GetterFactory:
 
     @classmethod
     def from_string(cls, getter_string: str) -> "FileGetter":
-        """factory method to get a getter
+        """factory method to return a getter from a string in format :code:`<protocol>://<target>`
 
         Parameters
         ----------
@@ -52,17 +54,31 @@ class GetterFactory:
 
 
 class FileGetter(Getter):
-    """FileIO getter"""
+    """get files (and only files) from a filesystem
 
-    def get(self):
+    match strings:
+
+    * :code:`/yourpath/yourfile.extension`
+    * :code:`file://yourpath/yourfile.extension`
+    """
+
+    def get(self) -> str:
         """opens file and returns its content"""
         return Path(self.target).read_text(encoding="utf8")
 
 
 class HttpGetter(Getter):
-    """Http getter"""
+    """get files from a api or simple web server.
 
-    def get(self):
+    match strings:
+
+    * simple http target :code:`http://your.target/file.yml`
+    * simple https target :code:`https://your.target/file.json`
+    * basic authentication with :code:`https://username:password@your_web_target`
+    * oauth compliant authentication with bearer token header :code:`https://oauth:<your bearer token>@your_web_target`
+    """
+
+    def get(self) -> str:
         """gets the content from a http server via uri"""
         user_agent = f"Logprep version {get_versions().get('version')}"
         headers = {"User-Agent": user_agent}

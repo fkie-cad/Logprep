@@ -38,7 +38,9 @@ class Processor(Component):
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
-        """List of rule locations to load. Can be directories, files or http endpoints."""
+        """List of rule locations to load. For string format see :ref:`getters`.
+        In addition file directories are allowed here.
+        """
         generic_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
@@ -46,11 +48,13 @@ class Processor(Component):
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
-        """List of rule locations to load. Can be directories, files or http endpoints."""
+        """List of rule locations to load. For string format see :ref:`getters`.
+        In addition file directories are allowed here.
+        """
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
         )  # TODO test load tree_config from http
-        """ Path to a JSON file with a valid rule tree configuration. """
+        """ Path to a JSON file with a valid rule tree configuration. For string format see :ref:`getters`"""
 
     @define(kw_only=True)
     class ProcessorMetrics(Metric):
