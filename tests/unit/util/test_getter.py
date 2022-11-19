@@ -90,10 +90,10 @@ class TestHttpGetter:
         resp_text = Path("tests/testdata/config/config.yml").read_text()
         with mock.patch("requests.get") as mock_request_get:
             mock_request_get.return_value.text = resp_text
-            content = yaml.load(http_getter.get())
+            http_getter.get()
             assert "headers" in mock_request_get.call_args.kwargs
             user_agent = mock_request_get.call_args.kwargs.get("headers").get("User-Agent")
-            assert re.search(r"Logprep version \d+\.\d+.\d+", user_agent)
+            assert re.search(r"Logprep version \d+", user_agent)
 
     def test_provides_oauth_compliant_headers(self):
         http_getter = GetterFactory.from_string(
