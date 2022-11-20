@@ -9,6 +9,7 @@ import json
 from ctypes import c_bool, c_double, c_ulonglong
 from logging import DEBUG, INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
+import queue
 from time import time
 from typing import List, TYPE_CHECKING
 import warnings
@@ -356,9 +357,17 @@ class Pipeline:
         self._input.shut_down()
         if hasattr(self._input, "server"):
             self._used_server_ports.pop(self._input.server.config.port)
+        self._drain_input_queues()
         self._output.shut_down()
         while self._pipeline:
             self._pipeline.pop().shut_down()
+
+    def _drain_input_queues(self):
+        if not hasattr(self._input, "_messages"):
+            return
+        if isinstance(self._input._messages, queue.Queue):
+            while self._input._messages.qsize():
+                self._retrieve_and_process_data()
 
     def stop(self):
         """Stop processing processors in the Pipeline."""

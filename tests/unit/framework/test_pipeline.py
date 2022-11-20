@@ -577,6 +577,26 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         assert 9001 in self.pipeline._used_server_ports
 
+    def test_shut_down_drains_input_queues(self, _):
+        self.pipeline._setup()
+        input_config = {
+            "testinput": {
+                "type": "http_input",
+                "uvicorn_config": {
+                    "host": "127.0.0.1",
+                    "port": 9000,
+                    "ssl_certfile": "tests/testdata/acceptance/http_input/cert.crt",
+                    "ssl_keyfile": "tests/testdata/acceptance/http_input/cert.key",
+                },
+                "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
+            }
+        }
+        self.pipeline._input = original_create(input_config, mock.MagicMock())
+        self.pipeline._input._messages.put({"message": "test message"})
+        assert self.pipeline._input._messages.qsize() == 1
+        self.pipeline._shut_down()
+        assert self.pipeline._input._messages.qsize() == 0
+
     def test_pipeline_raises_http_error_from_factory_create(self, mock_create):
         mock_create.side_effect = requests.HTTPError()
         with raises(requests.HTTPError):
