@@ -354,8 +354,9 @@ class Pipeline:
 
     def _shut_down(self):
         self._input.shut_down()
+        if hasattr(self._input, "server"):
+            self._used_server_ports.pop(self._input.server.config.port)
         self._output.shut_down()
-
         while self._pipeline:
             self._pipeline.pop().shut_down()
 
