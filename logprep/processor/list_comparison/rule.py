@@ -3,7 +3,7 @@ List Comparison
 ===============
 
 The list comparison enricher requires the additional field :code:`list_comparison`.
-The mandatory keys under :code:`list_comparison` are :code:`source_fields`
+The mandatory keys under :code:`list_comparison` are :code:`source_fields` (as list with one element)
 and :code:`target_field`. Former
 is used to identify the field which is to be checked against the provided lists.
 And the latter is used to define the parent field where the results should
@@ -16,7 +16,7 @@ In the following example, the field :code:`user_agent` will be checked against t
 (:code:`priviliged_users.txt`).
 Assuming that the value :code:`non_privileged_user` will match the provided list,
 the result of the list comparison (:code:`in_list`) will be added to the
-output field :code:`List_comparison.example`.
+target field :code:`List_comparison.example`.
 
 ..  code-block:: yaml
     :linenos:
