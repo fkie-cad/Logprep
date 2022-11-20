@@ -1,9 +1,10 @@
 ## Upcoming Changes
 
 * Remove rules deprecations
+* Consume lists, rules and configuration from filesystem and http endpoints
 
 
-## Next Release
+## v4.0.0
 ### Breaking
 
 * Splitting the general `connector` config into `input` and `output` to compose connector config independendly
@@ -14,17 +15,17 @@ under the subkey `preprocessing` of the `input` processor
 
 ### Features
 
-* Add an opensearch output connector that can be used to write directly into opensearch.
-* Add an elasticsearch output connector that can be used to write directly into elasticsearch.
+* Add an `opensearch` output connector that can be used to write directly into opensearch.
+* Add an `elasticsearch` output connector that can be used to write directly into elasticsearch.
 * Split connector config into seperate config keys `input` and `output`
 * Add preprocessing capabillities to all input connectors
 * Add preprocessor for log_arrival_time
 * Add preprocessor for log_arrival_timedelta
 * Add metrics to connectors
-* Add concatenator processor that can combine multiple source fields
-* Add dissector processor that tokinizes messages into new or existing fields
-* Add key_checker processor that checks if all dotted fields from a list are present in the event
-* Add field_manager processor that copies or moves fields and merges lists
+* Add `concatenator` processor that can combine multiple source fields
+* Add `dissector` processor that tokinizes messages into new or existing fields
+* Add `key_checker` processor that checks if all dotted fields from a list are present in the event
+* Add `field_manager` processor that copies or moves fields and merges lists
 * Add ability to delete source fields to `concatenator`, `datetime_extractor`, `dissector`, `domain_label_extractor`, `domain_resolver`, `geoip_enricher` and `list_comparison`
 * Add ability to overwrite target field to `datetime_extractor`, `domain_label_extractor`, `domain_resolver`, `geoip_enricher` and `list_comparison`
 
@@ -35,6 +36,7 @@ under the subkey `preprocessing` of the `input` processor
 * Revise the documentation
 * Add `sphinxcontrib.datatemplates` and `testcase-renderer` to docs
 * Reimplement `get_dotted_field_value` helper method which should lead to increased performance
+* Reimplement `dropper` processor code to improve performance
 
 ### Deprecations
 
