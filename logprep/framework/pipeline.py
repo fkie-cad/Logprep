@@ -112,7 +112,7 @@ class Pipeline:
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
-        used_server_ports: list,
+        used_server_ports: dict,
         metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, Handler):
@@ -202,7 +202,7 @@ class Pipeline:
         if hasattr(self._input, "server"):
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
-            self._used_server_ports.append(self._input.server.config.port)
+            self._used_server_ports.update({self._input.server.config.port: current_process().name})
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Finished creating connectors ({current_process().name})")
 

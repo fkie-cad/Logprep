@@ -44,7 +44,7 @@ class PipelineManager:
 
         manager = Manager()
         self._shared_dict = manager.dict()
-        self._used_server_ports = manager.list()
+        self._used_server_ports = manager.dict()
         for idx in range(configuration["process_count"]):
             self._shared_dict[idx] = None
 
