@@ -566,6 +566,17 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._shut_down()
         assert 9000 not in self.pipeline._used_server_ports
 
+    def test_http_input_registers_increased_port_to_shard_dict_after_shut_down(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.server.config.port = 9000
+        self.pipeline._used_server_ports = {9000: "other_process_name"}
+        self.pipeline._setup()
+        assert 9001 in self.pipeline._used_server_ports
+        self.pipeline._shut_down()
+        assert 9001 not in self.pipeline._used_server_ports
+        self.pipeline._setup()
+        assert 9001 in self.pipeline._used_server_ports
+
     def test_pipeline_raises_http_error_from_factory_create(self, mock_create):
         mock_create.side_effect = requests.HTTPError()
         with raises(requests.HTTPError):
