@@ -3,9 +3,10 @@ Domain Label Extractor
 ======================
 
 The domain label extractor requires the additional field :code:`domain_label_extractor`.
-The mandatory keys under :code:`domain_label_extractor` are :code:`target_field` and :code:`output_field`. Former
-is used to identify the field which contains the domain. And the latter is used to define the parent field where the
-results should be written to. Both fields can be dotted subfields. The sub fields of the parent output field of the
+The mandatory keys under :code:`domain_label_extractor` are :code:`source_fields` and :code:`target_field`. Former
+is used to identify the field (declared as list with one element) which contains the domain.
+And the latter is used to define the parent field where theresults should be written to.
+Both fields can be dotted subfields. The sub fields of the parent output field of the
 result are: :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`.
 
 In the following example the domain :code:`www.sub.domain.de` will be split into it's subdomain :code:`www.sub`, it's
