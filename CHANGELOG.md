@@ -42,19 +42,19 @@ under the subkey `preprocessing` of the `input` processor
 
 #### Rule Language
 
-* `datetime_extractor.datetime_field` is deprecated. Use `datetime_extractor.source_fields` instead.
+* `datetime_extractor.datetime_field` is deprecated. Use `datetime_extractor.source_fields` as list instead.
 * `datetime_extractor.destination_field` is deprecated. Use `datetime_extractor.target_field` instead.
 * `delete` is deprecated. Use `deleter.delete` instead.
-* `domain_label_extractor.target_field` is deprecated. Use `domain_label_extractor.source_fields` instead.
+* `domain_label_extractor.target_field` is deprecated. Use `domain_label_extractor.source_fields` as list instead.
 * `domain_label_extractor.output_field` is deprecated. Use `domain_label_extractor.target_field` instead.
-* `domain_resolver.source_url_or_domain` is deprecated. Use `domain_resolver.source_fields` instead.
+* `domain_resolver.source_url_or_domain` is deprecated. Use `domain_resolver.source_fields` as list instead.
 * `domain_resolver.output_field` is deprecated. Use `domain_resolver.target_field` instead.
 * `drop` is deprecated. Use `dropper.drop` instead.
 * `drop_full` is deprecated. Use `dropper.drop_full` instead.
-* `geoip_enricher.source_ip` is deprecated. Use `geoip_enricher.source_fields` instead.
+* `geoip_enricher.source_ip` is deprecated. Use `geoip_enricher.source_fields` as list instead.
 * `geoip_enricher.output_field` is deprecated. Use `geoip_enricher.target_field` instead.
 * `label` is deprecated. Use `labeler.label` instead.
-* `list_comparison.check_field` is deprecated. Use `list_comparison.source_fields` instead.
+* `list_comparison.check_field` is deprecated. Use `list_comparison.source_fields` as list instead.
 * `list_comparison.output_field` is deprecated. Use `list_comparison.target_field` instead.
 * `pseudonymize` is deprecated. Use `pseudonymizer.pseudonyms` instead.
 * `url_fields is` deprecated. Use `pseudonymizer.url_fields` instead.
