@@ -1,3 +1,5 @@
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
 from logging import makeLogRecord
 from random import randint
 from unittest import mock
@@ -62,9 +64,7 @@ class TestAggregator:
         for log in Aggregator.logs.values():
             assert log["cnt_passed"] == 0
             assert log["cnt"] == 0
-            assert log["first_record"].msg == "Test log ({} in ~0.0 sek)".format(
-                log_cnt - cnt_threshold
-            )
+            assert log["first_record"].msg == f"Test log ({log_cnt - cnt_threshold} in ~0.0 sek)"
             assert log["last_record"] is None
             assert log["aggregate"] is True
 
@@ -100,13 +100,12 @@ class TestAggregator:
         for log in Aggregator.logs.values():
             assert log["cnt_passed"] == 0
             assert log["cnt"] == 0
-            assert log["first_record"].msg == "Test log ({} in ~0.0 sek)".format(
-                log_cnt - cnt_threshold
-            )
+            assert log["first_record"].msg == f"Test log ({log_cnt - cnt_threshold} in ~0.0 sek)"
             assert log["last_record"] is None
             assert log["aggregate"] is True
 
-        # It should only print aggregated if there were still too many logs after the last aggregation unless the next period passed
+        # It should only print aggregated if there were still too many logs after
+        # the last aggregation unless the next period passed
         additional_aggregation_cnt = 3
         for _ in range(additional_aggregation_cnt):
             mock_time.return_value = mock_time.return_value + period + 0.05
@@ -121,9 +120,7 @@ class TestAggregator:
             for log in Aggregator.logs.values():
                 assert log["cnt_passed"] == 0
                 assert log["cnt"] == 0
-                assert log["first_record"].msg == "Test log ({} in ~{} sek)".format(
-                    random_log_cnt, period
-                )
+                assert log["first_record"].msg == f"Test log ({random_log_cnt} in ~{period} sek)"
                 assert log["last_record"] is None
                 assert log["aggregate"] is True
 
