@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
+import math
 import pytest
+from logprep.processor.calculator.fourFn import BNF, evaluate_stack, exprStack
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -68,3 +70,59 @@ class TestCalculator(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         assert event == expected
+
+    @pytest.mark.parametrize(
+        "expression, expected",
+        [
+            ("9", 9),
+            ("-9", -9),
+            ("--9", 9),
+            ("-E", -math.e),
+            ("9 + 3 + 6", 9 + 3 + 6),
+            ("9 + 3 / 11", 9 + 3.0 / 11),
+            ("(9 + 3)", (9 + 3)),
+            ("(9+3) / 11", (9 + 3.0) / 11),
+            ("9 - 12 - 6", 9 - 12 - 6),
+            ("9 - (12 - 6)", 9 - (12 - 6)),
+            ("2*3.14159", 2 * 3.14159),
+            ("3.1415926535*3.1415926535 / 10", 3.1415926535 * 3.1415926535 / 10),
+            ("PI * PI / 10", math.pi * math.pi / 10),
+            ("PI*PI/10", math.pi * math.pi / 10),
+            ("PI^2", math.pi**2),
+            ("round(PI^2)", round(math.pi**2)),
+            ("6.02E23 * 8.048", 6.02e23 * 8.048),
+            ("e / 3", math.e / 3),
+            ("sin(PI/2)", math.sin(math.pi / 2)),
+            ("10+sin(PI/4)^2", 10 + math.sin(math.pi / 4) ** 2),
+            ("trunc(E)", int(math.e)),
+            ("trunc(-E)", int(-math.e)),
+            ("round(E)", round(math.e)),
+            ("round(-E)", round(-math.e)),
+            ("E^PI", math.e**math.pi),
+            ("exp(0)", 1),
+            ("exp(1)", math.e),
+            ("2^3^2", 2**3**2),
+            ("(2^3)^2", (2**3) ** 2),
+            ("2^3+2", 2**3 + 2),
+            ("2^3+5", 2**3 + 5),
+            ("2^9", 2**9),
+            ("sgn(-2)", -1),
+            ("sgn(0)", 0),
+            ("sgn(0.1)", 1),
+            ("round(E, 3)", round(math.e, 3)),
+            ("round(PI^2, 3)", round(math.pi**2, 3)),
+            ("sgn(cos(PI/4))", 1),
+            ("sgn(cos(PI/2))", 0),
+            ("sgn(cos(PI*3/4))", -1),
+            ("+(sgn(cos(PI/4)))", 1),
+            ("-(sgn(cos(PI/4)))", -1),
+            ("hypot(3, 4)", 5),
+            ("multiply(3, 7)", 21),
+            ("all(1,1,1)", True),
+            ("all(1,1,1,1,1,0)", False),
+        ],
+    )
+    def test_fourfn(self, expression, expected):
+        _ = BNF().parseString(expression, parseAll=True)
+        result = evaluate_stack(exprStack[:])
+        assert result == expected
