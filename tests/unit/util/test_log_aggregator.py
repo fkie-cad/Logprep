@@ -159,7 +159,7 @@ class TestAggregator:
         should_print = []
         for _ in range(log_cnt):
             should_print.append(
-                Aggregator._aggregate(
+                Aggregator().filter(
                     makeLogRecord({"msg": "Test log", "levelno": 20, "created": 0.0})
                 )
             )

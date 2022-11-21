@@ -1,14 +1,14 @@
 """This module implements a logger that is able to aggregate log messages."""
 
 import logging
-from logging import LogRecord
+from logging import LogRecord, Filter
 from time import time, sleep
 import threading
 from collections import OrderedDict
 from copy import deepcopy
 
 
-class Aggregator:
+class Aggregator(Filter):
     """Used to aggregate log messages."""
 
     logs = OrderedDict()
@@ -95,8 +95,6 @@ class Aggregator:
                 if time() - cls.logs[log_id]["first_record"].created >= cls.log_period:
                     cls.logs[log_id]["aggregate"] = False
 
-    @staticmethod
-    def filter(record: LogRecord) -> bool:
+    def filter(self, record: LogRecord) -> bool:
         """Print aggregation if it is ready via a Logger filter."""
-        should_print = Aggregator._aggregate(record)
-        return should_print
+        return Aggregator._aggregate(record)
