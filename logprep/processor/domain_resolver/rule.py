@@ -3,11 +3,11 @@ Domain Resolver
 ===============
 
 The domain resolver requires the additional field :code:`domain_resolver`.
-The additional field :code:`domain_resolver.source_url_or_domain` must be defined.
+The additional field :code:`domain_resolver.source_fields` must be defined as list with one element.
 It contains the field from which an URL should be parsed and then written to :code:`resolved_ip`.
 The URL can be located in continuous text insofar the URL is valid.
 
-Optionally, the output field can be configured (overriding the default :code:`resolved_ip`) using the parameter :code:`output_field`.
+Optionally, the output field can be configured (overriding the default :code:`resolved_ip`) using the parameter :code:`target_field`.
 This can be a dotted subfield.
 
 In the following example the URL from the field :code:`url` will be extracted and written to :code:`resolved_ip`.

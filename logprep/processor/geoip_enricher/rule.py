@@ -4,8 +4,8 @@ Geoip Enricher
 
 The geoip enricher requires the additional field :code:`geoip`.
 The default output_field can be overridden using the optional parameter
-:code:`output_field`. This can be a dotted
-subfield. The additional field :code:`geoip.source_ip` must be given.
+:code:`target_field`. This can be a dotted subfield.
+The additional field :code:`geoip.source_fields` must be given as list with one element.
 It contains the IP for which the geoip data should be added.
 
 In the following example the IP in :code:`client.ip` will be enriched with geoip data.

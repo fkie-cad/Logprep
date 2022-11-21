@@ -3,7 +3,7 @@ Datetime Extractor
 ==================
 
 The datetime extractor requires the additional field :code:`datetime_extractor`.
-The additional fields :code:`datetime_extractor.source_field` and
+The additional fields :code:`datetime_extractor.source_fields` and
 :code:`datetime_extractor.target_field` must be defined.
 The first one contains the name of the field from which the timestamp should be taken
 and the last one contains the name of the field under which a split timestamp should be written.
@@ -17,7 +17,7 @@ In the following example the timestamp will be extracted from
 
     filter: '@timestamp'
     datetime_extractor:
-      source_field: '@timestamp'
+      source_fields: ['@timestamp']
       target_field: 'split_@timestamp'
     description: '...'
 """
