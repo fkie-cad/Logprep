@@ -94,3 +94,9 @@ class Aggregator:
             else:
                 if time() - cls.logs[log_id]["first_record"].created >= cls.log_period:
                     cls.logs[log_id]["aggregate"] = False
+
+    @staticmethod
+    def filter(record: LogRecord) -> bool:
+        """Print aggregation if it is ready via a Logger filter."""
+        should_print = Aggregator._aggregate(record)
+        return should_print
