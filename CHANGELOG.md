@@ -12,6 +12,7 @@
 
 * Add an `http input connector` that spawns a uvicorn server which parses requests content to events.
 * provide the possibility to consume lists, rules and configuration from files and http endpoints
+* add `calculator` processor to calculate with or without field values
 
 ### Improvements
 
