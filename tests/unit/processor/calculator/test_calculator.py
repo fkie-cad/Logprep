@@ -1,9 +1,11 @@
 # pylint: disable=missing-docstring
 import math
+
 import pytest
+
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.calculator.fourFn import BNF, evaluate_stack, exprStack
 from tests.unit.processor.base import BaseProcessorTestCase
-
 
 test_cases = [  # testcase, rule, event, expected
     (
@@ -57,6 +59,47 @@ test_cases = [  # testcase, rule, event, expected
 ]
 
 
+failure_test_cases = [  # testcase, rule, event, expected, error_message
+    (
+        "Tags failure if parse is not possible",
+        {
+            "filter": "field1 AND field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} * ${field3}",
+                "target_field": "result",
+            },
+        },
+        {"field1": "not parsable", "field2": "4", "field3": 2},
+        {
+            "field1": "not parsable",
+            "field2": "4",
+            "field3": 2,
+            "tags": ["_calculator_failure"],
+        },
+        r"expression 'not parsable \+ 4 \* 2' could not be parsed",
+    ),
+    (
+        "Tags failure if targetfield exist",
+        {
+            "filter": "field1 AND field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} * ${field3}",
+                "target_field": "result",
+            },
+        },
+        {"field1": "5", "field2": "4", "field3": 2, "result": "exisist"},
+        {
+            "field1": "5",
+            "field2": "4",
+            "field3": 2,
+            "result": "exisist",
+            "tags": ["_calculator_failure"],
+        },
+        "one or more subfields existed and could not be extended: result",
+    ),
+]
+
+
 class TestCalculator(BaseProcessorTestCase):
 
     CONFIG: dict = {
@@ -70,6 +113,13 @@ class TestCalculator(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         assert event == expected
+
+    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
+        self._load_specific_rule(rule)
+        with pytest.raises(ProcessingWarning, match=error_message):
+            self.object.process(event)
+        assert event == expected, testcase
 
     @pytest.mark.parametrize(
         "expression, expected",
