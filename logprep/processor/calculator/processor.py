@@ -25,5 +25,5 @@ class Calculator(Processor):
         template = Template(rule.calc)
         expression = template.substitute(source_field_dict)
         _ = BNF().parseString(expression, parseAll=True)
-        val = evaluate_stack(exprStack[:])
-        add_field_to(event, output_field=rule.target_field, content=val)
+        result = evaluate_stack(exprStack[:])
+        add_field_to(event, output_field=rule.target_field, content=result)

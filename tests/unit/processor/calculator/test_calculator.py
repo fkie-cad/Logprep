@@ -28,6 +28,30 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "This is a message", "field1": "1"},
         {"message": "This is a message", "field1": "1", "new_field": 2},
     ),
+    (
+        "sums floats from multiple fields",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "1+${field1}+${field2}",
+                "target_field": "result",
+            },
+        },
+        {"message": "This is a message", "field1": "1.2", "field2": 4.5},
+        {"message": "This is a message", "field1": "1.2", "field2": 4.5, "result": 6.7},
+    ),
+    (
+        "multiplies before sum",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "${field1} + ${field2} * ${field3}",
+                "target_field": "result",
+            },
+        },
+        {"message": "This is a message", "field1": "3", "field2": 5, "field3": "2"},
+        {"message": "This is a message", "field1": "3", "field2": 5, "field3": "2", "result": 13},
+    ),
 ]
 
 

@@ -21,7 +21,6 @@ from pyparsing import (
     Forward,
     Group,
     Literal,
-    ParseException,
     Regex,
     Suppress,
     Word,
@@ -59,7 +58,7 @@ def BNF():
     term    :: factor [ multop factor ]*
     expr    :: term [ addop term ]*
     """
-    global bnf
+    global bnf  # pylint: disable=global-statement
     if not bnf:
         # use CaselessKeyword for e and pi, to avoid accidentally matching
         # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
@@ -84,7 +83,7 @@ def BNF():
         expr_list = delimitedList(Group(expr))
         # add parse action that replaces the function identifier with a (name, number of args) tuple
         def insert_fn_argcount_tuple(t):
-            fn = t.pop(0)
+            fn = t.pop(0)  # pylint: disable=redefined-outer-name
             num_args = len(t[0])
             t.insert(0, (fn, num_args))
 
@@ -97,8 +96,9 @@ def BNF():
             )
         ).setParseAction(push_unary_minus)
 
-        # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...", we get right-to-left
-        # exponents, instead of left-to-right that is, 2^3^2 = 2^(3^2), not (2^3)^2.
+        # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...",
+        # we get right-to-left exponents,
+        # instead of left-to-right that is, 2^3^2 = 2^(3^2), not (2^3)^2.
         factor = Forward()
         factor <<= atom + (expop + factor).setParseAction(push_first)[...]
         term = factor + (multop + factor).setParseAction(push_first)[...]
@@ -154,26 +154,10 @@ def evaluate_stack(s):
         args = reversed([evaluate_stack(s) for _ in range(num_args)])
         return fn[op](*args)
     elif op[0].isalpha():
-        raise Exception("invalid identifier '%s'" % op)
+        raise Exception(f"invalid identifier '{op}'")
     else:
         # try to evaluate as int first, then as float if int fails
         try:
             return int(op)
         except ValueError:
             return float(op)
-
-
-def test(s, expected):
-    exprStack[:] = []
-    try:
-        results = BNF().parseString(s, parseAll=True)
-        val = evaluate_stack(exprStack[:])
-    except ParseException as pe:
-        print(s, "failed parse:", str(pe))
-    except Exception as e:
-        print(s, "failed eval:", str(e), exprStack)
-    else:
-        if val == expected:
-            print(s, "=", val, results, "=>", exprStack)
-        else:
-            print(s + "!!!", val, "!=", expected, results, "=>", exprStack)
