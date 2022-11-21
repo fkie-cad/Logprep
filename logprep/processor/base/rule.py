@@ -212,7 +212,7 @@ class Rule:
     # pylint: enable=C0111
 
     @classmethod
-    def create_rules_from_file(cls, path: str) -> list:
+    def create_rules_from_target(cls, path: str) -> list:
         """Create a rule from a file."""
         content = GetterFactory.from_string(path).get()
         try:
