@@ -86,7 +86,9 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
-    """plaintext endpoint http connector"""
+    """plaintext endpoint http connector.
+    Puts the whole body into the message field.
+    """
 
     async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
