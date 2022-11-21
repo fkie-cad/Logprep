@@ -53,7 +53,7 @@ class Processor(Component):
         """
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
-        )  # TODO test load tree_config from http
+        )
         """Path to a JSON file with a valid rule tree configuration. 
         For string format see :ref:`getters`"""
 
