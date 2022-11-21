@@ -10,11 +10,11 @@ from typing import Iterable
 from unittest import mock
 
 import pytest
+import requests
 from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.factory_error import InvalidConfigurationError
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import ProcessStrategy
@@ -349,3 +349,10 @@ class BaseProcessorTestCase(ABC):
             )
             tree_config = json.loads(tree_config)
             assert processor._specific_tree.priority_dict == tree_config.get("priority_dict")
+
+    def test_raises_http_error(self):
+        config = deepcopy(self.CONFIG)
+        config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
+        with mock.patch("requests.get", side_effect=requests.HTTPError()):
+            with pytest.raises(requests.HTTPError):
+                Factory.create({"test instance": config}, self.logger)

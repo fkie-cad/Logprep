@@ -4,26 +4,27 @@
 import re
 from copy import deepcopy
 from logging import DEBUG, WARNING, getLogger
-from multiprocessing import active_children, Lock
+from multiprocessing import Lock, active_children
 from unittest import mock
 
+import requests
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
 from logprep.abc import Processor
 from logprep.abc.input import (
-    SourceDisconnectedError,
-    FatalInputError,
-    WarningInputError,
     CriticalInputError,
+    FatalInputError,
+    SourceDisconnectedError,
+    WarningInputError,
 )
-from logprep.abc.output import WarningOutputError, CriticalOutputError, FatalOutputError
+from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.factory import Factory
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
+    MustProvideALogHandlerError,
     MustProvideAnMPLogHandlerError,
     Pipeline,
-    MustProvideALogHandlerError,
     SharedCounter,
 )
 from logprep.metrics.metric import MetricTargets
@@ -539,6 +540,11 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._output.store_failed.assert_called_with(
             "This is non critical", {"some": "event"}, None
         )
+
+    def test_pipeline_raises_http_error_from_factory_create(self, mock_create):
+        mock_create.side_effect = requests.HTTPError()
+        with raises(requests.HTTPError):
+            self.pipeline._setup()
 
 
 class TestMultiprocessingPipeline(ConfigurationForTests):
