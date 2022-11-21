@@ -65,6 +65,96 @@ class TestFileGetter:
             content = file_getter.get()
             assert content == "my content"
 
+    @pytest.mark.parametrize(
+        "method_name, input_content, expected_output",
+        [
+            (
+                "get_yaml",
+                """---
+first_dict:
+    key:
+        - valid_list_element
+        - valid_list_element
+                """,
+                {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+            ),
+            (
+                "get_yaml",
+                """---
+first_dict:
+    key:
+        - valid_list_element
+        - valid_list_element
+---
+second_dict:
+    key:
+        - valid_list_element
+        - valid_list_element
+                """,
+                [
+                    {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                    {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                ],
+            ),
+            (
+                "get_json",
+                """{
+                    "first_dict": {
+                        "key": [
+                            "valid_list_element",
+                            "valid_list_element"
+                        ]
+                    }
+                }
+                """,
+                {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+            ),
+            (
+                "get_json",
+                """{
+                    "first_dict": {
+                        "key": [
+                            "valid_list_element",
+                            "valid_list_element"
+                        ]
+                    }
+                }
+                """,
+                {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+            ),
+            (
+                "get_json",
+                """[{
+                    "first_dict": {
+                        "key": [
+                            "valid_list_element",
+                            "valid_list_element"
+                        ]
+                    }
+                }, 
+                {
+                    "second_dict": {
+                        "key": [
+                            "valid_list_element",
+                            "valid_list_element"
+                        ]
+                    }
+                }]
+                """,
+                [
+                    {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                    {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                ],
+            ),
+        ],
+    )
+    def test_parses_content(self, method_name, input_content, expected_output):
+        file_getter = GetterFactory.from_string("/my/file")
+        method = getattr(file_getter, method_name)
+        with mock.patch("io.open", mock.mock_open(read_data=input_content)):
+            output = method()
+            assert output == expected_output
+
 
 class TestHttpGetter:
     def test_factory_returns_http_getter_for_http(self):
