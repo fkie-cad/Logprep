@@ -154,8 +154,11 @@ class HttpConnector(Input):
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`.
         
         .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
+            :noindex:
         .. autoclass:: logprep.connector.http.input.JSONLHttpEndpoint
+            :noindex:
         .. autoclass:: logprep.connector.http.input.JSONHttpEndpoint
+            :noindex:
         """
 
     app: FastAPI
