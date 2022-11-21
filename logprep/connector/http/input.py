@@ -27,7 +27,6 @@ import contextlib
 import inspect
 import json
 import queue
-import sys
 import threading
 from abc import ABC, abstractmethod
 from typing import Mapping, Tuple, Union
@@ -39,10 +38,6 @@ from pydantic import BaseModel  # pylint: disable=no-name-in-module
 
 from logprep.abc.input import Input
 
-if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
-else:
-    from functools import cached_property
 uvicorn_parameter_keys = inspect.signature(uvicorn.Config).parameters.keys()
 UVICORN_CONFIG_KEYS = [
     parameter for parameter in uvicorn_parameter_keys if parameter not in ["app", "log_level"]
