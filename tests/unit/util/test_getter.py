@@ -2,12 +2,14 @@
 # pylint: disable=no-self-use
 import json
 from pathlib import Path
-from requests.auth import HTTPBasicAuth
-import pytest
-from ruamel.yaml import YAML
 from unittest import mock
-from logprep.util.getter import FileGetter, GetterFactory, GetterNotFoundError, HttpGetter
+
+import pytest
+from requests.auth import HTTPBasicAuth
+from ruamel.yaml import YAML
+
 from logprep._version import get_versions
+from logprep.util.getter import FileGetter, GetterFactory, GetterNotFoundError, HttpGetter
 
 yaml = YAML(pure=True, typ="safe")
 
@@ -26,6 +28,18 @@ class TestGetterFactory:
             ("my/file", "file", "my/file"),
             ("http://my/file", "http", "my/file"),
             ("https://my/file", "https", "my/file"),
+            ("http://user:password@my/file", "http", "user:password@my/file"),
+            ("https://user:password@my/file", "https", "user:password@my/file"),
+            (
+                "http://oauth:ajpf0q9vrfásdjlk__234d@my/file",
+                "http",
+                "oauth:ajpf0q9vrfásdjlk__234d@my/file",
+            ),
+            (
+                "https://oauth:ajpf0q9vrfásdjlk__234d@my/file",
+                "https",
+                "oauth:ajpf0q9vrfásdjlk__234d@my/file",
+            ),
         ],
     )
     def test_from_string_sets_protocol_and_target(
