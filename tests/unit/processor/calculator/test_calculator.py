@@ -56,6 +56,22 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "This is a message", "field1": "3", "field2": 5, "field3": "2"},
         {"message": "This is a message", "field1": "3", "field2": 5, "field3": "2", "result": 13},
     ),
+    (
+        "do not raise if field value is 0",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} * ${field3}",
+                "target_field": "result",
+            },
+        },
+        {"field1": "", "field2": "4", "field3": 2},
+        {
+            "field1": "0",
+            "field2": "4",
+            "field3": 2,
+        },
+    ),
 ]
 
 
@@ -112,7 +128,25 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        "bla",
+        r"no value for fields: \['field1'\]",
+    ),
+    (
+        "Tags failure if source_field is empty",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} * ${field3}",
+                "target_field": "result",
+            },
+        },
+        {"field1": "", "field2": "4", "field3": 2},
+        {
+            "field1": "",
+            "field2": "4",
+            "field3": 2,
+            "tags": ["_calculator_failure"],
+        },
+        r"no value for fields: \['field1'\]",
     ),
 ]
 
