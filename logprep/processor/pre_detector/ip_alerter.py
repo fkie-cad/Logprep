@@ -38,20 +38,19 @@ class IPAlerter:
     def _init_alert_ip_list(self, alert_ip_lists: List):
         for alert_ip_list in alert_ip_lists:
             if alert_ip_list and isfile(alert_ip_list):
-                with open(alert_ip_list, "r", encoding="utf8") as alert_ip_list_file:
-                    content = GetterFactory.from_string(alert_ip_list).get()
-                    full_alert_ip_list = yaml.load(content)
-                    self._filter_non_expired_alert_ips(full_alert_ip_list)
-                    self._single_alert_ips.update(
-                        set(ip_string for ip_string in self._alert_ips_map if "/" not in ip_string)
+                content = GetterFactory.from_string(alert_ip_list).get()
+                full_alert_ip_list = yaml.load(content)
+                self._filter_non_expired_alert_ips(full_alert_ip_list)
+                self._single_alert_ips.update(
+                    set(ip_string for ip_string in self._alert_ips_map if "/" not in ip_string)
+                )
+                self._alert_network.update(
+                    set(
+                        ip_network(ip_string)
+                        for ip_string in self._alert_ips_map
+                        if "/" in ip_string
                     )
-                    self._alert_network.update(
-                        set(
-                            ip_network(ip_string)
-                            for ip_string in self._alert_ips_map
-                            if "/" in ip_string
-                        )
-                    )
+                )
 
     def _filter_non_expired_alert_ips(self, full_alert_ip_list: dict):
         for alert_ip, expiration_date_str in full_alert_ip_list.items():
