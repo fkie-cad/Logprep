@@ -75,6 +75,34 @@ class TestAggregator:
             assert log["aggregate"] is False
 
     @mock.patch("logprep.util.log_aggregator.time", return_value=0.0)
+    def test_aggregation_converts_to_minutes(self, mock_time):
+        cnt_threshold = 3
+        period = 300
+        Aggregator.setup(cnt_threshold, period)
+        log_cnt = 10
+
+        should_print = self.add_log_n_times(log_cnt)
+        assert should_print == [True] * cnt_threshold + [False] * (log_cnt - cnt_threshold)
+        assert len(Aggregator.logs) == 1
+
+        for log in Aggregator.logs.values():
+            assert log["cnt_passed"] == cnt_threshold
+            assert log["cnt"] == 10
+            assert log["first_record"].msg == "Test log"
+            assert log["last_record"].msg == "Test log"
+
+        mock_time.return_value = mock_time.return_value + 61
+
+        Aggregator._perform_logging_if_possible()
+
+        for log in Aggregator.logs.values():
+            assert log["cnt_passed"] == 0
+            assert log["cnt"] == 0
+            assert log["first_record"].msg == f"Test log ({log_cnt - cnt_threshold} in ~1.0 min)"
+            assert log["last_record"] is None
+            assert log["aggregate"] is True
+
+    @mock.patch("logprep.util.log_aggregator.time", return_value=0.0)
     @mock.patch("logging.getLogger")
     def test_aggregation_keep_aggregating_on_consecutive_periods(
         self, logging_get_logger, mock_time

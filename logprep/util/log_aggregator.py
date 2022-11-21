@@ -39,11 +39,6 @@ class Aggregator:
         cls.timer_thread.start()
 
     @classmethod
-    def stop_timer(cls):
-        """Stop repeating timer for aggregation."""
-        cls.timer_thread.cancel()
-
-    @classmethod
     def _aggregate(cls, record: LogRecord) -> bool:
         log_id = "{0[levelname]}:{0[name]}:{0[msg]}".format(record.__dict__)
         if log_id not in cls.logs:
@@ -83,10 +78,10 @@ class Aggregator:
                 time_passed = round(time() - data["first_record"].created, 1)
                 time_passed = min(time_passed, cls.log_period)
                 if time_passed < 60:
-                    period = "{} sek".format(time_passed)
+                    period = f"{time_passed} sek"
                 else:
                     period = f"{time_passed / 60.0:.1f} min"
-                data["last_record"].__dict__["msg"] += " ({} in ~{})".format(count, period)
+                data["last_record"].__dict__["msg"] += f" ({count} in ~{period})"
                 logging.getLogger(data["last_record"].__dict__["name"]).log(
                     data["last_record"].levelno, data["last_record"].msg
                 )
@@ -99,14 +94,3 @@ class Aggregator:
             else:
                 if time() - cls.logs[log_id]["first_record"].created >= cls.log_period:
                     cls.logs[log_id]["aggregate"] = False
-
-    @staticmethod
-    def filter(record: LogRecord) -> bool:
-        """Print aggregation if it is ready via a Logger filter."""
-        should_print = Aggregator._aggregate(record)
-        return should_print
-
-    @staticmethod
-    def exit():
-        """Print aggregation if it is ready before exiting the program."""
-        Aggregator._log_aggregated()
