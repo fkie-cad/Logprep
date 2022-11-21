@@ -20,13 +20,10 @@ import re
 from typing import Tuple
 
 from attrs import define, field, validators
-from ruamel.yaml import YAML
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.getter import GetterFactory
-
-yaml = YAML(typ="safe", pure=True)
 
 
 class HyperscanResolverRuleError(InvalidRuleDefinitionError):
@@ -83,8 +80,7 @@ class HyperscanResolverRule(Rule):
         def _init_resolve_from_file(self):
             pattern, resolve_file_path = self._get_resolve_file_path_and_pattern()
             try:
-                content = GetterFactory.from_string(resolve_file_path).get()
-                add_dict = yaml.load(content)
+                add_dict = GetterFactory.from_string(resolve_file_path).get_yaml()
 
                 if isinstance(add_dict, dict) and all(
                     isinstance(value, str) for value in add_dict.values()

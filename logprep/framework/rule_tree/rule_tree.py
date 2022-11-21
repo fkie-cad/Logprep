@@ -1,6 +1,5 @@
 """This module contains the rule tree functionality."""
 
-import json
 from logging import Logger
 from typing import List, TYPE_CHECKING
 
@@ -83,8 +82,7 @@ class RuleTree:
         self.tag_map = {}
 
         if self._config_path:
-            content = getter.GetterFactory.from_string(self._config_path).get()
-            config_data = json.loads(content)
+            config_data = getter.GetterFactory.from_string(self._config_path).get_json()
             self.priority_dict = config_data["priority_dict"]
             self.tag_map = config_data["tag_map"]
 

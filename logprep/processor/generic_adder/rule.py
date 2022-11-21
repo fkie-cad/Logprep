@@ -91,12 +91,9 @@ import re
 from typing import Any
 
 from attrs import define, field, validators
-from ruamel.yaml import YAML
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
-
-yaml = YAML(typ="safe", pure=True)
 
 
 class GenericAdderRuleError(InvalidRuleDefinitionError):
@@ -200,8 +197,7 @@ class GenericAdderRule(Rule):
             missing_files = []
             for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
                 try:
-                    content = GetterFactory.from_string(add_file).get()
-                    add_dict = yaml.load(content)
+                    add_dict = GetterFactory.from_string(add_file).get_yaml()
                 except FileNotFoundError:
                     missing_files.append(add_file)
                     continue
