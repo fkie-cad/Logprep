@@ -59,7 +59,7 @@ class HttpEndpoint(ABC):
 
 
 class JSONHttpEndpoint(HttpEndpoint):
-    """json endpoint http connector"""
+    """:code:`json` endpoint to get json from request"""
 
     class Event(BaseModel):
         """model for event"""
@@ -72,7 +72,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
-    """json endpoint http connector"""
+    """:code:`jsonl` endpoint to get jsonl from request"""
 
     async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
@@ -86,9 +86,7 @@ class JSONLHttpEndpoint(HttpEndpoint):
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
-    """plaintext endpoint http connector.
-    Puts the whole body into the message field.
-    """
+    """:code:`plaintext` endpoint to get the body from request and put it in :code:`message` field"""
 
     async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
@@ -154,6 +152,10 @@ class HttpConnector(Input):
         )
         """Configure endpoint routes with a Mapping of a path to an endpoint. Possible endpoints
         are: :code:`json`, :code:`jsonl`, :code:`plaintext`.
+        
+        .. autoclass:: logprep.connector.http.input.PlaintextHttpEndpoint
+        .. autoclass:: logprep.connector.http.input.JSONLHttpEndpoint
+        .. autoclass:: logprep.connector.http.input.JSONHttpEndpoint
         """
 
     app: FastAPI
