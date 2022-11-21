@@ -79,7 +79,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         r"expression 'not parsable \+ 4 \* 2' could not be parsed",
     ),
     (
-        "Tags failure if targetfield exist",
+        "Tags failure if target_field exist",
         {
             "filter": "field1 AND field2 AND field3",
             "calculator": {
@@ -96,6 +96,23 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         "one or more subfields existed and could not be extended: result",
+    ),
+    (
+        "Tags failure if source_field missing",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} * ${field3}",
+                "target_field": "result",
+            },
+        },
+        {"field2": "4", "field3": 2},
+        {
+            "field2": "4",
+            "field3": 2,
+            "tags": ["_calculator_failure"],
+        },
+        "bla",
     ),
 ]
 
