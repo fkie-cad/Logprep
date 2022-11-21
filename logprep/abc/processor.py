@@ -38,8 +38,9 @@ class Processor(Component):
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
-        """List of rule locations to load. For string format see :ref:`getters`.
-        In addition file directories are allowed here.
+        """List of rule locations to load rules from.
+        In addition to paths to file directories it is possible to retrieve rules from a URI.
+        For valid URI formats see :ref:`getters`.
         """
         generic_rules: List[str] = field(
             validator=[
@@ -48,8 +49,9 @@ class Processor(Component):
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
-        """List of rule locations to load. For string format see :ref:`getters`.
-        In addition file directories are allowed here.
+        """List of rule locations to load rules from.
+        In addition to paths to file directories it is possible to retrieve rules from a URI.
+        For valid URI formats see :ref:`getters`.
         """
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
