@@ -17,7 +17,7 @@ under the subkey `preprocessing` of the `input` processor
 
 * Add an opensearch output connector that can be used to write directly into opensearch.
 * Add an elasticsearch output connector that can be used to write directly into elasticsearch.
-* Add a http input connector that spawns a uvicorn server and parses requests to events
+* Add an http input connector that spawns a uvicorn server which parses requests content to events.
 * Split connector config into seperate config keys `input` and `output`
 * Add preprocessing capabillities to all input connectors
 * Add preprocessor for log_arrival_time
