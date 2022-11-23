@@ -1,17 +1,19 @@
-"""Content getters are provide a shared interface to get content from targets.
+"""Content getters provide a shared interface to get content from targets.
 They are returned by the GetterFactory.
 """
 import re
+from pathlib import Path
+from typing import Tuple
+
 import requests
 from requests.auth import HTTPBasicAuth
-from typing import Tuple
-from pathlib import Path
-from logprep.abc.getter import Getter
+
 from logprep._version import get_versions
+from logprep.abc.getter import Getter
 
 
 class GetterNotFoundError(BaseException):
-    """is raised if getter is not found"""
+    """Is raised if getter is not found."""
 
     def __init__(self, message) -> None:
         if message:
@@ -19,21 +21,22 @@ class GetterNotFoundError(BaseException):
 
 
 class GetterFactory:
-    """provides methods to create getters"""
+    """Provides methods to create getters."""
 
     @classmethod
-    def from_string(cls, getter_string: str) -> "FileGetter":
-        """factory method to return a getter from a string in format :code:`<protocol>://<target>`
+    def from_string(cls, getter_string: str) -> "Getter":
+        """Factory method to return a getter from a string in format :code:`<protocol>://<target>`.
+        If no protocol is given, then the file protocol is assumed.
 
         Parameters
         ----------
         getter_string : str
-            a string describing the getter protocol and target informations
+            A string describing the getter protocol and target information.
 
         Returns
         -------
         Getter
-            the generated getter
+            The generated getter.
         """
         protocol, target = cls._dissect(getter_string)
         if protocol is None:
@@ -54,28 +57,29 @@ class GetterFactory:
 
 
 class FileGetter(Getter):
-    """get files (and only files) from a filesystem
+    """Get files (and only files) from a filesystem.
 
-    match strings:
+    Matching string examples:
 
     * :code:`/yourpath/yourfile.extension`
     * :code:`file://yourpath/yourfile.extension`
     """
 
     def get(self) -> str:
-        """opens file and returns its content"""
+        """Opens file (with utf8 encoding) and returns its content."""
         return Path(self.target).read_text(encoding="utf8")
 
 
 class HttpGetter(Getter):
     """get files from a api or simple web server.
 
-    match strings:
+    Matching string examples:
 
-    * simple http target :code:`http://your.target/file.yml`
-    * simple https target :code:`https://your.target/file.json`
-    * basic authentication with :code:`https://username:password@your_web_target`
-    * oauth compliant authentication with bearer token header :code:`https://oauth:<your bearer token>@your_web_target`
+    * Simple http target: :code:`http://your.target/file.yml`
+    * Simple https target: :code:`https://your.target/file.json`
+    * Target with asic authentication: :code:`https://username:password@your_web_target`
+    * Target with oauth compliant authentication with bearer token header:
+    :code:`https://oauth:<your bearer token>@your_web_target`
     """
 
     def get(self) -> str:

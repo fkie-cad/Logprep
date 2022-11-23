@@ -24,10 +24,10 @@ from logging import Logger
 from attr import define, field
 
 from logprep.abc import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
-from logprep.processor.base.exceptions import DuplicationError
 
 
 class ListComparisonError(BaseException):
@@ -46,7 +46,7 @@ class ListComparison(Processor):
 
         list_search_base_path: str = field(validator=directory_validator)
         """Relative list paths in rules will be relative to this path if this is set.
-        This parameter is optional. For string format see :ref:`getters`"""
+        This parameter is optional. For string format see :ref:`getters`."""
 
     rule_class = ListComparisonRule
 

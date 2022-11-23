@@ -96,16 +96,14 @@ from os.path import basename, splitext
 from typing import List, Set, Optional, Dict
 
 from attrs import define, field, validators
-
 from ruamel.yaml import YAML
 
-from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
+from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.util.json_handling import is_json
-from logprep.util.helper import camel_to_snake
 from logprep.util.getter import GetterFactory
+from logprep.util.helper import camel_to_snake
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -217,7 +215,6 @@ class Rule:
     def create_rules_from_file(cls, path: str) -> list:
         """Create a rule from a file."""
         content = GetterFactory.from_string(path).get()
-        rule_data = None
         try:
             rule_data = json.loads(content)
         except ValueError:
@@ -227,7 +224,6 @@ class Rule:
             raise InvalidRuleDefinitionError("no rules in file")
         for rule in rules:
             rule.file_name = splitext(basename(path))[0]
-
         return rules
 
     @classmethod

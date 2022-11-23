@@ -35,14 +35,16 @@ target field :code:`List_comparison.example`.
     Currently it is not possible to check in more than one source_field per rule
 
 """
+import os.path
 import warnings
 from typing import List, Optional
-from attrs import define, field, validators
-from logprep.filter.expression.filter_expression import FilterExpression
 
+from attrs import define, field, validators
+
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 from logprep.util.getter import GetterFactory
+from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class ListComparisonRule(FieldManagerRule):
@@ -57,9 +59,10 @@ class ListComparisonRule(FieldManagerRule):
         list_file_paths: List[str] = field(
             validator=validators.deep_iterable(member_validator=validators.instance_of(str))
         )
-        """List of files in relative or absolute notation. For string format see :ref:`getters`"""
+        """List of files. For string format see :ref:`getters`."""
         list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
-        """Base Path from where to find relative files from :code:`list_file_paths` For string format see :ref:`getters`. (Optional)"""
+        """Base Path from where to find relative files from :code:`list_file_paths`.
+        For string format see :ref:`getters`. (Optional)"""
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)
@@ -90,7 +93,7 @@ class ListComparisonRule(FieldManagerRule):
             content = GetterFactory.from_string(list_path).get()
             compare_elements = content.splitlines()
             file_elem_tuples = [elem for elem in compare_elements if not elem.startswith("#")]
-            *_, filename = list_path.rpartition("/")
+            filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elem_tuples)})
 
     @property

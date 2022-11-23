@@ -96,11 +96,12 @@ For string format of :code:`extract_from_file` see :ref:`getters`.
 
 from functools import partial
 from typing import List, Optional
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
-from logprep.util.validators import dict_structure_validator, one_of_validator
 from logprep.util.getter import GetterFactory
+from logprep.util.validators import dict_structure_validator, one_of_validator
 
 
 class SelectiveExtractorRuleError(InvalidRuleDefinitionError):

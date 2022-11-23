@@ -1,4 +1,4 @@
-""" abstract module for processors"""
+"""Abstract module for processors"""
 import copy
 from abc import abstractmethod
 from functools import partial
@@ -8,17 +8,17 @@ from pathlib import Path
 from typing import List, Optional, TYPE_CHECKING
 
 from attr import define, field, validators
-from logprep.abc import Component
 
+from logprep.abc import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util import getter
+from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import min_len_validator
-from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule
@@ -54,7 +54,8 @@ class Processor(Component):
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
         )  # TODO test load tree_config from http
-        """ Path to a JSON file with a valid rule tree configuration. For string format see :ref:`getters`"""
+        """Path to a JSON file with a valid rule tree configuration. 
+        For string format see :ref:`getters`"""
 
     @define(kw_only=True)
     class ProcessorMetrics(Metric):
@@ -225,7 +226,7 @@ class Processor(Component):
         return resolved_paths
 
     def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
-        """method to add rules from directory"""
+        """method to add rules from directories or urls"""
         specific_rules_targets = self.resolve_directories(specific_rules_targets)
         generic_rules_targets = self.resolve_directories(generic_rules_targets)
         for specific_rules_target in specific_rules_targets:

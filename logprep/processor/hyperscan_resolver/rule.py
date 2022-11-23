@@ -18,8 +18,8 @@ if a database compiled from a rule's :code:`resolve_list` should be stored persi
 """
 import re
 from typing import Tuple
-from attrs import define, field, validators
 
+from attrs import define, field, validators
 from ruamel.yaml import YAML
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
@@ -65,7 +65,7 @@ class HyperscanResolverRule(Rule):
             eq=False,
         )
         """A YML file with a resolve list and an optional regex pattern can
-        be used to resolve values (For string format see :ref:`getters`).
+        be used to resolve values (for string format see :ref:`getters`).
         For this, either a field :code:`resolve_from_file` with a path to a resolve list
         file must be added or dictionary field :code:`resolve_from_file` with the subfields
         :code:`path` and :code:`pattern`.

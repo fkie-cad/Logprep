@@ -89,8 +89,8 @@ It is also possible to use a table from a MySQL database to add fields to an eve
 
 import re
 from typing import Any
-from attrs import define, field, validators
 
+from attrs import define, field, validators
 from ruamel.yaml import YAML
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError

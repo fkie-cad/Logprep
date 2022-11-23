@@ -43,9 +43,9 @@ from logprep.abc import Processor
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizeRule
 from logprep.util.cache import Cache
+from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.validators import file_validator, list_of_urls_validator
-from logprep.util.getter import GetterFactory
 
 if sys.version_info.minor < 8:  # pragma: no cover
     from backports.cached_property import cached_property  # pylint: disable=import-error
@@ -83,7 +83,7 @@ class Pseudonymizer(Processor):
         """A salt that is used for hashing."""
         regex_mapping: str = field(validator=file_validator)
         """
-        Path to a file (For string format see :ref:`getters`) with a regex mapping for pseudonymization, i.e.:
+        Path to a file (for string format see :ref:`getters`) with a regex mapping for pseudonymization, i.e.:
 
         * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
         """

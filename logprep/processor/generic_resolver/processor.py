@@ -24,8 +24,8 @@ from ruamel.yaml import YAML
 
 from logprep.abc import Processor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
-from logprep.util.helper import get_dotted_field_value
 from logprep.util.getter import GetterFactory
+from logprep.util.helper import get_dotted_field_value
 
 yaml = YAML(typ="safe", pure=True)
 

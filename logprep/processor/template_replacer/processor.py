@@ -30,14 +30,13 @@ from logging import Logger
 from typing import Optional
 
 from attr import define, field, validators
-
 from ruamel.yaml import YAML
 
 from logprep.abc import Processor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.validators import file_validator
 from logprep.util.helper import get_dotted_field_value
+from logprep.util.validators import file_validator
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -58,8 +57,8 @@ class TemplateReplacer(Processor):
 
         template: str = field(validator=file_validator)
         """
-        Path to a YML file (For path format see :ref:`getters`) with a list of replacements in the format
-        `%{provider_name}-%{event_id}: %{new_message}`.
+        Path to a YML file (for path format see :ref:`getters`) with a list of replacements in the
+        format `%{provider_name}-%{event_id}: %{new_message}`.
         """
 
         pattern: dict = field(validator=validators.instance_of(dict))

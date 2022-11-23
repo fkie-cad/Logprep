@@ -13,8 +13,8 @@ from logprep.factory_error import (
     UnknownComponentTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,
 )
-from logprep.util.helper import print_fcolor
 from logprep.util.getter import GetterFactory
+from logprep.util.helper import print_fcolor
 
 
 class InvalidConfigurationError(BaseException):
@@ -98,7 +98,6 @@ class Configuration(dict):
 
         """
         content = GetterFactory.from_string(path).get()
-        configuration = None
         try:
             configuration = json.loads(content)
         except ValueError:
