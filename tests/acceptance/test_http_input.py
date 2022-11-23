@@ -33,7 +33,7 @@ def start_logprep(config_path: str) -> subprocess.Popen:
 
 def wait_for_output(proc, expected_output):
     output = proc.stdout.readline()
-    while not expected_output in output.decode("utf8"):
+    while expected_output not in output.decode("utf8"):
         output = proc.stdout.readline()
         time.sleep(0.1)  # nosemgrep
 
