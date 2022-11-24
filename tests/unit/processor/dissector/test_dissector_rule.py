@@ -135,6 +135,14 @@ class TestDissectorRule:
                 None,
                 None,
             ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {"mapping": {"field": "/%{field1}/%{field2}/%{field3}"}},
+                },
+                None,
+                None,
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
