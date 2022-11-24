@@ -153,6 +153,8 @@ class DissectorRule(FieldManagerRule):
     def _set_mapping_actions(self):
         self.actions = []
         for source_field, pattern in self._config.mapping.items():
+            if not re.match(rf"^{DISSECT}.*", pattern):
+                pattern = "%{}" + pattern
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(

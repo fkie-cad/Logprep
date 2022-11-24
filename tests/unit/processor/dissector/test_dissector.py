@@ -440,7 +440,8 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"path": "/this/is/the/path"},
         {
-            "field1": "This",
+            "path": "/this/is/the/path",
+            "field1": "this",
             "field2": "is",
             "field3": "the",
             "field4": "path",
