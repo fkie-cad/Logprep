@@ -2,6 +2,13 @@
 Processors
 ==========
 
+.. automodule:: logprep.processor.calculator.processor
+.. autoclass:: logprep.processor.calculator.processor.Calculator.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.clusterer.processor
 .. autoclass:: logprep.processor.clusterer.processor.Clusterer.Config
    :members:
