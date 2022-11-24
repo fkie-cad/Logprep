@@ -50,10 +50,7 @@ class Calculator(Processor):
             self._handle_warning_error(event, rule, error)
         except ArithmeticError as error:
             error.args = [
-                (
-                    f"({self.name}): expression '{rule.calc}'"
-                    f" => '{expression}' results in {error.args[0]}"
-                )
+                f"({self.name}): expression '{rule.calc}' => '{expression}' results in {error.args[0]}"
             ]
             self._handle_warning_error(event, rule, error)
         return result
