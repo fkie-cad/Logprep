@@ -3,6 +3,7 @@
 # pylint: disable=line-too-long
 from copy import deepcopy
 from logging import getLogger
+import re
 
 import pytest
 
@@ -307,7 +308,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: labelername - Labeler.Config.__init__() missing 1 required keyword-only argument: 'generic_rules'",
+                        "missing 1 required keyword-only argument: 'generic_rules'",
                     )
                 ],
             ),
@@ -353,7 +354,11 @@ class TestConfiguration:
             with pytest.raises(InvalidConfigurationErrors) as e_info:
                 config.verify(logger)
             errors_set = [(type(err), str(err)) for err in e_info.value.errors]
-            assert errors_set == raised_errors, f"For test case '{test_case}'!"
+            assert len(raised_errors) == len(errors_set)
+            zipped_errors = zip(raised_errors, errors_set)
+            for expected_error, raised_error in zipped_errors:
+                assert expected_error[0] == raised_error[0], "error class differ"
+                assert re.search(expected_error[1], raised_error[1]), "error message differ"
 
     @pytest.mark.parametrize(
         "test_case, config_dict, raised_errors",
@@ -398,7 +403,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: labelername - Labeler.Config.__init__() missing 1 required keyword-only argument: 'generic_rules'",
+                        "missing 1 required keyword-only argument: 'generic_rules'",
                     )
                 ],
             ),
@@ -501,7 +506,11 @@ class TestConfiguration:
             for error in errors:
                 collected_errors += error.errors
             errors_set = [(type(error), str(error)) for error in collected_errors]
-            assert errors_set == raised_errors, f"For test case '{test_case}'!"
+            assert len(raised_errors) == len(errors_set)
+            zipped_errors = zip(raised_errors, errors_set)
+            for expected_error, raised_error in zipped_errors:
+                assert expected_error[0] == raised_error[0], "error class differ"
+                assert re.search(expected_error[1], raised_error[1]), "error message differ"
         else:
             config._verify_metrics_config()
 
