@@ -43,8 +43,17 @@ class Calculator(Processor):
 
     def _check_for_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
-            dict(filter(lambda x: not bool(x[1]), source_field_dict.items())).keys()
+            dict(filter(self._filter_missing_or_empty, source_field_dict.items())).keys()
         )
         if missing_fields:
             error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)
+
+    @staticmethod
+    def _filter_missing_or_empty(item: tuple) -> bool:
+        _, value = item
+        if value is None:
+            return True
+        if value == "":
+            return True
+        return False

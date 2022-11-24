@@ -65,12 +65,8 @@ test_cases = [  # testcase, rule, event, expected
                 "target_field": "result",
             },
         },
-        {"field1": "", "field2": "4", "field3": 2},
-        {
-            "field1": "0",
-            "field2": "4",
-            "field3": 2,
-        },
+        {"field1": "0", "field2": "4", "field3": 2},
+        {"field1": "0", "field2": "4", "field3": 2, "result": 8},
     ),
 ]
 
