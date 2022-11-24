@@ -20,3 +20,5 @@ backports.cached_property ; python_version < "3.8"
 elasticsearch>=7,<8
 opensearch-py
 mysql-connector-python
+fastapi
+uvicorn

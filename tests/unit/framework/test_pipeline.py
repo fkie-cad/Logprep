@@ -69,6 +69,7 @@ class TestPipeline(ConfigurationForTests):
             log_handler=self.log_handler,
             lock=self.lock,
             shared_dict=self.shared_dict,
+            used_server_ports=mock.MagicMock(),
             metric_targets=self.metric_targets,
         )
 
@@ -82,6 +83,7 @@ class TestPipeline(ConfigurationForTests):
                     log_handler=not_a_log_handler,
                     lock=self.lock,
                     shared_dict=self.shared_dict,
+                    used_server_ports=mock.MagicMock(),
                     metric_targets=self.metric_targets,
                 )
 
@@ -541,6 +543,60 @@ class TestPipeline(ConfigurationForTests):
             "This is non critical", {"some": "event"}, None
         )
 
+    def test_http_input_registers_to_shard_dict(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.server.config.port = 9000
+        self.pipeline._used_server_ports = {}
+        self.pipeline._setup()
+        assert 9000 in self.pipeline._used_server_ports
+
+    def test_http_input_registers_increased_port_to_shard_dict(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.server.config.port = 9000
+        self.pipeline._used_server_ports = {9000: "other_process_name"}
+        self.pipeline._setup()
+        assert 9001 in self.pipeline._used_server_ports
+
+    def test_http_input_removes_port_from_shard_dict_on_shut_down(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.server.config.port = 9000
+        self.pipeline._used_server_ports = {}
+        self.pipeline._setup()
+        assert 9000 in self.pipeline._used_server_ports
+        self.pipeline._shut_down()
+        assert 9000 not in self.pipeline._used_server_ports
+
+    def test_http_input_registers_increased_port_to_shard_dict_after_shut_down(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.server.config.port = 9000
+        self.pipeline._used_server_ports = {9000: "other_process_name"}
+        self.pipeline._setup()
+        assert 9001 in self.pipeline._used_server_ports
+        self.pipeline._shut_down()
+        assert 9001 not in self.pipeline._used_server_ports
+        self.pipeline._setup()
+        assert 9001 in self.pipeline._used_server_ports
+
+    def test_shut_down_drains_input_queues(self, _):
+        self.pipeline._setup()
+        input_config = {
+            "testinput": {
+                "type": "http_input",
+                "uvicorn_config": {
+                    "host": "127.0.0.1",
+                    "port": 9000,
+                    "ssl_certfile": "tests/testdata/acceptance/http_input/cert.crt",
+                    "ssl_keyfile": "tests/testdata/acceptance/http_input/cert.key",
+                },
+                "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
+            }
+        }
+        self.pipeline._input = original_create(input_config, mock.MagicMock())
+        self.pipeline._input._messages.put({"message": "test message"})
+        assert self.pipeline._input._messages.qsize() == 1
+        self.pipeline._shut_down()
+        assert self.pipeline._input._messages.qsize() == 0
+
     def test_pipeline_raises_http_error_from_factory_create(self, mock_create):
         mock_create.side_effect = requests.HTTPError()
         with raises(requests.HTTPError):
@@ -559,6 +615,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                     config=self.logprep_config,
                     log_handler=not_a_log_handler,
                     lock=self.lock,
+                    used_server_ports=mock.MagicMock(),
                     shared_dict=self.shared_dict,
                 )
 
@@ -569,6 +626,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 config=self.logprep_config,
                 log_handler=self.log_handler,
                 lock=self.lock,
+                used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
             )
         except MustProvideAnMPLogHandlerError:
@@ -582,6 +640,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 config=self.logprep_config,
                 log_handler=self.log_handler,
                 lock=self.lock,
+                used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
             )
         )
@@ -595,6 +654,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 config=self.logprep_config,
                 log_handler=self.log_handler,
                 lock=self.lock,
+                used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
             )
         )
@@ -608,6 +668,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             config=self.logprep_config,
             log_handler=self.log_handler,
             lock=self.lock,
+            used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
         )
         assert not pipeline._iterate()

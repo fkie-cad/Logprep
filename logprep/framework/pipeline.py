@@ -9,6 +9,7 @@ import json
 from ctypes import c_bool, c_double, c_ulonglong
 from logging import DEBUG, INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
+import queue
 from time import time
 from typing import List, TYPE_CHECKING
 import warnings
@@ -76,7 +77,6 @@ class Pipeline:
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
-
         # pylint: disable=not-an-iterable
         @property
         def number_of_processed_events(self):
@@ -113,6 +113,7 @@ class Pipeline:
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
+        used_server_ports: dict,
         metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, Handler):
@@ -129,6 +130,7 @@ class Pipeline:
         self._shared_dict = shared_dict
         self._processing_counter = counter
         self.metrics = None
+        self._used_server_ports = used_server_ports
         self._metric_targets = metric_targets
         self._metrics_exposer = None
         self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
@@ -198,6 +200,10 @@ class Pipeline:
 
         self._input.setup()
         self._output.setup()
+        if hasattr(self._input, "server"):
+            while self._input.server.config.port in self._used_server_ports:
+                self._input.server.config.port += 1
+            self._used_server_ports.update({self._input.server.config.port: current_process().name})
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             self._logger.debug(f"Finished creating connectors ({current_process().name})")
 
@@ -221,8 +227,13 @@ class Pipeline:
         try:
             if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug(f"Start iterating ({current_process().name})")
-            while self._iterate():
-                self._retrieve_and_process_data()
+            if hasattr(self._input, "server"):
+                with self._input.server.run_in_thread():
+                    while self._iterate():
+                        self._retrieve_and_process_data()
+            else:
+                while self._iterate():
+                    self._retrieve_and_process_data()
         except SourceDisconnectedError:
             self._logger.warning(
                 f"Lost or failed to establish connection to {self._input.describe()}"
@@ -344,10 +355,19 @@ class Pipeline:
 
     def _shut_down(self):
         self._input.shut_down()
+        if hasattr(self._input, "server"):
+            self._used_server_ports.pop(self._input.server.config.port)
+        self._drain_input_queues()
         self._output.shut_down()
-
         while self._pipeline:
             self._pipeline.pop().shut_down()
+
+    def _drain_input_queues(self):
+        if not hasattr(self._input, "_messages"):
+            return
+        if isinstance(self._input._messages, queue.Queue):
+            while self._input._messages.qsize():
+                self._retrieve_and_process_data()
 
     def stop(self):
         """Stop processing processors in the Pipeline."""
@@ -425,6 +445,7 @@ class MultiprocessingPipeline(Process, Pipeline):
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
+        used_server_ports: list,
         metric_targets: MetricTargets = None,
     ):
         if not isinstance(log_handler, MultiprocessingLogHandler):
@@ -442,6 +463,7 @@ class MultiprocessingPipeline(Process, Pipeline):
             log_handler=log_handler,
             lock=lock,
             shared_dict=shared_dict,
+            used_server_ports=used_server_ports,
             metric_targets=metric_targets,
         )
 

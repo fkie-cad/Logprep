@@ -1,8 +1,11 @@
 ## Upcoming Changes
 
 * Remove rules deprecations
-* provide the possibility to consume lists, rules and configuration from files and http endpoints
 
+## next release
+
+* Add an `http input connector` that spawns a uvicorn server which parses requests content to events.
+* provide the possibility to consume lists, rules and configuration from files and http endpoints
 
 ## v4.0.0
 ### Breaking
@@ -15,8 +18,8 @@ under the subkey `preprocessing` of the `input` processor
 
 ### Features
 
-* Add an `opensearch` output connector that can be used to write directly into opensearch.
-* Add an `elasticsearch` output connector that can be used to write directly into elasticsearch.
+* Add an opensearch output connector that can be used to write directly into opensearch.
+* Add an elasticsearch output connector that can be used to write directly into elasticsearch.
 * Split connector config into seperate config keys `input` and `output`
 * Add preprocessing capabillities to all input connectors
 * Add preprocessor for log_arrival_time
