@@ -21,7 +21,13 @@ class CalculatorRule(FieldManagerRule):
         calc: str = field(
             validator=[validators.instance_of(str), partial(min_len_validator, min_length=3)],
         )
+        """The calculation expression. Fields from the event can be used by
+        surround them with :code:`${}`."""
         source_fields: list = field(factory=list)
+        extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
+        """If the target field exists and is a list, the list will be extended with the values
+        of the source fields.
+        """
 
         def __attrs_post_init__(self):
             self.source_fields = re.findall(FIELD_PATTERN, self.calc)

@@ -68,6 +68,82 @@ test_cases = [  # testcase, rule, event, expected
         {"field1": "0", "field2": "4", "field3": 2},
         {"field1": "0", "field2": "4", "field3": 2, "result": 8},
     ),
+    (
+        "logical evaluates fields to False",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "all(${field1}, ${field2}, ${field3})",
+                "target_field": "result",
+            },
+        },
+        {"field1": "0", "field2": "4", "field3": 2},
+        {"field1": "0", "field2": "4", "field3": 2, "result": False},
+    ),
+    (
+        "logical evaluates fields",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "all(${field1}, ${field2}, ${field3})",
+                "target_field": "result",
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"field1": "6", "field2": "4", "field3": 2, "result": True},
+    ),
+    (
+        "overwrites target",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "field1",
+                "overwrite_target": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"field1": 12, "field2": "4", "field3": 2},
+    ),
+    (
+        "delete source fields",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2},
+        {"result": 12},
+    ),
+    (
+        "extend list",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} +${field3}",
+                "target_field": "target",
+                "extend_target_list": True,
+            },
+        },
+        {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3]},
+        {"field1": "6", "field2": "4", "field3": 2, "target": [1, 5, 3, 12]},
+    ),
+    (
+        "handles dotted fields",
+        {
+            "filter": "*",
+            "calculator": {
+                "calc": "${key.field1} + ${key.source.field2} +${key.source.source.field3}",
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"key": {"source": {"source": {"field3": 2}, "field2": 6}, "field1": 4}},
+        {"result": 12},
+    ),
 ]
 
 
@@ -143,6 +219,24 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         r"no value for fields: \['field1'\]",
+    ),
+    (
+        "Tags failure try to escape",
+        {
+            "filter": "field2 AND field3",
+            "calculator": {
+                "calc": "${field1} + ${field2} * ${field3}",
+                "target_field": "result",
+            },
+        },
+        {"field1": "\"; print('escaped');\"", "field2": "4", "field3": 2},
+        {
+            "field1": "\"; print('escaped');\"",
+            "field2": "4",
+            "field3": 2,
+            "tags": ["_calculator_failure"],
+        },
+        r"could not be parsed",
     ),
 ]
 
