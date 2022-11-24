@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: ["3.6"]
+        python-version: ["3.9"]
 
     steps:
       - uses: actions/checkout@v3
@@ -50,14 +50,13 @@ jobs:
         with:
           name: Logprep
           path: logprep.pex
-        if: matrix.python-version == 3.6
 
   test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9"]
+        python-version: ["3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v3
@@ -143,10 +142,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements_dev.txt
 
-      - name: Install semgrep if python version > 3.6
+      - name: Install semgrep
         run: |
           pip install semgrep
-        if: matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.9
 
       - name: check black formating
         run: |

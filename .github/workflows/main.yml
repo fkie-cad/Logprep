@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        python-version: ["3.9"]
 
     steps:
       - uses: actions/checkout@v3
@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -48,14 +48,13 @@ jobs:
         with:
           name: Logprep
           path: logprep.pex
-        if: matrix.python-version == 3.6
 
   test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        python-version: ["3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v3
@@ -63,7 +62,7 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -87,7 +86,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        python-version: ["3.9"]
 
     steps:
       - uses: actions/checkout@v3
@@ -99,7 +98,7 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Get changed python files
         id: changed-files
@@ -113,10 +112,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements_dev.txt
 
-      - name: Install semgrep if python version > 3.6
+      - name: Install semgrep
         run: |
           pip install semgrep
-        if: matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.9
 
       - name: check black formating
         run: |
