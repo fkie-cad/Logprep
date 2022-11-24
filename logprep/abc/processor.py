@@ -1,22 +1,27 @@
-""" abstract module for processors"""
+"""Abstract module for processors"""
 import copy
 from abc import abstractmethod
+from functools import partial
 from logging import DEBUG, Logger
 from multiprocessing import current_process
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, TYPE_CHECKING
 
-from attr import define, field
+from attr import define, field, validators
+
 from logprep.abc import Component
-
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import Metric, calculate_new_average
-from logprep.processor.base.rule import Rule
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
+from logprep.util import getter
+from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.validators import file_validator, list_of_dirs_validator
-from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
+from logprep.util.validators import min_len_validator
+
+if TYPE_CHECKING:
+    from logprep.processor.base.rule import Rule
 
 
 class Processor(Component):
@@ -26,12 +31,33 @@ class Processor(Component):
     class Config(Component.Config):
         """Common Configurations"""
 
-        specific_rules: List[str] = field(validator=list_of_dirs_validator)
-        """List of directory paths with generic rule files that can match multiple event types"""
-        generic_rules: List[str] = field(validator=list_of_dirs_validator)
-        """List of directory paths with generic rule files that can match multiple event types"""
-        tree_config: Optional[str] = field(default=None, validator=[file_validator])
-        """ Path to a JSON file with a valid rule tree configuration. """
+        specific_rules: List[str] = field(
+            validator=[
+                validators.instance_of(list),
+                partial(min_len_validator, min_length=1),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ]
+        )
+        """List of rule locations to load rules from.
+        In addition to paths to file directories it is possible to retrieve rules from a URI.
+        For valid URI formats see :ref:`getters`.
+        """
+        generic_rules: List[str] = field(
+            validator=[
+                validators.instance_of(list),
+                partial(min_len_validator, min_length=1),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ]
+        )
+        """List of rule locations to load rules from.
+        In addition to paths to file directories it is possible to retrieve rules from a URI.
+        For valid URI formats see :ref:`getters`.
+        """
+        tree_config: Optional[str] = field(
+            default=None, validator=[validators.optional(validators.instance_of(str))]
+        )
+        """Path to a JSON file with a valid rule tree configuration. 
+        For string format see :ref:`getters`"""
 
     @define(kw_only=True)
     class ProcessorMetrics(Metric):
@@ -73,7 +99,7 @@ class Processor(Component):
         "_generic_tree",
     ]
 
-    rule_class: Rule
+    rule_class: "Rule"
     has_custom_tests: bool
     metrics: ProcessorMetrics
     metric_labels: dict
@@ -92,9 +118,9 @@ class Processor(Component):
         self._generic_tree = RuleTree(
             config_path=self._config.tree_config, metric_labels=generic_tree_labels
         )
-        self.add_rules_from_directory(
-            generic_rules_dirs=self._config.generic_rules,
-            specific_rules_dirs=self._config.specific_rules,
+        self.load_rules(
+            generic_rules_targets=self._config.generic_rules,
+            specific_rules_targets=self._config.specific_rules,
         )
         self.metrics = self.ProcessorMetrics(
             labels=self.metric_labels,
@@ -185,22 +211,34 @@ class Processor(Component):
 
         """
 
-    def add_rules_from_directory(
-        self, specific_rules_dirs: List[str], generic_rules_dirs: List[str]
-    ):
-        """method to add rules from directory"""
-        for specific_rules_dir in specific_rules_dirs:
-            rule_paths = list_json_files_in_directory(specific_rules_dir)
-            for rule_path in rule_paths:
-                rules = self.rule_class.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._specific_tree.add_rule(rule, self._logger)
-        for generic_rules_dir in generic_rules_dirs:
-            rule_paths = list_json_files_in_directory(generic_rules_dir)
-            for rule_path in rule_paths:
-                rules = self.rule_class.create_rules_from_file(rule_path)
-                for rule in rules:
-                    self._generic_tree.add_rule(rule, self._logger)
+    @staticmethod
+    def resolve_directories(rule_paths: list) -> list:
+        resolved_paths = []
+        for rule_path in rule_paths:
+            getter_instance = getter.GetterFactory.from_string(rule_path)
+            if getter_instance.protocol == "file":
+                if Path(getter_instance.target).is_dir():
+                    paths = list_json_files_in_directory(getter_instance.target)
+                    for file_path in paths:
+                        resolved_paths.append(file_path)
+                else:
+                    resolved_paths.append(rule_path)
+            else:
+                resolved_paths.append(rule_path)
+        return resolved_paths
+
+    def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
+        """method to add rules from directories or urls"""
+        specific_rules_targets = self.resolve_directories(specific_rules_targets)
+        generic_rules_targets = self.resolve_directories(generic_rules_targets)
+        for specific_rules_target in specific_rules_targets:
+            rules = self.rule_class.create_rules_from_target(specific_rules_target)
+            for rule in rules:
+                self._specific_tree.add_rule(rule, self._logger)
+        for generic_rules_target in generic_rules_targets:
+            rules = self.rule_class.create_rules_from_target(generic_rules_target)
+            for rule in rules:
+                self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             number_specific_rules = self._specific_tree.metrics.number_of_rules
             self._logger.debug(

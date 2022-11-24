@@ -15,3 +15,4 @@ Configuration
    processor
    metrics
    rules
+   getter

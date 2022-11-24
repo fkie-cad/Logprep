@@ -1,5 +1,6 @@
 """This module is used to create the configuration for the runner."""
 
+import json
 from logging import Logger
 from typing import List
 
@@ -12,6 +13,7 @@ from logprep.factory_error import (
     UnknownComponentTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,
 )
+from logprep.util.getter import GetterFactory
 from logprep.util.helper import print_fcolor
 
 
@@ -95,10 +97,13 @@ class Configuration(dict):
             Configuration object based on dictionary.
 
         """
-        with open(path, "r", encoding="utf-8") as file:
-            yaml_configuration = safe_load(file)
+        content = GetterFactory.from_string(path).get()
+        try:
+            configuration = json.loads(content)
+        except ValueError:
+            configuration = safe_load(content)
         config = Configuration()
-        config.update(yaml_configuration)
+        config.update(configuration)
 
         return config
 

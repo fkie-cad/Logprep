@@ -41,16 +41,14 @@ from attr import define, field, validators
 from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
-from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
 from logprep.processor.normalizer.rule import NormalizerRule
+from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import file_validator, directory_validator
-
-yaml = YAML(typ="safe", pure=True)
 
 
 class Normalizer(Processor):
@@ -62,9 +60,9 @@ class Normalizer(Processor):
 
         regex_mapping: str = field(validator=file_validator)
         """Path to regex mapping file with regex keywords that are replaced with regex expressions
-            by the normalizer."""
+            by the normalizer. For string format see :ref:`getters`."""
         html_replace_fields: Optional[str] = field(default=None, validator=file_validator)
-        """Path to yaml file with html replace fields"""
+        """Path to yaml file with html replace fields. For string format see :ref:`getters`"""
         count_grok_pattern_matches: Optional[dict] = field(
             default=None, validator=validators.optional(validators.instance_of(dict))
         )
@@ -124,12 +122,11 @@ class Normalizer(Processor):
 
         NormalizerRule.additional_grok_patterns = configuration.grok_patterns
 
-        with open(self._regex_mapping, "r", encoding="utf8") as file:
-            self._regex_mapping = yaml.load(file)
+        self._regex_mapping = GetterFactory.from_string(self._regex_mapping).get_yaml()
 
         if self._html_replace_fields:
-            with open(self._html_replace_fields, "r", encoding="utf8") as file:
-                self._html_replace_fields = yaml.load(file)
+            getter = GetterFactory.from_string(self._html_replace_fields)
+            self._html_replace_fields = getter.get_yaml()
         super().__init__(name=name, configuration=configuration, logger=logger)
 
     # pylint: enable=arguments-differ

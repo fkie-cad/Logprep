@@ -348,13 +348,13 @@ class AutoRuleTester:
             f"No rules provided for processor of type {processor.describe()}"
         )
 
-    def _add_rules_from_directory(self, processor: Processor, rule_type: str):
+    def _load_rules(self, processor: Processor, rule_type: str):
         if rule_type == "rules":
-            processor.add_rules_from_directory(self._empty_rules_dirs)
+            processor.load_rules(self._empty_rules_dirs)
         elif rule_type == "specific_rules":
-            processor.add_rules_from_directory(self._empty_rules_dirs, [])
+            processor.load_rules(self._empty_rules_dirs, [])
         elif rule_type == "generic_rules":
-            processor.add_rules_from_directory([], self._empty_rules_dirs)
+            processor.load_rules([], self._empty_rules_dirs)
         self._do_processor_specific_setup(processor)
 
     @staticmethod
@@ -370,7 +370,7 @@ class AutoRuleTester:
         self._create_rule_file(rule_dict, temp_rule_path)
         self._reset_trees(processor)
         self._clear_rules(processor)
-        self._add_rules_from_directory(processor, rule_type)
+        self._load_rules(processor, rule_type)
 
     def _run_custom_rule_tests(self, processor: Processor, rule_test: dict):
         temp_rule_path = path.join(self._empty_rules_dirs[0], f"{hashlib.sha256()}.json")

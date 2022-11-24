@@ -56,7 +56,7 @@ class TestSelectiveExtractorRule:
         with mock.patch("pathlib.Path.read_text", return_value=read_lines):
             rule = SelectiveExtractorRule._create_from_dict(rule_definition)
             extracted_field_list = rule.extracted_field_list
-            assert rule._config.extract_from_file == Path("my/file")
+            assert rule._config.extract_from_file == "my/file"
             assert "test1" in extracted_field_list
             assert "test2" in extracted_field_list
 

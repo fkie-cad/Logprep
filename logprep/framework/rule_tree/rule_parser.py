@@ -7,7 +7,6 @@ behavior, allowing a simpler construction of the rule tree.
 
 from typing import Union
 
-from logprep.processor.base.rule import Rule
 from logprep.filter.expression.filter_expression import (
     Or,
     CompoundFilterExpression,
@@ -28,7 +27,7 @@ class RuleParser:
     """Parse rule into list of less complex rules."""
 
     @staticmethod
-    def parse_rule(rule: Rule, priority_dict: dict, tag_map: dict) -> list:
+    def parse_rule(rule, priority_dict: dict, tag_map: dict) -> list:
         """Main parsing function to parse rule into list of less complex rules.
 
         This function aims to parse a rule into a list of less complex rules that shows the same

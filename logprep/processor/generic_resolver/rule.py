@@ -112,7 +112,8 @@ class GenericResolverRule(Rule):
             ],
             factory=dict,
         )
-        """Mapping with a `path` key to a YML file with a resolve list and a `pattern` key with
+        """Mapping with a `path` key to a YML file (for string format see :ref:`getters`)
+        with a resolve list and a `pattern` key with
         a regex pattern which can be used to resolve values.
         The resolve list in the file at :code:`path` is then used in conjunction with
         the regex pattern in :code:`pattern`."""

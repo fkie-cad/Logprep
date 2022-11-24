@@ -200,7 +200,7 @@ class SchemaAndRuleChecker:
         try:
             if rule_path.endswith(".json") or rule_path.endswith(".yml"):
                 if not rule_path.endswith("_test.json"):
-                    rule = rule_class.create_rules_from_file(rule_path)
+                    rule = rule_class.create_rules_from_target(rule_path)
         except InvalidRuleDefinitionError as error:
             self.errors.append("Invalid rule definition in {}: {}".format(rule_path, str(error)))
         except JSONDecodeError as error:

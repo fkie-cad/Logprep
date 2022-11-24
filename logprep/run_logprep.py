@@ -129,15 +129,15 @@ def main():
     if args.version:
         print_version_and_exit(args)
 
-    if not os.path.isfile(args.config):
+    try:
+        config = Configuration().create_from_yaml(args.config)
+    except FileNotFoundError:
         print(f"The given config file does not exist: {args.config}", file=sys.stderr)
         print(
             "Create the configuration or change the path. Use '--help' for more information.",
             file=sys.stderr,
         )
         sys.exit(1)
-
-    config = Configuration().create_from_yaml(args.config)
     try:
         AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
         logger = AggregatingLogger.create("Logprep")

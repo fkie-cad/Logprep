@@ -88,15 +88,12 @@ It is also possible to use a table from a MySQL database to add fields to an eve
 # pylint: enable=anomalous-backslash-in-string
 
 import re
-from os.path import isfile
 from typing import Any
+
 from attrs import define, field, validators
 
-from ruamel.yaml import YAML
-
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
-
-yaml = YAML(typ="safe", pure=True)
+from logprep.util.getter import GetterFactory
 
 
 class GenericAdderRuleError(InvalidRuleDefinitionError):
@@ -143,7 +140,7 @@ class GenericAdderRule(Rule):
         """Contains the path to a file with a YML file that contains a dictionary of field names
         and values that should be added to the document.
         Instead of a path, a list of paths can be used to add multiple files.
-        All of those files must exist."""
+        All of those files must exist. For string format see :ref:`getters`"""
         only_first_existing_file: bool = field(
             validator=validators.instance_of(bool), default=False, eq=False
         )
@@ -198,39 +195,27 @@ class GenericAdderRule(Rule):
         def _add_from_path(self):
             """Reads add fields from file"""
             missing_files = []
-            existing_files = []
-
-            for add_path in self.add_from_file:  # pylint: disable=not-an-iterable
-                if not isfile(add_path):
-                    missing_files.append(add_path)
+            for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
+                try:
+                    add_dict = GetterFactory.from_string(add_file).get_yaml()
+                except FileNotFoundError:
+                    missing_files.append(add_file)
+                    continue
+                if isinstance(add_dict, dict) and all(
+                    isinstance(value, str) for value in add_dict.values()
+                ):
+                    self.add = {**self.add, **add_dict}
                 else:
-                    existing_files.append(add_path)
-
-            if self.only_first_existing_file:
-                if existing_files:
-                    existing_files = existing_files[:1]
-                else:
-                    raise InvalidGenericAdderDefinition(
-                        f"At least one of the following files must exist: '{missing_files}'"
+                    error_msg = (
+                        f"Additions file '{add_file}' must be a dictionary with string values!"
                     )
-            else:
-                if missing_files:
-                    raise InvalidGenericAdderDefinition(
-                        f"The following required files do not exist: '{missing_files}'"
-                    )
-
-            for add_path in existing_files:
-                with open(add_path, "r", encoding="utf8") as add_file:
-                    add_dict = yaml.load(add_file)
-                    if isinstance(add_dict, dict) and all(
-                        isinstance(value, str) for value in add_dict.values()
-                    ):
-                        self.add = {**self.add, **add_dict}
-                    else:
-                        error_msg = (
-                            f"Additions file '{add_path}' must be a dictionary with string values!"
-                        )
-                        raise InvalidGenericAdderDefinition(error_msg)
+                    raise InvalidGenericAdderDefinition(error_msg)
+                if self.only_first_existing_file:
+                    break
+            if missing_files and not self.only_first_existing_file:
+                raise InvalidGenericAdderDefinition(
+                    f"The following required files do not exist: '{missing_files}'"
+                )
 
     @property
     def add(self) -> dict:

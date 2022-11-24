@@ -70,6 +70,7 @@ It contains the path to a text file with a list of fields per line to be extract
 The file has to exist.
 
 It is possible to mix both extraction sources. They will be merged to one list without duplicates.
+For string format of :code:`extract_from_file` see :ref:`getters`.
 
 ..  code-block:: yaml
     :linenos:
@@ -94,11 +95,12 @@ It is possible to mix both extraction sources. They will be merged to one list w
 """
 
 from functools import partial
-from pathlib import Path
 from typing import List, Optional
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
+from logprep.util.getter import GetterFactory
 from logprep.util.validators import dict_structure_validator, one_of_validator
 
 
@@ -141,12 +143,9 @@ class SelectiveExtractorRule(Rule):
         """the extraction mapping"""
 
         @property
-        def extract_from_file(self) -> Path:
+        def extract_from_file(self) -> str:
             """Returns the PosixPath representation of extract_from_file"""
-            extract_from_file = self.extract.get("extract_from_file")
-            if extract_from_file is None:
-                return None
-            return Path(extract_from_file)
+            return self.extract.get("extract_from_file")
 
         def __attrs_post_init__(self):
             self._add_from_file()
@@ -154,12 +153,16 @@ class SelectiveExtractorRule(Rule):
         def _add_from_file(self):
             if self.extract_from_file is None:
                 return
-            if not self.extract_from_file.is_file():
-                raise SelectiveExtractorRuleError("extract_from_file is not a valid file handle")
+            try:
+                content = GetterFactory.from_string(self.extract_from_file).get()
+            except FileNotFoundError as error:
+                raise SelectiveExtractorRuleError(
+                    "extract_from_file is not a valid file handle"
+                ) from error
             extract_list = self.extract.get("extracted_field_list")
             if extract_list is None:
                 extract_list = []
-            lines_from_file = self.extract_from_file.read_text(encoding="utf8").splitlines()
+            lines_from_file = content.splitlines()
             extract_list = list({*extract_list, *lines_from_file})
             self.extract = {**self.extract, **{"extracted_field_list": extract_list}}
 

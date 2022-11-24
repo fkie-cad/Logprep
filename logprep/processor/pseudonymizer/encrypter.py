@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
+from logprep.util.getter import GetterFactory
 
 
 class Encrypter(ABC):
@@ -33,10 +34,10 @@ class DualPKCS1HybridEncrypter(Encrypter):
         ValueError
             If a key file does not contain a valid key
         """
-        with open(keyfile_analyst, "r", encoding="utf8") as file:
-            self._pubkey_analyst = RSA.import_key(file.read())
-        with open(keyfile_depseudo, "r", encoding="utf8") as file:
-            self._pubkey_depseudo = RSA.import_key(file.read())
+        pub_key_analyst_str = GetterFactory.from_string(keyfile_analyst).get()
+        self._pubkey_analyst = RSA.import_key(pub_key_analyst_str)
+        pub_key_depseudo_str = GetterFactory.from_string(keyfile_depseudo).get()
+        self._pubkey_depseudo = RSA.import_key(pub_key_depseudo_str)
 
     def encrypt(
         self,
@@ -66,7 +67,7 @@ class DualPKCS1HybridEncrypter(Encrypter):
         cipher_rsa_depseudo = PKCS1_OAEP.new(self._pubkey_depseudo)
         enc_session_key = cipher_rsa_depseudo.encrypt(enc_session_key)
 
-        cipher_aes = AES.new(session_key, AES.MODE_CTR)
+        cipher_aes = AES.new(session_key, AES.MODE_CTR)  # nosemgrep
         ciphertext = cipher_aes.encrypt(input_str.encode("utf-8"))
 
         output_bytes = enc_session_key + cipher_aes.nonce + ciphertext

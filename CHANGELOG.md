@@ -1,7 +1,7 @@
 ## Upcoming Changes
 
 * Remove rules deprecations
-* Consume lists, rules and configuration from filesystem and http endpoints
+* provide the possibility to consume lists, rules and configuration from files and http endpoints
 
 
 ## v4.0.0

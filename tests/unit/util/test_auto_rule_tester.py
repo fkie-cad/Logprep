@@ -139,7 +139,7 @@ class TestAutoRuleTester:
         "logprep.processor.pseudonymizer.processor.Pseudonymizer."
         "_replace_regex_keywords_by_regex_expression"
     )
-    def test_pseudonymizer_specific_setup_called_on_add_rules_from_directory(
+    def test_pseudonymizer_specific_setup_called_on_load_rules(
         self, mock_replace_regex_keywords_by_regex_expression, auto_rule_tester
     ):
         pseudonymizer_cfg = {
@@ -162,13 +162,13 @@ class TestAutoRuleTester:
             processor
         )  # Called every time by auto tester before adding rules
         mock_replace_regex_keywords_by_regex_expression.assert_called_once()
-        auto_rule_tester._add_rules_from_directory(processor, "specific_rules")
+        auto_rule_tester._load_rules(processor, "specific_rules")
         assert mock_replace_regex_keywords_by_regex_expression.call_count == 2
 
     @mock.patch(
         "logprep.processor.list_comparison.processor.ListComparison._init_rules_list_comparison"
     )
-    def test_list_comparison_specific_setup_called_on_add_rules_from_directory(
+    def test_list_comparison_specific_setup_called_on_load_rules(
         self, mock_init_rules_list_comparison, auto_rule_tester
     ):
         list_comparison_cfg = {
@@ -186,7 +186,7 @@ class TestAutoRuleTester:
             processor
         )  # Called every time by auto tester before adding rules instead
         mock_init_rules_list_comparison.assert_called_once()
-        auto_rule_tester._add_rules_from_directory(processor, "specific_rules")
+        auto_rule_tester._load_rules(processor, "specific_rules")
         assert mock_init_rules_list_comparison.call_count == 2
 
     def test_full_auto_rule_test_run(self, auto_rule_tester, capsys):

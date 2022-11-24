@@ -41,13 +41,13 @@ class TestRule:
     )
     def test_create_rules_from_file(self, file_data, raises):
         mock_open = mock.mock_open(read_data=file_data)
-        with mock.patch("builtins.open", mock_open):
+        with mock.patch("io.open", mock_open):
             if raises:
                 error, message = raises
                 with pytest.raises(error, match=message):
-                    rules = Rule.create_rules_from_file("mock_path.json")
+                    rules = Rule.create_rules_from_target("mock_path.json")
             else:
-                rules = Rule.create_rules_from_file("mock_path.json")
+                rules = Rule.create_rules_from_target("mock_path.json")
                 assert isinstance(rules, list)
                 assert isinstance(rules[0], Rule)
                 rule = rules[0]
