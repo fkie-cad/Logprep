@@ -12,6 +12,7 @@
 
 * Add an `http input connector` that spawns a uvicorn server which parses requests content to events.
 * Provide the possibility to consume lists, rules and configuration from files and http endpoints
+* Add `requester` processor that enriches by macking http requests with field values
 * Add `calculator` processor to calculate with or without field values
 * Make output subfields of the `geoip_enricher` configurable by introducing the rule config
 `customize_target_subfields`
