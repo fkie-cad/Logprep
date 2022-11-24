@@ -90,6 +90,6 @@ class AggregatingLogger:
             logger.setLevel(cls.log_level)
             logger.info(f"Log level set to '{cls.level_str.upper()}'")
 
-        logger.addFilter(Aggregator)
+        logger.addFilter(Aggregator("Agregator"))
 
         return logger

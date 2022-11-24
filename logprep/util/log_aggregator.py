@@ -1,14 +1,14 @@
 """This module implements a logger that is able to aggregate log messages."""
 
 import logging
-from logging import LogRecord
+from logging import LogRecord, Filter
 from time import time, sleep
 import threading
 from collections import OrderedDict
 from copy import deepcopy
 
 
-class Aggregator:
+class Aggregator(Filter):
     """Used to aggregate log messages."""
 
     logs = OrderedDict()
@@ -37,11 +37,6 @@ class Aggregator:
         cls.timer_thread = threading.Timer(cls.log_period, cls._log_aggregated)
         cls.timer_thread.setDaemon(True)
         cls.timer_thread.start()
-
-    @classmethod
-    def stop_timer(cls):
-        """Stop repeating timer for aggregation."""
-        cls.timer_thread.cancel()
 
     @classmethod
     def _aggregate(cls, record: LogRecord) -> bool:
@@ -83,10 +78,10 @@ class Aggregator:
                 time_passed = round(time() - data["first_record"].created, 1)
                 time_passed = min(time_passed, cls.log_period)
                 if time_passed < 60:
-                    period = "{} sek".format(time_passed)
+                    period = f"{time_passed} sek"
                 else:
                     period = f"{time_passed / 60.0:.1f} min"
-                data["last_record"].__dict__["msg"] += " ({} in ~{})".format(count, period)
+                data["last_record"].__dict__["msg"] += f" ({count} in ~{period})"
                 logging.getLogger(data["last_record"].__dict__["name"]).log(
                     data["last_record"].levelno, data["last_record"].msg
                 )
@@ -100,13 +95,6 @@ class Aggregator:
                 if time() - cls.logs[log_id]["first_record"].created >= cls.log_period:
                     cls.logs[log_id]["aggregate"] = False
 
-    @staticmethod
-    def filter(record: LogRecord) -> bool:
+    def filter(self, record: LogRecord) -> bool:
         """Print aggregation if it is ready via a Logger filter."""
-        should_print = Aggregator._aggregate(record)
-        return should_print
-
-    @staticmethod
-    def exit():
-        """Print aggregation if it is ready before exiting the program."""
-        Aggregator._log_aggregated()
+        return Aggregator._aggregate(record)
