@@ -1,6 +1,88 @@
 """
+.. _calulator_rule:
+
 Calculator
 ==========
+
+The Calculator processor allows to calculate with and without field values.
+
+A speaking example:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Given calculator rule
+
+    filter: 'duration'
+    calculator:
+      target_field: duration
+      calc: ${duration} * 10e5
+      overwrite_target: True
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incoming event
+
+    {"duration": "0.01"}
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    {"duration": 10000.0}
+
+following a list with example calculation expressions, where all factors and the operators can be
+retrieved from a field by the schema :code:`${your.dotted.field}`:
+
+* :code:`9` => :code:`9`
+* :code:`-9` => :code:`-9`
+* :code:`--9` => :code:`9`
+* :code:`-E` => :code:`-math.e`
+* :code:`9 + 3 + 6` => :code:`9 + 3 + 6`
+* :code:`9 + 3 / 11` => :code:`9 + 3.0 / 11`
+* :code:`(9 + 3)` => :code:`(9 + 3)`
+* :code:`(9+3) / 11` => :code:`(9 + 3.0) / 11`
+* :code:`9 - 12 - 6` => :code:`9 - 12 - 6`
+* :code:`9 - (12 - 6)` => :code:`9 - (12 - 6)`
+* :code:`2*3.14159` => :code:`2 * 3.14159`
+* :code:`3.1415926535*3.1415926535 / 10` => :code:`3.1415926535 * 3.1415926535 / 10`
+* :code:`PI * PI / 10` => :code:`math.pi * math.pi / 10`
+* :code:`PI*PI/10` => :code:`math.pi * math.pi / 10`
+* :code:`PI^2` => :code:`math.pi ** 2`
+* :code:`round(PI^2)` => :code:`round(math.pi ** 2)`
+* :code:`6.02E23 * 8.048` => :code:`6.02e23 * 8.048`
+* :code:`e / 3` => :code:`math.e / 3`
+* :code:`sin(PI/2)` => :code:`math.sin(math.pi / 2)`
+* :code:`10+sin(PI/4)^2` => :code:`10 + math.sin(math.pi / 4) ** 2`
+* :code:`trunc(E)` => :code:`int(math.e)`
+* :code:`trunc(-E)` => :code:`int(-math.e)`
+* :code:`round(E)` => :code:`round(math.e)`
+* :code:`round(-E)` => :code:`round(-math.e)`
+* :code:`E^PI` => :code:`math.e ** math.pi`
+* :code:`exp(0)` => :code:`1`
+* :code:`exp(1)` => :code:`math.e`
+* :code:`2^3^2` => :code:`2 ** 3 ** 2`
+* :code:`(2^3)^2` => :code:`(2 ** 3) ** 2`
+* :code:`2^3+2` => :code:`2 ** 3 + 2`
+* :code:`2^3+5` => :code:`2 ** 3 + 5`
+* :code:`2^9` => :code:`2 ** 9`
+* :code:`sgn(-2)` => :code:`-1`
+* :code:`sgn(0)` => :code:`0`
+* :code:`sgn(0.1)` => :code:`1`
+* :code:`round(E, 3)` => :code:`round(math.e, 3)`
+* :code:`round(PI^2, 3)` => :code:`round(math.pi ** 2, 3)`
+* :code:`sgn(cos(PI/4))` => :code:`1`
+* :code:`sgn(cos(PI/2))` => :code:`0`
+* :code:`sgn(cos(PI*3/4))` => :code:`-1`
+* :code:`+(sgn(cos(PI/4)))` => :code:`1`
+* :code:`-(sgn(cos(PI/4)))` => :code:`-1`
+* :code:`hypot(3, 4)` => :code:`5`
+* :code:`multiply(3, 7)` => :code:`21`
+* :code:`all(1,1,1)` => :code:`True`
+* :code:`all(1,1,1,1,1,0)` => :code:`False`
+
+The calc expression shouldn`t be whitespace sensitive.
+
 """
 from functools import partial
 import re

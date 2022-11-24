@@ -2,7 +2,8 @@
 Calculator
 ==========
 
-
+The Calculator can be used to calculate with or without field values.
+For further information for the rule language see: :ref:`calulator_rule`
 
 """
 from functools import partial
@@ -46,6 +47,14 @@ class Calculator(Processor):
             result = evaluate_stack(exprStack[:])
         except ParseException as error:
             error.msg = f"({self.name}): expression '{error.line}' could not be parsed"
+            self._handle_warning_error(event, rule, error)
+        except ArithmeticError as error:
+            error.args = [
+                (
+                    f"({self.name}): expression '{rule.calc}'"
+                    f" => '{expression}' results in {error.args[0]}"
+                )
+            ]
             self._handle_warning_error(event, rule, error)
         return result
 

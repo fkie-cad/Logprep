@@ -63,6 +63,7 @@ class FileGetter(Getter):
 
     * :code:`/yourpath/yourfile.extension`
     * :code:`file://yourpath/yourfile.extension`
+
     """
 
     def get(self) -> str:
@@ -79,7 +80,8 @@ class HttpGetter(Getter):
     * Simple https target: :code:`https://your.target/file.json`
     * Target with asic authentication: :code:`https://username:password@your_web_target`
     * Target with oauth compliant authentication with bearer token header:
-    :code:`https://oauth:<your bearer token>@your_web_target`
+      :code:`https://oauth:<your bearer token>@your_web_target`
+
     """
 
     def get(self) -> str:

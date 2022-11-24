@@ -144,6 +144,19 @@ test_cases = [  # testcase, rule, event, expected
         {"key": {"source": {"source": {"field3": 2}, "field2": 6}, "field1": 4}},
         {"result": 12},
     ),
+    (
+        "Time conversion ms -> ns",
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${duration} * 10e5",
+                "target_field": "duration",
+                "overwrite_target": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": 10000.0},
+    ),
 ]
 
 
@@ -237,6 +250,24 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         r"could not be parsed",
+    ),
+    (
+        "devision by zero",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "3/0",
+                "target_field": "result",
+            },
+        },
+        {"message": "This is a message", "field1": "1.2", "field2": 4.5},
+        {
+            "message": "This is a message",
+            "field1": "1.2",
+            "field2": 4.5,
+            "tags": ["_calculator_failure"],
+        },
+        r"'3/0' => '3/0' results in division by zero",
     ),
 ]
 
