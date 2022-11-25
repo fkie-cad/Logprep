@@ -16,11 +16,11 @@ Example
             - tests/testdata/geoip_enricher/rules/
         db_path: /path/to/GeoLite2-City.mmdb
 """
-import sys
+from functools import cached_property
 from ipaddress import ip_address
 from typing import List
-from attr import define, field
 
+from attr import define, field
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
@@ -28,11 +28,6 @@ from logprep.abc import Processor
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import url_validator
-
-if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
-else:
-    from functools import cached_property
 
 
 class GeoipEnricherError(BaseException):

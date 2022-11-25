@@ -21,8 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install wheel
+          python -m pip install --upgrade pip wheel
 
       - name: Build binary wheel and a source tarball
         run: python setup.py sdist bdist_wheel

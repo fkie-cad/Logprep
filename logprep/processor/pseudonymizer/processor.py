@@ -29,7 +29,7 @@ Example
 """
 import datetime
 import re
-import sys
+from functools import cached_property
 from logging import Logger
 from typing import Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs
@@ -45,11 +45,6 @@ from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.validators import file_validator, list_of_urls_validator
-
-if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
-else:
-    from functools import cached_property
 
 
 class Pseudonymizer(Processor):
