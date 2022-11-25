@@ -1,5 +1,4 @@
 """ abstract module for connectors"""
-import sys
 from abc import ABC
 from logging import Logger
 
@@ -17,10 +16,8 @@ class Component(ABC):
         type: str = field(validator=validators.instance_of(str))
         """Type of the component"""
 
-    __slots__ = ["name", "_logger", "_config"]
-
-    if not sys.version_info.minor < 7:
-        __slots__.append("__dict__")
+    # __dict__ is added to support functools.cached_property
+    __slots__ = ["name", "_logger", "_config", "__dict__"]
 
     name: str
     _logger: Logger
