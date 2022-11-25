@@ -102,10 +102,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka1 librdkafka++1 librdkafka-dev
-          python -m pip install --upgrade pip wheel
+          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka-dev
+          pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
-          pip install -r doc/requirements.txt
 
       - name: build docs
         run: |
@@ -141,8 +140,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka1 librdkafka++1 librdkafka-dev
-          python -m pip install --upgrade pip wheel
+          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka-dev
+          pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
 
       - name: Install semgrep
