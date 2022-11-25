@@ -102,7 +102,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka1 librdkafka++1 librdkafka-dev
+          python -m pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
           pip install -r doc/requirements.txt
 
@@ -140,6 +141,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka1 librdkafka++1 librdkafka-dev
           python -m pip install --upgrade pip
           pip install -r requirements_dev.txt
 
@@ -149,7 +151,6 @@ jobs:
 
       - name: check black formating
         run: |
-          pip install black
           black --check --diff --config ./pyproject.toml .
 
       - name: lint changed and added files
