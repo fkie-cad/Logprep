@@ -3,7 +3,7 @@ luqum
 jsonref
 pyyaml
 ruamel.yaml
-confluent-kafka==1.8.2
+confluent-kafka<1.9.0
 pycryptodome
 urlextract
 tldextract
