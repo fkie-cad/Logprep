@@ -5,7 +5,7 @@ Getting Started
 Installation
 ============
 
-Python should be present on the system, currently supported are the versions 3.6 - 3.9.
+Python should be present on the system, currently supported are the versions 3.9 - 3.11.
 To install Logprep you have following options:
 
 **1. Option:** Installation via PyPI:

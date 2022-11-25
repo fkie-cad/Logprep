@@ -279,16 +279,16 @@ Those can be executed via: `tox -e [name of the test environment]`.
 For Example:
 
 ```
-tox -e py36-all
+tox -e py39-all
 ```
 
 This runs all tests, calculates the test coverage and evaluates the code quality for the python 
-3.6 version.
+3.9 version.
 
 Multiple environments can be tested within one call: 
 
 ```
-tox -e py36-all -e py37-all -e py38-all -e py39-all
+tox -e py39-all -e py310-all -e py311-all
 ```
 
 If you want to run them in parallel attach the option `-p`.
@@ -304,15 +304,12 @@ tox -av
 In case the requirements change, the test environments must be rebuilt with the parameter `-r`:
 
 ```
-tox -e all -r
+tox -e py39 -e py310 -e py311 -r
 ```
 
 ### Semgrep
 
-To run the semgrep rules against the semgrep python registry at least python 3.7 is required. 
-Because of that and the default logprep support for python 3.6 semgrep is not part of the 
-requirements_dev.txt. 
-If you want to run semgrep rules use a python environment with version higher than 3.6 and run
+If you want to run semgrep rules run
 
 ```
 pip install semgrep
@@ -321,7 +318,7 @@ pip install semgrep
 Afterwards you can just call the tox environment with for example 
 
 ```
-tox -e py37-semgrep
+tox -e py39-semgrep
 ```
 
 ### Running Logprep
