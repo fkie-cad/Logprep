@@ -4,8 +4,18 @@
 
 ## next release
 
+### Breaking
+
+* drop support for python `3.6`, `3.7`, `3.8`
+
+### Features
+
 * Add an `http input connector` that spawns a uvicorn server which parses requests content to events.
 * provide the possibility to consume lists, rules and configuration from files and http endpoints
+
+### Improvements
+
+* add support for python `3.10` and `3.11`
 
 ## v4.0.0
 ### Breaking
