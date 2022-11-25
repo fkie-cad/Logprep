@@ -2,3 +2,8 @@
 .github
 .venv
 .semgrep_rules
+.vscode
+htmlcov
+logs
+coverage.xml
+
