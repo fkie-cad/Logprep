@@ -89,7 +89,6 @@ class BNF(Forward):
     multop = mult | div
     expop = Literal("^")
 
-
     def push_first(self, toks):
         self.exprStack.append(toks[0])
 
@@ -142,11 +141,15 @@ class BNF(Forward):
             num_args = len(t[0])
             t.insert(0, (fn, num_args))
 
-        fn_call = (self.ident + self.lpar - Group(expr_list) + self.rpar).setParseAction(insert_fn_argcount_tuple)
+        fn_call = (self.ident + self.lpar - Group(expr_list) + self.rpar).setParseAction(
+            insert_fn_argcount_tuple
+        )
         atom = (
             self.addop[...]
             + (
-                (fn_call | self.pi | self.e | self.fnumber | self.ident).setParseAction(self.push_first)
+                (fn_call | self.pi | self.e | self.fnumber | self.ident).setParseAction(
+                    self.push_first
+                )
                 | Group(self.lpar + self + self.rpar)
             )
         ).setParseAction(self.push_unary_minus)
