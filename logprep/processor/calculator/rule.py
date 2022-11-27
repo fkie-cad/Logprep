@@ -81,7 +81,7 @@ retrieved from a field by the schema :code:`${your.dotted.field}`:
 * :code:`all(1,1,1)` => :code:`True`
 * :code:`all(1,1,1,1,1,0)` => :code:`False`
 
-The calc expression shouldn`t be whitespace sensitive.
+The calc expression is not whitespace sensitive.
 
 """
 from functools import partial
