@@ -15,8 +15,8 @@ from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
-from .fourFn import BNF, evaluate_stack, exprStack
-from .rule import CalculatorRule
+from .fourFn import BNF
+from logprep.processor.calculator.rule import CalculatorRule
 
 
 class Calculator(Processor):
@@ -43,8 +43,9 @@ class Calculator(Processor):
 
     def _calculate(self, event, rule, expression):
         try:
-            _ = BNF().parseString(expression, parseAll=True)
-            result = evaluate_stack(exprStack[:])
+            bnf = BNF()
+            _ = bnf.parseString(expression, parseAll=True)
+            result = bnf.evaluate_stack()
         except ParseException as error:
             error.msg = f"({self.name}): expression '{error.line}' could not be parsed"
             self._handle_warning_error(event, rule, error)

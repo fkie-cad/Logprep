@@ -29,86 +29,8 @@ from pyparsing import (
     delimitedList,
 )
 
-exprStack = []
-
-
-def push_first(toks):
-    exprStack.append(toks[0])
-
-
-def push_unary_minus(toks):
-    for t in toks:
-        if t == "-":
-            exprStack.append("unary -")
-        else:
-            break
-
-
-bnf = None
-
-
-def BNF():
-    """
-    expop   :: '^'
-    multop  :: '*' | '/'
-    addop   :: '+' | '-'
-    integer :: ['+' | '-'] '0'..'9'+
-    atom    :: PI | E | real | fn '(' expr ')' | '(' expr ')'
-    factor  :: atom [ expop factor ]*
-    term    :: factor [ multop factor ]*
-    expr    :: term [ addop term ]*
-    """
-    global bnf  # pylint: disable=global-statement
-    if not bnf:
-        # use CaselessKeyword for e and pi, to avoid accidentally matching
-        # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
-        # and CaselessKeyword only match whole words
-        e = CaselessKeyword("E")
-        pi = CaselessKeyword("PI")
-        # fnumber = Combine(Word("+-"+nums, nums) +
-        #                    Optional("." + Optional(Word(nums))) +
-        #                    Optional(e + Word("+-"+nums, nums)))
-        # or use provided pyparsing_common.number, but convert back to str:
-        # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
-        fnumber = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
-        ident = Word(alphas, alphanums + "_$")
-
-        plus, minus, mult, div = map(Literal, "+-*/")
-        lpar, rpar = map(Suppress, "()")
-        addop = plus | minus
-        multop = mult | div
-        expop = Literal("^")
-
-        expr = Forward()
-        expr_list = delimitedList(Group(expr))
-        # add parse action that replaces the function identifier with a (name, number of args) tuple
-        def insert_fn_argcount_tuple(t):
-            fn = t.pop(0)  # pylint: disable=redefined-outer-name
-            num_args = len(t[0])
-            t.insert(0, (fn, num_args))
-
-        fn_call = (ident + lpar - Group(expr_list) + rpar).setParseAction(insert_fn_argcount_tuple)
-        atom = (
-            addop[...]
-            + (
-                (fn_call | pi | e | fnumber | ident).setParseAction(push_first)
-                | Group(lpar + expr + rpar)
-            )
-        ).setParseAction(push_unary_minus)
-
-        # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...",
-        # we get right-to-left exponents,
-        # instead of left-to-right that is, 2^3^2 = 2^(3^2), not (2^3)^2.
-        factor = Forward()
-        factor <<= atom + (expop + factor).setParseAction(push_first)[...]
-        term = factor + (multop + factor).setParseAction(push_first)[...]
-        expr <<= term + (addop + term).setParseAction(push_first)[...]
-        bnf = expr
-    return bnf
-
-
-# map operator symbols to corresponding arithmetic operations
 epsilon = 1e-12
+# map operator symbols to corresponding arithmetic operations
 opn = {
     "+": operator.add,
     "-": operator.sub,
@@ -134,30 +56,105 @@ fn = {
 }
 
 
-def evaluate_stack(s):
-    op, num_args = s.pop(), 0
-    if isinstance(op, tuple):
-        op, num_args = op
-    if op == "unary -":
-        return -evaluate_stack(s)
-    if op in "+-*/^":
-        # note: operands are pushed onto the stack in reverse order
-        op2 = evaluate_stack(s)
-        op1 = evaluate_stack(s)
-        return opn[op](op1, op2)
-    elif op == "PI":
-        return math.pi  # 3.1415926535
-    elif op == "E":
-        return math.e  # 2.718281828
-    elif op in fn:
-        # note: args are pushed onto the stack in reverse order
-        args = reversed([evaluate_stack(s) for _ in range(num_args)])
-        return fn[op](*args)
-    elif op[0].isalpha():
-        raise Exception(f"invalid identifier '{op}'")
-    else:
+class BNF(Forward):
+    """
+    expop   :: '^'
+    multop  :: '*' | '/'
+    addop   :: '+' | '-'
+    integer :: ['+' | '-'] '0'..'9'+
+    atom    :: PI | E | real | fn '(' expr ')' | '(' expr ')'
+    factor  :: atom [ expop factor ]*
+    term    :: factor [ multop factor ]*
+    expr    :: term [ addop term ]*
+    """
+
+    exprStack: list
+
+    # use CaselessKeyword for e and pi, to avoid accidentally matching
+    # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
+    # and CaselessKeyword only match whole words
+    e = CaselessKeyword("E")
+    pi = CaselessKeyword("PI")
+    # fnumber = Combine(Word("+-"+nums, nums) +
+    #                    Optional("." + Optional(Word(nums))) +
+    #                    Optional(e + Word("+-"+nums, nums)))
+    # or use provided pyparsing_common.number, but convert back to str:
+    # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
+    fnumber = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+    ident = Word(alphas, alphanums + "_$")
+
+    plus, minus, mult, div = map(Literal, "+-*/")
+    lpar, rpar = map(Suppress, "()")
+    addop = plus | minus
+    multop = mult | div
+    expop = Literal("^")
+
+
+    def push_first(self, toks):
+        self.exprStack.append(toks[0])
+
+    def push_unary_minus(self, toks):
+        for t in toks:
+            if t == "-":
+                self.exprStack.append("unary -")
+            else:
+                break
+
+    def evaluate_stack(self):
+        op, num_args = self.exprStack.pop(), 0
+        if isinstance(op, tuple):
+            op, num_args = op
+        if op == "unary -":
+            return -self.evaluate_stack()
+        if op in "+-*/^":
+            # note: operands are pushed onto the stack in reverse order
+            op2 = self.evaluate_stack()
+            op1 = self.evaluate_stack()
+            return opn[op](op1, op2)
+        if op == "PI":
+            return math.pi  # 3.1415926535
+        if op == "E":
+            return math.e  # 2.718281828
+        if op in fn:
+            # note: args are pushed onto the stack in reverse order
+            args = reversed([self.evaluate_stack() for _ in range(num_args)])
+            return fn[op](*args)
+        if op[0].isalpha():
+            raise Exception(f"invalid identifier '{op}'")
         # try to evaluate as int first, then as float if int fails
         try:
             return int(op)
         except ValueError:
             return float(op)
+
+    def __new__(cls):
+        if not hasattr(cls, "instance"):
+            cls.instance = super(BNF, cls).__new__(cls)
+        return cls.instance
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.exprStack = []
+        expr_list = delimitedList(Group(self))
+        # add parse action that replaces the function identifier with a (name, number of args) tuple
+        def insert_fn_argcount_tuple(t):
+            fn = t.pop(0)  # pylint: disable=redefined-outer-name
+            num_args = len(t[0])
+            t.insert(0, (fn, num_args))
+
+        fn_call = (self.ident + self.lpar - Group(expr_list) + self.rpar).setParseAction(insert_fn_argcount_tuple)
+        atom = (
+            self.addop[...]
+            + (
+                (fn_call | self.pi | self.e | self.fnumber | self.ident).setParseAction(self.push_first)
+                | Group(self.lpar + self + self.rpar)
+            )
+        ).setParseAction(self.push_unary_minus)
+
+        # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...",
+        # we get right-to-left exponents,
+        # instead of left-to-right that is, 2^3^2 = 2^(3^2), not (2^3)^2.
+        factor = Forward()
+        factor <<= atom + (self.expop + factor).setParseAction(self.push_first)[...]
+        term = factor + (self.multop + factor).setParseAction(self.push_first)[...]
+        self <<= term + (self.addop + term).setParseAction(self.push_first)[...]

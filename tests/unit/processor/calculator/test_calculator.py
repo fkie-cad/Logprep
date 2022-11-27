@@ -4,7 +4,7 @@ import math
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.calculator.fourFn import BNF, evaluate_stack, exprStack
+from logprep.processor.calculator.fourFn import BNF
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -345,6 +345,7 @@ class TestCalculator(BaseProcessorTestCase):
         ],
     )
     def test_fourfn(self, expression, expected):
-        _ = BNF().parseString(expression, parseAll=True)
-        result = evaluate_stack(exprStack[:])
+        bnf = BNF()
+        _ = bnf.parseString(expression, parseAll=True)
+        result = bnf.evaluate_stack()
         assert result == expected
