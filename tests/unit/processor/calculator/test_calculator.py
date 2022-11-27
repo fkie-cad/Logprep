@@ -252,7 +252,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         r"could not be parsed",
     ),
     (
-        "devision by zero",
+        "division by zero",
         {
             "filter": "message",
             "calculator": {
@@ -268,6 +268,22 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "tags": ["_calculator_failure"],
         },
         r"'3/0' => '3/0' results in division by zero",
+    ),
+    (
+        "raises timout",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": " 9^9^9",
+                "target_field": "result",
+            },
+        },
+        {"message": "This is a message"},
+        {
+            "message": "This is a message",
+            "tags": ["_calculator_failure"],
+        },
+        r"Timer expired",
     ),
 ]
 

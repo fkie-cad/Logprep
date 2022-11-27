@@ -110,6 +110,8 @@ class CalculatorRule(FieldManagerRule):
         """If the target field exists and is a list, the list will be extended with the values
         of the source fields.
         """
+        timeout: int = field(validator=validators.instance_of(int), converter=int, default=1)
+        """The maximum time in seconds for the calculation. Defaults to :code:`1`"""
 
         def __attrs_post_init__(self):
             self.source_fields = re.findall(FIELD_PATTERN, self.calc)
@@ -118,3 +120,8 @@ class CalculatorRule(FieldManagerRule):
     def calc(self):
         """Returns the calculation expression"""
         return self._config.calc
+
+    @property
+    def timeout(self):
+        """Returns the timout"""
+        return self._config.timeout
