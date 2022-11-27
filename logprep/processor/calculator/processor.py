@@ -5,6 +5,18 @@ Calculator
 The Calculator can be used to calculate with or without field values.
 For further information for the rule language see: :ref:`calulator_rule`
 
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - calculatorname:
+        type: calculator
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+
 """
 import re
 from functools import cached_property, partial
