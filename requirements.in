@@ -1,24 +1,25 @@
-wheel
+arrow
 attrs~=21.3 # because of semgrep in development
-luqum
-jsonref
-pyyaml
-ruamel.yaml
-confluent-kafka<1.9.0
-pycryptodome
-urlextract
-tldextract
-geoip2
-pygrok
 colorama
+confluent-kafka<1.9.0
+elasticsearch>=7,<8
+fastapi
+geoip2
+hyperscan==0.2.0; sys_platform == 'linux' and platform_machine == 'x86_64'
+jsonref
+luqum
+mysql-connector-python
+numpy==1.22.1
+opensearch-py
+prometheus_client
+pycryptodome
+pygrok
+pyparsing
 python-dateutil
 pytz
-numpy==1.22.1
-arrow
-prometheus_client
-hyperscan==0.2.0; sys_platform == 'linux' and platform_machine == 'x86_64'
-elasticsearch>=7,<8
-opensearch-py
-mysql-connector-python
-fastapi
+pyyaml
+ruamel.yaml
+tldextract
+urlextract
 uvicorn
+wheel

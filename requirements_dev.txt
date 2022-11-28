@@ -188,7 +188,9 @@ pygrok==1.0.0
 pylint==2.15.6
     # via -r ./requirements_dev.in
 pyparsing==3.0.9
-    # via packaging
+    # via
+    #   -r ./requirements.txt
+    #   packaging
 pyrsistent==0.19.2
     # via jsonschema
 pytest==7.2.0
