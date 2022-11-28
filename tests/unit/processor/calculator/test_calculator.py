@@ -188,7 +188,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
                 "target_field": "result",
             },
         },
-        {"field1": "5", "field2": "4", "field3": 2, "result": "exisist"},
+        {"field1": "5", "field2": "4", "field3": 2, "result": "exists"},
         {
             "field1": "5",
             "field2": "4",
