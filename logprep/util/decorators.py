@@ -9,7 +9,7 @@ def timeout(seconds=100, error_message=os.strerror(errno.ETIME)):
     """Calls a function with a defined timeout"""
 
     def decorator(func):
-        def _handle_timeout(signum, frame): # nosemgrep
+        def _handle_timeout(signum, frame):  # nosemgrep
             raise TimeoutError(error_message)
 
         @wraps(func)
