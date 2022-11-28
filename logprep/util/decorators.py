@@ -12,7 +12,7 @@ def timeout(seconds=100, error_message=os.strerror(errno.ETIME)):
         def _handle_timeout(signum, frame):  # nosemgrep
             raise TimeoutError(error_message)
 
-        @wraps(func)
+        @wraps(func)  # nosemgrep
         def wrapper(*args, **kwargs):
             signal.signal(signal.SIGALRM, _handle_timeout)
             signal.alarm(seconds)
