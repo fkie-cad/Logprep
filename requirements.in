@@ -1,4 +1,5 @@
 wheel
+attrs~=21.3 # because of semgrep in development
 luqum
 jsonref
 pyyaml

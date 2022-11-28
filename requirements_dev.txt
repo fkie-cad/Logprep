@@ -25,13 +25,23 @@ async-timeout==4.0.2
     # via
     #   -r ./requirements.txt
     #   aiohttp
-attrs==22.1.0
+attrs==21.4.0
     # via
     #   -r ./requirements.txt
     #   aiohttp
+    #   glom
+    #   jsonschema
     #   pytest
+    #   semgrep
 black==22.10.0
     # via -r ./requirements_dev.in
+boltons==21.0.0
+    # via
+    #   face
+    #   glom
+    #   semgrep
+bracex==2.3.post1
+    # via wcmatch
 certifi==2022.9.24
     # via
     #   -r ./requirements.txt
@@ -49,20 +59,30 @@ click==8.1.3
     # via
     #   -r ./requirements.txt
     #   black
+    #   click-option-group
+    #   semgrep
     #   uvicorn
+click-option-group==0.5.5
+    # via semgrep
 colorama==0.4.6
-    # via -r ./requirements.txt
+    # via
+    #   -r ./requirements.txt
+    #   semgrep
 confluent-kafka==1.8.2
     # via -r ./requirements.txt
 coverage[toml]==6.5.0
     # via pytest-cov
+defusedxml==0.7.1
+    # via semgrep
 dill==0.3.6
     # via pylint
 elasticsearch==7.17.7
     # via -r ./requirements.txt
 exceptiongroup==1.0.4
     # via pytest
-fastapi==0.87.0
+face==22.0.0
+    # via glom
+fastapi==0.88.0
     # via -r ./requirements.txt
 filelock==3.8.0
     # via
@@ -76,12 +96,14 @@ frozenlist==1.3.3
     #   aiosignal
 geoip2==4.6.0
     # via -r ./requirements.txt
+glom==22.1.0
+    # via semgrep
 h11==0.14.0
     # via
     #   -r ./requirements.txt
     #   httpcore
     #   uvicorn
-httpcore==0.16.1
+httpcore==0.16.2
     # via httpx
 httpx==0.23.1
     # via -r ./requirements_dev.in
@@ -99,9 +121,13 @@ idna==3.4
 iniconfig==1.1.1
     # via pytest
 isort==5.10.1
-    # via pylint
+    # via
+    #   -r ./requirements_dev.in
+    #   pylint
 jsonref==1.0.1
     # via -r ./requirements.txt
+jsonschema==4.17.1
+    # via semgrep
 lazy-object-proxy==1.8.0
     # via astroid
 luqum==0.12.0
@@ -126,9 +152,13 @@ numpy==1.22.1
 opensearch-py==2.0.0
     # via -r ./requirements.txt
 packaging==21.3
-    # via pytest
+    # via
+    #   pytest
+    #   semgrep
 pathspec==0.10.2
     # via black
+peewee==3.15.4
+    # via semgrep
 platformdirs==2.5.4
     # via
     #   -r ./requirements.txt
@@ -147,7 +177,7 @@ protobuf==3.20.1
     # via
     #   -r ./requirements.txt
     #   mysql-connector-python
-pycryptodome==3.15.0
+pycryptodome==3.16.0
     # via -r ./requirements.txt
 pydantic==1.10.2
     # via
@@ -159,6 +189,8 @@ pylint==2.15.6
     # via -r ./requirements_dev.in
 pyparsing==3.0.9
     # via packaging
+pyrsistent==0.19.2
+    # via jsonschema
 pytest==7.2.0
     # via
     #   -r ./requirements_dev.in
@@ -169,6 +201,8 @@ python-dateutil==2.8.2
     # via
     #   -r ./requirements.txt
     #   arrow
+python-lsp-jsonrpc==1.0.0
+    # via semgrep
 pytz==2022.6
     # via -r ./requirements.txt
 pyyaml==6.0
@@ -183,6 +217,7 @@ requests==2.28.1
     #   geoip2
     #   opensearch-py
     #   requests-file
+    #   semgrep
     #   tldextract
 requests-file==1.5.1
     # via
@@ -191,11 +226,15 @@ requests-file==1.5.1
 rfc3986[idna2008]==1.5.0
     # via httpx
 ruamel-yaml==0.17.21
-    # via -r ./requirements.txt
+    # via
+    #   -r ./requirements.txt
+    #   semgrep
 ruamel-yaml-clib==0.2.7
     # via
     #   -r ./requirements.txt
     #   ruamel-yaml
+semgrep==0.122.0
+    # via -r ./requirements_dev.in
 six==1.16.0
     # via
     #   -r ./requirements.txt
@@ -207,7 +246,7 @@ sniffio==1.3.0
     #   anyio
     #   httpcore
     #   httpx
-starlette==0.21.0
+starlette==0.22.0
     # via
     #   -r ./requirements.txt
     #   fastapi
@@ -219,8 +258,11 @@ tomli==2.0.1
     #   coverage
     #   pylint
     #   pytest
+    #   semgrep
 tomlkit==0.11.6
     # via pylint
+tqdm==4.64.1
+    # via semgrep
 typing-extensions==4.4.0
     # via
     #   -r ./requirements.txt
@@ -228,7 +270,10 @@ typing-extensions==4.4.0
     #   black
     #   pydantic
     #   pylint
+    #   semgrep
     #   starlette
+ujson==5.5.0
+    # via python-lsp-jsonrpc
 uritools==4.0.0
     # via
     #   -r ./requirements.txt
@@ -242,8 +287,11 @@ urllib3==1.26.13
     #   geoip2
     #   opensearch-py
     #   requests
+    #   semgrep
 uvicorn==0.20.0
     # via -r ./requirements.txt
+wcmatch==8.4.1
+    # via semgrep
 wheel==0.38.4
     # via -r ./requirements.txt
 wrapt==1.14.1

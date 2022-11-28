@@ -4,3 +4,5 @@ pytest-cov
 pylint
 httpx
 black
+semgrep
+isort
