@@ -11,7 +11,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        python-version: ["3.9"]
 
     steps:
       - uses: actions/checkout@v3
@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -48,14 +48,13 @@ jobs:
         with:
           name: Logprep
           path: logprep.pex
-        if: matrix.python-version == 3.6
 
   test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        python-version: ["3.9", "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v3
@@ -63,11 +62,12 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka-dev
+          pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
 
       - name: Perform unit tests
@@ -87,7 +87,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9' ]
+        python-version: ["3.9"]
 
     steps:
       - uses: actions/checkout@v3
@@ -99,7 +99,7 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Get changed python files
         id: changed-files
@@ -110,17 +110,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
+          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka-dev
+          pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
-
-      - name: Install semgrep if python version > 3.6
-        run: |
-          pip install semgrep
-        if: matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.9
 
       - name: check black formating
         run: |
-          pip install black
           black --check --diff --config ./pyproject.toml .
 
       - name: lint changed and added files
@@ -135,5 +130,5 @@ jobs:
         uses: codecov/codecov-action@v2
 
       - name: Check semgrep rules
-        if: steps.changed-files.outputs.all_changed_files && (matrix.python-version == 3.7 || matrix.python-version == 3.8 || matrix.python-version == 3.9)
+        if: steps.changed-files.outputs.all_changed_files
         run: semgrep -c .semgrep_rules -c r/python --error -l python --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}

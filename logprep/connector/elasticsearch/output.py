@@ -33,7 +33,7 @@ Example
 import json
 import re
 import ssl
-import sys
+from functools import cached_property
 from logging import Logger
 from typing import List, Optional
 
@@ -44,11 +44,6 @@ from attrs import validators
 from elasticsearch import helpers
 
 from logprep.abc.output import FatalOutputError, Output
-
-if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
-else:
-    from functools import cached_property
 
 
 class ElasticsearchOutput(Output):

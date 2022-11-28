@@ -38,7 +38,7 @@ class TestDualPKCS1HybridEncrypter:
         with pytest.raises(ValueError):
             encrypter.encrypt("foo")
 
-    @mock.patch("io.open")
+    @mock.patch("pathlib.Path.open")
     def test_load_public_keys_successfully(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data=MOCK_PUBKEY_1024).return_value,
@@ -49,7 +49,7 @@ class TestDualPKCS1HybridEncrypter:
         assert len(str(encrypter._pubkey_analyst.n)) == 309
         assert len(str(encrypter._pubkey_depseudo.n)) == 617
 
-    @mock.patch("io.open")
+    @mock.patch("pathlib.Path.open")
     def test_load_public_keys_invalid_key(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data="foo").return_value,
@@ -64,7 +64,7 @@ class TestDualPKCS1HybridEncrypter:
         with pytest.raises(FileNotFoundError):
             encrypter.load_public_keys("non_existent_file_1", "non_existent_file_1")
 
-    @mock.patch("io.open")
+    @mock.patch("pathlib.Path.open")
     def test_encrypt(self, mock_open):
         mock_open.side_effect = [
             mock.mock_open(read_data=MOCK_PUBKEY_1024).return_value,

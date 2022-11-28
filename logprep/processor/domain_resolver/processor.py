@@ -26,14 +26,14 @@ Example
         debug_cache: false
 """
 import datetime
-import sys
 import socket
+from functools import cached_property
 from logging import Logger
 from multiprocessing import context
 from multiprocessing.pool import ThreadPool
 from typing import Optional
-from attr import define, field, validators
 
+from attr import define, field, validators
 from tldextract import TLDExtract
 
 from logprep.abc import Processor
@@ -43,11 +43,6 @@ from logprep.util.cache import Cache
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
-
-if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
-else:
-    from functools import cached_property
 
 
 class DomainResolver(Processor):

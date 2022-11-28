@@ -25,10 +25,9 @@ setup(
     classifiers=[
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
     project_urls={
         "Homepage": "https://github.com/fkie-cad/Logprep",
@@ -36,7 +35,7 @@ setup(
     },
     packages=find_packages(),
     install_requires=["setuptools"] + requirements,
-    python_requires=">=3.6",
+    python_requires=">=3.9",
     entry_points={
         "console_scripts": [
             "logprep = logprep.run_logprep:main",

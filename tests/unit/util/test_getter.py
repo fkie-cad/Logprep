@@ -61,7 +61,7 @@ class TestFileGetter:
 
     def test_get_returns_content(self):
         file_getter = GetterFactory.from_string("/my/file")
-        with mock.patch("io.open", mock.mock_open(read_data="my content")):
+        with mock.patch("pathlib.Path.open", mock.mock_open(read_data="my content")):
             content = file_getter.get()
             assert content == "my content"
 
@@ -151,7 +151,7 @@ second_dict:
     def test_parses_content(self, method_name, input_content, expected_output):
         file_getter = GetterFactory.from_string("/my/file")
         method = getattr(file_getter, method_name)
-        with mock.patch("io.open", mock.mock_open(read_data=input_content)):
+        with mock.patch("pathlib.Path.open", mock.mock_open(read_data=input_content)):
             output = method()
             assert output == expected_output
 

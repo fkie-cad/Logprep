@@ -1,11 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-import base64
 from copy import deepcopy
 import json
 import sys
-import zlib
 
 import pytest
 import requests
@@ -17,7 +15,6 @@ from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
 
-@pytest.mark.skipif(sys.version_info.minor < 7, reason="not supported for python 3.6")
 class TestHttpConnector(BaseInputTestCase):
     def setup_method(self):
         super().setup_method()
@@ -41,19 +38,19 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}
-        resp = self.client.post("/json", json.dumps(data))
+        resp = self.client.post(url="/json", data=json.dumps(data))
         assert resp.status_code == 200
 
     def test_json_message_is_put_in_queue(self):
         data = {"message": "my log message"}
-        resp = self.client.post("/json", json.dumps(data))
+        resp = self.client.post(url="/json", data=json.dumps(data))
         assert resp.status_code == 200
         event_from_queue = self.object._messages.get(timeout=0.001)
         assert event_from_queue == data
 
     def test_plaintext_endpoint_accepts_post_request(self):
         data = "my log message"
-        resp = self.client.post("/plaintext", data)
+        resp = self.client.post(url="/plaintext", data=data)
         assert resp.status_code == 200
 
     def test_plaintext_message_is_put_in_queue(self):
@@ -81,7 +78,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
-        self.client.post("/json", json.dumps(data))
+        self.client.post(url="/json", data=json.dumps(data))
         assert self.object.get_next(0.001) == (data, None)
 
     def test_get_next_returns_first_in_first_out(self):
@@ -91,7 +88,7 @@ class TestHttpConnector(BaseInputTestCase):
             {"message": "third message"},
         ]
         for message in data:
-            self.client.post("/json", json.dumps(message))
+            self.client.post(url="/json", data=json.dumps(message))
         assert self.object.get_next(0.001) == (data[0], None)
         assert self.object.get_next(0.001) == (data[1], None)
         assert self.object.get_next(0.001) == (data[2], None)
@@ -105,7 +102,7 @@ class TestHttpConnector(BaseInputTestCase):
         for message in data:
             endpoint, post_data = message.values()
             if endpoint == "json":
-                self.client.post("/json", json.dumps(post_data))
+                self.client.post(url="/json", data=json.dumps(post_data))
             if endpoint == "plaintext":
                 self.client.post("/plaintext", data=post_data)
         assert self.object.get_next(0.001)[0] == data[0].get("data")

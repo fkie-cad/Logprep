@@ -26,25 +26,18 @@ Example
         tld_lists: /path/to/list/file
         tagging_field_name: resolved
 """
-import sys
 import ipaddress
-
+from functools import cached_property
 from typing import Optional
+
 from attr import define, field, validators
-
 from tldextract import TLDExtract
-
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
-from logprep.util.validators import list_of_urls_validator
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
-
-if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
-else:
-    from functools import cached_property
+from logprep.util.validators import list_of_urls_validator
 
 
 class DomainLabelExtractor(Processor):

@@ -5,8 +5,6 @@ HTTPInput
 A http input connector that spawns an uvicorn server and accepts http requests, parses them,
 puts them to an internal queue and pops them via :code:`get_next` method.
 
-This Processor is not supported for python 3.6 and lower versions.
-
 Example
 ^^^^^^^
 ..  code-block:: yaml

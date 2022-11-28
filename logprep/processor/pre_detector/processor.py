@@ -20,20 +20,16 @@ Example
         pre_detector_topic: sre_topic
         alert_ip_list_path: /tmp/ip_list.yml
 """
-import sys
+from functools import cached_property
 from logging import DEBUG, Logger
 from uuid import uuid4
 
 from attr import define, field, validators
+
 from logprep.abc import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
 from logprep.util.validators import file_validator
-
-if sys.version_info.minor < 8:  # pragma: no cover
-    from backports.cached_property import cached_property  # pylint: disable=import-error
-else:
-    from functools import cached_property
 
 
 class PreDetectorError(BaseException):
