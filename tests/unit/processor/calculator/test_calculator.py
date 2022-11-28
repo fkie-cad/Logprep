@@ -193,7 +193,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field1": "5",
             "field2": "4",
             "field3": 2,
-            "result": "exisist",
+            "result": "exists",
             "tags": ["_calculator_failure"],
         },
         "one or more subfields existed and could not be extended: result",
