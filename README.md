@@ -232,7 +232,7 @@ Details about the rule language and how to write rules for the processors can be
 
 Python should be present on the system, currently supported are the versions 3.9 - 3.11.
 You have to install `hyperscan` and `rdkafka` before installing logprep. On debian based
-system this is performed by `sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka-dev`.
+systems, this is performed by `sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka-dev`.
 
 To install Logprep you have following options:
 
