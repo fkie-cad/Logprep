@@ -31,8 +31,8 @@ A speaking example:
 
     {"duration": 10000.0}
 
-following a list with example calculation expressions, where all factors and the operators can be
-retrieved from a field by the schema :code:`${your.dotted.field}`:
+Following a list with example calculation expressions, where all factors and the operators can be
+retrieved from a field with the schema :code:`${your.dotted.field}`:
 
 * :code:`9` => :code:`9`
 * :code:`-9` => :code:`-9`
@@ -104,7 +104,7 @@ class CalculatorRule(FieldManagerRule):
             validator=[validators.instance_of(str), partial(min_len_validator, min_length=3)],
         )
         """The calculation expression. Fields from the event can be used by
-        surround them with :code:`${}`."""
+        surrounding them with :code:`${` and :code:`}`."""
         source_fields: list = field(factory=list)
         extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values
