@@ -428,6 +428,25 @@ test_cases = [  # testcase, rule, event, expected
             "field24": "message",
         },
     ),
+    (
+        "parses path elements",
+        {
+            "filter": "path",
+            "dissector": {
+                "mapping": {
+                    "path": "/%{field1}/%{field2}/%{field3}/%{field4}",
+                },
+            },
+        },
+        {"path": "/this/is/the/path"},
+        {
+            "path": "/this/is/the/path",
+            "field1": "this",
+            "field2": "is",
+            "field3": "the",
+            "field4": "path",
+        },
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (

@@ -98,7 +98,9 @@ class DissectorRule(FieldManagerRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.matches_re(rf"^({DISSECT}{SEPARATOR})+{DISSECT}$"),
+                    value_validator=validators.matches_re(
+                        rf"^({SEPARATOR})?({DISSECT}{SEPARATOR})+{DISSECT}$"
+                    ),
                 ),
             ],
             default=Factory(dict),
@@ -151,6 +153,8 @@ class DissectorRule(FieldManagerRule):
     def _set_mapping_actions(self):
         self.actions = []
         for source_field, pattern in self._config.mapping.items():
+            if not re.match(rf"^{DISSECT}.*", pattern):
+                pattern = "%{}" + pattern
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(
