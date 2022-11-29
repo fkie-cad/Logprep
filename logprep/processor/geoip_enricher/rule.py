@@ -43,7 +43,6 @@ class GeoipEnricherRule(FieldManagerRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.and_(
-                        validators.min_len(4),
                         validators.instance_of(str),
                         validators.in_(
                             [
