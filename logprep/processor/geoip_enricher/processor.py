@@ -72,13 +72,9 @@ class GeoipEnricher(Processor):
         return database.Reader(self._config.db_path)
 
     def _try_getting_geoip_data(self, ip_string):
-        if ip_string is None:
-            return {}
         try:
             ip_addr = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip_addr)
-            if not ip_data:
-                return {}
             geoip_data = {
                 "type": "Feature",
                 "geometry.coordinates": [
@@ -101,18 +97,14 @@ class GeoipEnricher(Processor):
             return {}
 
     def _apply_rules(self, event, rule):
-        source_ip = rule.source_fields[0]
-        output_field = rule.target_field
-        if not source_ip:
-            return
-        ip_string = get_dotted_field_value(event, source_ip)
+        ip_string = get_dotted_field_value(event, rule.source_fields[0])
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return
         for target_subfield, value in geoip_data.items():
             if not value:
                 continue
-            full_output_field = f"{output_field}.{target_subfield}"
+            full_output_field = f"{rule.target_field}.{target_subfield}"
             if target_subfield in rule.customize_target_subfields.keys():
                 full_output_field = rule.customize_target_subfields[target_subfield]
             adding_was_successful = add_field_to(
