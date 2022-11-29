@@ -1,5 +1,5 @@
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
+# pylint: disable=no-member
 from unittest import mock
 
 import pytest
@@ -14,28 +14,25 @@ class ReaderMock(mock.MagicMock):
         if "127.0.0.1" in ip_list:
             raise AddressNotFoundError("127.0.0.1 not found in IP list")
         if "8.8.8.8" in ip_list:
-
-            class MockData:
-                longitude = 1.1
-                latitude = 2.2
-                accuracy_radius = 1337
-                name = "myName"
-                code = "2342"
-                most_specific = mock.MagicMock()
-
-            class City:
-                location = MockData()
-                continent = MockData()
-                country = MockData()
-                city = MockData()
-                postal = MockData()
-                subdivisions = MockData()
-
-            city = City()
+            city = type("City", (), {})
+            city.location = mock.MagicMock()
+            city.location.accuracy_radius = 1337
+            city.location.longitude = 1.1
+            city.location.latitude = 2.2
+            city.location.time_zone = "Europe/Berlin"
+            city.continent = mock.MagicMock()
             city.continent.name = "MyContinent"
+            city.continent.code = "MCT"
+            city.country = mock.MagicMock()
             city.country.name = "MyCountry"
+            city.country.iso_code = "MCR"
+            city.city = mock.MagicMock()
             city.city.name = "MyCity"
-
+            city.postal = mock.MagicMock()
+            city.postal.code = "2342"
+            city.subdivisions = mock.MagicMock()
+            city.subdivisions.most_specific = mock.MagicMock()
+            city.subdivisions.most_specific.name = "MySubdivision"
             return city
 
         return mock.MagicMock()
@@ -111,7 +108,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
     def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
         assert self.object.metrics.number_of_processed_events == 0
-        document = {"client": {"ip": "8.8.8.8"}, "geoip": {"test": "test"}}
+        document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
 
         with pytest.raises(
             DuplicationError,
@@ -161,3 +158,109 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         self.object.process(document)
         assert "client" in document
         assert document.get("client").get("ip").get("type") is not None
+
+    def test_specify_all_target_sub_fields(self):
+        document = {"client": {"ip": "8.8.8.8"}}
+        rule_dict = {
+            "filter": "client",
+            "geoip_enricher": {
+                "source_fields": ["client.ip"],
+                "target_field": "client.default_output",
+                "customize_target_subfields": {
+                    "type": "client.custom_output.type",
+                    "geometry.type": "client.custom_output.geometry_type",
+                    "geometry.coordinates": "client.custom_output.location",
+                    "properties.accuracy_radius": "client.custom_output.accuracy",
+                    "properties.continent": "client.custom_output.continent_name",
+                    "properties.continent_code": "client.custom_output.continent_code",
+                    "properties.country": "client.custom_output.country_name",
+                    "properties.city": "client.custom_output.city_name",
+                    "properties.postal_code": "client.custom_output.postal_code",
+                    "properties.subdivision": "client.custom_output.subdivision",
+                    "properties.time_zone": "client.custom_output.timezone",
+                    "properties.country_iso_code": "client.custom_output.country_iso_code",
+                },
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        expected_event = {
+            "client": {
+                "custom_output": {
+                    "type": "Feature",
+                    "geometry_type": "Point",
+                    "location": [1.1, 2.2],
+                    "accuracy": 1337,
+                    "continent_name": "MyContinent",
+                    "country_name": "MyCountry",
+                    "city_name": "MyCity",
+                    "postal_code": "2342",
+                    "subdivision": "MySubdivision",
+                    "continent_code": "MCT",
+                    "country_iso_code": "MCR",
+                    "timezone": "Europe/Berlin",
+                },
+                "ip": "8.8.8.8",
+            }
+        }
+        assert document == expected_event
+        assert document.get("client", {}).get("default_output") is None
+
+    def test_specify_some_target_sub_fields(self):
+        document = {"client": {"ip": "8.8.8.8"}}
+        rule_dict = {
+            "filter": "client",
+            "geoip_enricher": {
+                "source_fields": ["client.ip"],
+                "target_field": "client.default_output",
+                "customize_target_subfields": {
+                    "geometry.coordinates": "client.custom_output.location",
+                    "properties.accuracy_radius": "client.custom_output.accuracy",
+                    "properties.continent": "client.custom_output.continent_name",
+                    "properties.continent_code": "client.custom_output.continent_code",
+                },
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        expected_event = {
+            "client": {
+                "custom_output": {
+                    "accuracy": 1337,
+                    "continent_code": "MCT",
+                    "continent_name": "MyContinent",
+                    "location": [1.1, 2.2],
+                },
+                "default_output": {
+                    "geometry": {"type": "Point"},
+                    "properties": {
+                        "city": "MyCity",
+                        "country": "MyCountry",
+                        "country_iso_code": "MCR",
+                        "postal_code": "2342",
+                        "subdivision": "MySubdivision",
+                        "time_zone": "Europe/Berlin",
+                    },
+                    "type": "Feature",
+                },
+                "ip": "8.8.8.8",
+            }
+        }
+        assert document == expected_event
+
+    def test_specify_unknown_target_sub_fields(self):
+        rule_dict = {
+            "filter": "client",
+            "geoip_enricher": {
+                "source_fields": ["client.ip"],
+                "target_field": "client.default_output",
+                "customize_target_subfields": {
+                    "unknown.default.field": "some.location",
+                },
+            },
+            "description": "",
+        }
+        with pytest.raises(ValueError, match=r"\'customize_target_subfields\' must be in"):
+            self._load_specific_rule(rule_dict)

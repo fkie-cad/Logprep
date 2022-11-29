@@ -71,66 +71,40 @@ class GeoipEnricher(Processor):
     def _city_db(self):
         return database.Reader(self._config.db_path)
 
-    @staticmethod
-    def _normalize_empty(db_entry):
-        return db_entry if db_entry else None
-
-    def _try_getting_geoip_data(self, ip_string):
+    def _try_getting_geoip_data(self, ip_string):  # pylint: disable=too-many-branches
         if ip_string is None:
             return {}
-
         try:
-            geoip = {}
-
             ip_addr = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip_addr)
-
-            if ip_data:
-                geoip["type"] = "Feature"
-                properties = {}
-
-                if ip_data.location:
-                    longitude = self._normalize_empty(ip_data.location.longitude)
-                    latitude = self._normalize_empty(ip_data.location.latitude)
-                    if longitude and latitude:
-                        geoip["geometry"] = {
-                            "type": "Point",
-                            "coordinates": [longitude, latitude],
-                        }
-
-                    accuracy_radius = self._normalize_empty(ip_data.location.accuracy_radius)
-                    if accuracy_radius:
-                        properties["accuracy_radius"] = accuracy_radius
-
-                if ip_data.continent:
-                    continent = self._normalize_empty(ip_data.continent.name)
-                    if continent:
-                        properties["continent"] = continent
-
-                if ip_data.country:
-                    country = self._normalize_empty(ip_data.country.name)
-                    if country:
-                        properties["country"] = country
-
-                if ip_data.city:
-                    city = self._normalize_empty(ip_data.city.name)
-                    if city:
-                        properties["city"] = city
-
-                if ip_data.postal:
-                    postal_code = self._normalize_empty(ip_data.postal.code)
-                    if postal_code:
-                        properties["postal_code"] = postal_code
-
-                if ip_data.subdivisions:
-                    if ip_data.subdivisions.most_specific:
-                        properties["subdivision"] = ip_data.subdivisions.most_specific.name
-
-                if properties:
-                    geoip["properties"] = properties
-
-                return geoip
-
+            if not ip_data:
+                return {}
+            geoip_data = {"type": "Feature"}
+            if ip_data.location.longitude and ip_data.location.latitude:
+                geoip_data["geometry.type"] = "Point"
+                geoip_data["geometry.coordinates"] = [
+                    ip_data.location.longitude,
+                    ip_data.location.latitude,
+                ]
+            if ip_data.location.accuracy_radius:
+                geoip_data["properties.accuracy_radius"] = ip_data.location.accuracy_radius
+            if ip_data.continent.name:
+                geoip_data["properties.continent"] = ip_data.continent.name
+            if ip_data.continent.code:
+                geoip_data["properties.continent_code"] = ip_data.continent.code
+            if ip_data.country.name:
+                geoip_data["properties.country"] = ip_data.country.name
+            if ip_data.country.iso_code:
+                geoip_data["properties.country_iso_code"] = ip_data.country.iso_code
+            if ip_data.location.time_zone:
+                geoip_data["properties.time_zone"] = ip_data.location.time_zone
+            if ip_data.city.name:
+                geoip_data["properties.city"] = ip_data.city.name
+            if ip_data.postal.code:
+                geoip_data["properties.postal_code"] = ip_data.postal.code
+            if ip_data.subdivisions and ip_data.subdivisions.most_specific:
+                geoip_data["properties.subdivision"] = ip_data.subdivisions.most_specific.name
+            return geoip_data
         except (ValueError, AddressNotFoundError):
             return {}
 
@@ -143,9 +117,12 @@ class GeoipEnricher(Processor):
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return
-        adding_was_successful = add_field_to(
-            event, output_field, geoip_data, overwrite_output_field=rule.overwrite_target
-        )
-
-        if not adding_was_successful:
-            raise DuplicationError(self.name, [output_field])
+        for target_subfield, value in geoip_data.items():
+            full_output_field = f"{output_field}.{target_subfield}"
+            if target_subfield in rule.customize_target_subfields.keys():
+                full_output_field = rule.customize_target_subfields[target_subfield]
+            adding_was_successful = add_field_to(
+                event, full_output_field, value, overwrite_output_field=rule.overwrite_target
+            )
+            if not adding_was_successful:
+                raise DuplicationError(self.name, [full_output_field])

@@ -448,7 +448,7 @@ Building the documentation is done by executing the following command from withi
 the project root directory:
 
 ```
-tox -e py36-docs
+tox -e py39-docs
 ```
 
 A HTML documentation can be then found in `doc/_build/html/index.html`.
