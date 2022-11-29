@@ -11,30 +11,46 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 class ReaderMock(mock.MagicMock):
     def city(self, ip_list):
+        class City:
+            location = mock.MagicMock()
+            continent = mock.MagicMock()
+            country = mock.MagicMock()
+            city = mock.MagicMock()
+            postal = mock.MagicMock()
+            subdivisions = mock.MagicMock()
+
         if "127.0.0.1" in ip_list:
             raise AddressNotFoundError("127.0.0.1 not found in IP list")
         if "8.8.8.8" in ip_list:
-            city = type("City", (), {})
-            city.location = mock.MagicMock()
+            city = City()
             city.location.accuracy_radius = 1337
             city.location.longitude = 1.1
             city.location.latitude = 2.2
             city.location.time_zone = "Europe/Berlin"
-            city.continent = mock.MagicMock()
             city.continent.name = "MyContinent"
             city.continent.code = "MCT"
-            city.country = mock.MagicMock()
             city.country.name = "MyCountry"
             city.country.iso_code = "MCR"
-            city.city = mock.MagicMock()
             city.city.name = "MyCity"
-            city.postal = mock.MagicMock()
             city.postal.code = "2342"
-            city.subdivisions = mock.MagicMock()
             city.subdivisions.most_specific = mock.MagicMock()
             city.subdivisions.most_specific.name = "MySubdivision"
             return city
-
+        if "13.21.21.37" in ip_list:
+            city = City()
+            city.location.accuracy_radius = 1337
+            city.location.longitude = 1.1
+            city.location.latitude = 2.2
+            city.location.time_zone = None
+            city.continent.name = None
+            city.continent.code = None
+            city.country.name = None
+            city.country.iso_code = None
+            city.city.name = None
+            city.postal.code = None
+            city.subdivisions.most_specific = mock.MagicMock()
+            city.subdivisions.most_specific.name = None
+            return city
         return mock.MagicMock()
 
 
@@ -264,3 +280,24 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         }
         with pytest.raises(ValueError, match=r"\'customize_target_subfields\' must be in"):
             self._load_specific_rule(rule_dict)
+
+    def test_geoip_db_returns_only_limited_data(self):
+        document = {"client": {"ip": "13.21.21.37"}}
+        rule_dict = {
+            "filter": "client",
+            "geoip_enricher": {
+                "source_fields": ["client.ip"],
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        expected_event = {
+            "client": {"ip": "13.21.21.37"},
+            "geoip": {
+                "geometry": {"coordinates": [1.1, 2.2], "type": "Point"},
+                "properties": {"accuracy_radius": 1337},
+                "type": "Feature",
+            },
+        }
+        assert document == expected_event

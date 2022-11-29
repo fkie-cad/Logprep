@@ -71,7 +71,7 @@ class GeoipEnricher(Processor):
     def _city_db(self):
         return database.Reader(self._config.db_path)
 
-    def _try_getting_geoip_data(self, ip_string):  # pylint: disable=too-many-branches
+    def _try_getting_geoip_data(self, ip_string):
         if ip_string is None:
             return {}
         try:
@@ -79,31 +79,23 @@ class GeoipEnricher(Processor):
             ip_data = self._city_db.city(ip_addr)
             if not ip_data:
                 return {}
-            geoip_data = {"type": "Feature"}
-            if ip_data.location.longitude and ip_data.location.latitude:
-                geoip_data["geometry.type"] = "Point"
-                geoip_data["geometry.coordinates"] = [
+            geoip_data = {
+                "type": "Feature",
+                "geometry.coordinates": [
                     ip_data.location.longitude,
                     ip_data.location.latitude,
-                ]
-            if ip_data.location.accuracy_radius:
-                geoip_data["properties.accuracy_radius"] = ip_data.location.accuracy_radius
-            if ip_data.continent.name:
-                geoip_data["properties.continent"] = ip_data.continent.name
-            if ip_data.continent.code:
-                geoip_data["properties.continent_code"] = ip_data.continent.code
-            if ip_data.country.name:
-                geoip_data["properties.country"] = ip_data.country.name
-            if ip_data.country.iso_code:
-                geoip_data["properties.country_iso_code"] = ip_data.country.iso_code
-            if ip_data.location.time_zone:
-                geoip_data["properties.time_zone"] = ip_data.location.time_zone
-            if ip_data.city.name:
-                geoip_data["properties.city"] = ip_data.city.name
-            if ip_data.postal.code:
-                geoip_data["properties.postal_code"] = ip_data.postal.code
-            if ip_data.subdivisions and ip_data.subdivisions.most_specific:
-                geoip_data["properties.subdivision"] = ip_data.subdivisions.most_specific.name
+                ],
+                "geometry.type": "Point",
+                "properties.accuracy_radius": ip_data.location.accuracy_radius,
+                "properties.continent": ip_data.continent.name,
+                "properties.continent_code": ip_data.continent.code,
+                "properties.country": ip_data.country.name,
+                "properties.country_iso_code": ip_data.country.iso_code,
+                "properties.time_zone": ip_data.location.time_zone,
+                "properties.city": ip_data.city.name,
+                "properties.postal_code": ip_data.postal.code,
+                "properties.subdivision": ip_data.subdivisions.most_specific.name,
+            }
             return geoip_data
         except (ValueError, AddressNotFoundError):
             return {}
@@ -118,6 +110,8 @@ class GeoipEnricher(Processor):
         if not geoip_data:
             return
         for target_subfield, value in geoip_data.items():
+            if not value:
+                continue
             full_output_field = f"{output_field}.{target_subfield}"
             if target_subfield in rule.customize_target_subfields.keys():
                 full_output_field = rule.customize_target_subfields[target_subfield]
