@@ -11,12 +11,14 @@
 ### Features
 
 * Add an `http input connector` that spawns a uvicorn server which parses requests content to events.
-* provide the possibility to consume lists, rules and configuration from files and http endpoints
-* add `calculator` processor to calculate with or without field values
+* Provide the possibility to consume lists, rules and configuration from files and http endpoints
+* Add `calculator` processor to calculate with or without field values
+* Make output subfields of the `geoip_enricher` configurable by introducing the rule config
+`customize_target_subfields`
 
 ### Improvements
 
-* add support for python `3.10` and `3.11`
+* Add support for python `3.10` and `3.11`
 
 ## v4.0.0
 ### Breaking
