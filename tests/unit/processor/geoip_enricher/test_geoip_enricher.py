@@ -129,7 +129,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         with pytest.raises(
             DuplicationError,
             match=r"The following fields could not be written, because one or more subfields "
-                  r"existed and could not be extended: geoip.type",
+            r"existed and could not be extended: geoip.type",
         ):
             self.object.process(document)
 
