@@ -18,36 +18,16 @@ Example
 """
 from functools import cached_property
 from ipaddress import ip_address
-from typing import List
 
 from attr import define, field
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
 from logprep.abc import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import url_validator
-
-
-class GeoipEnricherError(BaseException):
-    """Base class for GeoipEnricher related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"GeoipEnricher ({name}): {message}")
-
-
-class DuplicationError(GeoipEnricherError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and "
-            "were not overwritten by the GeoipEnricher: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 class GeoipEnricher(Processor):

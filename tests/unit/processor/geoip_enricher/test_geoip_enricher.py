@@ -5,7 +5,7 @@ from unittest import mock
 import pytest
 from geoip2.errors import AddressNotFoundError
 
-from logprep.processor.geoip_enricher.processor import DuplicationError
+from logprep.processor.base.exceptions import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -128,9 +128,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
         with pytest.raises(
             DuplicationError,
-            match=r"GeoipEnricher \(Test Instance Name\)\: The following fields "
-            r"already existed and were not overwritten by the GeoipEnricher\:"
-            r" geoip",
+            match=r"The following fields could not be written, because one or more subfields "
+                  r"existed and could not be extended: geoip.type",
         ):
             self.object.process(document)
 
