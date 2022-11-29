@@ -1,0 +1,9 @@
+[
+    {
+        "filter": "field1 AND field3",
+        "calculator": {
+            "calc": "%{field1} + %{field3}",
+            "target_field": "new_field"
+        }
+    }
+]

@@ -1,8 +1,8 @@
 -r requirements.txt
+black
+httpx
+isort
+pylint
 pytest
 pytest-cov
-pylint
-httpx
-black
 semgrep
-isort

@@ -14,6 +14,7 @@ from logprep.connector.json.input import JsonInput
 from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
 from logprep.connector.opensearch.output import OpensearchOutput
+from logprep.processor.calculator.processor import Calculator
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.concatenator.processor import Concatenator
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
@@ -42,6 +43,7 @@ class Registry:
 
     mapping = {
         # Processors
+        "calculator": Calculator,
         "clusterer": Clusterer,
         "concatenator": Concatenator,
         "datetime_extractor": DatetimeExtractor,
