@@ -18,36 +18,16 @@ Example
 """
 from functools import cached_property
 from ipaddress import ip_address
-from typing import List
 
 from attr import define, field
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
 from logprep.abc import Processor
-from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
+from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.geoip_enricher.rule import GeoipEnricherRule, GEOIP_DATA_STUBS
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import url_validator
-
-
-class GeoipEnricherError(BaseException):
-    """Base class for GeoipEnricher related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"GeoipEnricher ({name}): {message}")
-
-
-class DuplicationError(GeoipEnricherError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and "
-            "were not overwritten by the GeoipEnricher: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 class GeoipEnricher(Processor):
@@ -71,81 +51,49 @@ class GeoipEnricher(Processor):
     def _city_db(self):
         return database.Reader(self._config.db_path)
 
-    @staticmethod
-    def _normalize_empty(db_entry):
-        return db_entry if db_entry else None
-
     def _try_getting_geoip_data(self, ip_string):
-        if ip_string is None:
-            return {}
-
         try:
-            geoip = {}
-
             ip_addr = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip_addr)
-
-            if ip_data:
-                geoip["type"] = "Feature"
-                properties = {}
-
-                if ip_data.location:
-                    longitude = self._normalize_empty(ip_data.location.longitude)
-                    latitude = self._normalize_empty(ip_data.location.latitude)
-                    if longitude and latitude:
-                        geoip["geometry"] = {
-                            "type": "Point",
-                            "coordinates": [longitude, latitude],
-                        }
-
-                    accuracy_radius = self._normalize_empty(ip_data.location.accuracy_radius)
-                    if accuracy_radius:
-                        properties["accuracy_radius"] = accuracy_radius
-
-                if ip_data.continent:
-                    continent = self._normalize_empty(ip_data.continent.name)
-                    if continent:
-                        properties["continent"] = continent
-
-                if ip_data.country:
-                    country = self._normalize_empty(ip_data.country.name)
-                    if country:
-                        properties["country"] = country
-
-                if ip_data.city:
-                    city = self._normalize_empty(ip_data.city.name)
-                    if city:
-                        properties["city"] = city
-
-                if ip_data.postal:
-                    postal_code = self._normalize_empty(ip_data.postal.code)
-                    if postal_code:
-                        properties["postal_code"] = postal_code
-
-                if ip_data.subdivisions:
-                    if ip_data.subdivisions.most_specific:
-                        properties["subdivision"] = ip_data.subdivisions.most_specific.name
-
-                if properties:
-                    geoip["properties"] = properties
-
-                return geoip
-
+            geoip_data = GEOIP_DATA_STUBS.copy()
+            geoip_data.update(
+                {
+                    "geometry.coordinates": [
+                        ip_data.location.longitude,
+                        ip_data.location.latitude,
+                    ],
+                    "properties.accuracy_radius": ip_data.location.accuracy_radius,
+                    "properties.continent": ip_data.continent.name,
+                    "properties.continent_code": ip_data.continent.code,
+                    "properties.country": ip_data.country.name,
+                    "properties.country_iso_code": ip_data.country.iso_code,
+                    "properties.time_zone": ip_data.location.time_zone,
+                    "properties.city": ip_data.city.name,
+                    "properties.postal_code": ip_data.postal.code,
+                    "properties.subdivision": ip_data.subdivisions.most_specific.name,
+                }
+            )
+            return geoip_data
         except (ValueError, AddressNotFoundError):
             return {}
 
     def _apply_rules(self, event, rule):
-        source_ip = rule.source_fields[0]
-        output_field = rule.target_field
-        if not source_ip:
-            return
-        ip_string = get_dotted_field_value(event, source_ip)
+        ip_string = get_dotted_field_value(event, rule.source_fields[0])
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
             return
-        adding_was_successful = add_field_to(
-            event, output_field, geoip_data, overwrite_output_field=rule.overwrite_target
-        )
-
-        if not adding_was_successful:
-            raise DuplicationError(self.name, [output_field])
+        for target_subfield, value in geoip_data.items():
+            if value is None:
+                continue
+            full_output_field = f"{rule.target_field}.{target_subfield}"
+            if target_subfield in rule.customize_target_subfields:
+                full_output_field = rule.customize_target_subfields.get(target_subfield)
+            adding_was_successful = add_field_to(
+                event=event,
+                output_field=full_output_field,
+                content=value,
+                extends_lists=False,
+                overwrite_output_field=rule.overwrite_target,
+            )
+            if not adding_was_successful:
+                raise DuplicationError(self.name, [full_output_field])
