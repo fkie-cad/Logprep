@@ -28,6 +28,21 @@ from attrs import define, field, validators
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import add_and_overwrite, pop_dotted_field_value
 
+GEOIP_DATA_STUBS = {
+    "type": "Feature",
+    "geometry.type": "Point",
+    "geometry.coordinates": None,
+    "properties.accuracy_radius": None,
+    "properties.continent": None,
+    "properties.continent_code": None,
+    "properties.country": None,
+    "properties.country_iso_code": None,
+    "properties.time_zone": None,
+    "properties.city": None,
+    "properties.postal_code": None,
+    "properties.subdivision": None,
+}
+
 
 class GeoipEnricherRule(FieldManagerRule):
     """Check if documents match a filter."""
@@ -44,22 +59,7 @@ class GeoipEnricherRule(FieldManagerRule):
                 validators.deep_mapping(
                     key_validator=validators.and_(
                         validators.instance_of(str),
-                        validators.in_(
-                            [
-                                "type",
-                                "geometry.type",
-                                "geometry.coordinates",
-                                "properties.accuracy_radius",
-                                "properties.continent",
-                                "properties.continent_code",
-                                "properties.country",
-                                "properties.country_iso_code",
-                                "properties.time_zone",
-                                "properties.city",
-                                "properties.postal_code",
-                                "properties.subdivision",
-                            ]
-                        ),
+                        validators.in_(GEOIP_DATA_STUBS.keys()),
                     ),
                     value_validator=validators.instance_of(str),
                 ),
@@ -69,16 +69,17 @@ class GeoipEnricherRule(FieldManagerRule):
         """(Optional) Rewrites the default output subfield locations to custom output subfield
         locations. Must be in the form of key value mapping pairs
         (e.g. :code:`default_output: custom_output`). Following default outputs can be customized:
-        :code:`type`, :code:`geometry.type`, :code:`geometry.coordinates`,
-        :code:`properties.accuracy_radius`, :code:`properties.continent`,
-        :code:`properties.continent_code`, :code:`properties.country`,
-        :code:`properties.country_iso_code`, :code:`properties.time_zone`, :code:`properties.city`,
-        :code:`properties.postal_code`, :code:`properties.subdivision`. A concrete example would
-        look like:
+
+        .. datatemplate:import-module:: logprep.processor.geoip_enricher.rule
+
+            {% for item in data.GEOIP_DATA_STUBS.keys() %}
+                * :code:`{{ item }}`
+            {% endfor %}
+
+        A concrete example would look like this:
 
         ..  code-block:: yaml
             :linenos:
-            :caption: Geoip Enricher rule with customized target subfields
 
             filter: client.ip
             geoip:

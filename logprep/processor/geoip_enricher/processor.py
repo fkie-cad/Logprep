@@ -25,7 +25,7 @@ from geoip2.errors import AddressNotFoundError
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
-from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
+from logprep.processor.geoip_enricher.rule import GeoipEnricherRule, GEOIP_DATA_STUBS
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import url_validator
 
@@ -55,13 +55,12 @@ class GeoipEnricher(Processor):
         try:
             ip_addr = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip_addr)
-            geoip_data = {
-                "type": "Feature",
+            geoip_data = GEOIP_DATA_STUBS.copy()
+            geoip_data.update({
                 "geometry.coordinates": [
                     ip_data.location.longitude,
                     ip_data.location.latitude,
                 ],
-                "geometry.type": "Point",
                 "properties.accuracy_radius": ip_data.location.accuracy_radius,
                 "properties.continent": ip_data.continent.name,
                 "properties.continent_code": ip_data.continent.code,
@@ -71,7 +70,7 @@ class GeoipEnricher(Processor):
                 "properties.city": ip_data.city.name,
                 "properties.postal_code": ip_data.postal.code,
                 "properties.subdivision": ip_data.subdivisions.most_specific.name,
-            }
+            })
             return geoip_data
         except (ValueError, AddressNotFoundError):
             return {}
@@ -82,13 +81,14 @@ class GeoipEnricher(Processor):
         if not geoip_data:
             return
         for target_subfield, value in geoip_data.items():
-            if not value:
+            if value is None:
                 continue
             full_output_field = f"{rule.target_field}.{target_subfield}"
-            if target_subfield in rule.customize_target_subfields.keys():
-                full_output_field = rule.customize_target_subfields[target_subfield]
+            if target_subfield in rule.customize_target_subfields:
+                full_output_field = rule.customize_target_subfields.get(target_subfield)
             adding_was_successful = add_field_to(
-                event, full_output_field, value, overwrite_output_field=rule.overwrite_target
+                event, full_output_field, value, extends_lists=False,
+                overwrite_output_field=rule.overwrite_target
             )
             if not adding_was_successful:
                 raise DuplicationError(self.name, [full_output_field])
