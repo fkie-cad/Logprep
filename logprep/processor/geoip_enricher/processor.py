@@ -56,21 +56,23 @@ class GeoipEnricher(Processor):
             ip_addr = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip_addr)
             geoip_data = GEOIP_DATA_STUBS.copy()
-            geoip_data.update({
-                "geometry.coordinates": [
-                    ip_data.location.longitude,
-                    ip_data.location.latitude,
-                ],
-                "properties.accuracy_radius": ip_data.location.accuracy_radius,
-                "properties.continent": ip_data.continent.name,
-                "properties.continent_code": ip_data.continent.code,
-                "properties.country": ip_data.country.name,
-                "properties.country_iso_code": ip_data.country.iso_code,
-                "properties.time_zone": ip_data.location.time_zone,
-                "properties.city": ip_data.city.name,
-                "properties.postal_code": ip_data.postal.code,
-                "properties.subdivision": ip_data.subdivisions.most_specific.name,
-            })
+            geoip_data.update(
+                {
+                    "geometry.coordinates": [
+                        ip_data.location.longitude,
+                        ip_data.location.latitude,
+                    ],
+                    "properties.accuracy_radius": ip_data.location.accuracy_radius,
+                    "properties.continent": ip_data.continent.name,
+                    "properties.continent_code": ip_data.continent.code,
+                    "properties.country": ip_data.country.name,
+                    "properties.country_iso_code": ip_data.country.iso_code,
+                    "properties.time_zone": ip_data.location.time_zone,
+                    "properties.city": ip_data.city.name,
+                    "properties.postal_code": ip_data.postal.code,
+                    "properties.subdivision": ip_data.subdivisions.most_specific.name,
+                }
+            )
             return geoip_data
         except (ValueError, AddressNotFoundError):
             return {}
@@ -87,8 +89,11 @@ class GeoipEnricher(Processor):
             if target_subfield in rule.customize_target_subfields:
                 full_output_field = rule.customize_target_subfields.get(target_subfield)
             adding_was_successful = add_field_to(
-                event, full_output_field, value, extends_lists=False,
-                overwrite_output_field=rule.overwrite_target
+                event=event,
+                output_field=full_output_field,
+                content=value,
+                extends_lists=False,
+                overwrite_output_field=rule.overwrite_target,
             )
             if not adding_was_successful:
                 raise DuplicationError(self.name, [full_output_field])
