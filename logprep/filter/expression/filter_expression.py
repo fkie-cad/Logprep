@@ -311,14 +311,13 @@ class RegExFilterExpression(FilterExpression):
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
-        if not regex:
-            return "^$"
-
-        if regex[0] != "^":
-            regex = "^" + regex
-        if regex[-1] != "$":
-            regex += "$"
-        return regex
+        match = re.match(
+            r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>[^\$]*)(?P<end>\$)?", regex
+        )
+        flag, _, pattern, _ = match.groups()
+        flag = "" if flag is None else flag
+        pattern = "" if pattern is None else pattern
+        return rf"{flag}^{pattern}$"
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self._key, document)
