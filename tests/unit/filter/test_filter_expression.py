@@ -6,7 +6,7 @@
 from random import sample
 from string import ascii_letters, digits
 
-from pytest import raises
+import pytest
 
 from logprep.filter.expression.filter_expression import (
     FilterExpression,
@@ -29,11 +29,11 @@ from logprep.filter.expression.filter_expression import (
 
 class TestFilterExpression:
     def test_get_value_fails_for_missing_key(self):
-        with raises(KeyDoesNotExistError):
+        with pytest.raises(KeyDoesNotExistError):
             FilterExpression._get_value(["some", "key"], {})
 
     def test_get_value_fails_empty_key(self):
-        with raises(KeyDoesNotExistError):
+        with pytest.raises(KeyDoesNotExistError):
             FilterExpression._get_value([], {"some": "value"})
 
     def test_get_value_returns_expected_value(self):
@@ -307,6 +307,25 @@ class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
                     }
                 }
             )
+
+    @pytest.mark.parametrize(
+        "filter_expression, expected_expression",
+        [
+            (
+                r"(?i)[\\s\\w\\W]*(bxor|join|char)[\\s\\w\\W]",
+                r"(?i)^[\\s\\w\\W]*(bxor|join|char)[\\s\\w\\W]$",
+            ),
+            (r"start.*end", r"^start.*end$"),
+            (r"", r"^$"),
+            (r"^start.*end$", r"^start.*end$"),
+            (r"^start.*end", r"^start.*end$"),
+            (r"start.*end$", r"^start.*end$"),
+            (r"(?m)^start.*end$", r"(?m)^start.*end$"),
+        ],
+    )
+    def test_regex_normalizes_regex(self, filter_expression, expected_expression):
+        _filter = RegExFilterExpression(["key1", "key2"], filter_expression)
+        assert _filter._regex == expected_expression
 
 
 class TestExistsFilterExpression(ValueBasedFilterExpressionTest):
