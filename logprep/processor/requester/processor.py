@@ -22,5 +22,8 @@ class Requester(Processor):
     rule_class = RequesterRule
 
     def _apply_rules(self, event, rule):
-        response = requests.request(url=rule.url, method=rule.method, **rule.kwargs)
-        response.raise_for_status()
+        try:
+            response = requests.request(url=rule.url, method=rule.method, **rule.kwargs)
+            response.raise_for_status()
+        except requests.HTTPError as error:
+            self._handle_warning_error(event, rule, error)

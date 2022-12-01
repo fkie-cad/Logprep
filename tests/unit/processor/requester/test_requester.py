@@ -13,9 +13,17 @@ test_cases = [
         {"message": "the message"},
         {"method": "GET", "url": "http://mock-mock", "status": 200},
     )
-]  # testcase, rule, event, expected
+]  # testcase, rule, event, expected, response
 
-failure_test_cases = []  # testcase, rule, event, expected
+failure_test_cases = [
+    (
+        "handles HTTPError",
+        {"filter": "message", "requester": {"url": "http://mock-mock", "method": "GET"}},
+        {"message": "the message"},
+        {"message": "the message", "tags": ["_requester_failure"]},
+        {"method": "GET", "url": "http://mock-mock", "status": 404},
+    )
+]  # testcase, rule, event, expected, response
 
 
 class TestRequester(BaseProcessorTestCase):
@@ -36,8 +44,10 @@ class TestRequester(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    @responses.activate
+    @pytest.mark.parametrize("testcase, rule, event, expected, response", failure_test_cases)
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, response):
+        responses.add(responses.Response(**response))
         self._load_specific_rule(rule)
         with pytest.raises(ProcessingWarning):
             self.object.process(event)
