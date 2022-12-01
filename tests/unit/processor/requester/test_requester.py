@@ -12,7 +12,14 @@ test_cases = [
         {"message": "the message"},
         {"message": "the message"},
         {"method": "GET", "url": "http://mock-mock", "status": 200},
-    )
+    ),
+    (
+        "simple request with url from field",
+        {"filter": "message", "requester": {"url": "${url}", "method": "GET"}},
+        {"message": "the message", "url": "http://mock-mock"},
+        {"message": "the message", "url": "http://mock-mock"},
+        {"method": "GET", "url": "http://mock-mock", "status": 200},
+    ),
 ]  # testcase, rule, event, expected, response
 
 failure_test_cases = [

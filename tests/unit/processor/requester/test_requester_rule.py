@@ -68,6 +68,17 @@ class TestRequesterRule:
                 ValueError,
                 r"'kwargs' must be in \['headers', 'files', 'data', 'params', 'auth', 'json'\]",
             ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "${field}",
+                    },
+                },
+                None,
+                None,
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
@@ -80,3 +91,22 @@ class TestRequesterRule:
             for key, value in rule.get("requester").items():
                 assert hasattr(rule_instance._config, key)
                 assert value == getattr(rule_instance._config, key)
+
+    @pytest.mark.parametrize(
+        "rule, expected_source_fields",
+        [
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "${field1}",
+                    },
+                },
+                ["field1"],
+            ),
+        ],
+    )
+    def test_sets_source_fields(self, rule, expected_source_fields):
+        rule_instance = RequesterRule._create_from_dict(rule)
+        assert expected_source_fields == rule_instance.source_fields

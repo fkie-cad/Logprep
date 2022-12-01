@@ -4,11 +4,12 @@ Requester
 
 
 """
+import re
 import inspect
 import requests
 from attrs import define, field, validators
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.validators import url_validator
+from logprep.processor.calculator.rule import FIELD_PATTERN
 
 parameter_keys = inspect.signature(requests.Request).parameters.keys()
 REQUEST_CONFIG_KEYS = [
@@ -18,6 +19,7 @@ REQUEST_CONFIG_KEYS = [
 ]
 
 URL_REGEX_PATTERN = r"(http|https):\/\/.+"
+
 
 HTTP_METHODS = ["GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE"]
 
@@ -39,7 +41,10 @@ class RequesterRule(FieldManagerRule):
         )
         f"""the method for the request. must be one of {HTTP_METHODS}"""
         url: str = field(
-            validator=[validators.instance_of(str), validators.matches_re(URL_REGEX_PATTERN)]
+            validator=[
+                validators.instance_of(str),
+                validators.matches_re(rf"({URL_REGEX_PATTERN})|({FIELD_PATTERN})"),
+            ]
         )
         """the url for the request. You can use dissect pattern language to add field values"""
         kwargs: dict = field(
@@ -54,6 +59,10 @@ class RequesterRule(FieldManagerRule):
         )
         f"""keyword arguments for the request. You can use dissect pattern language to
         fill with field values. Valid kwargs are: {REQUEST_CONFIG_KEYS}"""
+
+        def __attrs_post_init__(self):
+            url_fields = re.findall(FIELD_PATTERN, self.url)
+            self.source_fields = list({*url_fields})
 
     @property
     def url(self):
