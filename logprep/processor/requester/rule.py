@@ -19,6 +19,7 @@ REQUEST_CONFIG_KEYS = [
 
 URL_REGEX_PATTERN = r"(http|https):\/\/.+"
 
+HTTP_METHODS = 
 
 class RequesterRule(FieldManagerRule):
     """Interface for a simple Rule with source_fields and target_field"""
@@ -32,12 +33,14 @@ class RequesterRule(FieldManagerRule):
         method: str = field(
             validator=[
                 validators.instance_of(str),
-                validators.in_(["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]),
+                validators.in_(HTTP_METHODS),
             ]
         )
+        f"""the method for the request. must be one of {HTTP_METHODS}"""
         url: str = field(
             validator=[validators.instance_of(str), validators.matches_re(URL_REGEX_PATTERN)]
         )
+        """the url for the request. You can use dissect pattern language to add field values"""
         kwargs: dict = field(
             validator=[
                 validators.instance_of(dict),
@@ -48,3 +51,5 @@ class RequesterRule(FieldManagerRule):
             ],
             factory=dict,
         )
+        f"""keyword arguments for the request. You can use dissect pattern language to
+        fill with field values. Valid kwargs are: {REQUEST_CONFIG_KEYS}"""
