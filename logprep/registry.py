@@ -34,6 +34,7 @@ from logprep.processor.list_comparison.processor import ListComparison
 from logprep.processor.normalizer.processor import Normalizer
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
+from logprep.processor.requester.processor import Requester
 from logprep.processor.selective_extractor.processor import SelectiveExtractor
 from logprep.processor.template_replacer.processor import TemplateReplacer
 from logprep.processor.timestamp_differ.processor import TimestampDiffer
@@ -64,6 +65,7 @@ class Registry:
         "normalizer": Normalizer,
         "pre_detector": PreDetector,
         "pseudonymizer": Pseudonymizer,
+        "requester": Requester,
         "selective_extractor": SelectiveExtractor,
         "template_replacer": TemplateReplacer,
         "timestamp_differ": TimestampDiffer,

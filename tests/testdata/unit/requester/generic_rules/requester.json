@@ -1,0 +1,8 @@
+[
+    {
+        "filter": "message1",
+        "requester": {
+            "kwargs": {}
+        }
+    }
+]
