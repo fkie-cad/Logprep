@@ -2,7 +2,8 @@
     {
         "filter": "message",
         "requester": {
-            "kwargs": {}
+            "url": "http://the-url",
+            "method": "GET"
         }
     }
 ]

@@ -1,22 +1,74 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.requester.rule import RequesterRule
 
 
-class TestFieldManagerRule:
+class TestRequesterRule:
     def test_create_from_dict_returns_requester_rule(self):
         rule = {
             "filter": "message",
-            "requester": {"kwargs": {"method": "GET", "url": "http://fancyapi"}},
+            "requester": {"method": "GET", "url": "http://fancyapi"},
         }
         rule_dict = RequesterRule._create_from_dict(rule)
         assert isinstance(rule_dict, RequesterRule)
 
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
-        [],
+        [
+            (
+                {
+                    "filter": "message",
+                    "requester": {"method": "GET", "url": "http://fancyapi"},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {"kwargs": {}},
+                },
+                TypeError,
+                "missing 2 required keyword-only arguments: 'method' and 'url'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {},
+                },
+                TypeError,
+                "missing 2 required keyword-only arguments: 'method' and 'url'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {"method": "GET"},
+                },
+                TypeError,
+                "missing 1 required keyword-only argument: 'url'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {"method": "GET", "url": "bla"},
+                },
+                ValueError,
+                "'url' must match regex",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://the-api/endpoint",
+                        "kwargs": {"notallowed": "bla"},
+                    },
+                },
+                ValueError,
+                r"'kwargs' must be in \['headers', 'files', 'data', 'params', 'auth', 'json'\]",
+            ),
+        ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
@@ -28,12 +80,3 @@ class TestFieldManagerRule:
             for key, value in rule.get("requester").items():
                 assert hasattr(rule_instance._config, key)
                 assert value == getattr(rule_instance._config, key)
-
-    @pytest.mark.parametrize(
-        ["testcase", "rule1", "rule2", "equality"],
-        [],
-    )
-    def test_equality(self, testcase, rule1, rule2, equality):
-        rule1 = RequesterRule._create_from_dict(rule1)
-        rule2 = RequesterRule._create_from_dict(rule2)
-        assert (rule1 == rule2) == equality, testcase
