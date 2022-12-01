@@ -16,7 +16,8 @@ from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_ov
 
 
 class Requester(Processor):
-    """A processor that copies, moves or merges source fields to one target field"""
+    """A processor to invoke http requests with field data
+    and parses response data to field values"""
 
     rule_class = RequesterRule
 
