@@ -1,6 +1,10 @@
 """
 Requester
-============
+=========
+
+A processor to invoke http requests. Could be usefull to enrich events from an external api or
+to trigger external systems by and with event field values.
+
 """
 from typing import List, Tuple, Any
 
