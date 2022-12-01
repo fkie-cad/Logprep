@@ -6,6 +6,7 @@ A processor to invoke http requests. Could be usefull to enrich events from an e
 to trigger external systems by and with event field values.
 
 """
+import requests
 from typing import List, Tuple, Any
 
 from logprep.abc import Processor
@@ -20,4 +21,5 @@ class Requester(Processor):
     rule_class = RequesterRule
 
     def _apply_rules(self, event, rule):
-        pass
+        response = requests.request(url=rule.url, method=rule.method, **rule.kwargs)
+        response.raise_for_status()

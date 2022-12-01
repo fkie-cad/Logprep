@@ -19,7 +19,8 @@ REQUEST_CONFIG_KEYS = [
 
 URL_REGEX_PATTERN = r"(http|https):\/\/.+"
 
-HTTP_METHODS = 
+HTTP_METHODS = ["GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE"]
+
 
 class RequesterRule(FieldManagerRule):
     """Interface for a simple Rule with source_fields and target_field"""
@@ -53,3 +54,15 @@ class RequesterRule(FieldManagerRule):
         )
         f"""keyword arguments for the request. You can use dissect pattern language to
         fill with field values. Valid kwargs are: {REQUEST_CONFIG_KEYS}"""
+
+    @property
+    def url(self):
+        return self._config.url
+
+    @property
+    def method(self):
+        return self._config.method
+
+    @property
+    def kwargs(self):
+        return self._config.kwargs
