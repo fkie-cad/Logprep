@@ -364,6 +364,12 @@ class BaseInputTestCase(BaseConnectorTestCase):
         self.object.get_next(0.01)
         assert self.object.metrics.number_of_processed_events == 1
 
+    def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
+        assert self.object.metrics.number_of_processed_events == 0
+        self.object._get_event = mock.MagicMock(return_value=(None, None))
+        self.object.get_next(0.01)
+        assert self.object.metrics.number_of_processed_events == 0
+
     def test_get_next_adds_timestamp_if_configured(self):
         preprocessing_config = {
             "preprocessing": {

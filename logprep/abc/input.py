@@ -226,7 +226,7 @@ class Input(Connector):
         """
 
     @TimeMeasurement.measure_time()
-    def get_next(self, timeout: float) -> Tuple[dict, str]:
+    def get_next(self, timeout: float) -> Tuple[Optional[dict], Optional[str]]:
         """Return the next document
 
         Parameters
@@ -246,15 +246,17 @@ class Input(Connector):
         """
         event, raw_event = self._get_event(timeout)
         non_critical_error_msg = None
+        if event is None:
+            return None, None
         if event is not None and not isinstance(event, dict):
             raise CriticalInputError("not a dict", event)
-        if event and self._add_hmac:
+        if self._add_hmac:
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
-        if event and self._add_version_info:
+        if self._add_version_info:
             self._add_version_information_to_event(event)
-        if event and self._add_log_arrival_time_information:
+        if self._add_log_arrival_time_information:
             self._add_arrival_time_information_to_event(event)
-        if event and self._add_log_arrival_timedelta_information:
+        if self._add_log_arrival_timedelta_information:
             self._add_arrival_timedelta_information_to_event(event)
         self.metrics.number_of_processed_events += 1
         return event, non_critical_error_msg

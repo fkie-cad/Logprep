@@ -20,6 +20,11 @@
 
 * Add support for python `3.10` and `3.11`
 
+### Bugfixes
+
+* Fix count of `number_of_processed_events` metric in `input` connector. Will now only count actual
+events.
+
 ## v4.0.0
 ### Breaking
 
