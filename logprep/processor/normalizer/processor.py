@@ -15,7 +15,6 @@ Example
             - tests/testdata/labeler_rules/rules/
         specific_rules:
             - tests/testdata/labeler_rules/rules/
-        hash_salt: a_secret_tasty_ingredient
         regex_mapping: tests/testdata/unit/normalizer/normalizer_regex_mapping.yml
         html_replace_fields: tests/testdata/unit/normalizer/html_replace_fields.yml
         count_grok_pattern_matches:
