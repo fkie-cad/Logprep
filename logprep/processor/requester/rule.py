@@ -70,8 +70,10 @@ class RequesterRule(FieldManagerRule):
             # pylint: disable=no-member,unsupported-membership-test
             if "json" in self.kwargs:
                 json_fields = re.findall(FIELD_PATTERN, json.dumps(self.kwargs.get("json")))
-            # pylint: enable=no-member,unsupported-membership-test
             self.source_fields = list({*url_fields, *json_fields})
+            if "auth" in self.kwargs:
+                self.kwargs.update({"auth": tuple(self.kwargs.get("auth"))})
+            # pylint: enable=no-member,unsupported-membership-test
 
     @property
     def url(self):

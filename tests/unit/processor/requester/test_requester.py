@@ -80,6 +80,24 @@ test_cases = [
             "status": 200,
         },
     ),
+    (
+        "get request with auth from kwargs",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock/",
+                "method": "GET",
+                "kwargs": {"auth": ["username", "password"]},
+            },
+        },
+        {"message": "the message"},
+        {"message": "the message"},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "status": 200,
+        },
+    ),
 ]  # testcase, rule, event, expected, response
 
 failure_test_cases = [
