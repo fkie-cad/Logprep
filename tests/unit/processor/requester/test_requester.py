@@ -184,6 +184,16 @@ failure_test_cases = [
             "status": 200,
         },
     ),
+    (
+        "errors on missing fields",
+        {
+            "filter": "message",
+            "requester": {"url": "http://${missingfield}", "method": "GET"},
+        },
+        {"message": "the message"},
+        {"message": "the message", "tags": ["_requester_failure"]},
+        {},
+    ),
 ]  # testcase, rule, event, expected, mock
 
 
@@ -210,7 +220,8 @@ class TestRequester(BaseProcessorTestCase):
     def test_requester_testcases_failure_handling(
         self, testcase, rule, event, expected, response_kwargs
     ):
-        responses.add(responses.Response(**response_kwargs))
+        if response_kwargs:
+            responses.add(responses.Response(**response_kwargs))
         self._load_specific_rule(rule)
         with pytest.raises(ProcessingWarning):
             self.object.process(event)
