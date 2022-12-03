@@ -38,10 +38,7 @@ class Requester(Processor):
         except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
         if rule.target_field:
-            try:
-                result = json.loads(rsp.content)
-            except json.JSONDecodeError:
-                result = rsp.content.decode("utf-8")
+            result = self._get_result(rsp)
             successful = add_field_to(
                 event,
                 rule.target_field,
@@ -52,6 +49,28 @@ class Requester(Processor):
             if not successful:
                 error = DuplicationError(self.name, [rule.target_field])
                 self._handle_warning_error(event, rule, error)
+        if rule.target_field_mapping:
+            result = self._get_result(rsp)
+            for source_field, target_field in rule.target_field_mapping.items():
+                source_field_value = get_dotted_field_value(result, source_field)
+                successful = add_field_to(
+                    event,
+                    target_field,
+                    source_field_value,
+                    rule.extend_target_list,
+                    rule.overwrite_target,
+                )
+                if not successful:
+                    error = DuplicationError(self.name, [rule.target_field])
+                    self._handle_warning_error(event, rule, error)
+
+    @staticmethod
+    def _get_result(rsp):
+        try:
+            result = json.loads(rsp.content)
+        except json.JSONDecodeError:
+            result = rsp.content.decode("utf-8")
+        return result
 
     def _template_kwargs(self, kwargs: dict, source: dict):
         for key, value in kwargs.items():

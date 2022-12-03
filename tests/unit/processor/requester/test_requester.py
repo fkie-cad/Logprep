@@ -152,6 +152,26 @@ test_cases = [
             "status": 200,
         },
     ),
+    (
+        "parses json result with simple target field mapping",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock/",
+                "method": "GET",
+                "target_field_mapping": {"key1.key2.key3": "result.custom"},
+            },
+        },
+        {"message": "the message"},
+        {"message": "the message", "result": {"custom": "value"}},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "json": {"key1": {"key2": {"key3": "value"}}},
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
 ]  # testcase, rule, event, expected, response
 
 failure_test_cases = [

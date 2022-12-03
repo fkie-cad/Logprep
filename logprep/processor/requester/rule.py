@@ -4,14 +4,15 @@ Requester
 
 
 """
+import inspect
 import json
 import re
-import inspect
-from typing import Union
+
 import requests
 from attrs import define, field, validators
-from logprep.processor.field_manager.rule import FieldManagerRule
+
 from logprep.processor.calculator.rule import FIELD_PATTERN
+from logprep.processor.field_manager.rule import FieldManagerRule
 
 parameter_keys = inspect.signature(requests.Request).parameters.keys()
 REQUEST_CONFIG_KEYS = [
@@ -33,6 +34,18 @@ class RequesterRule(FieldManagerRule):
 
         source_fields: list = field(factory=list, converter=sorted)
         target_field: str = field(factory=str)
+        target_field_mapping: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        """(Optional) A mapping from dotted_fields to dotted_fields to extract data from response
+        json to target fields"""
         method: str = field(
             validator=[
                 validators.instance_of(str),
@@ -121,5 +134,9 @@ class RequesterRule(FieldManagerRule):
             if getattr(self._config, key)
         }
         return kwargs
+
+    @property
+    def target_field_mapping(self):
+        return self._config.target_field_mapping
 
     # pylint: enable=missing-docstring
