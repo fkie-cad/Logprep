@@ -7,6 +7,7 @@ Requester
 import json
 import re
 import inspect
+from typing import Union
 import requests
 from attrs import define, field, validators
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -14,10 +15,8 @@ from logprep.processor.calculator.rule import FIELD_PATTERN
 
 parameter_keys = inspect.signature(requests.Request).parameters.keys()
 REQUEST_CONFIG_KEYS = [
-    parameter
-    for parameter in parameter_keys
-    if parameter not in ["hooks", "cookies", "method", "url", "files"]
-]
+    parameter for parameter in parameter_keys if parameter not in ["hooks", "cookies", "files"]
+] + ["timeout", "proxies", "verify", "cert"]
 
 URL_REGEX_PATTERN = r"(http|https):\/\/.+"
 
@@ -86,6 +85,25 @@ class RequesterRule(FieldManagerRule):
             factory=tuple,
         )
         """ (Optional) The authentication tuple. Defined as list."""
+        timeout: float = field(validator=validators.instance_of(float), converter=float, default=2)
+        """ (Optional) The timeout in seconds as float for the request. Defaults to 2 seconds"""
+        verify: bool = field(validator=validators.instance_of(bool), default=True)
+        """ (Optional) Wether or not verify the ssl context"""
+        proxies: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        """Dictionary mapping protocol or protocol and host to the
+        URL of the proxy (e.g. :code:`{"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"}`)
+        to be used on the request"""
+        cert: str = field(validator=validators.instance_of(str), default="")
+        """SSL client certificate as path to ssl client cert file (.pem)."""
 
         def __attrs_post_init__(self):
             url_fields = re.findall(FIELD_PATTERN, self.url)
@@ -99,7 +117,7 @@ class RequesterRule(FieldManagerRule):
     def kwargs(self):
         kwargs = {
             key: getattr(self._config, key)
-            for key in [*REQUEST_CONFIG_KEYS, "url", "method"]
+            for key in REQUEST_CONFIG_KEYS
             if getattr(self._config, key)
         }
         return kwargs

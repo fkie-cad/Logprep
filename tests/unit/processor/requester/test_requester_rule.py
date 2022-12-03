@@ -238,7 +238,7 @@ class TestRequesterRule:
                         "data": "the data from field ${datafield.bla}",
                     },
                 },
-                ["url", "json", "params", "data", "method"],
+                ["url", "json", "params", "data", "method", "timeout", "verify"],
             ),
             (
                 {
@@ -248,7 +248,7 @@ class TestRequesterRule:
                         "url": "http://${field1}/${field2}",
                     },
                 },
-                ["url", "method"],
+                ["url", "method", "timeout", "verify"],
             ),
         ],
     )
