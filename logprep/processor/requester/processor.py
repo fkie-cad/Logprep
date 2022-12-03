@@ -6,18 +6,15 @@ A processor to invoke http requests. Could be usefull to enrich events from an e
 to trigger external systems by and with event field values.
 
 """
-from copy import deepcopy
 from functools import partial
 import json
 import re
 import requests
-from typing import List, Tuple, Any
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_overwrite
-from logprep.processor.calculator.rule import FIELD_PATTERN
 
 
 class Requester(Processor):

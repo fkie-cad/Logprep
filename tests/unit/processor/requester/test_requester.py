@@ -1,12 +1,13 @@
 # pylint: disable=missing-docstring
-from requests import HTTPError
 from unittest import mock
+
 import pytest
 import responses
+from requests import HTTPError
 from responses import matchers
+
 from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
-
 
 test_cases = [
     (
@@ -147,5 +148,5 @@ class TestRequester(BaseProcessorTestCase):
             "event_id": "1234",
             "message": "user root logged in",
         }
-        count = self.object.metrics.number_of_processed_events
+        _ = self.object.metrics.number_of_processed_events
         self.object.process(document)

@@ -75,6 +75,7 @@ class RequesterRule(FieldManagerRule):
                 self.kwargs.update({"auth": tuple(self.kwargs.get("auth"))})
             # pylint: enable=no-member,unsupported-membership-test
 
+    # pylint: disable=missing-docstring
     @property
     def url(self):
         return self._config.url
@@ -86,3 +87,5 @@ class RequesterRule(FieldManagerRule):
     @property
     def kwargs(self):
         return self._config.kwargs
+
+    # pylint: enable=missing-docstring
