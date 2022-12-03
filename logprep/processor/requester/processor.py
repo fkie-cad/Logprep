@@ -36,6 +36,21 @@ class Requester(Processor):
             rsp.raise_for_status()
         except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
+        if rule.target_field:
+            if rsp.headers.get("Content-Type") == "application/json":
+                result = rsp.json()
+            else:
+                result = rsp.content.decode("utf-8")
+            successful = add_field_to(
+                event,
+                rule.target_field,
+                result,
+                rule.extend_target_list,
+                rule.overwrite_target,
+            )
+            if not successful:
+                error = DuplicationError(self.name, [rule.target_field])
+                self._handle_warning_error(event, rule, error)
 
     def _template_kwargs(self, kwargs: dict, source: dict):
         for key, value in kwargs.items():

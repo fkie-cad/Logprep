@@ -120,6 +120,38 @@ test_cases = [
             "status": 200,
         },
     ),
+    (
+        "parses json result to target field",
+        {
+            "filter": "message",
+            "requester": {"url": "http://mock-mock/", "method": "GET", "target_field": "result"},
+        },
+        {"message": "the message"},
+        {"message": "the message", "result": {"testkey": "testresult"}},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "json": {"testkey": "testresult"},
+            "content_type": "application/json",
+            "status": 200,
+        },
+    ),
+    (
+        "parses text result to target field",
+        {
+            "filter": "message",
+            "requester": {"url": "http://mock-mock/", "method": "GET", "target_field": "result"},
+        },
+        {"message": "the message"},
+        {"message": "the message", "result": "the body"},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "body": "the body",
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
 ]  # testcase, rule, event, expected, response
 
 failure_test_cases = [
