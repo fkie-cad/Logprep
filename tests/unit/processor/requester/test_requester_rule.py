@@ -66,7 +66,7 @@ class TestRequesterRule:
                     },
                 },
                 ValueError,
-                r"'kwargs' must be in \['headers', 'files', 'data', 'params', 'auth', 'json'\]",
+                r"'kwargs' must be in \['headers', 'data', 'params', 'auth', 'json'\]",
             ),
             (
                 {
@@ -104,6 +104,38 @@ class TestRequesterRule:
                     },
                 },
                 ["field1"],
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://${field1}/${field2}",
+                    },
+                },
+                ["field1", "field2"],
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://${field1}/${field2}",
+                        "kwargs": {"json": {"${jsonkey}": "the ${jsonvalue} bla"}},
+                    },
+                },
+                ["field1", "field2", "jsonkey", "jsonvalue"],
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://${field1}/${field2}",
+                        "kwargs": {"json": {"${jsonkey}": "the ${jsonvalue}"}},
+                    },
+                },
+                ["field1", "field2", "jsonkey", "jsonvalue"],
             ),
         ],
     )

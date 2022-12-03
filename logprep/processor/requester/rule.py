@@ -4,6 +4,7 @@ Requester
 
 
 """
+import json
 import re
 import inspect
 import requests
@@ -15,7 +16,7 @@ parameter_keys = inspect.signature(requests.Request).parameters.keys()
 REQUEST_CONFIG_KEYS = [
     parameter
     for parameter in parameter_keys
-    if parameter not in ["hooks", "cookies", "method", "url"]
+    if parameter not in ["hooks", "cookies", "method", "url", "files"]
 ]
 
 URL_REGEX_PATTERN = r"(http|https):\/\/.+"
@@ -31,7 +32,7 @@ class RequesterRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for RequesterRule"""
 
-        source_fields: list = field(factory=list)
+        source_fields: list = field(factory=list, converter=sorted)
         target_field: str = field(factory=str)
         method: str = field(
             validator=[
@@ -45,6 +46,7 @@ class RequesterRule(FieldManagerRule):
         url: str = field(
             validator=[
                 validators.instance_of(str),
+                validators.matches_re(rf"^({URL_REGEX_PATTERN})|({FIELD_PATTERN}.*)"),
             ]
         )
         """the url for the request. You can use dissect pattern language to add field values"""
@@ -60,11 +62,16 @@ class RequesterRule(FieldManagerRule):
         )
         """keyword arguments for the request. You can use dissect pattern language to
         fill with field values. Valid kwargs are:
-        :code:`headers`, :code:`files`, :code:`data`, :code:`params`, :code:`auth`, :code:`json`"""
+        :code:`headers`, :code:`data`, :code:`params`, :code:`auth`, :code:`json`"""
 
         def __attrs_post_init__(self):
             url_fields = re.findall(FIELD_PATTERN, self.url)
-            self.source_fields = list({*url_fields})
+            json_fields = []
+            # pylint: disable=no-member,unsupported-membership-test
+            if "json" in self.kwargs:
+                json_fields = re.findall(FIELD_PATTERN, json.dumps(self.kwargs.get("json")))
+            # pylint: enable=no-member,unsupported-membership-test
+            self.source_fields = list({*url_fields, *json_fields})
 
     @property
     def url(self):

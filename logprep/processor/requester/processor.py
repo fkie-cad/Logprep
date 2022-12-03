@@ -6,7 +6,9 @@ A processor to invoke http requests. Could be usefull to enrich events from an e
 to trigger external systems by and with event field values.
 
 """
+from copy import deepcopy
 from functools import partial
+import json
 import re
 import requests
 from typing import List, Tuple, Any
@@ -30,8 +32,14 @@ class Requester(Processor):
         source_field_dict = dict(zip(source_fields, source_field_values))
         self._check_for_missing_values(event, rule, source_field_dict)
         url = self._template(rule.url, source_field_dict)
+        kwargs = rule.kwargs
+        if kwargs:
+            if "json" in kwargs:
+                kwargs["json"] = json.loads(
+                    self._template(json.dumps(kwargs["json"]), source_field_dict)
+                )
         try:
-            response = requests.request(url=url, method=rule.method, **rule.kwargs)
+            response = requests.request(url=url, method=rule.method, **kwargs)
             response.raise_for_status()
         except requests.HTTPError as error:
             self._handle_warning_error(event, rule, error)

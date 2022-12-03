@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 import pytest
 import responses
+from responses import matchers
 from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -26,6 +27,58 @@ test_cases = [
         {"message": "the message", "url": "http://mock-mock", "file": "file.yml"},
         {"message": "the message", "url": "http://mock-mock", "file": "file.yml"},
         {"method": "GET", "url": "http://mock-mock/file.yml", "status": 200},
+    ),
+    (
+        "post request with json",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock",
+                "method": "POST",
+                "kwargs": {"json": {"the": "json value"}},
+            },
+        },
+        {"message": "the message", "url": "http://mock-mock"},
+        {"message": "the message", "url": "http://mock-mock"},
+        {"method": "POST", "url": "http://mock-mock/", "status": 200},
+    ),
+    (
+        "post request with json from fields",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock",
+                "method": "POST",
+                "kwargs": {"json": {"the": "${message}"}},
+            },
+        },
+        {"message": "the message", "url": "http://mock-mock"},
+        {"message": "the message", "url": "http://mock-mock"},
+        {
+            "method": "POST",
+            "url": "http://mock-mock/",
+            "match": [matchers.json_params_matcher({"the": "the message"})],
+            "status": 200,
+        },
+    ),
+    (
+        "post request with complex json and url from dotted fields",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://${message.url}",
+                "method": "POST",
+                "kwargs": {"json": {"${message.key}": "${message.value}"}},
+            },
+        },
+        {"message": {"url": "mock-mock", "key": "keyvalue", "value": "valuevalue"}},
+        {"message": {"url": "mock-mock", "key": "keyvalue", "value": "valuevalue"}},
+        {
+            "method": "POST",
+            "url": "http://mock-mock/",
+            "match": [matchers.json_params_matcher({"keyvalue": "valuevalue"})],
+            "status": 200,
+        },
     ),
 ]  # testcase, rule, event, expected, response
 
