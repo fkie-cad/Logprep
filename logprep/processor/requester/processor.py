@@ -16,6 +16,8 @@ from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_overwrite
 
+TEMPLATE_KWARGS = ("url", "json", "data", "params")
+
 
 class Requester(Processor):
     """A processor to invoke http requests with field data
@@ -28,18 +30,18 @@ class Requester(Processor):
         source_field_values = map(partial(get_dotted_field_value, event), source_fields)
         source_field_dict = dict(zip(source_fields, source_field_values))
         self._check_for_missing_values(event, rule, source_field_dict)
-        url = self._template(rule.url, source_field_dict)
-        kwargs = rule.kwargs
-        if kwargs:
-            if "json" in kwargs:
-                kwargs["json"] = json.loads(
-                    self._template(json.dumps(kwargs["json"]), source_field_dict)
-                )
+        kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
         try:
-            rsp = requests.request(url=url, method=rule.method, **kwargs)
+            rsp = requests.request(**kwargs)
             rsp.raise_for_status()
         except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
+
+    def _template_kwargs(self, kwargs: dict, source: dict):
+        for key, value in kwargs.items():
+            if key in TEMPLATE_KWARGS:
+                kwargs.update({key: json.loads(self._template(json.dumps(value), source))})
+        return kwargs
 
     @staticmethod
     def _template(string: str, source: dict) -> str:

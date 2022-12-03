@@ -50,42 +50,58 @@ class RequesterRule(FieldManagerRule):
             ]
         )
         """the url for the request. You can use dissect pattern language to add field values"""
-        kwargs: dict = field(
+        json: dict = field(validator=validators.instance_of(dict), factory=dict)
+        """ (Optional) The json payload. Can be templated by using the pattern
+        :code:`${the.dotted.field}` somewhere in the key or value all elements.
+        """
+        data: str = field(validator=validators.instance_of(str), default="")
+        """ (Optional) The data payload. Can be templated by using the pattern
+        :code:`${the.dotted.field}` somewhere in value"""
+        params: dict = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
-                    key_validator=validators.in_(REQUEST_CONFIG_KEYS),
-                    value_validator=validators.instance_of(object),
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
                 ),
             ],
             factory=dict,
         )
-        """keyword arguments for the request. You can use dissect pattern language to
-        fill with field values. Valid kwargs are:
-        :code:`headers`, :code:`data`, :code:`params`, :code:`auth`, :code:`json`"""
+        """ (Optional) The query parameters. Can be templated by using the pattern
+        :code:`${the.dotted.field}` somewhere in the key or value all elements."""
+        headers: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        """ (Optional) The http headers."""
+        auth: tuple = field(
+            validator=[validators.instance_of(tuple)],
+            converter=tuple,
+            factory=tuple,
+        )
+        """ (Optional) The authentication tuple. Defined as list."""
 
         def __attrs_post_init__(self):
             url_fields = re.findall(FIELD_PATTERN, self.url)
-            json_fields = []
-            # pylint: disable=no-member,unsupported-membership-test
-            if "json" in self.kwargs:
-                json_fields = re.findall(FIELD_PATTERN, json.dumps(self.kwargs.get("json")))
-            self.source_fields = list({*url_fields, *json_fields})
-            if "auth" in self.kwargs:
-                self.kwargs.update({"auth": tuple(self.kwargs.get("auth"))})
-            # pylint: enable=no-member,unsupported-membership-test
+            json_fields = re.findall(FIELD_PATTERN, json.dumps(self.json))
+            data_fields = re.findall(FIELD_PATTERN, self.data)
+            params_fields = re.findall(FIELD_PATTERN, json.dumps(self.params))
+            self.source_fields = list({*url_fields, *json_fields, *data_fields, *params_fields})
 
     # pylint: disable=missing-docstring
     @property
-    def url(self):
-        return self._config.url
-
-    @property
-    def method(self):
-        return self._config.method
-
-    @property
     def kwargs(self):
-        return self._config.kwargs
+        kwargs = {
+            key: getattr(self._config, key)
+            for key in [*REQUEST_CONFIG_KEYS, "url", "method"]
+            if getattr(self._config, key)
+        }
+        return kwargs
 
     # pylint: enable=missing-docstring

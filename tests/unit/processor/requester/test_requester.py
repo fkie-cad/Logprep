@@ -38,7 +38,7 @@ test_cases = [
             "requester": {
                 "url": "http://mock-mock",
                 "method": "POST",
-                "kwargs": {"json": {"the": "json value"}},
+                "json": {"the": "json value"},
             },
         },
         {"message": "the message", "url": "http://mock-mock"},
@@ -52,7 +52,7 @@ test_cases = [
             "requester": {
                 "url": "http://mock-mock",
                 "method": "POST",
-                "kwargs": {"json": {"the": "${message}"}},
+                "json": {"the": "${message}"},
             },
         },
         {"message": "the message", "url": "http://mock-mock"},
@@ -71,7 +71,7 @@ test_cases = [
             "requester": {
                 "url": "http://${message.url}",
                 "method": "POST",
-                "kwargs": {"json": {"${message.key}": "${message.value}"}},
+                "json": {"${message.key}": "${message.value}"},
             },
         },
         {"message": {"url": "mock-mock", "key": "keyvalue", "value": "valuevalue"}},
@@ -80,6 +80,7 @@ test_cases = [
             "method": "POST",
             "url": "http://mock-mock/",
             "match": [matchers.json_params_matcher({"keyvalue": "valuevalue"})],
+            "content_type": "application/json",
             "status": 200,
         },
     ),
@@ -90,7 +91,25 @@ test_cases = [
             "requester": {
                 "url": "http://mock-mock/",
                 "method": "GET",
-                "kwargs": {"auth": ["username", "password"]},
+                "auth": ["username", "password"],
+            },
+        },
+        {"message": "the message"},
+        {"message": "the message"},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "status": 200,
+        },
+    ),
+    (
+        "post request with templated data",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock/",
+                "method": "GET",
+                "data": "fielddata ${message}",
             },
         },
         {"message": "the message"},

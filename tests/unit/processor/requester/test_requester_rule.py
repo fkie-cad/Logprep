@@ -27,7 +27,7 @@ class TestRequesterRule:
             (
                 {
                     "filter": "message",
-                    "requester": {"kwargs": {}},
+                    "requester": {"json": {}},
                 },
                 TypeError,
                 "missing 2 required keyword-only arguments: 'method' and 'url'",
@@ -62,11 +62,23 @@ class TestRequesterRule:
                     "requester": {
                         "method": "GET",
                         "url": "http://the-api/endpoint",
-                        "kwargs": {"notallowed": "bla"},
+                        "headers": {"Authorization": "Bearer Bla"},
                     },
                 },
-                ValueError,
-                r"'kwargs' must be in \['headers', 'data', 'params', 'auth', 'json'\]",
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://the-api/endpoint",
+                        "headers": {"Authorization": {}},
+                    },
+                },
+                TypeError,
+                r"must be <class \'str\'>",
             ),
             (
                 {
@@ -78,6 +90,54 @@ class TestRequesterRule:
                 },
                 None,
                 None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://the-api/endpoint",
+                        "json": '{"key": "value"}',
+                    },
+                },
+                TypeError,
+                r"must be <class \\\'dict\\\'>",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://the-api/endpoint",
+                        "params": {"key": "value"},
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://the-api/endpoint",
+                        "params": '{"key": "value"}',
+                    },
+                },
+                TypeError,
+                r"must be <class \\\'dict\\\'>",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://the-api/endpoint",
+                        "params": {"key": {}},
+                    },
+                },
+                TypeError,
+                r"must be <class \'str\'>",
             ),
         ],
     )
@@ -121,7 +181,7 @@ class TestRequesterRule:
                     "requester": {
                         "method": "GET",
                         "url": "http://${field1}/${field2}",
-                        "kwargs": {"json": {"${jsonkey}": "the ${jsonvalue} bla"}},
+                        "json": {"${jsonkey}": "the ${jsonvalue} bla"},
                     },
                 },
                 ["field1", "field2", "jsonkey", "jsonvalue"],
@@ -132,13 +192,66 @@ class TestRequesterRule:
                     "requester": {
                         "method": "GET",
                         "url": "http://${field1}/${field2}",
-                        "kwargs": {"json": {"${jsonkey}": "the ${jsonvalue}"}},
+                        "json": {"${jsonkey}": "the ${jsonvalue}"},
                     },
                 },
                 ["field1", "field2", "jsonkey", "jsonvalue"],
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://${field1}/${field2}",
+                        "json": {"${jsonkey}": "the ${jsonvalue}"},
+                        "params": {"${paramskey}": "the ${paramsvalue}"},
+                        "data": "the data from field ${datafield.bla}",
+                    },
+                },
+                [
+                    "datafield.bla",
+                    "field1",
+                    "field2",
+                    "jsonkey",
+                    "jsonvalue",
+                    "paramskey",
+                    "paramsvalue",
+                ],
             ),
         ],
     )
     def test_sets_source_fields(self, rule, expected_source_fields):
         rule_instance = RequesterRule._create_from_dict(rule)
         assert expected_source_fields == rule_instance.source_fields
+
+    @pytest.mark.parametrize(
+        "rule, expected_keys",
+        [
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://${field1}/${field2}",
+                        "json": {"${jsonkey}": "the ${jsonvalue}"},
+                        "params": {"${paramskey}": "the ${paramsvalue}"},
+                        "data": "the data from field ${datafield.bla}",
+                    },
+                },
+                ["url", "json", "params", "data", "method"],
+            ),
+            (
+                {
+                    "filter": "message",
+                    "requester": {
+                        "method": "GET",
+                        "url": "http://${field1}/${field2}",
+                    },
+                },
+                ["url", "method"],
+            ),
+        ],
+    )
+    def test_kwargs_returns_requests_kwargs(self, rule, expected_keys):
+        rule_instance = RequesterRule._create_from_dict(rule)
+        assert sorted(expected_keys) == sorted(list(rule_instance.kwargs.keys()))
