@@ -39,7 +39,9 @@ class RequesterRule(FieldManagerRule):
                 validators.in_(HTTP_METHODS),
             ]
         )
-        f"""the method for the request. must be one of {HTTP_METHODS}"""
+        """the method for the request. must be one of
+        :code:`GET`, :code:`OPTIONS`, :code:`HEAD`,
+        :code:`POST`, :code:`PUT`, :code:`PATCH`, :code:`DELETE`"""
         url: str = field(
             validator=[
                 validators.instance_of(str),
@@ -57,8 +59,9 @@ class RequesterRule(FieldManagerRule):
             ],
             factory=dict,
         )
-        f"""keyword arguments for the request. You can use dissect pattern language to
-        fill with field values. Valid kwargs are: {REQUEST_CONFIG_KEYS}"""
+        """keyword arguments for the request. You can use dissect pattern language to
+        fill with field values. Valid kwargs are:
+        :code:`headers`, :code:`files`, :code:`data`, :code:`params`, :code:`auth`, :code:`json`"""
 
         def __attrs_post_init__(self):
             url_fields = re.findall(FIELD_PATTERN, self.url)
