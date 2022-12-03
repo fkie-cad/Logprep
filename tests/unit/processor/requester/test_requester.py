@@ -14,11 +14,18 @@ test_cases = [
         {"method": "GET", "url": "http://mock-mock", "status": 200},
     ),
     (
-        "simple request with url from field",
+        "request with url from field",
         {"filter": "message", "requester": {"url": "${url}", "method": "GET"}},
         {"message": "the message", "url": "http://mock-mock"},
         {"message": "the message", "url": "http://mock-mock"},
         {"method": "GET", "url": "http://mock-mock", "status": 200},
+    ),
+    (
+        "request with url from different fields",
+        {"filter": "message", "requester": {"url": "${url}/${file}", "method": "GET"}},
+        {"message": "the message", "url": "http://mock-mock", "file": "file.yml"},
+        {"message": "the message", "url": "http://mock-mock", "file": "file.yml"},
+        {"method": "GET", "url": "http://mock-mock/file.yml", "status": 200},
     ),
 ]  # testcase, rule, event, expected, response
 

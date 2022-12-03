@@ -45,7 +45,6 @@ class RequesterRule(FieldManagerRule):
         url: str = field(
             validator=[
                 validators.instance_of(str),
-                validators.matches_re(rf"({URL_REGEX_PATTERN})|({FIELD_PATTERN})"),
             ]
         )
         """the url for the request. You can use dissect pattern language to add field values"""

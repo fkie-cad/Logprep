@@ -6,6 +6,7 @@ A processor to invoke http requests. Could be usefull to enrich events from an e
 to trigger external systems by and with event field values.
 
 """
+from functools import partial
 import re
 import requests
 from typing import List, Tuple, Any
@@ -24,8 +25,11 @@ class Requester(Processor):
     rule_class = RequesterRule
 
     def _apply_rules(self, event, rule):
-        url = rule.url
-
+        source_fields = rule.source_fields
+        source_field_values = map(partial(get_dotted_field_value, event), source_fields)
+        source_field_dict = dict(zip(source_fields, source_field_values))
+        self._check_for_missing_values(event, rule, source_field_dict)
+        url = self._template(rule.url, source_field_dict)
         try:
             response = requests.request(url=url, method=rule.method, **rule.kwargs)
             response.raise_for_status()
@@ -39,3 +43,11 @@ class Requester(Processor):
             pattern = r"\$\{(" + rf"{key}" + r")\}"
             string = re.sub(pattern, str(value), string)
         return string
+
+    def _check_for_missing_values(self, event, rule, source_field_dict):
+        missing_fields = list(
+            dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
+        )
+        if missing_fields:
+            error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
+            self._handle_warning_error(event, rule, error)
