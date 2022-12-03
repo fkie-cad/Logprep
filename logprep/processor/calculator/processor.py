@@ -27,8 +27,8 @@ from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule
+from logprep.util.helper import add_field_to, get_source_fields_dict
 from logprep.util.decorators import timeout
-from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class Calculator(Processor):
@@ -37,9 +37,7 @@ class Calculator(Processor):
     rule_class = CalculatorRule
 
     def _apply_rules(self, event, rule):
-        source_fields = rule.source_fields
-        source_field_values = map(partial(get_dotted_field_value, event), source_fields)
-        source_field_dict = dict(zip(source_fields, source_field_values))
+        source_field_dict = get_source_fields_dict(event, rule)
         self._check_for_missing_values(event, rule, source_field_dict)
         expression = self._template(rule.calc, source_field_dict)
         try:

@@ -8,14 +8,12 @@ to trigger external systems by and with event field values.
 """
 import json
 import re
-from functools import partial
-
 import requests
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.requester.rule import RequesterRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_field_to, get_dotted_field_value, get_source_fields_dict
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
@@ -27,9 +25,7 @@ class Requester(Processor):
     rule_class = RequesterRule
 
     def _apply_rules(self, event, rule):
-        source_fields = rule.source_fields
-        source_field_values = map(partial(get_dotted_field_value, event), source_fields)
-        source_field_dict = dict(zip(source_fields, source_field_values))
+        source_field_dict = get_source_fields_dict(event, rule)
         self._check_for_missing_values(event, rule, source_field_dict)
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
         rsp = self._request(event, rule, kwargs)
