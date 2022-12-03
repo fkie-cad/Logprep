@@ -1,4 +1,6 @@
 # pylint: disable=missing-docstring
+from requests import HTTPError
+from unittest import mock
 import pytest
 import responses
 from responses import matchers
@@ -103,12 +105,12 @@ test_cases = [
 failure_test_cases = [
     (
         "handles HTTPError",
-        {"filter": "message", "requester": {"url": "http://mock-mock", "method": "GET"}},
+        {"filter": "message", "requester": {"url": "http://failure_mock", "method": "GET"}},
         {"message": "the message"},
         {"message": "the message", "tags": ["_requester_failure"]},
-        {"method": "GET", "url": "http://mock-mock", "status": 404},
+        mock.patch("requests.request", side_effect=HTTPError),
     )
-]  # testcase, rule, event, expected, response
+]  # testcase, rule, event, expected, mock
 
 
 class TestRequester(BaseProcessorTestCase):
@@ -120,23 +122,22 @@ class TestRequester(BaseProcessorTestCase):
     }
 
     @responses.activate
-    @pytest.mark.parametrize("testcase, rule, event, expected, response", test_cases)
+    @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs", test_cases)
     def test_testcases(
-        self, testcase, rule, event, expected, response
+        self, testcase, rule, event, expected, response_kwargs
     ):  # pylint: disable=unused-argument
-        responses.add(responses.Response(**response))
+        responses.add(responses.Response(**response_kwargs))
         self._load_specific_rule(rule)
         self.object.process(event)
         assert event == expected
 
-    @responses.activate
-    @pytest.mark.parametrize("testcase, rule, event, expected, response", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, response):
-        responses.add(responses.Response(**response))
-        self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning):
-            self.object.process(event)
-        assert event == expected, testcase
+    @pytest.mark.parametrize("testcase, rule, event, expected, test_mock", failure_test_cases)
+    def test_requester_testcases_failure_handling(self, testcase, rule, event, expected, test_mock):
+        with test_mock:
+            self._load_specific_rule(rule)
+            with pytest.raises(ProcessingWarning):
+                self.object.process(event)
+            assert event == expected, testcase
 
     @responses.activate
     def test_process(self):

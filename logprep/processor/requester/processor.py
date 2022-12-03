@@ -39,9 +39,9 @@ class Requester(Processor):
                     self._template(json.dumps(kwargs["json"]), source_field_dict)
                 )
         try:
-            response = requests.request(url=url, method=rule.method, **kwargs)
-            response.raise_for_status()
-        except requests.HTTPError as error:
+            rsp = requests.request(url=url, method=rule.method, **kwargs)
+            rsp.raise_for_status()
+        except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
 
     @staticmethod
