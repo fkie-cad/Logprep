@@ -37,9 +37,9 @@ class Requester(Processor):
         except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
         if rule.target_field:
-            if rsp.headers.get("Content-Type") == "application/json":
-                result = rsp.json()
-            else:
+            try:
+                result = json.loads(rsp.content)
+            except json.JSONDecodeError:
                 result = rsp.content.decode("utf-8")
             successful = add_field_to(
                 event,
