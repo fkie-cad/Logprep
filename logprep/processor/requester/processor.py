@@ -32,11 +32,10 @@ class Requester(Processor):
         source_field_dict = dict(zip(source_fields, source_field_values))
         self._check_for_missing_values(event, rule, source_field_dict)
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
-        try:
-            rsp = requests.request(**kwargs)
-            rsp.raise_for_status()
-        except requests.exceptions.HTTPError as error:
-            self._handle_warning_error(event, rule, error)
+        rsp = self._request(event, rule, kwargs)
+        self._handle_response(event, rule, rsp)
+
+    def _handle_response(self, event, rule, rsp):
         if rule.target_field:
             result = self._get_result(rsp)
             successful = add_field_to(
@@ -63,6 +62,14 @@ class Requester(Processor):
                 if not successful:
                     error = DuplicationError(self.name, [rule.target_field])
                     self._handle_warning_error(event, rule, error)
+
+    def _request(self, event, rule, kwargs):
+        try:
+            rsp = requests.request(**kwargs)
+            rsp.raise_for_status()
+        except requests.exceptions.HTTPError as error:
+            self._handle_warning_error(event, rule, error)
+        return rsp
 
     @staticmethod
     def _get_result(rsp):

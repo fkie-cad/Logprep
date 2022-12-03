@@ -32,8 +32,11 @@ class RequesterRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for RequesterRule"""
 
-        source_fields: list = field(factory=list, converter=sorted)
-        target_field: str = field(factory=str)
+        source_fields: list = field(
+            factory=list, converter=sorted, validator=validators.instance_of(list)
+        )
+        target_field: str = field(factory=str, validator=validators.instance_of(str))
+        """(Optional) The target field to write the complete response json or body to"""
         target_field_mapping: dict = field(
             validator=[
                 validators.instance_of(dict),
@@ -45,7 +48,7 @@ class RequesterRule(FieldManagerRule):
             factory=dict,
         )
         """(Optional) A mapping from dotted_fields to dotted_fields to extract data from response
-        json to target fields"""
+        json to target fields. If target_field is given too, this is made additionally"""
         method: str = field(
             validator=[
                 validators.instance_of(str),
