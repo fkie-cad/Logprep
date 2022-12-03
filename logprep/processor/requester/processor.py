@@ -6,15 +6,16 @@ A processor to invoke http requests. Could be usefull to enrich events from an e
 to trigger external systems by and with event field values.
 
 """
-from functools import partial
 import json
 import re
+from functools import partial
+
 import requests
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.requester.rule import RequesterRule
-from logprep.util.helper import get_dotted_field_value, add_field_to, add_and_overwrite
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 

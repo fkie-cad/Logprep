@@ -4,7 +4,7 @@ from unittest import mock
 import pytest
 import responses
 from requests import HTTPError
-from responses import matchers
+from responses import matchers, Response
 
 from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -160,8 +160,30 @@ failure_test_cases = [
         {"filter": "message", "requester": {"url": "http://failure_mock", "method": "GET"}},
         {"message": "the message"},
         {"message": "the message", "tags": ["_requester_failure"]},
-        mock.patch("requests.request", side_effect=HTTPError),
-    )
+        {
+            "method": "GET",
+            "url": "http://failure_mock",
+            "body": HTTPError("404"),
+            "content_type": "text/plain",
+            "status": 404,
+        },
+    ),
+    (
+        "does not overwrite if not permitted",
+        {
+            "filter": "message",
+            "requester": {"url": "http://failure_mock", "method": "GET", "target_field": "result"},
+        },
+        {"message": "the message", "result": "preexisting"},
+        {"message": "the message", "result": "preexisting", "tags": ["_requester_failure"]},
+        {
+            "method": "GET",
+            "url": "http://failure_mock",
+            "body": "the body",
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
 ]  # testcase, rule, event, expected, mock
 
 
@@ -183,13 +205,16 @@ class TestRequester(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, test_mock", failure_test_cases)
-    def test_requester_testcases_failure_handling(self, testcase, rule, event, expected, test_mock):
-        with test_mock:
-            self._load_specific_rule(rule)
-            with pytest.raises(ProcessingWarning):
-                self.object.process(event)
-            assert event == expected, testcase
+    @responses.activate
+    @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs", failure_test_cases)
+    def test_requester_testcases_failure_handling(
+        self, testcase, rule, event, expected, response_kwargs
+    ):
+        responses.add(responses.Response(**response_kwargs))
+        self._load_specific_rule(rule)
+        with pytest.raises(ProcessingWarning):
+            self.object.process(event)
+        assert event == expected, testcase
 
     @responses.activate
     def test_process(self):
