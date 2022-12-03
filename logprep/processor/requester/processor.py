@@ -69,6 +69,8 @@ class Requester(Processor):
             rsp.raise_for_status()
         except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
+        except requests.exceptions.ConnectTimeout as error:
+            self._handle_warning_error(event, rule, error)
         return rsp
 
     @staticmethod

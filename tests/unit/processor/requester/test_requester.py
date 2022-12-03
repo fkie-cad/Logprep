@@ -1,12 +1,11 @@
 # pylint: disable=missing-docstring
-from unittest import mock
 
 import pytest
 import responses
-from requests import HTTPError
-from responses import matchers, Response
+from requests import ConnectTimeout, HTTPError
+from responses import matchers
 
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [
@@ -186,6 +185,22 @@ failure_test_cases = [
             "body": HTTPError("404"),
             "content_type": "text/plain",
             "status": 404,
+        },
+    ),
+    (
+        "timout error",
+        {
+            "filter": "message",
+            "requester": {"url": "http://failure_mock", "method": "GET", "timeout": 0.2},
+        },
+        {"message": "the message"},
+        {"message": "the message", "tags": ["_requester_failure"]},
+        {
+            "method": "GET",
+            "url": "http://failure_mock",
+            "body": ConnectTimeout(),
+            "content_type": "text/plain",
+            "status": 200,
         },
     ),
     (
