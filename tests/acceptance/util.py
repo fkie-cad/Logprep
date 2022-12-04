@@ -2,6 +2,8 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+from importlib import import_module
+import inspect
 import json
 from copy import deepcopy
 from logging import getLogger, basicConfig, DEBUG
@@ -12,9 +14,13 @@ import signal
 import subprocess
 import sys
 import time
+from logprep.abc.processor import Processor
+from logprep.registry import Registry
 
 from logprep.util.helper import recursive_compare
 from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
+from tests.unit.processor.base import BaseProcessorTestCase
+from logprep.util.decorators import timeout
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
@@ -150,14 +156,20 @@ def start_logprep(config_path: str) -> subprocess.Popen:
     )
 
 
-def wait_for_output(proc, expected_output):
-    output = proc.stdout.readline()
-    while expected_output not in output.decode("utf8"):
+def wait_for_output(proc, expected_output, test_timeout=10):
+    @timeout(test_timeout)
+    def wait_for_output_inner(proc, expected_output):
         output = proc.stdout.readline()
-        time.sleep(0.1)  # nosemgrep
+        while expected_output not in output.decode("utf8"):
+            output = proc.stdout.readline()
+            time.sleep(0.1)  # nosemgrep
+
+    wait_for_output_inner(proc, expected_output)
 
 
-def stop_logprep():
+def stop_logprep(proc=None):
+    if proc:
+        proc.send_signal(signal.SIGINT)
     output = subprocess.check_output("ps -x | grep run_logprep", shell=True)  # nosemgrep
     for line in output.decode("utf8").splitlines():
         process_id = re.match(r"^\s+(\d+)\s.+", line).group(1)
@@ -165,3 +177,26 @@ def stop_logprep():
             os.kill(int(process_id), signal.SIGKILL)
         except ProcessLookupError:
             pass
+
+
+def get_full_pipeline():
+    processors = [
+        processor_name
+        for processor_name, value in Registry.mapping.items()
+        if issubclass(value, Processor)
+    ]
+    processor_test_modules = []
+    for processor in processors:
+        processor_test_modules.append(
+            import_module(f"tests.unit.processor.{processor}.test_{processor}")
+        )
+    processor_configs = []
+    for test_module in processor_test_modules:
+        processor_configs.append(
+            [
+                (test_class[1].CONFIG.get("type"), test_class[1].CONFIG)
+                for test_class in inspect.getmembers(test_module, inspect.isclass)
+                if issubclass(test_class[1], BaseProcessorTestCase)
+            ][1]
+        )
+    return [{processor_name: config} for processor_name, config in processor_configs if config]
