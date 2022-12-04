@@ -1,10 +1,17 @@
 #!/usr/bin/python3
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+# pylint: disable=line-too-long
 import json
 from copy import deepcopy
 from logging import getLogger, basicConfig, DEBUG
 from os import path, makedirs
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
 
 from logprep.util.helper import recursive_compare
 from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
@@ -128,3 +135,33 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
         }
 
     return config_yml
+
+
+def start_logprep(config_path: str) -> subprocess.Popen:
+    environment = {"PYTHONPATH": "."}
+    return subprocess.Popen(  # nosemgrep
+        f"{sys.executable} logprep/run_logprep.py {config_path}",
+        shell=True,
+        env=environment,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        close_fds=True,
+    )
+
+
+def wait_for_output(proc, expected_output):
+    output = proc.stdout.readline()
+    while expected_output not in output.decode("utf8"):
+        output = proc.stdout.readline()
+        time.sleep(0.1)  # nosemgrep
+
+
+def stop_logprep():
+    output = subprocess.check_output("ps -x | grep run_logprep", shell=True)  # nosemgrep
+    for line in output.decode("utf8").splitlines():
+        process_id = re.match(r"^\s+(\d+)\s.+", line).group(1)
+        try:
+            os.kill(int(process_id), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
