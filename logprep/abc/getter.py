@@ -29,6 +29,15 @@ class Getter(ABC):
         """gets and parses the raw content to json"""
         return json.loads(self.get())
 
+    def get_jsonl(self) -> List:
+        """gets and parses the raw content to jsonl"""
+        parsed_events = []
+        for json_string in self.get().splitlines():
+            if json_string.strip() != "":
+                event = json.loads(json_string)
+                parsed_events.append(event)
+        return parsed_events
+
     @abstractmethod
     def get(self) -> str:
         """Get the content.

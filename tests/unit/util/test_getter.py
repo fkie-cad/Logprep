@@ -146,6 +146,16 @@ second_dict:
                     {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
                 ],
             ),
+            (
+                "get_jsonl",
+                """{"first_dict": {"key": ["valid_list_element","valid_list_element"]}}
+                {"second_dict": {"key": ["valid_list_element","valid_list_element"]}}
+                """,
+                [
+                    {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                    {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                ],
+            ),
         ],
     )
     def test_parses_content(self, method_name, input_content, expected_output):
