@@ -1,10 +1,7 @@
 # pylint: disable=missing-docstring
 import contextlib
 from pathlib import Path
-import subprocess
-import sys
 import threading
-import pytest
 import socketserver
 import http.server
 import re
@@ -13,6 +10,7 @@ from tests.acceptance.util import (
     get_default_logprep_config,
     start_logprep,
     stop_logprep,
+    convert_to_http_config,
 )
 from logprep.util.json_handling import dump_config_as_file
 
@@ -48,7 +46,8 @@ class Server(socketserver.TCPServer):
 
 
 def teardown_function():
-    Path("generated_config.yml").unlink()
+    Path("generated_config.yml").unlink(missing_ok=True)
+    Server.stop()
     stop_logprep()
 
 
@@ -73,10 +72,12 @@ def test_full_configuration_logprep_start(tmp_path):
 def test_full_configuration_from_http():
     pipeline = get_full_pipeline()
     config = get_default_logprep_config(pipeline, with_hmac=False)
+    endpoint = "http://localhost:32000"
+    config = convert_to_http_config(config, endpoint)
     config_path = "generated_config.yml"
     dump_config_as_file(config_path, config)
     with Server.run_in_thread():
-        proc = start_logprep(f"http://localhost:32000/{config_path}")
+        proc = start_logprep(f"{endpoint}/{config_path}")
         output = proc.stdout.readline().decode("utf8")
         while True:
             assert not re.search("Invalid processor config", output)
@@ -84,4 +85,4 @@ def test_full_configuration_from_http():
             if re.search("Startup complete", output):
                 break
             output = proc.stdout.readline().decode("utf8")
-        stop_logprep()
+    stop_logprep()

@@ -200,3 +200,18 @@ def get_full_pipeline():
             ][1]
         )
     return [{processor_name: config} for processor_name, config in processor_configs if config]
+
+
+def convert_to_http_config(config: dict, endpoint) -> dict:
+    http_fields = ["regex_mapping", "html_replace_fields", "tree_config"]
+    for processor_config in config.get("pipeline"):
+        name, value = processor_config.popitem()
+        for rule_kind in ("specific_rules", "generic_rules"):
+            rules = Processor.resolve_directories(value.get(rule_kind))
+            value[rule_kind] = [f"{endpoint}/{rule}" for rule in rules]
+        for config_key, config_value in value.items():
+            if config_key in http_fields:
+                value.update({config_key: f"{endpoint}/{config_value}"})
+        processor_config.update({name: value})
+        assert True
+    return config
