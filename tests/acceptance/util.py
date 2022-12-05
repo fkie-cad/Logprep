@@ -2,25 +2,25 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
-from importlib import import_module
 import inspect
 import json
-from copy import deepcopy
-from logging import getLogger, basicConfig, DEBUG
-from os import path, makedirs
 import os
 import re
 import signal
 import subprocess
 import sys
 import time
+from copy import deepcopy
+from importlib import import_module
+from logging import DEBUG, basicConfig, getLogger
+from os import makedirs, path
+
 from logprep.abc.processor import Processor
 from logprep.registry import Registry
-
+from logprep.util.decorators import timeout
 from logprep.util.helper import recursive_compare
 from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
 from tests.unit.processor.base import BaseProcessorTestCase
-from logprep.util.decorators import timeout
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")

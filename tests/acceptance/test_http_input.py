@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+# nosemgrep
 import time
 from logging import DEBUG, basicConfig, getLogger
 
@@ -64,9 +65,8 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path)
     wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000")
-    requests.post(
-        "https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5
-    )  # nosemgrep
+    # nosemgrep
+    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)  # nosemgrep
     assert "my message" in output_path.read_text()
 
@@ -79,11 +79,19 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path)
     wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9001")
-    requests.post(  # nosemgrep
-        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False, timeout=5
+    # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9000/plaintext",
+        data="my first message",
+        verify=False,
+        timeout=5,
     )
-    requests.post(  # nosemgrep
-        "https://127.0.0.1:9001/plaintext", data="my second message", verify=False, timeout=5
+    # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9001/plaintext",
+        data="my second message",
+        verify=False,
+        timeout=5,
     )
     time.sleep(0.5)  # nosemgrep
     output_content = output_path.read_text()
@@ -99,14 +107,26 @@ def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path)
     wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9002")
-    requests.post(  # nosemgrep
-        "https://127.0.0.1:9000/plaintext", data="my first message", verify=False, timeout=5
+    # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9000/plaintext",
+        data="my first message",
+        verify=False,
+        timeout=5,
     )
-    requests.post(  # nosemgrep
-        "https://127.0.0.1:9001/plaintext", data="my second message", verify=False, timeout=5
+    # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9001/plaintext",
+        data="my second message",
+        verify=False,
+        timeout=5,
     )
-    requests.post(  # nosemgrep
-        "https://127.0.0.1:9002/plaintext", data="my third message", verify=False, timeout=5
+    # nosemgrep
+    requests.post(
+        "https://127.0.0.1:9002/plaintext",
+        data="my third message",
+        verify=False,
+        timeout=5,
     )
     time.sleep(0.5)  # nosemgrep
     output_content = output_path.read_text()
