@@ -2,7 +2,48 @@
 Requester
 =========
 
+The Requester is configured by the keyword :code:`requester`.
+It can be used to trigger external systems via web request or enrich eventdata by external
+apis.
 
+A speaking example for event enrichment via external api:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Given requester rule
+
+    filter: 'domain'
+    requester:
+      url: https://internal.cmdb.local/api/v1/locations
+      method: POST
+      content_type: application/json
+      target_field: cmdb.location
+      header:
+        Authorization: Bearer askdfjpiowejf283u9r
+      json:
+        hostname: ${message.hostname}
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incoming event
+
+    {"message": {"hostname": "BB37293hhj"}}
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    {"message": {"hostname": "BB37293hhj"},
+     "cmdb": {
+         "locaction": {
+             "city": "Montreal",
+             "Building": "L76",
+             "Floor": 3,
+             "Room": 34
+             }
+        }
+    }
 """
 import inspect
 import json
@@ -55,7 +96,7 @@ class RequesterRule(FieldManagerRule):
                 validators.in_(HTTP_METHODS),
             ]
         )
-        """the method for the request. must be one of
+        """The method for the request. must be one of
         :code:`GET`, :code:`OPTIONS`, :code:`HEAD`,
         :code:`POST`, :code:`PUT`, :code:`PATCH`, :code:`DELETE`"""
         url: str = field(
@@ -64,7 +105,7 @@ class RequesterRule(FieldManagerRule):
                 validators.matches_re(rf"^({URL_REGEX_PATTERN})|({FIELD_PATTERN}.*)"),
             ]
         )
-        """the url for the request. You can use dissect pattern language to add field values"""
+        """The url for the request. You can use dissect pattern language to add field values"""
         json: dict = field(validator=validators.instance_of(dict), factory=dict)
         """ (Optional) The json payload. Can be templated by using the pattern
         :code:`${the.dotted.field}` somewhere in the key or value all elements.
@@ -82,7 +123,7 @@ class RequesterRule(FieldManagerRule):
             ],
             factory=dict,
         )
-        """ (Optional) The query parameters. Can be templated by using the pattern
+        """ (Optional) The query parameters as dictionary. Can be templated by using the pattern
         :code:`${the.dotted.field}` somewhere in the key or value all elements."""
         headers: dict = field(
             validator=[
@@ -94,17 +135,17 @@ class RequesterRule(FieldManagerRule):
             ],
             factory=dict,
         )
-        """ (Optional) The http headers."""
+        """ (Optional) The http headers as dictionary."""
         auth: tuple = field(
             validator=[validators.instance_of(tuple)],
             converter=tuple,
             factory=tuple,
         )
-        """ (Optional) The authentication tuple. Defined as list."""
+        """ (Optional) The authentication tuple. Defined as list. Will be converted to tuple"""
         timeout: float = field(validator=validators.instance_of(float), converter=float, default=2)
         """ (Optional) The timeout in seconds as float for the request. Defaults to 2 seconds"""
         verify: bool = field(validator=validators.instance_of(bool), default=True)
-        """ (Optional) Wether or not verify the ssl context"""
+        """ (Optional) Wether or not verify the ssl context. Defaults to :code:`True`"""
         proxies: dict = field(
             validator=[
                 validators.instance_of(dict),
@@ -115,11 +156,11 @@ class RequesterRule(FieldManagerRule):
             ],
             factory=dict,
         )
-        """Dictionary mapping protocol or protocol and host to the
+        """(Optional) Dictionary mapping protocol or protocol and host to the
         URL of the proxy (e.g. :code:`{"http": "foo.bar:3128", "http://host.name": "foo.bar:4012"}`)
         to be used on the request"""
         cert: str = field(validator=validators.instance_of(str), default="")
-        """SSL client certificate as path to ssl client cert file (.pem)."""
+        """(Optional) SSL client certificate as path to ssl client cert file (.pem)."""
 
         def __attrs_post_init__(self):
             url_fields = re.findall(FIELD_PATTERN, self.url)

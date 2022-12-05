@@ -5,6 +5,18 @@ Requester
 A processor to invoke http requests. Could be usefull to enrich events from an external api or
 to trigger external systems by and with event field values.
 
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - requestername:
+        type: requester
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+
 """
 import json
 import re
