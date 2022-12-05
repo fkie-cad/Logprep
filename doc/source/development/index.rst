@@ -127,4 +127,3 @@ Development
    requirements
    testing
    coding_examples
-   code_analysis

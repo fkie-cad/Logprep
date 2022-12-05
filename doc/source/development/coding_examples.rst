@@ -4,7 +4,7 @@ Processor Case Examples
 .. toctree::
    :maxdepth: 1
 
-   notebooks/processor_examples/dissecter.ipynb
+   notebooks/processor_examples/dissector.ipynb
    notebooks/processor_examples/concatenator.ipynb
    notebooks/processor_examples/field_manager.ipynb
    notebooks/processor_examples/geo_ip_enricher_custom_outputfields.ipynb
