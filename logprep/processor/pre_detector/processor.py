@@ -29,7 +29,6 @@ from attr import define, field, validators
 from logprep.abc import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.util.validators import file_validator
 
 
 class PreDetectorError(BaseException):
@@ -55,7 +54,9 @@ class PreDetector(Processor):
         A Kafka topic for the detection results of the Predetector.
         Results in this topic can be linked to the original event via a `pre_detector_id`.
         """
-        alert_ip_list_path: str = field(default=None, validator=file_validator)
+        alert_ip_list_path: str = field(
+            default=None, validator=validators.optional(validators.instance_of(str))
+        )
         """
         Path to a YML file or a list of paths to YML files with dictionaries of IPs.
         For string format see :ref:`getters`.

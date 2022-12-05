@@ -35,7 +35,6 @@ from logprep.abc import Processor
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
-from logprep.util.validators import file_validator
 
 
 class TemplateReplacerError(BaseException):
@@ -52,7 +51,7 @@ class TemplateReplacer(Processor):
     class Config(Processor.Config):
         """TemplateReplacer config"""
 
-        template: str = field(validator=file_validator)
+        template: str = field(validator=validators.instance_of(str))
         """
         Path to a YML file (for path format see :ref:`getters`) with a list of replacements in the
         format `%{provider_name}-%{event_id}: %{new_message}`.

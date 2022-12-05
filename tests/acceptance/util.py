@@ -203,7 +203,17 @@ def get_full_pipeline():
 
 
 def convert_to_http_config(config: dict, endpoint) -> dict:
-    http_fields = ["regex_mapping", "html_replace_fields", "tree_config"]
+    config = deepcopy(config)
+    http_fields = [
+        "regex_mapping",
+        "html_replace_fields",
+        "tree_config",
+        "pubkey_analyst",
+        "pubkey_depseudo",
+        "alert_ip_list_path",
+        "schema",
+        "template",
+    ]
     for processor_config in config.get("pipeline"):
         name, value = processor_config.popitem()
         for rule_kind in ("specific_rules", "generic_rules"):
