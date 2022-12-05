@@ -188,7 +188,7 @@ def get_full_pipeline():
     processor_test_modules = []
     for processor in processors:
         processor_test_modules.append(
-            import_module(f"tests.unit.processor.{processor}.test_{processor}")
+            import_module(f"tests.unit.processor.{processor}.test_{processor}")  # nosemgrep
         )
     processor_configs = []
     for test_module in processor_test_modules:
