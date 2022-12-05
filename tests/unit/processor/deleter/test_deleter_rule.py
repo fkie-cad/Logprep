@@ -70,6 +70,11 @@ class TestDeleterRule:
                 TypeError,
                 "'delete' must be <class 'bool'>",
             ),
+            (
+                {"filter": "test", "deleter": {"delete": True}, "description": "my reference rule"},
+                None,
+                None,
+            ),
         ],
     )
     def test_rule_create_from_dict(self, rule_definition, raised, message):
