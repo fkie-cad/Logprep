@@ -141,6 +141,8 @@ def main():
     try:
         AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
         logger = AggregatingLogger.create("Logprep")
+        logger.info(f"python version: {sys.version}")
+        logger.info(f"logprep version: {get_versions()}")
     except BaseException as error:  # pylint: disable=broad-except
         getLogger("Logprep").exception(error)
         sys.exit(1)
@@ -195,4 +197,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
