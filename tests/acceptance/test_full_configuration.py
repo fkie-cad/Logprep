@@ -78,10 +78,8 @@ def test_full_configuration_from_http():
     dump_config_as_file(config_path, config)
     with TestServer.run_in_thread():
         proc = start_logprep(f"{endpoint}/{config_path}")
-        output_lines = []
         output = proc.stdout.readline().decode("utf8")
         while True:
-            output_lines.append(output)
             assert not re.search("Invalid", output)
             assert not re.search("Exception", output)
             assert not re.search("critical", output)
