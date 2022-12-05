@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
-# nosemgrep
 import time
 from logging import DEBUG, basicConfig, getLogger
 
