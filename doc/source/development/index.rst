@@ -126,3 +126,5 @@ Development
    register_a_new_component
    requirements
    testing
+   coding_examples
+   code_analysis
