@@ -2,7 +2,7 @@ Configuration File
 ==================
 
 Configuration is done via a YAML-File.
-Logprep searches for the file :code:`/etc/logprep/pipeline.yml` if not configuration file is passed.
+Logprep searches for the file :code:`/etc/logprep/pipeline.yml` if no configuration file is passed.
 You can pass a different configuration file via a valid file path or url.
 
 ..  code-block:: bash
