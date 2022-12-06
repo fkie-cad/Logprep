@@ -60,6 +60,8 @@ extensions = [
     "sphinxcontrib.mermaid",
     "sphinx.ext.autosummary",
     "sphinxcontrib.datatemplates",
+    "nbsphinx",
+    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 extensions.append("sphinx.ext.todo")
@@ -204,3 +206,4 @@ modindex_common_prefix = ["logprep."]
 html_style = "css/custom_theme.css"
 autodoc_class_signature = "separated"
 autodoc_member_order = "bysource"
+# nbsphinx_allow_errors = True

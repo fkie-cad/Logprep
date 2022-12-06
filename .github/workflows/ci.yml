@@ -102,7 +102,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka-dev
+          sudo apt-get update && sudo apt-get -y install libhyperscan-dev librdkafka-dev pandoc
           pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
           pip install -r doc/requirements.txt
