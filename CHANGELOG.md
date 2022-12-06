@@ -15,6 +15,7 @@
 * Add `calculator` processor to calculate with or without field values
 * Make output subfields of the `geoip_enricher` configurable by introducing the rule config
 `customize_target_subfields`
+* Add a `timestamp_differ` processor that can parse two timestamps and calculate their respective time delta.
 
 ### Improvements
 
