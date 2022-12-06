@@ -51,7 +51,7 @@ def teardown_function():
     stop_logprep()
 
 
-def test_full_configuration_logprep_start(tmp_path):
+def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
     pipeline = get_full_pipeline()
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config_path = str(tmp_path / "generated_config.yml")
@@ -69,7 +69,7 @@ def test_full_configuration_logprep_start(tmp_path):
         output = proc.stdout.readline().decode("utf8")
 
 
-def test_full_configuration_from_http():
+def test_start_of_logprep_with_full_configuration_http():
     pipeline = get_full_pipeline()
     config = get_default_logprep_config(pipeline, with_hmac=False)
     endpoint = "http://localhost:32000"
