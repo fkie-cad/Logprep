@@ -194,6 +194,55 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         },
         "Failed to match 'YYYY-MM-DD HH:mm:ss' when parsing",
     ),
+    (
+        "diff between two timestamps with one empty field",
+        {
+            "filter": "field1 AND subfield.field2",
+            "timestamp_differ": {
+                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+            },
+        },
+        {"field1": "2022-12-05", "subfield": {"field2": ""}},
+        {
+            "field1": "2022-12-05",
+            "subfield": {"field2": ""},
+            "tags": ["_timestamp_differ_failure"],
+        },
+        "Failed to match 'YYYY-MM-DD HH:mm:ss' when parsing",
+    ),
+    (
+        "diff between two timestamps with one non existing field",
+        {
+            "filter": "field1",
+            "timestamp_differ": {
+                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+            },
+        },
+        {"field1": "2022-12-05"},
+        {
+            "field1": "2022-12-05",
+            "tags": ["_timestamp_differ_failure"],
+        },
+        "The source field 'subfield.field2' does not exist.",
+    ),
+    (
+        "diff between two timestamps with non existing fields",
+        {
+            "filter": "some_field",
+            "timestamp_differ": {
+                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+            },
+        },
+        {"some_field": "some value"},
+        {
+            "some_field": "some value",
+            "tags": ["_timestamp_differ_failure"],
+        },
+        r"The source fields '\('subfield.field2', 'field1'\)' do not exist.",
+    ),
 ]
 
 
