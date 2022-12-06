@@ -40,7 +40,11 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field2": "Monday, 05. December 2022 11:19AM", "field1": "2022-12-05"},
-        {"field2": "Monday, 05. December 2022 11:19AM", "field1": "2022-12-05", "time_diff": "40740 s"},
+        {
+            "field2": "Monday, 05. December 2022 11:19AM",
+            "field1": "2022-12-05",
+            "time_diff": "40740 s",
+        },
     ),
     (
         "Time difference between two timestamps with AM/PM ",
@@ -81,7 +85,11 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
-        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278000 ms"},
+        {
+            "field1": "2022-12-05 11:38:42",
+            "field2": "2022-12-05 12:00:00",
+            "time_diff": "1278000 ms",
+        },
     ),
     (
         "Time difference between two timestamps with nanoseconds output",
