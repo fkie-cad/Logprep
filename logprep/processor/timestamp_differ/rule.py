@@ -91,10 +91,6 @@ class TimestampDifferRule(FieldManagerRule):
 
     # pylint: disable=missing-function-docstring
     @property
-    def diff(self):
-        return self._config.diff
-
-    @property
     def output_format(self):
         return self._config.output_format
 
