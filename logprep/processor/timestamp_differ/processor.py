@@ -2,16 +2,15 @@
 TimestampDiffer
 ===============
 
-# FIXME: Docu
-The `timestamp_differ` processor
-
+The `timestamp_differ` can calculate the time difference between two timestamps.
+For further information for the rule language see: :ref:`timestamp_differ_rule`.
 
 Example
 ^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
-    - timestampdiffername:
+    - timestampdiffer_name:
         type: timestamp_differ
         specific_rules:
             - tests/testdata/rules/specific/

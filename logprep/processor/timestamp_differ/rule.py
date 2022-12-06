@@ -1,12 +1,38 @@
 """
+.. _timestamp_differ_rule:
+
 TimestampDiffer
 ===============
 
-# FIXME: Docu
-The `timestamp_differ` ...
+The `timestamp_differ` processor allows to calculate the time difference between two timestamps.
+The timestamp format can be specified per timestamp. Following patterns can be used to define the
+timestamp format:
+`Timestamp tokens <https://arrow.readthedocs.io/en/latest/guide.html#supported-tokens>`_.
 
-https://arrow.readthedocs.io/en/latest/guide.html#supported-tokens
+A speaking example:
 
+..  code-block:: yaml
+    :linenos:
+    :caption: Given timestamp differ rule
+
+    filter: 'ingest AND processed'
+    timestamp_differ:
+      diff: ${processed:YYYY-MM-DD HH:MM:SS} - ${ingest:YYYY-MM-DD HH:MM:SS}
+      target_field: processing_time
+      output_format: seconds
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incoming event
+
+    {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05"}
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05", "processing_time": "5 s"}
 """
 import re
 
@@ -20,9 +46,11 @@ DEFAULT_TIMESTAMP_PATTERN = "YYYY-MM-DDTHH:mm:ssZZ"
 
 
 class TimestampDifferRule(FieldManagerRule):
+    """TimestampDifferRule"""
+
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
-        """Config for TimestampDifferRule"""
+        """Config for TimestampDiffer"""
 
         diff: str = field(
             validator=[
@@ -30,7 +58,11 @@ class TimestampDifferRule(FieldManagerRule):
                 validators.matches_re(rf"({FIELD_PATTERN} - {FIELD_PATTERN})"),
             ]
         )
-        """tbd"""
+        """Specifies the timestamp subtraction and their respective timestamp formats. The fields
+        and the timestamp format can be specified in the form of:
+        :code:`${dotted.field.path:timestamp-format}`. If no timestamp format is given, e.g.
+        :code:`${dotted.field.path}`, then the default pattern :code:`"YYYY-MM-DDTHH:mm:ssZZ"` will
+        be used."""
         source_fields: list = field(factory=list)
         output_format: str = field(
             default="seconds",
@@ -39,6 +71,9 @@ class TimestampDifferRule(FieldManagerRule):
                 validators.in_(["seconds", "milliseconds", "nanoseconds"]),
             ],
         )
+        """(Optional) Specifies the desired output format of the timestamp difference, allowed
+        values are: :code:`seconds`, :code:`milliseconds`, :code:`nanoseconds`, defaults to:
+        :code:`seconds`."""
 
         def __attrs_post_init__(self):
             field_format_str = re.findall(FIELD_PATTERN, self.diff)
