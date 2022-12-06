@@ -46,7 +46,7 @@ class TimestampDifferRule(FieldManagerRule):
             field_format_tuple = map(
                 lambda x: x + [DEFAULT_TIMESTAMP_PATTERN] if len(x) == 1 else x, field_format_tuple
             )
-            self.source_fields = field_format_tuple
+            self.source_fields = list(field_format_tuple)
 
     # pylint: disable=missing-function-docstring
     @property
