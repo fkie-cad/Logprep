@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
+# pylint: disable=line-too-long
+# pylint: disable=unspecified-encoding
 import json
 from pathlib import Path
 from unittest import mock
@@ -131,7 +133,7 @@ second_dict:
                             "valid_list_element"
                         ]
                     }
-                }, 
+                },
                 {
                     "second_dict": {
                         "key": [
@@ -140,6 +142,16 @@ second_dict:
                         ]
                     }
                 }]
+                """,
+                [
+                    {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                    {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                ],
+            ),
+            (
+                "get_jsonl",
+                """{"first_dict": {"key": ["valid_list_element","valid_list_element"]}}
+                {"second_dict": {"key": ["valid_list_element","valid_list_element"]}}
                 """,
                 [
                     {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
