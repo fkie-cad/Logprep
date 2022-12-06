@@ -134,90 +134,6 @@ test_cases = [  # testcase, rule, event, expected
     ),
 ]
 
-
-validation_failure_test_cases = [  # testcase, rule, event, expected, error_message
-    (
-        "Diff needs two timestamp fields",
-        {
-            "filter": "field1 AND subfield.field2",
-            "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss}",
-                "target_field": "time_diff",
-            },
-        },
-        {"field1": "2022-12-05 11:38:42", "subfield": {"field2": "2022-12-05 12:00:00"}},
-        {
-            "field1": "2022-12-05 11:38:42",
-            "subfield": {"field2": "2022-12-05 12:00:00"},
-        },
-        r"'diff' must match regex",
-    ),
-    (
-        "Tags failure if parse is not possible",
-        {
-            "filter": "field1 AND subfield.field2",
-            "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss}",
-                "target_field": "time_diff",
-            },
-        },
-        {"field1": "2022-12-05 11:38:42", "subfield": {"field2": "2022-12-05 12:00:00"}},
-        {
-            "field1": "2022-12-05 11:38:42",
-            "subfield": {"field2": "2022-12-05 12:00:00"},
-        },
-        r"must match regex",
-    ),
-    (
-        "Tags failure if parse is not possible",
-        {
-            "filter": "field1 AND subfield.field2",
-            "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${subfield.field2:YYYY-MM-DD HH:mm:ss}",
-                "target_field": "time_diff",
-            },
-        },
-        {"field1": "2022-12-05 11:38:42", "subfield": {"field2": "2022-12-05 12:00:00"}},
-        {
-            "field1": "2022-12-05 11:38:42",
-            "subfield": {"field2": "2022-12-05 12:00:00"},
-        },
-        r"'diff' must match regex",
-    ),
-    (
-        "Tags failure if parse is not possible",
-        {
-            "filter": "field1 AND subfield.field2",
-            "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} + ${subfield.field2:YYYY-MM-DD HH:mm:ss}",
-                "target_field": "time_diff",
-            },
-        },
-        {"field1": "2022-12-05 11:38:42", "subfield": {"field2": "2022-12-05 12:00:00"}},
-        {
-            "field1": "2022-12-05 11:38:42",
-            "subfield": {"field2": "2022-12-05 12:00:00"},
-        },
-        r"'diff' must match regex",
-    ),
-    (
-        "Tags failure if parse is not possible",
-        {
-            "filter": "field1 AND subfield.field2",
-            "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} something ${subfield.field2:YYYY-MM-DD HH:mm:ss}",
-                "target_field": "time_diff",
-            },
-        },
-        {"field1": "2022-12-05 11:38:42", "subfield": {"field2": "2022-12-05 12:00:00"}},
-        {
-            "field1": "2022-12-05 11:38:42",
-            "subfield": {"field2": "2022-12-05 12:00:00"},
-        },
-        r"'diff' must match regex",
-    ),
-]
-
 failure_test_cases = [  # testcase, rule, event, expected, error_message
     (
         "Timestamp diff with integer field (does not match default timestamp format)",
@@ -291,14 +207,5 @@ class TestTimestampDiffer(BaseProcessorTestCase):
     def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
         self._load_specific_rule(rule)
         with pytest.raises(ProcessingWarning, match=error_message):
-            self.object.process(event)
-        assert event == expected, testcase
-
-    @pytest.mark.parametrize(
-        "testcase, rule, event, expected, error_message", validation_failure_test_cases
-    )
-    def test_testcases_validation_failures(self, testcase, rule, event, expected, error_message):
-        with pytest.raises(ValueError, match=error_message):
-            self._load_specific_rule(rule)
             self.object.process(event)
         assert event == expected, testcase

@@ -1,9 +1,114 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import pytest
+
+from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 
 
-# TODO: FIXME
-class TestCalculatorRule:
+class TestTimestampDifferRule:
     def test_returns_rule(self):
-        assert True
+        rule_dict = {
+            "filter": "field1 AND field2",
+            "timestamp_differ": {
+                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+            },
+        }
+        rule = TimestampDifferRule._create_from_dict(rule_dict)
+        assert rule
 
+    def test_fills_source_fields(self):
+        rule_dict = {
+            "filter": "field1 AND field2",
+            "timestamp_differ": {
+                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+            },
+        }
+        rule = TimestampDifferRule._create_from_dict(rule_dict)
+        assert rule.source_fields == [
+            ["field2", "YYYY-MM-DD HH:mm:ss"],
+            ["field1", "YYYY-MM-DD HH:mm:ss"],
+        ]
+
+    @pytest.mark.parametrize(
+        ["rule", "error", "message"],
+        [
+            (
+                {
+                    "filter": "field1 AND subfield.field2",
+                    "timestamp_differ": {
+                        "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss}",
+                        "target_field": "time_diff",
+                    },
+                },
+                ValueError,
+                "'diff' must match regex",
+            ),
+            (
+                {
+                    "filter": "field1 AND subfield.field2",
+                    "timestamp_differ": {
+                        "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${subfield.field2:YYYY-MM-DD HH:mm:ss}",
+                        "target_field": "time_diff",
+                    },
+                },
+                ValueError,
+                "'diff' must match regex",
+            ),
+            (
+                {
+                    "filter": "field1 AND subfield.field2",
+                    "timestamp_differ": {
+                        "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} + ${subfield.field2:YYYY-MM-DD HH:mm:ss}",
+                        "target_field": "time_diff",
+                    },
+                },
+                ValueError,
+                "'diff' must match regex",
+            ),
+            (
+                {
+                    "filter": "field1 AND subfield.field2",
+                    "timestamp_differ": {
+                        "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} something ${subfield.field2:YYYY-MM-DD HH:mm:ss}",
+                        "target_field": "time_diff",
+                    },
+                },
+                ValueError,
+                "'diff' must match regex",
+            ),
+            (
+                {
+                    "filter": "field1 AND subfield.field2",
+                    "timestamp_differ": {
+                        "diff": "some ${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${subfield.field2:YYYY-MM-DD HH:mm:ss} thing",
+                        "target_field": "time_diff",
+                    },
+                },
+                ValueError,
+                "'diff' must match regex",
+            ),
+            (
+                {
+                    "filter": "field1 AND field2",
+                    "timestamp_differ": {
+                        "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                        "target_field": "time_diff",
+                    },
+                },
+                None,
+                None,
+            ),
+        ],
+    )
+    def test_create_from_dict_validates_config(self, rule, error, message):
+        if error:
+            with pytest.raises(error, match=message):
+                TimestampDifferRule._create_from_dict(rule)
+        else:
+            rule_instance = TimestampDifferRule._create_from_dict(rule)
+            assert hasattr(rule_instance, "_config")
+            for key, value in rule.get("timestamp_differ").items():
+                assert hasattr(rule_instance._config, key)
+                assert value == getattr(rule_instance._config, key)
