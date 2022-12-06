@@ -1,6 +1,6 @@
 """
 ConsoleOutput
-----------------------
+=============
 
 This section describes the ConsoleOutput, which pretty prints documents to the
 console and can be used for testing.

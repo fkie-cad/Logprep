@@ -1,6 +1,6 @@
 """
 DummyOutput
-----------------------
+===========
 
 The Dummy Output Connector can be used to store unmodified documents.
 It only requires the connector type to be configured.

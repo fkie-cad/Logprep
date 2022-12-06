@@ -11,21 +11,7 @@ Due to this it is possible to attribute log messages to their corresponding proc
 Example
 -------
 
-..  code-block:: yaml
-    :linenos:
-
-    pipeline:
-      - normalizer:
-          type: normalizer
-          schema: default
-      - labeler:
-          type: labeler
-          schema: /etc/labeler/schema.json
-          rules:
-            - /etc/labeler/rules/
-            - /opt/labeler/rules
-      - other_labeler:
-          type: labeler
-          schema: /opt/other_labeler/schema.json
-          rules:
-            - /etc/other_labeler/rules/
+.. literalinclude:: /../../quickstart/exampledata/config/pipeline.yml
+   :language: yaml
+   :start-after:   level: INFO
+   :end-before: input:
