@@ -36,29 +36,26 @@ class TimestampDiffer(Processor):
     def _apply_rules(self, event, rule):
         source_fields, source_field_timestamp_formats = list(zip(*rule.source_fields))
         source_field_values = map(partial(get_dotted_field_value, event), source_fields)
-        timestamp_objects = []
-        for index, timestamp in enumerate(source_field_values):
-            if source_field_timestamp_formats[index] is not None:
-                timestamp_object = arrow.get(timestamp, source_field_timestamp_formats[index])
-            else:
-                timestamp_object = arrow.get(timestamp)
-            timestamp_objects.append(timestamp_object)
-        diff = reduce(lambda a, b: a - b, timestamp_objects)
+        try:
+            timestamp_objects = map(arrow.get, source_field_values, source_field_timestamp_formats)
+            diff = reduce(lambda a, b: a - b, timestamp_objects)
 
-        if rule.output_format == "seconds":
-            diff = diff.seconds
-        if rule.output_format == "milliseconds":
-            diff = diff.seconds * 1000
-        if rule.output_format == "nanoseconds":
-            diff = diff.seconds * 1000000000
+            if rule.output_format == "seconds":
+                diff = diff.seconds
+            if rule.output_format == "milliseconds":
+                diff = diff.seconds * 1000
+            if rule.output_format == "nanoseconds":
+                diff = diff.seconds * 1000000000
 
-        add_successful = add_field_to(
-            event,
-            output_field=rule.target_field,
-            content=diff,
-            extends_lists=rule.extend_target_list,
-            overwrite_output_field=rule.overwrite_target,
-        )
-        if not add_successful:
-            error = DuplicationError(self.name, [rule.target_field])
+            add_successful = add_field_to(
+                event,
+                output_field=rule.target_field,
+                content=diff,
+                extends_lists=rule.extend_target_list,
+                overwrite_output_field=rule.overwrite_target,
+            )
+            if not add_successful:
+                error = DuplicationError(self.name, [rule.target_field])
+                self._handle_warning_error(event, rule, error)
+        except arrow.parser.ParserMatchError as error:
             self._handle_warning_error(event, rule, error)

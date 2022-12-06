@@ -16,6 +16,7 @@ from attrs import define, validators
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 FIELD_PATTERN = r"\$\{([+&?]?[^${]*)\}"
+DEFAULT_TIMESTAMP_PATTERN = "YYYY-MM-DDTHH:mm:ssZZ"
 
 
 class TimestampDifferRule(FieldManagerRule):
@@ -41,12 +42,10 @@ class TimestampDifferRule(FieldManagerRule):
 
         def __attrs_post_init__(self):
             field_format_str = re.findall(FIELD_PATTERN, self.diff)
-            field_format_tuple = []
-            for field_format_description in field_format_str:
-                field_format_split = field_format_description.split(":", maxsplit=1)
-                if len(field_format_split) == 1:
-                    field_format_split += [None]
-                field_format_tuple.append(field_format_split)
+            field_format_tuple = map(lambda s: s.split(":", maxsplit=1), field_format_str)
+            field_format_tuple = map(
+                lambda x: x + [DEFAULT_TIMESTAMP_PATTERN] if len(x) == 1 else x, field_format_tuple
+            )
             self.source_fields = field_format_tuple
 
     # pylint: disable=missing-function-docstring
