@@ -243,6 +243,25 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         },
         r"The source fields '\('subfield.field2', 'field1'\)' do not exist.",
     ),
+    (
+        "diff between two timestamps with already existing output field",
+        {
+            "filter": "field1 AND field2",
+            "timestamp_differ": {
+                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+            },
+        },
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278 s"},
+        {
+            "field1": "2022-12-05 11:38:42",
+            "field2": "2022-12-05 12:00:00",
+            "time_diff": "1278 s",
+            "tags": ["_timestamp_differ_failure"],
+        },
+        r"The following fields could not be written, "
+        r"because one or more subfields existed and could not be extended: time_diff",
+    ),
 ]
 
 
