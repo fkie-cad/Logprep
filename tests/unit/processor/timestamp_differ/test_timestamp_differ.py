@@ -16,7 +16,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
-        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": 1278},
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278 s"},
     ),
     (
         "diff between two timestamps with timezone information",
@@ -28,7 +28,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field2": "2013-05-09 03:56:47 -03:00", "field1": "2022-12-05"},
-        {"field2": "2013-05-09 03:56:47 -03:00", "field1": "2022-12-05", "time_diff": 25007},
+        {"field2": "2013-05-09 03:56:47 -03:00", "field1": "2022-12-05", "time_diff": "25007 s"},
     ),
     (
         "diff between two timestamps with full weekday and month",
@@ -40,7 +40,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field2": "Monday, 05. December 2022 11:19AM", "field1": "2022-12-05"},
-        {"field2": "Monday, 05. December 2022 11:19AM", "field1": "2022-12-05", "time_diff": 40740},
+        {"field2": "Monday, 05. December 2022 11:19AM", "field1": "2022-12-05", "time_diff": "40740 s"},
     ),
     (
         "diff between two timestamps with AM/PM ",
@@ -52,7 +52,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-05"},
-        {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-05", "time_diff": 47671},
+        {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-05", "time_diff": "47671 s"},
     ),
     (
         "diff between two timestamps with timezone name",
@@ -67,7 +67,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field2": "Wed Dec 4 1:14:31 PM 2022 Europe/Warsaw",
             "field1": "2022-12-05",
-            "time_diff": 44071,
+            "time_diff": "44071 s",
         },
     ),
     (
@@ -81,7 +81,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
-        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": 1278000},
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278000 ms"},
     ),
     (
         "diff between two timestamps with nanoseconds output",
@@ -97,7 +97,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 11:38:42",
             "field2": "2022-12-05 12:00:00",
-            "time_diff": 1278000000000,
+            "time_diff": "1278000000000 ns",
         },
     ),
     (
@@ -113,7 +113,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 11:38:42",
             "subfield": {"field2": "2022-12-05 12:00:00"},
-            "time_diff": 1278,
+            "time_diff": "1278 s",
         },
     ),
     (
@@ -129,7 +129,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 12:00:00",
             "subfield": {"field2": "2022-12-05T11:38:42+02:00"},
-            "time_diff": 77922,
+            "time_diff": "77922 s",
         },
     ),
 ]

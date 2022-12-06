@@ -40,11 +40,11 @@ class TimestampDiffer(Processor):
             diff = reduce(lambda a, b: a - b, timestamp_objects)
 
             if rule.output_format == "seconds":
-                diff = diff.seconds
+                diff = f"{diff.seconds} s"
             if rule.output_format == "milliseconds":
-                diff = diff.seconds * 1000
+                diff = f"{diff.seconds * 1000} ms"
             if rule.output_format == "nanoseconds":
-                diff = diff.seconds * 1000000000
+                diff = f"{diff.seconds * 1000000000} ns"
 
             add_successful = add_field_to(
                 event,
