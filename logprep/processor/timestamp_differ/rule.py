@@ -33,6 +33,12 @@ A speaking example:
     :caption: Processed event
 
     {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05", "processing_time": "5 s"}
+
+Examples for timestamp_differ:
+------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.timestamp_differ.test_timestamp_differ
+   :template: testcase-renderer.tmpl
 """
 import re
 

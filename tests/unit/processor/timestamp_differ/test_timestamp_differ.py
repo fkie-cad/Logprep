@@ -7,7 +7,7 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
     (
-        "diff between two timestamps",
+        "Time difference between two timestamps",
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -19,7 +19,7 @@ test_cases = [  # testcase, rule, event, expected
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278 s"},
     ),
     (
-        "diff between two timestamps with timezone information",
+        "Time difference between two timestamps with timezone information",
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -31,7 +31,7 @@ test_cases = [  # testcase, rule, event, expected
         {"field2": "2013-05-09 03:56:47 -03:00", "field1": "2022-12-05", "time_diff": "25007 s"},
     ),
     (
-        "diff between two timestamps with full weekday and month",
+        "Time difference between two timestamps with full weekday and month",
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -43,7 +43,7 @@ test_cases = [  # testcase, rule, event, expected
         {"field2": "Monday, 05. December 2022 11:19AM", "field1": "2022-12-05", "time_diff": "40740 s"},
     ),
     (
-        "diff between two timestamps with AM/PM ",
+        "Time difference between two timestamps with AM/PM ",
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -55,7 +55,7 @@ test_cases = [  # testcase, rule, event, expected
         {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-05", "time_diff": "47671 s"},
     ),
     (
-        "diff between two timestamps with timezone name",
+        "Time difference between two timestamps with timezone name",
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -71,7 +71,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "diff between two timestamps with milliseconds output",
+        "Time difference between two timestamps with milliseconds output",
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -84,7 +84,7 @@ test_cases = [  # testcase, rule, event, expected
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278000 ms"},
     ),
     (
-        "diff between two timestamps with nanoseconds output",
+        "Time difference between two timestamps with nanoseconds output",
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -101,7 +101,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "diff between two timestamps in subfield",
+        "Time difference between two timestamps in subfield",
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -117,7 +117,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "diff between two timestamps without specific timestamp format",
+        "Time difference between two timestamps without specific timestamp format",
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
