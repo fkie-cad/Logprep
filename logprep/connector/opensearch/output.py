@@ -1,6 +1,6 @@
 """
 OpensearchOutput
--------------------
+================
 
 This section contains the connection settings for Elasticsearch, the default
 index, the error index and a buffer size. Documents are sent in batches to Elasticsearch to reduce
