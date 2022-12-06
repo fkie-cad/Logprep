@@ -259,8 +259,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "time_diff": "1278 s",
             "tags": ["_timestamp_differ_failure"],
         },
-        r"The following fields could not be written, "
-        r"because one or more subfields existed and could not be extended: time_diff",
+        "The following fields could not be written, because one or more subfields existed and could not be extended: time_diff",
     ),
 ]
 
