@@ -1,5 +1,5 @@
 """
-.. _calulator_rule:
+.. _calculator_rule:
 
 Calculator
 ==========
