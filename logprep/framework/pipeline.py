@@ -158,8 +158,7 @@ class Pipeline:
         )
 
     def _build_pipeline(self):
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"Building '{current_process().name}'")
+        self._logger.debug(f"Building '{current_process().name}'")
         self._pipeline = []
         for entry in self._logprep_config.get("pipeline"):
             processor_name = list(entry.keys())[0]
@@ -167,15 +166,12 @@ class Pipeline:
             processor = Factory.create(entry, self._logger)
             self._pipeline.append(processor)
             self.metrics.pipeline.append(processor.metrics)
-            if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-                self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
+            self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
             self._pipeline[-1].setup()
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"Finished building pipeline ({current_process().name})")
+        self._logger.debug(f"Finished building pipeline ({current_process().name})")
 
     def _create_connectors(self):
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"Creating connectors ({current_process().name})")
+        self._logger.debug(f"Creating connectors ({current_process().name})")
         input_connector_config = self._logprep_config.get("input")
         connector_name = list(input_connector_config.keys())[0]
         input_connector_config[connector_name]["metric_labels"] = self._metric_labels
@@ -188,15 +184,10 @@ class Pipeline:
         output_connector_config[connector_name]["metric_labels"] = self._metric_labels
         self._output = Factory.create(output_connector_config, self._logger)
         self._output.input_connector = self._input
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(
-                f"Created input connector '{self._input.describe()}' " f"({current_process().name})"
-            )
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(
-                f"Created output connector '{self._output.describe()}' "
-                f"({current_process().name})"
-            )
+        self._logger.debug(
+            f"Created connectors -> input: '{self._input.describe()}',"
+            f" output -> '{self._output.describe()}' ({current_process().name})"
+        )
 
         self._input.setup()
         self._output.setup()
@@ -204,8 +195,7 @@ class Pipeline:
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
             self._used_server_ports.update({self._input.server.config.port: current_process().name})
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"Finished creating connectors ({current_process().name})")
+        self._logger.debug(f"Finished creating connectors ({current_process().name})")
 
     def _create_logger(self):
         if self._log_handler.level == NOTSET:
@@ -225,8 +215,7 @@ class Pipeline:
                 self._setup()
         self._enable_iteration()
         try:
-            if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-                self._logger.debug(f"Start iterating ({current_process().name})")
+            self._logger.debug(f"Start iterating ({current_process().name})")
             if hasattr(self._input, "server"):
                 with self._input.server.run_in_thread():
                     while self._iterate():
@@ -272,8 +261,7 @@ class Pipeline:
                 self._processing_counter.print_if_ready()
                 if event:
                     self._output.store(event)
-                    if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-                        self._logger.debug("Stored output")
+                    self._logger.debug("Stored output")
         except SourceDisconnectedError as error:
             raise error
         except WarningInputError as error:
@@ -326,8 +314,7 @@ class Pipeline:
                         processor.metrics.number_of_warnings += 1
 
                 if not event:
-                    if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-                        self._logger.debug(f"Event deleted by processor {processor}")
+                    self._logger.debug(f"Event deleted by processor {processor}")
                     return
         # pylint: disable=broad-except
         except BaseException as error:
@@ -346,8 +333,7 @@ class Pipeline:
         # pylint: enable=broad-except
 
     def _store_extra_data(self, extra_data: tuple):
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug("Storing extra data")
+        self._logger.debug("Storing extra data")
         documents = extra_data[0]
         target = extra_data[1]
         for document in documents:
