@@ -171,6 +171,70 @@ test_cases = [
             "status": 200,
         },
     ),
+    (
+        "parses json result with simple target field mapping and overwrite target",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock/",
+                "method": "GET",
+                "target_field_mapping": {"key1.key2.key3": "result.custom"},
+                "overwrite_target": True,
+            },
+        },
+        {"message": "the message", "result": {"custom", "preexisting"}},
+        {"message": "the message", "result": {"custom": "value"}},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "json": {"key1": {"key2": {"key3": "value"}}},
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
+    (
+        "parses text result to preexisting target field",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock/",
+                "method": "GET",
+                "target_field": "result",
+                "overwrite_target": True,
+            },
+        },
+        {"message": "the message", "result": "preexisting"},
+        {"message": "the message", "result": "the body"},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "body": "the body",
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
+    (
+        "deletes source fields",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://${domain}/",
+                "method": "GET",
+                "json": {"${field1}": "the other ${field2}"},
+                "target_field": "result",
+                "delete_source_fields": True,
+            },
+        },
+        {"message": "the message", "domain": "mock-mock", "field1": "key", "field2": "value"},
+        {"message": "the message", "result": "the body"},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "body": "the body",
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
 ]  # testcase, rule, event, expected, response
 
 failure_test_cases = [
@@ -207,7 +271,11 @@ failure_test_cases = [
         "does not overwrite if not permitted",
         {
             "filter": "message",
-            "requester": {"url": "http://failure_mock", "method": "GET", "target_field": "result"},
+            "requester": {
+                "url": "http://failure_mock",
+                "method": "GET",
+                "target_field": "result",
+            },
         },
         {"message": "the message", "result": "preexisting"},
         {"message": "the message", "result": "preexisting", "tags": ["_requester_failure"]},
