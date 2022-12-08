@@ -17,14 +17,14 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
-from functools import partial, reduce
+from functools import reduce
 
 import arrow
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_source_fields_dict
 
 
 class TimestampDiffer(Processor):
@@ -33,13 +33,11 @@ class TimestampDiffer(Processor):
     rule_class = TimestampDifferRule
 
     def _apply_rules(self, event, rule):
-        source_fields = rule.source_fields
         source_field_formats = rule.source_field_formats
-        source_field_values = list(map(partial(get_dotted_field_value, event), source_fields))
-        source_field_dict = dict(zip(source_fields, source_field_values))
+        source_field_dict = get_source_fields_dict(event, rule)
         self._check_for_missing_values(event, rule, source_field_dict)
         try:
-            timestamp_objects = map(arrow.get, source_field_values, source_field_formats)
+            timestamp_objects = map(arrow.get, source_field_dict.values(), source_field_formats)
             diff = reduce(lambda a, b: a - b, timestamp_objects)
         except arrow.parser.ParserMatchError as error:
             self._handle_warning_error(event, rule, error)
