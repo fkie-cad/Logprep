@@ -241,7 +241,6 @@ class Pipeline:
         self._continue_iterating = True
 
     def _retrieve_and_process_data(self):
-        event = {}
         try:
             self._metrics_exposer.expose(self.metrics)
             event, non_critical_error_msg = self._input.get_next(
@@ -274,7 +273,7 @@ class Pipeline:
             msg = f"A critical error occurred for input {self._input.describe()}: {error}"
             self._logger.error(msg)
             if error.raw_input:
-                self._output.store_failed(msg, error.raw_input, event)
+                self._output.store_failed(msg, error.raw_input, {})
             self._input.metrics.number_of_errors += 1
         except CriticalOutputError as error:
             msg = f"A critical error occurred for output " f"{self._output.describe()}: {error}"
@@ -328,7 +327,6 @@ class Pipeline:
             self._logger.error(msg)
             self._output.store_failed(msg, json.loads(event_received), event)
             event.clear()  # 'delete' the event, i.e. no regular output
-
             processor.metrics.number_of_errors += 1
         # pylint: enable=broad-except
 
