@@ -76,7 +76,7 @@ HTTP_METHODS = ["GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE"]
 
 
 class RequesterRule(FieldManagerRule):
-    """Interface for a simple Rule with source_fields and target_field"""
+    """RequesterRule"""
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
