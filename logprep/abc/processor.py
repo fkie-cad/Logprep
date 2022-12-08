@@ -34,7 +34,6 @@ class Processor(Component):
         specific_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
-                partial(min_len_validator, min_length=1),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
@@ -45,7 +44,6 @@ class Processor(Component):
         generic_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
-                partial(min_len_validator, min_length=1),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
