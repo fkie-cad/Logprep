@@ -40,26 +40,30 @@ class TimestampDiffer(Processor):
         try:
             timestamp_objects = map(arrow.get, source_field_values, source_field_timestamp_formats)
             diff = reduce(lambda a, b: a - b, timestamp_objects)
-
-            if rule.output_format == "seconds":
-                diff = f"{diff.seconds} s"
-            if rule.output_format == "milliseconds":
-                diff = f"{diff.seconds * 1000} ms"
-            if rule.output_format == "nanoseconds":
-                diff = f"{diff.seconds * 1000000000} ns"
-
-            add_successful = add_field_to(
-                event,
-                output_field=rule.target_field,
-                content=diff,
-                extends_lists=rule.extend_target_list,
-                overwrite_output_field=rule.overwrite_target,
-            )
-            if not add_successful:
-                error = DuplicationError(self.name, [rule.target_field])
-                self._handle_warning_error(event, rule, error)
         except arrow.parser.ParserMatchError as error:
             self._handle_warning_error(event, rule, error)
+
+        diff = self._apply_output_format(diff, rule)
+        add_successful = add_field_to(
+            event,
+            output_field=rule.target_field,
+            content=diff,
+            extends_lists=rule.extend_target_list,
+            overwrite_output_field=rule.overwrite_target,
+        )
+        if not add_successful:
+            error = DuplicationError(self.name, [rule.target_field])
+            self._handle_warning_error(event, rule, error)
+
+    @staticmethod
+    def _apply_output_format(diff, rule):
+        if rule.output_format == "seconds":
+            diff = f"{diff.seconds} s"
+        if rule.output_format == "milliseconds":
+            diff = f"{diff.seconds * 1000} ms"
+        if rule.output_format == "nanoseconds":
+            diff = f"{diff.seconds * 1000000000} ns"
+        return diff
 
     def _handle_non_existing_source_fields(self, event, rule, source_field_values, source_fields):
         none_indices = [
