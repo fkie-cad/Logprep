@@ -17,7 +17,7 @@ A speaking example:
 
     filter: 'ingest AND processed'
     timestamp_differ:
-      diff: ${processed:YYYY-MM-DD HH:MM:SS} - ${ingest:YYYY-MM-DD HH:MM:SS}
+      diff: ${processed:YYYY-MM-DD HH:mm:ss} - ${ingest:YYYY-MM-DD HH:mm:ss}
       target_field: processing_time
       output_format: seconds
     description: '...'
