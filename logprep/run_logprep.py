@@ -106,20 +106,22 @@ def get_processor_type_and_rule_class() -> dict:  # pylint: disable=missing-docs
     }
 
 
-def print_version_and_exit(args):
+def get_versions_string(args) -> str:
     """
     Prints the version and exists. If a configuration was found then it's version
     is printed as well
     """
     versions = get_versions()
-    print(f"logprep version: \t\t {versions['version']}")
+    padding = 25
+    version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
+    version_string += f"\n{'logprep version:'.ljust(padding)}{versions['version']}"
     if args.config and os.path.isfile(args.config):
         config = Configuration().create_from_yaml(args.config)
         config_version = f"{config.get('version', 'unset')}, {os.path.abspath(args.config)}"
     else:
         config_version = f"no configuration found in '{os.path.abspath(args.config)}'"
-    print(f"configuration version: \t {config_version}")
-    sys.exit(0)
+    version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
+    return version_string
 
 
 def main():
@@ -127,7 +129,8 @@ def main():
     args = _parse_arguments()
 
     if args.version:
-        print_version_and_exit(args)
+        print(get_versions_string(args))
+        sys.exit(0)
 
     try:
         config = Configuration().create_from_yaml(args.config)
@@ -141,6 +144,8 @@ def main():
     try:
         AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
         logger = AggregatingLogger.create("Logprep")
+        for version in get_versions_string(args).split("\n"):
+            logger.info(version)
     except BaseException as error:  # pylint: disable=broad-except
         getLogger("Logprep").exception(error)
         sys.exit(1)

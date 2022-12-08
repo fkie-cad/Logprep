@@ -1,8 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 import os.path
-from pathlib import Path
 import sys
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -92,11 +92,12 @@ class TestRunLogprep:
         with pytest.raises(SystemExit):
             run_logprep.main()
         captured = capsys.readouterr()
-        logprep_line, config_line = captured.out.strip().split("\n")
-        assert logprep_line == f"logprep version: \t\t {get_versions()['version']}"
+        python_line, logprep_line, config_line = captured.out.strip().split("\n")
+        assert python_line == f"python version:          {sys.version.split()[0]}"
+        assert logprep_line == f"logprep version:         {get_versions()['version']}"
         assert (
             config_line
-            == f"configuration version: \t no configuration found in '{DEFAULT_LOCATION_CONFIG}'"
+            == f"configuration version:   no configuration found in '{DEFAULT_LOCATION_CONFIG}'"
         )
 
     def test_version_arg_prints_also_config_version_if_version_key_is_found(self, capsys):
@@ -109,8 +110,9 @@ class TestRunLogprep:
         with open(config_path, "r", encoding="utf-8") as file:
             configuration = safe_load(file)
         expected_lines = (
-            f"logprep version: \t\t {get_versions()['version']}\n"
-            f"configuration version: \t {configuration['version']}, {os.path.abspath(config_path)}"
+            f"python version:          {sys.version.split()[0]}\n"
+            f"logprep version:         {get_versions()['version']}\n"
+            f"configuration version:   {configuration['version']}, {os.path.abspath(config_path)}"
         )
         assert lines == expected_lines
 
