@@ -147,12 +147,54 @@ test_cases = [  # testcase, rule, event, expected
             "timestamp_differ": {
                 "diff": "${subfield.field2} - ${field1:YYYY-MM-DD HH:mm:ss}",
                 "target_field": "time_diff",
-                "delete_source_fields": True
+                "delete_source_fields": True,
             },
         },
         {"field1": "2022-12-05 12:00:00", "subfield": {"field2": "2022-12-05T11:38:42+02:00"}},
         {
             "time_diff": "77922 s",
+        },
+    ),
+    (
+        "Time difference between two timestamps with removal of source fields",
+        {
+            "filter": "field1 AND subfield.field2",
+            "timestamp_differ": {
+                "diff": "${subfield.field2} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+                "overwrite_target": True,
+            },
+        },
+        {
+            "field1": "2022-12-05 12:00:00",
+            "subfield": {"field2": "2022-12-05T11:38:42+02:00"},
+            "time_diff": "some content",
+        },
+        {
+            "field1": "2022-12-05 12:00:00",
+            "subfield": {"field2": "2022-12-05T11:38:42+02:00"},
+            "time_diff": "77922 s",
+        },
+    ),
+    (
+        "Time difference between two timestamps with removal of source fields",
+        {
+            "filter": "field1 AND subfield.field2",
+            "timestamp_differ": {
+                "diff": "${subfield.field2} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+                "extend_target_list": True,
+            },
+        },
+        {
+            "field1": "2022-12-05 12:00:00",
+            "subfield": {"field2": "2022-12-05T11:38:42+02:00"},
+            "time_diff": ["some content"],
+        },
+        {
+            "field1": "2022-12-05 12:00:00",
+            "subfield": {"field2": "2022-12-05T11:38:42+02:00"},
+            "time_diff": ["some content", "77922 s"],
         },
     ),
 ]
