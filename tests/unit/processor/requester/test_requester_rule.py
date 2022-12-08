@@ -121,18 +121,6 @@ class TestRequesterRule:
                     "requester": {
                         "method": "GET",
                         "url": "http://the-api/endpoint",
-                        "params": '{"key": "value"}',
-                    },
-                },
-                TypeError,
-                r"must be <class \\\'dict\\\'>",
-            ),
-            (
-                {
-                    "filter": "message",
-                    "requester": {
-                        "method": "GET",
-                        "url": "http://the-api/endpoint",
                         "params": {"key": {}},
                     },
                 },
