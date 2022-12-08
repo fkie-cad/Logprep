@@ -42,12 +42,12 @@ class Requester(Processor):
         source_field_dict = get_source_fields_dict(event, rule)
         self._check_for_missing_values(event, rule, source_field_dict)
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
-        rsp = self._request(event, rule, kwargs)
-        self._handle_response(event, rule, rsp)
+        response = self._request(event, rule, kwargs)
+        self._handle_response(event, rule, response)
 
-    def _handle_response(self, event, rule, rsp):
+    def _handle_response(self, event, rule, response):
         if rule.target_field:
-            result = self._get_result(rsp)
+            result = self._get_result(response)
             successful = add_field_to(
                 event,
                 rule.target_field,
@@ -59,7 +59,7 @@ class Requester(Processor):
                 error = DuplicationError(self.name, [rule.target_field])
                 self._handle_warning_error(event, rule, error)
         if rule.target_field_mapping:
-            result = self._get_result(rsp)
+            result = self._get_result(response)
             for source_field, target_field in rule.target_field_mapping.items():
                 source_field_value = get_dotted_field_value(result, source_field)
                 successful = add_field_to(
@@ -75,20 +75,20 @@ class Requester(Processor):
 
     def _request(self, event, rule, kwargs):
         try:
-            rsp = requests.request(**kwargs)
-            rsp.raise_for_status()
+            response = requests.request(**kwargs)
+            response.raise_for_status()
         except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
         except requests.exceptions.ConnectTimeout as error:
             self._handle_warning_error(event, rule, error)
-        return rsp
+        return response
 
     @staticmethod
-    def _get_result(rsp):
+    def _get_result(response):
         try:
-            result = json.loads(rsp.content)
+            result = json.loads(response.content)
         except json.JSONDecodeError:
-            result = rsp.content.decode("utf-8")
+            result = response.content.decode("utf-8")
         return result
 
     def _template_kwargs(self, kwargs: dict, source: dict):
