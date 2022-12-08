@@ -21,7 +21,7 @@ from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import min_len_validator
 
 if TYPE_CHECKING:
-    from logprep.processor.base.rule import Rule
+    from logprep.processor.base.rule import Rule  # pragma: no cover
 
 
 class Processor(Component):
