@@ -47,7 +47,7 @@ from logprep.processor.normalizer.exceptions import DuplicationError, Normalizer
 from logprep.processor.normalizer.rule import NormalizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
-from logprep.util.validators import file_validator, directory_validator
+from logprep.util.validators import directory_validator
 
 
 class Normalizer(Processor):
@@ -57,10 +57,12 @@ class Normalizer(Processor):
     class Config(Processor.Config):
         """config description for Normalizer"""
 
-        regex_mapping: str = field(validator=file_validator)
+        regex_mapping: str = field(validator=validators.instance_of(str))
         """Path to regex mapping file with regex keywords that are replaced with regex expressions
             by the normalizer. For string format see :ref:`getters`."""
-        html_replace_fields: Optional[str] = field(default=None, validator=file_validator)
+        html_replace_fields: Optional[str] = field(
+            default=None, validator=[validators.optional(validators.instance_of(str))]
+        )
         """Path to yaml file with html replace fields. For string format see :ref:`getters`"""
         count_grok_pattern_matches: Optional[dict] = field(
             default=None, validator=validators.optional(validators.instance_of(dict))

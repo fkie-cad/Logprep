@@ -44,7 +44,7 @@ from logprep.processor.pseudonymizer.rule import PseudonymizeRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.validators import file_validator, list_of_urls_validator
+from logprep.util.validators import list_of_urls_validator
 
 
 class Pseudonymizer(Processor):
@@ -60,12 +60,12 @@ class Pseudonymizer(Processor):
         These are not the pseudonymized events, but just the pseudonyms with the encrypted real
         values.
         """
-        pubkey_analyst: str = field(validator=file_validator)
+        pubkey_analyst: str = field(validator=validators.instance_of(str))
         """
         Path to the public key of an analyst. For string format see :ref:`getters`.
 
         * /var/git/analyst_pub.pem"""
-        pubkey_depseudo: str = field(validator=file_validator)
+        pubkey_depseudo: str = field(validator=validators.instance_of(str))
         """
         Path to the public key for depseudonymization. For string format see :ref:`getters`.
 
@@ -73,7 +73,7 @@ class Pseudonymizer(Processor):
         """
         hash_salt: str = field(validator=validators.instance_of(str))
         """A salt that is used for hashing."""
-        regex_mapping: str = field(validator=file_validator)
+        regex_mapping: str = field(validator=validators.instance_of(str))
         """
         Path to a file (for string format see :ref:`getters`) with a regex mapping for pseudonymization, i.e.:
 

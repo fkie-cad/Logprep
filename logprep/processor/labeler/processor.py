@@ -38,7 +38,6 @@ from attr import define, field, validators
 from logprep.abc import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
-from logprep.util.validators import file_validator, json_validator
 
 
 class Labeler(Processor):
@@ -48,7 +47,7 @@ class Labeler(Processor):
     class Config(Processor.Config):
         """Labeler Configurations"""
 
-        schema: str = field(validator=[file_validator, json_validator])
+        schema: str = field(validator=[validators.instance_of(str)])
         """Path to a labeling schema file. For string format see :ref:`getters`."""
         include_parent_labels: Optional[bool] = field(
             default=False, validator=validators.optional(validator=validators.instance_of(bool))

@@ -13,6 +13,7 @@ class TestPreDetector(BaseProcessorTestCase):
         "generic_rules": ["tests/testdata/unit/pre_detector/rules/generic"],
         "specific_rules": ["tests/testdata/unit/pre_detector/rules/specific"],
         "pre_detector_topic": "pre_detector_alerts",
+        "alert_ip_list_path": "tests/testdata/unit/pre_detector/alert_ips.yml",
     }
 
     uuid_pattern = re.compile(r"^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$")

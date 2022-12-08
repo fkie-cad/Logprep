@@ -1,13 +1,26 @@
 #!/usr/bin/python3
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
+# pylint: disable=line-too-long
+import inspect
 import json
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
 from copy import deepcopy
-from logging import getLogger, basicConfig, DEBUG
-from os import path, makedirs
+from importlib import import_module
+from logging import DEBUG, basicConfig, getLogger
+from os import makedirs, path
 
+from logprep.abc.processor import Processor
+from logprep.registry import Registry
+from logprep.util.decorators import timeout
 from logprep.util.helper import recursive_compare
 from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
+from tests.unit.processor.base import BaseProcessorTestCase
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
@@ -128,3 +141,87 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
         }
 
     return config_yml
+
+
+def start_logprep(config_path: str) -> subprocess.Popen:
+    environment = {"PYTHONPATH": "."}
+    return subprocess.Popen(  # nosemgrep
+        f"{sys.executable} logprep/run_logprep.py {config_path}",
+        shell=True,
+        env=environment,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        close_fds=True,
+    )
+
+
+def wait_for_output(proc, expected_output, test_timeout=10):
+    @timeout(test_timeout)
+    def wait_for_output_inner(proc, expected_output):
+        output = proc.stdout.readline()
+        while expected_output not in output.decode("utf8"):
+            output = proc.stdout.readline()
+            time.sleep(0.1)  # nosemgrep
+
+    wait_for_output_inner(proc, expected_output)
+
+
+def stop_logprep(proc=None):
+    if proc:
+        proc.send_signal(signal.SIGINT)
+    output = subprocess.check_output("ps -x | grep run_logprep", shell=True)  # nosemgrep
+    for line in output.decode("utf8").splitlines():
+        process_id = re.match(r"^\s+(\d+)\s.+", line).group(1)
+        try:
+            os.kill(int(process_id), signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
+def get_full_pipeline():
+    processors = [
+        processor_name
+        for processor_name, value in Registry.mapping.items()
+        if issubclass(value, Processor)
+    ]
+    processor_test_modules = []
+    for processor in processors:
+        processor_test_modules.append(
+            import_module(f"tests.unit.processor.{processor}.test_{processor}")  # nosemgrep
+        )
+    processor_configs = []
+    for test_module in processor_test_modules:
+        processor_configs.append(
+            [
+                (test_class[1].CONFIG.get("type"), test_class[1].CONFIG)
+                for test_class in inspect.getmembers(test_module, inspect.isclass)
+                if issubclass(test_class[1], BaseProcessorTestCase)
+            ][1]
+        )
+    return [{processor_name: config} for processor_name, config in processor_configs if config]
+
+
+def convert_to_http_config(config: dict, endpoint) -> dict:
+    config = deepcopy(config)
+    http_fields = [
+        "regex_mapping",
+        "html_replace_fields",
+        "tree_config",
+        "pubkey_analyst",
+        "pubkey_depseudo",
+        "alert_ip_list_path",
+        "schema",
+        "template",
+    ]
+    for processor_config in config.get("pipeline"):
+        name, value = processor_config.popitem()
+        for rule_kind in ("specific_rules", "generic_rules"):
+            rules = Processor.resolve_directories(value.get(rule_kind))
+            value[rule_kind] = [f"{endpoint}/{rule}" for rule in rules]
+        for config_key, config_value in value.items():
+            if config_key in http_fields:
+                value.update({config_key: f"{endpoint}/{config_value}"})
+        processor_config.update({name: value})
+        assert True
+    return config
