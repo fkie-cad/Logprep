@@ -32,6 +32,17 @@ A speaking example for event enrichment via external api:
 
     {"message": {"hostname": "BB37293hhj"}}
 
+.. code-block:: json
+    :lineos:
+    :caption: raw response json data given from the api
+
+    {
+        "city": "Montreal",
+        "Building": "L76",
+        "Floor": 3,
+        "Room": 34
+    }
+
 ..  code-block:: json
     :linenos:
     :caption: Processed event
