@@ -42,7 +42,7 @@ boltons==21.0.0
     #   semgrep
 bracex==2.3.post1
     # via wcmatch
-certifi==2022.9.24
+certifi==2022.12.7
     # via
     #   -r ./requirements.txt
     #   elasticsearch
@@ -76,7 +76,7 @@ defusedxml==0.7.1
     # via semgrep
 dill==0.3.6
     # via pylint
-elasticsearch==7.17.7
+elasticsearch==7.17.8
     # via -r ./requirements.txt
 exceptiongroup==1.0.4
     # via pytest
@@ -84,7 +84,7 @@ face==22.0.0
     # via glom
 fastapi==0.88.0
     # via -r ./requirements.txt
-filelock==3.8.0
+filelock==3.8.2
     # via
     #   -r ./requirements.txt
     #   tldextract
@@ -159,7 +159,7 @@ pathspec==0.10.2
     # via black
 peewee==3.15.4
     # via semgrep
-platformdirs==2.5.4
+platformdirs==2.6.0
     # via
     #   -r ./requirements.txt
     #   black
@@ -173,7 +173,7 @@ ply==3.11
     #   luqum
 prometheus-client==0.15.0
     # via -r ./requirements.txt
-protobuf==4.21.10
+protobuf==4.21.11
     # via
     #   -r ./requirements.txt
     #   mysql-connector-python
@@ -185,7 +185,7 @@ pydantic==1.10.2
     #   fastapi
 pygrok==1.0.0
     # via -r ./requirements.txt
-pylint==2.15.7
+pylint==2.15.8
     # via -r ./requirements_dev.in
 pyparsing==3.0.9
     # via
@@ -235,7 +235,7 @@ ruamel-yaml-clib==0.2.7
     # via
     #   -r ./requirements.txt
     #   ruamel-yaml
-semgrep==1.0.0
+semgrep==1.1.0
     # via -r ./requirements_dev.in
 six==1.16.0
     # via
