@@ -36,7 +36,7 @@ A speaking example for event enrichment via external api:
 
     {"message": {"hostname": "BB37293hhj"},
      "cmdb": {
-         "locaction": {
+         "location": {
              "city": "Montreal",
              "Building": "L76",
              "Floor": 3,
@@ -59,10 +59,7 @@ parameter_keys = inspect.signature(requests.Request).parameters.keys()
 REQUEST_CONFIG_KEYS = [
     parameter for parameter in parameter_keys if parameter not in ["hooks", "cookies", "files"]
 ] + ["timeout", "proxies", "verify", "cert"]
-
 URL_REGEX_PATTERN = r"(http|https):\/\/.+"
-
-
 HTTP_METHODS = ["GET", "OPTIONS", "HEAD", "POST", "PUT", "PATCH", "DELETE"]
 
 
@@ -107,8 +104,8 @@ class RequesterRule(FieldManagerRule):
         )
         """The url for the request. You can use dissect pattern language to add field values"""
         json: dict = field(validator=validators.instance_of(dict), factory=dict)
-        """ (Optional) The json payload. Can be templated by using the pattern
-        :code:`${the.dotted.field}` somewhere in the key or value all elements.
+        """ (Optional) The json payload. Can be enriched with event data by using the pattern
+        :code:`${the.dotted.field}` to retrieve nested field values. 
         """
         data: str = field(validator=validators.instance_of(str), default="")
         """ (Optional) The data payload. Can be templated by using the pattern
@@ -145,7 +142,7 @@ class RequesterRule(FieldManagerRule):
         timeout: float = field(validator=validators.instance_of(float), converter=float, default=2)
         """ (Optional) The timeout in seconds as float for the request. Defaults to 2 seconds"""
         verify: bool = field(validator=validators.instance_of(bool), default=True)
-        """ (Optional) Wether or not verify the ssl context. Defaults to :code:`True`"""
+        """ (Optional) Whether or not verify the ssl context. Defaults to :code:`True`."""
         proxies: dict = field(
             validator=[
                 validators.instance_of(dict),

@@ -83,7 +83,6 @@ from functools import partial
 from attrs import define, field, validators
 from logprep.util.validators import min_len_validator
 from logprep.processor.base.rule import Rule
-from logprep.util.helper import get_dotted_field_value
 
 
 class FieldManagerRule(Rule):
