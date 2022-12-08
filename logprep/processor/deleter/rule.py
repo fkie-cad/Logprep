@@ -14,7 +14,9 @@ The example below deletes the log message if the message field equals "foo".
     description: '...'
 """
 import warnings
+
 from attrs import define, field, validators
+
 from logprep.processor.base.rule import Rule
 from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
@@ -36,7 +38,7 @@ class DeleterRule(Rule):
             if deleter_config is not None:
                 add_and_overwrite(rule, "deleter.delete", deleter_config)
                 warnings.warn(
-                    ("delete is deprecated. Use deleter.delete instead"),
+                    "delete is deprecated. Use deleter.delete instead",
                     DeprecationWarning,
                 )
 
