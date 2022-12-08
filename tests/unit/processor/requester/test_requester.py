@@ -310,13 +310,11 @@ class TestRequester(BaseProcessorTestCase):
 
     @responses.activate
     @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs", test_cases)
-    def test_testcases(
-        self, testcase, rule, event, expected, response_kwargs
-    ):  # pylint: disable=unused-argument
+    def test_testcases(self, testcase, rule, event, expected, response_kwargs):
         responses.add(responses.Response(**response_kwargs))
         self._load_specific_rule(rule)
         self.object.process(event)
-        assert event == expected
+        assert event == expected, testcase
 
     @responses.activate
     @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs", failure_test_cases)
