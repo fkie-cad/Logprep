@@ -26,8 +26,6 @@
 
 * Fix count of `number_of_processed_events` metric in `input` connector. Will now only count actual
 events.
-* provide the possibility to consume lists, rules and configuration from files and http endpoints
-* Add `requester` processor that enriches by making http requests with field values
 
 ## v4.0.0
 ### Breaking
