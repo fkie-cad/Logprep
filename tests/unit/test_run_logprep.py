@@ -92,7 +92,8 @@ class TestRunLogprep:
         with pytest.raises(SystemExit):
             run_logprep.main()
         captured = capsys.readouterr()
-        logprep_line, config_line = captured.out.strip().split("\n")
+        python_line, logprep_line, config_line = captured.out.strip().split("\n")
+        assert python_line == f"python version: \t\t {sys.version.split()[0]}"
         assert logprep_line == f"logprep version: \t\t {get_versions()['version']}"
         assert (
             config_line
@@ -109,6 +110,7 @@ class TestRunLogprep:
         with open(config_path, "r", encoding="utf-8") as file:
             configuration = safe_load(file)
         expected_lines = (
+            f"python version: \t\t {sys.version.split()[0]}\n"
             f"logprep version: \t\t {get_versions()['version']}\n"
             f"configuration version: \t {configuration['version']}, {os.path.abspath(config_path)}"
         )
