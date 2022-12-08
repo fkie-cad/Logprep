@@ -219,10 +219,10 @@ class Pipeline:
             if hasattr(self._input, "server"):
                 with self._input.server.run_in_thread():
                     while self._iterate():
-                        self._retrieve_and_process_data()
+                        self._process_events()
             else:
                 while self._iterate():
-                    self._retrieve_and_process_data()
+                    self._process_events()
         except SourceDisconnectedError:
             self._logger.warning(
                 f"Lost or failed to establish connection to {self._input.describe()}"
@@ -240,9 +240,30 @@ class Pipeline:
     def _enable_iteration(self):
         self._continue_iterating = True
 
-    def _retrieve_and_process_data(self):
+    def _process_events(self):
+        self._metrics_exposer.expose(self.metrics)
+        event = self._get_event()
+        if event:
+            self._process_event(event)
+        if event:
+            self._store_event(event)
+
+    def _store_event(self, event):
         try:
-            self._metrics_exposer.expose(self.metrics)
+            self._output.store(event)
+            self._logger.debug("Stored output")
+        except WarningOutputError as error:
+            self._logger.warning(f"An error occurred for output {self._output.describe()}: {error}")
+            self._output.metrics.number_of_warnings += 1
+        except CriticalOutputError as error:
+            msg = f"A critical error occurred for output " f"{self._output.describe()}: {error}"
+            self._logger.error(msg)
+            if error.raw_input:
+                self._output.store_failed(msg, error.raw_input, {})
+            self._output.metrics.number_of_errors += 1
+
+    def _get_event(self) -> dict:
+        try:
             event, non_critical_error_msg = self._input.get_next(
                 self._logprep_config.get("timeout")
             )
@@ -253,34 +274,19 @@ class Pipeline:
                 self.metrics.kafka_offset = self._input.current_offset
             except AttributeError:
                 pass
-
-            if event:
-                self._process_event(event)
-                self._processing_counter.increment()
-                self._processing_counter.print_if_ready()
-                if event:
-                    self._output.store(event)
-                    self._logger.debug("Stored output")
+            return event
         except SourceDisconnectedError as error:
             raise error
         except WarningInputError as error:
             self._logger.warning(f"An error occurred for input {self._input.describe()}: {error}")
             self._input.metrics.number_of_warnings += 1
-        except WarningOutputError as error:
-            self._logger.warning(f"An error occurred for output {self._output.describe()}: {error}")
-            self._output.metrics.number_of_warnings += 1
         except CriticalInputError as error:
             msg = f"A critical error occurred for input {self._input.describe()}: {error}"
             self._logger.error(msg)
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})
             self._input.metrics.number_of_errors += 1
-        except CriticalOutputError as error:
-            msg = f"A critical error occurred for output " f"{self._output.describe()}: {error}"
-            self._logger.error(msg)
-            if error.raw_input:
-                self._output.store_failed(msg, error.raw_input, {})
-            self._output.metrics.number_of_errors += 1
+        return None
 
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):
@@ -314,7 +320,7 @@ class Pipeline:
 
                 if not event:
                     self._logger.debug(f"Event deleted by processor {processor}")
-                    return
+                    break
         # pylint: disable=broad-except
         except BaseException as error:
             original_error_msg = type(error).__name__
@@ -329,6 +335,8 @@ class Pipeline:
             event.clear()  # 'delete' the event, i.e. no regular output
             processor.metrics.number_of_errors += 1
         # pylint: enable=broad-except
+        self._processing_counter.increment()
+        self._processing_counter.print_if_ready()
 
     def _store_extra_data(self, extra_data: tuple):
         self._logger.debug("Storing extra data")
@@ -351,7 +359,7 @@ class Pipeline:
             return
         if isinstance(self._input._messages, queue.Queue):
             while self._input._messages.qsize():
-                self._retrieve_and_process_data()
+                self._process_events()
 
     def stop(self):
         """Stop processing processors in the Pipeline."""
