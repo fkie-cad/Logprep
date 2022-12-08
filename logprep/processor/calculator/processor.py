@@ -19,7 +19,7 @@ Example
 
 """
 import re
-from functools import cached_property, partial
+from functools import cached_property
 
 from pyparsing import ParseException
 
