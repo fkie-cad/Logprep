@@ -224,7 +224,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": ""},
             "tags": ["_timestamp_differ_failure"],
         },
-        "Failed to match 'YYYY-MM-DD HH:mm:ss' when parsing",
+        r"no value for fields: \['subfield.field2'\]",
     ),
     (
         "diff between two timestamps with one non existing field",
@@ -240,7 +240,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field1": "2022-12-05",
             "tags": ["_timestamp_differ_failure"],
         },
-        "The source field 'subfield.field2' does not exist.",
+        r"no value for fields: \['subfield.field2'\]",
     ),
     (
         "diff between two timestamps with non existing fields",
@@ -256,7 +256,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "some_field": "some value",
             "tags": ["_timestamp_differ_failure"],
         },
-        r"The source fields '\('subfield.field2', 'field1'\)' do not exist.",
+        r"no value for fields: \['subfield.field2', 'field1'\]",
     ),
     (
         "diff between two timestamps with already existing output field",

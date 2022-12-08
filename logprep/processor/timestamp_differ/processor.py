@@ -18,7 +18,6 @@ Example
             - tests/testdata/rules/generic/
 """
 from functools import partial, reduce
-from operator import itemgetter
 
 import arrow
 
@@ -36,7 +35,8 @@ class TimestampDiffer(Processor):
     def _apply_rules(self, event, rule):
         source_fields, source_field_timestamp_formats = list(zip(*rule.source_fields))
         source_field_values = list(map(partial(get_dotted_field_value, event), source_fields))
-        self._handle_non_existing_source_fields(event, rule, source_field_values, source_fields)
+        source_field_dict = dict(zip(source_fields, source_field_values))
+        self._check_for_missing_values(event, rule, source_field_dict)
         try:
             timestamp_objects = map(arrow.get, source_field_values, source_field_timestamp_formats)
             diff = reduce(lambda a, b: a - b, timestamp_objects)
@@ -64,15 +64,3 @@ class TimestampDiffer(Processor):
         if rule.output_format == "nanoseconds":
             diff = f"{diff.seconds * 1000000000} ns"
         return diff
-
-    def _handle_non_existing_source_fields(self, event, rule, source_field_values, source_fields):
-        none_indices = [
-            i for i in range(len(source_field_values)) if source_field_values[i] is None
-        ]
-        if not none_indices:
-            return
-        if len(none_indices) == 1:
-            error = f"The source field '{itemgetter(*none_indices)(source_fields)}' does not exist."
-        else:
-            error = f"The source fields '{itemgetter(*none_indices)(source_fields)}' do not exist."
-        self._handle_warning_error(event, rule, BaseException(error))

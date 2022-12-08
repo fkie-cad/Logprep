@@ -96,11 +96,3 @@ class Calculator(Processor):
         if not add_successful:
             error = DuplicationError(self.name, [rule.target_field])
             self._handle_warning_error(event, rule, error)
-
-    def _check_for_missing_values(self, event, rule, source_field_dict):
-        missing_fields = list(
-            dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
-        )
-        if missing_fields:
-            error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
-            self._handle_warning_error(event, rule, error)
