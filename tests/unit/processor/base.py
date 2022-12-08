@@ -294,13 +294,6 @@ class BaseProcessorTestCase(ABC):
             Factory.create({"test instance": config}, self.logger)
 
     @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
-    def test_validation_raises_on_empty_rules_list(self, rule_list):
-        config = deepcopy(self.CONFIG)
-        config.update({rule_list: []})
-        with pytest.raises(ValueError, match=rf"Length of '{rule_list}' must be => 1: 0"):
-            Factory.create({"test instance": config}, self.logger)
-
-    @pytest.mark.parametrize("rule_list", ["specific_rules", "generic_rules"])
     def test_validation_raises_if_elements_does_not_exist(self, rule_list):
         config = deepcopy(self.CONFIG)
         config.update({rule_list: ["/i/do/not/exist"]})
