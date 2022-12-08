@@ -89,10 +89,8 @@ from functools import partial
 
 from attrs import field, define, validators
 
-from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule, FIELD_PATTERN
 from logprep.util.validators import min_len_validator
-
-FIELD_PATTERN = r"\$\{([+&?]?[^\ ${}]*)\}"
 
 
 class CalculatorRule(FieldManagerRule):

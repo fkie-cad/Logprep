@@ -45,9 +45,8 @@ import re
 from attr import field
 from attrs import define, validators
 
-from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule, FIELD_PATTERN
 
-FIELD_PATTERN = r"\$\{([+&?]?[^${]*)\}"
 DEFAULT_TIMESTAMP_PATTERN = "YYYY-MM-DDTHH:mm:ssZZ"
 
 

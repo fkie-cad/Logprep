@@ -65,8 +65,7 @@ import re
 import requests
 from attrs import define, field, validators
 
-from logprep.processor.calculator.rule import FIELD_PATTERN
-from logprep.processor.field_manager.rule import FieldManagerRule
+from logprep.processor.field_manager.rule import FieldManagerRule, FIELD_PATTERN
 
 parameter_keys = inspect.signature(requests.Request).parameters.keys()
 REQUEST_CONFIG_KEYS = [
