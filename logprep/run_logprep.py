@@ -112,14 +112,15 @@ def get_versions_string(args) -> str:
     is printed as well
     """
     versions = get_versions()
-    version_string = f"python version: \t\t {sys.version.split()[0]}"
-    version_string += f"\nlogprep version: \t\t {versions['version']}"
+    padding = 25
+    version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
+    version_string += f"\n{'logprep version:'.ljust(padding)}{versions['version']}"
     if args.config and os.path.isfile(args.config):
         config = Configuration().create_from_yaml(args.config)
         config_version = f"{config.get('version', 'unset')}, {os.path.abspath(args.config)}"
     else:
         config_version = f"no configuration found in '{os.path.abspath(args.config)}'"
-    version_string += f"\nconfiguration version: \t {config_version}"
+    version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
     return version_string
 
 
