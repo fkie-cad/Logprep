@@ -5,6 +5,8 @@ Requester
 A processor to invoke http requests. Can be used to enrich events from an external api or
 to trigger external systems by and with event field values.
 
+For further information for the rule language see: :ref:`requester_rule`
+
 Example
 ^^^^^^^
 ..  code-block:: yaml

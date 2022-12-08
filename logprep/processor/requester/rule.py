@@ -1,4 +1,6 @@
 """
+.. _requester_rule:
+
 Requester
 =========
 
