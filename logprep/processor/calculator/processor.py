@@ -3,7 +3,7 @@ Calculator
 ==========
 
 The Calculator can be used to calculate with or without field values.
-For further information for the rule language see: :ref:`calulator_rule`
+For further information for the rule language see: :ref:`calculator_rule`
 
 Example
 ^^^^^^^
@@ -20,14 +20,15 @@ Example
 """
 import re
 from functools import cached_property, partial
+
 from pyparsing import ParseException
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.decorators import timeout
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class Calculator(Processor):
@@ -94,12 +95,4 @@ class Calculator(Processor):
         )
         if not add_successful:
             error = DuplicationError(self.name, [rule.target_field])
-            self._handle_warning_error(event, rule, error)
-
-    def _check_for_missing_values(self, event, rule, source_field_dict):
-        missing_fields = list(
-            dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
-        )
-        if missing_fields:
-            error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)

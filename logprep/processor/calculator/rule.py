@@ -1,5 +1,5 @@
 """
-.. _calulator_rule:
+.. _calculator_rule:
 
 Calculator
 ==========
@@ -84,9 +84,11 @@ retrieved from a field with the schema :code:`${your.dotted.field}`:
 The calc expression is not whitespace sensitive.
 
 """
-from functools import partial
 import re
+from functools import partial
+
 from attrs import field, define, validators
+
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.validators import min_len_validator
 
@@ -123,5 +125,5 @@ class CalculatorRule(FieldManagerRule):
 
     @property
     def timeout(self):
-        """Returns the timout"""
+        """Returns the timeout"""
         return self._config.timeout

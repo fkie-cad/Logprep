@@ -1,0 +1,9 @@
+[
+    {
+        "filter": "field1 AND field2",
+        "timestamp_differ": {
+            "diff": "${field1:YYYYMdd-HH:MM:SS} - ${field2:YYYYMdd-HH:MM:SS}",
+            "target_field": "new_field"
+        }
+    }
+]

@@ -36,6 +36,7 @@ from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.selective_extractor.processor import SelectiveExtractor
 from logprep.processor.template_replacer.processor import TemplateReplacer
+from logprep.processor.timestamp_differ.processor import TimestampDiffer
 
 
 class Registry:
@@ -65,6 +66,7 @@ class Registry:
         "pseudonymizer": Pseudonymizer,
         "selective_extractor": SelectiveExtractor,
         "template_replacer": TemplateReplacer,
+        "timestamp_differ": TimestampDiffer,
         # Connectors
         "json_input": JsonInput,
         "jsonl_input": JsonlInput,

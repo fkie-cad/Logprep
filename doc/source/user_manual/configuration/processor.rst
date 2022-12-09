@@ -157,3 +157,10 @@ Processors
    :undoc-members:
    :inherited-members:
    :noindex:
+
+.. automodule:: logprep.processor.timestamp_differ.processor
+.. autoclass:: logprep.processor.timestamp_differ.processor.TimestampDiffer.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:

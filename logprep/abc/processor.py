@@ -21,7 +21,7 @@ from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import min_len_validator
 
 if TYPE_CHECKING:
-    from logprep.processor.base.rule import Rule
+    from logprep.processor.base.rule import Rule  # pragma: no cover
 
 
 class Processor(Component):
@@ -270,3 +270,11 @@ class Processor(Component):
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *rule.failure_tags})))
         raise ProcessingWarning(str(error)) from error
+
+    def _check_for_missing_values(self, event, rule, source_field_dict):
+        missing_fields = list(
+            dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
+        )
+        if missing_fields:
+            error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
+            self._handle_warning_error(event, rule, error)
