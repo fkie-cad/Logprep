@@ -33,12 +33,13 @@ class TimestampDiffer(Processor):
     rule_class = TimestampDifferRule
 
     def _apply_rules(self, event, rule):
-        source_fields, source_field_timestamp_formats = list(zip(*rule.source_fields))
+        source_fields = rule.source_fields
+        source_field_formats = rule.source_field_formats
         source_field_values = list(map(partial(get_dotted_field_value, event), source_fields))
         source_field_dict = dict(zip(source_fields, source_field_values))
         self._check_for_missing_values(event, rule, source_field_dict)
         try:
-            timestamp_objects = map(arrow.get, source_field_values, source_field_timestamp_formats)
+            timestamp_objects = map(arrow.get, source_field_values, source_field_formats)
             diff = reduce(lambda a, b: a - b, timestamp_objects)
         except arrow.parser.ParserMatchError as error:
             self._handle_warning_error(event, rule, error)
@@ -57,10 +58,11 @@ class TimestampDiffer(Processor):
 
     @staticmethod
     def _apply_output_format(diff, rule):
-        if rule.output_format == "seconds":
+        output_format = rule.output_format
+        if output_format == "seconds":
             diff = f"{diff.seconds} s"
-        if rule.output_format == "milliseconds":
+        if output_format == "milliseconds":
             diff = f"{diff.seconds * 1000} ms"
-        if rule.output_format == "nanoseconds":
+        if output_format == "nanoseconds":
             diff = f"{diff.seconds * 1000000000} ns"
         return diff

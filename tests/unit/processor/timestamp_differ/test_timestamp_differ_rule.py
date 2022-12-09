@@ -17,7 +17,7 @@ class TestTimestampDifferRule:
         rule = TimestampDifferRule._create_from_dict(rule_dict)
         assert rule
 
-    def test_fills_source_fields(self):
+    def test_diff_field_is_split_in_fields_and_formats(self):
         rule_dict = {
             "filter": "field1 AND field2",
             "timestamp_differ": {
@@ -26,10 +26,8 @@ class TestTimestampDifferRule:
             },
         }
         rule = TimestampDifferRule._create_from_dict(rule_dict)
-        assert rule.source_fields == [
-            ["field2", "YYYY-MM-DD HH:mm:ss"],
-            ["field1", "YYYY-MM-DD HH:mm:ss"],
-        ]
+        assert rule.source_fields == ["field2", "field1"]
+        assert rule.source_field_formats == ["YYYY-MM-DD HH:mm:ss", "YYYY-MM-DD HH:mm:ss"]
 
     @pytest.mark.parametrize(
         ["rule", "error", "message"],

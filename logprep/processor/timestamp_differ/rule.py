@@ -70,6 +70,7 @@ class TimestampDifferRule(FieldManagerRule):
         :code:`${dotted.field.path}`, then the default pattern :code:`"YYYY-MM-DDTHH:mm:ssZZ"` will
         be used."""
         source_fields: list = field(factory=list)
+        source_field_formats: list = field(factory=list)
         output_format: str = field(
             default="seconds",
             validator=[
@@ -87,11 +88,16 @@ class TimestampDifferRule(FieldManagerRule):
             field_format_tuple = map(
                 lambda x: x + [DEFAULT_TIMESTAMP_PATTERN] if len(x) == 1 else x, field_format_tuple
             )
-            self.source_fields = list(field_format_tuple)
+            source_fields, source_field_formats = list(map(list, zip(*field_format_tuple)))
+            self.source_fields = source_fields
+            self.source_field_formats = source_field_formats
 
     # pylint: disable=missing-function-docstring
     @property
     def output_format(self):
         return self._config.output_format
 
+    @property
+    def source_field_formats(self):
+        return self._config.source_field_formats
     # pylint: enable=missing-function-docstring

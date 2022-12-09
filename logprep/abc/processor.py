@@ -196,8 +196,6 @@ class Processor(Component):
             return
         if rule.delete_source_fields:
             for dotted_field in rule.source_fields:
-                if isinstance(dotted_field, (list, tuple)):
-                    dotted_field = dotted_field[0]
                 pop_dotted_field_value(event, dotted_field)
 
     @abstractmethod
