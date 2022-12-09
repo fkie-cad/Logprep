@@ -100,4 +100,5 @@ class TimestampDifferRule(FieldManagerRule):
     @property
     def source_field_formats(self):
         return self._config.source_field_formats
+
     # pylint: enable=missing-function-docstring
