@@ -18,8 +18,9 @@ attrs==21.4.0
     # via
     #   -r ./requirements.in
     #   aiohttp
-certifi==2022.9.24
+certifi==2022.12.7
     # via
+    #   -r ./requirements.in
     #   elasticsearch
     #   opensearch-py
     #   requests
@@ -33,11 +34,11 @@ colorama==0.4.6
     # via -r ./requirements.in
 confluent-kafka==1.8.2
     # via -r ./requirements.in
-elasticsearch==7.17.7
+elasticsearch==7.17.8
     # via -r ./requirements.in
 fastapi==0.88.0
     # via -r ./requirements.in
-filelock==3.8.0
+filelock==3.8.2
     # via
     #   tldextract
     #   urlextract
@@ -74,13 +75,13 @@ numpy==1.22.1
     # via -r ./requirements.in
 opensearch-py==2.0.1
     # via -r ./requirements.in
-platformdirs==2.5.4
+platformdirs==2.6.0
     # via urlextract
 ply==3.11
     # via luqum
 prometheus-client==0.15.0
     # via -r ./requirements.in
-protobuf==4.21.10
+protobuf==4.21.11
     # via
     #   -r ./requirements.in
     #   mysql-connector-python
