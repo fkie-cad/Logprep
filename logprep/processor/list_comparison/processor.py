@@ -21,13 +21,12 @@ Example
 """
 from logging import Logger
 
-from attr import define, field
+from attr import define, field, validators
 
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
-from logprep.util.validators import directory_validator
 
 
 class ListComparisonError(BaseException):
@@ -44,7 +43,7 @@ class ListComparison(Processor):
     class Config(Processor.Config):
         """ListComparison config"""
 
-        list_search_base_path: str = field(validator=directory_validator)
+        list_search_base_path: str = field(validator=validators.instance_of(str))
         """Relative list paths in rules will be relative to this path if this is set.
         This parameter is optional. For string format see :ref:`getters`."""
 
