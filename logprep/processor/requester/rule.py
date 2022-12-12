@@ -120,8 +120,8 @@ class RequesterRule(FieldManagerRule):
         :code:`${the.dotted.field}` to retrieve nested field values.
         """
         data: str = field(validator=validators.instance_of(str), default="")
-        """ (Optional) The data payload. Can be templated by using the pattern
-        :code:`${the.dotted.field}` somewhere in value"""
+        """ (Optional) The data payload. Can be enriched with event data by using the pattern
+        :code:`${the.dotted.field}` to retrieve nested field values."""
         params: dict = field(
             validator=[
                 validators.instance_of(dict),
@@ -132,8 +132,8 @@ class RequesterRule(FieldManagerRule):
             ],
             factory=dict,
         )
-        """ (Optional) The query parameters as dictionary. Can be templated by using the pattern
-        :code:`${the.dotted.field}` somewhere in the key or value all elements."""
+        """ (Optional) The query parameters as dictionary. Can be enriched with event data by
+        using the pattern :code:`${the.dotted.field}` to retrieve nested field values."""
         headers: dict = field(
             validator=[
                 validators.instance_of(dict),
