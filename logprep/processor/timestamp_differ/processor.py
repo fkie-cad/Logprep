@@ -68,10 +68,11 @@ class TimestampDiffer(Processor):
     @staticmethod
     def _apply_output_format(diff, rule):
         output_format = rule.output_format
+        seconds = diff.total_seconds()
         if output_format == "seconds":
-            diff = f"{diff.seconds} s"
+            diff = f"{seconds} s"
         if output_format == "milliseconds":
-            diff = f"{diff.seconds * 1000} ms"
+            diff = f"{seconds * 1000} ms"
         if output_format == "nanoseconds":
-            diff = f"{diff.seconds * 1000000000} ns"
+            diff = f"{seconds * 1000000000} ns"
         return diff
