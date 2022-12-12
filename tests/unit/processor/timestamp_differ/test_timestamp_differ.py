@@ -197,11 +197,8 @@ test_cases = [  # testcase, rule, event, expected
             "time_diff": ["some content", "77922 s"],
         },
     ),
-]
-
-failure_test_cases = [  # testcase, rule, event, expected, error_message
     (
-        "Timestamp diff with integer field (does not match default timestamp format)",
+        "Timestamp diff with integer field",
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
@@ -210,13 +207,11 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             },
         },
         {"field1": 15, "subfield": {"field2": "2022-12-05 12:00:00"}},
-        {
-            "field1": 15,
-            "subfield": {"field2": "2022-12-05 12:00:00"},
-            "tags": ["_timestamp_differ_failure"],
-        },
-        r"Failed to match 'YYYY-MM-DDTHH:mm:ssZZ' when parsing",
+        {"field1": 15, "subfield": {"field2": "2022-12-05 12:00:00"}, "time_diff": "43185 s"},
     ),
+]
+
+failure_test_cases = [  # testcase, rule, event, expected, error_message
     (
         "Timestamp diff with string field",
         {
@@ -232,7 +227,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "tags": ["_timestamp_differ_failure"],
         },
-        r"Failed to match 'YYYY-MM-DDTHH:mm:ssZZ' when parsing",
+        r"Could not match input 'non-timestamp' to any of the following formats",
     ),
     (
         "diff between two timestamps with partial timestamp format match",

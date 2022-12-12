@@ -37,9 +37,14 @@ class TimestampDiffer(Processor):
         source_field_dict = get_source_fields_dict(event, rule)
         self._check_for_missing_values(event, rule, source_field_dict)
         try:
-            timestamp_objects = map(arrow.get, source_field_dict.values(), source_field_formats)
+            timestamp_objects = map(
+                self._create_timestamp_object, source_field_dict.values(), source_field_formats
+            )
             diff = reduce(lambda a, b: a - b, timestamp_objects)
-        except arrow.parser.ParserMatchError as error:
+        except (arrow.parser.ParserError, arrow.parser.ParserMatchError) as error:
+            error.args = [
+                f"{error.args[0]} Corresponding source fields and values are: {source_field_dict}."
+            ]
             self._handle_warning_error(event, rule, error)
 
         diff = self._apply_output_format(diff, rule)
@@ -53,6 +58,12 @@ class TimestampDiffer(Processor):
         if not add_successful:
             error = DuplicationError(self.name, [rule.target_field])
             self._handle_warning_error(event, rule, error)
+
+    @staticmethod
+    def _create_timestamp_object(timestamp_str, timestamp_format):
+        if timestamp_format is None:
+            return arrow.get(timestamp_str)
+        return arrow.get(timestamp_str, timestamp_format)
 
     @staticmethod
     def _apply_output_format(diff, rule):

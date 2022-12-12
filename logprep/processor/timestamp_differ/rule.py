@@ -47,8 +47,6 @@ from attrs import define, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule, FIELD_PATTERN
 
-DEFAULT_TIMESTAMP_PATTERN = "YYYY-MM-DDTHH:mm:ssZZ"
-
 
 class TimestampDifferRule(FieldManagerRule):
     """TimestampDifferRule"""
@@ -66,8 +64,9 @@ class TimestampDifferRule(FieldManagerRule):
         """Specifies the timestamp subtraction and their respective timestamp formats. The fields
         and the timestamp format can be specified in the form of:
         :code:`${dotted.field.path:timestamp-format}`. If no timestamp format is given, e.g.
-        :code:`${dotted.field.path}`, then the default pattern :code:`"YYYY-MM-DDTHH:mm:ssZZ"` will
-        be used."""
+        :code:`${dotted.field.path}`, then the default parsing mechanism of the python library
+        arrow will be used. For more information see the
+        `Arrow documentation <https://arrow.readthedocs.io/en/latest/guide.html#creation>`_."""
         source_fields: list = field(factory=list)
         source_field_formats: list = field(factory=list)
         output_format: str = field(
@@ -85,7 +84,7 @@ class TimestampDifferRule(FieldManagerRule):
             field_format_str = re.findall(FIELD_PATTERN, self.diff)
             field_format_tuple = map(lambda s: s.split(":", maxsplit=1), field_format_str)
             field_format_tuple = map(
-                lambda x: x + [DEFAULT_TIMESTAMP_PATTERN] if len(x) == 1 else x, field_format_tuple
+                lambda x: x + [None] if len(x) == 1 else x, field_format_tuple
             )
             source_fields, source_field_formats = list(map(list, zip(*field_format_tuple)))
             self.source_fields = source_fields
