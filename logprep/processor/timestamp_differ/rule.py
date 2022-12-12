@@ -32,7 +32,7 @@ A speaking example:
     :linenos:
     :caption: Processed event
 
-    {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05", "processing_time": "5 s"}
+    {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05", "processing_time": "5.0 s"}
 
 Examples for timestamp_differ:
 ------------------------------
