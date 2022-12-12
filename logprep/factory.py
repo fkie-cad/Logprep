@@ -2,7 +2,7 @@
 import copy
 from typing import TYPE_CHECKING
 
-from logprep.abc import Connector
+from logprep.abc import Component
 from logprep.configuration import Configuration
 from logprep.factory_error import (
     InvalidConfigSpecificationError,
@@ -18,7 +18,7 @@ class Factory:
     """Create components for logprep."""
 
     @classmethod
-    def create(cls, configuration: dict, logger: "Logger") -> Connector:
+    def create(cls, configuration: dict, logger: "Logger") -> Component:
         """Create connector."""
         if not configuration:
             raise NotExactlyOneEntryInConfigurationError()
