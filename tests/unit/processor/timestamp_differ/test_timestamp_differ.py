@@ -28,7 +28,11 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field1": "2022-12-04 12:00:00", "field2": "2022-12-05 12:00:00"},
-        {"field1": "2022-12-04 12:00:00", "field2": "2022-12-05 12:00:00", "time_diff": "86400.0 s"},
+        {
+            "field1": "2022-12-04 12:00:00",
+            "field2": "2022-12-05 12:00:00",
+            "time_diff": "86400.0 s",
+        },
     ),
     (
         "Time difference between two timestamps with timezone information",
@@ -219,7 +223,11 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field1": 1670234400, "subfield": {"field2": "2022-12-05 12:00:00"}},
-        {"field1": 1670234400, "subfield": {"field2": "2022-12-05 12:00:00"}, "time_diff": "7200.0 s"},
+        {
+            "field1": 1670234400,
+            "subfield": {"field2": "2022-12-05 12:00:00"},
+            "time_diff": "7200.0 s",
+        },
     ),
     (
         "Timestamp diff with difference in milliseconds, output in seconds",
@@ -231,7 +239,11 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field1": "2022-12-05 12:00:00.200", "subfield": {"field2": "2022-12-05 12:00:00.500"}},
-        {"field1": "2022-12-05 12:00:00.200", "subfield": {"field2": "2022-12-05 12:00:00.500"}, "time_diff": "0.3 s"},
+        {
+            "field1": "2022-12-05 12:00:00.200",
+            "subfield": {"field2": "2022-12-05 12:00:00.500"},
+            "time_diff": "0.3 s",
+        },
     ),
     (
         "Timestamp diff with difference in milliseconds, output in milliseconds",
@@ -240,11 +252,15 @@ test_cases = [  # testcase, rule, event, expected
             "timestamp_differ": {
                 "diff": "${subfield.field2} - ${field1}",
                 "target_field": "time_diff",
-                "output_format": "milliseconds"
+                "output_format": "milliseconds",
             },
         },
         {"field1": "2022-12-05 12:00:00.200", "subfield": {"field2": "2022-12-05 12:00:00.500"}},
-        {"field1": "2022-12-05 12:00:00.200", "subfield": {"field2": "2022-12-05 12:00:00.500"}, "time_diff": "300.0 ms"},
+        {
+            "field1": "2022-12-05 12:00:00.200",
+            "subfield": {"field2": "2022-12-05 12:00:00.500"},
+            "time_diff": "300.0 ms",
+        },
     ),
     (
         "Timestamp diff with difference in milliseconds, output in nanoseconds",
@@ -253,12 +269,15 @@ test_cases = [  # testcase, rule, event, expected
             "timestamp_differ": {
                 "diff": "${subfield.field2} - ${field1}",
                 "target_field": "time_diff",
-                "output_format": "nanoseconds"
+                "output_format": "nanoseconds",
             },
         },
         {"field1": "2022-12-05 12:00:00.200", "subfield": {"field2": "2022-12-05 12:00:00.500"}},
-        {"field1": "2022-12-05 12:00:00.200", "subfield": {"field2": "2022-12-05 12:00:00.500"},
-         "time_diff": "300000000.0 ns"},
+        {
+            "field1": "2022-12-05 12:00:00.200",
+            "subfield": {"field2": "2022-12-05 12:00:00.500"},
+            "time_diff": "300000000.0 ns",
+        },
     ),
     (
         "Time difference between two timestamps with negative result",

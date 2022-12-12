@@ -83,9 +83,7 @@ class TimestampDifferRule(FieldManagerRule):
         def __attrs_post_init__(self):
             field_format_str = re.findall(FIELD_PATTERN, self.diff)
             field_format_tuple = map(lambda s: s.split(":", maxsplit=1), field_format_str)
-            field_format_tuple = map(
-                lambda x: x + [None] if len(x) == 1 else x, field_format_tuple
-            )
+            field_format_tuple = map(lambda x: x + [None] if len(x) == 1 else x, field_format_tuple)
             source_fields, source_field_formats = list(map(list, zip(*field_format_tuple)))
             self.source_fields = source_fields
             self.source_field_formats = source_field_formats
