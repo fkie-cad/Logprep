@@ -7,7 +7,7 @@ They can be multi-processed.
 # pylint: disable=logging-fstring-interpolation
 import json
 from ctypes import c_bool, c_double, c_ulonglong
-from logging import DEBUG, INFO, NOTSET, Handler, Logger
+from logging import INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 import queue
 from time import time
@@ -214,24 +214,14 @@ class Pipeline:
                 warnings.simplefilter("default")
                 self._setup()
         self._enable_iteration()
-        try:
-            self._logger.debug(f"Start iterating ({current_process().name})")
-            if hasattr(self._input, "server"):
-                with self._input.server.run_in_thread():
-                    while self._iterate():
-                        self._process_events()
-            else:
+        self._logger.debug(f"Start iterating ({current_process().name})")
+        if hasattr(self._input, "server"):
+            with self._input.server.run_in_thread():
                 while self._iterate():
                     self._process_events()
-        except SourceDisconnectedError:
-            self._logger.warning(
-                f"Lost or failed to establish connection to {self._input.describe()}"
-            )
-        except FatalInputError as error:
-            self._logger.error(f"Input {self._input.describe()} failed: {error}")
-        except FatalOutputError as error:
-            self._logger.error(f"Output {self._output.describe()} failed: {error}")
-
+        else:
+            while self._iterate():
+                self._process_events()
         self._shut_down()
 
     def _iterate(self):
@@ -261,6 +251,10 @@ class Pipeline:
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})
             self._output.metrics.number_of_errors += 1
+        except FatalOutputError as error:
+            self._logger.error(f"Output {self._output.describe()} failed: {error}")
+            self._output.metrics.number_of_errors += 1
+            self._continue_iterating = False
 
     def _get_event(self) -> dict:
         try:
@@ -275,8 +269,15 @@ class Pipeline:
             except AttributeError:
                 pass
             return event
-        except SourceDisconnectedError as error:
-            raise error
+        except SourceDisconnectedError:
+            self._logger.warning(
+                f"Lost or failed to establish connection to {self._input.describe()}"
+            )
+            self._continue_iterating = False
+        except FatalInputError as error:
+            self._logger.error(f"Input {self._input.describe()} failed: {error}")
+            self._input.metrics.number_of_errors += 1
+            self._continue_iterating = False
         except WarningInputError as error:
             self._logger.warning(f"An error occurred for input {self._input.describe()}: {error}")
             self._input.metrics.number_of_warnings += 1
@@ -296,8 +297,7 @@ class Pipeline:
                 try:
                     extra_data = processor.process(event)
                     if isinstance(extra_data, list):
-                        for data in extra_data:
-                            self._store_extra_data(data)
+                        list(map(self._store_extra_data, extra_data))
                     if isinstance(extra_data, tuple):
                         self._store_extra_data(extra_data)
                 except ProcessingWarning as error:
