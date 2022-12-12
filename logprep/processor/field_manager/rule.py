@@ -84,6 +84,8 @@ from attrs import define, field, validators
 from logprep.util.validators import min_len_validator
 from logprep.processor.base.rule import Rule
 
+FIELD_PATTERN = r"\$\{([+&?]?[^${}]*)\}"
+
 
 class FieldManagerRule(Rule):
     """Interface for a simple Rule with source_fields and target_field"""

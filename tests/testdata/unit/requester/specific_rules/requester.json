@@ -1,0 +1,9 @@
+[
+    {
+        "filter": "message",
+        "requester": {
+            "url": "http://the-url",
+            "method": "GET"
+        }
+    }
+]

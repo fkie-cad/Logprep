@@ -144,6 +144,13 @@ Processors
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.requester.processor
+.. autoclass:: logprep.processor.requester.processor.Requester.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.selective_extractor.processor
 .. autoclass:: logprep.processor.selective_extractor.processor.SelectiveExtractor.Config
    :members:

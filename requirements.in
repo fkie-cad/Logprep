@@ -20,6 +20,7 @@ pyparsing
 python-dateutil
 pytz
 pyyaml
+requests
 ruamel.yaml
 tldextract
 urlextract

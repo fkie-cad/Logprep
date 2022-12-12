@@ -5,4 +5,5 @@ isort
 pylint
 pytest
 pytest-cov
+responses
 semgrep

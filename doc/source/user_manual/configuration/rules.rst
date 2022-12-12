@@ -133,6 +133,13 @@ Rules
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.requester.rule
+.. autoclass:: logprep.processor.requester.rule.RequesterRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.selective_extractor.rule
 .. autoclass:: logprep.processor.selective_extractor.rule.SelectiveExtractorRule.Config
    :members:

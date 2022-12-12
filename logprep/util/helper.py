@@ -254,3 +254,11 @@ def append(event, target_field, content, separator):
         add_and_overwrite(event, target_field, target_value)
     else:
         append_as_list(event, target_field, content)
+
+
+def get_source_fields_dict(event, rule):
+    """returns a dict with dotted fields as keys and target values as values"""
+    source_fields = rule.source_fields
+    source_field_values = map(partial(get_dotted_field_value, event), source_fields)
+    source_field_dict = dict(zip(source_fields, source_field_values))
+    return source_field_dict

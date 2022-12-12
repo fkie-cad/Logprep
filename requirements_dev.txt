@@ -185,7 +185,7 @@ pydantic==1.10.2
     #   fastapi
 pygrok==1.0.0
     # via -r ./requirements.txt
-pylint==2.15.8
+pylint==2.15.7
     # via -r ./requirements_dev.in
 pyparsing==3.0.9
     # via
@@ -219,12 +219,15 @@ requests==2.28.1
     #   geoip2
     #   opensearch-py
     #   requests-file
+    #   responses
     #   semgrep
     #   tldextract
 requests-file==1.5.1
     # via
     #   -r ./requirements.txt
     #   tldextract
+responses==0.22.0
+    # via -r ./requirements_dev.in
 rfc3986[idna2008]==1.5.0
     # via httpx
 ruamel-yaml==0.17.21
@@ -235,7 +238,7 @@ ruamel-yaml-clib==0.2.7
     # via
     #   -r ./requirements.txt
     #   ruamel-yaml
-semgrep==1.1.0
+semgrep==1.0.0
     # via -r ./requirements_dev.in
 six==1.16.0
     # via
@@ -254,6 +257,8 @@ starlette==0.22.0
     #   fastapi
 tldextract==3.4.0
     # via -r ./requirements.txt
+toml==0.10.2
+    # via responses
 tomli==2.0.1
     # via
     #   black
@@ -265,6 +270,8 @@ tomlkit==0.11.6
     # via pylint
 tqdm==4.64.1
     # via semgrep
+types-toml==0.10.8.1
+    # via responses
 typing-extensions==4.4.0
     # via
     #   -r ./requirements.txt
@@ -289,6 +296,7 @@ urllib3==1.26.13
     #   geoip2
     #   opensearch-py
     #   requests
+    #   responses
     #   semgrep
 uvicorn==0.20.0
     # via -r ./requirements.txt
