@@ -182,4 +182,4 @@ jobs:
         with:
           push: true # Will only build if this is not here
           tags: |
-            ghcr.io/fkie-cad/Logprep:latest
+            ghcr.io/fkie-cad/logprep:latest
