@@ -41,7 +41,7 @@ class TimestampDiffer(Processor):
                 self._create_timestamp_object, source_field_dict.values(), source_field_formats
             )
             diff = reduce(lambda a, b: a - b, timestamp_objects)
-        except (arrow.parser.ParserError, arrow.parser.ParserMatchError) as error:
+        except arrow.parser.ParserError as error:
             error.args = [
                 f"{error.args[0]} Corresponding source fields and values are: {source_field_dict}."
             ]
