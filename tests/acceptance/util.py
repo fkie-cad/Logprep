@@ -170,11 +170,18 @@ def wait_for_output(proc, expected_output, test_timeout=10):
 def stop_logprep(proc=None):
     if proc:
         proc.send_signal(signal.SIGINT)
+        try:
+            wait_for_output(proc, "Shutdown complete", test_timeout=10)
+        except TimeoutError:
+            proc.kill()
+
     output = subprocess.check_output("ps -x | grep run_logprep", shell=True)  # nosemgrep
     for line in output.decode("utf8").splitlines():
-        process_id = re.match(r"^\s+(\d+)\s.+", line).group(1)
+        process_id = re.match(r"^(\s+)?(\d+)\s.+", line)
+        process_id = process_id.group(2) if process_id else None
         try:
-            os.kill(int(process_id), signal.SIGKILL)
+            if process_id is not None:
+                os.kill(int(process_id), signal.SIGKILL)
         except ProcessLookupError:
             pass
 
