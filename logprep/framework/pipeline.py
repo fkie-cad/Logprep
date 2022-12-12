@@ -159,16 +159,19 @@ class Pipeline:
 
     def _build_pipeline(self):
         self._logger.debug(f"Building '{current_process().name}'")
-        self._pipeline = []
-        for entry in self._logprep_config.get("pipeline"):
-            processor_name = list(entry.keys())[0]
-            entry[processor_name]["metric_labels"] = self._metric_labels
-            processor = Factory.create(entry, self._logger)
-            self._pipeline.append(processor)
-            self.metrics.pipeline.append(processor.metrics)
-            self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
-            self._pipeline[-1].setup()
+        self._pipeline = tuple(
+            (self._create_processor(entry) for entry in self._logprep_config.get("pipeline"))
+        )
         self._logger.debug(f"Finished building pipeline ({current_process().name})")
+
+    def _create_processor(self, entry: dict) -> "Processor":
+        processor_name = list(entry.keys())[0]
+        entry[processor_name]["metric_labels"] = self._metric_labels
+        processor = Factory.create(entry, self._logger)
+        processor.setup()
+        self.metrics.pipeline.append(processor.metrics)
+        self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
+        return processor
 
     def _create_connectors(self):
         self._logger.debug(f"Creating connectors ({current_process().name})")
@@ -218,10 +221,10 @@ class Pipeline:
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
                 while self._iterate():
-                    self._process_events()
+                    self._process_pipeline()
         else:
             while self._iterate():
-                self._process_events()
+                self._process_pipeline()
         self._shut_down()
 
     def _iterate(self):
@@ -230,7 +233,7 @@ class Pipeline:
     def _enable_iteration(self):
         self._continue_iterating = True
 
-    def _process_events(self):
+    def _process_pipeline(self):
         self._metrics_exposer.expose(self.metrics)
         event = self._get_event()
         if event:
@@ -287,7 +290,7 @@ class Pipeline:
             if error.raw_input:
                 self._output.store_failed(msg, error.raw_input, {})
             self._input.metrics.number_of_errors += 1
-        return None
+        return {}
 
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):
@@ -351,15 +354,15 @@ class Pipeline:
             self._used_server_ports.pop(self._input.server.config.port)
         self._drain_input_queues()
         self._output.shut_down()
-        while self._pipeline:
-            self._pipeline.pop().shut_down()
+        for processor in self._pipeline:
+            processor.shut_down()
 
     def _drain_input_queues(self):
         if not hasattr(self._input, "_messages"):
             return
         if isinstance(self._input._messages, queue.Queue):
             while self._input._messages.qsize():
-                self._process_events()
+                self._process_pipeline()
 
     def stop(self):
         """Stop processing processors in the Pipeline."""

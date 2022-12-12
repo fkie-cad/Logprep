@@ -121,7 +121,7 @@ class TestPipeline(ConfigurationForTests):
     def test_passes_timeout_parameter_to_inputs_get_next(self, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({}, {})
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         timeout = self.logprep_config.get("timeout")
         self.pipeline._input.get_next.assert_called_with(timeout)
 
@@ -149,7 +149,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._create_logger()
         self.pipeline._logger.setLevel(DEBUG)
         while self.pipeline._input._documents:
-            self.pipeline._process_events()
+            self.pipeline._process_pipeline()
         assert len(input_data) == 0, "all events were processed"
         assert self.pipeline._pipeline[0].process.call_count == 3, "called for all events"
         assert self.pipeline._pipeline[2].process.call_count == 2, "not called for deleted event"
@@ -161,7 +161,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._output.store = mock.MagicMock()
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         assert self.pipeline._output.store.call_count == 0
 
     def test_setup_calls_setup_on_input(self, _):
@@ -224,7 +224,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._output = original_create(
             {"dummy": {"type": "dummy_output"}}, mock.MagicMock()
         )
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         assert len(self.pipeline._output.events) == 0
         mock_error.assert_called()
         assert re.search(
@@ -240,7 +240,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"order": 1}, None)
         self.pipeline._output.store.side_effect = raise_critical_output_error
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._output.store_failed.assert_called()
         mock_error.assert_called()
         assert re.search(
@@ -253,11 +253,11 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.metrics = mock.MagicMock()
         self.pipeline._input.metrics.number_of_warnings = 0
         self.pipeline._input.get_next.return_value = ({"order": 1}, None)
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._input.get_next.side_effect = WarningInputError
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._input.get_next.side_effect = None
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         assert self.pipeline._input.get_next.call_count == 3
         assert mock_warning.call_count == 1
         assert self.pipeline._output.store.call_count == 2
@@ -269,11 +269,11 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = ({"order": 1}, None)
         self.pipeline._output.metrics = mock.MagicMock()
         self.pipeline._output.metrics.number_of_warnings = 0
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._output.store.side_effect = WarningOutputError
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._output.store.side_effect = None
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         assert self.pipeline._input.get_next.call_count == 3
         assert mock_warning.call_count == 1
         assert self.pipeline._output.store.call_count == 3
@@ -284,9 +284,9 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._pipeline[1].process.side_effect = ProcessorWarningMockError
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         mock_warning.assert_called()
         assert (
             "ProcessorWarningMockError" in mock_warning.call_args[0][0]
@@ -308,7 +308,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._pipeline[0].process.side_effect = ProcessingWarningMockCollection
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         assert mock_warning.call_count == 4, "called 2 times for 2 processors in pipeline"
         assert self.pipeline._output.store.call_count == 1, "the event is processed"
 
@@ -319,9 +319,9 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._pipeline[1].process.side_effect = Exception
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
         assert mock_error.call_count == 2, "two errors occured"
         assert (
@@ -342,7 +342,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.metrics.number_of_errors = 0
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._input.get_next.side_effect = raise_critical
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._input.get_next.assert_called()
         mock_error.assert_called()
         assert re.search(
@@ -359,7 +359,7 @@ class TestPipeline(ConfigurationForTests):
 
         self.pipeline._setup()
         self.pipeline._input.get_next.side_effect = raise_warning
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._input.get_next.assert_called()
         mock_warning.assert_called()
         assert re.search(
@@ -376,7 +376,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._output.metrics = mock.MagicMock()
         self.pipeline._output.metrics.number_of_errors = 0
         self.pipeline._output.store.side_effect = raise_critical
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._output.store_failed.assert_called()
         mock_error.assert_called()
         assert re.search(
@@ -390,7 +390,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
         self.pipeline._output.store.side_effect = WarningOutputError("mock output warning")
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._output.store.assert_called()
         mock_warning.assert_called()
         assert mock_warning.call_args[0][0].startswith(
@@ -431,7 +431,7 @@ class TestPipeline(ConfigurationForTests):
         processor_with_extra_data.process = mock.MagicMock()
         processor_with_extra_data.process.return_value = ([{"foo": "bar"}], "target")
         self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         assert self.pipeline._input.get_next.call_count == 1
         assert self.pipeline._output.store_custom.call_count == 1
         self.pipeline._output.store_custom.assert_called_with({"foo": "bar"}, "target")
@@ -443,7 +443,7 @@ class TestPipeline(ConfigurationForTests):
         processor_with_extra_data.process = mock.MagicMock()
         processor_with_extra_data.process.return_value = [([{"foo": "bar"}], "target")]
         self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         assert self.pipeline._input.get_next.call_count == 1
         assert self.pipeline._output.store_custom.call_count == 1
         self.pipeline._output.store_custom.assert_called_with({"foo": "bar"}, "target")
@@ -532,13 +532,13 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.batch_finished_callback = mock.MagicMock()
         self.pipeline._output.store = mock.MagicMock()
         self.pipeline._output.store.return_value = None
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._input.batch_finished_callback.assert_not_called()
 
     def test_retrieve_and_process_data_calls_store_failed_for_non_critical_error_message(self, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"some": "event"}, "This is non critical")
-        self.pipeline._process_events()
+        self.pipeline._process_pipeline()
         self.pipeline._output.store_failed.assert_called_with(
             "This is non critical", {"some": "event"}, None
         )
