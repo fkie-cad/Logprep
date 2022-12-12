@@ -32,9 +32,9 @@ A speaking example for event enrichment via external api:
 
     {"message": {"hostname": "BB37293hhj"}}
 
-.. code-block:: json
-    :lineos:
-    :caption: raw response json data given from the api
+..  code-block:: json
+    :linenos:
+    :caption: Raw response json data given from the api
 
     {
         "city": "Montreal",
@@ -117,7 +117,7 @@ class RequesterRule(FieldManagerRule):
         """The url for the request. You can use dissect pattern language to add field values"""
         json: dict = field(validator=validators.instance_of(dict), factory=dict)
         """ (Optional) The json payload. Can be enriched with event data by using the pattern
-        :code:`${the.dotted.field}` to retrieve nested field values. 
+        :code:`${the.dotted.field}` to retrieve nested field values.
         """
         data: str = field(validator=validators.instance_of(str), default="")
         """ (Optional) The data payload. Can be templated by using the pattern
