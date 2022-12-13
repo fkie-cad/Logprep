@@ -16,7 +16,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
-        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278.0 s"},
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278.0"},
     ),
     (
         "Time difference between two timestamps with day change",
@@ -31,7 +31,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-04 12:00:00",
             "field2": "2022-12-05 12:00:00",
-            "time_diff": "86400.0 s",
+            "time_diff": "86400.0",
         },
     ),
     (
@@ -44,7 +44,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field2": "2022-05-09 03:56:47 -03:00", "field1": "2022-05-08"},
-        {"field2": "2022-05-09 03:56:47 -03:00", "field1": "2022-05-08", "time_diff": "111407.0 s"},
+        {"field2": "2022-05-09 03:56:47 -03:00", "field1": "2022-05-08", "time_diff": "111407.0"},
     ),
     (
         "Time difference between two timestamps with full weekday and month",
@@ -59,7 +59,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field2": "Monday, 05. December 2022 11:19AM",
             "field1": "2022-12-05",
-            "time_diff": "40740.0 s",
+            "time_diff": "40740.0",
         },
     ),
     (
@@ -72,7 +72,7 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-03"},
-        {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-03", "time_diff": "134071.0 s"},
+        {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-03", "time_diff": "134071.0"},
     ),
     (
         "Time difference between two timestamps with timezone name",
@@ -87,7 +87,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field2": "Wed Dec 4 1:14:31 PM 2022 Europe/Warsaw",
             "field1": "2022-12-03",
-            "time_diff": "130471.0 s",
+            "time_diff": "130471.0",
         },
     ),
     (
@@ -104,7 +104,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 11:38:42",
             "field2": "2022-12-05 12:00:00",
-            "time_diff": "1278000.0 ms",
+            "time_diff": "1278000.0",
         },
     ),
     (
@@ -121,7 +121,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 11:38:42",
             "field2": "2022-12-05 12:00:00",
-            "time_diff": "1278000000000.0 ns",
+            "time_diff": "1278000000000.0",
         },
     ),
     (
@@ -137,7 +137,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 11:38:42",
             "subfield": {"field2": "2022-12-05 12:00:00"},
-            "time_diff": "1278.0 s",
+            "time_diff": "1278.0",
         },
     ),
     (
@@ -153,7 +153,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 12:00:00",
             "subfield": {"field2": "2022-12-05T11:38:42-02:00"},
-            "time_diff": "5922.0 s",
+            "time_diff": "5922.0",
         },
     ),
     (
@@ -168,7 +168,7 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"field1": "2022-12-05 12:00:00", "subfield": {"field2": "2022-12-05T11:38:42-02:00"}},
         {
-            "time_diff": "5922.0 s",
+            "time_diff": "5922.0",
         },
     ),
     (
@@ -189,7 +189,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 12:00:00",
             "subfield": {"field2": "2022-12-05T11:38:42-02:00"},
-            "time_diff": "5922.0 s",
+            "time_diff": "5922.0",
         },
     ),
     (
@@ -210,7 +210,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 12:00:00",
             "subfield": {"field2": "2022-12-05T11:38:42-02:00"},
-            "time_diff": ["some content", "5922.0 s"],
+            "time_diff": ["some content", "5922.0"],
         },
     ),
     (
@@ -226,7 +226,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": 1670234400,
             "subfield": {"field2": "2022-12-05 12:00:00"},
-            "time_diff": "7200.0 s",
+            "time_diff": "7200.0",
         },
     ),
     (
@@ -242,7 +242,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 12:00:00.200",
             "subfield": {"field2": "2022-12-05 12:00:00.500"},
-            "time_diff": "0.3 s",
+            "time_diff": "0.3",
         },
     ),
     (
@@ -259,7 +259,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 12:00:00.200",
             "subfield": {"field2": "2022-12-05 12:00:00.500"},
-            "time_diff": "300.0 ms",
+            "time_diff": "300.0",
         },
     ),
     (
@@ -276,7 +276,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": "2022-12-05 12:00:00.200",
             "subfield": {"field2": "2022-12-05 12:00:00.500"},
-            "time_diff": "300000000.0 ns",
+            "time_diff": "300000000.0",
         },
     ),
     (
@@ -289,7 +289,57 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
         {"field2": "2022-12-09", "field1": "2022-12-10"},
-        {"field2": "2022-12-09", "field1": "2022-12-10", "time_diff": "-86400.0 s"},
+        {"field2": "2022-12-09", "field1": "2022-12-10", "time_diff": "-86400.0"},
+    ),
+    (
+        "Time difference between two timestamps with visible second unit",
+        {
+            "filter": "field1 AND field2",
+            "timestamp_differ": {
+                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+                "output_format": "seconds",
+                "show_unit": True,
+            },
+        },
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278.0 s"},
+    ),
+    (
+        "Time difference between two timestamps with visible millisecond unit",
+        {
+            "filter": "field1 AND field2",
+            "timestamp_differ": {
+                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+                "output_format": "milliseconds",
+                "show_unit": True,
+            },
+        },
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
+        {
+            "field1": "2022-12-05 11:38:42",
+            "field2": "2022-12-05 12:00:00",
+            "time_diff": "1278000.0 ms",
+        },
+    ),
+    (
+        "Time difference between two timestamps with visible nanosecond unit",
+        {
+            "filter": "field1 AND field2",
+            "timestamp_differ": {
+                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "target_field": "time_diff",
+                "output_format": "nanoseconds",
+                "show_unit": True,
+            },
+        },
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00"},
+        {
+            "field1": "2022-12-05 11:38:42",
+            "field2": "2022-12-05 12:00:00",
+            "time_diff": "1278000000000.0 ns",
+        },
     ),
 ]
 
@@ -386,11 +436,11 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
                 "target_field": "time_diff",
             },
         },
-        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278 s"},
+        {"field1": "2022-12-05 11:38:42", "field2": "2022-12-05 12:00:00", "time_diff": "1278"},
         {
             "field1": "2022-12-05 11:38:42",
             "field2": "2022-12-05 12:00:00",
-            "time_diff": "1278 s",
+            "time_diff": "1278",
             "tags": ["_timestamp_differ_failure"],
         },
         "The following fields could not be written, because one or more subfields existed and could not be extended: time_diff",

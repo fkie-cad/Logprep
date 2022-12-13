@@ -32,7 +32,7 @@ A speaking example:
     :linenos:
     :caption: Processed event
 
-    {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05", "processing_time": "5.0 s"}
+    {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05", "processing_time": "5.0"}
 
 Examples for timestamp_differ:
 ------------------------------
@@ -79,6 +79,9 @@ class TimestampDifferRule(FieldManagerRule):
         """(Optional) Specifies the desired output format of the timestamp difference, allowed
         values are: :code:`seconds`, :code:`milliseconds`, :code:`nanoseconds`, defaults to:
         :code:`seconds`."""
+        show_unit: bool = field(default=False)
+        """(Optional) Specifies whether the unit (s, ms, ns) should be part of the output.
+        Defaults to :code:`False`."""
 
         def __attrs_post_init__(self):
             field_format_str = re.findall(FIELD_PATTERN, self.diff)
@@ -97,4 +100,7 @@ class TimestampDifferRule(FieldManagerRule):
     def source_field_formats(self):
         return self._config.source_field_formats
 
+    @property
+    def show_unit(self):
+        return self._config.show_unit
     # pylint: enable=missing-function-docstring
