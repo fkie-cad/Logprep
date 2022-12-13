@@ -103,4 +103,5 @@ class TimestampDifferRule(FieldManagerRule):
     @property
     def show_unit(self):
         return self._config.show_unit
+
     # pylint: enable=missing-function-docstring
