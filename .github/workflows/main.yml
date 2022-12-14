@@ -132,24 +132,3 @@ jobs:
       - name: Check semgrep rules
         if: steps.changed-files.outputs.all_changed_files
         run: semgrep -c .semgrep_rules -c r/python --error -l python --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
-
-  containerbuild:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push Docker Image
-        uses: docker/build-push-action@v3
-        with:
-          push: true # Will only build if this is not here
-          tags: |
-            ghcr.io/fkie-cad/logprep:main
-            ghcr.io/fkie-cad/logprep:latest
