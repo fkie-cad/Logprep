@@ -189,5 +189,5 @@ jobs:
             LOGPREP_VERSION: latest
             PYTHON_VERSION: ${{ matrix.python-version }}
           tags: |
-            ghcr.io/fkie-cad/logprep-${{ matrix.python-version }}:main
-            ghcr.io/fkie-cad/logprep-${{ matrix.python-version }}:latest
+            ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-main
+            ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
