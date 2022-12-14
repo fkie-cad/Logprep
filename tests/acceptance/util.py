@@ -2,6 +2,10 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+import contextlib
+import threading
+import socketserver
+import http.server
 import inspect
 import json
 import os
@@ -24,6 +28,35 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
+
+
+class TestServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+    @classmethod
+    def run_http_server(cls, port=32000):
+        with TestServer(("", port), http.server.SimpleHTTPRequestHandler) as httpd:
+            try:
+                cls.httpd = httpd
+                cls.httpd.serve_forever()
+            finally:
+                cls.httpd.server_close()
+
+    @classmethod
+    @contextlib.contextmanager
+    def run_in_thread(cls):
+        """Context manager to run the server in a separate thread"""
+        cls.thread = threading.Thread(target=cls.run_http_server)
+        cls.thread.start()
+        yield
+        cls.stop()
+
+    @classmethod
+    def stop(cls):
+        if hasattr(cls, "httpd"):
+            cls.httpd.shutdown()
+        if hasattr(cls, "thread"):
+            cls.thread.join()
 
 
 class RecordMock:

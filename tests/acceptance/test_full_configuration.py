@@ -1,9 +1,5 @@
 # pylint: disable=missing-docstring
-import contextlib
 from pathlib import Path
-import threading
-import socketserver
-import http.server
 import re
 from tests.acceptance.util import (
     get_full_pipeline,
@@ -11,43 +7,13 @@ from tests.acceptance.util import (
     start_logprep,
     stop_logprep,
     convert_to_http_config,
+    TestServer,
 )
 from logprep.util.json_handling import dump_config_as_file
 
 
-class TestServer(socketserver.TCPServer):
-    allow_reuse_address = True
-
-    @classmethod
-    def run_http_server(cls, port=32000):
-        with TestServer(("", port), http.server.SimpleHTTPRequestHandler) as httpd:
-            try:
-                cls.httpd = httpd
-                cls.httpd.serve_forever()
-            finally:
-                cls.httpd.server_close()
-
-    @classmethod
-    @contextlib.contextmanager
-    def run_in_thread(cls):
-        """Context manager to run the server in a separate thread"""
-        cls.thread = threading.Thread(target=cls.run_http_server)
-        cls.thread.start()
-        yield
-        cls.httpd.shutdown()
-        cls.thread.join()
-
-    @classmethod
-    def stop(cls):
-        if hasattr(cls, "httpd"):
-            cls.httpd.shutdown()
-        if hasattr(cls, "thread"):
-            cls.thread.join()
-
-
 def teardown_function():
     Path("generated_config.yml").unlink(missing_ok=True)
-    TestServer.stop()
     stop_logprep()
 
 
