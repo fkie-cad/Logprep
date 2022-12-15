@@ -183,11 +183,13 @@ jobs:
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v3
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
         with:
           push: true # Will only build if this is not here
           build-args: |
             LOGPREP_VERSION: latest
-            PYTHON_VERSION: "${{ PYTHON_VERSION }}"
+            PYTHON_VERSION: ${{ PYTHON_VERSION }}
           tags: |
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-main
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
