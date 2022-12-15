@@ -59,7 +59,8 @@ class TestGetterFactory:
         assert my_getter.target == "oauth:mytesttoken@the-web-target"
 
     def test_getter_expands_not_set_environment_to_blank(self):
-        os.environ.pop("PYTEST_TEST_TOKEN")
+        if "PYTEST_TEST_TOKEN" in os.environ:
+            os.environ.pop("PYTEST_TEST_TOKEN")
         url = "https://oauth:${PYTEST_TEST_TOKEN}@the-web-target"
         my_getter = GetterFactory.from_string(url)
         assert my_getter.target == "oauth:@the-web-target"

@@ -1,9 +1,9 @@
 """Content getters provide a shared interface to get content from targets.
 They are returned by the GetterFactory.
 """
-from collections import defaultdict
 import os
 import re
+from collections import defaultdict
 from pathlib import Path
 from string import Template
 from typing import Tuple
