@@ -2,8 +2,6 @@
 They are returned by the GetterFactory.
 """
 from collections import defaultdict
-from copy import deepcopy
-from functools import reduce
 import os
 import re
 from pathlib import Path
