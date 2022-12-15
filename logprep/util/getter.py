@@ -1,8 +1,13 @@
 """Content getters provide a shared interface to get content from targets.
 They are returned by the GetterFactory.
 """
+from collections import defaultdict
+from copy import deepcopy
+from functools import reduce
+import os
 import re
 from pathlib import Path
+from string import Template
 from typing import Tuple
 
 import requests
@@ -39,6 +44,7 @@ class GetterFactory:
             The generated getter.
         """
         protocol, target = cls._dissect(getter_string)
+        target = cls._expand_variables(target, os.environ)
         if protocol is None:
             protocol = "file"
         if protocol == "file":
@@ -48,6 +54,12 @@ class GetterFactory:
         if protocol == "https":
             return HttpGetter(protocol=protocol, target=target)
         raise GetterNotFoundError(f"No getter for protocol '{protocol}'")
+
+    @staticmethod
+    def _expand_variables(posix_expr, context):
+        env = defaultdict(lambda: "")
+        env.update(context)
+        return Template(posix_expr).substitute(env)
 
     @staticmethod
     def _dissect(getter_string: str) -> Tuple[str, str]:

@@ -3,6 +3,7 @@
 # pylint: disable=line-too-long
 # pylint: disable=unspecified-encoding
 import json
+import os
 from pathlib import Path
 from unittest import mock
 
@@ -50,6 +51,18 @@ class TestGetterFactory:
         my_getter = GetterFactory.from_string(target_string)
         assert my_getter.protocol == expected_protocol
         assert my_getter.target == expected_target
+
+    def test_getter_expands_from_environment(self):
+        os.environ["PYTEST_TEST_TOKEN"] = "mytesttoken"
+        url = "https://oauth:${PYTEST_TEST_TOKEN}@the-web-target"
+        my_getter = GetterFactory.from_string(url)
+        assert my_getter.target == "oauth:mytesttoken@the-web-target"
+
+    def test_getter_expands_not_set_environment_to_blank(self):
+        os.environ.pop("PYTEST_TEST_TOKEN")
+        url = "https://oauth:${PYTEST_TEST_TOKEN}@the-web-target"
+        my_getter = GetterFactory.from_string(url)
+        assert my_getter.target == "oauth:@the-web-target"
 
 
 class TestFileGetter:
