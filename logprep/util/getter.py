@@ -97,8 +97,8 @@ class HttpGetter(Getter):
 
     """
 
-    _username: str = field(validator=validators.instance_of(str), default="")
-    _password: str = field(validator=validators.instance_of(str), default="")
+    _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
+    _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
 
     def __attrs_post_init__(self):
         target = self.target
