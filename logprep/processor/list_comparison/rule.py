@@ -78,6 +78,15 @@ class ListComparisonRule(FieldManagerRule):
     def init_list_comparison(self, list_search_base_path: Optional[str] = None):
         """init method for list_comparision lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
+        if list_search_base_path.startswith("http"):
+            for list_path in self._config.list_file_paths:
+                os.environ.update({"LOGPREP_LIST": list_path})
+                content = GetterFactory.from_string(list_search_base_path).get()
+                os.environ.pop("LOGPREP_LIST")
+                compare_elements = content.splitlines()
+                file_elem_tuples = [elem for elem in compare_elements if not elem.startswith("#")]
+                self._compare_sets.update({list_path: set(file_elem_tuples)})
+            return
         absolute_list_paths = [
             list_path for list_path in self._config.list_file_paths if list_path.startswith("/")
         ]

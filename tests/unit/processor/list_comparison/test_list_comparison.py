@@ -209,14 +209,13 @@ class TestListComparison(BaseProcessorTestCase):
             ),
         )
         document = {"user": "Franz"}
-        expected = {"user_results": {"in_list": ["user_list.txt"]}}
+        expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
         rule_dict = {
             "filter": "user",
             "list_comparison": {
                 "source_fields": ["user"],
-                "target_field": "user",
+                "target_field": "user_results",
                 "list_file_paths": ["user_list.txt"],
-                "overwrite_target": True,
             },
             "description": "",
         }
