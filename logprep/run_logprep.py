@@ -115,11 +115,15 @@ def get_versions_string(args) -> str:
     padding = 25
     version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
     version_string += f"\n{'logprep version:'.ljust(padding)}{versions['version']}"
-    if args.config and os.path.isfile(args.config):
+    try:
         config = Configuration().create_from_yaml(args.config)
-        config_version = f"{config.get('version', 'unset')}, {os.path.abspath(args.config)}"
+    except FileNotFoundError:
+        config = Configuration()
+        config.path = args.config
+    if config:
+        config_version = f"{config.get('version', 'unset')}, {config.path}"
     else:
-        config_version = f"no configuration found in '{os.path.abspath(args.config)}'"
+        config_version = f"no configuration found in '{config.path}'"
     version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
     return version_string
 

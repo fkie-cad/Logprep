@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import responses
 from yaml import safe_load
 
 from logprep import run_logprep
@@ -112,7 +113,29 @@ class TestRunLogprep:
         expected_lines = (
             f"python version:          {sys.version.split()[0]}\n"
             f"logprep version:         {get_versions()['version']}\n"
-            f"configuration version:   {configuration['version']}, {os.path.abspath(config_path)}"
+            f"configuration version:   {configuration['version']}, {config_path}"
+        )
+        assert lines == expected_lines
+
+    @responses.activate
+    def test_version_arg_prints_with_http_config(self, capsys):
+        config_path = "quickstart/exampledata/config/pipeline.yml"
+        responses.add(
+            responses.GET,
+            "http://localhost:32000/quickstart/exampledata/config/pipeline.yml",
+            Path(config_path).read_text(encoding="utf8"),
+        )
+        sys.argv = ["logprep", "--version", f"http://localhost:32000/{config_path}"]
+        with pytest.raises(SystemExit):
+            run_logprep.main()
+        captured = capsys.readouterr()
+        lines = captured.out.strip()
+        with open(config_path, "r", encoding="utf-8") as file:
+            configuration = safe_load(file)
+        expected_lines = (
+            f"python version:          {sys.version.split()[0]}\n"
+            f"logprep version:         {get_versions()['version']}\n"
+            f"configuration version:   {configuration['version']}, http://localhost:32000/{config_path}"
         )
         assert lines == expected_lines
 
