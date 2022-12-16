@@ -18,7 +18,7 @@ input:
       - 127.0.0.1:9092
     topic: consumer3
     group: cgroup3
-    auto_commit: on
+    auto_commit: true
     session_timeout: 6000
     offset_reset_policy: smallest
     enable_auto_offset_store: true
