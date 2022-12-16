@@ -1,6 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import os
+from pathlib import Path
 import pytest
+import responses
 
 from logprep.processor.list_comparison.processor import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -195,3 +198,37 @@ class TestListComparison(BaseProcessorTestCase):
         )
         with pytest.raises(DuplicationError, match=match):
             self.object.process(document)
+
+    @responses.activate
+    def test_list_comparison_with_http_base_path_template_endpoint(self):
+        responses.add(
+            responses.GET,
+            "http://localhost/tests/testdata/user_list.txt?ref=bla",
+            Path(self.CONFIG.get("list_search_base_path") + "/../lists/user_list.txt").read_text(
+                encoding="utf8"
+            ),
+        )
+        document = {"user": "Franz"}
+        expected = {"user_results": {"in_list": ["user_list.txt"]}}
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user",
+                "list_file_paths": ["user_list.txt"],
+                "overwrite_target": True,
+            },
+            "description": "",
+        }
+        self.object._config.list_search_base_path = (
+            "http://${LOGPREP_TEST_TARGET}/${LOGPREP_LIST_SEARCH_BASE_PATH}/${LOGPREP_LIST}?ref=bla"
+        )
+        context = {
+            "LOGPREP_TEST_TARGET": "localhost",
+            "LOGPREP_LIST_SEARCH_BASE_PATH": "tests/testdata",
+        }
+        os.environ.update(context)
+        self._load_specific_rule(rule_dict)
+        self.object._init_rules_list_comparison()
+        self.object.process(document)
+        assert document == expected
