@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
-import os.path
 import sys
 from pathlib import Path
 from unittest import mock
@@ -18,7 +17,6 @@ from logprep.util.getter import GetterNotFoundError
 class TestRunLogprep:
     @mock.patch("logprep.run_logprep._run_logprep")
     def test_main_calls_run_logprep_with_quickstart_config(self, mock_run_logprep):
-        """ensures the quickstart config is valid"""
         sys.argv = [
             "logprep",
             "--disable-logging",
@@ -29,7 +27,6 @@ class TestRunLogprep:
 
     @mock.patch("logprep.util.schema_and_rule_checker.SchemaAndRuleChecker.validate_rules")
     def test_main_calls_validates_rules(self, mock_validate_rules):
-        """ensures rule validation is called"""
         sys.argv = [
             "logprep",
             "--disable-logging",
@@ -41,7 +38,6 @@ class TestRunLogprep:
         mock_validate_rules.assert_called()
 
     def test_uses_getter_to_get_config(self):
-        """ensures rule validation is called"""
         sys.argv = [
             "logprep",
             "--disable-logging",
@@ -52,7 +48,6 @@ class TestRunLogprep:
             run_logprep.main()
 
     def test_raises_getter_error_for_not_existing_protocol(self):
-        """ensures rule validation is called"""
         sys.argv = [
             "logprep",
             "--disable-logging",
@@ -64,8 +59,9 @@ class TestRunLogprep:
 
     @mock.patch("requests.get")
     def test_gets_config_from_https(self, mock_request):
-        """ensures rule validation is called"""
-        pipeline_config = Path("quickstart/exampledata/config/pipeline.yml").read_text()
+        pipeline_config = Path("quickstart/exampledata/config/pipeline.yml").read_text(
+            encoding="utf8"
+        )
         mock_request.return_value.text = pipeline_config
         sys.argv = [
             "logprep",
@@ -113,7 +109,7 @@ class TestRunLogprep:
         expected_lines = (
             f"python version:          {sys.version.split()[0]}\n"
             f"logprep version:         {get_versions()['version']}\n"
-            f"configuration version:   {configuration['version']}, {config_path}"
+            f"configuration version:   {configuration['version']}, file://{config_path}"
         )
         assert lines == expected_lines
 
@@ -126,6 +122,32 @@ class TestRunLogprep:
             Path(config_path).read_text(encoding="utf8"),
         )
         sys.argv = ["logprep", "--version", f"http://localhost:32000/{config_path}"]
+        with pytest.raises(SystemExit):
+            run_logprep.main()
+        captured = capsys.readouterr()
+        lines = captured.out.strip()
+        with open(config_path, "r", encoding="utf-8") as file:
+            configuration = safe_load(file)
+        expected_lines = (
+            f"python version:          {sys.version.split()[0]}\n"
+            f"logprep version:         {get_versions()['version']}\n"
+            f"configuration version:   {configuration['version']}, http://localhost:32000/{config_path}"
+        )
+        assert lines == expected_lines
+
+    @responses.activate
+    def test_version_arg_prints_with_http_config_without_exposing_secret_data(self, capsys):
+        config_path = "quickstart/exampledata/config/pipeline.yml"
+        responses.add(
+            responses.GET,
+            "http://localhost:32000/quickstart/exampledata/config/pipeline.yml",
+            Path(config_path).read_text(encoding="utf8"),
+        )
+        sys.argv = [
+            "logprep",
+            "--version",
+            f"http://username:password@localhost:32000/{config_path}",
+        ]
         with pytest.raises(SystemExit):
             run_logprep.main()
         captured = capsys.readouterr()

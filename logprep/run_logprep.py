@@ -3,7 +3,6 @@
 # pylint: disable=logging-fstring-interpolation
 import inspect
 import logging
-import os
 import sys
 from argparse import ArgumentParser
 from logging import getLogger, Logger, DEBUG, ERROR

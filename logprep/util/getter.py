@@ -10,6 +10,7 @@ from typing import Tuple
 
 import requests
 from requests.auth import HTTPBasicAuth
+from attrs import field, validators, define
 
 from logprep._version import get_versions
 from logprep.abc.getter import Getter
@@ -66,6 +67,7 @@ class GetterFactory:
         return matches.group("protocol"), matches.group("target")
 
 
+@define(kw_only=True)
 class FileGetter(Getter):
     """Get files (and only files) from a filesystem.
 
@@ -81,6 +83,7 @@ class FileGetter(Getter):
         return Path(self.target).read_text(encoding="utf8")
 
 
+@define(kw_only=True)
 class HttpGetter(Getter):
     """get files from a api or simple web server.
 
@@ -94,25 +97,29 @@ class HttpGetter(Getter):
 
     """
 
+    _username: str = field(validator=validators.instance_of(str), default="")
+    _password: str = field(validator=validators.instance_of(str), default="")
+
+    def __attrs_post_init__(self):
+        target = self.target
+        auth_match = re.match(r"^((?P<username>.+):(?P<password>.+)@)?(?P<target>.+)", target)
+        self.target = auth_match.group("target")
+        self._username = auth_match.group("username")
+        self._password = auth_match.group("password")
+
     def get(self) -> str:
         """gets the content from a http server via uri"""
         user_agent = f"Logprep version {get_versions().get('version')}"
         headers = {"User-Agent": user_agent}
         basic_auth = None
-        target = self.target
-
-        auth_match = re.match(r"^((?P<username>.+):(?P<password>.+)@)?(?P<target>.+)", target)
-        target = auth_match.group("target")
-        username = auth_match.group("username")
-        password = auth_match.group("password")
-
+        username, password = self._username, self._password
         if username == "oauth":
             headers.update({"Authorization": f"Bearer {password}"})
         if username is not None and username != "oauth":
             basic_auth = HTTPBasicAuth(username, password)
 
         resp = requests.get(
-            url=f"{self.protocol}://{target}",
+            url=f"{self.protocol}://{self.target}",
             timeout=5,
             allow_redirects=True,
             headers=headers,

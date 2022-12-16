@@ -105,7 +105,7 @@ class Configuration(dict):
         except ValueError:
             configuration = config_getter.get_yaml()
         config = Configuration()
-        config.path = path
+        config.path = f"{config_getter.protocol}://{config_getter.target}"
         config.update(configuration)
 
         return config
