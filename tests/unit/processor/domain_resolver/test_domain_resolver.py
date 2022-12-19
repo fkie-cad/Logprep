@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import responses
 from requests import Response
 
 from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
@@ -161,11 +162,9 @@ class TestDomainResolver(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    @mock.patch("requests.sessions.Session.get")
-    @mock.patch("os.path.exists", return_value=True)
-    @mock.patch("os.path.isfile", return_value=True)
+    @responses.activate
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
-    def test_resolves_with_tld_extract_tld_lists(self, _, __, ___, mock_get):
+    def test_resolves_with_tld_extract_tld_lists(self, _):
         response_content = """
 // at : https://en.wikipedia.org/wiki/.at
 // Confirmed by registry <it@nic.at> 2008-06-17
@@ -176,15 +175,12 @@ gv.at
 or.at
 sth.ac.at
         """
-        response = Response()
-        type(response).text = mock.PropertyMock(return_value=response_content)
-        type(response).status_code = mock.PropertyMock(return_value=200)
-        mock_get.return_value = response
+        responses.add(responses.GET, "http://does_not_matter", response_content)
         config = deepcopy(self.CONFIG)
-        config.update({"tld_lists": ["file://does_not_matter"]})
+        config.update({"tld_lists": ["http://does_not_matter"]})
         domain_resolver = Factory.create({"test instance": config}, self.logger)
-        document = {"url": "www.google.ac.at"}
-        expected = {"url": "www.google.ac.at", "resolved_ip": "1.2.3.4"}
+        document = {"url": "http://www.google.ac.at/some/text"}
+        expected = {"url": "http://www.google.ac.at/some/text", "resolved_ip": "1.2.3.4"}
         domain_resolver.process(document)
         assert document == expected
 

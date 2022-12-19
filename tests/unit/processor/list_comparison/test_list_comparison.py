@@ -1,10 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import os
-from pathlib import Path
+from copy import deepcopy
 import pytest
 import responses
 
+from logprep.factory import Factory
 from logprep.processor.list_comparison.processor import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -200,34 +200,34 @@ class TestListComparison(BaseProcessorTestCase):
             self.object.process(document)
 
     @responses.activate
-    def test_list_comparison_with_http_base_path_template_endpoint(self):
+    def test_list_comparison_loads_rule_with_http_template_in_list_search_base_path(self):
         responses.add(
             responses.GET,
-            "http://localhost/tests/testdata/user_list.txt?ref=bla",
-            Path(self.CONFIG.get("list_search_base_path") + "/../lists/user_list.txt").read_text(
-                encoding="utf8"
-            ),
+            "http://localhost/tests/testdata/bad_users.list?ref=bla",
+            """Franz
+Heinz
+Hans
+""",
         )
-        document = {"user": "Franz"}
-        expected = {"user": "Franz", "user_results": {"in_list": ["user_list.txt"]}}
         rule_dict = {
             "filter": "user",
             "list_comparison": {
                 "source_fields": ["user"],
                 "target_field": "user_results",
-                "list_file_paths": ["user_list.txt"],
+                "list_file_paths": ["bad_users.list"],
             },
             "description": "",
         }
-        self.object._config.list_search_base_path = (
-            "http://${LOGPREP_TEST_TARGET}/${LOGPREP_LIST_SEARCH_BASE_PATH}/${LOGPREP_LIST}?ref=bla"
-        )
-        context = {
-            "LOGPREP_TEST_TARGET": "localhost",
-            "LOGPREP_LIST_SEARCH_BASE_PATH": "tests/testdata",
+        config = {
+            "type": "list_comparison",
+            "specific_rules": [],
+            "generic_rules": [],
+            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
         }
-        os.environ.update(context)
-        self._load_specific_rule(rule_dict)
-        self.object._init_rules_list_comparison()
-        self.object.process(document)
-        assert document == expected
+        processor = Factory.create({"custom_lister": config}, self.logger)
+        rule = processor.rule_class._create_from_dict(rule_dict)
+        processor._specific_tree.add_rule(rule)
+        processor._init_rules_list_comparison()
+        assert processor._specific_rules[0].compare_sets == {
+            "bad_users.list": {"Franz", "Heinz", "Hans"}
+        }
