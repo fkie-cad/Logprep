@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import responses
 from requests.auth import HTTPBasicAuth
 from ruamel.yaml import YAML
 
@@ -31,18 +32,10 @@ class TestGetterFactory:
             ("my/file", "file", "my/file"),
             ("http://my/file", "http", "my/file"),
             ("https://my/file", "https", "my/file"),
-            ("http://user:password@my/file", "http", "user:password@my/file"),
-            ("https://user:password@my/file", "https", "user:password@my/file"),
-            (
-                "http://oauth:ajpf0q9vrfásdjlk__234d@my/file",
-                "http",
-                "oauth:ajpf0q9vrfásdjlk__234d@my/file",
-            ),
-            (
-                "https://oauth:ajpf0q9vrfásdjlk__234d@my/file",
-                "https",
-                "oauth:ajpf0q9vrfásdjlk__234d@my/file",
-            ),
+            ("http://user:password@my/file", "http", "my/file"),
+            ("https://user:password@my/file", "https", "my/file"),
+            ("http://oauth:ajpf0q9vrfásdjlk__234d@my/file", "http", "my/file"),
+            ("https://oauth:ajpf0q9vrfásdjlk__234d@my/file", "https", "my/file"),
         ],
     )
     def test_from_string_sets_protocol_and_target(
@@ -54,16 +47,22 @@ class TestGetterFactory:
 
     def test_getter_expands_from_environment(self):
         os.environ["PYTEST_TEST_TOKEN"] = "mytesttoken"
-        url = "https://oauth:${PYTEST_TEST_TOKEN}@the-web-target"
+        os.environ["PYTEST_TEST_TARGET"] = "the-web-target"
+        url = "https://oauth:${PYTEST_TEST_TOKEN}@${PYTEST_TEST_TARGET}"
         my_getter = GetterFactory.from_string(url)
-        assert my_getter.target == "oauth:mytesttoken@the-web-target"
+        assert my_getter._username == "oauth"
+        assert my_getter._password == "mytesttoken"
+        assert my_getter.target == "the-web-target"
 
     def test_getter_expands_not_set_environment_to_blank(self):
         if "PYTEST_TEST_TOKEN" in os.environ:
             os.environ.pop("PYTEST_TEST_TOKEN")
-        url = "https://oauth:${PYTEST_TEST_TOKEN}@the-web-target"
+        if "PYTEST_TEST_TARGET" in os.environ:
+            os.environ.pop("PYTEST_TEST_TARGET")
+        url = "https://oauth:${PYTEST_TEST_TOKEN}@randomtarget/${PYTEST_TEST_TARGET}"
         my_getter = GetterFactory.from_string(url)
-        assert my_getter.target == "oauth:@the-web-target"
+        assert my_getter._password == None
+        assert my_getter.target == "oauth:@randomtarget/"
 
 
 class TestFileGetter:
@@ -213,38 +212,35 @@ class TestHttpGetter:
         assert "input" in content
         assert "output" in content
 
+    @responses.activate
     def test_sends_logprep_version_in_user_agent(self):
-        http_getter = GetterFactory.from_string("https://the-target/file")
         resp_text = Path("tests/testdata/config/config.yml").read_text()
-        with mock.patch("requests.get") as mock_request_get:
-            mock_request_get.return_value.text = resp_text
-            http_getter.get()
-            logprep_version = get_versions().get("version")
-            mock_request_get.assert_called_with(
-                url="https://the-target/file",
-                timeout=5,
-                allow_redirects=True,
-                headers={"User-Agent": f"Logprep version {logprep_version}"},
-                auth=None,
-            )
+        logprep_version = get_versions().get("version")
+        responses.add(
+            responses.GET,
+            "https://the-target/file",
+            resp_text,
+            {"User-Agent": f"Logprep version {logprep_version}"},
+        )
+        http_getter = GetterFactory.from_string("https://the-target/file")
+        http_getter.get()
 
+    @responses.activate
     def test_provides_oauth_compliant_headers(self):
+        logprep_version = get_versions().get("version")
+        responses.add(
+            responses.GET,
+            "https://the.target.url/targetfile",
+            "",
+            {
+                "User-Agent": f"Logprep version {logprep_version}",
+                "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
+            },
+        )
         http_getter = GetterFactory.from_string(
             "https://oauth:ajhsdfpoweiurjdfs239487@the.target.url/targetfile"
         )
-        with mock.patch("requests.get") as mock_request_get:
-            http_getter.get()
-            logprep_version = get_versions().get("version")
-            mock_request_get.assert_called_with(
-                url="https://the.target.url/targetfile",
-                timeout=5,
-                allow_redirects=True,
-                headers={
-                    "User-Agent": f"Logprep version {logprep_version}",
-                    "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
-                },
-                auth=None,
-            )
+        http_getter.get()
 
     def test_provides_basic_authentication(self):
         http_getter = GetterFactory.from_string(
