@@ -61,9 +61,9 @@ class GeoipEnricher(Processor):
             self._logger.debug("start geoip database download...")
             db_path_file = Path(db_path.name)
             db_path_file.touch()
-            db_path_file.write_bytes(GetterFactory.from_string(str(db_path)).get_raw())
+            db_path_file.write_bytes(GetterFactory.from_string(str(self._config.db_path)).get_raw())
             self._logger.debug("finished geoip database download.")
-            self._config.db_path = db_path_file.absolute()
+            self._config.db_path = str(db_path_file.absolute())
 
     def _try_getting_geoip_data(self, ip_string):
         try:

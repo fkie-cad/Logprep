@@ -1,8 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-member
+import hashlib
+from pathlib import Path
 from unittest import mock
 
 import pytest
+import responses
 from geoip2.errors import AddressNotFoundError
 
 from logprep.processor.base.exceptions import DuplicationError
@@ -300,3 +303,18 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             },
         }
         assert document == expected_event
+
+    @responses.activate
+    def test_setup_downloads_geoip_database_if_not_exits(self):
+        geoip_database_path = "http://db-path-target/db_file.mmdb"
+        db_path_content = Path("/usr/bin/ls").read_bytes()
+        expected_checksum = hashlib.md5(db_path_content).hexdigest()
+        responses.add(responses.GET, geoip_database_path, db_path_content)
+        self.object._config.db_path = geoip_database_path
+        self.object.setup()
+        downloaded_file = Path("db_file.mmdb")
+        assert downloaded_file.exists()
+        downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()
+        assert expected_checksum == downloaded_checksum
+        # delete testfile
+        downloaded_file.unlink()
