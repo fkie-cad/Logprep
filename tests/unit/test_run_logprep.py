@@ -67,7 +67,7 @@ class TestRunLogprep:
             "logprep",
             "--disable-logging",
             "--validate-rules",
-            "https://does.not.exist/pipeline.yml",
+            "https://does.not.exits/pipline.yml",
         ]
         with pytest.raises(SystemExit, match="0"):
             run_logprep.main()
