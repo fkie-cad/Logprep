@@ -78,9 +78,9 @@ class FileGetter(Getter):
 
     """
 
-    def get(self) -> str:
-        """Opens file (with utf8 encoding) and returns its content."""
-        return Path(self.target).read_text(encoding="utf8")
+    def get_raw(self) -> bytearray:
+        """Opens file and returns its binary content."""
+        return Path(self.target).read_bytes()
 
 
 @define(kw_only=True)
@@ -109,7 +109,7 @@ class HttpGetter(Getter):
         self._username = auth_match.group("username")
         self._password = auth_match.group("password")
 
-    def get(self) -> str:
+    def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
         user_agent = f"Logprep version {get_versions().get('version')}"
         headers = {"User-Agent": user_agent}
@@ -134,5 +134,4 @@ class HttpGetter(Getter):
             headers=headers,
         )
         resp.raise_for_status()
-        content = resp.text
-        return content
+        return resp.content

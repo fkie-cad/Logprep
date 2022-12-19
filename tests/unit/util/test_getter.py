@@ -77,16 +77,23 @@ class TestFileGetter:
 
     def test_get_returns_content(self):
         file_getter = GetterFactory.from_string("/my/file")
-        with mock.patch("pathlib.Path.open", mock.mock_open(read_data="my content")):
+        with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")) as mock_open:
             content = file_getter.get()
             assert content == "my content"
+
+    def test_get_returns_binary_content(self):
+        file_getter = GetterFactory.from_string("/my/file")
+        with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")) as mock_open:
+            content = file_getter.get_raw()
+            mock_open.assert_called_with(mode="rb")
+            assert content == b"my content"
 
     @pytest.mark.parametrize(
         "method_name, input_content, expected_output",
         [
             (
                 "get_yaml",
-                """---
+                b"""---
 first_dict:
     key:
         - valid_list_element
@@ -96,7 +103,7 @@ first_dict:
             ),
             (
                 "get_yaml",
-                """---
+                b"""---
 first_dict:
     key:
         - valid_list_element
@@ -114,7 +121,7 @@ second_dict:
             ),
             (
                 "get_json",
-                """{
+                b"""{
                     "first_dict": {
                         "key": [
                             "valid_list_element",
@@ -127,7 +134,7 @@ second_dict:
             ),
             (
                 "get_json",
-                """{
+                b"""{
                     "first_dict": {
                         "key": [
                             "valid_list_element",
@@ -140,7 +147,7 @@ second_dict:
             ),
             (
                 "get_json",
-                """[{
+                b"""[{
                     "first_dict": {
                         "key": [
                             "valid_list_element",
@@ -164,7 +171,7 @@ second_dict:
             ),
             (
                 "get_jsonl",
-                """{"first_dict": {"key": ["valid_list_element","valid_list_element"]}}
+                b"""{"first_dict": {"key": ["valid_list_element","valid_list_element"]}}
                 {"second_dict": {"key": ["valid_list_element","valid_list_element"]}}
                 """,
                 [
@@ -191,24 +198,32 @@ class TestHttpGetter:
         http_getter = GetterFactory.from_string("https://testfile.json")
         assert isinstance(http_getter, HttpGetter)
 
+    @responses.activate
     def test_get_returns_json_parsable_from_plaintext(self):
         http_getter = GetterFactory.from_string(
             "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/unit/tree_config.json"
         )
         resp_text = Path("tests/testdata/unit/tree_config.json").read_text()
-        with mock.patch("requests.get") as mock_request_get:
-            mock_request_get.return_value.text = resp_text
-            content = json.loads(http_getter.get())
+        responses.add(
+            responses.GET,
+            "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/unit/tree_config.json",
+            resp_text,
+        )
+        content = http_getter.get_json()
         assert "priority_dict" in content
 
+    @responses.activate
     def test_get_returns_yaml_parsable_from_plaintext(self):
         http_getter = GetterFactory.from_string(
             "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/config/config.yml"
         )
         resp_text = Path("tests/testdata/config/config.yml").read_text()
-        with mock.patch("requests.get") as mock_request_get:
-            mock_request_get.return_value.text = resp_text
-            content = yaml.load(http_getter.get())
+        responses.add(
+            responses.GET,
+            "https://raw.githubusercontent.com/fkie-cad/Logprep/main/tests/testdata/config/config.yml",
+            resp_text,
+        )
+        content = http_getter.get_yaml()
         assert "pipeline" in content
         assert "input" in content
         assert "output" in content

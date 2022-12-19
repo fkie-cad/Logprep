@@ -52,8 +52,8 @@ class TestSelectiveExtractorRule:
                 },
             },
         }
-        read_lines = "test1\r\ntest2"
-        with mock.patch("pathlib.Path.read_text", return_value=read_lines):
+        read_lines = b"test1\r\ntest2"
+        with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
             rule = SelectiveExtractorRule._create_from_dict(rule_definition)
             extracted_field_list = rule.extracted_field_list
             assert rule._config.extract_from_file == "my/file"
@@ -194,8 +194,10 @@ class TestSelectiveExtractorRule:
                 .get("extract")
                 .get("extract_from_file")
             )
+            if read_lines is not None:
+                read_lines = read_lines.encode("utf8")
 
-            with mock.patch("pathlib.Path.read_text", return_value=read_lines):
+            with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
                 rule1 = SelectiveExtractorRule._create_from_dict(specific_rule_definition)
                 rule2 = SelectiveExtractorRule._create_from_dict(other_rule_definition)
                 assert (rule1 == rule2) == is_equal, testcase
@@ -345,7 +347,7 @@ class TestSelectiveExtractorRule:
                 with pytest.raises(raised, match=message):
                     _ = SelectiveExtractorRule._create_from_dict(rule_definition)
             else:
-                with mock.patch("pathlib.Path.read_text", return_value=""):
+                with mock.patch("pathlib.Path.read_bytes", return_value=b""):
                     extractor_rule = SelectiveExtractorRule._create_from_dict(rule_definition)
                     assert isinstance(extractor_rule, SelectiveExtractorRule)
 

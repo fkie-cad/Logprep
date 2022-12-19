@@ -40,8 +40,12 @@ class Getter(ABC):
                 parsed_events.append(event)
         return parsed_events
 
-    @abstractmethod
     def get(self) -> str:
+        """Opens file (with utf8 encoding) and returns its content."""
+        return self.get_raw().decode("utf8")
+
+    @abstractmethod
+    def get_raw(self) -> str:
         """Get the content.
 
         Returns
