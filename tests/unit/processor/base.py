@@ -10,6 +10,7 @@ from typing import Iterable
 from unittest import mock
 
 import pytest
+import responses
 import requests
 from ruamel.yaml import YAML
 
@@ -187,7 +188,10 @@ class BaseProcessorTestCase(ABC):
                 )
             getter_factory.assert_called()
 
+    @responses.activate
     def test_accepts_http_in_rules_config(self):
+        responses.add(responses.GET, "https://this.is.not.existent/bla.yml", mock.MagicMock())
+        responses.add(responses.GET, "http://does.not.matter", mock.MagicMock())
         myconfig = deepcopy(self.CONFIG)
         myconfig.update(
             {"specific_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
@@ -195,10 +199,8 @@ class BaseProcessorTestCase(ABC):
         myconfig.update(
             {"generic_rules": ["http://does.not.matter", "https://this.is.not.existent/bla.yml"]}
         )
-        with mock.patch("requests.get") as mock_request_get:
-            with pytest.raises(TypeError, match="not .*MagicMock.*"):
-                Factory.create({"http_rule_processor": myconfig}, self.logger)
-                mock_request_get.assert_called()
+        with pytest.raises(TypeError, match="not .*MagicMock.*"):
+            Factory.create({"http_rule_processor": myconfig}, self.logger)
 
     def test_no_redundant_rules_are_added_to_rule_tree(self):
         """
@@ -329,23 +331,21 @@ class BaseProcessorTestCase(ABC):
         assert self.object.metrics.mean_processing_time_per_event > 0
         assert self.object.metrics._mean_processing_time_sample_counter == 2
 
+    @responses.activate
     def test_accepts_tree_config_from_http(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
-        with mock.patch("requests.get") as mock_request_get:
-            mock_request_get.return_value.text = tree_config
-            processor = Factory.create({"test instance": config}, self.logger)
-            assert (
-                processor._specific_tree._config_path
-                == "http://does.not.matter.bla/tree_config.yml"
-            )
-            tree_config = json.loads(tree_config)
-            assert processor._specific_tree.priority_dict == tree_config.get("priority_dict")
+        responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
+        processor = Factory.create({"test instance": config}, self.logger)
+        assert processor._specific_tree._config_path == "http://does.not.matter.bla/tree_config.yml"
+        tree_config = json.loads(tree_config)
+        assert processor._specific_tree.priority_dict == tree_config.get("priority_dict")
 
+    @responses.activate
     def test_raises_http_error(self):
         config = deepcopy(self.CONFIG)
         config.update({"tree_config": "http://does.not.matter.bla/tree_config.yml"})
-        with mock.patch("requests.get", side_effect=requests.HTTPError()):
-            with pytest.raises(requests.HTTPError):
-                Factory.create({"test instance": config}, self.logger)
+        responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
+        with pytest.raises(requests.HTTPError):
+            Factory.create({"test instance": config}, self.logger)

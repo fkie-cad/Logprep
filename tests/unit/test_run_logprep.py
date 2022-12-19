@@ -57,12 +57,12 @@ class TestRunLogprep:
         with pytest.raises(GetterNotFoundError, match="No getter for protocol 'almighty_protocol'"):
             run_logprep.main()
 
-    @mock.patch("requests.get")
-    def test_gets_config_from_https(self, mock_request):
+    @responses.activate
+    def test_gets_config_from_https(self):
         pipeline_config = Path("quickstart/exampledata/config/pipeline.yml").read_text(
             encoding="utf8"
         )
-        mock_request.return_value.text = pipeline_config
+        responses.add(responses.GET, "https://does.not.exits/pipline.yml", pipeline_config)
         sys.argv = [
             "logprep",
             "--disable-logging",
