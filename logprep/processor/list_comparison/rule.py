@@ -36,6 +36,7 @@ target field :code:`List_comparison.example`.
 
 """
 import os.path
+from string import Template
 import warnings
 from typing import List, Optional
 
@@ -62,7 +63,9 @@ class ListComparisonRule(FieldManagerRule):
         """List of files. For string format see :ref:`getters`."""
         list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
         """Base Path from where to find relative files from :code:`list_file_paths`.
-        For string format see :ref:`getters`. (Optional)"""
+        You can also pass a template with keys from environment,
+        e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
+        will be filled by this processor. """
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)
@@ -78,6 +81,16 @@ class ListComparisonRule(FieldManagerRule):
     def init_list_comparison(self, list_search_base_path: Optional[str] = None):
         """init method for list_comparision lists"""
         list_search_base_path = self._get_list_search_base_path(list_search_base_path)
+        if list_search_base_path.startswith("http"):
+            for list_path in self._config.list_file_paths:
+                list_search_base_path_resolved = Template(list_search_base_path).substitute(
+                    {**os.environ, **{"LOGPREP_LIST": list_path}}
+                )
+                content = GetterFactory.from_string(list_search_base_path_resolved).get()
+                compare_elements = content.splitlines()
+                file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
+                self._compare_sets.update({list_path: set(file_elem_tuples)})
+            return
         absolute_list_paths = [
             list_path for list_path in self._config.list_file_paths if list_path.startswith("/")
         ]
@@ -92,7 +105,7 @@ class ListComparisonRule(FieldManagerRule):
         for list_path in list_paths:
             content = GetterFactory.from_string(list_path).get()
             compare_elements = content.splitlines()
-            file_elem_tuples = [elem for elem in compare_elements if not elem.startswith("#")]
+            file_elem_tuples = (elem for elem in compare_elements if not elem.startswith("#"))
             filename = os.path.basename(list_path)
             self._compare_sets.update({filename: set(file_elem_tuples)})
 

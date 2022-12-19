@@ -1,7 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+from copy import deepcopy
 import pytest
+import responses
 
+from logprep.factory import Factory
 from logprep.processor.list_comparison.processor import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -195,3 +198,36 @@ class TestListComparison(BaseProcessorTestCase):
         )
         with pytest.raises(DuplicationError, match=match):
             self.object.process(document)
+
+    @responses.activate
+    def test_list_comparison_loads_rule_with_http_template_in_list_search_base_path(self):
+        responses.add(
+            responses.GET,
+            "http://localhost/tests/testdata/bad_users.list?ref=bla",
+            """Franz
+Heinz
+Hans
+""",
+        )
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "user_results",
+                "list_file_paths": ["bad_users.list"],
+            },
+            "description": "",
+        }
+        config = {
+            "type": "list_comparison",
+            "specific_rules": [],
+            "generic_rules": [],
+            "list_search_base_path": "http://localhost/tests/testdata/${LOGPREP_LIST}?ref=bla",
+        }
+        processor = Factory.create({"custom_lister": config}, self.logger)
+        rule = processor.rule_class._create_from_dict(rule_dict)
+        processor._specific_tree.add_rule(rule)
+        processor._init_rules_list_comparison()
+        assert processor._specific_rules[0].compare_sets == {
+            "bad_users.list": {"Franz", "Heinz", "Hans"}
+        }
