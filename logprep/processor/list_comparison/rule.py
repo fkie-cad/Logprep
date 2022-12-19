@@ -63,7 +63,9 @@ class ListComparisonRule(FieldManagerRule):
         """List of files. For string format see :ref:`getters`."""
         list_search_base_path: str = field(validator=validators.instance_of(str), factory=str)
         """Base Path from where to find relative files from :code:`list_file_paths`.
-        For string format see :ref:`getters`. (Optional)"""
+        For string format see :ref:`getters`. You can pass a template with keys from environment,
+        like :code:`${<your environemnt variable>}`. The special key :code:`${LOGPREP_LIST}`
+        will be filled by this processor. (Optional)"""
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)
