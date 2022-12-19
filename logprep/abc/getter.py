@@ -17,6 +17,10 @@ class Getter(ABC):
     target: str = field(validator=validators.instance_of(str))
     """The target which holds the content to return by get method."""
 
+    def get(self) -> str:
+        """calls the get_raw method and returns the decoded content"""
+        return self.get_raw().decode("utf8")
+
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""
         raw = self.get()
@@ -39,10 +43,6 @@ class Getter(ABC):
                 event = json.loads(json_string)
                 parsed_events.append(event)
         return parsed_events
-
-    def get(self) -> str:
-        """Opens file (with utf8 encoding) and returns its content."""
-        return self.get_raw().decode("utf8")
 
     @abstractmethod
     def get_raw(self) -> str:
