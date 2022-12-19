@@ -21,6 +21,7 @@
 ### Improvements
 
 * Add support for python `3.10` and `3.11`
+* Add option to submit a template with `list_search_base_path` config parameter in `list_comparison` processor
 
 ### Bugfixes
 
