@@ -82,6 +82,8 @@ class IncalidMetricsConfigurationError(InvalidConfigurationError):
 class Configuration(dict):
     """Used to create and verify a configuration dict parsed from a YAML file."""
 
+    path: str
+
     @staticmethod
     def create_from_yaml(path: str) -> "Configuration":
         """Create configuration from a YAML file.
@@ -97,12 +99,13 @@ class Configuration(dict):
             Configuration object based on dictionary.
 
         """
-        content = GetterFactory.from_string(path).get()
+        config_getter = GetterFactory.from_string(path)
         try:
-            configuration = json.loads(content)
+            configuration = config_getter.get_json()
         except ValueError:
-            configuration = safe_load(content)
+            configuration = config_getter.get_yaml()
         config = Configuration()
+        config.path = f"{config_getter.protocol}://{config_getter.target}"
         config.update(configuration)
 
         return config

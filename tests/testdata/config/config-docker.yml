@@ -17,7 +17,7 @@ input:
       - 172.17.0.2:9092
     topic: wineventlog_raw
     group: cgroup
-    auto_commit: on
+    auto_commit: true
     session_timeout: 6000
     offset_reset_policy: smallest
     enable_auto_offset_store: false

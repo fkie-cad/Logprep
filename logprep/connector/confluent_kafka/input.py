@@ -22,7 +22,7 @@ Example
         bootstrapservers: [127.0.0.1:9092]
         topic: consumer
         group: cgroup
-        auto_commit: on
+        auto_commit: true
         session_timeout: 6000
         offset_reset_policy: smallest
 """

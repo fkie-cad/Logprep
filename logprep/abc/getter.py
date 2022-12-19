@@ -21,6 +21,8 @@ class Getter(ABC):
         """gets and parses the raw content to yaml"""
         raw = self.get()
         parsed_yaml = list(yaml.load_all(raw))
+        if not parsed_yaml:
+            return {}
         if len(parsed_yaml) > 1:
             return parsed_yaml
         return parsed_yaml.pop()
