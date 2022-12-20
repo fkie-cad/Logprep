@@ -18,8 +18,9 @@ Example
 """
 from functools import cached_property
 from ipaddress import ip_address
+from pathlib import Path
 
-from attr import define, field
+from attr import define, field, validators
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
@@ -27,7 +28,7 @@ from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule, GEOIP_DATA_STUBS
 from logprep.util.helper import add_field_to, get_dotted_field_value
-from logprep.util.validators import url_validator
+from logprep.util.getter import GetterFactory
 
 
 class GeoipEnricher(Processor):
@@ -37,9 +38,11 @@ class GeoipEnricher(Processor):
     class Config(Processor.Config):
         """geoip_enricher config"""
 
-        db_path: str = field(validator=url_validator)
+        db_path: str = field(validator=validators.instance_of(str))
         """Path to a `Geo2Lite` city database by `Maxmind` in binary format.
-            This must be downloaded separately.
+            This must be provided separately.
+            The file will be downloaded or copied and cached.
+            For valid URI formats see :ref:`getters`
             This product includes GeoLite2 data created by MaxMind, available from
             https://www.maxmind.com."""
 
@@ -50,6 +53,17 @@ class GeoipEnricher(Processor):
     @cached_property
     def _city_db(self):
         return database.Reader(self._config.db_path)
+
+    def setup(self):
+        super().setup()
+        db_path = Path(self._config.db_path)
+        if not db_path.exists():
+            self._logger.debug("start geoip database download...")
+            db_path_file = Path(db_path.name)
+            db_path_file.touch()
+            db_path_file.write_bytes(GetterFactory.from_string(str(self._config.db_path)).get_raw())
+            self._logger.debug("finished geoip database download.")
+            self._config.db_path = str(db_path_file.absolute())
 
     def _try_getting_geoip_data(self, ip_string):
         try:
