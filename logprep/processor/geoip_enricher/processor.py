@@ -19,6 +19,7 @@ Example
 from functools import cached_property
 from ipaddress import ip_address
 from pathlib import Path
+from multiprocessing import current_process
 
 from attr import define, field, validators
 from geoip2 import database
@@ -59,7 +60,7 @@ class GeoipEnricher(Processor):
         db_path = Path(self._config.db_path)
         if not db_path.exists():
             self._logger.debug("start geoip database download...")
-            db_path_file = Path(db_path.name)
+            db_path_file = Path(f"{current_process().name}-{self.name}.mmdb")
             db_path_file.touch()
             db_path_file.write_bytes(GetterFactory.from_string(str(self._config.db_path)).get_raw())
             self._logger.debug("finished geoip database download.")
