@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from string import Template
 from typing import Tuple
-
+from urllib.parse import urlparse
 import requests
 from requests.auth import HTTPBasicAuth
 from attrs import field, validators, define
@@ -97,6 +97,8 @@ class HttpGetter(Getter):
 
     """
 
+    _sessions: dict = {}
+
     _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
 
@@ -117,13 +119,19 @@ class HttpGetter(Getter):
             headers.update({"Authorization": f"Bearer {password}"})
         if username is not None and username != "oauth":
             basic_auth = HTTPBasicAuth(username, password)
-
-        resp = requests.get(
-            url=f"{self.protocol}://{self.target}",
+        url = f"{self.protocol}://{self.target}"
+        domain = urlparse(url).netloc
+        if domain not in self._sessions:
+            domain_session = requests.Session()
+            self._sessions.update({domain: domain_session})
+        session = self._sessions.get(domain)
+        if basic_auth:
+            session.auth = basic_auth
+        resp = session.get(
+            url=url,
             timeout=5,
             allow_redirects=True,
             headers=headers,
-            auth=basic_auth,
         )
         resp.raise_for_status()
         content = resp.text

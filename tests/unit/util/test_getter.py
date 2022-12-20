@@ -2,6 +2,7 @@
 # pylint: disable=no-self-use
 # pylint: disable=line-too-long
 # pylint: disable=unspecified-encoding
+# pylint: disable=protected-access
 import json
 import os
 from pathlib import Path
@@ -242,20 +243,16 @@ class TestHttpGetter:
         )
         http_getter.get()
 
+    @responses.activate
     def test_provides_basic_authentication(self):
+        responses.add(
+            responses.GET,
+            "https://the.target.url/targetfile",
+        )
         http_getter = GetterFactory.from_string(
             "https://myusername:mypassword@the.target.url/targetfile"
         )
-        with mock.patch("requests.get") as mock_request_get:
-            http_getter.get()
-            logprep_version = get_versions().get("version")
-            auth = HTTPBasicAuth("myusername", "mypassword")
-            mock_request_get.assert_called_with(
-                url="https://the.target.url/targetfile",
-                timeout=5,
-                allow_redirects=True,
-                headers={
-                    "User-Agent": f"Logprep version {logprep_version}",
-                },
-                auth=auth,
-            )
+        http_getter.get()
+        assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
+            "myusername", "mypassword"
+        )
