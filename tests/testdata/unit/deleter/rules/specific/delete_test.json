@@ -1,7 +1,9 @@
 [
     {
         "filter": "test",
-        "delete": true,
+        "deleter": {
+            "delete": true
+        },
         "description": "some text"
     }
 ]

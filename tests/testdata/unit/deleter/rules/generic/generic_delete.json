@@ -1,12 +1,16 @@
 [
     {
         "filter": "delete_event",
-        "delete": true,
+        "deleter": {
+            "delete": true
+        },
         "description": "some text"
     },
     {
         "filter": "not_needed_message",
-        "delete": true,
+        "deleter": {
+            "delete": true
+        },
         "description": "some text"
     }
 ]

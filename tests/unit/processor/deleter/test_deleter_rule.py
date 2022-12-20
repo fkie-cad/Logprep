@@ -12,7 +12,7 @@ from logprep.processor.deleter.rule import DeleterRule
 def fixture_specific_rule_definition():
     return {
         "filter": "test",
-        "delete": True,
+        "deleter": {"delete": True},
         "description": "my reference rule",
     }
 
@@ -23,22 +23,34 @@ class TestDeleterRule:
         [
             (
                 "Should be equal cause the same",
-                {"filter": "test", "delete": True, "description": "my reference rule"},
+                {"filter": "test", "deleter": {"delete": True}, "description": "my reference rule"},
                 True,
             ),
             (
                 "Should be not equal cause of other filter",
-                {"filter": "other_filter", "delete": True, "description": "my reference rule"},
+                {
+                    "filter": "other_filter",
+                    "deleter": {"delete": True},
+                    "description": "my reference rule",
+                },
                 False,
             ),
             (
                 "Should be not equal cause of other delete bool",
-                {"filter": "test", "delete": False, "description": "my reference rule"},
+                {
+                    "filter": "test",
+                    "deleter": {"delete": False},
+                    "description": "my reference rule",
+                },
                 False,
             ),
             (
                 "Should be not equal cause other filter and other delete bool",
-                {"filter": "other_filter", "delete": False, "description": "my reference rule"},
+                {
+                    "filter": "other_filter",
+                    "deleter": {"delete": False},
+                    "description": "my reference rule",
+                },
                 False,
             ),
         ],
@@ -61,12 +73,16 @@ class TestDeleterRule:
         "rule_definition, raised, message",
         [
             (
-                {"filter": "test", "delete": True, "description": "my reference rule"},
+                {"filter": "test", "deleter": {"delete": True}, "description": "my reference rule"},
                 None,
                 "valid rule",
             ),
             (
-                {"filter": "test", "delete": "yes", "description": "my reference rule"},
+                {
+                    "filter": "test",
+                    "deleter": {"delete": "yes"},
+                    "description": "my reference rule",
+                },
                 TypeError,
                 "'delete' must be <class 'bool'>",
             ),
