@@ -65,7 +65,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def test_rule_has_pseudonymize_field_and_rule_creation_succeeds(self):
         rule_dict = {
             "filter": "event_id: 1234",
-            "pseudonymize": {"something": "RE_WHOLE_FIELD"},
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         }
 
@@ -76,7 +76,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         rule_dict = {
             "filter": "event_id: 1234",
-            "pseudonymize": {"something": "RE_WHOLE_FIELD"},
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         }
 
@@ -108,7 +108,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         rule_dict = {
             "filter": "event_id: 1234",
-            "pseudonymize": {"something": "RE_WHOLE_FIELD"},
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         }
 
@@ -144,7 +144,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         rule_dict = {
             "filter": "event_id: 1234",
-            "pseudonymize": {"something": "RE_WHOLE_FIELD"},
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         }
 
@@ -159,7 +159,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         rule_dict = {
             "filter": "event_id: 1234",
-            "pseudonymize": {"something": "RE_WHOLE_FIELD"},
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         }
 
@@ -179,7 +179,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         rule_dict = {
             "filter": "event_id: 1234",
-            "pseudonymize": {"something": "RE_WHOLE_FIELD"},
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
             "description": "description content irrelevant for these tests",
         }
 
@@ -216,9 +216,11 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
         rule_dict = {
             "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
-            "pseudonymize": {
-                "winlog.event_data.param1": "RE_WHOLE_FIELD",
-                "winlog.event_data.param2": "RE_WHOLE_FIELD",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
             },
             "description": "description content irrelevant for these tests",
         }
@@ -563,7 +565,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
         rule = {
             "filter": "filter_this: does_not_matter",
-            "pseudonymize": {"pseudo_this": regex_pattern},
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": regex_pattern}},
             "url_fields": ["do_not_pseudo_this"],
         }
         self.regex_mapping = CAP_GROUP_REGEX_MAPPING
@@ -586,11 +588,13 @@ class TestPseudonymizer(BaseProcessorTestCase):
         }
         rule = {
             "filter": "filter_this: does_not_matter",
-            "pseudonymize": {
-                "pseudo_this": regex_pattern,
-                "and_pseudo_this": regex_pattern,
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                    "and_pseudo_this": regex_pattern,
+                },
+                "url_fields": ["pseudo_this", "and_pseudo_this"],
             },
-            "url_fields": ["pseudo_this", "and_pseudo_this"],
         }
         self._load_specific_rule(rule)
         self.object.process(event)
@@ -614,8 +618,10 @@ class TestPseudonymizer(BaseProcessorTestCase):
         event = {"filter_this": "does_not_matter", "pseudo_this": url}
         rule = {
             "filter": "filter_this: does_not_matter",
-            "pseudonymize": {"pseudo_this": regex_pattern},
-            "url_fields": ["pseudo_this"],
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": regex_pattern},
+                "url_fields": ["pseudo_this"],
+            },
         }
         self.regex_mapping = CAP_GROUP_REGEX_MAPPING
         self._load_specific_rule(rule)
@@ -627,7 +633,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         event = {"filter_this": "does_not_matter", "pseudo_this": source_field}
         rule = {
             "filter": "filter_this: does_not_matter",
-            "pseudonymize": {"pseudo_this": regex_pattern},
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": regex_pattern}},
         }
         self.regex_mapping = CAP_GROUP_REGEX_MAPPING
         self._load_specific_rule(rule)
@@ -638,8 +644,10 @@ class TestPseudonymizer(BaseProcessorTestCase):
         event = {"filter_this": "does_not_matter", "pseudo_this": source_field}
         rule = {
             "filter": "filter_this: does_not_matter",
-            "pseudonymize": {"pseudo_this": regex_pattern},
-            "url_fields": ["pseudo_this"],
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": regex_pattern},
+                "url_fields": ["pseudo_this"],
+            },
         }
         self.regex_mapping = CAP_GROUP_REGEX_MAPPING
         self._load_specific_rule(rule)

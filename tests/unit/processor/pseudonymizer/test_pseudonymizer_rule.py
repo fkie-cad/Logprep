@@ -27,9 +27,11 @@ class TestPseudonomyzerRule:
                 "equal cause the same",
                 {
                     "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
-                    "pseudonymize": {
-                        "winlog.event_data.param1": "RE_WHOLE_FIELD",
-                        "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                    "pseudonymizer": {
+                        "pseudonyms": {
+                            "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                            "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                        }
                     },
                     "description": "insert a description text",
                 },
@@ -39,9 +41,11 @@ class TestPseudonomyzerRule:
                 "not equal cause other filter",
                 {
                     "filter": "otherfilter",
-                    "pseudonymize": {
-                        "winlog.event_data.param1": "RE_WHOLE_FIELD",
-                        "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                    "pseudonymizer": {
+                        "pseudonyms": {
+                            "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                            "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                        }
                     },
                     "description": "insert a description text",
                 },
@@ -51,9 +55,11 @@ class TestPseudonomyzerRule:
                 "not equal cause other pseudonyms",
                 {
                     "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
-                    "pseudonymize": {
-                        "winlog.event_data.param1": "RE_WHOLE_FIELD",
-                        "winlog.event_data.paramother": "RE_WHOLE_FIELD",
+                    "pseudonymizer": {
+                        "pseudonyms": {
+                            "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                            "winlog.event_data.paramother": "RE_WHOLE_FIELD",
+                        }
                     },
                     "description": "insert a description text",
                 },

@@ -1,7 +1,11 @@
-[{
-  "filter": "client.ip",
-  "pseudonymize": {
-    "client.ip": "RE_WHOLE_FIELD"
-  },
-  "description": "insert a description text"
-}]
+[
+  {
+    "filter": "client.ip",
+    "pseudonymizer": {
+      "pseudonyms": {
+        "client.ip": "RE_WHOLE_FIELD"
+      }
+    },
+    "description": "insert a description text"
+  }
+]

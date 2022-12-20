@@ -1,7 +1,6 @@
 """Abstract module for processors"""
 import copy
 from abc import abstractmethod
-from functools import partial
 from logging import DEBUG, Logger
 from multiprocessing import current_process
 from pathlib import Path
@@ -18,7 +17,6 @@ from logprep.util import getter
 from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.util.validators import min_len_validator
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover

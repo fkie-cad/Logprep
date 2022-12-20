@@ -72,6 +72,10 @@ class RuleTree:
         else:
             self._root = Node("root")
 
+    def reset(self):
+        """resets the rule_tree"""
+        self._root = Node("root")
+
     def _setup(self):
         """Basic setup of rule tree.
 

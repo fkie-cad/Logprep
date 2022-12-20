@@ -1,8 +1,12 @@
-[{
-  "filter": "winlog.event_id: 1234 AND winlog.provider_name: \"Test456\"",
-  "pseudonymize": {
-    "winlog.event_data.param1": "RE_WHOLE_FIELD",
-    "winlog.event_data.param2": "RE_WHOLE_FIELD"
-  },
-  "description": "..."
-}]
+[
+  {
+    "filter": "winlog.event_id: 1234 AND winlog.provider_name: \"Test456\"",
+    "pseudonymizer": {
+      "pseudonyms": {
+        "winlog.event_data.param1": "RE_WHOLE_FIELD",
+        "winlog.event_data.param2": "RE_WHOLE_FIELD"
+      }
+    },
+    "description": "..."
+  }
+]

@@ -1,7 +1,11 @@
-[{
-  "filter": "user.name",
-  "pseudonymize": {
-    "user.name": "RE_WHOLE_FIELD"
-  },
-  "description": "insert a description text"
-}]
+[
+  {
+    "filter": "user.name",
+    "pseudonymizer": {
+      "pseudonyms": {
+        "user.name": "RE_WHOLE_FIELD"
+      }
+    },
+    "description": "insert a description text"
+  }
+]
