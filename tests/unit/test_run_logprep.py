@@ -62,7 +62,7 @@ class TestRunLogprep:
         pipeline_config = Path("quickstart/exampledata/config/pipeline.yml").read_text(
             encoding="utf8"
         )
-        responses.add(responses.GET, "https://does.not.exits/pipline.yml", pipeline_config)
+        responses.add(responses.GET, "https://does.not.exist/pipeline.yml", pipeline_config)
         sys.argv = [
             "logprep",
             "--disable-logging",
