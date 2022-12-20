@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-# pylint: disable=no-self-use
 from typing import Hashable
 from unittest import mock
 import pytest

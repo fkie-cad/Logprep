@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
 from typing import Hashable
-import warnings
 import pytest
 
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
@@ -186,9 +185,9 @@ class TestDatetimeExtractorRule:
             },
             "description": "",
         }
-        with pytest.deprecated_call() as w:
+        with pytest.deprecated_call() as deprecations:
             DatetimeExtractorRule._create_from_dict(rule_dict)
-            assert len(w.list) == 2
-            matches = [warning.message.args[0] for warning in w.list]
+            assert len(deprecations.list) == 2
+            matches = [warning.message.args[0] for warning in deprecations.list]
             assert "Use datetime_extractor.target_field instead" in matches[1]
             assert "Use datetime_extractor.source_fields instead" in matches[0]
