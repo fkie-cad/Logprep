@@ -28,6 +28,8 @@ Example
 """
 import ipaddress
 from functools import cached_property
+from multiprocessing import current_process
+from pathlib import Path
 from typing import Optional
 
 from attr import define, field, validators
@@ -36,6 +38,7 @@ from tldextract import TLDExtract
 from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
+from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
@@ -70,6 +73,16 @@ class DomainLabelExtractor(Processor):
         else:
             _tld_extractor = TLDExtract()
         return _tld_extractor
+
+    def setup(self):
+        super().setup()
+        downloaded_tld_lists_paths = []
+        for index, tld_list in enumerate(self._config.tld_lists):
+            list_path = Path(f"{current_process().name}-{self.name}-tldlist-{index}.dat")
+            list_path.touch()
+            list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
+            downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
+        self._config.tld_lists = downloaded_tld_lists_paths
 
     def _apply_rules(self, event, rule: DomainLabelExtractorRule):
         """
