@@ -1,9 +1,15 @@
-[{
-  "filter": "irrelevant",
-  "list_comparison": {
-    "check_field": "user2",
-    "output_field": "user_results",
-    "list_file_paths": ["../lists/user_list.txt"]
-  },
-  "description": ""
-}]
+[
+  {
+    "filter": "irrelevant",
+    "list_comparison": {
+      "source_fields": [
+        "user2"
+      ],
+      "target_field": "user_results",
+      "list_file_paths": [
+        "../lists/user_list.txt"
+      ]
+    },
+    "description": ""
+  }
+]

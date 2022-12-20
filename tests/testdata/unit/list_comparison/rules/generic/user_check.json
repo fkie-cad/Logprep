@@ -1,63 +1,82 @@
-[{
-  "filter": "user",
-  "list_comparison": {
-    "check_field": "user",
-    "output_field": "user_results",
-    "list_file_paths": ["../lists/user_list.txt"]
+[
+  {
+    "filter": "user",
+    "list_comparison": {
+      "source_fields": [
+        "user"
+      ],
+      "target_field": "user_results",
+      "list_file_paths": [
+        "../lists/user_list.txt"
+      ]
+    },
+    "description": ""
   },
-  "description": ""
-},{
-  "filter": "system AND user",
-  "list_comparison": {
-    "check_field": "system",
-    "output_field": "user_and_system_results",
-    "list_file_paths": [
-      "../lists/user_list.txt",
-      "../lists/system_list.txt"
-    ]
+  {
+    "filter": "system AND user",
+    "list_comparison": {
+      "source_fields": [
+        "system"
+      ],
+      "target_field": "user_and_system_results",
+      "list_file_paths": [
+        "../lists/user_list.txt",
+        "../lists/system_list.txt"
+      ]
+    },
+    "description": ""
   },
-  "description": ""
-},{
-  "filter": "channel",
-  "list_comparison": {
-    "check_field": "channel.type",
-    "output_field": "channel_results",
-    "list_file_paths": [
-      "../lists/user_list.txt",
-      "../lists/system_list.txt"
-    ]
+  {
+    "filter": "channel",
+    "list_comparison": {
+      "source_fields": [
+        "channel.type"
+      ],
+      "target_field": "channel_results",
+      "list_file_paths": [
+        "../lists/user_list.txt",
+        "../lists/system_list.txt"
+      ]
+    },
+    "description": ""
   },
-  "description": ""
-},{
-  "filter": "dot_channel",
-  "list_comparison": {
-    "check_field": "user",
-    "output_field": "dotted.user_results",
-    "list_file_paths": [
-      "../lists/user_list.txt"
-    ]
+  {
+    "filter": "dot_channel",
+    "list_comparison": {
+      "source_fields": [
+        "user"
+      ],
+      "target_field": "dotted.user_results",
+      "list_file_paths": [
+        "../lists/user_list.txt"
+      ]
+    },
+    "description": ""
   },
-  "description": ""
-},{
-  "filter": "dot_channel",
-  "list_comparison": {
-    "check_field": "user",
-    "output_field": "more.than.dotted.user_results",
-    "list_file_paths": [
-      "../lists/user_list.txt"
-    ]
+  {
+    "filter": "dot_channel",
+    "list_comparison": {
+      "source_fields": [
+        "user"
+      ],
+      "target_field": "more.than.dotted.user_results",
+      "list_file_paths": [
+        "../lists/user_list.txt"
+      ]
+    },
+    "description": ""
   },
-  "description": ""
-},
-{
-  "filter": "event_id",
-  "list_comparison": {
-    "check_field": "event_id",
-    "output_field": "more.than.dotted.user_results",
-    "list_file_paths": [
-      "../lists/user_list.txt"
-    ]
-  },
-  "description": ""
-}
+  {
+    "filter": "event_id",
+    "list_comparison": {
+      "source_fields": [
+        "event_id"
+      ],
+      "target_field": "more.than.dotted.user_results",
+      "list_file_paths": [
+        "../lists/user_list.txt"
+      ]
+    },
+    "description": ""
+  }
 ]

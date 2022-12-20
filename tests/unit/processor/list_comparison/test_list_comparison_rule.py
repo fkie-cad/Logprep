@@ -11,8 +11,8 @@ def fixture_specific_rule_definition():
     return {
         "filter": "user",
         "list_comparison": {
-            "check_field": "user",
-            "output_field": "user_results",
+            "source_fields": ["user"],
+            "target_field": "user_results",
             "list_file_paths": ["../lists/user_list.txt"],
         },
         "description": "",
@@ -28,8 +28,8 @@ class TestListComparisonRule:
                 {
                     "filter": "user",
                     "list_comparison": {
-                        "check_field": "user",
-                        "output_field": "user_results",
+                        "source_fields": ["user"],
+                        "target_field": "user_results",
                         "list_file_paths": ["../lists/user_list.txt"],
                     },
                 },
@@ -40,32 +40,32 @@ class TestListComparisonRule:
                 {
                     "filter": "other_user",
                     "list_comparison": {
-                        "check_field": "user",
-                        "output_field": "user_results",
+                        "source_fields": ["user"],
+                        "target_field": "user_results",
                         "list_file_paths": ["../lists/user_list.txt"],
                     },
                 },
                 False,
             ),
             (
-                "Should be not equal cause of other check_field",
+                "Should be not equal cause of other source_fields",
                 {
                     "filter": "user",
                     "list_comparison": {
-                        "check_field": "other_user",
-                        "output_field": "user_results",
+                        "source_fields": ["other_user"],
+                        "target_field": "user_results",
                         "list_file_paths": ["../lists/user_list.txt"],
                     },
                 },
                 False,
             ),
             (
-                "Should be not equal cause of other output_field",
+                "Should be not equal cause of other target_field",
                 {
                     "filter": "user",
                     "list_comparison": {
-                        "check_field": "user",
-                        "output_field": "other_user_results",
+                        "source_fields": ["user"],
+                        "target_field": "other_user_results",
                         "list_file_paths": ["../lists/user_list.txt"],
                     },
                 },
@@ -76,8 +76,8 @@ class TestListComparisonRule:
                 {
                     "filter": "user",
                     "list_comparison": {
-                        "check_field": "user",
-                        "output_field": "other_user_results",
+                        "source_fields": ["user"],
+                        "target_field": "other_user_results",
                         "list_file_paths": ["../lists/other_user_list.txt"],
                     },
                 },
