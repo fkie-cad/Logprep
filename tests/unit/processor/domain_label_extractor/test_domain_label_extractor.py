@@ -350,7 +350,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         assert document == expected
 
     @responses.activate
-    def test_setup_downloads_tld_lists_to_seperate_process_file(self):
+    def test_setup_downloads_tld_lists_to_separate_process_file(self):
         tld_list = "http://db-path-target/list.dat"
         tld_list_content = Path("/usr/bin/ls").read_bytes()
         expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
