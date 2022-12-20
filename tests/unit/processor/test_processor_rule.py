@@ -13,7 +13,7 @@ class TestRule:
         "file_data, raises",
         [
             (
-                """
+                b"""
                 filter: test_filter
                 rule:
                     regex_fields: []
@@ -22,7 +22,7 @@ class TestRule:
                 None,
             ),
             (
-                """
+                b"""
                 [
                     {
                         "filter": "test_filter",
@@ -33,7 +33,7 @@ class TestRule:
                 None,
             ),
             (
-                """
+                b"""
                 """,
                 (InvalidRuleDefinitionError, "no rules in file"),
             ),

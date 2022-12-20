@@ -17,6 +17,10 @@ class Getter(ABC):
     target: str = field(validator=validators.instance_of(str))
     """The target which holds the content to return by get method."""
 
+    def get(self) -> str:
+        """calls the get_raw method and returns the decoded content"""
+        return self.get_raw().decode("utf8")
+
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""
         raw = self.get()
@@ -41,7 +45,7 @@ class Getter(ABC):
         return parsed_events
 
     @abstractmethod
-    def get(self) -> str:
+    def get_raw(self) -> bytearray:
         """Get the content.
 
         Returns
