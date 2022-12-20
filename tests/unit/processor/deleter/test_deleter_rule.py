@@ -84,8 +84,8 @@ class TestDeleterRule:
                     _ = DeleterRule._create_from_dict(rule_definition)
             else:
                 with mock.patch("builtins.open", mock.mock_open(read_data="")):
-                    dropper_rule = DeleterRule._create_from_dict(rule_definition)
-                    assert isinstance(dropper_rule, DeleterRule)
+                    deleter_rule = DeleterRule._create_from_dict(rule_definition)
+                    assert isinstance(deleter_rule, DeleterRule)
 
     def test_rule_is_hashable(self, specific_rule_definition):
         rule = DeleterRule._create_from_dict(specific_rule_definition)

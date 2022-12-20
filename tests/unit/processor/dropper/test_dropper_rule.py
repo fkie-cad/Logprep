@@ -13,7 +13,7 @@ from logprep.processor.dropper.rule import DropperRule
 def fixture_specific_rule_definition():
     return {
         "filter": "test",
-        "drop": ["field1", "field2"],
+        "dropper": {"drop": ["field1", "field2"]},
         "description": "my reference rule",
     }
 
@@ -30,32 +30,32 @@ class TestDropperRule:
         [
             (
                 "Should be equal cause the same",
-                {"filter": "test", "drop": ["field1", "field2"]},
+                {"filter": "test", "dropper": {"drop": ["field1", "field2"]}},
                 True,
             ),
             (
                 "Should be not equal cause of other filter",
-                {"filter": "other_filter", "drop": ["field1", "field2"]},
+                {"filter": "other_filter", "dropper": {"drop": ["field1", "field2"]}},
                 False,
             ),
             (
                 "Should be not equal cause of one drop element is missing",
-                {"filter": "test", "drop": ["field1"]},
+                {"filter": "test", "dropper": {"drop": ["field1"]}},
                 False,
             ),
             (
                 "Should be not equal cause other drop fields",
-                {"filter": "test", "drop": ["field1", "field3"]},
+                {"filter": "test", "dropper": {"drop": ["field1", "field3"]}},
                 False,
             ),
             (
                 "Should be equal cause drop_full is the same (enabled by default)",
-                {"filter": "test", "drop": ["field1", "field2"], "drop_full": True},
+                {"filter": "test", "dropper": {"drop": ["field1", "field2"], "drop_full": True}},
                 True,
             ),
             (
                 "Should be not equal cause drop_full is different (enabled by default)",
-                {"filter": "test", "drop": ["field1", "field2"], "drop_full": False},
+                {"filter": "test", "dropper": {"drop": ["field1", "field2"], "drop_full": False}},
                 False,
             ),
         ],
@@ -78,7 +78,7 @@ class TestDropperRule:
         "rule_definition, raised, message",
         [
             (
-                {"filter": "test", "drop": ["field1", "field2"]},
+                {"filter": "test", "dropper": {"drop": ["field1", "field2"]}},
                 None,
                 "'drop' must be <class 'list'>",
             ),
@@ -88,22 +88,22 @@ class TestDropperRule:
                 "config not under key drop",
             ),
             (
-                {"filter": "test", "drop": "field1, field2"},
+                {"filter": "test", "dropper": {"drop": "field1, field2"}},
                 TypeError,
                 "'drop' must be <class 'list'>",
             ),
             (
-                {"filter": "test", "drop": {"field1": "field2"}},
+                {"filter": "test", "dropper": {"drop": {"field1": "field2"}}},
                 TypeError,
                 "'drop' must be <class 'list'>",
             ),
             (
-                {"filter": "test", "drop": ["field1", "field2"], "drop_full": True},
+                {"filter": "test", "dropper": {"drop": ["field1", "field2"], "drop_full": True}},
                 None,
                 "drop field with list exists and drop_full is bool",
             ),
             (
-                {"filter": "test", "drop": ["field1", "field2"], "drop_full": "True"},
+                {"filter": "test", "dropper": {"drop": ["field1", "field2"], "drop_full": "True"}},
                 TypeError,
                 "'drop_full' must be <class 'bool'>",
             ),
