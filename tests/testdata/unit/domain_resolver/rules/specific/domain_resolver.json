@@ -2,7 +2,9 @@
   {
     "filter": "url_specific",
     "domain_resolver": {
-      "source_url_or_domain": "url"
+      "source_fields": [
+        "url"
+      ]
     },
     "description": ""
   }

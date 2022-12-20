@@ -7,7 +7,6 @@ from unittest import mock
 
 import pytest
 import responses
-from requests import Response
 
 from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from logprep.factory import Factory
@@ -34,7 +33,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_domain_to_ip_resolved_and_added(self, mock_gethostbyname):
         rule = {
             "filter": "fqdn",
-            "domain_resolver": {"source_url_or_domain": "fqdn"},
+            "domain_resolver": {"source_fields": ["fqdn"]},
             "description": "",
         }
         self._load_specific_rule(rule)
@@ -48,7 +47,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_domain_to_ip_resolved_and_added_from_cache(self, mock_gethostbyname):
         rule = {
             "filter": "fqdn",
-            "domain_resolver": {"source_url_or_domain": "fqdn"},
+            "domain_resolver": {"source_fields": ["fqdn"]},
             "description": "",
         }
         self._load_specific_rule(rule)
@@ -64,7 +63,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_url_to_ip_resolved_and_added(self, _):
         rule = {
             "filter": "url",
-            "domain_resolver": {"source_url_or_domain": "url"},
+            "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
         self._load_specific_rule(rule)
@@ -79,7 +78,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         self.object = Factory.create({"resolver": config}, self.logger)
         rule = {
             "filter": "url",
-            "domain_resolver": {"source_url_or_domain": "url"},
+            "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
         self._load_specific_rule(rule)
@@ -95,7 +94,7 @@ class TestDomainResolver(BaseProcessorTestCase):
     def test_do_nothing_if_source_not_in_event(self):
         rule = {
             "filter": "url",
-            "domain_resolver": {"source_url_or_domain": "not_available"},
+            "domain_resolver": {"source_fields": ["not_available"]},
             "description": "",
         }
         self._load_specific_rule(rule)
@@ -111,7 +110,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         self.object = Factory.create({"resolver": config}, self.logger)
         rule = {
             "filter": "url",
-            "domain_resolver": {"source_url_or_domain": "url"},
+            "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
         self._load_specific_rule(rule)
@@ -131,7 +130,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         self.object = Factory.create({"resolver": config}, self.logger)
         rule = {
             "filter": "url",
-            "domain_resolver": {"source_url_or_domain": "url"},
+            "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
         self._load_specific_rule(rule)
@@ -153,7 +152,7 @@ class TestDomainResolver(BaseProcessorTestCase):
         self.object = Factory.create({"resolver": config}, self.logger)
         rule = {
             "filter": "url",
-            "domain_resolver": {"source_url_or_domain": "url"},
+            "domain_resolver": {"source_fields": ["url"]},
             "description": "",
         }
         self._load_specific_rule(rule)
