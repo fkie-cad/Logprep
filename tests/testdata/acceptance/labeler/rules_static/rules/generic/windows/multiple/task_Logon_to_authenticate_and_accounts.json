@@ -1,8 +1,17 @@
-[{
-  "filter": "winlog.task: \"Logon\"",
-  "label": {
-    "action": ["authenticate"],
-    "object": ["windows", "accounts"]
-  },
-  "description": "*** ES 6 to 7 changes: task -> winlog.task ***"
-}]
+[
+  {
+    "filter": "winlog.task: \"Logon\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "authenticate"
+        ],
+        "object": [
+          "windows",
+          "accounts"
+        ]
+      }
+    },
+    "description": "*** ES 6 to 7 changes: task -> winlog.task ***"
+  }
+]

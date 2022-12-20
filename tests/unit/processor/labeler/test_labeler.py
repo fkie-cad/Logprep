@@ -82,7 +82,7 @@ class TestLabeler(BaseProcessorTestCase):
         self.object._specific_tree.add_rule(specific_rule, self.logger)
 
     def test_process_adds_labels_to_event(self):
-        rule = {"filter": "applyrule", "label": {"reporter": ["windows"]}}
+        rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
         document = {"applyrule": "yes"}
         expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
 
@@ -94,7 +94,7 @@ class TestLabeler(BaseProcessorTestCase):
     def test_process_adds_labels_to_event_with_umlauts(self):
         rule = {
             "filter": "äpplyrüle: nö",
-            "label": {"räpörter": ["windöws"]},
+            "labeler": {"label": {"räpörter": ["windöws"]}},
             "description": "this is ä test rüle",
         }
 
@@ -109,7 +109,7 @@ class TestLabeler(BaseProcessorTestCase):
     def test_process_adds_labels_including_parents_when_flag_was_set(
         self, reporter_schema_expanded
     ):
-        rule = {"filter": "applyrule", "label": {"reporter": ["windows"]}}
+        rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
 
         document = {"applyrule": "yes"}
         expected = {"applyrule": "yes", "label": {"reporter": ["parentlabel", "windows"]}}
@@ -122,7 +122,7 @@ class TestLabeler(BaseProcessorTestCase):
     def test_process_adds_more_than_one_label(self):
         rule = {
             "filter": "key: value",
-            "label": {"reporter": ["client", "windows"], "object": ["file"]},
+            "labeler": {"label": {"reporter": ["client", "windows"], "object": ["file"]}},
         }
         document = {"key": "value"}
         expected = {
@@ -136,7 +136,7 @@ class TestLabeler(BaseProcessorTestCase):
         assert document == expected
 
     def test_process_does_not_overwrite_existing_values(self):
-        rule = {"filter": "applyrule", "label": {"reporter": ["windows"]}}
+        rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
         document = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
         expected = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
 
@@ -147,7 +147,7 @@ class TestLabeler(BaseProcessorTestCase):
 
     def test_process_returns_labels_in_alphabetical_order(self, reporter_schema_expanded):
         event = {"applyrule": "yes"}
-        rule = {"filter": "applyrule", "label": {"reporter": ["windows"]}}
+        rule = {"filter": "applyrule", "labeler": {"label": {"reporter": ["windows"]}}}
 
         self._load_specific_rule(rule, reporter_schema_expanded)
         self.object.process(event)
@@ -163,7 +163,7 @@ class TestLabeler(BaseProcessorTestCase):
 
         rule = {
             "filter": "field_with_array: im_inside_an_array",
-            "label": {"some_new_label": ["some_new_value"]},
+            "labeler": {"label": {"some_new_label": ["some_new_value"]}},
             "description": "This does even match with arrays!",
         }
 
@@ -181,7 +181,7 @@ class TestLabeler(BaseProcessorTestCase):
 
         rule = {
             "filter": "field_with_array: im_inside_an_array",
-            "label": {"some_new_label": ["some_new_value"]},
+            "labeler": {"label": {"some_new_label": ["some_new_value"]}},
             "description": "This does even match with arrays!",
         }
 
@@ -200,7 +200,7 @@ class TestLabeler(BaseProcessorTestCase):
         rule = {
             "filter": "field_with_array: im_inside_an_a.*y",
             "regex_fields": ["field_with_array"],
-            "label": {"some_new_label": ["some_new_value"]},
+            "labeler": {"label": {"some_new_label": ["some_new_value"]}},
             "description": "This does even match with arrays!",
         }
 
@@ -222,7 +222,7 @@ class TestLabeler(BaseProcessorTestCase):
                 "field_with_array: im_also_inside_that_array!"
             ),
             "regex_fields": ["field_with_array"],
-            "label": {"some_new_label": ["some_new_value"]},
+            "labeler": {"label": {"some_new_label": ["some_new_value"]}},
             "description": "This does even match with arrays!",
         }
 

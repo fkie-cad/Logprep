@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_id: 50036 AND winlog.provider_name: \"Microsoft-Windows-Dhcp-Client\" AND message: \"DHCPv4 client service is started\"",
-  "label": {
-    "action": ["execute"]
-  },
-  "description": "e.g. Event-ID 50036 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.event_id: 50036 AND winlog.provider_name: \"Microsoft-Windows-Dhcp-Client\" AND message: \"DHCPv4 client service is started\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "execute"
+        ]
+      }
+    },
+    "description": "e.g. Event-ID 50036 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
+  }
+]

@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_data.param2: \"running\"",
-  "label": {
-    "action": ["execute"]
-  },
-  "description": "param2: e.g. Event-ID 7036 *** ES 6 to 7 changes: event_data.param2 -> winlog.event_data.param2 ***"
-}]
+[
+  {
+    "filter": "winlog.event_data.param2: \"running\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "execute"
+        ]
+      }
+    },
+    "description": "param2: e.g. Event-ID 7036 *** ES 6 to 7 changes: event_data.param2 -> winlog.event_data.param2 ***"
+  }
+]

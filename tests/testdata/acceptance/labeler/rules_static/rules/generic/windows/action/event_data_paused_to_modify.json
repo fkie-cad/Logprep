@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_data.param2: \"paused\"",
-  "label": {
-    "action": ["terminate"]
-  },
-  "description": "*** ES 6 to 7 changes: event_data.param2 -> winlog.event_data.param2 ***"
-}]
+[
+  {
+    "filter": "winlog.event_data.param2: \"paused\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "terminate"
+        ]
+      }
+    },
+    "description": "*** ES 6 to 7 changes: event_data.param2 -> winlog.event_data.param2 ***"
+  }
+]

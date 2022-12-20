@@ -1,7 +1,14 @@
-[{
-  "filter": "winlog.event_id: 5615 AND winlog.provider_name: \"Microsoft-Windows-WMI\" AND message: \"Windows Management Instrumentation Service started sucessfully.\"",
-  "label": {
-    "action": ["execute", "success"]
-  },
-  "description": "e.g. Event-ID 5615 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.event_id: 5615 AND winlog.provider_name: \"Microsoft-Windows-WMI\" AND message: \"Windows Management Instrumentation Service started sucessfully.\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "execute",
+          "success"
+        ]
+      }
+    },
+    "description": "e.g. Event-ID 5615 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
+  }
+]

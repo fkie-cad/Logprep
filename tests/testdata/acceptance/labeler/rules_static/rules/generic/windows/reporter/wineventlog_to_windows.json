@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.api: \"wineventlog\"",
-  "label": {
-    "reporter": ["windows"]
-  },
-  "description": "*** ES 6 to 7 changes: type -> winlog.api ***"
-}]
+[
+  {
+    "filter": "winlog.api: \"wineventlog\"",
+    "labeler": {
+      "label": {
+        "reporter": [
+          "windows"
+        ]
+      }
+    },
+    "description": "*** ES 6 to 7 changes: type -> winlog.api ***"
+  }
+]

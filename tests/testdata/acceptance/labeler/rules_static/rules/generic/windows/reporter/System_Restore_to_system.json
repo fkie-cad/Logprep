@@ -1,7 +1,14 @@
-[{
-  "filter": "winlog.provider_name: \"System Restore\"",
-  "label": {
-    "reporter": ["windows", "system"]
-  },
-  "description": "e.g. Event-ID 8212, 8194 *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.provider_name: \"System Restore\"",
+    "labeler": {
+      "label": {
+        "reporter": [
+          "windows",
+          "system"
+        ]
+      }
+    },
+    "description": "e.g. Event-ID 8212, 8194 *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
+  }
+]

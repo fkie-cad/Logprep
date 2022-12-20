@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_id: 400 AND winlog.provider_name: \"PowerShell\"",
-  "label": {
-    "action": ["modify"]
-  },
-  "description": "*** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.event_id: 400 AND winlog.provider_name: \"PowerShell\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "modify"
+        ]
+      }
+    },
+    "description": "*** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
+  }
+]
