@@ -10,7 +10,7 @@ from logprep.processor.geoip_enricher.rule import GeoipEnricherRule
 def fixture_specific_rule_definition():
     return {
         "filter": "message",
-        "geoip_enricher": {"source_ip": "source", "output_field": "geoip"},
+        "geoip_enricher": {"source_fields": ["source"], "target_field": "geoip"},
         "description": "",
     }
 
@@ -23,15 +23,15 @@ class TestListComparisonRule:
                 "Should be equal cause the same",
                 {
                     "filter": "message",
-                    "geoip_enricher": {"source_ip": "source", "output_field": "geoip"},
+                    "geoip_enricher": {"source_fields": ["source"], "target_field": "geoip"},
                 },
                 True,
             ),
             (
-                "Should be equal without output_field cause default is the same",
+                "Should be equal without target_field cause default is the same",
                 {
                     "filter": "message",
-                    "geoip_enricher": {"source_ip": "source"},
+                    "geoip_enricher": {"source_fields": ["source"]},
                 },
                 True,
             ),
@@ -39,28 +39,28 @@ class TestListComparisonRule:
                 "Should be not equal cause of other filter",
                 {
                     "filter": "other_message",
-                    "geoip_enricher": {"source_ip": "source", "output_field": "geoip"},
+                    "geoip_enricher": {"source_fields": ["source"], "target_field": "geoip"},
                 },
                 False,
             ),
             (
-                "Should be not equal cause of other source_ip",
+                "Should be not equal cause of other source_fields",
                 {
                     "filter": "other_message",
                     "geoip_enricher": {
-                        "source_ip": "other_source",
-                        "output_field": "geoip",
+                        "source_fields": ["other_source"],
+                        "target_field": "geoip",
                     },
                 },
                 False,
             ),
             (
-                "Should be not equal cause of other output_field",
+                "Should be not equal cause of other target_field",
                 {
                     "filter": "other_message",
                     "geoip_enricher": {
-                        "source_ip": "source",
-                        "output_field": "other.geoip",
+                        "source_fields": ["source"],
+                        "target_field": "other.geoip",
                     },
                 },
                 False,
