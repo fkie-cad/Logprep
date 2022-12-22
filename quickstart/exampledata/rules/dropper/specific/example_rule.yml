@@ -1,4 +1,5 @@
 filter: "test_dropper"
-drop:
-  - drop_me
+dropper:
+  drop:
+    - drop_me
 description: "..."

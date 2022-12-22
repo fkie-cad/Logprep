@@ -1,4 +1,10 @@
-[{
-  "filter": "drop_me",
-  "drop":  ["drop_me"]
-}]
+[
+  {
+    "filter": "drop_me",
+    "dropper": {
+      "drop": [
+        "drop_me"
+      ]
+    }
+  }
+]
