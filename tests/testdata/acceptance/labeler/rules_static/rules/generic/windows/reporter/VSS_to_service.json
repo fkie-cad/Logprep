@@ -1,7 +1,14 @@
-[{
-  "filter": "winlog.provider_name: \"VSS\"",
-  "label": {
-    "reporter": ["windows", "service"]
-  },
-  "description": "e.g. Event-ID 8224, ToDo: VSS is a source control program, map to category service? *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.provider_name: \"VSS\"",
+    "labeler": {
+      "label": {
+        "reporter": [
+          "windows",
+          "service"
+        ]
+      }
+    },
+    "description": "e.g. Event-ID 8224, ToDo: VSS is a source control program, map to category service? *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
+  }
+]

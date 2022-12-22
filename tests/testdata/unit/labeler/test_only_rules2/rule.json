@@ -1,7 +1,13 @@
-[{
-  "filter": "applyrule: yes",
-  "label": {
-    "reporter": ["parentlabel"]
-  },
-  "description": "this is a test rule"
-}]
+[
+  {
+    "filter": "applyrule: yes",
+    "labeler": {
+      "label": {
+        "reporter": [
+          "parentlabel"
+        ]
+      }
+    },
+    "description": "this is a test rule"
+  }
+]

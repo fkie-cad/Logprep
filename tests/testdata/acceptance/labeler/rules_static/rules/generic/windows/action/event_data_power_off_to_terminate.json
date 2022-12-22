@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_data.param5: \"power off\"",
-  "label": {
-    "action": ["terminate"]
-  },
-  "description": "param5: e.g. Event-ID 1074 *** ES 6 to 7 changes: event_data.param5 -> winlog.event_data.param5 ***"
-}]
+[
+  {
+    "filter": "winlog.event_data.param5: \"power off\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "terminate"
+        ]
+      }
+    },
+    "description": "param5: e.g. Event-ID 1074 *** ES 6 to 7 changes: event_data.param5 -> winlog.event_data.param5 ***"
+  }
+]

@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_id: 6005 AND winlog.provider_name: \"EventLog\" AND message: \"The Event log service was started.\"",
-  "label": {
-    "action": ["execute"]
-  },
-  "description": "e.g. Event-ID 6005 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.event_id: 6005 AND winlog.provider_name: \"EventLog\" AND message: \"The Event log service was started.\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "execute"
+        ]
+      }
+    },
+    "description": "e.g. Event-ID 6005 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
+  }
+]

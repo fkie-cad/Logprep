@@ -1,8 +1,16 @@
-[{
-  "filter": "winlog.provider_guid: \"{.{8}-.{4}-.{4}-.{4}-[0123456789ABCED]{12}}\"",
-  "regex_fields": ["winlog.provider_guid"],
-  "label": {
-    "test_label_category": ["test_guid_label"]
-  },
-  "description": "*** ES 6 to 7 changes: provider_guid -> winlog.provider_guid ***"
-}]
+[
+  {
+    "filter": "winlog.provider_guid: \"{.{8}-.{4}-.{4}-.{4}-[0123456789ABCED]{12}}\"",
+    "regex_fields": [
+      "winlog.provider_guid"
+    ],
+    "labeler": {
+      "label": {
+        "test_label_category": [
+          "test_guid_label"
+        ]
+      }
+    },
+    "description": "*** ES 6 to 7 changes: provider_guid -> winlog.provider_guid ***"
+  }
+]

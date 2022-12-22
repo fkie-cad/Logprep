@@ -1,7 +1,14 @@
-[{
-  "filter": "winlog.provider_name: \"Microsoft-Windows-EventSystem\"",
-  "label": {
-    "reporter": ["windows", "system"]
-  },
-  "description": "e.g. EventID 4625 *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.provider_name: \"Microsoft-Windows-EventSystem\"",
+    "labeler": {
+      "label": {
+        "reporter": [
+          "windows",
+          "system"
+        ]
+      }
+    },
+    "description": "e.g. EventID 4625 *** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
+  }
+]

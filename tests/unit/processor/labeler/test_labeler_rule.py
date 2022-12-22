@@ -34,7 +34,7 @@ class TestRule:
             with JsonTempFile({}) as rule_path:
                 LabelerRule.create_rules_from_target(rule_path)
 
-        for missing_field in ["filter", "label"]:
+        for missing_field in ["filter", "labeler"]:
             invalid_rule_dict = deepcopy(simple_rule_dict)
             del invalid_rule_dict[missing_field]
 
@@ -43,16 +43,19 @@ class TestRule:
                     LabelerRule.create_rules_from_target(rule_path)
 
     def test_create_from_dict_creates_expected_rule(self):
-        rule_definition = {"filter": 'applyrule: "yes"', "label": {"reporter": ["windows"]}}
+        rule_definition = {
+            "filter": 'applyrule: "yes"',
+            "labeler": {"label": {"reporter": ["windows"]}},
+        }
         rule = LabelerRule._create_from_dict(rule_definition)
         assert rule._filter == StringFilterExpression(["applyrule"], "yes")
-        assert rule._config.label == simple_rule_dict["label"]
+        assert rule._config.label == simple_rule_dict["labeler"]["label"]
 
     def test_create_from_dict_fails_if_document_does_not_contain_filter_and_label(self):
         with pytest.raises(InvalidRuleDefinitionError):
             LabelerRule._create_from_dict({})
 
-        for missing_field in ["filter", "label"]:
+        for missing_field in ["filter", "labeler"]:
             invalid_rule_dict = deepcopy(simple_rule_dict)
             del invalid_rule_dict[missing_field]
 
@@ -60,14 +63,20 @@ class TestRule:
                 LabelerRule._create_from_dict(invalid_rule_dict)
 
     def test_conforms_to_schema_is_false_when_labels_do_not_conform_to_schema(self):
-        rule_definition = {"filter": 'applyrule: "yes"', "label": {"reporter": ["windows"]}}
+        rule_definition = {
+            "filter": 'applyrule: "yes"',
+            "labeler": {"label": {"reporter": ["windows"]}},
+        }
         rule = LabelerRule._create_from_dict(rule_definition)
         dummy_schema = MockLabelingSchema(False)
 
         assert not rule.conforms_to_schema(dummy_schema)
 
     def test_conforms_to_schema_is_true_when_labels_do_conform_to_schema(self):
-        rule_definition = {"filter": 'applyrule: "yes"', "label": {"reporter": ["windows"]}}
+        rule_definition = {
+            "filter": 'applyrule: "yes"',
+            "labeler": {"label": {"reporter": ["windows"]}},
+        }
         rule = LabelerRule._create_from_dict(rule_definition)
         dummy_schema = MockLabelingSchema(True)
 
@@ -76,20 +85,26 @@ class TestRule:
     def test_rules_may_contain_description(self):
         rule_definition = {
             "filter": 'applyrule: "yes"',
-            "label": {"reporter": ["windows"]},
+            "labeler": {"label": {"reporter": ["windows"]}},
             "description": "this is the description",
         }
         _ = LabelerRule._create_from_dict(rule_definition)
 
     def test_matches_returns_true_for_matching_document(self):
-        rule_definition = {"filter": 'applyrule: "yes"', "label": {"reporter": ["windows"]}}
+        rule_definition = {
+            "filter": 'applyrule: "yes"',
+            "labeler": {"label": {"reporter": ["windows"]}},
+        }
         rule = LabelerRule._create_from_dict(rule_definition)
         document = {"applyrule": "yes"}
 
         assert rule.matches(document)
 
     def test_matches_returns_false_for_non_matching_document(self):
-        rule_definition = {"filter": 'applyrule: "yes"', "label": {"reporter": ["windows"]}}
+        rule_definition = {
+            "filter": 'applyrule: "yes"',
+            "labeler": {"label": {"reporter": ["windows"]}},
+        }
         rule = LabelerRule._create_from_dict(rule_definition)
         non_matching_documents = [{}, {"applyrule": "wrong value"}, {"wrong key": "value"}]
         for document in non_matching_documents:
@@ -104,15 +119,18 @@ class TestRule:
         assert rule1 != rule2
 
     def test_rules_are_different_if_their_assigned_labels_differ(self):
-        rule1_dict = {"filter": 'applyrule: "yes"', "label": {"reporter": ["windows"]}}
+        rule1_dict = {"filter": 'applyrule: "yes"', "labeler": {"label": {"reporter": ["windows"]}}}
         rule1 = LabelerRule._create_from_dict(rule1_dict)
-        rule2_dict = {"filter": 'applyrule: "yes"', "label": {"reporter": ["mac"]}}
+        rule2_dict = {"filter": 'applyrule: "yes"', "labeler": {"label": {"reporter": ["mac"]}}}
         rule2 = LabelerRule._create_from_dict(rule2_dict)
 
         assert rule1 != rule2
 
     def test_rules_are_equal_if_their_filters_and_labes_are_the_same(self):
-        rule_definition = {"filter": 'applyrule: "yes"', "label": {"reporter": ["windows"]}}
+        rule_definition = {
+            "filter": 'applyrule: "yes"',
+            "labeler": {"label": {"reporter": ["windows"]}},
+        }
         rule1 = LabelerRule._create_from_dict(rule_definition)
         rule2 = LabelerRule._create_from_dict(rule_definition)
 
@@ -135,7 +153,7 @@ class TestRule:
         rule_definition = {
             "filter": 'applyrule: ".*yes.*"',
             "regex_fields": ["applyrule"],
-            "label": {"reporter": ["windows"]},
+            "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule._create_from_dict(rule_definition)
         assert rule.matches({"applyrule": "yes"})
@@ -146,7 +164,7 @@ class TestRule:
         rule_definition = {
             "filter": 'applyrule: ".*yes.*"',
             "regex_fields": ["applyrule"],
-            "label": {"reporter": ["windows"]},
+            "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule._create_from_dict(rule_definition)
         non_matching_documents = [
@@ -164,7 +182,7 @@ class TestRule:
         rule_definition = {
             "filter": r'applyrule: "(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}"',  # pylint: disable=line-too-long
             "regex_fields": ["applyrule"],
-            "label": {"reporter": ["windows"]},
+            "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule._create_from_dict(rule_definition)
         assert rule.matches({"applyrule": "UPlo8888"})
@@ -176,7 +194,7 @@ class TestRule:
         rule_definition = {
             "filter": r'applyrule: "(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}"',  # pylint: disable=line-too-long
             "regex_fields": ["applyrule"],
-            "label": {"reporter": ["windows"]},
+            "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule._create_from_dict(rule_definition)
         assert not rule.matches({"applyrule": ""})
@@ -188,7 +206,10 @@ class TestRule:
         assert not rule.matches({"applyrule": "UPlo$$7"})
 
     def test_null_returns_true_for_matching_document(self):
-        rule_definition = {"filter": "applyrule: null", "label": {"reporter": ["windows"]}}
+        rule_definition = {
+            "filter": "applyrule: null",
+            "labeler": {"label": {"reporter": ["windows"]}},
+        }
         rule = LabelerRule._create_from_dict(rule_definition)
         document = {"applyrule": None}
 

@@ -1,7 +1,13 @@
-[{
-  "filter": "log.level: \"Error\"",
-  "label": {
-    "action": ["failed"]
-  },
-  "description": "e.g. Event-ID 1030 *** ES 6 to 7 changes: level -> log.level ***"
-}]
+[
+  {
+    "filter": "log.level: \"Error\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "failed"
+        ]
+      }
+    },
+    "description": "e.g. Event-ID 1030 *** ES 6 to 7 changes: level -> log.level ***"
+  }
+]

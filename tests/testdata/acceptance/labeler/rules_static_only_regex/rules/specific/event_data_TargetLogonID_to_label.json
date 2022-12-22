@@ -1,8 +1,16 @@
-[{
-  "filter": "winlog.event_data.TargetLogonId: \"0x.{3,5}\"",
-  "regex_fields": ["winlog.event_data.TargetLogonId"],
-  "label": {
-    "test_label_category": ["test_target_valid_logon_id_label"]
-  },
-  "description": "*** ES 6 to 7 changes: event_data.TargetLogonId -> winlog.event_data.TargetLogonId ***"
-}]
+[
+  {
+    "filter": "winlog.event_data.TargetLogonId: \"0x.{3,5}\"",
+    "regex_fields": [
+      "winlog.event_data.TargetLogonId"
+    ],
+    "labeler": {
+      "label": {
+        "test_label_category": [
+          "test_target_valid_logon_id_label"
+        ]
+      }
+    },
+    "description": "*** ES 6 to 7 changes: event_data.TargetLogonId -> winlog.event_data.TargetLogonId ***"
+  }
+]

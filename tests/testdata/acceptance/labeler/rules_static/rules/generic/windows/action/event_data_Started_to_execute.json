@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_data.param2: \"Started\"",
-  "label": {
-    "action": ["execute"]
-  },
-  "description": "e.g. Event-ID 600 *** ES 6 to 7 changes: event_data.param2 -> winlog.event_data.param2 ***"
-}]
+[
+  {
+    "filter": "winlog.event_data.param2: \"Started\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "execute"
+        ]
+      }
+    },
+    "description": "e.g. Event-ID 600 *** ES 6 to 7 changes: event_data.param2 -> winlog.event_data.param2 ***"
+  }
+]

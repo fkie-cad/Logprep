@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_id: 7040 AND winlog.provider_name: \"Service Control Manager\" AND message: \"The start type of the Windows Modules Installer service was changed from auto start to demand start.\"",
-  "label": {
-    "action": ["modify"]
-  },
-  "description": "e.g. Event-ID 7040 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.event_id: 7040 AND winlog.provider_name: \"Service Control Manager\" AND message: \"The start type of the Windows Modules Installer service was changed from auto start to demand start.\"",
+    "labeler": {
+      "label": {
+        "action": [
+          "modify"
+        ]
+      }
+    },
+    "description": "e.g. Event-ID 7040 *** ES 6 to 7 changes: event_id -> winlog.event_id | source_name -> winlog.provider_name ***"
+  }
+]

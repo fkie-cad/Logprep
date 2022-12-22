@@ -1,7 +1,13 @@
-[{
-  "filter": "winlog.event_data.LogonType: 4 OR winlog.event_data.LogonType: 5",
-  "label": {
-    "actor": ["service"]
-  },
-  "description": "[WSM18] p.84 und p.123, 4 = Batch (scheduled tasks), 5 = Service (Windows Services) *** ES 6 to 7 changes: event_data.LogonType -> winlog.event_data.LogonType ***"
-}]
+[
+  {
+    "filter": "winlog.event_data.LogonType: 4 OR winlog.event_data.LogonType: 5",
+    "labeler": {
+      "label": {
+        "actor": [
+          "service"
+        ]
+      }
+    },
+    "description": "[WSM18] p.84 und p.123, 4 = Batch (scheduled tasks), 5 = Service (Windows Services) *** ES 6 to 7 changes: event_data.LogonType -> winlog.event_data.LogonType ***"
+  }
+]

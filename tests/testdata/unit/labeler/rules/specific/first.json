@@ -1,7 +1,13 @@
-[{
-  "filter": "applyotherrule: yes",
-  "label": {
-    "reporter": ["windows"]
-  },
-  "description": "this is another test rule"
-}]
+[
+  {
+    "filter": "applyotherrule: yes",
+    "labeler": {
+      "label": {
+        "reporter": [
+          "windows"
+        ]
+      }
+    },
+    "description": "this is another test rule"
+  }
+]

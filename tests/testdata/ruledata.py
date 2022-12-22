@@ -1,4 +1,4 @@
-simple_rule_dict = {"filter": 'applyrule: "yes"', "label": {"reporter": ["windows"]}}
+simple_rule_dict = {"filter": 'applyrule: "yes"', "labeler": {"label": {"reporter": ["windows"]}}}
 
 null_rule_dict = {"filter": "applyrule: null", "label": {"reporter": ["windows"]}}
 

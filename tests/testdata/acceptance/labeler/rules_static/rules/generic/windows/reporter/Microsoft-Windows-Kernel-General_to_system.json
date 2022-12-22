@@ -1,7 +1,14 @@
-[{
-  "filter": "winlog.provider_name: \"Microsoft-Windows-Kernel-General\"",
-  "label": {
-    "reporter": ["windows", "system"]
-  },
-  "description": "*** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
-}]
+[
+  {
+    "filter": "winlog.provider_name: \"Microsoft-Windows-Kernel-General\"",
+    "labeler": {
+      "label": {
+        "reporter": [
+          "windows",
+          "system"
+        ]
+      }
+    },
+    "description": "*** ES 6 to 7 changes: source_name -> winlog.provider_name ***"
+  }
+]
