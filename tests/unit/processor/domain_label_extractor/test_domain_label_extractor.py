@@ -1,7 +1,11 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 
+import hashlib
+from multiprocessing import current_process
+from pathlib import Path
 import pytest
+import responses
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.domain_label_extractor.processor import DuplicationError
@@ -344,3 +348,18 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         with pytest.raises(DuplicationError):
             self.object.process(document)
         assert document == expected
+
+    @responses.activate
+    def test_setup_downloads_tld_lists_to_separate_process_file(self):
+        tld_list = "http://db-path-target/list.dat"
+        tld_list_content = Path("/usr/bin/ls").read_bytes()
+        expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
+        responses.add(responses.GET, tld_list, tld_list_content)
+        self.object._config.tld_lists = [tld_list]
+        self.object.setup()
+        downloaded_file = Path(f"{current_process().name}-{self.object.name}-tldlist-0.dat")
+        assert downloaded_file.exists()
+        downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
+        assert expected_checksum == downloaded_checksum
+        # delete testfile
+        downloaded_file.unlink()

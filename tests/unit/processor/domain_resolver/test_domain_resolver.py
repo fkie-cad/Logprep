@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 from copy import deepcopy
+import hashlib
+from multiprocessing import current_process
 from os.path import exists
 from pathlib import Path
 from unittest import mock
@@ -273,3 +275,18 @@ sth.ac.at
         self._load_specific_rule(rule_dict)
         self.object.process(document)
         assert document == expected
+
+    @responses.activate
+    def test_setup_downloads_tld_lists_to_separate_process_file(self):
+        tld_list = "http://db-path-target/list.dat"
+        tld_list_content = Path("/usr/bin/ls").read_bytes()
+        expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
+        responses.add(responses.GET, tld_list, tld_list_content)
+        self.object._config.tld_lists = [tld_list]
+        self.object.setup()
+        downloaded_file = Path(f"{current_process().name}-{self.object.name}-tldlist-0.dat")
+        assert downloaded_file.exists()
+        downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
+        assert expected_checksum == downloaded_checksum
+        # delete testfile
+        downloaded_file.unlink()

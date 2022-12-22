@@ -26,10 +26,11 @@ Example
         debug_cache: false
 """
 import datetime
+from pathlib import Path
 import socket
 from functools import cached_property
 from logging import Logger
-from multiprocessing import context
+from multiprocessing import context, current_process
 from multiprocessing.pool import ThreadPool
 from typing import Optional
 
@@ -40,6 +41,7 @@ from logprep.abc import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
+from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
@@ -137,6 +139,18 @@ class DomainResolver(Processor):
         if self._config.tld_lists is not None:
             return TLDExtract(suffix_list_urls=self._config.tld_lists)
         return TLDExtract()
+
+    def setup(self):
+        super().setup()
+        downloaded_tld_lists_paths = []
+        self._logger.debug("start tldlists download...")
+        for index, tld_list in enumerate(self._config.tld_lists):
+            list_path = Path(f"{current_process().name}-{self.name}-tldlist-{index}.dat")
+            list_path.touch()
+            list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
+            downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
+        self._config.tld_lists = downloaded_tld_lists_paths
+        self._logger.debug("finished tldlists download...")
 
     def _apply_rules(self, event, rule):
         source_field = rule.source_fields[0]
