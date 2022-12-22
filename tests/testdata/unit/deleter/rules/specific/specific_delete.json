@@ -1,7 +1,9 @@
 [
     {
         "filter": "delete_event_specific",
-        "delete": true,
+        "deleter": {
+            "delete": true
+        },
         "description": "some text"
     }
 ]

@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
 from typing import Hashable
-import warnings
 import pytest
 
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
@@ -12,7 +11,7 @@ from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
 def fixture_specific_rule_definition():
     return {
         "filter": "field.a",
-        "datetime_extractor": {"datetime_field": "field.a", "destination_field": "datetime"},
+        "datetime_extractor": {"source_fields": ["field.a"], "target_field": "datetime"},
         "description": "",
     }
 
@@ -26,8 +25,8 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "datetime_field": "field.a",
-                        "destination_field": "datetime",
+                        "source_fields": ["field.a"],
+                        "target_field": "datetime",
                     },
                     "description": "",
                 },
@@ -38,8 +37,8 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.b",
                     "datetime_extractor": {
-                        "datetime_field": "field.a",
-                        "destination_field": "datetime",
+                        "source_fields": ["field.a"],
+                        "target_field": "datetime",
                     },
                     "description": "",
                 },
@@ -50,8 +49,8 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "datetime_field": "field.b",
-                        "destination_field": "datetime",
+                        "source_fields": ["field.b"],
+                        "target_field": "datetime",
                     },
                     "description": "",
                 },
@@ -62,8 +61,8 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "datetime_field": "field.a",
-                        "destination_field": "other",
+                        "source_fields": ["field.a"],
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -74,8 +73,8 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "datetime_field": "field.b",
-                        "destination_field": "other",
+                        "source_fields": ["field.b"],
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -97,8 +96,8 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "datetime_field": "field.b",
-                        "destination_field": "other",
+                        "source_fields": ["field.b"],
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -121,7 +120,7 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "datetime_field": "field.b",
+                        "source_fields": ["field.b"],
                     },
                     "description": "",
                 },
@@ -132,7 +131,7 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "destination_field": "other",
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -143,8 +142,8 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "datetime_field": ["field.b"],
-                        "destination_field": "other",
+                        "source_fields": [["field.b"]],
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -155,8 +154,8 @@ class TestDatetimeExtractorRule:
                 {
                     "filter": "field.a",
                     "datetime_extractor": {
-                        "datetime_field": "field.b",
-                        "destination_field": 111,
+                        "source_fields": ["field.b"],
+                        "target_field": 111,
                     },
                     "description": "",
                 },
@@ -186,9 +185,9 @@ class TestDatetimeExtractorRule:
             },
             "description": "",
         }
-        with pytest.deprecated_call() as w:
+        with pytest.deprecated_call() as deprecations:
             DatetimeExtractorRule._create_from_dict(rule_dict)
-            assert len(w.list) == 2
-            matches = [warning.message.args[0] for warning in w.list]
+            assert len(deprecations.list) == 2
+            matches = [warning.message.args[0] for warning in deprecations.list]
             assert "Use datetime_extractor.target_field instead" in matches[1]
             assert "Use datetime_extractor.source_fields instead" in matches[0]

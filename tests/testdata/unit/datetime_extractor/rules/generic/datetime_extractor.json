@@ -2,8 +2,10 @@
   {
     "filter": "@timestamp1",
     "datetime_extractor": {
-      "datetime_field": "@timestamp",
-      "destination_field": "split_@timestamp"
+      "source_fields": [
+        "@timestamp"
+      ],
+      "target_field": "split_@timestamp"
     },
     "description": ""
   }
