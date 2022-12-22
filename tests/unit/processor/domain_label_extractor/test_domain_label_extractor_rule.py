@@ -11,8 +11,8 @@ def fixture_specific_rule_definition():
     return {
         "filter": "field.a",
         "domain_label_extractor": {
-            "target_field": "field.a",
-            "output_field": "datetime",
+            "source_fields": ["field.a"],
+            "target_field": "datetime",
         },
         "description": "",
     }
@@ -27,8 +27,8 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
-                        "target_field": "field.a",
-                        "output_field": "datetime",
+                        "source_fields": ["field.a"],
+                        "target_field": "datetime",
                     },
                     "description": "",
                 },
@@ -39,8 +39,8 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.b",
                     "domain_label_extractor": {
-                        "target_field": "field.a",
-                        "output_field": "datetime",
+                        "source_fields": ["field.a"],
+                        "target_field": "datetime",
                     },
                     "description": "",
                 },
@@ -51,8 +51,8 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
-                        "target_field": "field.b",
-                        "output_field": "datetime",
+                        "source_fields": ["field.b"],
+                        "target_field": "datetime",
                     },
                     "description": "",
                 },
@@ -63,8 +63,8 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
-                        "target_field": "field.a",
-                        "output_field": "other",
+                        "source_fields": ["field.a"],
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -75,8 +75,8 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
-                        "target_field": "field.b",
-                        "output_field": "other",
+                        "source_fields": ["field.b"],
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -98,8 +98,8 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
-                        "target_field": "field.b",
-                        "output_field": "other",
+                        "source_fields": ["field.b"],
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -133,7 +133,7 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
-                        "output_field": "other",
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -144,8 +144,8 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
-                        "target_field": ["field.b"],
-                        "output_field": "other",
+                        "source_fields": [111],
+                        "target_field": "other",
                     },
                     "description": "",
                 },
@@ -156,8 +156,8 @@ class TestDomainLabelExtractorRule:
                 {
                     "filter": "field.a",
                     "domain_label_extractor": {
-                        "target_field": "field.b",
-                        "output_field": 111,
+                        "source_fields": ["field.b"],
+                        "target_field": 111,
                     },
                     "description": "",
                 },

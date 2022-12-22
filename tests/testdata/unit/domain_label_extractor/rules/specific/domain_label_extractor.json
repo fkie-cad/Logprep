@@ -1,22 +1,32 @@
-[{
-  "filter": "url",
-  "domain_label_extractor": {
-    "target_field": "url.domain",
-    "output_field": "url"
+[
+  {
+    "filter": "url",
+    "domain_label_extractor": {
+      "source_fields": [
+        "url.domain"
+      ],
+      "target_field": "url"
+    },
+    "description": ""
   },
-  "description": ""
-},{
-  "filter": "url2",
-  "domain_label_extractor": {
-    "target_field": "url2.domain",
-    "output_field": "extracted.domain.info"
+  {
+    "filter": "url2",
+    "domain_label_extractor": {
+      "source_fields": [
+        "url2.domain"
+      ],
+      "target_field": "extracted.domain.info"
+    },
+    "description": ""
   },
-  "description": ""
-},{
-  "filter": "source",
-  "domain_label_extractor": {
-    "target_field": "source.domain",
-    "output_field": "source"
-  },
-  "description": ""
-}]
+  {
+    "filter": "source",
+    "domain_label_extractor": {
+      "source_fields": [
+        "source.domain"
+      ],
+      "target_field": "source"
+    },
+    "description": ""
+  }
+]

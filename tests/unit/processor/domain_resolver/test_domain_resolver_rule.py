@@ -14,7 +14,7 @@ def fixture_specific_rule_definition():
     return {
         "filter": "message",
         "domain_resolver": {
-            "source_url_or_domain": "foo",
+            "source_fields": ["foo"],
         },
         "description": "insert a description text",
     }
@@ -28,7 +28,7 @@ def fixture_specific_rule_definition():
             {
                 "filter": "message",
                 "domain_resolver": {
-                    "source_url_or_domain": "foo",
+                    "source_fields": ["foo"],
                 },
             },
             True,
@@ -38,8 +38,8 @@ def fixture_specific_rule_definition():
             {
                 "filter": "message",
                 "domain_resolver": {
-                    "source_url_or_domain": "foo",
-                    "output_field": "resolved_ip",
+                    "source_fields": ["foo"],
+                    "target_field": "resolved_ip",
                 },
             },
             True,
@@ -49,30 +49,30 @@ def fixture_specific_rule_definition():
             {
                 "filter": "other_message",
                 "domain_resolver": {
-                    "source_url_or_domain": "foo",
-                    "output_field": "bar",
+                    "source_fields": ["foo"],
+                    "target_field": "bar",
                 },
             },
             False,
         ),
         (
-            "Should be not equal cause of other source_url_or_domain",
+            "Should be not equal cause of other source_fields",
             {
                 "filter": "message",
                 "domain_resolver": {
-                    "source_url_or_domain": "other_foo",
-                    "output_field": "bar",
+                    "source_fields": ["other_foo"],
+                    "target_field": "bar",
                 },
             },
             False,
         ),
         (
-            "Should be not equal cause of other output_field",
+            "Should be not equal cause of other target_field",
             {
                 "filter": "message",
                 "domain_resolver": {
-                    "source_url_or_domain": "foo",
-                    "output_field": "other_bar",
+                    "source_fields": ["foo"],
+                    "target_field": "other_bar",
                 },
             },
             False,
