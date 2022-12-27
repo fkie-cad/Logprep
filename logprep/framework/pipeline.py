@@ -299,9 +299,7 @@ class Pipeline:
             for processor in self._pipeline:
                 try:
                     extra_data = processor.process(event)
-                    if isinstance(extra_data, list):
-                        list(map(self._store_extra_data, extra_data))
-                    if isinstance(extra_data, tuple):
+                    if extra_data:
                         self._store_extra_data(extra_data)
                 except ProcessingWarning as error:
                     self._logger.warning(
@@ -341,11 +339,14 @@ class Pipeline:
         self._processing_counter.increment()
         self._processing_counter.print_if_ready()
 
-    def _store_extra_data(self, extra_data: tuple):
+    def _store_extra_data(self, extra_data: list[tuple]):
         self._logger.debug("Storing extra data")
-        documents, target = extra_data
-        for document in documents:
-            self._output.store_custom(document, target)
+        if isinstance(extra_data, tuple):
+            documents, target = extra_data
+            for document in documents:
+                self._output.store_custom(document, target)
+            return
+        list(map(self._store_extra_data, extra_data))
 
     def _shut_down(self):
         self._input.shut_down()
