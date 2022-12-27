@@ -175,23 +175,13 @@ class Pipeline:
 
     def _create_connectors(self):
         self._logger.debug(f"Creating connectors ({current_process().name})")
-        input_connector_config = self._logprep_config.get("input")
-        connector_name = list(input_connector_config.keys())[0]
-        input_connector_config[connector_name]["metric_labels"] = self._metric_labels
-        input_connector_config[connector_name].update(
-            {"version_information": self._event_version_information}
-        )
-        self._input = Factory.create(input_connector_config, self._logger)
-        output_connector_config = self._logprep_config.get("output")
-        connector_name = list(output_connector_config.keys())[0]
-        output_connector_config[connector_name]["metric_labels"] = self._metric_labels
-        self._output = Factory.create(output_connector_config, self._logger)
+        self._create_input_connector()
+        self._create_output_connector()
         self._output.input_connector = self._input
         self._logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{self._output.describe()}' ({current_process().name})"
         )
-
         self._input.setup()
         self._output.setup()
         if hasattr(self._input, "server"):
@@ -199,6 +189,21 @@ class Pipeline:
                 self._input.server.config.port += 1
             self._used_server_ports.update({self._input.server.config.port: current_process().name})
         self._logger.debug(f"Finished creating connectors ({current_process().name})")
+
+    def _create_output_connector(self):
+        output_connector_config = self._logprep_config.get("output")
+        connector_name = list(output_connector_config.keys())[0]
+        output_connector_config[connector_name]["metric_labels"] = self._metric_labels
+        self._output = Factory.create(output_connector_config, self._logger)
+
+    def _create_input_connector(self):
+        input_connector_config = self._logprep_config.get("input")
+        connector_name = list(input_connector_config.keys())[0]
+        input_connector_config[connector_name]["metric_labels"] = self._metric_labels
+        input_connector_config[connector_name].update(
+            {"version_information": self._event_version_information}
+        )
+        self._input = Factory.create(input_connector_config, self._logger)
 
     def _create_logger(self):
         if self._log_handler.level == NOTSET:
