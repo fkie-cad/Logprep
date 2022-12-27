@@ -343,8 +343,7 @@ class Pipeline:
 
     def _store_extra_data(self, extra_data: tuple):
         self._logger.debug("Storing extra data")
-        documents = extra_data[0]
-        target = extra_data[1]
+        documents, target = extra_data
         for document in documents:
             self._output.store_custom(document, target)
 
