@@ -300,36 +300,37 @@ class Pipeline:
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):
         event_received = json.dumps(event, separators=(",", ":"))
-        try:
-            for processor in self._pipeline:
-                try:
-                    extra_data = processor.process(event)
-                    if extra_data:
-                        self._store_extra_data(extra_data)
-                except ProcessingWarning as error:
-                    self._handle_processing_warning(processor, error)
-                except ProcessingWarningCollection as error:
-                    for warning in error.processing_warnings:
-                        self._handle_processing_warning(processor, warning)
-                if not event:
-                    self._logger.debug(f"Event deleted by processor {processor}")
-                    break
-        # pylint: disable=broad-except
-        except BaseException as error:
-            original_error_msg = type(error).__name__
-            if str(error):
-                original_error_msg += f": {error}"
-            msg = (
-                f"A critical error occurred for processor {processor.describe()} when "
-                f"processing an event, processing was aborted: ({original_error_msg})"
-            )
-            self._logger.error(msg)
-            self._output.store_failed(msg, json.loads(event_received), event)
-            event.clear()  # 'delete' the event, i.e. no regular output
-            processor.metrics.number_of_errors += 1
-        # pylint: enable=broad-except
+        for processor in self._pipeline:
+            try:
+                extra_data = processor.process(event)
+                if extra_data:
+                    self._store_extra_data(extra_data)
+            except ProcessingWarning as error:
+                self._handle_processing_warning(processor, error)
+            except ProcessingWarningCollection as error:
+                for warning in error.processing_warnings:
+                    self._handle_processing_warning(processor, warning)
+            except BaseException as error:  # pylint: disable=broad-except
+                msg = self._handle_fatal_processing_error(processor, error)
+                self._output.store_failed(msg, json.loads(event_received), event)
+                processor.metrics.number_of_errors += 1
+                event.clear()  # 'delete' the event, i.e. no regular output
+            if not event:
+                self._logger.debug(f"Event deleted by processor {processor}")
+                break
         self._processing_counter.increment()
         self._processing_counter.print_if_ready()
+
+    def _handle_fatal_processing_error(self, processor, error):
+        original_error_msg = type(error).__name__
+        if str(error):
+            original_error_msg += f": {error}"
+        msg = (
+            f"A critical error occurred for processor {processor.describe()} when "
+            f"processing an event, processing was aborted: ({original_error_msg})"
+        )
+        self._logger.error(msg)
+        return msg
 
     def _handle_processing_warning(self, processor, error):
         self._logger.warning(
