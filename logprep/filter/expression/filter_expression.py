@@ -3,7 +3,7 @@
 from typing import List, Any
 import re
 from itertools import chain, zip_longest
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
 
 class FilterExpressionError(BaseException):
@@ -14,7 +14,7 @@ class KeyDoesNotExistError(FilterExpressionError):
     """Raise if key does not exist in document."""
 
 
-class FilterExpression(metaclass=ABCMeta):
+class FilterExpression(ABC):
     """Base class for all filter expression used for matching rules."""
 
     def matches(self, document: dict) -> bool:
