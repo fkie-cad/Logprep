@@ -76,18 +76,11 @@ class FilterExpression(metaclass=ABCMeta):
             current = current[item]
         return current
 
-    # Here, we define equality as "same type,
-    # same attributes" which should work for
-    # most occasions but may be overridden
-    # where necessary.
     def __eq__(self, other):
-        # pylint: disable=C0123
-        if type(self) != type(other):
+        if not isinstance(other, type(self)):
             return False
-
-        for key in self.__dict__:  # pylint: disable=consider-using-dict-items
-            if self.__dict__[key] != other.__dict__[key]:
-                return False
+        if not self.__dict__ == other.__dict__:
+            return False
         return True
 
     @staticmethod
@@ -140,11 +133,7 @@ class And(CompoundFilterExpression):
         return f'AND({", ".join([str(i) for i in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
-        for expression in self.expressions:
-            if not expression.matches(document):
-                return False
-
-        return True
+        return all((expression.matches(document) for expression in self.expressions))
 
 
 class Or(CompoundFilterExpression):
@@ -154,11 +143,7 @@ class Or(CompoundFilterExpression):
         return f'OR({", ".join([str(i) for i in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
-        for expression in self.expressions:
-            if expression.matches(document):
-                return True
-
-        return False
+        return any((expression.matches(document) for expression in self.expressions))
 
 
 class KeyValueBasedFilterExpression(FilterExpression):
