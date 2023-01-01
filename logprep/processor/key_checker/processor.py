@@ -20,7 +20,7 @@ Example
 """
 
 from typing import Iterable
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.key_checker.rule import KeyCheckerRule
 from logprep.util.helper import add_field_to, get_dotted_field_value

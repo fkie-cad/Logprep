@@ -20,7 +20,7 @@ from logprep.processor.base.exceptions import (
     MismatchedRuleDefinitionError,
 )
 from logprep.processor.base.rule import Rule
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema, InvalidLabelingSchemaFileError
 from logprep.filter.lucene_filter import LuceneFilterError
 

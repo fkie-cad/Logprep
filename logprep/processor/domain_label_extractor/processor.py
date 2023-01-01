@@ -35,7 +35,7 @@ from typing import Optional
 from attr import define, field, validators
 from tldextract import TLDExtract
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.getter import GetterFactory

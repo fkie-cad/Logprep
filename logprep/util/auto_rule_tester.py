@@ -14,6 +14,7 @@ from logging import getLogger
 from os import walk, path
 from pprint import pprint
 from typing import Tuple, TYPE_CHECKING
+from logprep.framework.rule_tree.rule_tree import RuleTree
 
 from typing.io import TextIO
 import regex as re
@@ -28,7 +29,7 @@ from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
 from logprep.util.helper import print_fcolor, remove_file_if_exists, get_dotted_field_value
 
 if TYPE_CHECKING:
-    from logprep.abc import Processor
+    from logprep.abc.processor import Processor
 
 
 logger = getLogger()
@@ -360,7 +361,7 @@ class AutoRuleTester:
     def _do_processor_specific_setup(processor: "Processor"):
         if isinstance(processor, Pseudonymizer):
             processor._replace_regex_keywords_by_regex_expression()
-        elif isinstance(processor, ListComparison):
+        if isinstance(processor, ListComparison):
             processor._init_rules_list_comparison()
 
     def _prepare_test_eval(
@@ -399,11 +400,11 @@ class AutoRuleTester:
     @staticmethod
     def _reset_trees(processor: "Processor"):
         if hasattr(processor, "_tree"):
-            processor._tree.reset()
+            processor._tree = RuleTree()
         if hasattr(processor, "_specific_tree"):
-            processor._specific_tree.reset()
+            processor._specific_tree = RuleTree()
         if hasattr(processor, "_generic_tree"):
-            processor._generic_tree.reset()
+            processor._generic_tree = RuleTree()
 
     @staticmethod
     def _create_rule_file(rule_dict: dict, rule_path: str):

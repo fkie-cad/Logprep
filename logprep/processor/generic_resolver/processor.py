@@ -20,7 +20,7 @@ import re
 from logging import Logger
 from typing import List
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value

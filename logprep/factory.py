@@ -2,7 +2,7 @@
 import copy
 from typing import TYPE_CHECKING
 
-from logprep.abc import Component
+from logprep.abc.component import Component
 from logprep.configuration import Configuration
 from logprep.factory_error import (
     InvalidConfigSpecificationError,

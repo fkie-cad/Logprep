@@ -35,7 +35,7 @@ from typing import Optional
 
 from attr import define, field, validators
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
 

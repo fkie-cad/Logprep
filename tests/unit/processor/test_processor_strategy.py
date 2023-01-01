@@ -2,7 +2,7 @@
 # pylint: disable=no-self-use
 from unittest import mock
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 
 

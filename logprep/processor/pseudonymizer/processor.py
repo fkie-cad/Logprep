@@ -38,7 +38,7 @@ from attr import define, field, validators
 from tldextract import TLDExtract
 from urlextract import URLExtract
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache

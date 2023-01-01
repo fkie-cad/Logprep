@@ -47,7 +47,7 @@ This :py:class:`Config` class has to inherit from :py:class:`Processor.Config` a
             new_config_parameter: config_value
 
     """
-    from logprep.abc import Processor
+    from logprep.abc.processor import Processor
     from attrs import define, field
 
     class NewProcessor(Processor):
@@ -134,7 +134,7 @@ the general implementation of a new processor seen in :ref:`implementing_a_new_p
     :linenos:
 
     """Processor Documentation"""
-    from logprep.abc import Processor
+    from logprep.abc.processor import Processor
     from attrs import define
 
     class NewProcessor(Processor):

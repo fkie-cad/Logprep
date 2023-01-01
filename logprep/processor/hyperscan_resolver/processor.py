@@ -27,7 +27,7 @@ from os import path, makedirs
 from typing import List, Tuple, Any, Dict
 from attr import define, field
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import SkipImportError
 from logprep.util.validators import directory_validator
 from logprep.util.helper import get_dotted_field_value

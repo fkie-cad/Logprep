@@ -25,7 +25,7 @@ from logging import Logger
 from dateutil.parser import parse
 from dateutil.tz import tzlocal
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
