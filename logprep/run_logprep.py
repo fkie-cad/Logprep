@@ -5,7 +5,7 @@ import inspect
 import logging
 import sys
 from argparse import ArgumentParser
-from logging import getLogger, Logger, DEBUG, ERROR
+from logging import getLogger, Logger, ERROR
 from os.path import basename
 from pathlib import Path
 
@@ -87,8 +87,7 @@ def _run_logprep(arguments, logger: Logger):
         runner = Runner.get_runner()
         runner.set_logger(logger)
         runner.load_configuration(arguments.config)
-        if logger.isEnabledFor(DEBUG):  # pragma: no cover
-            logger.debug("Configuration loaded")
+        logger.debug("Configuration loaded")
         runner.start()
     # pylint: disable=broad-except
     except BaseException as error:
@@ -127,14 +126,19 @@ def get_versions_string(args) -> str:
     return version_string
 
 
-def main():
-    """Start the logprep runner."""
-    args = _parse_arguments()
+def _setup_logger(args, config):
+    try:
+        AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
+        logger = AggregatingLogger.create("Logprep")
+        for version in get_versions_string(args).split("\n"):
+            logger.info(version)
+    except BaseException as error:  # pylint: disable=broad-except
+        getLogger("Logprep").exception(error)
+        sys.exit(1)
+    return logger
 
-    if args.version:
-        print(get_versions_string(args))
-        sys.exit(0)
 
+def _load_configuration(args):
     try:
         config = Configuration().create_from_yaml(args.config)
     except FileNotFoundError:
@@ -144,15 +148,10 @@ def main():
             file=sys.stderr,
         )
         sys.exit(1)
-    try:
-        AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
-        logger = AggregatingLogger.create("Logprep")
-        for version in get_versions_string(args).split("\n"):
-            logger.info(version)
-    except BaseException as error:  # pylint: disable=broad-except
-        getLogger("Logprep").exception(error)
-        sys.exit(1)
+    return config
 
+
+def _verify_configuration(args, config, logger):
     try:
         if args.validate_rules or args.auto_test:
             config.verify_pipeline_only(logger)
@@ -164,27 +163,45 @@ def main():
         logger.exception(error)
         sys.exit(1)
 
+
+def _setup_metrics_and_time_measurement(args, config, logger):
     measure_time_config = config.get("metrics", {}).get("measure_time", {})
     TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)
     TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
 
-    if logger.isEnabledFor(DEBUG):  # pragma: no cover
-        logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
-        logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
-        logger.debug(f"Config path: {args.config}")
+    logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
+    logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
+    logger.debug(f"Config path: {args.config}")
+
+
+def _validate_rules(args, logger):
+    type_rule_map = get_processor_type_and_rule_class()
+    rules_valid = []
+    for processor_type, rule_class in type_rule_map.items():
+        rules_valid.append(
+            SchemaAndRuleChecker().validate_rules(args.config, processor_type, rule_class, logger)
+        )
+    if not all(rules_valid):
+        sys.exit(1)
+    if not args.auto_test:
+        sys.exit(0)
+
+
+def main():
+    """Start the logprep runner."""
+    args = _parse_arguments()
+
+    if args.version:
+        print(get_versions_string(args))
+        sys.exit(0)
+
+    config = _load_configuration(args)
+    logger = _setup_logger(args, config)
+    _verify_configuration(args, config, logger)
+    _setup_metrics_and_time_measurement(args, config, logger)
+
     if args.validate_rules or args.auto_test:
-        type_rule_map = get_processor_type_and_rule_class()
-        rules_valid = []
-        for processor_type, rule_class in type_rule_map.items():
-            rules_valid.append(
-                SchemaAndRuleChecker().validate_rules(
-                    args.config, processor_type, rule_class, logger
-                )
-            )
-        if not all(rules_valid):
-            sys.exit(1)
-        if not args.auto_test:
-            sys.exit(0)
+        _validate_rules(args, logger)
 
     if args.auto_test:
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
