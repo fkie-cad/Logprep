@@ -10,6 +10,7 @@ from yaml import safe_load
 from logprep import run_logprep
 from logprep._version import get_versions
 from logprep.run_logprep import DEFAULT_LOCATION_CONFIG
+from logprep.util.configuration import InvalidConfigurationError
 from logprep.util.getter import GetterNotFoundError
 
 
@@ -227,3 +228,29 @@ class TestRunLogprep:
         with mock.patch("sys.argv", ["logprep", config_path]):
             run_logprep.main()
         mock_stop.assert_called()
+
+    def test_logprep_exits_if_logger_can_not_be_created(self):
+        with mock.patch("logprep.run_logprep.AggregatingLogger.create") as mock_create:
+            mock_create.side_effect = BaseException
+            config_path = "quickstart/exampledata/config/pipeline.yml"
+            with mock.patch("sys.argv", ["logprep", config_path]):
+                with pytest.raises(SystemExit):
+                    run_logprep.main()
+
+    @mock.patch("logprep.util.log_aggregator.Aggregator")
+    def test_logprep_exits_on_invalid_configuration(self, _):
+        with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
+            mock_verify.side_effect = InvalidConfigurationError
+            config_path = "quickstart/exampledata/config/pipeline.yml"
+            with mock.patch("sys.argv", ["logprep", config_path]):
+                with pytest.raises(SystemExit):
+                    run_logprep.main()
+
+    @mock.patch("logprep.util.log_aggregator.Aggregator")
+    def test_logprep_exits_on_any_exception_during_verify(self, _):
+        with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
+            mock_verify.side_effect = Exception
+            config_path = "quickstart/exampledata/config/pipeline.yml"
+            with mock.patch("sys.argv", ["logprep", config_path]):
+                with pytest.raises(SystemExit):
+                    run_logprep.main()
