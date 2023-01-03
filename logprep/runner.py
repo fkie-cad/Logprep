@@ -182,7 +182,7 @@ class Runner:
 
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
-        # self._schedule_config_refresh_job()
+        self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
         try:
             while self._keep_iterating():
@@ -236,7 +236,7 @@ class Runner:
     def _schedule_config_refresh_job(self):
         refresh_interval = self._configuration.get("config_refresh_interval")
         scheduler = self.scheduler
-        if scheduler.jobs:
+        if scheduler is not None and scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, int):
             scheduler.every(refresh_interval).seconds.do(self.reload_configuration)
