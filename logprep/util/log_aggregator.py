@@ -30,6 +30,7 @@ class Aggregator(Filter):
         """
         cls.count_threshold = count
         cls.log_period = period
+        cls.logs.clear()
 
     @classmethod
     def start_timer(cls):
