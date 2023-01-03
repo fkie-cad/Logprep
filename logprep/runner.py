@@ -2,8 +2,9 @@
 
 import signal
 from ctypes import c_bool
-from logging import Logger, DEBUG
+from logging import Logger
 from multiprocessing import Value, current_process
+from schedule import Scheduler
 
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metric_targets import get_metric_targets
@@ -79,6 +80,8 @@ class Runner:
 
     _runner = None
 
+    scheduler: Scheduler
+
     # Use this method to obtain a runner singleton for production
     @staticmethod
     def get_runner():
@@ -96,6 +99,7 @@ class Runner:
         self._log_handler = None
 
         self._manager = None
+        self.scheduler = Scheduler()
 
         # noinspection PyTypeChecker
         self._continue_iterating = Value(c_bool)
@@ -178,10 +182,11 @@ class Runner:
 
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
-
+        # self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
         try:
             while self._keep_iterating():
+                # self.scheduler.run_pending()
                 self._logger.debug("Runner iterating")
                 self._manager.remove_failed_pipeline()
                 self._manager.set_count(self._configuration["process_count"])
@@ -208,7 +213,7 @@ class Runner:
         """
         if self._configuration is None:
             raise CannotReloadWhenConfigIsUnsetError
-
+        self._schedule_config_refresh_job()
         new_configuration = Configuration.create_from_yaml(self._yaml_path)
 
         try:
@@ -227,6 +232,15 @@ class Runner:
                 + ": "
                 + str(error)
             )
+
+    def _schedule_config_refresh_job(self):
+        refresh_interval = self._configuration.get("config_refresh_interval")
+        scheduler = self.scheduler
+        if scheduler.jobs:
+            scheduler.cancel_job(scheduler.jobs[0])
+        if isinstance(refresh_interval, int):
+            scheduler.every(refresh_interval).seconds.do(self.reload_configuration)
+            self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
     def _create_manager(self):
         if self._manager is not None:

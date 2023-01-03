@@ -187,3 +187,28 @@ class TestRunner(LogprepRunnerTest):
 
     def get_path(self, filename):
         return join(split(__path__), filename)
+
+    def test_reload_configuration_does_not_schedules_job_if_no_config_refresh_interval_is_set(self):
+        assert len(self.runner.scheduler.jobs) == 0
+        if "config_refresh_interval" in self.runner._configuration:
+            self.runner._configuration.pop("config_refresh_interval")
+        self.runner.reload_configuration()
+        assert len(self.runner.scheduler.jobs) == 0
+
+    def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(self):
+        assert len(self.runner.scheduler.jobs) == 0
+        self.runner._configuration.update({"config_refresh_interval": 5})
+        self.runner.reload_configuration()
+        assert len(self.runner.scheduler.jobs) == 1
+
+    def test_reload_configuration_reschedules_job(self):
+        assert len(self.runner.scheduler.jobs) == 0
+        self.runner._configuration.update({"config_refresh_interval": 5})
+        scheduler = self.runner.scheduler
+        self.runner.reload_configuration()
+        assert len(scheduler.jobs) == 1
+        assert scheduler.jobs[0].interval == 5
+        self.runner._configuration.update({"config_refresh_interval": 10})
+        self.runner.reload_configuration()
+        assert len(scheduler.jobs) == 1
+        assert scheduler.jobs[0].interval == 10

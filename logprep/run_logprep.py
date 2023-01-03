@@ -9,6 +9,7 @@ from logging import getLogger, Logger, ERROR
 from os.path import basename
 from pathlib import Path
 
+import schedule
 from colorama import Fore
 
 from logprep._version import get_versions
@@ -81,12 +82,13 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger):
+def _run_logprep(arguments, logger: Logger, scheduler: schedule.Scheduler = None):
     runner = None
     try:
         runner = Runner.get_runner()
         runner.set_logger(logger)
         runner.load_configuration(arguments.config)
+        runner.scheduler = scheduler
         logger.debug("Configuration loaded")
         runner.start()
     # pylint: disable=broad-except

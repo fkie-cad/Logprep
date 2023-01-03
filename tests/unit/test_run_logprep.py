@@ -1,4 +1,6 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
+import logging
 import sys
 from pathlib import Path
 from unittest import mock
@@ -6,12 +8,14 @@ from unittest import mock
 import pytest
 import responses
 from yaml import safe_load
+from schedule import Scheduler
 
 from logprep import run_logprep
 from logprep._version import get_versions
 from logprep.run_logprep import DEFAULT_LOCATION_CONFIG
 from logprep.util.configuration import InvalidConfigurationError
 from logprep.util.getter import GetterNotFoundError
+from logprep.runner import Runner
 
 
 class TestRunLogprep:
