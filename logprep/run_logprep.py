@@ -9,7 +9,6 @@ from logging import getLogger, Logger, ERROR
 from os.path import basename
 from pathlib import Path
 
-import schedule
 from colorama import Fore
 
 from logprep._version import get_versions

@@ -85,4 +85,4 @@ config_refresh_interval
 
 Configures the interval in seconds on which logprep should try to reload the configuration.
 This config key is optional. If not configured, logprep won't reload the configuration automatically.
-If configured the configuration will only reloaded if the configuration version changes.
+If configured the configuration will only be reloaded if the configuration version changes.
