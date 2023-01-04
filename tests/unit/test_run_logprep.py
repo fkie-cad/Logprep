@@ -6,6 +6,7 @@ from unittest import mock
 
 import pytest
 import responses
+import requests
 from yaml import safe_load
 
 from logprep import run_logprep
@@ -238,8 +239,7 @@ class TestRunLogprep:
                 with pytest.raises(SystemExit):
                     run_logprep.main()
 
-    @mock.patch("logprep.util.log_aggregator.Aggregator")
-    def test_logprep_exits_on_invalid_configuration(self, _):
+    def test_logprep_exits_on_invalid_configuration(self):
         with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
             mock_verify.side_effect = InvalidConfigurationError
             config_path = "quickstart/exampledata/config/pipeline.yml"
@@ -247,8 +247,7 @@ class TestRunLogprep:
                 with pytest.raises(SystemExit):
                     run_logprep.main()
 
-    @mock.patch("logprep.util.log_aggregator.Aggregator")
-    def test_logprep_exits_on_any_exception_during_verify(self, _):
+    def test_logprep_exits_on_any_exception_during_verify(self):
         with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
             mock_verify.side_effect = Exception
             config_path = "quickstart/exampledata/config/pipeline.yml"
@@ -256,10 +255,9 @@ class TestRunLogprep:
                 with pytest.raises(SystemExit):
                     run_logprep.main()
 
-    @mock.patch("logprep.util.log_aggregator.Aggregator")
-    def test_logprep_exits_on_request_exception(self, _):
-        with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
-            mock_verify.side_effect = Exception
+    def test_logprep_exits_on_request_exception(self):
+        with mock.patch("logprep.util.getter.HttpGetter.get_raw") as mock_verify:
+            mock_verify.side_effect = requests.RequestException("connection refused")
             with mock.patch("sys.argv", ["logprep", "http://localhost/does-not-exists"]):
                 with pytest.raises(SystemExit):
                     run_logprep.main()
