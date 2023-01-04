@@ -1,4 +1,4 @@
-version: 22342asdfadfaasdf
+version: 1
 process_count: 2
 timeout: 0.1
 config_refresh_interval: 20
