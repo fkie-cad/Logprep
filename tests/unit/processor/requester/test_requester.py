@@ -330,7 +330,14 @@ class TestRequester(BaseProcessorTestCase):
 
     @responses.activate
     def test_process(self):
-        responses.add(responses.Response(**{"url": "http://the-url", "method": "GET"}))
+        responses.add(
+            responses.Response(
+                **{
+                    "url": "http://localhost:32000/quickstart/exampledata/config/pipeline.yml",
+                    "method": "GET",
+                }
+            )
+        )
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "event_id": "1234",

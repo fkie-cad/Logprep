@@ -82,13 +82,12 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger, scheduler: schedule.Scheduler = None):
+def _run_logprep(arguments, logger: Logger):
     runner = None
     try:
         runner = Runner.get_runner()
         runner.set_logger(logger)
         runner.load_configuration(arguments.config)
-        runner.scheduler = scheduler
         logger.debug("Configuration loaded")
         runner.start()
     # pylint: disable=broad-except
