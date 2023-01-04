@@ -389,13 +389,17 @@ To change the configuration of Logprep it is not needed to restart Logprep entir
 Instead, it can be issued to reload the configuration. 
 For this, the signal `SIGUSR1` must be send to the Logprep process.
 
+Besides this a `config_refresh_interval` can be configured to make a automatic config refresh.
+This can be useful in containerizes environments like kubernetes when mounted pod volumes changes
+on the fly.
+
 If the configuration does not pass a consistency check, then an error message is logged and 
 Logprep keeps running with the previous configuration.
 The configuration should be then checked and corrected on the basis of the error message.
 
 ## Docker Quickstart Environment
 
-Logprep was designed to work with the Elastic Stack and Kafka.
+Logprep was designed to work with the Elastic Stack or Opensearch and Kafka.
 This repository comes with a docker-compose file that builds a pre-configured Elastic Stack with 
 Kafka and Logprep.
 To get it running docker and docker-compose (version >= 1.28) must be first installed.
