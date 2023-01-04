@@ -24,7 +24,6 @@ from logprep.runner import (
     NotALoggerError,
     MustConfigureALoggerError,
     MustNotSetLoggerTwiceError,
-    StopIteratingError,
     UseGetRunnerToCreateRunnerSingleton,
     MustNotCreateMoreThanOneManagerError,
 )
