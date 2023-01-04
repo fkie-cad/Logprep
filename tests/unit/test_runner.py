@@ -6,6 +6,7 @@
 # pylint: disable=no-self-use
 from copy import deepcopy
 from functools import partial
+import json
 from logging import Logger, ERROR, INFO
 from os.path import split, join
 from unittest import mock
@@ -224,23 +225,39 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 0
         if "config_refresh_interval" in self.runner._configuration:
             self.runner._configuration.pop("config_refresh_interval")
-        self.runner.reload_configuration()
+        self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 0
 
-    def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(self):
+    def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
-        self.runner._configuration.update({"config_refresh_interval": 5})
-        self.runner.reload_configuration()
+        config_path = tmp_path / "config.yml"
+        config_update = {"config_refresh_interval": 5, "version": "current version"}
+        self.runner._configuration.update(config_update)
+        config_update = deepcopy(self.runner._configuration)
+        config_update.update({"config_refresh_interval": 5, "version": "new version"})
+        config_path.write_text(json.dumps(config_update))
+        self.runner._yaml_path = str(config_path)
+        self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
 
-    def test_reload_configuration_reschedules_job(self):
+    def test_reload_configuration_reschedules_job_with_new_refresh_interval(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
-        self.runner._configuration.update({"config_refresh_interval": 5})
-        scheduler = self.runner.scheduler
-        self.runner.reload_configuration()
-        assert len(scheduler.jobs) == 1
-        assert scheduler.jobs[0].interval == 5
-        self.runner._configuration.update({"config_refresh_interval": 10})
-        self.runner.reload_configuration()
-        assert len(scheduler.jobs) == 1
-        assert scheduler.jobs[0].interval == 10
+        config_path = tmp_path / "config.yml"
+        # set current state
+        config_update = {"config_refresh_interval": 5, "version": "current version"}
+        self.runner._configuration.update(config_update)
+        # first refresh
+        config_update = deepcopy(self.runner._configuration)
+        config_update.update({"config_refresh_interval": 5, "version": "new version"})
+        config_path.write_text(json.dumps(config_update))
+        self.runner._yaml_path = str(config_path)
+        self.runner.reload_configuration(refresh=True)
+        assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.scheduler.jobs[0].interval == 5
+        # second refresh
+        config_update.update({"config_refresh_interval": 10, "version": "newer version"})
+        config_path.write_text(json.dumps(config_update))
+        self.runner._yaml_path = str(config_path)
+        self.runner.reload_configuration(refresh=True)
+        assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.scheduler.jobs[0].interval == 10

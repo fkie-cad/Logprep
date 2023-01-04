@@ -210,20 +210,20 @@ class Runner:
         """
         if self._configuration is None:
             raise CannotReloadWhenConfigIsUnsetError
-        self._schedule_config_refresh_job()
         new_configuration = Configuration.create_from_yaml(self._yaml_path)
-        version_differ = new_configuration.get("version") != self._configuration.get("version")
-        if refresh and not version_differ:
-            self._logger.info(
-                "Configuration version doesn't changed. Continue running with current version."
-            )
-            return
-
+        if refresh:
+            version_differ = new_configuration.get("version") != self._configuration.get("version")
+            if not version_differ:
+                self._logger.info(
+                    "Configuration version didn't change. Continue running with current version."
+                )
+                return
         try:
             new_configuration.verify(self._logger)
 
             # Only reached when configuration is verified successfully
             self._configuration = new_configuration
+            self._schedule_config_refresh_job()
             self._manager.set_configuration(self._configuration)
             self._manager.replace_pipelines()
             self._manager.set_count(self._configuration["process_count"])

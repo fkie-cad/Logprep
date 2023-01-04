@@ -41,6 +41,6 @@ def test_no_config_refresh_after_2_seconde(tmp_path):
     wait_for_output(proc, "Config refresh interval is set to: 2 seconds", test_timeout=5)
     wait_for_output(
         proc,
-        "Configuration version doesn't changed. Continue running with current version.",
+        "Configuration version didn't change. Continue running with current version.",
         test_timeout=5,
     )
