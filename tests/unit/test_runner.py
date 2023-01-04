@@ -4,40 +4,39 @@
 # pylint: disable=missing-function-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+import json
 from copy import deepcopy
 from functools import partial
-import json
-from logging import Logger, ERROR, INFO
-from os.path import split, join
+from logging import ERROR, INFO, Logger
+from os.path import join, split
 from unittest import mock
 
 from pytest import raises
+from requests import HTTPError
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.labeler.labeling_schema import (
-    LabelingSchemaError,
-)
+from logprep.processor.labeler.labeling_schema import LabelingSchemaError
 from logprep.runner import (
-    Runner,
-    MustNotConfigureTwiceError,
-    MustConfigureBeforeRunningError,
     CannotReloadWhenConfigIsUnsetError,
-    NotALoggerError,
     MustConfigureALoggerError,
-    MustNotSetLoggerTwiceError,
-    UseGetRunnerToCreateRunnerSingleton,
+    MustConfigureBeforeRunningError,
+    MustNotConfigureTwiceError,
     MustNotCreateMoreThanOneManagerError,
+    MustNotSetLoggerTwiceError,
+    NotALoggerError,
+    Runner,
+    UseGetRunnerToCreateRunnerSingleton,
 )
 from tests.testdata.ConfigurationForTest import ConfigurationForTest
 from tests.testdata.metadata import (
-    path_to_config,
     path_to_alternative_config,
+    path_to_config,
     path_to_invalid_config,
     path_to_invalid_rules,
     path_to_schema2,
 )
 from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
-from tests.util.testhelpers import HandlerStub, AssertEmitsLogMessage
+from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub
 
 
 class RunnerForTesting(Runner):
@@ -261,3 +260,46 @@ class TestRunner(LogprepRunnerTest):
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 10
+
+    @mock.patch("logprep.abc.getter.Getter.get")
+    def test_reload_configuration_logs_http_error_and_schedules_new_refresh_with_a_quarter_the_time(
+        self, mock_get
+    ):
+        mock_get.side_effect = HTTPError(404)
+        assert len(self.runner.scheduler.jobs) == 0
+        config_update = {"config_refresh_interval": 40, "version": "current version"}
+        self.runner._configuration.update(config_update)
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            with mock.patch("logging.Logger.info") as mock_info:
+                self.runner.reload_configuration(refresh=True)
+        mock_warning.assert_called_with("Failed to load configuration: 404")
+        mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
+        assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.scheduler.jobs[0].interval == 10
+
+    @mock.patch("logprep.abc.getter.Getter.get")
+    def test_reload_configuration_does_not_set_refresh_interval_below_5_seconds(self, mock_get):
+        mock_get.side_effect = HTTPError(404)
+        assert len(self.runner.scheduler.jobs) == 0
+        config_update = {"config_refresh_interval": 12, "version": "current version"}
+        self.runner._configuration.update(config_update)
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            with mock.patch("logging.Logger.info") as mock_info:
+                self.runner.reload_configuration(refresh=True)
+        mock_warning.assert_called_with("Failed to load configuration: 404")
+        mock_info.assert_called_with("Config refresh interval is set to: 5 seconds")
+        assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.scheduler.jobs[0].interval == 5
+
+    def test_reload_configuration_logs_new_version(self, tmp_path):
+        assert len(self.runner.scheduler.jobs) == 0
+        config_path = tmp_path / "config.yml"
+        config_update = {"config_refresh_interval": 5, "version": "current version"}
+        self.runner._configuration.update(config_update)
+        config_update = deepcopy(self.runner._configuration)
+        config_update.update({"config_refresh_interval": 5, "version": "new version"})
+        config_path.write_text(json.dumps(config_update))
+        self.runner._yaml_path = str(config_path)
+        with mock.patch("logging.Logger.info") as mock_info:
+            self.runner.reload_configuration(refresh=True)
+        mock_info.assert_called_with("Configuration version: new version")

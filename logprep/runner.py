@@ -5,6 +5,7 @@ from ctypes import c_bool
 from logging import Logger
 from multiprocessing import Value, current_process
 from schedule import Scheduler
+from requests import HTTPError
 
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metric_targets import get_metric_targets
@@ -210,7 +211,17 @@ class Runner:
         """
         if self._configuration is None:
             raise CannotReloadWhenConfigIsUnsetError
-        new_configuration = Configuration.create_from_yaml(self._yaml_path)
+        try:
+            new_configuration = Configuration.create_from_yaml(self._yaml_path)
+        except HTTPError as error:
+            self._logger.warning(f"Failed to load configuration: {error}")
+            current_refresh_interval = self._configuration.get("config_refresh_interval")
+            if isinstance(current_refresh_interval, (float, int)):
+                new_refresh_interval = current_refresh_interval / 4
+                new_refresh_interval = 5 if new_refresh_interval < 5 else new_refresh_interval
+                self._configuration.update({"config_refresh_interval": new_refresh_interval})
+            self._schedule_config_refresh_job()
+            return
         if refresh:
             version_differ = new_configuration.get("version") != self._configuration.get("version")
             if not version_differ:
@@ -228,6 +239,9 @@ class Runner:
             self._manager.replace_pipelines()
             self._manager.set_count(self._configuration["process_count"])
             self._logger.info("Successfully reloaded configuration")
+            self._logger.info(
+                f"Configuration version: {self._configuration.get('version', 'unset')}"
+            )
         except InvalidConfigurationError as error:
             self._logger.error(
                 "Invalid configuration, leaving old configuration in place: "
@@ -241,7 +255,7 @@ class Runner:
         scheduler = self.scheduler
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
-        if isinstance(refresh_interval, int):
+        if isinstance(refresh_interval, (float, int)):
             scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
