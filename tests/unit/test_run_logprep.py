@@ -258,3 +258,11 @@ class TestRunLogprep:
             with mock.patch("sys.argv", ["logprep", config_path]):
                 with pytest.raises(SystemExit):
                     run_logprep.main()
+
+    @mock.patch("logprep.util.log_aggregator.Aggregator")
+    def test_logprep_exits_on_request_exception(self, _):
+        with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
+            mock_verify.side_effect = Exception
+            with mock.patch("sys.argv", ["logprep", "http://localhost/does-not-exists"]):
+                with pytest.raises(SystemExit):
+                    run_logprep.main()

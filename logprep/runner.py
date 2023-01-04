@@ -4,8 +4,10 @@ import signal
 from ctypes import c_bool
 from logging import Logger
 from multiprocessing import Value, current_process
+
+import requests
 from schedule import Scheduler
-from requests import HTTPError
+
 
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metric_targets import get_metric_targets
@@ -182,8 +184,7 @@ class Runner:
         self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
         for _ in self._keep_iterating():
-            if self.scheduler is not None:
-                self.scheduler.run_pending()
+            self.scheduler.run_pending()
             self._logger.debug("Runner iterating")
             self._manager.remove_failed_pipeline()
             self._manager.set_count(self._configuration["process_count"])
@@ -192,8 +193,6 @@ class Runner:
             self._manager.handle_logs_into_logger(
                 self._logger, self._configuration["timeout"] / 2.0
             )
-        if self.scheduler is not None and self.scheduler.jobs:
-            self.scheduler.cancel_job(self.scheduler.jobs[0])
         self.stop()
 
         self._logger.info("Initiated shutdown")
@@ -213,7 +212,7 @@ class Runner:
             raise CannotReloadWhenConfigIsUnsetError
         try:
             new_configuration = Configuration.create_from_yaml(self._yaml_path)
-        except HTTPError as error:
+        except (requests.RequestException) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
             current_refresh_interval = self._configuration.get("config_refresh_interval")
             if isinstance(current_refresh_interval, (float, int)):

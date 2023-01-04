@@ -262,7 +262,7 @@ class TestRunner(LogprepRunnerTest):
         assert self.runner.scheduler.jobs[0].interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_logs_http_error_and_schedules_new_refresh_with_a_quarter_the_time(
+    def test_reload_configuration_logs_request_exception_and_schedules_new_refresh_with_a_quarter_the_time(
         self, mock_get
     ):
         mock_get.side_effect = HTTPError(404)
@@ -291,7 +291,7 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 5
 
-    def test_reload_configuration_sets_refresh_interval_on_successful_reload_after_http_error(
+    def test_reload_configuration_sets_refresh_interval_on_successful_reload_after_request_exception(
         self, tmp_path
     ):
         config_update = {"config_refresh_interval": 12, "version": "current version"}

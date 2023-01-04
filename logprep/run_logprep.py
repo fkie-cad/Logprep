@@ -5,10 +5,11 @@ import inspect
 import logging
 import sys
 from argparse import ArgumentParser
-from logging import getLogger, Logger, ERROR
+from logging import ERROR, Logger, getLogger
 from os.path import basename
 from pathlib import Path
 
+import requests
 from colorama import Fore
 
 from logprep._version import get_versions
@@ -147,6 +148,9 @@ def _load_configuration(args):
             "Create the configuration or change the path. Use '--help' for more information.",
             file=sys.stderr,
         )
+        sys.exit(1)
+    except requests.RequestException as error:
+        print(f"{error}")
         sys.exit(1)
     return config
 
