@@ -44,10 +44,6 @@ class CannotReloadWhenConfigIsUnsetError(RunnerError):
     """Raise if the configuration was reloaded but not set."""
 
 
-class StopIteratingError(RunnerError):
-    """Raise if the process iteration stopped unexpectedly."""
-
-
 class UseGetRunnerToCreateRunnerSingleton(RunnerError):
     """ "Raise if the runner was not created as a singleton."""
 
@@ -184,24 +180,20 @@ class Runner:
             self._continue_iterating.value = True
         self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
-        try:
-            for itereate in self._keep_iterating():
-                if not itereate:
-                    raise StopIteratingError()
-                if self.scheduler is not None:
-                    self.scheduler.run_pending()
-                self._logger.debug("Runner iterating")
-                self._manager.remove_failed_pipeline()
-                self._manager.set_count(self._configuration["process_count"])
-                # Note: We are waiting half the timeout because when shutting down, we also have to
-                # wait for the logprep's timeout before the shutdown is actually initiated.
-                self._manager.handle_logs_into_logger(
-                    self._logger, self._configuration["timeout"] / 2.0
-                )
-        except (StopIteratingError, KeyboardInterrupt):
-            if self.scheduler is not None and self.scheduler.jobs:
-                self.scheduler.cancel_job(self.scheduler.jobs[0])
-            self.stop()
+        for _ in self._keep_iterating():
+            if self.scheduler is not None:
+                self.scheduler.run_pending()
+            self._logger.debug("Runner iterating")
+            self._manager.remove_failed_pipeline()
+            self._manager.set_count(self._configuration["process_count"])
+            # Note: We are waiting half the timeout because when shutting down, we also have to
+            # wait for the logprep's timeout before the shutdown is actually initiated.
+            self._manager.handle_logs_into_logger(
+                self._logger, self._configuration["timeout"] / 2.0
+            )
+        if self.scheduler is not None and self.scheduler.jobs:
+            self.scheduler.cancel_job(self.scheduler.jobs[0])
+        self.stop()
 
         self._logger.info("Initiated shutdown")
         self._manager.stop()
@@ -262,9 +254,13 @@ class Runner:
             self._continue_iterating.value = False
 
     def _keep_iterating(self):
+        """generator function"""
         while True:
             with self._continue_iterating.get_lock():
-                yield self._continue_iterating.value
+                iterate = self._continue_iterating.value
+                if not iterate:
+                    return
+                yield iterate
 
 
 def signal_handler(signal_number: int, _):

@@ -209,13 +209,16 @@ class TestRunner(LogprepRunnerTest):
         assert mock_run_pending.call_count == 3
 
     @mock.patch("schedule.Scheduler.run_pending")
-    def test_iteration_stops_on_stopiteratingerror(self, mock_run_pending):
-        self.runner._keep_iterating = partial(mock_keep_iterating, 3)
-        with mock.patch(
-            "logprep.framework.pipeline_manager.PipelineManager.remove_failed_pipeline"
-        ) as mock_set_count:
-            mock_set_count.side_effect = StopIteratingError()
-            self.runner.start()
+    def test_iteration_stops_if_continue_iterating_returns_false(self, mock_run_pending):
+        def patch_runner(runner):
+            def patch():
+                with runner._continue_iterating.get_lock():
+                    runner._continue_iterating.value = False
+
+            return patch
+
+        mock_run_pending.side_effect = patch_runner(self.runner)
+        self.runner.start()
         assert mock_run_pending.call_count == 1
 
     def test_reload_configuration_does_not_schedules_job_if_no_config_refresh_interval_is_set(self):
