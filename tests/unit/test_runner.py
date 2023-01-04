@@ -291,6 +291,25 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 5
 
+    def test_reload_configuration_sets_refresh_interval_on_successful_reload_after_http_error(
+        self, tmp_path
+    ):
+        config_update = {"config_refresh_interval": 12, "version": "current version"}
+        self.runner._configuration.update(config_update)
+        config_path = tmp_path / "config.yml"
+        config_update = deepcopy(self.runner._configuration)
+        config_update.update({"config_refresh_interval": 60, "version": "new version"})
+        config_path.write_text(json.dumps(config_update))
+        self.runner._yaml_path = str(config_path)
+        with mock.patch("logprep.abc.getter.Getter.get") as mock_get:
+            mock_get.side_effect = HTTPError(404)
+            self.runner.reload_configuration(refresh=True)
+            assert len(self.runner.scheduler.jobs) == 1
+            assert self.runner.scheduler.jobs[0].interval == 5
+        self.runner.reload_configuration(refresh=True)
+        assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.scheduler.jobs[0].interval == 60
+
     def test_reload_configuration_logs_new_version(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
         config_path = tmp_path / "config.yml"
