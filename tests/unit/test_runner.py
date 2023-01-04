@@ -210,7 +210,7 @@ class TestRunner(LogprepRunnerTest):
     @mock.patch("schedule.Scheduler.run_pending")
     def test_iteration_stops_if_continue_iterating_returns_false(self, mock_run_pending):
         def patch_runner(runner):
-            def patch():
+            def patch():  # nosemgrep
                 with runner._continue_iterating.get_lock():
                     runner._continue_iterating.value = False
 
