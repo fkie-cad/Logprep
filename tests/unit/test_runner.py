@@ -5,8 +5,10 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 from copy import deepcopy
+from functools import partial
 from logging import Logger, ERROR, INFO
 from os.path import split, join
+from unittest import mock
 
 from pytest import raises
 
@@ -22,6 +24,7 @@ from logprep.runner import (
     NotALoggerError,
     MustConfigureALoggerError,
     MustNotSetLoggerTwiceError,
+    StopIteratingError,
     UseGetRunnerToCreateRunnerSingleton,
     MustNotCreateMoreThanOneManagerError,
 )
@@ -54,6 +57,11 @@ class LogprepRunnerTest:
         self.runner = RunnerForTesting()
         self.runner.set_logger(self.logger)
         self.runner._create_manager()
+
+
+def mock_keep_iterating(iterations):
+    for _ in range(iterations):
+        yield True
 
 
 class TestRunnerExpectedFailures(LogprepRunnerTest):
@@ -187,6 +195,28 @@ class TestRunner(LogprepRunnerTest):
 
     def get_path(self, filename):
         return join(split(__path__), filename)
+
+    @mock.patch("schedule.Scheduler.run_pending")
+    def test_iteration_calls_run_pending(self, mock_run_pending):
+        self.runner._keep_iterating = partial(mock_keep_iterating, 1)
+        self.runner.start()
+        mock_run_pending.assert_called()
+
+    @mock.patch("schedule.Scheduler.run_pending")
+    def test_iteration_calls_run_pending_on_every_iteration(self, mock_run_pending):
+        self.runner._keep_iterating = partial(mock_keep_iterating, 3)
+        self.runner.start()
+        assert mock_run_pending.call_count == 3
+
+    @mock.patch("schedule.Scheduler.run_pending")
+    def test_iteration_stops_on_stopiteratingerror(self, mock_run_pending):
+        self.runner._keep_iterating = partial(mock_keep_iterating, 3)
+        with mock.patch(
+            "logprep.framework.pipeline_manager.PipelineManager.remove_failed_pipeline"
+        ) as mock_set_count:
+            mock_set_count.side_effect = StopIteratingError()
+            self.runner.start()
+        assert mock_run_pending.call_count == 1
 
     def test_reload_configuration_does_not_schedules_job_if_no_config_refresh_interval_is_set(self):
         assert len(self.runner.scheduler.jobs) == 0

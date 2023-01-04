@@ -185,8 +185,11 @@ class Runner:
         self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
         try:
-            while self._keep_iterating():
-                # self.scheduler.run_pending()
+            for itereate in self._keep_iterating():
+                if not itereate:
+                    raise StopIteratingError()
+                if self.scheduler is not None:
+                    self.scheduler.run_pending()
                 self._logger.debug("Runner iterating")
                 self._manager.remove_failed_pipeline()
                 self._manager.set_count(self._configuration["process_count"])
@@ -196,6 +199,8 @@ class Runner:
                     self._logger, self._configuration["timeout"] / 2.0
                 )
         except (StopIteratingError, KeyboardInterrupt):
+            if self.scheduler is not None and self.scheduler.jobs:
+                self.scheduler.cancel_job(self.scheduler.jobs[0])
             self.stop()
 
         self._logger.info("Initiated shutdown")
@@ -257,8 +262,9 @@ class Runner:
             self._continue_iterating.value = False
 
     def _keep_iterating(self):
-        with self._continue_iterating.get_lock():
-            return self._continue_iterating.value
+        while True:
+            with self._continue_iterating.get_lock():
+                yield self._continue_iterating.value
 
 
 def signal_handler(signal_number: int, _):

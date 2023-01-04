@@ -4,7 +4,6 @@
 import json
 import logging
 import os
-import re
 import tempfile
 from unittest import mock
 
