@@ -211,12 +211,11 @@ class Runner:
             raise CannotReloadWhenConfigIsUnsetError
         try:
             new_configuration = Configuration.create_from_yaml(self._yaml_path)
-        except requests.RequestException as error:
+        except (requests.RequestException, FileNotFoundError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
             current_refresh_interval = self._configuration.get("config_refresh_interval")
             if isinstance(current_refresh_interval, (float, int)):
                 new_refresh_interval = current_refresh_interval / 4
-                new_refresh_interval = 5 if new_refresh_interval < 5 else new_refresh_interval
                 self._configuration.update({"config_refresh_interval": new_refresh_interval})
             self._schedule_config_refresh_job()
             return
@@ -250,6 +249,7 @@ class Runner:
 
     def _schedule_config_refresh_job(self):
         refresh_interval = self._configuration.get("config_refresh_interval")
+        refresh_interval = 5 if refresh_interval < 5 else refresh_interval
         scheduler = self.scheduler
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
