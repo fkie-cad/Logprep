@@ -252,11 +252,11 @@ class Runner:
 
     def _schedule_config_refresh_job(self):
         refresh_interval = self._configuration.get("config_refresh_interval")
-        refresh_interval = 5 if refresh_interval < 5 else refresh_interval
         scheduler = self.scheduler
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, (float, int)):
+            refresh_interval = 5 if refresh_interval < 5 else refresh_interval
             scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
