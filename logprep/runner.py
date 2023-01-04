@@ -199,7 +199,7 @@ class Runner:
         self._manager.stop()
         self._logger.info("Shutdown complete")
 
-    def reload_configuration(self):
+    def reload_configuration(self, refresh=False):
         """Reload the configuration from the configured yaml path.
 
         Raises
@@ -212,6 +212,12 @@ class Runner:
             raise CannotReloadWhenConfigIsUnsetError
         self._schedule_config_refresh_job()
         new_configuration = Configuration.create_from_yaml(self._yaml_path)
+        version_differ = new_configuration.get("version") != self._configuration.get("version")
+        if refresh and not version_differ:
+            self._logger.info(
+                "Configuration version doesn't changed. Continue running with current version."
+            )
+            return
 
         try:
             new_configuration.verify(self._logger)
@@ -236,7 +242,7 @@ class Runner:
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, int):
-            scheduler.every(refresh_interval).seconds.do(self.reload_configuration)
+            scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
     def _create_manager(self):
