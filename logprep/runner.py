@@ -225,6 +225,9 @@ class Runner:
                 self._logger.info(
                     "Configuration version didn't change. Continue running with current version."
                 )
+                self._logger.info(
+                    f"Configuration version: {self._configuration.get('version', 'unset')}"
+                )
                 return
         try:
             new_configuration.verify(self._logger)

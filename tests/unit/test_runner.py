@@ -195,6 +195,12 @@ class TestRunner(LogprepRunnerTest):
     def get_path(self, filename):
         return join(split(__path__), filename)
 
+    def test_start_sets_config_refresh_interval_to_a_minimum_of_5_seconds(self):
+        self.runner._keep_iterating = partial(mock_keep_iterating, 1)
+        self.runner._configuration.update({"config_refresh_interval": 0})
+        self.runner.start()
+        assert self.runner.scheduler.jobs[0].interval == 5
+
     @mock.patch("schedule.Scheduler.run_pending")
     def test_iteration_calls_run_pending(self, mock_run_pending):
         self.runner._keep_iterating = partial(mock_keep_iterating, 1)
