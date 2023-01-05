@@ -2,7 +2,7 @@
 <h3 align="center">
 
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/fkie-cad/Logprep)
-![GitHub Workflow Status (branch)](https://img.shields.io/github/workflow/status/fkie-cad/logprep/CI/main)
+![GitHub Workflow Status (branch)](https://img.shields.io/github/actions/workflow/status/fkie-cad/logprep/main.yml?branch=main) 
 [![Documentation Status](https://readthedocs.org/projects/logprep/badge/?version=latest)](http://logprep.readthedocs.io/?badge=latest)
 ![GitHub contributors](https://img.shields.io/github/contributors/fkie-cad/Logprep)
 <a href="https://codecov.io/github/fkie-cad/Logprep" target="_blank">
@@ -15,7 +15,9 @@
 
 Logprep allows to collect, process and forward log messages from various data sources.
 Log messages are being read and written by so-called connectors.
-Currently, connectors for Kafka and JSON files exist.
+Currently, connectors for Kafka, Elasticsearch, Opensearch and JSON(L) files exist.
+Additionally, an Input Connector for HTTP Input is provided, which starts an uvicorn server and
+accepts log message via POST Requests.
 
 The log messages are processed step-by-step by a pipeline of processors,
 where each processor modifies an event that is being passed through.
@@ -46,9 +48,9 @@ More detailed information can be found in the
 Logprep processes incoming log messages with a configured pipeline that can be spawned
 multiple times via multiprocessing.
 The following chart shows a basic setup that represents this behaviour.
-The pipeline consists of three processors the `Normalizer`, `Geo-IP Enricher` and the 
+The pipeline consists of three processors: the `Dissector`, `Geo-IP Enricher` and the 
 `Dropper`. 
-Each pipeline runs concurrently and takes one event from the `Input Connector`.
+Each pipeline runs concurrently and takes one event from it's `Input Connector`.
 Once the log messages is fully processed the result will be forwarded to the `Output Connector`,
 after which the pipeline will take the next message, repeating the processing cycle.
 
@@ -58,15 +60,15 @@ A1[Input\nConnector] --> B
 A2[Input\nConnector] --> C
 A3[Input\nConnector] --> D
 subgraph Pipeline 1
-B[Normalizer] --> E[Geo-IP Enricher]
+B[Dissector] --> E[Geo-IP Enricher]
 E --> F[Dropper] 
 end
 subgraph Pipeline 2
-C[Normalizer] --> G[Geo-IP Enricher]
+C[Dissector] --> G[Geo-IP Enricher]
 G --> H[Dropper] 
 end
 subgraph Pipeline n
-D[Normalizer] --> I[Geo-IP Enricher]
+D[Dissector] --> I[Geo-IP Enricher]
 I --> J[Dropper] 
 end
 F --> K1[Output\nConnector]
@@ -77,8 +79,8 @@ J --> K3[Output\nConnector]
 ### Processors
 
 Every processor has one simple task to fulfill.
-For example, the `Normalizer` can split up long message fields into multiple subfields or copy 
-content from one field into another one, leading to a normalized message pattern.
+For example, the `Dissector` can split up long message fields into multiple subfields
+to facilitate structural normalization.
 The `Geo-IP Enricher`, for example, takes an ip-address and adds the geolocation of it to the 
 log message, based on a configured geo-ip database. 
 Or the `Dropper` deletes fields from the log message.
@@ -143,7 +145,8 @@ in two rule trees.
 Connectors are responsible for reading the input and writing the result to a desired output. 
 The main connectors that are currently used and implemented are a kafka-input-connector and a
 kafka-output-connector allowing to receive messages from a kafka-topic and write messages into a
-kafka-topic. 
+kafka-topic. Addionally, you can use the Opensearch or Elasticsearch output connectors to ship the
+messages directly to Opensearch or Elasticsearch after processing.
 
 The details regarding the connectors can be found in the
 [input connector documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/input.html)
@@ -152,7 +155,11 @@ and
 
 ### Configuration
 
-To run Logprep, certain configurations have to be provided. 
+To run Logprep, certain configurations have to be provided. Because Logprep is designed to run in a
+containerized environment like Kubernetes, these configurations can be provided via the filesystem or
+http. By providing the configuration via http, it is possible to control the configuration change via
+a flexible http api. This enables Logprep to quickly adapt to changes in your environment.
+
 First, a general configuration is given that describes the pipeline and the connectors, 
 and lastly, the processors need rules in order to process messages correctly.
 
@@ -164,18 +171,16 @@ process_count: 3
 timeout: 0.1
 
 pipeline:
-  - normalizer:
-      type: normalizer
+  - dissector:
+      type: dissector
       specific_rules:
-        - rules/01_normalizer/specific/
+        - https://your-api/dissector/
       generic_rules:
-        - rules/01_normalizer/generic/
-      regex_mapping: artifacts/regex_mapping.yml
-      grok_patterns: artifacts/grok_patterns/
+        - rules/01_dissector/generic/
   - geoip_enricher:
       type: geoip_enricher
       specific_rules:
-        - rules/02_geoip_enricher/specific/
+        - https://your-api/geoip/
       generic_rules:
         - rules/02_geoip_enricher/generic/
       tree_config: artifacts/tree_config.json
@@ -197,17 +202,18 @@ input:
     session_timeout: 6000
     offset_reset_policy: smallest
 output:
-  myotherkafka:
-    type: confluentkafka_output
-    bootstrapservers: [127.0.0.2:9092]
-    topic: producer
-    error_topic: producer_error
-    ack_policy: all
-    compression: gzip
-    maximum_backlog: 10000
-    linger_duration: 0
-    flush_timeout: 30
-    send_timeout: 2
+  opensearch:
+    type: opensearch_output
+    hosts:
+        - 127.0.0.1:9200
+    default_index: default_index
+    error_index: error_index
+    message_backlog_size: 10000
+    timeout: 10000
+    max_retries:
+    user: the username
+    secret: the passord
+    cert: /path/to/cert.crt
 ```
 
 The following yaml represents a dropper rule which according to the previous configuration 
@@ -336,7 +342,7 @@ If you have installed Logprep via cloning the repository then you should run it 
 PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
 ```
 
-Where `$CONFIG` is the path to a configuration file (see the documentation about the 
+Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 The next sections all assume an installation via pip
 
@@ -348,7 +354,7 @@ The following command can be executed to verify the configuration file without h
 logprep --verify-config $CONFIG
 ```
 
-Where `$CONFIG` is the path to a configuration file (see the documentation about the 
+Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
 ### Validating Labeling-Schema and Rules
@@ -359,7 +365,7 @@ The following command can be executed to validate the schema and the rules:
 logprep --validate-rules $CONFIG
 ```
 
-Where `$CONFIG` is the path to a configuration file (see the documentation about the 
+Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
 Alternatively, the validation can be performed directly. Assuming you have cloned the repository 
@@ -383,13 +389,17 @@ To change the configuration of Logprep it is not needed to restart Logprep entir
 Instead, it can be issued to reload the configuration. 
 For this, the signal `SIGUSR1` must be send to the Logprep process.
 
+Additionally, a `config_refresh_interval` can be set to periodically and automatically refresh the given configuration.
+This can be useful in case of containerized environments (such as Kubernetes), when pod volumes often change
+on the fly.
+
 If the configuration does not pass a consistency check, then an error message is logged and 
 Logprep keeps running with the previous configuration.
 The configuration should be then checked and corrected on the basis of the error message.
 
 ## Docker Quickstart Environment
 
-Logprep was designed to work with the Elastic Stack and Kafka.
+Logprep was designed to work with the Elastic Stack or Opensearch and Kafka.
 This repository comes with a docker-compose file that builds a pre-configured Elastic Stack with 
 Kafka and Logprep.
 To get it running docker and docker-compose (version >= 1.28) must be first installed.
