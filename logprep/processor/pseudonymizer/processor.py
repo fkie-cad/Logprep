@@ -38,9 +38,9 @@ from attr import define, field, validators
 from tldextract import TLDExtract
 from urlextract import URLExtract
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
-from logprep.processor.pseudonymizer.rule import PseudonymizeRule
+from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
@@ -126,7 +126,7 @@ class Pseudonymizer(Processor):
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
 
-    rule_class = PseudonymizeRule
+    rule_class = PseudonymizerRule
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
@@ -181,7 +181,7 @@ class Pseudonymizer(Processor):
         super().process(event)
         return (self.pseudonyms, self._config.pseudonyms_topic) if self.pseudonyms != [] else None
 
-    def _apply_rules(self, event: dict, rule: PseudonymizeRule):
+    def _apply_rules(self, event: dict, rule: PseudonymizerRule):
         for dotted_field, regex in rule.pseudonyms.items():
             if dotted_field not in self.pseudonymized_fields:
                 try:

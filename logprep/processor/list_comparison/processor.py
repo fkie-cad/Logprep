@@ -23,7 +23,7 @@ from logging import Logger
 
 from attr import define, field, validators
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to, get_dotted_field_value

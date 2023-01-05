@@ -18,7 +18,7 @@ Example
             - tests/testdata/rules/generic/
 """
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.deleter.rule import DeleterRule
 
 

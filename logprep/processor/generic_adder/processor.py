@@ -36,7 +36,7 @@ from filelock import FileLock
 
 from attr import define, field, validators
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.factory_error import InvalidConfigurationError

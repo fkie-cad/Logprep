@@ -15,7 +15,7 @@ import pytest
 from prometheus_client import Gauge
 
 from logprep._version import get_versions
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.abc.connector import Connector
 from logprep.framework.pipeline import Pipeline
 from logprep.framework.rule_tree.rule_tree import RuleTree

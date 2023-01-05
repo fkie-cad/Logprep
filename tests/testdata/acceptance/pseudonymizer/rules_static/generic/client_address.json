@@ -1,7 +1,11 @@
-[{
-  "filter": "client.address",
-  "pseudonymize": {
-    "client.address": "RE_WHOLE_FIELD"
-  },
-  "description": "insert a description text"
-}]
+[
+  {
+    "filter": "client.address",
+    "pseudonymizer": {
+      "pseudonyms": {
+        "client.address": "RE_WHOLE_FIELD"
+      }
+    },
+    "description": "insert a description text"
+  }
+]

@@ -1,4 +1,5 @@
 filter: "test_pseudonymizer AND something"
-pseudonymize:
-  something: "RE_WHOLE_FIELD"
+pseudonymizer:
+  pseudonyms:
+    something: "RE_WHOLE_FIELD"
 description: "..."

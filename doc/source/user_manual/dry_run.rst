@@ -105,8 +105,10 @@ The test is successful.
 
     [{
       "filter": "event_id: 1 AND source_name: \"Test\"",
-      "pseudonymize": {
-        "event_data.param1": "RE_WHOLE_FIELD"
+      "pseudonymizer": {
+        "pseudonyms": {
+          "event_data.param1": "RE_WHOLE_FIELD"
+        }
       },
       "description": "..."
     }]
@@ -142,15 +144,19 @@ Therefore, the test was specified so that it triggers for the appropriate rules 
 
     [{
       "filter": "event_id: 1 AND source_name: \"Test\"",
-      "pseudonymize": {
-        "event_data.param1": "RE_WHOLE_FIELD"
+      "pseudonymizer": {
+        "pseudonyms": {
+          "event_data.param1": "RE_WHOLE_FIELD"
+        }
       },
       "description": "..."
     },
     {
       "filter": "event_id: 1",
-      "pseudonymize": {
-        "event_data.param2": "RE_WHOLE_FIELD"
+      "pseudonymizer": {
+        "pseudonyms": {
+          "event_data.param2": "RE_WHOLE_FIELD"
+        }
       },
       "description": "..."
     }]

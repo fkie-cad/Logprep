@@ -22,7 +22,7 @@ Example
 """
 from typing import Callable, List, Tuple
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.util.helper import get_dotted_field_value, add_field_to
 

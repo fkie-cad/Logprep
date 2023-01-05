@@ -14,7 +14,7 @@ from typing import Tuple, Optional
 import arrow
 from attrs import define, field, validators
 
-from logprep.abc import Connector
+from logprep.abc.connector import Connector
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import dict_structure_validator

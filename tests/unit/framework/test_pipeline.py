@@ -11,7 +11,7 @@ import requests
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.abc.input import (
     CriticalInputError,
     FatalInputError,

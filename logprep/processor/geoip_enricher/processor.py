@@ -25,7 +25,7 @@ from attr import define, field, validators
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.geoip_enricher.rule import GeoipEnricherRule, GEOIP_DATA_STUBS
 from logprep.util.helper import add_field_to, get_dotted_field_value

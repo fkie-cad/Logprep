@@ -1,7 +1,11 @@
-[{
-  "filter": "winlog.user.identifier",
-  "pseudonymize": {
-    "winlog.user.identifier": "RE_WHOLE_FIELD"
-  },
-  "description": "*** ES 6 to 7 changes: user.identifier -> winlog.user.identifier ***"
-}]
+[
+  {
+    "filter": "winlog.user.identifier",
+    "pseudonymizer": {
+      "pseudonyms": {
+        "winlog.user.identifier": "RE_WHOLE_FIELD"
+      }
+    },
+    "description": "*** ES 6 to 7 changes: user.identifier -> winlog.user.identifier ***"
+  }
+]

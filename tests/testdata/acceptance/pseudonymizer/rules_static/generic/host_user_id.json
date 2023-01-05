@@ -1,7 +1,11 @@
-[{
-  "filter": "host.user.id",
-  "pseudonymize": {
-    "host.user.id": "RE_WHOLE_FIELD"
-  },
-  "description": "insert a description text"
-}]
+[
+  {
+    "filter": "host.user.id",
+    "pseudonymizer": {
+      "pseudonyms": {
+        "host.user.id": "RE_WHOLE_FIELD"
+      }
+    },
+    "description": "insert a description text"
+  }
+]

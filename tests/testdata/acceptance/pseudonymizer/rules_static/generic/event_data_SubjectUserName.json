@@ -1,7 +1,11 @@
-[{
-  "filter": "winlog.event_data.SubjectUserName",
-  "pseudonymize": {
-    "winlog.event_data.SubjectUserName": "RE_WHOLE_FIELD"
-  },
-  "description": "*** ES 6 to 7 changes: event_data.SubjectUserName -> winlog.event_data.SubjectUserName ***"
-}]
+[
+  {
+    "filter": "winlog.event_data.SubjectUserName",
+    "pseudonymizer": {
+      "pseudonyms": {
+        "winlog.event_data.SubjectUserName": "RE_WHOLE_FIELD"
+      }
+    },
+    "description": "*** ES 6 to 7 changes: event_data.SubjectUserName -> winlog.event_data.SubjectUserName ***"
+  }
+]

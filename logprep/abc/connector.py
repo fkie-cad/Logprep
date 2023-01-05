@@ -1,7 +1,7 @@
 """ abstract module for connectors"""
 from logging import Logger
 from attr import define
-from logprep.abc import Component
+from logprep.abc.component import Component
 from logprep.metrics.metric import Metric, calculate_new_average
 
 

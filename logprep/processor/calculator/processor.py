@@ -23,7 +23,7 @@ from functools import cached_property
 
 from pyparsing import ParseException
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule

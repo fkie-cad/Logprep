@@ -8,7 +8,7 @@ from logprep.factory_error import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover
-    from logprep.abc import Component
+    from logprep.abc.component import Component
 
 
 class Configuration:

@@ -26,7 +26,7 @@ from uuid import uuid4
 
 from attr import define, field, validators
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
 

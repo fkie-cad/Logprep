@@ -10,7 +10,7 @@ from typing import Callable, TYPE_CHECKING
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from logprep.abc import Processor
+    from logprep.abc.processor import Processor
     from logprep.framework.rule_tree.rule_tree import RuleTree
 
 

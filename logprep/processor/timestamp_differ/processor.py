@@ -21,7 +21,7 @@ from functools import reduce
 
 import arrow
 
-from logprep.abc import Processor
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 from logprep.util.helper import add_field_to, get_source_fields_dict
