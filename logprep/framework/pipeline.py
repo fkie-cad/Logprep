@@ -175,23 +175,13 @@ class Pipeline:
 
     def _create_connectors(self):
         self._logger.debug(f"Creating connectors ({current_process().name})")
-        input_connector_config = self._logprep_config.get("input")
-        connector_name = list(input_connector_config.keys())[0]
-        input_connector_config[connector_name]["metric_labels"] = self._metric_labels
-        input_connector_config[connector_name].update(
-            {"version_information": self._event_version_information}
-        )
-        self._input = Factory.create(input_connector_config, self._logger)
-        output_connector_config = self._logprep_config.get("output")
-        connector_name = list(output_connector_config.keys())[0]
-        output_connector_config[connector_name]["metric_labels"] = self._metric_labels
-        self._output = Factory.create(output_connector_config, self._logger)
+        self._create_input_connector()
+        self._create_output_connector()
         self._output.input_connector = self._input
         self._logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{self._output.describe()}' ({current_process().name})"
         )
-
         self._input.setup()
         self._output.setup()
         if hasattr(self._input, "server"):
@@ -199,6 +189,21 @@ class Pipeline:
                 self._input.server.config.port += 1
             self._used_server_ports.update({self._input.server.config.port: current_process().name})
         self._logger.debug(f"Finished creating connectors ({current_process().name})")
+
+    def _create_output_connector(self):
+        output_connector_config = self._logprep_config.get("output")
+        connector_name = list(output_connector_config.keys())[0]
+        output_connector_config[connector_name]["metric_labels"] = self._metric_labels
+        self._output = Factory.create(output_connector_config, self._logger)
+
+    def _create_input_connector(self):
+        input_connector_config = self._logprep_config.get("input")
+        connector_name = list(input_connector_config.keys())[0]
+        input_connector_config[connector_name]["metric_labels"] = self._metric_labels
+        input_connector_config[connector_name].update(
+            {"version_information": self._event_version_information}
+        )
+        self._input = Factory.create(input_connector_config, self._logger)
 
     def _create_logger(self):
         if self._log_handler.level == NOTSET:
@@ -295,58 +300,53 @@ class Pipeline:
     @TimeMeasurement.measure_time("pipeline")
     def _process_event(self, event: dict):
         event_received = json.dumps(event, separators=(",", ":"))
-        try:
-            for processor in self._pipeline:
-                try:
-                    extra_data = processor.process(event)
-                    if isinstance(extra_data, list):
-                        list(map(self._store_extra_data, extra_data))
-                    if isinstance(extra_data, tuple):
-                        self._store_extra_data(extra_data)
-                except ProcessingWarning as error:
-                    self._logger.warning(
-                        f"A non-fatal error occurred for processor {processor.describe()} "
-                        f"when processing an event: {error}"
-                    )
-
-                    processor.metrics.number_of_warnings += 1
-                except ProcessingWarningCollection as error:
-                    for warning in error.processing_warnings:
-                        self._logger.warning(
-                            "A non-fatal error occurred for processor %s "
-                            "when processing an event: %s",
-                            processor.describe(),
-                            warning,
-                        )
-
-                        processor.metrics.number_of_warnings += 1
-
-                if not event:
-                    self._logger.debug(f"Event deleted by processor {processor}")
-                    break
-        # pylint: disable=broad-except
-        except BaseException as error:
-            original_error_msg = type(error).__name__
-            if str(error):
-                original_error_msg += f": {error}"
-            msg = (
-                f"A critical error occurred for processor {processor.describe()} when "
-                f"processing an event, processing was aborted: ({original_error_msg})"
-            )
-            self._logger.error(msg)
-            self._output.store_failed(msg, json.loads(event_received), event)
-            event.clear()  # 'delete' the event, i.e. no regular output
-            processor.metrics.number_of_errors += 1
-        # pylint: enable=broad-except
+        for processor in self._pipeline:
+            try:
+                extra_data = processor.process(event)
+                if extra_data:
+                    self._store_extra_data(extra_data)
+            except ProcessingWarning as error:
+                self._handle_processing_warning(processor, error)
+            except ProcessingWarningCollection as error:
+                for warning in error.processing_warnings:
+                    self._handle_processing_warning(processor, warning)
+            except BaseException as error:  # pylint: disable=broad-except
+                msg = self._handle_fatal_processing_error(processor, error)
+                self._output.store_failed(msg, json.loads(event_received), event)
+                processor.metrics.number_of_errors += 1
+                event.clear()  # 'delete' the event, i.e. no regular output
+            if not event:
+                self._logger.debug(f"Event deleted by processor {processor}")
+                break
         self._processing_counter.increment()
         self._processing_counter.print_if_ready()
 
-    def _store_extra_data(self, extra_data: tuple):
+    def _handle_fatal_processing_error(self, processor, error):
+        original_error_msg = type(error).__name__
+        if str(error):
+            original_error_msg += f": {error}"
+        msg = (
+            f"A critical error occurred for processor {processor.describe()} when "
+            f"processing an event, processing was aborted: ({original_error_msg})"
+        )
+        self._logger.error(msg)
+        return msg
+
+    def _handle_processing_warning(self, processor, error):
+        self._logger.warning(
+            f"A non-fatal error occurred for processor {processor.describe()} "
+            f"when processing an event: {error}"
+        )
+        processor.metrics.number_of_warnings += 1
+
+    def _store_extra_data(self, extra_data: list[tuple]):
         self._logger.debug("Storing extra data")
-        documents = extra_data[0]
-        target = extra_data[1]
-        for document in documents:
-            self._output.store_custom(document, target)
+        if isinstance(extra_data, tuple):
+            documents, target = extra_data
+            for document in documents:
+                self._output.store_custom(document, target)
+            return
+        list(map(self._store_extra_data, extra_data))
 
     def _shut_down(self):
         self._input.shut_down()
