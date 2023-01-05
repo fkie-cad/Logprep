@@ -8,7 +8,6 @@ from multiprocessing import Value, current_process
 import requests
 from schedule import Scheduler
 
-
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metric_targets import get_metric_targets
 from logprep.util.configuration import Configuration, InvalidConfigurationError
@@ -212,7 +211,7 @@ class Runner:
             raise CannotReloadWhenConfigIsUnsetError
         try:
             new_configuration = Configuration.create_from_yaml(self._yaml_path)
-        except (requests.RequestException) as error:
+        except requests.RequestException as error:
             self._logger.warning(f"Failed to load configuration: {error}")
             current_refresh_interval = self._configuration.get("config_refresh_interval")
             if isinstance(current_refresh_interval, (float, int)):

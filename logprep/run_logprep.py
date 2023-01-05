@@ -150,7 +150,7 @@ def _load_configuration(args):
         )
         sys.exit(1)
     except requests.RequestException as error:
-        print(f"{error}")
+        print(f"{error}", file=sys.stderr)
         sys.exit(1)
     return config
 
