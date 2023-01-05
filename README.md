@@ -16,7 +16,7 @@
 Logprep allows to collect, process and forward log messages from various data sources.
 Log messages are being read and written by so-called connectors.
 Currently, connectors for Kafka, Elasticsearch, Opensearch and JSON(L) files exist.
-Additionally an Input Connector for HTTP Input is provided, which starts an uvicorn server and
+Additionally, an Input Connector for HTTP Input is provided, which starts an uvicorn server and
 accepts log message via POST Requests.
 
 The log messages are processed step-by-step by a pipeline of processors,
@@ -48,9 +48,9 @@ More detailed information can be found in the
 Logprep processes incoming log messages with a configured pipeline that can be spawned
 multiple times via multiprocessing.
 The following chart shows a basic setup that represents this behaviour.
-The pipeline consists of three processors the `Dissector`, `Geo-IP Enricher` and the 
+The pipeline consists of three processors: the `Dissector`, `Geo-IP Enricher` and the 
 `Dropper`. 
-Each pipeline runs concurrently and takes one event from the its `Input Connector`.
+Each pipeline runs concurrently and takes one event from it's `Input Connector`.
 Once the log messages is fully processed the result will be forwarded to the `Output Connector`,
 after which the pipeline will take the next message, repeating the processing cycle.
 
@@ -80,7 +80,7 @@ J --> K3[Output\nConnector]
 
 Every processor has one simple task to fulfill.
 For example, the `Dissector` can split up long message fields into multiple subfields
-leading to a normalized message pattern.
+to facilitate structural normalization.
 The `Geo-IP Enricher`, for example, takes an ip-address and adds the geolocation of it to the 
 log message, based on a configured geo-ip database. 
 Or the `Dropper` deletes fields from the log message.
@@ -145,7 +145,7 @@ in two rule trees.
 Connectors are responsible for reading the input and writing the result to a desired output. 
 The main connectors that are currently used and implemented are a kafka-input-connector and a
 kafka-output-connector allowing to receive messages from a kafka-topic and write messages into a
-kafka-topic. Addionally you can use the Opensearch or Elasticsearch output connectors to ship the
+kafka-topic. Addionally, you can use the Opensearch or Elasticsearch output connectors to ship the
 messages directly to Opensearch or Elasticsearch after processing.
 
 The details regarding the connectors can be found in the
@@ -156,9 +156,9 @@ and
 ### Configuration
 
 To run Logprep, certain configurations have to be provided. Because Logprep is designed to run in a
-containerized environment like Kubernetes these configurations can be provided via filesystem or
-http. By providing the configuration via http it is possible to control the configuration change via
-a flexible http api to make Logprep fast reacting to changes in your environment.
+containerized environment like Kubernetes, these configurations can be provided via the filesystem or
+http. By providing the configuration via http, it is possible to control the configuration change via
+a flexible http api. This enables Logprep to quickly adapt to changes in your environment.
 
 First, a general configuration is given that describes the pipeline and the connectors, 
 and lastly, the processors need rules in order to process messages correctly.
@@ -389,8 +389,8 @@ To change the configuration of Logprep it is not needed to restart Logprep entir
 Instead, it can be issued to reload the configuration. 
 For this, the signal `SIGUSR1` must be send to the Logprep process.
 
-Besides this a `config_refresh_interval` can be configured to make a automatic config refresh.
-This can be useful in containerizes environments like kubernetes when mounted pod volumes changes
+Additionally, a `config_refresh_interval` can be set to periodically and automatically refresh the given configuration.
+This can be useful in case of containerized environments (such as Kubernetes), when pod volumes often change
 on the fly.
 
 If the configuration does not pass a consistency check, then an error message is logged and 
