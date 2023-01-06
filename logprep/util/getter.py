@@ -127,11 +127,19 @@ class HttpGetter(Getter):
         session = self._sessions.get(domain)
         if basic_auth:
             session.auth = basic_auth
-        resp = session.get(
-            url=url,
-            timeout=5,
-            allow_redirects=True,
-            headers=headers,
-        )
+        retries = 3
+        resp = None
+        while resp is None:
+            try:
+                resp = session.get(
+                    url=url,
+                    timeout=5,
+                    allow_redirects=True,
+                    headers=headers,
+                )
+            except requests.exceptions.RequestException as error:
+                retries -= 1
+                if retries == 0:
+                    raise error
         resp.raise_for_status()
         return resp.content

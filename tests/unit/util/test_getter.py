@@ -3,7 +3,6 @@
 # pylint: disable=line-too-long
 # pylint: disable=unspecified-encoding
 # pylint: disable=protected-access
-import json
 import os
 from pathlib import Path
 from unittest import mock
@@ -11,6 +10,7 @@ from unittest import mock
 import pytest
 import responses
 from requests.auth import HTTPBasicAuth
+from requests.exceptions import Timeout
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
@@ -271,3 +271,11 @@ class TestHttpGetter:
         assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
             "myusername", "mypassword"
         )
+
+    @responses.activate
+    def test_raises_requestexception_after_3_retries(self):
+        responses.add(responses.GET, "https://does-not-matter", Timeout())
+        http_getter = GetterFactory.from_string("https://does-not-matter")
+        with pytest.raises(Timeout):
+            http_getter.get()
+        responses.assert_call_count("https://does-not-matter", 3)

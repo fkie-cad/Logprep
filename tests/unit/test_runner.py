@@ -12,7 +12,7 @@ from os.path import join, split
 from unittest import mock
 
 from pytest import raises
-from requests import HTTPError
+from requests.exceptions import SSLError, HTTPError
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.labeler.labeling_schema import LabelingSchemaError
@@ -295,6 +295,22 @@ class TestRunner(LogprepRunnerTest):
             with mock.patch("logging.Logger.info") as mock_info:
                 self.runner.reload_configuration(refresh=True)
         mock_warning.assert_called_with("Failed to load configuration: no such file or directory")
+        mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
+        assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.scheduler.jobs[0].interval == 10
+
+    @mock.patch("logprep.abc.getter.Getter.get")
+    def test_reload_configuration_logs_sslerror_and_schedules_new_refresh_with_a_quarter_the_time(
+        self, mock_get
+    ):
+        mock_get.side_effect = SSLError("SSL context")
+        assert len(self.runner.scheduler.jobs) == 0
+        config_update = {"config_refresh_interval": 40, "version": "current version"}
+        self.runner._configuration.update(config_update)
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            with mock.patch("logging.Logger.info") as mock_info:
+                self.runner.reload_configuration(refresh=True)
+        mock_warning.assert_called_with("Failed to load configuration: SSL context")
         mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 10
