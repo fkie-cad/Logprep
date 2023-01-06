@@ -2,7 +2,7 @@
     {
         "filter": "message",
         "requester": {
-            "url": "http://the-url",
+            "url": "http://localhost:32000/quickstart/exampledata/config/pipeline.yml",
             "method": "GET"
         }
     }

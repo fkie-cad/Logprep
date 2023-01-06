@@ -78,3 +78,13 @@ Example
       level: INFO
       aggregation_threshold: 4
       aggregation_period: 10
+
+
+config_refresh_interval
+-----------------------
+
+Configures the interval in seconds on which logprep should try to reload the configuration.
+This config key is optional. If not configured, logprep won't reload the configuration automatically.
+If configured the configuration will only be reloaded if the configuration version changes.
+If http errors occurs on configuration reload `config_refresh_interval` is set to a quarter
+of the current `config_refresh_interval` until a minimum of 5 seconds is reached.

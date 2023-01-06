@@ -17,6 +17,7 @@
 * Make output subfields of the `geoip_enricher` configurable by introducing the rule config
 `customize_target_subfields`
 * Add a `timestamp_differ` processor that can parse two timestamps and calculate their respective time delta.
+* Add `config_refresh_interval` configuration option to refresh the configuration on a given timedelta
 
 ### Improvements
 

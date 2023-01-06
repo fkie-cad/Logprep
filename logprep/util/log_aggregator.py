@@ -4,14 +4,12 @@ import logging
 from logging import LogRecord, Filter
 from time import time, sleep
 import threading
-from collections import OrderedDict
-from copy import deepcopy
 
 
 class Aggregator(Filter):
     """Used to aggregate log messages."""
 
-    logs = OrderedDict()
+    logs = {}
     count_threshold = 4
     log_period = 10
     timer_thread = None
@@ -30,12 +28,13 @@ class Aggregator(Filter):
         """
         cls.count_threshold = count
         cls.log_period = period
+        cls.logs.clear()
 
     @classmethod
     def start_timer(cls):
         """Start repeating timer for aggregation."""
         cls.timer_thread = threading.Timer(cls.log_period, cls._log_aggregated)
-        cls.timer_thread.setDaemon(True)
+        cls.timer_thread.daemon = True
         cls.timer_thread.start()
 
     @classmethod
@@ -71,8 +70,7 @@ class Aggregator(Filter):
 
     @classmethod
     def _perform_logging_if_possible(cls):
-        _logs = deepcopy(cls.logs)
-        for log_id, data in _logs.items():
+        for log_id, data in list(cls.logs.items()):
             count = data["cnt"] - data["cnt_passed"]
             if count > 1 and data["last_record"]:
                 time_passed = round(time() - data["first_record"].created, 1)

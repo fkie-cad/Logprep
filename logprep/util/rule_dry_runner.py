@@ -78,7 +78,12 @@ def get_patched_runner(config_path, logger):
     runner.set_logger(logger)
     runner.load_configuration(config_path)
     # patch runner to stop on empty pipeline
-    runner._keep_iterating = lambda: False  # pylint: disable=protected-access
+    def keep_iterating():
+        """generator that stops on first iteration"""
+        return  # nosemgrep
+        yield
+
+    runner._keep_iterating = keep_iterating  # pylint: disable=protected-access
 
     return runner
 

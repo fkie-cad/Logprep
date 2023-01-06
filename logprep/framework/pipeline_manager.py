@@ -99,11 +99,7 @@ class PipelineManager:
 
     def remove_failed_pipeline(self):
         """Remove one pipeline at a time."""
-        failed_pipelines = []
-        for pipeline in self._pipelines:
-            if not pipeline.is_alive():
-                failed_pipelines.append(pipeline)
-
+        failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
 

@@ -2,8 +2,11 @@
 
 import signal
 from ctypes import c_bool
-from logging import Logger, DEBUG
+from logging import Logger
 from multiprocessing import Value, current_process
+
+import requests
+from schedule import Scheduler
 
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metric_targets import get_metric_targets
@@ -43,10 +46,6 @@ class CannotReloadWhenConfigIsUnsetError(RunnerError):
     """Raise if the configuration was reloaded but not set."""
 
 
-class StopIteratingError(RunnerError):
-    """Raise if the process iteration stopped unexpectedly."""
-
-
 class UseGetRunnerToCreateRunnerSingleton(RunnerError):
     """ "Raise if the runner was not created as a singleton."""
 
@@ -79,6 +78,8 @@ class Runner:
 
     _runner = None
 
+    scheduler: Scheduler
+
     # Use this method to obtain a runner singleton for production
     @staticmethod
     def get_runner():
@@ -96,6 +97,7 @@ class Runner:
         self._log_handler = None
 
         self._manager = None
+        self.scheduler = Scheduler()
 
         # noinspection PyTypeChecker
         self._continue_iterating = Value(c_bool)
@@ -174,32 +176,29 @@ class Runner:
         self._create_manager()
         self._manager.set_configuration(self._configuration)
         self._manager.set_count(self._configuration["process_count"])
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug("Pipeline manager initiated")
+        self._logger.debug("Pipeline manager initiated")
 
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
-
+        self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
-        try:
-            while self._keep_iterating():
-                if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-                    self._logger.debug("Runner iterating")
-                self._manager.remove_failed_pipeline()
-                self._manager.set_count(self._configuration["process_count"])
-                # Note: We are waiting half the timeout because when shutting down, we also have to
-                # wait for the logprep's timeout before the shutdown is actually initiated.
-                self._manager.handle_logs_into_logger(
-                    self._logger, self._configuration["timeout"] / 2.0
-                )
-        except (StopIteratingError, KeyboardInterrupt):
-            self.stop()
+        for _ in self._keep_iterating():
+            self.scheduler.run_pending()
+            self._logger.debug("Runner iterating")
+            self._manager.remove_failed_pipeline()
+            self._manager.set_count(self._configuration["process_count"])
+            # Note: We are waiting half the timeout because when shutting down, we also have to
+            # wait for the logprep's timeout before the shutdown is actually initiated.
+            self._manager.handle_logs_into_logger(
+                self._logger, self._configuration["timeout"] / 2.0
+            )
+        self.stop()
 
         self._logger.info("Initiated shutdown")
         self._manager.stop()
         self._logger.info("Shutdown complete")
 
-    def reload_configuration(self):
+    def reload_configuration(self, refresh=False):
         """Reload the configuration from the configured yaml path.
 
         Raises
@@ -210,18 +209,39 @@ class Runner:
         """
         if self._configuration is None:
             raise CannotReloadWhenConfigIsUnsetError
-
-        new_configuration = Configuration.create_from_yaml(self._yaml_path)
-
+        try:
+            new_configuration = Configuration.create_from_yaml(self._yaml_path)
+        except (requests.RequestException, FileNotFoundError) as error:
+            self._logger.warning(f"Failed to load configuration: {error}")
+            current_refresh_interval = self._configuration.get("config_refresh_interval")
+            if isinstance(current_refresh_interval, (float, int)):
+                new_refresh_interval = current_refresh_interval / 4
+                self._configuration.update({"config_refresh_interval": new_refresh_interval})
+            self._schedule_config_refresh_job()
+            return
+        if refresh:
+            version_differ = new_configuration.get("version") != self._configuration.get("version")
+            if not version_differ:
+                self._logger.info(
+                    "Configuration version didn't change. Continue running with current version."
+                )
+                self._logger.info(
+                    f"Configuration version: {self._configuration.get('version', 'unset')}"
+                )
+                return
         try:
             new_configuration.verify(self._logger)
 
             # Only reached when configuration is verified successfully
             self._configuration = new_configuration
+            self._schedule_config_refresh_job()
             self._manager.set_configuration(self._configuration)
             self._manager.replace_pipelines()
             self._manager.set_count(self._configuration["process_count"])
             self._logger.info("Successfully reloaded configuration")
+            self._logger.info(
+                f"Configuration version: {self._configuration.get('version', 'unset')}"
+            )
         except InvalidConfigurationError as error:
             self._logger.error(
                 "Invalid configuration, leaving old configuration in place: "
@@ -229,6 +249,16 @@ class Runner:
                 + ": "
                 + str(error)
             )
+
+    def _schedule_config_refresh_job(self):
+        refresh_interval = self._configuration.get("config_refresh_interval")
+        scheduler = self.scheduler
+        if scheduler.jobs:
+            scheduler.cancel_job(scheduler.jobs[0])
+        if isinstance(refresh_interval, (float, int)):
+            refresh_interval = 5 if refresh_interval < 5 else refresh_interval
+            scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
+            self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
     def _create_manager(self):
         if self._manager is not None:
@@ -245,8 +275,13 @@ class Runner:
             self._continue_iterating.value = False
 
     def _keep_iterating(self):
-        with self._continue_iterating.get_lock():
-            return self._continue_iterating.value
+        """generator function"""
+        while True:
+            with self._continue_iterating.get_lock():
+                iterate = self._continue_iterating.value
+                if not iterate:
+                    return
+                yield iterate
 
 
 def signal_handler(signal_number: int, _):
