@@ -30,10 +30,14 @@ import json
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Tuple
+from multiprocessing import Process, Queue, Value
+from multiprocessing.queues import Empty
+from ctypes import c_bool
 
 from attrs import define, field, validators
 from confluent_kafka import Consumer
+from logprep.abc.connector import Connector
 
 from logprep.abc.input import CriticalInputError, Input
 from logprep.util.validators import dict_with_keys_validator
@@ -118,22 +122,38 @@ class ConfluentKafkaInput(Input):
         messages. Currently, the deprecated value smallest is used, which should be later changed
         to earliest. The default value of librdkafka is largest."""
 
+    _messages: Queue
+
+    _process: Process
+
     current_offset: int
 
     _record: Any
 
     _last_valid_records: dict
 
-    __slots__ = [
+    _continue_iterating: c_bool
+
+    __slots__ = (
         "current_offset",
         "_record",
         "_last_valid_records",
-    ]
+        "_process",
+        "_continue_iterating",
+    )
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self._last_valid_records = {}
         self._record = None
+        self._messages = Queue(maxsize=10_000)
+        self._continue_iterating = Value(c_bool)
+
+    def setup(self):
+        super().setup()
+        self._continue_iterating.value = True
+        self._process = Process(target=self.start, args=[1])
+        self._process.run()
 
     @cached_property
     def _client_id(self):
@@ -157,6 +177,19 @@ class ConfluentKafkaInput(Input):
         """
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self._config.bootstrapservers[0]}"
+
+    def start(self, timeout):
+        for _ in self.iterate():
+            raw_event = self._get_raw_event(timeout)
+            self._messages.put(raw_event)
+
+    def iterate(self):
+        while True:
+            with self._continue_iterating.get_lock():
+                if self._continue_iterating.value:
+                    yield True
+                else:
+                    return
 
     def _get_raw_event(self, timeout: float) -> bytearray:
         """Get next raw document from Kafka.
@@ -188,38 +221,25 @@ class ConfluentKafkaInput(Input):
             )
         return self._record.value()
 
-    def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
-        """Parse the raw document from Kafka into a json.
-
-        Parameters
-        ----------
-        timeout : float
-           Timeout for obtaining a raw document from Kafka.
-
-        Returns
-        -------
-        event_dict : dict
-            A parsed document obtained from Kafka.
-        raw_event : bytearray
-            A raw document obtained from Kafka.
-
-        Raises
-        ------
-        CriticalInputError
-            Raises if an input is invalid or if it causes an error.
-        """
-        raw_event = self._get_raw_event(timeout)
-        if raw_event is None:
-            return None, None
+    def _get_event(self, timeout: float) -> Tuple:
+        """returns the first message from the queue"""
         try:
-            event_dict = json.loads(raw_event.decode("utf-8"))
-        except ValueError as error:
-            raise CriticalInputError(
-                "Input record value is not a valid json string", raw_event
-            ) from error
-        if not isinstance(event_dict, dict):
-            raise CriticalInputError("Input record value could not be parsed as dict", event_dict)
-        return event_dict, raw_event
+            raw_event = self._messages.get(timeout=timeout)
+            if raw_event is None:
+                return None
+            try:
+                event_dict = json.loads(raw_event.decode("utf-8"))
+            except ValueError as error:
+                raise CriticalInputError(
+                    "Input record value is not a valid json string", raw_event
+                ) from error
+            if not isinstance(event_dict, dict):
+                raise CriticalInputError(
+                    "Input record value could not be parsed as dict", event_dict
+                )
+            return event_dict, raw_event
+        except Empty:
+            return None, None
 
     @cached_property
     def _confluent_settings(self) -> dict:
@@ -266,3 +286,6 @@ class ConfluentKafkaInput(Input):
         """Close consumer, which also commits kafka offsets."""
         if self._consumer is not None:
             self._consumer.close()
+        with self._continue_iterating.lock():
+            self._continue_iterating.value = False
+        self._process.join()

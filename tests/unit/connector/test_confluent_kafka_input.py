@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 from copy import deepcopy
+from multiprocessing import Queue
 from unittest import mock
 
 import pytest
@@ -63,6 +64,12 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_record.error = mock.MagicMock(return_value="An arbitrary confluent-kafka error")
         mock_record.value = mock.MagicMock(return_value=None)
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+
+        def mock_iterate():
+            yield True
+
+        self.object._iterate = mock_iterate
+        self.object.start(1)
         with pytest.raises(
             CriticalInputError,
             match=r"A confluent-kafka record contains an error code: "
@@ -135,3 +142,38 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
         result = self.object._get_raw_event(0.001)
         assert result
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_adds_messages_to_queue(self, _):
+        assert self.object._messages is not None
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+
+        def mock_iterate():
+            yield False
+
+        self.object.iterate = mock_iterate
+        self.object.run(1)
+        assert self.object._messages.qsize() == 1
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_setup_runs_process(self, _):
+        assert self.object._messages is not None
+        mock_record = mock.MagicMock()
+        mock_record.error = mock.MagicMock()
+        mock_record.error.return_value = None
+        self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
+        mock_record.value = mock.MagicMock()
+        mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
+
+        def mock_iterate():
+            yield False
+
+        self.object.iterate = mock_iterate
+        self.object.setup()
+        assert self.object._process is not None
+        assert self.object._messages.qsize() == 1
