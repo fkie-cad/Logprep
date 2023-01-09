@@ -1,9 +1,8 @@
-version: 9
-process_count: 1
+version: 1
+process_count: 2
 timeout: 0.1
-config_refresh_interval: 5
 logger:
-  level: DEBUG
+  level: INFO
 
 pipeline:
   - labelername:
