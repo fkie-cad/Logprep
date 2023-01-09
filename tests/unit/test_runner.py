@@ -343,7 +343,7 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 60
 
-    def test_reload_configuration_sets_refresh_interval_on_after_request_exception_without_new_config(
+    def test_reload_configuration_sets_refresh_interval_after_request_exception_without_new_config(
         self, tmp_path
     ):
         config_update = {"config_refresh_interval": 12, "version": "current version"}
