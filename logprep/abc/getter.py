@@ -22,7 +22,11 @@ class Getter(ABC):
     def get(self) -> str:
         """calls the get_raw method and returns the decoded content"""
         content = self.get_raw().decode("utf8")
-        return Template(content).substitute(**os.environ)
+        try:
+            content = Template(content).substitute(**os.environ)
+        except (KeyError, ValueError):
+            pass
+        return content
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""

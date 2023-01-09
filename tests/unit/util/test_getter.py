@@ -81,13 +81,14 @@ key: $PYTEST_TEST_TOKEN
 list:
     - first element
     - $PYTEST_TEST_TOKEN
+    - ${PYTEST_TEST_TOKEN}-with-additional-string
 dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
 """
         )
         my_getter = GetterFactory.from_string(str(testfile))
         expected = {
             "key": "mytoken",
-            "list": ["first element", "mytoken"],
+            "list": ["first element", "mytoken", "mytoken-with-additional-string"],
             "dict": {"key": "value", "second_key": "mytoken"},
         }
         assert my_getter.get_yaml() == expected
