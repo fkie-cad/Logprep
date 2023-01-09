@@ -95,6 +95,7 @@ class Runner:
         self._logger = None
         self._metric_targets = None
         self._log_handler = None
+        self._config_refresh_interval = None
 
         self._manager = None
         self.scheduler = Scheduler()
@@ -153,6 +154,7 @@ class Runner:
 
         self._yaml_path = yaml_file
         self._configuration = configuration
+        self._config_refresh_interval = configuration.get("config_refresh_interval")
 
     def start(self):
         """Start processing.
@@ -211,12 +213,14 @@ class Runner:
             raise CannotReloadWhenConfigIsUnsetError
         try:
             new_configuration = Configuration.create_from_yaml(self._yaml_path)
+            self._config_refresh_interval = new_configuration.get("config_refresh_interval")
+            self._schedule_config_refresh_job()
         except (requests.RequestException, FileNotFoundError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
-            current_refresh_interval = self._configuration.get("config_refresh_interval")
+            current_refresh_interval = self._config_refresh_interval
             if isinstance(current_refresh_interval, (float, int)):
                 new_refresh_interval = current_refresh_interval / 4
-                self._configuration.update({"config_refresh_interval": new_refresh_interval})
+                self._config_refresh_interval = new_refresh_interval
             self._schedule_config_refresh_job()
             return
         if refresh:
@@ -251,7 +255,7 @@ class Runner:
             )
 
     def _schedule_config_refresh_job(self):
-        refresh_interval = self._configuration.get("config_refresh_interval")
+        refresh_interval = self._config_refresh_interval
         scheduler = self.scheduler
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])

@@ -197,7 +197,7 @@ class TestRunner(LogprepRunnerTest):
 
     def test_start_sets_config_refresh_interval_to_a_minimum_of_5_seconds(self):
         self.runner._keep_iterating = partial(mock_keep_iterating, 1)
-        self.runner._configuration.update({"config_refresh_interval": 0})
+        self.runner._config_refresh_interval = 0
         self.runner.start()
         assert self.runner.scheduler.jobs[0].interval == 5
 
@@ -249,17 +249,17 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 0
         config_path = tmp_path / "config.yml"
         # set current state
-        config_update = {"config_refresh_interval": 5, "version": "current version"}
+        config_update = deepcopy(self.runner._configuration)
+        config_update.update({"config_refresh_interval": 5, "version": "current version"})
         self.runner._configuration.update(config_update)
         # first refresh
-        config_update = deepcopy(self.runner._configuration)
         config_update.update({"config_refresh_interval": 5, "version": "new version"})
         config_path.write_text(json.dumps(config_update))
         self.runner._yaml_path = str(config_path)
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 5
-        # second refresh
+        # second refresh with new refresh interval
         config_update.update({"config_refresh_interval": 10, "version": "newer version"})
         config_path.write_text(json.dumps(config_update))
         self.runner._yaml_path = str(config_path)
@@ -273,8 +273,7 @@ class TestRunner(LogprepRunnerTest):
     ):
         mock_get.side_effect = HTTPError(404)
         assert len(self.runner.scheduler.jobs) == 0
-        config_update = {"config_refresh_interval": 40, "version": "current version"}
-        self.runner._configuration.update(config_update)
+        self.runner._config_refresh_interval = 40
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
                 self.runner.reload_configuration(refresh=True)
@@ -289,8 +288,7 @@ class TestRunner(LogprepRunnerTest):
     ):
         mock_get.side_effect = FileNotFoundError("no such file or directory")
         assert len(self.runner.scheduler.jobs) == 0
-        config_update = {"config_refresh_interval": 40, "version": "current version"}
-        self.runner._configuration.update(config_update)
+        self.runner._config_refresh_interval = 40
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
                 self.runner.reload_configuration(refresh=True)
@@ -305,8 +303,7 @@ class TestRunner(LogprepRunnerTest):
     ):
         mock_get.side_effect = SSLError("SSL context")
         assert len(self.runner.scheduler.jobs) == 0
-        config_update = {"config_refresh_interval": 40, "version": "current version"}
-        self.runner._configuration.update(config_update)
+        self.runner._config_refresh_interval = 40
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
                 self.runner.reload_configuration(refresh=True)
@@ -319,8 +316,7 @@ class TestRunner(LogprepRunnerTest):
     def test_reload_configuration_does_not_set_refresh_interval_below_5_seconds(self, mock_get):
         mock_get.side_effect = HTTPError(404)
         assert len(self.runner.scheduler.jobs) == 0
-        config_update = {"config_refresh_interval": 12, "version": "current version"}
-        self.runner._configuration.update(config_update)
+        self.runner._config_refresh_interval = 12
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
                 self.runner.reload_configuration(refresh=True)
@@ -332,8 +328,7 @@ class TestRunner(LogprepRunnerTest):
     def test_reload_configuration_sets_refresh_interval_on_successful_reload_after_request_exception(
         self, tmp_path
     ):
-        config_update = {"config_refresh_interval": 12, "version": "current version"}
-        self.runner._configuration.update(config_update)
+        self.runner._config_refresh_interval = 12
         config_path = tmp_path / "config.yml"
         config_update = deepcopy(self.runner._configuration)
         config_update.update({"config_refresh_interval": 60, "version": "new version"})
@@ -347,6 +342,25 @@ class TestRunner(LogprepRunnerTest):
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 60
+
+    def test_reload_configuration_sets_refresh_interval_after_request_exception_without_new_config(
+        self, tmp_path
+    ):
+        config_update = {"config_refresh_interval": 12, "version": "current version"}
+        self.runner._config_refresh_interval = 12
+        self.runner._configuration.update(config_update)
+        config_path = tmp_path / "config.yml"
+        config_update = deepcopy(self.runner._configuration)
+        config_path.write_text(json.dumps(config_update))
+        self.runner._yaml_path = str(config_path)
+        with mock.patch("logprep.abc.getter.Getter.get") as mock_get:
+            mock_get.side_effect = HTTPError(404)
+            self.runner.reload_configuration(refresh=True)
+            assert len(self.runner.scheduler.jobs) == 1
+            assert self.runner.scheduler.jobs[0].interval == 5
+        self.runner.reload_configuration(refresh=True)
+        assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.scheduler.jobs[0].interval == 12
 
     def test_reload_configuration_logs_new_version(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
