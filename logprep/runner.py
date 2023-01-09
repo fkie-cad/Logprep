@@ -188,7 +188,6 @@ class Runner:
             self.scheduler.run_pending()
             self._logger.debug("Runner iterating")
             self._manager.remove_failed_pipeline()
-            self._manager.set_count(self._configuration["process_count"])
             # Note: We are waiting half the timeout because when shutting down, we also have to
             # wait for the logprep's timeout before the shutdown is actually initiated.
             self._manager.handle_logs_into_logger(
@@ -239,8 +238,8 @@ class Runner:
             # Only reached when configuration is verified successfully
             self._configuration = new_configuration
             self._schedule_config_refresh_job()
+            self._manager.stop()
             self._manager.set_configuration(self._configuration)
-            self._manager.replace_pipelines()
             self._manager.set_count(self._configuration["process_count"])
             self._logger.info("Successfully reloaded configuration")
             self._logger.info(

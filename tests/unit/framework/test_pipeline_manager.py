@@ -98,16 +98,6 @@ class TestPipelineManager:
         for processor in self.manager._pipelines:
             assert processor.was_started
 
-    def test_replace_pipelines_replaces_all_pipelines(self):
-        self.manager.set_count(3)
-        old_pipelines = list(self.manager._pipelines)
-
-        self.manager.replace_pipelines()
-
-        assert len(self.manager._pipelines) == len(old_pipelines)
-        for logprep_instance in self.manager._pipelines:
-            assert logprep_instance not in old_pipelines
-
     def test_decrease_to_count_removes_required_number_of_pipelines(self):
         self.manager._increase_to_count(3)
 

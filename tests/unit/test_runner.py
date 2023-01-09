@@ -374,3 +374,31 @@ class TestRunner(LogprepRunnerTest):
         with mock.patch("logging.Logger.info") as mock_info:
             self.runner.reload_configuration(refresh=True)
         mock_info.assert_called_with("Configuration version: new version")
+
+    def test_reload_configuration_decreases_processes_after_increase(self, tmp_path):
+        self.runner._manager.set_configuration(self.runner._configuration)
+        self.runner._manager.set_count(self.runner._configuration["process_count"])
+        assert self.runner._configuration.get("process_count") == 3
+        assert len(self.runner._manager._pipelines) == 3
+        config_update = {
+            "config_refresh_interval": 5,
+            "version": "current version",
+        }
+        self.runner._configuration.update(config_update)
+        self.runner.reload_configuration(refresh=True)
+        assert len(self.runner._manager._pipelines) == 3
+        config_path = tmp_path / "config.yml"
+        self.runner._yaml_path = str(config_path)
+        config_update = deepcopy(self.runner._configuration)
+        config_update.update(
+            {"config_refresh_interval": 5, "version": "new version", "process_count": 4}
+        )
+        config_path.write_text(json.dumps(config_update))
+        self.runner.reload_configuration(refresh=True)
+        assert len(self.runner._manager._pipelines) == 4
+        config_update.update(
+            {"config_refresh_interval": 5, "version": "newer version", "process_count": 1}
+        )
+        config_path.write_text(json.dumps(config_update))
+        self.runner.reload_configuration(refresh=True)
+        assert len(self.runner._manager._pipelines) == 1

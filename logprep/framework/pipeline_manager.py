@@ -87,16 +87,6 @@ class PipelineManager:
             pipeline.stop()
             pipeline.join()
 
-    def replace_pipelines(self):
-        """Replace one pipeline at a time."""
-        for index, _ in enumerate(self._pipelines):
-            old_pipeline = self._pipelines[index]
-            old_pipeline.stop()
-            old_pipeline.join()
-
-            self._pipelines[index] = self._create_pipeline(index)
-            self._pipelines[index].start()
-
     def remove_failed_pipeline(self):
         """Remove one pipeline at a time."""
         failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
