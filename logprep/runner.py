@@ -185,19 +185,20 @@ class Runner:
         self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
         for _ in self._keep_iterating():
-            self.scheduler.run_pending()
-            self._logger.debug("Runner iterating")
-            self._manager.remove_failed_pipeline()
-            # Note: We are waiting half the timeout because when shutting down, we also have to
-            # wait for the logprep's timeout before the shutdown is actually initiated.
-            self._manager.handle_logs_into_logger(
-                self._logger, self._configuration["timeout"] / 2.0
-            )
+            self._loop()
         self.stop()
 
         self._logger.info("Initiated shutdown")
         self._manager.stop()
         self._logger.info("Shutdown complete")
+
+    def _loop(self):
+        self.scheduler.run_pending()
+        self._logger.debug("Runner iterating")
+        self._manager.restart_failed_pipeline()
+        # Note: We are waiting half the timeout because when shutting down, we also have to
+        # wait for the logprep's timeout before the shutdown is actually initiated.
+        self._manager.handle_logs_into_logger(self._logger, self._configuration["timeout"] / 2.0)
 
     def reload_configuration(self, refresh=False):
         """Reload the configuration from the configured yaml path.

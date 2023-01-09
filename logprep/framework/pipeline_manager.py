@@ -87,7 +87,7 @@ class PipelineManager:
             pipeline.stop()
             pipeline.join()
 
-    def remove_failed_pipeline(self):
+    def restart_failed_pipeline(self):
         """Remove one pipeline at a time."""
         failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
         for failed_pipeline in failed_pipelines:
@@ -99,7 +99,8 @@ class PipelineManager:
                 )
 
         if failed_pipelines:
-            self._logger.warning(f"Removed {len(failed_pipelines)} failed pipeline(s)")
+            self.set_count(self._configuration.get("process_count"))
+            self._logger.warning(f"Restarted {len(failed_pipelines)} failed pipeline(s)")
 
     def handle_logs_into_logger(self, logger: Logger, timeout: float):
         """Handle logs."""

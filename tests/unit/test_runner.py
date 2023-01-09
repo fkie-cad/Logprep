@@ -402,3 +402,12 @@ class TestRunner(LogprepRunnerTest):
         config_path.write_text(json.dumps(config_update))
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner._manager._pipelines) == 1
+
+    def test_loop_restarts_failed_pipelines(self):
+        self.runner._manager.set_configuration(self.runner._configuration)
+        self.runner._manager.set_count(self.runner._configuration["process_count"])
+        assert len(self.runner._manager._pipelines) == 3
+        self.runner._manager._pipelines[1].process_is_alive = False
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            self.runner._loop()
+        mock_warning.assert_called_with("Restarted 1 failed pipeline(s)")
