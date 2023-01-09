@@ -79,10 +79,9 @@ class Aggregator(Filter):
                     period = f"{time_passed} sek"
                 else:
                     period = f"{time_passed / 60.0:.1f} min"
-                data["last_record"].__dict__["msg"] += f" ({count} in ~{period})"
-                logging.getLogger(data["last_record"].__dict__["name"]).log(
-                    data["last_record"].levelno, data["last_record"].msg
-                )
+                last_record = data["last_record"]
+                last_record.msg = f"{last_record.msg} ({count} in ~{period})"
+                logging.getLogger(last_record.name).log(last_record.levelno, last_record.msg)
 
                 cls.logs[log_id]["first_record"] = data["last_record"]
                 cls.logs[log_id]["last_record"] = None
