@@ -1,8 +1,9 @@
-version: 1
-process_count: 2
+version: 9
+process_count: 1
 timeout: 0.1
+config_refresh_interval: 5
 logger:
-  level: INFO
+  level: DEBUG
 
 pipeline:
   - labelername:
@@ -57,7 +58,7 @@ input:
   kafka:
     type: confluentkafka_input
     bootstrapservers:
-      - 172.21.0.5:9092
+      - 127.0.0.1:9092
     topic: consumer
     group: cgroup3
     auto_commit: true
@@ -73,7 +74,7 @@ output:
   kafka:
     type: confluentkafka_output
     bootstrapservers:
-      - 172.21.0.5:9092
+      - 127.0.0.1:9092
     topic: producer
     error_topic: producer_error
     ack_policy: all
