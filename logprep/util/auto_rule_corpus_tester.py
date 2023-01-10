@@ -27,16 +27,16 @@ import re
 import shutil
 import sys
 import tempfile
-from argparse import ArgumentParser
 from json import JSONDecodeError
 
 import yaml
 from deepdiff import DeepDiff, grep
+from rich.console import Console
+from rich.pretty import pprint
+
 from logprep.framework.pipeline import Pipeline, SharedCounter
 from logprep.util.configuration import Configuration
 from logprep.util.json_handling import parse_json, parse_jsonl
-from rich.console import Console
-from rich.pretty import pprint
 
 
 class RuleCorpusTester:
@@ -81,7 +81,7 @@ class RuleCorpusTester:
             if not current_test_case[1].get("in"):
                 continue
             self._prepare_connector_files(current_test_case, pipeline)
-            pipeline._retrieve_and_process_data()
+            pipeline._process_pipeline()
             output = self._retrieve_pipeline_output(pipeline)
             test_report = self._compare_with_expected_outputs(output, current_test_case)
             test_reports.append(test_report)
@@ -413,12 +413,3 @@ class RuleCorpusTester:
         for index, output_path in enumerate(output_paths):
             parsed_outputs[index] = parse_jsonl(output_path)
         return parsed_outputs
-
-
-if __name__ == "__main__":
-    # TODO: Migrate this to run_logprep.py
-    argument_parser = ArgumentParser()
-    argument_parser.add_argument("--test-data", help="The root directory of the test events")
-    argument_parser.add_argument("--config", help="The path to the logprep config file")
-    args = argument_parser.parse_args()
-    RuleCorpusTester(args.config, args.test_data).run()
