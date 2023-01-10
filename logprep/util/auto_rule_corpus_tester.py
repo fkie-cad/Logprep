@@ -71,9 +71,14 @@ class RuleCorpusTester:
         For each test case the logprep connector files are rewritten (only the current test case
         will be added to the input file), the pipline is run and the outputs are compared.
 
-        :param cases:  The file paths of the found test cases
-        :param pipeline: The patched logprep pipline
-        :return: A list of reports of the failed test cases
+        Parameters
+        ----------
+        cases       The file paths of the found test cases
+        pipeline    The patched logprep pipline
+
+        Returns
+        -------
+        A list of reports of the failed test cases
         """
         self.console.print("[b]# Test Cases Summary:")
         test_reports = []
