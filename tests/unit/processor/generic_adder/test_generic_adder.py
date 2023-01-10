@@ -312,8 +312,8 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "tags": ["_generic_adder_failure"],
             },
             re.escape(
-                "ProcessingWarning: (GenericAdder (Test Instance Name): "
-                "The following fields already existed and were not overwritten by the "
+                "ProcessingWarning: (GenericAdder (Test Instance Name): " +
+                "The following fields already existed and were not overwritten by the " +
                 "GenericAdder: some_added_field)"
             ),
         ),
@@ -340,8 +340,8 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "tags": ["_generic_adder_failure"],
             },
             re.escape(
-                "ProcessingWarning: (GenericAdder (Test Instance Name): "
-                "The following fields already existed and were not overwritten by the "
+                "ProcessingWarning: (GenericAdder (Test Instance Name): " +
+                "The following fields already existed and were not overwritten by the " +
                 "GenericAdder: some_added_field)"
             ),
         ),
@@ -368,8 +368,8 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "tags": ["_generic_adder_failure"],
             },
             re.escape(
-                "ProcessingWarning: (GenericAdder (Test Instance Name): "
-                "The following fields already existed and were not overwritten by the "
+                "ProcessingWarning: (GenericAdder (Test Instance Name): " +
+                "The following fields already existed and were not overwritten by the " +
                 "GenericAdder: some_added_field)"
             ),
         ),
