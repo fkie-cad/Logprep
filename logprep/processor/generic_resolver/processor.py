@@ -69,6 +69,7 @@ class GenericResolver(Processor):
 
         self.ensure_rules_from_file(rule)
 
+        full_event = event
         for resolve_source, resolve_target in rule.field_mapping.items():
             keys = resolve_target.split(".")
             src_val = get_dotted_field_value(event, resolve_source)
@@ -125,7 +126,8 @@ class GenericResolver(Processor):
                     break
 
         if conflicting_fields:
-            raise DuplicationError(self.name, conflicting_fields)
+            error = DuplicationError(self.name, conflicting_fields)
+            self._handle_warning_error(full_event, rule, error)
 
     def ensure_rules_from_file(self, rule):
         """loads rules from file"""

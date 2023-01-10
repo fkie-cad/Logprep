@@ -63,4 +63,5 @@ class Concatenator(Processor):
             event, rule.target_field, target_value, overwrite_output_field=rule.overwrite_target
         )
         if not adding_was_successful:
-            raise DuplicationError(self.name, [rule.target_field])
+            error = DuplicationError(self.name, [rule.target_field])
+            self._handle_warning_error(event, rule, error)

@@ -46,7 +46,10 @@ except ModuleNotFoundError as error:  # pragma: no cover
 
 # pylint: enable=no-name-in-module
 
+# pylint: disable=ungrouped-imports
 from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
+
+# pylint: enable=ungrouped-imports
 
 
 class HyperscanResolverError(BaseException):
@@ -119,6 +122,7 @@ class HyperscanResolver(Processor):
         conflicting_fields = []
         hyperscan_db, pattern_id_to_dest_val_map = self._get_hyperscan_database(rule)
 
+        full_event = event
         for resolve_source, resolve_target in rule.field_mapping.items():
             src_val = get_dotted_field_value(event, resolve_source)
             result = self._match_with_hyperscan(hyperscan_db, src_val)
@@ -147,7 +151,8 @@ class HyperscanResolver(Processor):
                     if has_conflict:
                         conflicting_fields.append(split_dotted_keys[idx])
         if conflicting_fields:
-            raise DuplicationError(self.name, conflicting_fields)
+            duplication_error = DuplicationError(self.name, conflicting_fields)
+            self._handle_warning_error(full_event, rule, duplication_error)
 
     @staticmethod
     def _try_adding_value_to_existing_field(

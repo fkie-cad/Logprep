@@ -2,7 +2,7 @@
 # pylint: disable=protected-access
 import pytest
 
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -164,10 +164,11 @@ class TestConcatenator(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
         with pytest.raises(
-            DuplicationError,
+            ProcessingWarning,
             match=r"('Test Instance Name', 'The following fields could not be written, "
             r"because one or more subfields existed and could not be extended: target_field')",
         ):
             self.object.process(document)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
+        assert document.get("tags") == ["_concatenator_failure"]

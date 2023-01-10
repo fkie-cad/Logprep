@@ -48,7 +48,10 @@ class FieldManager(Processor):
         if not extend_target_list and overwrite_target:
             self._overwrite_target_with_source_field_values(*args)
         if not extend_target_list and not overwrite_target:
-            self._add_field_to(*args)
+            try:
+                self._add_field_to(*args)
+            except DuplicationError as error:
+                self._handle_warning_error(event, rule, error)
 
     def _add_field_to(self, *args):
         event, target_field, field_values = args

@@ -1,14 +1,13 @@
+# pylint: disable=duplicate-code
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 from collections import OrderedDict
 
 import pytest
-from logprep.processor.generic_resolver.processor import (
-    DuplicationError,
-    GenericResolver,
-    GenericResolverError,
-)
+
+from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.generic_resolver.processor import GenericResolver, GenericResolverError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -406,9 +405,15 @@ class TestGenericResolver(BaseProcessorTestCase):
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
         }
-
-        with pytest.raises(DuplicationError):
+        expected = {
+            "tags": ["_generic_resolver_failure"],
+            "to": {"resolve": "something HELLO1"},
+            "re": {"solved": "I already exist!"},
+        }
+        with pytest.raises(ProcessingWarning):
             self.object.process(document)
+
+        assert document == expected
 
     def test_resolve_generic_and_multiple_match_first_only(self):
         rule = {

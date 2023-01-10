@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-member
+# pylint: disable=protected-access
 import hashlib
 from multiprocessing import current_process
 from pathlib import Path
@@ -9,7 +10,7 @@ import pytest
 import responses
 from geoip2.errors import AddressNotFoundError
 
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -131,7 +132,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
 
         with pytest.raises(
-            DuplicationError,
+            ProcessingWarning,
             match=r"The following fields could not be written, because one or more subfields "
             r"existed and could not be extended: geoip.type",
         ):
