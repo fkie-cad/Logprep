@@ -278,7 +278,8 @@ sth.ac.at
     @responses.activate
     def test_setup_downloads_tld_lists_to_separate_process_file(self):
         tld_list = "http://db-path-target/list.dat"
-        tld_list_content = Path("/usr/bin/ls").read_bytes()
+        tld_list_path = Path("/usr/bin/ls") if Path("/usr/bin/ls").exists() else Path("/bin/ls")
+        tld_list_content = tld_list_path.read_bytes()
         expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, tld_list, tld_list_content)
         self.object._config.tld_lists = [tld_list]

@@ -308,7 +308,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
     @responses.activate
     def test_setup_downloads_geoip_database_if_not_exits(self):
         geoip_database_path = "http://db-path-target/db_file.mmdb"
-        db_path_content = Path("/usr/bin/ls").read_bytes()
+        db_path = Path("/usr/bin/ls") if Path("/usr/bin/ls").exists() else Path("/bin/ls")
+        db_path_content = db_path.read_bytes()
         expected_checksum = hashlib.md5(db_path_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, geoip_database_path, db_path_content)
         self.object._config.db_path = geoip_database_path
