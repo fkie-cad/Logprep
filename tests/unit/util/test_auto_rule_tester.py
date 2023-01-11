@@ -222,9 +222,9 @@ class TestAutoRuleTester:
         expected_overall_results = [
             "Results:",
             "Failed tests: 7",
-            "Successful tests: 30",
-            "Total tests: 37",
-            "Rule Test Coverage: 78.95%",
+            "Successful tests: 32",
+            "Total tests: 39",
+            "Rule Test Coverage: 80.00%",
             "Warnings: 2",
         ]
         captured = capsys.readouterr()
