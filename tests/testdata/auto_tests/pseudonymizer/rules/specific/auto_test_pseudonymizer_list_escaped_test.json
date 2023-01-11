@@ -1,0 +1,18 @@
+[
+  {
+    "raw": {
+      "some_field": "F[OO"
+    },
+    "processed": {
+      "some_field|re": "%{PSEUDONYM}"
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["F[OO"]
+    },
+    "processed": {
+      "some_field|re(0)": ["%{PSEUDONYM}"]
+    }
+  }
+]

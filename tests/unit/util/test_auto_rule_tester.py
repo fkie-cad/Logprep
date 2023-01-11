@@ -1,15 +1,15 @@
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=protected-access
-# pylint: disable=no-self-use
 # pylint: disable=broad-except
 # pylint: disable=line-too-long
 import logging
+import re
 from unittest import mock
 
 import pytest
 
-from logprep.util.auto_rule_tester import AutoRuleTester
+from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 
 LOGGER = logging.getLogger()
 
@@ -218,15 +218,27 @@ class TestAutoRuleTester:
             "RULES WITH CUSTOM TESTS:",
             "tests/testdata/auto_tests/clusterer/rules/specific/rule_with_custom_tests.yml",
         ]
+
         expected_overall_results = [
             "Results:",
             "Failed tests: 7",
-            "Successful tests: 8",
-            "Total tests: 15",
-            "Rule Test Coverage: 75.00%",
+            "Successful tests: 30",
+            "Total tests: 37",
+            "Rule Test Coverage: 78.95%",
             "Warnings: 2",
         ]
         captured = capsys.readouterr()
+
+        float_pattern = r"(\d+(?:\.\d+)?).*"
+        for expected_result in expected_overall_results:
+            split_sample = expected_result.rsplit(" ", maxsplit=1)
+            if len(split_sample) == 2:
+                expected = re.search(float_pattern, split_sample[1]).group(1)
+                pattern = f".*?{re.escape(split_sample[0])} {float_pattern}.*"
+                match = re.search(pattern, captured.out)
+                if match:
+                    assert match.group(1) == expected, f'Expected: "{expected_result}"'
+
         expected_sample_lines = (
             expected_rules_with_tests
             + expected_rules_without_tests

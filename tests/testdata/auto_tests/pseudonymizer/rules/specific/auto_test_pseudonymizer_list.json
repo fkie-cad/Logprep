@@ -1,0 +1,7 @@
+[{
+  "filter": "some_field: FOO\\BAR",
+  "pseudonymize": {
+    "some_field": "RE_DOMAIN_BACKSLASH_USERNAME"
+  },
+  "description": "Test-rule with list auto-test"
+}]
