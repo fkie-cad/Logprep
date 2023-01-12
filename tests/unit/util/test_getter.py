@@ -62,8 +62,36 @@ class TestGetterFactory:
             os.environ.pop("PYTEST_TEST_TARGET")
         url = "https://oauth:${PYTEST_TEST_TOKEN}@randomtarget/${PYTEST_TEST_TARGET}"
         my_getter = GetterFactory.from_string(url)
-        assert my_getter._password == None
+        assert my_getter._password is None
         assert my_getter.target == "oauth:@randomtarget/"
+
+    def test_getter_expands_environment_variables_in_content(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text("this is my $PYTEST_TEST_TOKEN")
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken"
+
+    def test_getter_expands_environment_variables_in_yaml_content(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text(
+            """---
+key: $PYTEST_TEST_TOKEN
+list:
+    - first element
+    - $PYTEST_TEST_TOKEN
+    - ${PYTEST_TEST_TOKEN}-with-additional-string
+dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
+"""
+        )
+        my_getter = GetterFactory.from_string(str(testfile))
+        expected = {
+            "key": "mytoken",
+            "list": ["first element", "mytoken", "mytoken-with-additional-string"],
+            "dict": {"key": "value", "second_key": "mytoken"},
+        }
+        assert my_getter.get_yaml() == expected
 
 
 class TestFileGetter:
