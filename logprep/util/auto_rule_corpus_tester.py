@@ -36,6 +36,7 @@ from rich.pretty import pprint
 
 from logprep.framework.pipeline import Pipeline, SharedCounter
 from logprep.util.configuration import Configuration
+from logprep.util.helper import get_dotted_field_value
 from logprep.util.json_handling import parse_json, parse_jsonl
 
 
@@ -338,6 +339,9 @@ class RuleCorpusTester:
         as <IGNORE_VALUE>. For each difference a corresponding print statement is collected.
         """
         search_results = expected_output | grep("<IGNORE_VALUE>")
+        missing_keys = self._check_keys_of_ignored_values(
+            logprep_output, search_results.get("matched_values")
+        )
         ignore_paths = []
         if "matched_values" in search_results:
             ignore_paths = list(search_results["matched_values"])
@@ -351,6 +355,8 @@ class RuleCorpusTester:
         )
 
         print_statements = []
+        if missing_keys:
+            diff.update({"dictionary_item_removed": missing_keys})
         if diff:
             if "dictionary_item_removed" in diff.keys():
                 print_statements.append(
@@ -378,6 +384,17 @@ class RuleCorpusTester:
                     ("console", self._rewrite_output(str(diff["values_changed"])))
                 )
         return print_statements
+
+    def _check_keys_of_ignored_values(self, logprep_output, field_paths) -> list:
+        if not field_paths:
+            return []
+        missing_keys = []
+        for path in field_paths:
+            dotted_path = ".".join(re.findall(r"\['([^'|.*]*)'\]", path))
+            field_value = get_dotted_field_value(logprep_output, dotted_path)
+            if field_value is None:
+                missing_keys.append(path)
+        return missing_keys
 
     def _rewrite_output(self, statement):  # pylint: disable=no-self-use
         statement = statement.replace("new_value", "generated")

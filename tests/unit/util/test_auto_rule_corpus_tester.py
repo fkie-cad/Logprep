@@ -47,7 +47,28 @@ class TestAutoRuleTester:
                 },
                 ["PASSED", "Success rate: 100.00%"],
                 0,
-            )
+            ),
+            (
+                "Unknown field in logprep output",
+                {
+                    "input": {
+                        "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}
+                    },
+                    "expected_output": {
+                        "winlog": {"event_id": "2222", "event_data": {"Test1": 1}},
+                        "test_normalized": {"test": {"field1": 1, "field2": 2}},
+                    },
+                    "expected_extra_output": [],
+                },
+                [
+                    "FAILED",
+                    "Success rate: 0.00%",
+                    "Detailed Reports",
+                    "unexpected values were generated",
+                    "root['winlog']['event_data']['Test2']",
+                ],
+                1,
+            ),
         ],
     )
     @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
@@ -61,3 +82,108 @@ class TestAutoRuleTester:
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(exit_code)
+
+    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    def test_run_detects_unexpected_fields(self, mock_exit, tmp_path, corpus_tester):
+        test_data = {
+            "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
+            "expected_output": {
+                "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}},
+                "test_normalized": {"test": {"field1": 1, "field2": 2}},
+            },
+            "expected_extra_output": [],
+        }
+        expected_prints = [
+            "FAILED",
+            "Success rate: 0.00%",
+            "Detailed Reports",
+            "expected items are missing in the generated logprep output",
+            "root['winlog']['event_data']['Test2']",
+            "root['test_normalized']['test']['field2']",
+        ]
+        prepare_corpus_tester(corpus_tester, tmp_path, test_data)
+        mocked_output = [
+            [
+                {
+                    "winlog": {"event_id": "2222", "event_data": {"Test1": 1}},
+                    "test_normalized": {"test": {"field1": 1}},
+                }
+            ],
+            [],
+            [],
+        ]
+        corpus_tester._retrieve_pipeline_output = mock.MagicMock(return_value=mocked_output)
+        with corpus_tester.console.capture() as capture:
+            corpus_tester.run()
+        console_output = capture.get()
+        for expected_print in expected_prints:
+            assert expected_print in console_output
+        mock_exit.assert_called_with(1)
+
+    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    def test_run_ignores_value_if_set_in_expected_output(self, mock_exit, tmp_path, corpus_tester):
+        test_data = {
+            "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
+            "expected_output": {
+                "winlog": {"event_id": "2222", "event_data": "<IGNORE_VALUE>"},
+                "test_normalized": {"test": {"field1": 1, "field2": 2}},
+            },
+            "expected_extra_output": [],
+        }
+        expected_prints = [
+            "PASSED",
+            "Success rate: 100.00%",
+        ]
+        prepare_corpus_tester(corpus_tester, tmp_path, test_data)
+        mocked_output = [
+            [
+                {
+                    "winlog": {"event_id": "2222", "event_data": "SOME_RANDOM_CONTENT"},
+                    "test_normalized": {"test": {"field1": 1, "field2": 2}},
+                }
+            ],
+            [],
+            [],
+        ]
+        corpus_tester._retrieve_pipeline_output = mock.MagicMock(return_value=mocked_output)
+        with corpus_tester.console.capture() as capture:
+            corpus_tester.run()
+        console_output = capture.get()
+        for expected_print in expected_prints:
+            assert expected_print in console_output
+        mock_exit.assert_called_with(0)
+
+    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    def test_run_fails_if_key_of_ignored_value_is_missing(self, mock_exit, tmp_path, corpus_tester):
+        test_data = {
+            "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
+            "expected_output": {
+                "winlog": {"event_id": "2222", "event_data": "<IGNORE_VALUE>"},
+                "test_normalized": {"test": {"field1": 1, "field2": 2}},
+            },
+            "expected_extra_output": [],
+        }
+        expected_prints = [
+            "FAILED",
+            "expected items are missing in the generated logprep output",
+            "root['winlog']['event_data']",
+            "Success rate: 0.00%",
+        ]
+        prepare_corpus_tester(corpus_tester, tmp_path, test_data)
+        mocked_output = [
+            [
+                {
+                    "winlog": {"event_id": "2222"},
+                    "test_normalized": {"test": {"field1": 1, "field2": 2}},
+                }
+            ],
+            [],
+            [],
+        ]
+        corpus_tester._retrieve_pipeline_output = mock.MagicMock(return_value=mocked_output)
+        with corpus_tester.console.capture() as capture:
+            corpus_tester.run()
+        console_output = capture.get()
+        for expected_print in expected_prints:
+            assert expected_print in console_output
+        mock_exit.assert_called_with(1)
