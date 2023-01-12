@@ -58,7 +58,7 @@ input:
   kafka:
     type: confluentkafka_input
     bootstrapservers:
-      - 127.0.0.1:9092
+      - 172.21.0.5:9092
     topic: consumer
     group: cgroup3
     auto_commit: true
@@ -74,7 +74,7 @@ output:
   kafka:
     type: confluentkafka_output
     bootstrapservers:
-      - 127.0.0.1:9092
+      - 172.21.0.5:9092
     topic: producer
     error_topic: producer_error
     ack_policy: all
