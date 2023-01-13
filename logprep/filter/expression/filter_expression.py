@@ -296,13 +296,16 @@ class RegExFilterExpression(FilterExpression):
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
-        match = re.match(
-            r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>[^\$]*)(?P<end>\$)?", regex
-        )
-        flag, _, pattern, _ = match.groups()
+        match = re.match(r".*?(?P<escaping>\\*)\$$", regex)
+        if match and len(match.group("escaping")) % 2 == 0:
+            end_token = ""
+        else:
+            end_token = "$"
+        match = re.match(r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>.*)", regex)
+        flag, _, pattern = match.groups()
         flag = "" if flag is None else flag
         pattern = "" if pattern is None else pattern
-        return rf"{flag}^{pattern}$"
+        return rf"{flag}^{pattern}{end_token}"
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self._key, document)
