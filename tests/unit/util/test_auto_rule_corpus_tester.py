@@ -69,6 +69,27 @@ class TestAutoRuleTester:
                 ],
                 1,
             ),
+            (
+                "Failed test with changed value only",
+                {
+                    "input": {
+                        "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}
+                    },
+                    "expected_output": {
+                        "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 4}},
+                        "test_normalized": {"test": {"field1": 1, "field2": 2}},
+                    },
+                    "expected_extra_output": [],
+                },
+                [
+                    "FAILED",
+                    "Success rate: 0.00%",
+                    "Detailed Reports",
+                    "values differ between generated and expected output",
+                    "{\"root['winlog']['event_data']['Test2']\": {'generated': 2, 'expected': 4}}",
+                ],
+                1,
+            ),
         ],
     )
     @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
