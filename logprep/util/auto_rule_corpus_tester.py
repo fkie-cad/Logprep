@@ -234,9 +234,13 @@ class RuleCorpusTester:
         """
         print_statements = []
         if len(logprep_extra_outputs) > len(expected_extra_outputs):
-            print_statements.append(("console", "[red]Found unexpected extra output"))
+            print_statements.append(
+                ("console", "[red]There is at least one generated extra output that is unexpected")
+            )
         if len(logprep_extra_outputs) < len(expected_extra_outputs):
-            print_statements.append(("console", "[red]Missing expected extra output"))
+            print_statements.append(
+                ("console", "[red]There is at least one expected extra output missing")
+            )
         for expected_extra_output in expected_extra_outputs:
             expected_extra_output_key = list(expected_extra_output.keys())[0]
             has_matching_output = self._has_matching_logprep_output(
