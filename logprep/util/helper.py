@@ -256,6 +256,11 @@ def append(event, target_field, content, separator):
         append_as_list(event, target_field, content)
 
 
+def append_without_seperator(event, target_field, content, *_):
+    """appends without a seperator"""
+    append(event, target_field, content, "")
+
+
 def get_source_fields_dict(event, rule):
     """returns a dict with dotted fields as keys and target values as values"""
     source_fields = rule.source_fields

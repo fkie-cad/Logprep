@@ -50,7 +50,8 @@ first and the last subfield will be created if necessary.
 
 By default the target field will always be overwritten with the captured value. If you want to
 append to a preexisting target field value, as string or list, you have to use
-the :code:`+` operator.
+the :code:`+` operator. If you want to append without a separator you have to use the :code:`*`
+operator.
 
 It is possible to capture the target field name from the source field value with the notation
 :code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern
@@ -77,7 +78,7 @@ from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import append, add_and_overwrite
+from logprep.util.helper import append, add_and_overwrite, append_without_seperator
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
 SEPARATOR = r"((?!%\{.*\}).+)"
@@ -128,6 +129,7 @@ class DissectorRule(FieldManagerRule):
     _actions_mapping: dict = {
         "": add_and_overwrite,
         "+": append,
+        "*": append_without_seperator,
     }
 
     _converter_mapping: dict = {"int": int, "float": float, "string": str}
@@ -158,7 +160,7 @@ class DissectorRule(FieldManagerRule):
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(
-                    r"%\{(?P<action>[+]?)(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<separator>.*)",
+                    r"%\{(?P<action>[+*]?)(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<separator>.*)",
                     section,
                 )
                 separator = (

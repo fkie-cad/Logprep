@@ -447,6 +447,20 @@ test_cases = [  # testcase, rule, event, expected
             "field4": "path",
         },
     ),
+    (
+        "Appending without separator",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "INFO#%{date}#%{*date}#MOREINFO%{}"}},
+        },
+        {
+            "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
+        },
+        {
+            "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
+            "date": "2022 12 06 15:12:30:534+0100",
+        },
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (
