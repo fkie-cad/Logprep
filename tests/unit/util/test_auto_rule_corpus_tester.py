@@ -1,4 +1,5 @@
 import json
+import os
 from unittest import mock
 
 import pytest
@@ -277,3 +278,28 @@ class TestAutoRuleTester:
         corpus_tester.input_test_data_path = tmp_path
         with pytest.raises(ValueError, match="is missing an input file."):
             corpus_tester.run()
+
+    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    def test_run_skips_test_if_expected_output_is_missing(self, mock_exit, tmp_path, corpus_tester):
+        test_data = {
+            "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
+            "expected_output": {
+                "winlog": {"event_id": "2222", "event_data": "<IGNORE_VALUE>"},
+                "test_normalized": {"test": {"field1": 1, "field2": 2}},
+            },
+            "expected_extra_output": [],
+        }
+        expected_prints = [
+            "SKIPPED",
+            "no expected output given",
+            "Total test cases: 1",
+            "Success rate: 100.00%",
+        ]
+        prepare_corpus_tester(corpus_tester, tmp_path, test_data)
+        os.remove(tmp_path / "rule_auto_corpus_test_out.json")
+        with corpus_tester.console.capture() as capture:
+            corpus_tester.run()
+        console_output = capture.get()
+        for expected_print in expected_prints:
+            assert expected_print in console_output
+        mock_exit.assert_called_with(0)
