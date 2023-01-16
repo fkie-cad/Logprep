@@ -270,3 +270,10 @@ class TestAutoRuleTester:
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(1)
+
+    def test_run_raises_if_case_misses_input_file(self, tmp_path, corpus_tester):
+        expected_output_data_path = tmp_path / f"rule_auto_corpus_test_out.json"
+        expected_output_data_path.write_text("not important")
+        corpus_tester.input_test_data_path = tmp_path
+        with pytest.raises(ValueError, match="is missing an input file."):
+            corpus_tester.run()

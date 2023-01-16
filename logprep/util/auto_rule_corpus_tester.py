@@ -85,7 +85,9 @@ class RuleCorpusTester:
         test_reports = []
         for current_test_case in cases.items():
             if not current_test_case[1].get("in"):
-                continue
+                raise ValueError(
+                    f"The test case '{current_test_case[0]}' is missing an input file."
+                )
             self._prepare_connector_files(current_test_case, pipeline)
             pipeline._process_pipeline()
             output = self._retrieve_pipeline_output(pipeline)
