@@ -78,7 +78,7 @@ from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import append, add_and_overwrite, append_without_seperator
+from logprep.util.helper import append, add_and_overwrite, append_without_separator
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
 SEPARATOR = r"((?!%\{.*\}).+)"
@@ -129,7 +129,7 @@ class DissectorRule(FieldManagerRule):
     _actions_mapping: dict = {
         "": add_and_overwrite,
         "+": append,
-        "*": append_without_seperator,
+        "*": append_without_separator,
     }
 
     _converter_mapping: dict = {"int": int, "float": float, "string": str}

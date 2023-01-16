@@ -256,7 +256,7 @@ def append(event, target_field, content, separator):
         append_as_list(event, target_field, content)
 
 
-def append_without_seperator(event, target_field, content, *_):
+def append_without_separator(event, target_field, content, *_):
     """appends without a seperator"""
     append(event, target_field, content, "")
 
