@@ -17,54 +17,109 @@ Example
 
 from attrs import define
 from logprep.abc.input import Input
-import time
 import threading 
-import time
 import queue
-from multiprocessing import Process, Event, Queue
+import zlib
 
 
-class RepeatedTimerThread(object):
-    def __init__(self, interval, function, event,*args, **kwargs):
+def threadsafe_function(fn):
+    """decorator making sure that the decorated function is thread safe"""
+    lock = threading.Lock()
+    def new(*args, **kwargs):
+        lock.acquire()
+        try:
+            r = fn(*args, **kwargs)
+        except Exception as e:
+            raise e
+        finally:
+            lock.release()
+        return r
+    return new
+
+
+class RepeatedTimerThread(threading.Thread):
+    def __init__(self, interval, input_object, stop_flag, *args, **kwargs):
+        super(RepeatedTimerThread,self).__init__()
         self._timer = None
         self.interval = interval
-        self.function = function
+        self.input_object = input_object
         self.args = args
         self.kwargs = kwargs
-        self.is_running = False
-        self.stopped = event
-        self.next_call = time.time()
+        self.stopped = stop_flag
         self.start()
 
 
-    def _run(self):
-        if not self.stopped.is_set():
-            self.is_running = False
-            self.start()
-            self.function(*self.args, **self.kwargs)
+    def run(self):
+        while not self.stopped.wait(self.interval):
+            self.input_object._follow_file(*self.args, **self.kwargs)
+
+
+class FileWatcherDict(object):
+    def __init__(self, file_name=""):
+        self.d = {}
+        if file_name:
+            self.add_file(file_name)
+
+
+    def add_file(self, file_name):
+        self.d[file_name] = {"offset":0,"fingerprint":""}
+    
+    
+    def add_offset(self, file_name, offset):
+        if not self.get_fileinfo(file_name):
+            self.add_file(file_name)
+        self.d[file_name]["offset"] = offset
+
+
+    def add_fingerprint(self, file_name, fingerprint):
+        if not self.get_fileinfo(file_name):
+            self.add_file(file_name)
+        self.d[file_name]["fingerprint"] = fingerprint
+
+
+    def get_fileinfo(self, file_name):
+        if self.d.get(file_name):
+            return self.d[file_name]
         else:
-            self.stop()
+            return ""
 
-    def start(self):
-        if (not self.is_running) and (not self.stopped.is_set()):
-            self.next_call += self.interval
-            self._timer = threading.Timer(self.next_call - time.time(), self._run)
-            self._timer.start()
-            self.is_running = True
+
+    def get_offset(self, file_name):
+        if self.get_fileinfo(file_name):
+            if self.d[file_name].get("offset"):
+                return self.d[file_name]["offset"]
+            else:
+                return ""
         else:
-            self.stop()
+            return ""
 
-    def stop(self):
-        self.is_running = False
-        self._timer.cancel()
 
+    def get_fingerprint(self, file_name):
+        if self.get_fileinfo(file_name): 
+            if self.d[file_name].get("fingerprint"):
+                return self.d[file_name]["fingerprint"]
+            else:
+                return ""
+        else:
+            return ""
+
+
+    def check_fingerprint(self, file_name, check_fingerprint):
+        origin_fingerprint = self.get_fingerprint(file_name)
+        if not origin_fingerprint:
+            return True
+
+        if origin_fingerprint == check_fingerprint:
+            return True
+        else:
+            return False
 
 
 class FileInput(Input):
     """FileInput Connector"""
 
     _messages: queue.Queue = queue.Queue()
-    _fileinfo_dict: dict = {}
+    _fileinfo_util: object = FileWatcherDict()
 
     @define(kw_only=True)
     class Config(Input.Config):
@@ -74,22 +129,39 @@ class FileInput(Input):
         """A path to a file in generic raw format, which can be in any string based format. Needs to be parsed with normalizer"""
 
 
-    @property
-    def _documents(self):
-        return self._iterator
-   
+    def _calc_file_fingerprint(self, fp) -> int:
+        """
+        This function creates a crc32 fingerprint of the first 256 bytes of a given file
+        """
+        first_256_bytes = str.encode(fp.read(256))
+        crc32 = zlib.crc32(first_256_bytes)% 2**32
+        fp.seek(0)
+        return crc32
 
-    def _follow_file(self, file_name): 
-        """ Yield line from given input file and wait for arriving new lines.
 
-        TODO: Turn this from dirty while True to Timer triggered parallel thread or process"""
+    @threadsafe_function
+    def _follow_file(self, file_name: str): 
+        """ 
+        Put line as a dict to threadsafe message queue from given input file and wait for arriving new lines.
+        Will create and continously check the file fingerprints to detect file changes that occur on log rotation.
+        """
+            
         with open(file_name) as file:
-            while True:
-                if self._fileinfo_dict.get(file_name):
-                    file.seek(self._fileinfo_dict[file_name])
+            # creating the baseline fingerprint for the file
+            if not self._fileinfo_util.get_fingerprint(file_name):
+               self._fileinfo_util.add_fingerprint(file_name, self._calc_file_fingerprint(file))
+            
+            check_crc32 = self._calc_file_fingerprint(file)
+            if not self._fileinfo_util.check_fingerprint(file_name, check_crc32):
+                # if the fingerprint in check_crc32 is not the same a non-appending file change happened
+                self._fileinfo_util.add_fingerprint(file_name, check_crc32)
+                self._fileinfo_util.add_offset(file_name, 0)
 
+            while True:
+                if self._fileinfo_util.get_offset(file_name):
+                    file.seek(self._fileinfo_util.get_offset(file_name))
                 line = file.readline()
-                self._fileinfo_dict[file_name] = file.tell()
+                self._fileinfo_util.add_offset(file_name, file.tell())
                 if line is not '':
                     if line.endswith("\n"):
                         self._messages.put(self._line_to_dict(line))
@@ -116,10 +188,25 @@ class FileInput(Input):
 
     
     def setup(self):
-        super().setup()
-        self.stop_flag = Event()
-        self.rt = RepeatedTimerThread(1,self._follow_file, self.stop_flag, file_name=self._config.documents_path)
+        """
+        Creates and starts the Thread that continously monitors the given logfile.
+
+        TODO: this function is executed for every process in process_count, 
+        which leads to multiple Thread instances for the same file -> not desired
+        The Thread needs to run as a singleton per document path for spawning it 
+        over multiple processes
+        """
+        self.stop_flag = threading.Event()
+        self.rt = RepeatedTimerThread(  2,
+                                        self, 
+                                        self.stop_flag,
+                                        file_name=self._config.documents_path)
 
 
     def shut_down(self):
+        """
+        Raises the Stop Event Flag that will stop the thread that monitors the logfile
+
+        TODO (optional): write the file offset and fingerprints to disk to continue later on on the same position
+        """
         self.stop_flag.set()
