@@ -3,6 +3,7 @@ import os
 from unittest import mock
 
 import pytest
+import yaml
 from rich.console import Console
 
 from logprep.util.auto_rule_corpus_tester import RuleCorpusTester
@@ -303,3 +304,43 @@ class TestAutoRuleTester:
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(0)
+
+    def test_patch_config_rewrites_input_output_and_process_count(self, corpus_tester, tmp_path):
+        corpus_tester.tmp_dir = tmp_path
+        original_config_path = corpus_tester.config_path
+        with open(original_config_path, "r", encoding="utf8") as config_file:
+            original_config = yaml.load(config_file, Loader=yaml.FullLoader)
+        original_input_type = list(original_config.get("input").items())[0][1].get("type")
+        original_output_type = list(original_config.get("output").items())[0][1].get("type")
+        assert original_input_type == "confluentkafka_input"
+        assert original_output_type == "confluentkafka_output"
+        assert original_config.get("process_count") == 3
+        patched_config_path = corpus_tester._patch_config(original_config_path)
+        with open(patched_config_path, "r", encoding="utf8") as config_file:
+            patched_config = yaml.load(config_file, Loader=yaml.FullLoader)
+        patched_input = patched_config.get("input")
+        patched_output = patched_config.get("output")
+        patched_input_type = list(patched_input.items())[0][1].get("type")
+        patched_output_type = list(patched_output.items())[0][1].get("type")
+        assert patched_input_type == "jsonl_input"
+        assert patched_output_type == "jsonl_output"
+        assert patched_config.get("process_count") == 1
+        assert str(corpus_tester.tmp_dir) in patched_input.get("test_input").get("documents_path")
+        patched_test_output = patched_output.get("test_output")
+        assert str(corpus_tester.tmp_dir) in patched_test_output.get("output_file")
+        assert str(corpus_tester.tmp_dir) in patched_test_output.get("output_file_custom")
+        assert str(corpus_tester.tmp_dir) in patched_test_output.get("output_file_error")
+
+    def test_patch_config_removes_metrics_key_if_present(self, corpus_tester, tmp_path):
+        corpus_tester.tmp_dir = tmp_path
+        original_config_path = corpus_tester.config_path
+        with open(original_config_path, "r", encoding="utf8") as config_file:
+            original_config = yaml.load(config_file, Loader=yaml.FullLoader)
+        original_config["metrics"] = {"some_unimportant": "values"}
+        patched_test_config_path = f"{tmp_path}/patched_test_config.yaml"
+        with open(patched_test_config_path, "w", encoding="utf8") as generated_config_file:
+            yaml.safe_dump(original_config, generated_config_file)
+        patched_config_path = corpus_tester._patch_config(patched_test_config_path)
+        with open(patched_config_path, "r", encoding="utf8") as config_file:
+            patched_config = yaml.load(config_file, Loader=yaml.FullLoader)
+        assert patched_config.get("metrics") is None
