@@ -339,7 +339,7 @@ class Pipeline:
         )
         processor.metrics.number_of_warnings += 1
 
-    def _store_extra_data(self, extra_data: list[tuple]):
+    def _store_extra_data(self, extra_data: List[tuple]):
         self._logger.debug("Storing extra data")
         if isinstance(extra_data, tuple):
             documents, target = extra_data

@@ -1,5 +1,7 @@
 """Module for getter interface"""
 from abc import ABC, abstractmethod
+import os
+from string import Template
 import json
 from typing import Dict, List, Union
 from ruamel.yaml import YAML
@@ -19,7 +21,12 @@ class Getter(ABC):
 
     def get(self) -> str:
         """calls the get_raw method and returns the decoded content"""
-        return self.get_raw().decode("utf8")
+        content = self.get_raw().decode("utf8")
+        try:
+            content = Template(content).substitute(**os.environ)
+        except (KeyError, ValueError):
+            pass
+        return content
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""

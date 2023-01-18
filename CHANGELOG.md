@@ -23,7 +23,8 @@
 
 * Add support for python `3.10` and `3.11`
 * Add option to submit a template with `list_search_base_path` config parameter in `list_comparison` processor
-* Add functionality to `geoip_enricher` to download the geoip-database 
+* Add functionality to `geoip_enricher` to download the geoip-database
+* Add ability to use environment variables in rules and config
 
 ### Bugfixes
 

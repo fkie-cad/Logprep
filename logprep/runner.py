@@ -95,6 +95,7 @@ class Runner:
         self._logger = None
         self._metric_targets = None
         self._log_handler = None
+        self._config_refresh_interval = None
 
         self._manager = None
         self.scheduler = Scheduler()
@@ -153,6 +154,7 @@ class Runner:
 
         self._yaml_path = yaml_file
         self._configuration = configuration
+        self._config_refresh_interval = configuration.get("config_refresh_interval")
 
     def start(self):
         """Start processing.
@@ -183,20 +185,20 @@ class Runner:
         self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
         for _ in self._keep_iterating():
-            self.scheduler.run_pending()
-            self._logger.debug("Runner iterating")
-            self._manager.remove_failed_pipeline()
-            self._manager.set_count(self._configuration["process_count"])
-            # Note: We are waiting half the timeout because when shutting down, we also have to
-            # wait for the logprep's timeout before the shutdown is actually initiated.
-            self._manager.handle_logs_into_logger(
-                self._logger, self._configuration["timeout"] / 2.0
-            )
+            self._loop()
         self.stop()
 
         self._logger.info("Initiated shutdown")
         self._manager.stop()
         self._logger.info("Shutdown complete")
+
+    def _loop(self):
+        self.scheduler.run_pending()
+        self._logger.debug("Runner iterating")
+        self._manager.restart_failed_pipeline()
+        # Note: We are waiting half the timeout because when shutting down, we also have to
+        # wait for the logprep's timeout before the shutdown is actually initiated.
+        self._manager.handle_logs_into_logger(self._logger, self._configuration["timeout"] / 2.0)
 
     def reload_configuration(self, refresh=False):
         """Reload the configuration from the configured yaml path.
@@ -211,12 +213,14 @@ class Runner:
             raise CannotReloadWhenConfigIsUnsetError
         try:
             new_configuration = Configuration.create_from_yaml(self._yaml_path)
+            self._config_refresh_interval = new_configuration.get("config_refresh_interval")
+            self._schedule_config_refresh_job()
         except (requests.RequestException, FileNotFoundError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
-            current_refresh_interval = self._configuration.get("config_refresh_interval")
+            current_refresh_interval = self._config_refresh_interval
             if isinstance(current_refresh_interval, (float, int)):
                 new_refresh_interval = current_refresh_interval / 4
-                self._configuration.update({"config_refresh_interval": new_refresh_interval})
+                self._config_refresh_interval = new_refresh_interval
             self._schedule_config_refresh_job()
             return
         if refresh:
@@ -235,8 +239,8 @@ class Runner:
             # Only reached when configuration is verified successfully
             self._configuration = new_configuration
             self._schedule_config_refresh_job()
+            self._manager.stop()
             self._manager.set_configuration(self._configuration)
-            self._manager.replace_pipelines()
             self._manager.set_count(self._configuration["process_count"])
             self._logger.info("Successfully reloaded configuration")
             self._logger.info(
@@ -251,7 +255,7 @@ class Runner:
             )
 
     def _schedule_config_refresh_job(self):
-        refresh_interval = self._configuration.get("config_refresh_interval")
+        refresh_interval = self._config_refresh_interval
         scheduler = self.scheduler
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
