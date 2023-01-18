@@ -50,8 +50,8 @@ first and the last subfield will be created if necessary.
 
 By default the target field will always be overwritten with the captured value. If you want to
 append to a preexisting target field value, as string or list, you have to use
-the :code:`+` operator. If you want to append without a separator you have to use the :code:`*`
-operator.
+the :code:`+` operator. If you want to use a prefix before the appended string use this notation
+:code:`+( )`. In this example a whitespace would be added before the extracted string is added.
 
 It is possible to capture the target field name from the source field value with the notation
 :code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern
