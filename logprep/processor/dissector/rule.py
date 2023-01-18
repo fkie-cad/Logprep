@@ -81,10 +81,17 @@ from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import append, add_and_overwrite
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
-SEPARATOR = r"((?!%\{.*\}).+)"
+DELIMETER = r"((?!%\{.*\}).+)"
+START = r"%\{"
+END = r"\}"
+ACTION = r"(?P<action>[+])?"
+SEPERATOR = r"(\((?P<separator>.+)\))?"
+TARGET_FIELD = r"(?P<target_field>[^\/]*)"
+POSITION = r"(\/(?P<position>\d*))?"
+SECTION_MATCH = rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{POSITION}{END}(?P<delimeter>.*)"
 
 
-def _do_nothing(*args):
+def _do_nothing(*_):
     return
 
 
@@ -104,7 +111,7 @@ class DissectorRule(FieldManagerRule):
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.matches_re(
-                        rf"^({SEPARATOR})?({DISSECT}{SEPARATOR})+{DISSECT}$"
+                        rf"^({DELIMETER})?({DISSECT}{DELIMETER})+{DISSECT}$"
                     ),
                 ),
             ],
@@ -162,10 +169,7 @@ class DissectorRule(FieldManagerRule):
                 pattern = "%{}" + pattern
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
-                section_match = re.match(
-                    r"%\{(?P<action>[+])?(\((?P<separator>.+)\))?(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<delimeter>.*)",
-                    section,
-                )
+                section_match = re.match(SECTION_MATCH, section)
                 separator = section_match.group("separator")
                 separator = "" if separator is None else separator
                 action_key = section_match.group("action")
