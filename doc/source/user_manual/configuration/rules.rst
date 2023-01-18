@@ -127,7 +127,7 @@ Rules
    :noindex:
 
 .. automodule:: logprep.processor.pseudonymizer.rule
-.. autoclass:: logprep.processor.pseudonymizer.rule.PseudonymizeRule.Config
+.. autoclass:: logprep.processor.pseudonymizer.rule.PseudonymizerRule.Config
    :members:
    :undoc-members:
    :inherited-members:

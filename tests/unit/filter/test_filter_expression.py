@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=no-self-use
 # pylint: disable=redefined-builtin
 # pylint: disable=protected-access
 from random import sample
@@ -316,7 +315,12 @@ class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
                 r"(?i)^[\\s\\w\\W]*(bxor|join|char)[\\s\\w\\W]$",
             ),
             (r"start.*end", r"^start.*end$"),
+            (r"(^foo$)", r"^(^foo$)$"),
             (r"", r"^$"),
+            (r"\$", r"^\$$"),
+            (r"\\$", r"^\\$"),
+            (r"foo\$", r"^foo\$$"),
+            (r"foo\\$", r"^foo\\$"),
             (r"^start.*end$", r"^start.*end$"),
             (r"^start.*end", r"^start.*end$"),
             (r"start.*end$", r"^start.*end$"),
