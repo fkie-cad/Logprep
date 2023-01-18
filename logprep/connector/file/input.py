@@ -159,8 +159,10 @@ class FileInput(Input):
 
             while True:
                 if self._fileinfo_util.get_offset(file_name):
+                    # if the file offset already exists, continue from there
                     file.seek(self._fileinfo_util.get_offset(file_name))
                 line = file.readline()
+                # add new file offset after line of file was read
                 self._fileinfo_util.add_offset(file_name, file.tell())
                 if line is not '':
                     if line.endswith("\n"):
@@ -191,13 +193,16 @@ class FileInput(Input):
         """
         Creates and starts the Thread that continously monitors the given logfile.
 
-        TODO: this function is executed for every process in process_count, 
-        which leads to multiple Thread instances for the same file -> not desired
-        The Thread needs to run as a singleton per document path for spawning it 
-        over multiple processes
+        TODO (optional): when processing multiple files, map the threads 
+        equally-distributed to each process
         """
+
         self.stop_flag = threading.Event()
-        self.rt = RepeatedTimerThread(  2,
+        # we only start a thread in the first pipeline process
+        # when processing multiple files they could be mapped to different processes
+        if self.pipeline_index == 1:
+            
+            self.rt = RepeatedTimerThread(  2,
                                         self, 
                                         self.stop_flag,
                                         file_name=self._config.documents_path)

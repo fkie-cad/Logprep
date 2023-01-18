@@ -134,6 +134,7 @@ class Pipeline:
         self._metric_targets = metric_targets
         self._metrics_exposer = None
         self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
+        self._pipeline_index = pipeline_index
 
         self._event_version_information = {
             "logprep": get_versions().get("version"),
@@ -182,6 +183,7 @@ class Pipeline:
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{self._output.describe()}' ({current_process().name})"
         )
+        self._input.pipeline_index = self._pipeline_index
         self._input.setup()
         self._output.setup()
         if hasattr(self._input, "server"):
