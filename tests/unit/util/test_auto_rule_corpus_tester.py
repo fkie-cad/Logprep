@@ -344,3 +344,14 @@ class TestAutoRuleTester:
         with open(patched_config_path, "r", encoding="utf8") as config_file:
             patched_config = yaml.load(config_file, Loader=yaml.FullLoader)
         assert patched_config.get("metrics") is None
+
+    def test_prepare_connector_files_removes_version_info_from_previous_run(self, corpus_tester):
+        pipeline = corpus_tester._get_patched_pipeline(corpus_tester.config_path)
+        pipeline._logprep_config["input"]["version_information"] = {"logprep": 1, "config": 2}
+        test_case = ("test_case", {"in": "path", "out": "path", "expected_out": "path"})
+        with mock.patch("builtins.open") as _:
+            with mock.patch("logprep.util.auto_rule_corpus_tester.json") as _:
+                pipeline_input = pipeline._logprep_config.get("input", {})
+                assert pipeline_input.get("version_information") is not None
+                corpus_tester._prepare_connector_files(test_case, pipeline)
+                assert pipeline_input.get("version_information") is None
