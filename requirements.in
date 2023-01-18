@@ -6,7 +6,7 @@ confluent-kafka<1.9.0
 elasticsearch>=7,<8
 fastapi
 geoip2
-hyperscan==0.2.0; sys_platform == 'linux' and platform_machine == 'x86_64'
+hyperscan==0.4.0; sys_platform == 'linux' and platform_machine == 'x86_64'
 jsonref
 luqum
 mysql-connector-python
