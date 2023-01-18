@@ -36,6 +36,8 @@ from logprep.util.time_measurement import TimeMeasurement
 
 if TYPE_CHECKING:
     from logprep.abc.processor import Processor  # pragma: no cover
+    from logprep.abc.input import Input
+    from logprep.abc.output import Output
 
 
 class PipelineError(BaseException):
@@ -105,6 +107,41 @@ class Pipeline:
             self.mean_processing_time_per_event = new_avg
             self._mean_processing_time_sample_counter = new_sample_counter
 
+    _logprep_config: dict
+    """ the logprep configuration dict """
+
+    _log_handler: Handler
+    """ the handler for the logs """
+
+    _logger: Logger
+    """ the logger """
+
+    _continue_iterating: bool
+    """ a flag to signal if iterating continues """
+
+    _pipeline: tuple
+    """ a tuple containing the processor objects as defined in configuration """
+
+    _input: "Input"
+    """ the defined input connector object """
+
+    _output: "Output"
+    """ the defined output connector object """
+
+    _lock: Lock
+    """ the lock for the pipeline process """
+
+    _shared_dict: dict
+    """ a shared dict for inter process communication """
+
+    _used_server_ports: dict
+    """ a shard dict for signaling used ports between pipeline processes """
+
+    _processing_counter: "SharedCounter"
+
+    _metrics: Metric
+    """ the configured metric object """
+
     def __init__(
         self,
         pipeline_index: int,
@@ -123,7 +160,7 @@ class Pipeline:
         self._logger = None
 
         self._continue_iterating = False
-        self._pipeline = []
+        self._pipeline = ()
         self._input = None
         self._output = None
         self._lock = lock
