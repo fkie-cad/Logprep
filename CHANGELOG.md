@@ -18,6 +18,7 @@
 `customize_target_subfields`
 * Add a `timestamp_differ` processor that can parse two timestamps and calculate their respective time delta.
 * Add `config_refresh_interval` configuration option to refresh the configuration on a given timedelta
+* Add a feature to `dissector` processor to enable appending to strings without a separator
 
 ### Improvements
 
