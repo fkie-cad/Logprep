@@ -78,10 +78,14 @@ from attrs import define, validators, field, Factory
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import append, add_and_overwrite, append_without_separator
+from logprep.util.helper import append, add_and_overwrite
 
 DISSECT = r"(%\{[+&?]?[^%{]*\})"
 SEPARATOR = r"((?!%\{.*\}).+)"
+
+
+def _do_nothing(*args):
+    return
 
 
 class DissectorRule(FieldManagerRule):
@@ -127,9 +131,8 @@ class DissectorRule(FieldManagerRule):
             self.source_fields = list(self.mapping.keys())  # pylint: disable=no-member
 
     _actions_mapping: dict = {
-        "": add_and_overwrite,
+        None: add_and_overwrite,
         "+": append,
-        "*": append_without_separator,
     }
 
     _converter_mapping: dict = {"int": int, "float": float, "string": str}
@@ -160,31 +163,21 @@ class DissectorRule(FieldManagerRule):
             sections = re.findall(r"%\{[^%]+", pattern)
             for section in sections:
                 section_match = re.match(
-                    r"%\{(?P<action>[+*]?)(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<separator>.*)",
+                    r"%\{(?P<action>[+])?(\((?P<separator>.+)\))?(?P<target_field>[^\/]*)(\/(?P<position>\d*))?\}(?P<delimeter>.*)",
                     section,
                 )
-                separator = (
-                    section_match.group("separator") if section_match.group("separator") else None
-                )
-                action_key = (
-                    section_match.group("action") if "action" in section_match.groupdict() else None
-                )
-                target_field = (
-                    section_match.group("target_field")
-                    if "target_field" in section_match.groupdict()
-                    else None
-                )
-                position = (
-                    section_match.group("position")
-                    if "position" in section_match.groupdict()
-                    else None
-                )
-                if target_field:
-                    action = self._actions_mapping.get(action_key)
-                else:
-                    action = lambda *args: None
+                separator = section_match.group("separator")
+                separator = "" if separator is None else separator
+                action_key = section_match.group("action")
+                target_field = section_match.group("target_field")
+                position = section_match.group("position")
+                delimeter = section_match.group("delimeter")
+                delimeter = None if delimeter == "" else delimeter
                 position = int(position) if position is not None else 0
-                self.actions.append((source_field, separator, target_field, action, position))
+                action = self._actions_mapping.get(action_key) if target_field else _do_nothing
+                self.actions.append(
+                    (source_field, delimeter, target_field, action, separator, position)
+                )
 
     def _set_convert_actions(self):
         self.convert_actions = []
