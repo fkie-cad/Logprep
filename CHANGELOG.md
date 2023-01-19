@@ -29,6 +29,7 @@
 * Add a `timestamp_differ` processor that can parse two timestamps and calculate their respective time delta.
 * Add `config_refresh_interval` configuration option to refresh the configuration on a given timedelta
 * Add option to `dissector` to use a prefix pattern in dissect language for appending to strings and add the default behavior to append to strings without any prefixed separator
+* Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
 
 ### Improvements
 
