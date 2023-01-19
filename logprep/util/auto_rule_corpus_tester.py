@@ -59,7 +59,7 @@ class RuleCorpusTester:
         and printing out the test results.
         """
         self._read_files()
-        self._get_patched_pipeline()
+        self._create_patched_pipeline()
         self._run_logprep_per_test_case()
         self._compare_with_expected_outputs()
         self._print_detailed_reports()
@@ -97,16 +97,6 @@ class RuleCorpusTester:
             for filename in files:
                 file_paths.append(os.path.abspath(os.path.join(root, filename)))
         return file_paths
-
-    def _get_patched_pipeline(self):
-        """
-        Read the pipline config, patch the connectors and create a corresponding logprep pipeline
-        """
-        path_of_patched_pipeline = self._patch_config()
-        config = Configuration().create_from_yaml(path_of_patched_pipeline)
-        log_handler = logging.StreamHandler()
-        self.pipeline = Pipeline(0, config, SharedCounter(), log_handler, None, {}, None)
-        self.pipeline._setup()
 
     def _run_logprep_per_test_case(self):
         """
@@ -184,21 +174,21 @@ class RuleCorpusTester:
         filename = filename.replace(".json", "*")
         return filename
 
-    def _patch_config(self):
+    def _create_patched_pipeline(self):
         """Patch the logprep config by changing the connector paths."""
         with open(self.path_to_original_config, "r", encoding="utf8") as config_file:
             pipeline = yaml.load(config_file, Loader=yaml.FullLoader)
         configured_input = pipeline.get("input", {})
         input_name = list(configured_input.keys())[0]
         preprocessors = configured_input.get(input_name, {}).get("preprocessing", {})
-        input_config = {
+        pipeline["input"] = {
             "test_input": {
                 "type": "jsonl_input",
                 "documents_path": f"{self.tmp_dir}/input.json",
                 "preprocessing": preprocessors,
             }
         }
-        output_config = {
+        pipeline["output"] = {
             "test_output": {
                 "type": "jsonl_output",
                 "output_file": f"{self.tmp_dir}/output.out",
@@ -206,15 +196,14 @@ class RuleCorpusTester:
                 "output_file_error": f"{self.tmp_dir}/output_error.out",
             }
         }
-        pipeline["input"] = input_config
-        pipeline["output"] = output_config
         pipeline["process_count"] = 1
         if "metrics" in pipeline:
             del pipeline["metrics"]
-        patched_config_path = f"{self.tmp_dir}/pipeline_config.yml"
-        with open(patched_config_path, "w", encoding="utf8") as generated_config_file:
-            yaml.safe_dump(pipeline, generated_config_file)
-        return patched_config_path
+        config = Configuration()
+        config.update(pipeline)
+        log_handler = logging.StreamHandler()
+        self.pipeline = Pipeline(0, config, SharedCounter(), log_handler, None, {}, {})
+        self.pipeline._setup()
 
     def _parse_and_compare(self, expected_parsed_event_path, logprep_event_output, prints):
         """Parses the expected logprep output and starts the comparison"""

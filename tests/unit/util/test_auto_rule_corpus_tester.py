@@ -392,16 +392,14 @@ class TestAutoRuleTester:
         assert original_input_type == "confluentkafka_input"
         assert original_output_type == "confluentkafka_output"
         assert original_config.get("process_count") == 3
-        patched_config_path = corpus_tester._patch_config()
-        with open(patched_config_path, "r", encoding="utf8") as config_file:
-            patched_config = yaml.load(config_file, Loader=yaml.FullLoader)
-        patched_input = patched_config.get("input")
-        patched_output = patched_config.get("output")
+        corpus_tester._create_patched_pipeline()
+        patched_input = corpus_tester.pipeline._logprep_config.get("input")
+        patched_output = corpus_tester.pipeline._logprep_config.get("output")
         patched_input_type = list(patched_input.items())[0][1].get("type")
         patched_output_type = list(patched_output.items())[0][1].get("type")
         assert patched_input_type == "jsonl_input"
         assert patched_output_type == "jsonl_output"
-        assert patched_config.get("process_count") == 1
+        assert corpus_tester.pipeline._logprep_config.get("process_count") == 1
         assert str(corpus_tester.tmp_dir) in patched_input.get("test_input").get("documents_path")
         patched_test_output = patched_output.get("test_output")
         assert str(corpus_tester.tmp_dir) in patched_test_output.get("output_file")
@@ -417,13 +415,11 @@ class TestAutoRuleTester:
         corpus_tester.path_to_original_config = patched_test_config_path
         with open(patched_test_config_path, "w", encoding="utf8") as generated_config_file:
             yaml.safe_dump(original_config, generated_config_file)
-        patched_config_path = corpus_tester._patch_config()
-        with open(patched_config_path, "r", encoding="utf8") as config_file:
-            patched_config = yaml.load(config_file, Loader=yaml.FullLoader)
-        assert patched_config.get("metrics") is None
+        corpus_tester._create_patched_pipeline()
+        assert corpus_tester.pipeline._logprep_config.get("metrics") is None
 
     def test_prepare_connector_files_removes_version_info_from_previous_run(self, corpus_tester):
-        corpus_tester._get_patched_pipeline()
+        corpus_tester._create_patched_pipeline()
         corpus_tester.pipeline._logprep_config["input"]["version_information"] = {"logprep": 1, "config": 2}
         test_case = ("test_case", {"in": "path", "out": "path", "expected_out": "path"})
         with mock.patch("builtins.open") as _:
