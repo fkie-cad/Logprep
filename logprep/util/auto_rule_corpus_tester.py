@@ -73,11 +73,7 @@ class RuleCorpusTester:
     def _read_files(self):
         """Traverse the given input directory and find all test cases."""
         data_directory = self.input_test_data_path
-        file_paths = []
-        for root, _, files in os.walk(data_directory):
-            for filename in files:
-                file_paths.append(os.path.abspath(os.path.join(root, filename)))
-
+        file_paths = self.collect_test_case_file_paths(data_directory)
         test_cases = {}
         for filename in file_paths:
             test_case_name = self._strip_input_file_type(filename)
@@ -95,12 +91,19 @@ class RuleCorpusTester:
             test_cases.update({test_case_name: {"test_data_path": data_path}})
         self.test_cases = dict(sorted(test_cases.items()))
 
+    def collect_test_case_file_paths(self, data_directory):
+        file_paths = []
+        for root, _, files in os.walk(data_directory):
+            for filename in files:
+                file_paths.append(os.path.abspath(os.path.join(root, filename)))
+        return file_paths
+
     def _get_patched_pipeline(self):
         """
         Read the pipline config, patch the connectors and create a corresponding logprep pipeline
         """
-        patched_pipline_path = self._patch_config()
-        config = Configuration().create_from_yaml(patched_pipline_path)
+        path_of_patched_pipeline = self._patch_config()
+        config = Configuration().create_from_yaml(path_of_patched_pipeline)
         log_handler = logging.StreamHandler()
         self.pipeline = Pipeline(0, config, SharedCounter(), log_handler, None, {}, None)
         self.pipeline._setup()
@@ -110,7 +113,6 @@ class RuleCorpusTester:
         For each test case the logprep connector files are rewritten (only the current test case
         will be added to the input file), the pipline is run and the outputs are compared.
         """
-        self.console.print("[b]# Test Cases Summary:")
         for current_test_case in self.test_cases.items():
             if not current_test_case[1].get("test_data_path", {}).get("in"):
                 raise ValueError(
@@ -123,26 +125,29 @@ class RuleCorpusTester:
 
     def _compare_with_expected_outputs(self):
         """Compare the generated logprep output with the current test case"""
+        self.console.print("[b]# Test Cases Summary:")
         for test_case_id, test_case_data in self.test_cases.items():
-            event_output, extra_output, logprep_errors = test_case_data.get("logprep_output")
-            expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
-            expected_extra_data_path = test_case_data.get("test_data_path", {}).get("out_extra")
-
-            prints = []
-            if logprep_errors:
-                prints.append(("console", "[red]Following errors happened:"))
-                prints.append(("pprint", logprep_errors))
-            if expected_parsed_event_path:
-                prints = self._parse_and_compare(expected_parsed_event_path, event_output, prints)
-            if expected_extra_data_path:
-                prints = self._parse_and_compare_extras(
-                    expected_extra_data_path, extra_output, prints
-                )
-
+            prints = self.compare_and_collect_report_print_statements(test_case_data)
             self._print_short_test_result(test_case_id, test_case_data, prints)
             if prints:
                 self.at_least_one_failed = True
                 test_case_data["report_print_statements"] = prints
+
+    def compare_and_collect_report_print_statements(self, test_case_data):
+        event_output, extra_output, logprep_errors = test_case_data.get("logprep_output")
+        expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
+        expected_extra_data_path = test_case_data.get("test_data_path", {}).get("out_extra")
+        prints = []
+        if logprep_errors:
+            prints.append(("console", "[red]Following errors happened:"))
+            prints.append(("pprint", logprep_errors))
+        if expected_parsed_event_path:
+            prints = self._parse_and_compare(expected_parsed_event_path, event_output, prints)
+        if expected_extra_data_path:
+            prints = self._parse_and_compare_extras(
+                expected_extra_data_path, extra_output, prints
+            )
+        return prints
 
     def _print_detailed_reports(self):
         """If test case reports exist print out each report"""
@@ -183,11 +188,9 @@ class RuleCorpusTester:
         """Patch the logprep config by changing the connector paths."""
         with open(self.path_to_original_config, "r", encoding="utf8") as config_file:
             pipeline = yaml.load(config_file, Loader=yaml.FullLoader)
-
         configured_input = pipeline.get("input", {})
         input_name = list(configured_input.keys())[0]
         preprocessors = configured_input.get(input_name, {}).get("preprocessing", {})
-
         input_config = {
             "test_input": {
                 "type": "jsonl_input",
@@ -206,14 +209,11 @@ class RuleCorpusTester:
         pipeline["input"] = input_config
         pipeline["output"] = output_config
         pipeline["process_count"] = 1
-
         if "metrics" in pipeline:
             del pipeline["metrics"]
-
         patched_config_path = f"{self.tmp_dir}/pipeline_config.yml"
         with open(patched_config_path, "w", encoding="utf8") as generated_config_file:
             yaml.safe_dump(pipeline, generated_config_file)
-
         return patched_config_path
 
     def _parse_and_compare(self, expected_parsed_event_path, logprep_event_output, prints):

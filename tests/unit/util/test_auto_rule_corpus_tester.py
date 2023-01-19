@@ -410,11 +410,11 @@ class TestAutoRuleTester:
 
     def test_patch_config_removes_metrics_key_if_present(self, corpus_tester, tmp_path):
         corpus_tester.tmp_dir = tmp_path
-        original_config_path = corpus_tester.path_to_original_config
-        with open(original_config_path, "r", encoding="utf8") as config_file:
+        with open(corpus_tester.path_to_original_config, "r", encoding="utf8") as config_file:
             original_config = yaml.load(config_file, Loader=yaml.FullLoader)
         original_config["metrics"] = {"some_unimportant": "values"}
         patched_test_config_path = f"{tmp_path}/patched_test_config.yaml"
+        corpus_tester.path_to_original_config = patched_test_config_path
         with open(patched_test_config_path, "w", encoding="utf8") as generated_config_file:
             yaml.safe_dump(original_config, generated_config_file)
         patched_config_path = corpus_tester._patch_config()
