@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-# pylint: disable=no-self-use
+# pylint: disable=anomalous-backslash-in-string
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
@@ -139,6 +139,54 @@ class TestDissectorRule:
                 {
                     "filter": "message",
                     "dissector": {"mapping": {"field": "/%{field1}/%{field2}/%{field3}"}},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {"mapping": {"message": "%{field1} %{+( )field2} %{field3}"}},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {"mapping": {"message": "%{field1} %{+( field2} %{field3}"}},
+                },
+                ValueError,
+                "must match regex",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {"mapping": {"message": "%{field1} %{+()field2} %{field3}"}},
+                },
+                ValueError,
+                "must match regex",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {"mapping": {"message": "%{field1} %{+(,field2} %{field3}"}},
+                },
+                ValueError,
+                "must match regex",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {"mapping": {"message": "%{field1} %{+(\()field2} %{field3}"}},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {"mapping": {"message": "%{field1} %{+(\(\))field2} %{field3}"}},
                 },
                 None,
                 None,
@@ -356,7 +404,7 @@ class TestDissectorRule:
         rule = {
             "filter": "message",
             "dissector": {
-                "mapping": {"field1": "%{field2}:%{+(()field3/1} %{+())field4/3}"},
+                "mapping": {"field1": "%{field2}:%{+(\()field3/1} %{+(\))field4/3}"},
                 "tag_on_failure": ["_failed"],
             },
         }

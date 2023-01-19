@@ -52,6 +52,8 @@ By default the target field will always be overwritten with the captured value. 
 append to a preexisting target field value, as string or list, you have to use
 the :code:`+` operator. If you want to use a prefix before the appended string use this notation
 :code:`+( )`. In this example a whitespace would be added before the extracted string is added.
+If you want to use the symbols :code:`(` or :code:`)` as your separator, you have to escape with
+:code:`\` (e.g. :code:`+(\()`)
 
 It is possible to capture the target field name from the source field value with the notation
 :code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern
@@ -80,10 +82,16 @@ from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import append, add_and_overwrite
 
-DISSECT = r"(%\{[+&?]?[^%{]*\})"
-DELIMETER = r"((?!%\{.*\}).+)"
 START = r"%\{"
 END = r"\}"
+VALID_TARGET_FIELD = r"[^\}\%\{\}\+]*"
+APPEND_WITH_SEPERATOR = r"(\+\([^%]+\))"
+APPEND_WITHOUT_SEPERATOR = r"(\+(?!\([^%]))"
+INDIRECT_FIELD_NOTATION = r"([&\?]))"
+VALID_ACTION = rf"({APPEND_WITH_SEPERATOR}|{APPEND_WITHOUT_SEPERATOR}|{INDIRECT_FIELD_NOTATION}"
+VALID_POSITION = r"(\/\d*)"
+DISSECT = rf"{START}{VALID_ACTION}?{VALID_TARGET_FIELD}{VALID_POSITION}?{END}"
+DELIMETER = r"([^%]+)"
 ACTION = r"(?P<action>[+])?"
 SEPERATOR = r"(\((?P<separator>.+)\))?"
 TARGET_FIELD = r"(?P<target_field>[^\/]*)"
@@ -172,6 +180,8 @@ class DissectorRule(FieldManagerRule):
                 section_match = re.match(SECTION_MATCH, section)
                 separator = section_match.group("separator")
                 separator = "" if separator is None else separator
+                separator = separator.replace("\\(", "(")
+                separator = separator.replace("\\)", ")")
                 action_key = section_match.group("action")
                 target_field = section_match.group("target_field")
                 position = section_match.group("position")

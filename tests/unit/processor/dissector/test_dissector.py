@@ -266,7 +266,7 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "dissector": {
                 "mapping": {
-                    "message": "%{+( )extracted/4} %{+( )extracted/3} %{+( )extracted/2} %{+( )extracted/1}"
+                    "message": "%{+( )extracted/4} %{+( )extracted/3} %{+( )extracted/2} %{+extracted/1}"
                 }
             },
         },
@@ -322,7 +322,7 @@ test_cases = [  # testcase, rule, event, expected
             "dissector": {
                 "mapping": {
                     "message": "%{}: %{+( )extracted/2}",
-                    "message2": "%{}: %{+( )extracted/1}",
+                    "message2": "%{}: %{+extracted/1}",
                 }
             },
         },
@@ -459,6 +459,20 @@ test_cases = [  # testcase, rule, event, expected
         {
             "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
             "date": "2022 12 06 15:12:30:534+0100",
+        },
+    ),
+    (
+        "Appending with special field separator",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "INFO#%{+(\()date}#%{+(\))date}#MOREINFO%{}"}},
+        },
+        {
+            "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
+        },
+        {
+            "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
+            "date": "(2022 12 06 15:12:30:534)+0100",
         },
     ),
 ]
