@@ -48,6 +48,10 @@ class RuleCorpusTester:
         self.console = Console(color_system="256")
         self.input_test_data_path = input_test_data_path
         self.config_path = config_path
+        self.pipeline = None
+        self.test_cases = {}
+        self.test_report_data = []
+        self.at_least_one_failed = False
 
     def run(self):
         """
@@ -55,54 +59,40 @@ class RuleCorpusTester:
         the pipeline for each input event, comparing the generated output with the expected output
         and printing out the test results.
         """
-        cases = self._read_files(self.input_test_data_path)
-        pipeline = self._get_patched_pipeline(self.config_path)
-        test_cases_report_data = self._execute_tests_and_get_reports(cases, pipeline)
-        self._print_detailed_reports(test_cases_report_data)
-        failed_cases = self._print_test_overview(cases, test_cases_report_data)
-
+        self._read_files(self.input_test_data_path)
+        self._get_patched_pipeline(self.config_path)
+        self._execute_tests_and_create_reports()
+        self._print_detailed_reports()
+        self._print_test_overview()
         shutil.rmtree(self.tmp_dir)
-        if failed_cases:
+        if self.at_least_one_failed:
             sys.exit(1)
         else:
             sys.exit(0)
 
-    def _execute_tests_and_get_reports(self, cases, pipeline):
+    def _execute_tests_and_create_reports(self):
         """
         For each test case the logprep connector files are rewritten (only the current test case
         will be added to the input file), the pipline is run and the outputs are compared.
-
-        Parameters
-        ----------
-        cases       The file paths of the found test cases
-        pipeline    The patched logprep pipline
-
-        Returns
-        -------
-        A list of reports of the failed test cases
         """
         self.console.print("[b]# Test Cases Summary:")
-        test_reports = []
-        for current_test_case in cases.items():
+        for current_test_case in self.test_cases.items():
             if not current_test_case[1].get("in"):
                 raise ValueError(
                     f"The test case '{current_test_case[0]}' is missing an input file."
                 )
-            self._prepare_connector_files(current_test_case, pipeline)
-            pipeline._process_pipeline()
-            output = self._retrieve_pipeline_output(pipeline)
-            test_report = self._compare_with_expected_outputs(output, current_test_case)
-            test_reports.append(test_report)
-        test_reports = [data for data in test_reports if data is not None]
-        return test_reports
+            self._prepare_connector_files(current_test_case)
+            self.pipeline._process_pipeline()
+            output = self._retrieve_pipeline_output()
+            self._compare_with_expected_outputs(output, current_test_case)
 
-    def _print_detailed_reports(self, test_cases_report_data):
+    def _print_detailed_reports(self):
         """If test case reports exist print out each report"""
-        if not test_cases_report_data:
+        if not self.test_report_data:
             return
         self.console.print()
         self.console.print("[b]# Test Cases Detailed Reports:")
-        for test_case_report in test_cases_report_data:
+        for test_case_report in self.test_report_data:
             self._print_long_test_result(**test_case_report)
             self.console.print()
 
@@ -125,8 +115,7 @@ class RuleCorpusTester:
             if "_out_extra.json" in filename:
                 test_cases[test_case_name]["out_extra"] = os.path.join(data_dir, filename)
 
-        test_cases = dict(sorted(test_cases.items()))
-        return test_cases
+        self.test_cases = dict(sorted(test_cases.items()))
 
     def _strip_input_file_type(self, filename):  # pylint: disable=no-self-use
         """Remove the input file suffix to identify the case name"""
@@ -142,9 +131,8 @@ class RuleCorpusTester:
         patched_pipline_path = self._patch_config(config_path)
         config = Configuration().create_from_yaml(patched_pipline_path)
         log_handler = logging.StreamHandler()
-        pipeline = Pipeline(0, config, SharedCounter(), log_handler, None, {}, None)
-        pipeline._setup()
-        return pipeline
+        self.pipeline = Pipeline(0, config, SharedCounter(), log_handler, None, {}, None)
+        self.pipeline._setup()
 
     def _patch_config(self, config_path):
         """Patch the logprep config by changing the connector paths."""
@@ -201,13 +189,13 @@ class RuleCorpusTester:
 
         self._print_short_test_result(current_test_case, prints)
         if prints:
+            self.at_least_one_failed = True
             report_data = {
                 "test_case_id": test_case_id,
                 "print_statements": prints,
                 "logprep_output": logprep_out,
             }
-            return report_data
-        return None
+            self.test_report_data.append(report_data)
 
     def _parse_and_compare_extras(self, expected_extra_data_path, logprep_extra_output, prints):
         """Parses the expected extra data and starts the comparison"""
@@ -327,17 +315,16 @@ class RuleCorpusTester:
             crop=False,
         )
 
-    def _print_test_overview(self, cases, test_cases_report_data):
+    def _print_test_overview(self):
         """Print minimal statistics of the test run"""
         self.console.print("[b]# Test Overview")
-        total_cases = len(cases)
-        failed_cases = len(test_cases_report_data)
+        total_cases = len(self.test_cases)
+        failed_cases = len(self.test_report_data)
         self.console.print(f"Failed tests: {failed_cases}")
         self.console.print(f"Total test cases: {total_cases}")
         if total_cases:
             success_rate = (total_cases - failed_cases) / total_cases * 100
             self.console.print(f"Success rate: {success_rate:.2f}%")
-        return failed_cases
 
     def _compare_outputs(self, logprep_output, expected_output):
         """
@@ -407,36 +394,36 @@ class RuleCorpusTester:
         statement = statement.replace("old_value", "expected")
         return statement
 
-    def _prepare_connector_files(self, current_test_case, pipeline):  # pylint: disable=no-self-use
+    def _prepare_connector_files(self, current_test_case):  # pylint: disable=no-self-use
         """
         Between every test case the connectors are rewritten such that only one event is tested with
         every logprep step.
         """
         # remove version_information from previous run
-        if pipeline._logprep_config.get("input", {}).get("version_information"):
-            del pipeline._logprep_config["input"]["version_information"]
-        pipeline._create_connectors()
+        if self.pipeline._logprep_config.get("input", {}).get("version_information"):
+            del self.pipeline._logprep_config["input"]["version_information"]
+        self.pipeline._create_connectors()
 
         _, test_case_paths = current_test_case
         test_case_input_file = test_case_paths["in"]
         with open(test_case_input_file, "r", encoding="utf8") as test_case_input:
             input_json = json.load(test_case_input)
-        with open(pipeline._input._config.documents_path, "w", encoding="utf8") as logprep_input:
+        with open(self.pipeline._input._config.documents_path, "w", encoding="utf8") as logprep_input:
             logprep_input.write(json.dumps(input_json))
 
         # pylint: disable=consider-using-with
-        open(pipeline._output._config.output_file, "w", encoding="utf8").close()
-        open(pipeline._output._config.output_file_custom, "w", encoding="utf8").close()
-        open(pipeline._output._config.output_file_error, "w", encoding="utf8").close()
+        open(self.pipeline._output._config.output_file, "w", encoding="utf8").close()
+        open(self.pipeline._output._config.output_file_custom, "w", encoding="utf8").close()
+        open(self.pipeline._output._config.output_file_error, "w", encoding="utf8").close()
         # pylint: enable=consider-using-with
 
-    def _retrieve_pipeline_output(self, pipeline):  # pylint: disable=no-self-use
+    def _retrieve_pipeline_output(self):  # pylint: disable=no-self-use
         """Returns the generated logprep outputs by reading the corresponding connector files."""
         parsed_outputs = [None, None, None]
         output_paths = [
-            pipeline._output._config.output_file,
-            pipeline._output._config.output_file_custom,
-            pipeline._output._config.output_file_error,
+            self.pipeline._output._config.output_file,
+            self.pipeline._output._config.output_file_custom,
+            self.pipeline._output._config.output_file_error,
         ]
         for index, output_path in enumerate(output_paths):
             parsed_outputs[index] = parse_jsonl(output_path)
