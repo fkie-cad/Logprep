@@ -25,6 +25,7 @@ import queue
 import zlib
 from logging import Logger
 import random
+import os
 
 def threadsafe_function(fn):
     """Decorator making sure that the decorated function is thread safe"""
@@ -46,7 +47,7 @@ class RepeatedTimerThread(threading.Thread):
     To keep it simple, the interval isn't time-safe.
     It will wait for the given interval when one function execution finishes.
 
-    :param interval: 
+    :param interval: Defines how often the file is checked for changes
     :type interval: int
     :param function: Function that runs continuously with given interval
     :type function: function object
@@ -91,7 +92,6 @@ class FileWatcherDict(object):
     :param file_name: Name of the logfile that should be logged
     :type file_name: str
     """
-
     def __init__(self, file_name=""):
         self.d = {}
         if file_name:
@@ -100,7 +100,11 @@ class FileWatcherDict(object):
 
     def add_file(self, file_name):
         """adds initial structure for a new file""" 
-        self.d[file_name] = {"offset":0,"fingerprint":""}
+        self.d[file_name] = {
+            "offset":0,
+            "fingerprint":"",
+            "fingerprint_size":""
+        }
     
     
     def add_offset(self, file_name, offset):
@@ -110,11 +114,19 @@ class FileWatcherDict(object):
         self.d[file_name]["offset"] = offset
 
 
-    def add_fingerprint(self, file_name, fingerprint):
+    def add_fingerprint(self, file_name, fingerprint, fingerprint_size=256):
         """add new fingerprint for file_name, add file as well if didn't exist"""
         if not self.get_fileinfo(file_name):
             self.add_file(file_name)
         self.d[file_name]["fingerprint"] = fingerprint
+        self.d[file_name]["fingerprint_size"] = fingerprint_size
+   
+
+    def add_fingerprint_size(self, file_name, fingerprint_size):
+        """add new fingerprint_size for file_name, add file as well if didn't exist"""
+        if not self.get_fileinfo(file_name):
+            self.add_file(file_name)
+        self.d[file_name]["fingerprint_size"] = fingerprint_size
 
 
     def get_fileinfo(self, file_name):
@@ -146,6 +158,17 @@ class FileWatcherDict(object):
         else:
             return ""
 
+    
+    def get_fingerprint_size(self, file_name):
+        """get fingerprint size for given filename"""
+        if self.get_fileinfo(file_name): 
+            if self.d[file_name].get("fingerprint_size"):
+                return self.d[file_name]["fingerprint_size"]
+            else:
+                return ""
+        else:
+            return ""
+
 
     def check_fingerprint(self, file_name, check_fingerprint):
         """compare a fingerprint with a existing fingerprint"""
@@ -171,6 +194,12 @@ class FileInput(Input):
         """FileInput connector specific configuration"""
 
         documents_path: str = field(validator=validators.instance_of(str))
+        @documents_path.validator
+        def validate_documents_path(self, attribute, value):
+            """"Helper Function to validate the input values in the config file"""
+            if not os.path.exists(value):
+                raise ValueError(f"Config attribute {attribute} needs to point to a existing file")
+
         """A path to a file in generic raw format, which can be in any string based format. Needs to be parsed with normalizer or another processor"""
 
         start: str = field(validator=validators.instance_of(str), default="begin")
@@ -191,23 +220,44 @@ class FileInput(Input):
         ``True``: Read the file like defined in `start` param and monitor continuously for newly appended log lines or file changes
         ``False``: Read the file like defined in `start` param only once and exit afterwards"""
         
-        interval: int = field(validator=validators.instance_of(int), default=1)
+        interval: int = field(default=1)
         @interval.validator
         def validate_interval(self, attribute, value):
             """Helper Function to validate the input values in the config file"""
-            possible_range = [1, 100]
+            possible_types = [int, float]
+            if not type(value) in possible_types:
+                raise ValueError(f"Config attribute {attribute} needs to be onf of types in {possible_types}") 
+            possible_range = [0.05, 100]
             if not possible_range[0] <= value <= possible_range[1]:
                 raise ValueError(f"Config attribute {attribute} needs to be in range of the values in {possible_range}") 
         """Defines the refresh interval, how often the file is checked for changes"""
 
 
-    def _calc_file_fingerprint(self, fp) -> int:
-        """This function creates a crc32 fingerprint of the first 256 bytes of a given file"""
-        first_256_bytes = str.encode(fp.read(256))
+    def _calc_file_fingerprint(self, fp, exist_fingerprint_size="") -> tuple:
+        """This function creates a crc32 fingerprint of the first 256 bytes of a given file
+        If the existing log file is less than 256 bytes, it will take what is there 
+        and return also the size"""
+        if exist_fingerprint_size:
+            fingerprint_length = exist_fingerprint_size
+        else:
+            file_size = self._get_file_size(self._config.documents_path)
+            if 1 < file_size < 256:
+                fingerprint_length = file_size
+            else:
+                fingerprint_length = 256
+        first_256_bytes = str.encode(fp.read(fingerprint_length))
         crc32 = zlib.crc32(first_256_bytes)% 2**32
         fp.seek(0)
-        return crc32
+        return crc32,fingerprint_length
    
+
+    def _get_file_size(self, file_name: str) -> int:
+        """Get the full file size as byte based integer offset"""
+        with open(file_name) as file:
+            file.readlines()
+            initial_filepointer = file.tell()
+        return initial_filepointer
+
 
     def _get_initial_file_offset(self, file_name: str) -> int:
         """Calculates the file_size for given logfile if it's configured to start
@@ -216,9 +266,7 @@ class FileInput(Input):
         if self._config.start == "begin":
             initial_filepointer = 0
         elif self._config.start == "end":
-            with open(file_name) as file:
-                file.readlines()
-                initial_filepointer = file.tell()
+            initial_filepointer = self._get_file_size(file_name)  
 
         return initial_filepointer
 
@@ -233,12 +281,16 @@ class FileInput(Input):
         with open(file_name) as file:
             # creating the baseline fingerprint for the file
             if not self._fileinfo_util.get_fingerprint(file_name):
-               self._fileinfo_util.add_fingerprint(file_name, self._calc_file_fingerprint(file))
+                baseline_crc32,fingerprint_size = self._calc_file_fingerprint(file)
+                self._fileinfo_util.add_fingerprint(file_name, baseline_crc32, fingerprint_size)
             
-            check_crc32 = self._calc_file_fingerprint(file)
+            baseline_fingerprint_size = self._fileinfo_util.get_fingerprint_size(file_name)
+            check_crc32,check_fingerprint_size = self._calc_file_fingerprint(file, baseline_fingerprint_size)
             if not self._fileinfo_util.check_fingerprint(file_name, check_crc32):
                 # if the fingerprint in check_crc32 is not the same a non-appending file change happened
-                self._fileinfo_util.add_fingerprint(file_name, check_crc32)
+                # create new baseline with potential new fingerprint_size
+                new_check_crc32,new_fingerprint_size = self._calc_file_fingerprint(file)
+                self._fileinfo_util.add_fingerprint(file_name, new_check_crc32, new_fingerprint_size)
                 self._fileinfo_util.add_offset(file_name, 0)
 
             while True:
@@ -249,9 +301,11 @@ class FileInput(Input):
                 line = file.readline()
                 # add new file offset after line of file was read
                 self._fileinfo_util.add_offset(file_name, file.tell())
-                if line is not '':
+                if line != '':
                     if line.endswith("\n"):
-                        self._messages.put(self._line_to_dict(line))
+                        message = self._line_to_dict(line)
+                        if message:
+                            self._messages.put(message)
                 else:
                     break
 
@@ -259,12 +313,11 @@ class FileInput(Input):
     def _line_to_dict(self, input_line: str) -> dict:
         """Takes an input string and turns it into a dict without any parsing or formatting.
         Only thing it does additionally is stripping the new lines away."""
-        
-        if type(input_line) == str:
-            dict_line = {"line":input_line.rstrip("\n")}
+        input_line = input_line.rstrip("\n") 
+        if (type(input_line) == str) and (len(input_line)>0):
+            return {"message":input_line}
         else:
-            dict_line = {"line":""}
-        return dict_line
+            return ""
 
 
     def _get_event(self, timeout: float) -> tuple:
