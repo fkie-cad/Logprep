@@ -384,7 +384,7 @@ class TestAutoRuleTester:
 
     def test_patch_config_rewrites_input_output_and_process_count(self, corpus_tester, tmp_path):
         corpus_tester.tmp_dir = tmp_path
-        original_config_path = corpus_tester.config_path
+        original_config_path = corpus_tester.path_to_original_config
         with open(original_config_path, "r", encoding="utf8") as config_file:
             original_config = yaml.load(config_file, Loader=yaml.FullLoader)
         original_input_type = list(original_config.get("input").items())[0][1].get("type")
@@ -392,7 +392,7 @@ class TestAutoRuleTester:
         assert original_input_type == "confluentkafka_input"
         assert original_output_type == "confluentkafka_output"
         assert original_config.get("process_count") == 3
-        patched_config_path = corpus_tester._patch_config(original_config_path)
+        patched_config_path = corpus_tester._patch_config()
         with open(patched_config_path, "r", encoding="utf8") as config_file:
             patched_config = yaml.load(config_file, Loader=yaml.FullLoader)
         patched_input = patched_config.get("input")
@@ -410,20 +410,20 @@ class TestAutoRuleTester:
 
     def test_patch_config_removes_metrics_key_if_present(self, corpus_tester, tmp_path):
         corpus_tester.tmp_dir = tmp_path
-        original_config_path = corpus_tester.config_path
+        original_config_path = corpus_tester.path_to_original_config
         with open(original_config_path, "r", encoding="utf8") as config_file:
             original_config = yaml.load(config_file, Loader=yaml.FullLoader)
         original_config["metrics"] = {"some_unimportant": "values"}
         patched_test_config_path = f"{tmp_path}/patched_test_config.yaml"
         with open(patched_test_config_path, "w", encoding="utf8") as generated_config_file:
             yaml.safe_dump(original_config, generated_config_file)
-        patched_config_path = corpus_tester._patch_config(patched_test_config_path)
+        patched_config_path = corpus_tester._patch_config()
         with open(patched_config_path, "r", encoding="utf8") as config_file:
             patched_config = yaml.load(config_file, Loader=yaml.FullLoader)
         assert patched_config.get("metrics") is None
 
     def test_prepare_connector_files_removes_version_info_from_previous_run(self, corpus_tester):
-        corpus_tester._get_patched_pipeline(corpus_tester.config_path)
+        corpus_tester._get_patched_pipeline()
         corpus_tester.pipeline._logprep_config["input"]["version_information"] = {"logprep": 1, "config": 2}
         test_case = ("test_case", {"in": "path", "out": "path", "expected_out": "path"})
         with mock.patch("builtins.open") as _:

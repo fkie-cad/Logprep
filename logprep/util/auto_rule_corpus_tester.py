@@ -47,10 +47,9 @@ class RuleCorpusTester:
         self.tmp_dir = tempfile.mkdtemp()
         self.console = Console(color_system="256")
         self.input_test_data_path = input_test_data_path
-        self.config_path = config_path
+        self.path_to_original_config = config_path
         self.pipeline = None
         self.test_cases = {}
-        self.test_report_data = []
         self.at_least_one_failed = False
 
     def run(self):
@@ -59,9 +58,10 @@ class RuleCorpusTester:
         the pipeline for each input event, comparing the generated output with the expected output
         and printing out the test results.
         """
-        self._read_files(self.input_test_data_path)
-        self._get_patched_pipeline(self.config_path)
-        self._execute_tests_and_create_reports()
+        self._read_files()
+        self._get_patched_pipeline()
+        self._run_logprep_per_test_case()
+        self._compare_with_expected_outputs()
         self._print_detailed_reports()
         self._print_test_overview()
         shutil.rmtree(self.tmp_dir)
@@ -70,36 +70,41 @@ class RuleCorpusTester:
         else:
             sys.exit(0)
 
-    def _execute_tests_and_create_reports(self):
+    def _run_logprep_per_test_case(self):
         """
         For each test case the logprep connector files are rewritten (only the current test case
         will be added to the input file), the pipline is run and the outputs are compared.
         """
         self.console.print("[b]# Test Cases Summary:")
         for current_test_case in self.test_cases.items():
-            if not current_test_case[1].get("in"):
+            if not current_test_case[1].get("test_data_path", {}).get("in"):
                 raise ValueError(
                     f"The test case '{current_test_case[0]}' is missing an input file."
                 )
             self._prepare_connector_files(current_test_case)
             self.pipeline._process_pipeline()
             output = self._retrieve_pipeline_output()
-            self._compare_with_expected_outputs(output, current_test_case)
+            current_test_case[1].update({"logprep_output": output})
 
     def _print_detailed_reports(self):
         """If test case reports exist print out each report"""
-        if not self.test_report_data:
+        has_failed_reports = any(
+            case[1].get("report_print_statements", False) for case in self.test_cases.items()
+        )
+        if not has_failed_reports:
             return
         self.console.print()
         self.console.print("[b]# Test Cases Detailed Reports:")
-        for test_case_report in self.test_report_data:
-            self._print_long_test_result(**test_case_report)
-            self.console.print()
+        for test_case_id, test_case_data in self.test_cases.items():
+            if test_case_data.get("report_print_statements"):
+                self._print_long_test_result(test_case_id, test_case_data)
+                self.console.print()
 
-    def _read_files(self, data_dir):
+    def _read_files(self):
         """Traverse the given input directory and find all test cases."""
+        data_directory = self.input_test_data_path
         file_paths = []
-        for root, _, files in os.walk(data_dir):
+        for root, _, files in os.walk(data_directory):
             for filename in files:
                 file_paths.append(os.path.abspath(os.path.join(root, filename)))
 
@@ -107,14 +112,17 @@ class RuleCorpusTester:
         for filename in file_paths:
             test_case_name = self._strip_input_file_type(filename)
             if test_case_name not in test_cases:
-                test_cases[test_case_name] = {"in": "", "out": "", "out_extra": ""}
+                test_cases[test_case_name] = {
+                    "test_data_path": {"in": "", "out": "", "out_extra": ""}
+                }
+            data_path = test_cases.get(test_case_name, {}).get("test_data_path", {})
             if "_in.json" in filename:
-                test_cases[test_case_name]["in"] = os.path.join(data_dir, filename)
+                data_path.update({"in": os.path.join(data_directory, filename)})
             if "_out.json" in filename:
-                test_cases[test_case_name]["out"] = os.path.join(data_dir, filename)
+                data_path.update({"out": os.path.join(data_directory, filename)})
             if "_out_extra.json" in filename:
-                test_cases[test_case_name]["out_extra"] = os.path.join(data_dir, filename)
-
+                data_path.update({"out_extra": os.path.join(data_directory, filename)})
+            test_cases.update({test_case_name: {"test_data_path": data_path}})
         self.test_cases = dict(sorted(test_cases.items()))
 
     def _strip_input_file_type(self, filename):  # pylint: disable=no-self-use
@@ -122,21 +130,22 @@ class RuleCorpusTester:
         filename = filename.replace("_in", "")
         filename = filename.replace("_out_extra", "")
         filename = filename.replace("_out", "")
+        filename = filename.replace(".json", "*")
         return filename
 
-    def _get_patched_pipeline(self, config_path):
+    def _get_patched_pipeline(self):
         """
         Read the pipline config, patch the connectors and create a corresponding logprep pipeline
         """
-        patched_pipline_path = self._patch_config(config_path)
+        patched_pipline_path = self._patch_config()
         config = Configuration().create_from_yaml(patched_pipline_path)
         log_handler = logging.StreamHandler()
         self.pipeline = Pipeline(0, config, SharedCounter(), log_handler, None, {}, None)
         self.pipeline._setup()
 
-    def _patch_config(self, config_path):
+    def _patch_config(self):
         """Patch the logprep config by changing the connector paths."""
-        with open(config_path, "r", encoding="utf8") as config_file:
+        with open(self.path_to_original_config, "r", encoding="utf8") as config_file:
             pipeline = yaml.load(config_file, Loader=yaml.FullLoader)
 
         configured_input = pipeline.get("input", {})
@@ -165,37 +174,34 @@ class RuleCorpusTester:
         if "metrics" in pipeline:
             del pipeline["metrics"]
 
-        config_path = f"{self.tmp_dir}/pipeline_config.yml"
-        with open(config_path, "w", encoding="utf8") as generated_config_file:
+        patched_config_path = f"{self.tmp_dir}/pipeline_config.yml"
+        with open(patched_config_path, "w", encoding="utf8") as generated_config_file:
             yaml.safe_dump(pipeline, generated_config_file)
 
-        return config_path
+        return patched_config_path
 
-    def _compare_with_expected_outputs(self, logprep_out, current_test_case):
+    def _compare_with_expected_outputs(self):
         """Compare the generated logprep output with the current test case"""
-        event_output, extra_output, errors = logprep_out
-        test_case_id, test_case_paths = current_test_case
-        expected_parsed_event_path = test_case_paths["out"]
-        expected_extra_data_path = test_case_paths["out_extra"]
+        for test_case_id, test_case_data in self.test_cases.items():
+            event_output, extra_output, logprep_errors = test_case_data.get("logprep_output")
+            expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
+            expected_extra_data_path = test_case_data.get("test_data_path", {}).get("out_extra")
 
-        prints = []
-        if errors:
-            prints.append(("console", "[red]Following errors happened:"))
-            prints.append(("pprint", errors))
-        if expected_parsed_event_path:
-            prints = self._parse_and_compare(expected_parsed_event_path, event_output, prints)
-        if expected_extra_data_path:
-            prints = self._parse_and_compare_extras(expected_extra_data_path, extra_output, prints)
+            prints = []
+            if logprep_errors:
+                prints.append(("console", "[red]Following errors happened:"))
+                prints.append(("pprint", logprep_errors))
+            if expected_parsed_event_path:
+                prints = self._parse_and_compare(expected_parsed_event_path, event_output, prints)
+            if expected_extra_data_path:
+                prints = self._parse_and_compare_extras(
+                    expected_extra_data_path, extra_output, prints
+                )
 
-        self._print_short_test_result(current_test_case, prints)
-        if prints:
-            self.at_least_one_failed = True
-            report_data = {
-                "test_case_id": test_case_id,
-                "print_statements": prints,
-                "logprep_output": logprep_out,
-            }
-            self.test_report_data.append(report_data)
+            self._print_short_test_result(test_case_id, test_case_data, prints)
+            if prints:
+                self.at_least_one_failed = True
+                test_case_data["report_print_statements"] = prints
 
     def _parse_and_compare_extras(self, expected_extra_data_path, logprep_extra_output, prints):
         """Parses the expected extra data and starts the comparison"""
@@ -265,29 +271,25 @@ class RuleCorpusTester:
                     has_matching_output = True
         return has_matching_output
 
-    def _print_short_test_result(self, current_test_case, print_statements):
-        test_case_id, test_case_paths = current_test_case
-
+    def _print_short_test_result(self, test_case_id, test_case_data, print_statements):
         status = "[b green] PASSED"
-        if not test_case_paths.get("out"):
+        if not test_case_data.get("test_data_path", {}).get("out"):
             status = "[b grey53] SKIPPED[/b grey53] [grey53](no expected output given)[grey53]"
         if print_statements:
             status = "[b red] FAILED"
-
-        case_id = test_case_id.replace(".json", "")
         self.console.print(
-            f"[b blue]Test Case: [not bold slate_blue1]{case_id} {status}",
+            f"[b blue]Test Case: [not bold slate_blue1]{test_case_id} {status}",
             overflow="ignore",
             crop=False,
         )
 
-    def _print_long_test_result(self, test_case_id, print_statements, logprep_output):
+    def _print_long_test_result(self, test_case_id, test_case_data):
         """
         Prints out the collected print statements of a test case, resulting in a test
         case reports
         """
-        parsed_event, extra_data, _ = logprep_output
-        report_title = f"test report for '{test_case_id.replace('.json', '_*')}'"
+        parsed_event, extra_data, _ = test_case_data.get("logprep_output")
+        report_title = f"test report for '{test_case_id}'"
         report_title_length = len(report_title) + 4
         title_target_length = 120
         padding_length = (title_target_length - report_title_length) / 2
@@ -298,7 +300,7 @@ class RuleCorpusTester:
             crop=False,
         )
 
-        for output_function, statement in print_statements:
+        for output_function, statement in test_case_data.get("report_print_statements"):
             if output_function == "console":
                 self.console.print(statement, overflow="ignore", crop=False)
             if output_function == "pprint":
@@ -319,7 +321,9 @@ class RuleCorpusTester:
         """Print minimal statistics of the test run"""
         self.console.print("[b]# Test Overview")
         total_cases = len(self.test_cases)
-        failed_cases = len(self.test_report_data)
+        failed_cases = len(
+            [case for case in self.test_cases.items() if case[1].get("report_print_statements")]
+        )
         self.console.print(f"Failed tests: {failed_cases}")
         self.console.print(f"Total test cases: {total_cases}")
         if total_cases:
@@ -404,11 +408,13 @@ class RuleCorpusTester:
             del self.pipeline._logprep_config["input"]["version_information"]
         self.pipeline._create_connectors()
 
-        _, test_case_paths = current_test_case
-        test_case_input_file = test_case_paths["in"]
+        _, test_case_data = current_test_case
+        test_case_input_file = test_case_data.get("test_data_path", {}).get("in")
         with open(test_case_input_file, "r", encoding="utf8") as test_case_input:
             input_json = json.load(test_case_input)
-        with open(self.pipeline._input._config.documents_path, "w", encoding="utf8") as logprep_input:
+        with open(
+            self.pipeline._input._config.documents_path, "w", encoding="utf8"
+        ) as logprep_input:
             logprep_input.write(json.dumps(input_json))
 
         # pylint: disable=consider-using-with
