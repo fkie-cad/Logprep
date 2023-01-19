@@ -275,6 +275,49 @@ class TestAutoRuleTester:
         mock_exit.assert_called_with(1)
 
     @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    def test_run_prints_logprep_errors(self, mock_exit, tmp_path, corpus_tester):
+        test_data = {
+            "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
+            "expected_output": {
+                "winlog": {"event_id": "2222", "event_data": "<IGNORE_VALUE>"},
+                "test_normalized": {"test": {"field1": 1, "field2": 2}},
+            },
+            "expected_extra_output": [],
+        }
+        expected_prints = [
+            "FAILED",
+            "Following errors happened:",
+            "'error_message': 'error_message'",
+            "'document_received': {}",
+            "'document_processed': {}",
+            "Success rate: 0.00%",
+        ]
+        prepare_corpus_tester(corpus_tester, tmp_path, test_data)
+        mocked_output = [
+            [
+                {
+                    "winlog": {"event_id": "2222", "event_data": "<IGNORE_VALUE>"},
+                    "test_normalized": {"test": {"field1": 1, "field2": 2}},
+                }
+            ],
+            [],
+            [
+                {
+                    "error_message": "error_message",
+                    "document_received": {},
+                    "document_processed": {},
+                }
+            ],
+        ]
+        corpus_tester._retrieve_pipeline_output = mock.MagicMock(return_value=mocked_output)
+        with corpus_tester.console.capture() as capture:
+            corpus_tester.run()
+        console_output = capture.get()
+        for expected_print in expected_prints:
+            assert expected_print in console_output
+        mock_exit.assert_called_with(1)
+
+    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
     @mock.patch("logprep.util.auto_rule_corpus_tester.parse_json")
     def test_run_logs_json_decoding_error(
         self,

@@ -314,7 +314,7 @@ class RuleCorpusTester:
             if output_function == "console":
                 self.console.print(statement, overflow="ignore", crop=False)
             if output_function == "pprint":
-                pprint(statement)
+                pprint(statement, console=self.console)
 
         self.console.print()
         self.console.print("[red]Logprep Event Output:")
