@@ -77,7 +77,7 @@ class Calculator(Processor):
             except ArithmeticError as error:
                 error.args = [
                     f"({self.name}): expression '{rule.calc}' => '{expression}' results in "
-                    f"{error.args[0]}"
+                    + f"{error.args[0]}"
                 ]
                 self._handle_warning_error(event, rule, error)
             return result
