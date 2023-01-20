@@ -41,6 +41,7 @@ def threadsafe_function(func):
         finally:
             lock.release()
         return func_wrapper
+
     return new
 
 
@@ -79,7 +80,7 @@ class RepeatedTimerThread(threading.Thread):
                 self.stopped.set()
 
 
-class FileWatcherDict():
+class FileWatcherDict:
     """This class provides a helper utility which creates a nested dict
     which holds information for every file that is watched in this instance.
     After a file is initiated the dict would look like:
@@ -163,7 +164,7 @@ class FileInput(Input):
 
     _messages: queue.Queue = queue.Queue()
     # this object is an nested dict with additional functions that helps to
-    #keep track of file changes and current file offsets
+    # keep track of file changes and current file offsets
     _fileinfo_util: object = FileWatcherDict()
 
     @define(kw_only=True)
@@ -173,6 +174,7 @@ class FileInput(Input):
         documents_path: str = field(validator=validators.instance_of(str))
         """A path to a file in generic raw format, which can be in any string based
         format. Needs to be parsed with normalizer or another processor"""
+
         @documents_path.validator
         def validate_documents_path(self, attribute, value):
             """ "Helper Function to validate the input values in the config file"""
@@ -183,6 +185,7 @@ class FileInput(Input):
         """Defines the behaviour of the file monitor with the following options:
         ``begin``: starts to read from the beginning of a file
         ``end``: goes initially to the end of the file and waits for new content"""
+
         @start.validator
         def validate_start(self, attribute, value):
             """Helper Function to validate the input values in config file"""
@@ -201,6 +204,7 @@ class FileInput(Input):
 
         interval: int = field(default=1)
         """Defines the refresh interval, how often the file is checked for changes"""
+
         @interval.validator
         def validate_interval(self, attribute, value):
             """Helper Function to validate the input values in the config file"""
@@ -215,7 +219,6 @@ class FileInput(Input):
                     f"Config attribute {attribute} needs to be in range of the \
                             values in {possible_range}"
                 )
-
 
     def _calc_file_fingerprint(self, file_pointer, exist_fingerprint_size="") -> tuple:
         """This function creates a crc32 fingerprint of the first 256 bytes of a given file
@@ -269,12 +272,10 @@ class FileInput(Input):
                 )
 
             baseline_fingerprint_size = self._fileinfo_util.get_fingerprint_size(file_name)
-            check_crc32, _ = self._calc_file_fingerprint(
-                file, baseline_fingerprint_size
-            )
+            check_crc32, _ = self._calc_file_fingerprint(file, baseline_fingerprint_size)
             if not self._fileinfo_util.check_fingerprint(file_name, check_crc32):
                 # if the fingerprint in check_crc32 is not the same a non-appending
-                #file change happened, create new baseline with potential new fingerprint_size
+                # file change happened, create new baseline with potential new fingerprint_size
                 new_check_crc32, new_fingerprint_size = self._calc_file_fingerprint(file)
                 self._fileinfo_util.add_fingerprint(
                     file_name, new_check_crc32, new_fingerprint_size
