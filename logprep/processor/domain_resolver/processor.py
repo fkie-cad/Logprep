@@ -185,15 +185,14 @@ class DomainResolver(Processor):
                 event, rule, target_field, resolved_ip, overwrite_target
             )
 
-    def _add_resolve_infos_to_event(self, event, rule, output_field, resolved_ip, overwrite_target):
+    def _add_resolve_infos_to_event(self, event, _, output_field, resolved_ip, overwrite_target):
         if resolved_ip:
             adding_was_successful = add_field_to(
                 event, output_field, resolved_ip, overwrite_output_field=overwrite_target
             )
 
             if not adding_was_successful:
-                error = DuplicationError(self.name, [output_field])
-                self._handle_warning_error(event, rule, error)
+                raise DuplicationError(self.name, [output_field])
 
     def _resolve_ip(self, domain, hash_string=None):
         try:

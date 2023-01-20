@@ -29,7 +29,7 @@ Example
 import json
 import re
 from logging import Logger
-from typing import List, Optional
+from typing import Optional
 import time
 import os
 from filelock import FileLock
@@ -37,6 +37,7 @@ from filelock import FileLock
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.factory_error import InvalidConfigurationError
@@ -48,18 +49,6 @@ class GenericAdderError(BaseException):
 
     def __init__(self, name: str, message: str):
         super().__init__(f"GenericAdder ({name}): {message}")
-
-
-class DuplicationError(GenericAdderError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and were not overwritten by the GenericAdder: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 def sql_config_validator(_, attribute, value):
@@ -254,8 +243,7 @@ class GenericAdder(Processor):
                 conflicting_fields.append(dotted_field)
 
         if conflicting_fields:
-            error = DuplicationError(self.name, conflicting_fields)
-            self._handle_warning_error(event, rule, error)
+            raise DuplicationError(self.name, conflicting_fields)
 
     def _try_adding_from_db(self, event: dict, items_to_add: list, rule: GenericAdderRule):
         """Get the sub part of the value from the event using a regex pattern"""

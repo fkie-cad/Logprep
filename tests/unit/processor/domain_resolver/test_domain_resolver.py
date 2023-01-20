@@ -226,8 +226,9 @@ sth.ac.at
         # Due to duplication error logprep raises an ProcessingWarning
         with pytest.raises(
             ProcessingWarning,
-            match=r"\('Test Instance Name', 'The following fields could not be written, "
-            r"because one or more subfields existed and could not be extended: resolved_ip'\)",
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+                  r"written, because one or more subfields existed and could not be extended: "
+                  r"resolved_ip\)",
         ):
             self.object.process(document)
 

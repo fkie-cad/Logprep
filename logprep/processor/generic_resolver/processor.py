@@ -18,9 +18,9 @@ Example
 """
 import re
 from logging import Logger
-from typing import List
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
@@ -31,18 +31,6 @@ class GenericResolverError(BaseException):
 
     def __init__(self, name: str, message: str):
         super().__init__(f"GenericResolver ({name}): {message}")
-
-
-class DuplicationError(GenericResolverError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and were not overwritten by the Normalizer: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 class GenericResolver(Processor):
@@ -69,7 +57,6 @@ class GenericResolver(Processor):
 
         self.ensure_rules_from_file(rule)
 
-        full_event = event
         for resolve_source, resolve_target in rule.field_mapping.items():
             keys = resolve_target.split(".")
             src_val = get_dotted_field_value(event, resolve_source)
@@ -126,8 +113,7 @@ class GenericResolver(Processor):
                     break
 
         if conflicting_fields:
-            error = DuplicationError(self.name, conflicting_fields)
-            self._handle_warning_error(full_event, rule, error)
+            raise DuplicationError(self.name, conflicting_fields)
 
     def ensure_rules_from_file(self, rule):
         """loads rules from file"""

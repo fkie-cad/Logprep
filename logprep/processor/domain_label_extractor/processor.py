@@ -128,8 +128,7 @@ class DomainLabelExtractor(Processor):
                 )
 
                 if not add_successful:
-                    error = DuplicationError(self.name, [output_field])
-                    self._handle_warning_error(event, rule, error)
+                    raise DuplicationError(self.name, [output_field])
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
             event[self._config.tagging_field_name] = tagging_field

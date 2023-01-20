@@ -256,8 +256,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
         with pytest.raises(
             ProcessingWarning,
-            match=r"\('Test Instance Name', 'The following fields could not be written, "
-            r"because one or more subfields existed and could not be extended: url.subdomain'\)",
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+                  r"written, because one or more subfields existed and could not be extended: "
+                  r"url.subdomain\)",
         ):
             self.object.process(document)
 

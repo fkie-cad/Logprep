@@ -46,6 +46,7 @@ class Requester(Processor):
         self._handle_response(event, rule, response)
 
     def _handle_response(self, event, rule, response):
+        conflicting_fields = []
         if rule.target_field:
             result = self._get_result(response)
             successful = add_field_to(
@@ -56,8 +57,7 @@ class Requester(Processor):
                 rule.overwrite_target,
             )
             if not successful:
-                error = DuplicationError(self.name, [rule.target_field])
-                self._handle_warning_error(event, rule, error)
+                conflicting_fields.append(rule.target_field)
         if rule.target_field_mapping:
             result = self._get_result(response)
             for source_field, target_field in rule.target_field_mapping.items():
@@ -70,8 +70,9 @@ class Requester(Processor):
                     rule.overwrite_target,
                 )
                 if not successful:
-                    error = DuplicationError(self.name, [rule.target_field])
-                    self._handle_warning_error(event, rule, error)
+                    conflicting_fields.append(rule.target_field)
+        if conflicting_fields:
+            raise DuplicationError(self.name, [rule.target_field])
 
     def _request(self, event, rule, kwargs):
         try:

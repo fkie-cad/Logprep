@@ -12,7 +12,7 @@ from copy import deepcopy
 import arrow
 import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.normalizer.exceptions import NormalizerError
+from logprep.processor.normalizer.processor import NormalizerError
 from logprep.processor.normalizer.rule import (
     InvalidGrokDefinition,
     InvalidNormalizationDefinition,
@@ -73,8 +73,9 @@ class TestNormalizer(BaseProcessorTestCase):
         }
         with pytest.raises(
             ProcessingWarning,
-            match=r"The following fields already existed and were not "
-            r"overwritten by the Normalizer: test_normalized.something\)",
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+                  r"written, because one or more subfields existed and could not be extended: "
+                  r"test_normalized\.something\)",
         ):
             self.object.process(document)
 
@@ -645,8 +646,9 @@ class TestNormalizer(BaseProcessorTestCase):
 
         with pytest.raises(
             ProcessingWarning,
-            match=r"The following fields already existed and were not "
-            r"overwritten by the Normalizer: winlog\)",
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+                  r"written, because one or more subfields existed and could not be extended: "
+                  r"winlog\)",
         ):
             self.object.process(event)
 
@@ -1072,8 +1074,9 @@ class TestNormalizer(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         with pytest.raises(
             ProcessingWarning,
-            match=r"The following fields already existed and were not "
-            r"overwritten by the Normalizer: @timestamp\)",
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+                  r"written, because one or more subfields existed and could not be extended: "
+                  r"@timestamp\)",
         ):
             self.object.process(event)
 

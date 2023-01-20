@@ -24,11 +24,11 @@ Example
 import errno
 from logging import Logger
 from os import path, makedirs
-from typing import List, Tuple, Any, Dict
+from typing import Tuple, Any, Dict
 from attr import define, field
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import SkipImportError
+from logprep.processor.base.exceptions import SkipImportError, DuplicationError
 from logprep.util.validators import directory_validator
 from logprep.util.helper import get_dotted_field_value
 
@@ -57,19 +57,6 @@ class HyperscanResolverError(BaseException):
 
     def __init__(self, name: str, message: str):
         super().__init__(f"HyperscanResolver ({name}): {message}")
-
-
-class DuplicationError(HyperscanResolverError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and "
-            "were not overwritten by the Generic Resolver: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 class HyperscanResolver(Processor):
@@ -122,7 +109,6 @@ class HyperscanResolver(Processor):
         conflicting_fields = []
         hyperscan_db, pattern_id_to_dest_val_map = self._get_hyperscan_database(rule)
 
-        full_event = event
         for resolve_source, resolve_target in rule.field_mapping.items():
             src_val = get_dotted_field_value(event, resolve_source)
             result = self._match_with_hyperscan(hyperscan_db, src_val)
@@ -151,8 +137,7 @@ class HyperscanResolver(Processor):
                     if has_conflict:
                         conflicting_fields.append(split_dotted_keys[idx])
         if conflicting_fields:
-            duplication_error = DuplicationError(self.name, conflicting_fields)
-            self._handle_warning_error(full_event, rule, duplication_error)
+            raise DuplicationError(self.name, conflicting_fields)
 
     @staticmethod
     def _try_adding_value_to_existing_field(

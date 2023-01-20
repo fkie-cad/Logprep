@@ -212,8 +212,9 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         with pytest.raises(
             ProcessingWarning,
-            match=r"('Test Instance Name', 'The following fields could not be written, because "
-            r"one or more subfields existed and could not be extended: @timestamp')",
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+                  r"written, because one or more subfields existed and could not be extended: "
+                  r"@timestamp\)",
         ):
             self.object.process(document)
 

@@ -312,9 +312,9 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "tags": ["_generic_adder_failure"],
             },
             re.escape(
-                "ProcessingWarning: (GenericAdder (Test Instance Name): "
-                + "The following fields already existed and were not overwritten by the "
-                + "GenericAdder: some_added_field)"
+                "ProcessingWarning: (Test Instance Name - The following fields could not be "
+                + "written, because one or more subfields existed and could not be extended: "
+                + "some_added_field)"
             ),
         ),
         (
@@ -340,9 +340,9 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "tags": ["_generic_adder_failure"],
             },
             re.escape(
-                "ProcessingWarning: (GenericAdder (Test Instance Name): "
-                + "The following fields already existed and were not overwritten by the "
-                + "GenericAdder: some_added_field)"
+                "ProcessingWarning: (Test Instance Name - The following fields could not be "
+                + "written, because one or more subfields existed and could not be extended: "
+                + "some_added_field)"
             ),
         ),
         (
@@ -368,9 +368,9 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "tags": ["_generic_adder_failure"],
             },
             re.escape(
-                "ProcessingWarning: (GenericAdder (Test Instance Name): "
-                + "The following fields already existed and were not overwritten by the "
-                + "GenericAdder: some_added_field)"
+                "ProcessingWarning: (Test Instance Name - The following fields could not be "
+                + "written, because one or more subfields existed and could not be extended: "
+                + "some_added_field)"
             ),
         ),
     ]

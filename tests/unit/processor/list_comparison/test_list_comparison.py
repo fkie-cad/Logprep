@@ -211,8 +211,8 @@ class TestListComparison(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)
         self.object._init_rules_list_comparison()
         match = (
-            r"\('Test Instance Name', 'The following fields could not be written, because one "
-            r"or more subfields existed and could not be extended: user.in_list'\)"
+            r"ProcessingWarning: \(Test Instance Name - The following fields could not be written, "
+            r"because one or more subfields existed and could not be extended: user\.in_list\)"
         )
         with pytest.raises(ProcessingWarning, match=match):
             self.object.process(document)
