@@ -12,24 +12,32 @@ import requests
 from logprep.connector.file.input import FileInput
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
-from tests.testdata.input_logdata.file_input_logs import test_initial_log_data, test_rotated_log_data, test_rotated_log_data_less_256
+from tests.testdata.input_logdata.file_input_logs import (
+    test_initial_log_data,
+    test_rotated_log_data,
+    test_rotated_log_data_less_256,
+)
 import threading
 
 check_interval = 0.1
 
+
 def wait_for_interval(interval):
-    time.sleep(2*interval)
+    time.sleep(2 * interval)
+
 
 def write_file(file_name: str, source_data: list):
-    with open(file_name,"w") as file:
+    with open(file_name, "w") as file:
         for line in source_data:
             file.write(line + "\n")
 
+
 def write_empty_file(file_name: str):
-    open(file_name,"w").close()
+    open(file_name, "w").close()
+
 
 def append_file(file_name: str, source_data: list):
-    with open(file_name,"a") as file:
+    with open(file_name, "a") as file:
         for line in source_data:
             file.write(line + "\n")
 
@@ -40,11 +48,11 @@ class TestFileInput(BaseInputTestCase):
         "documents_path": "",
         "start": "begin",
         "watch_file": False,
-        "interval": check_interval
+        "interval": check_interval,
     }
 
     def setup_method(self):
-        _,testfile = tempfile.mkstemp()
+        _, testfile = tempfile.mkstemp()
         write_file(testfile, test_initial_log_data)
         self.CONFIG["documents_path"] = testfile
         super().setup_method()
@@ -58,10 +66,10 @@ class TestFileInput(BaseInputTestCase):
         self.object.stop_flag.set()
         if not self.object.rt.is_alive():
             os.remove(self.object._config.documents_path)
-    
+
     def test_create_connector(self):
         assert isinstance(self.object, FileInput)
-   
+
     def test_has_thread_instance(self):
         assert isinstance(self.object.rt, threading.Thread)
 
@@ -89,26 +97,38 @@ class TestFileInput(BaseInputTestCase):
     def test_new_appended_logs_are_not_put_in_queue(self):
         wait_for_interval(check_interval)
         queued_logs = []
-        before_append_offset = self.object._fileinfo_util.get_offset(self.object._config.documents_path)
+        before_append_offset = self.object._fileinfo_util.get_offset(
+            self.object._config.documents_path
+        )
         append_file(self.object._config.documents_path, test_rotated_log_data)
         wait_for_interval(check_interval)
         while not self.object._messages.empty():
             queued_logs.append(self.object._messages.get(timeout=0.001))
         full_length = len(test_initial_log_data)
         assert len(queued_logs) == full_length
-        assert before_append_offset == self.object._fileinfo_util.get_offset(self.object._config.documents_path)
+        assert before_append_offset == self.object._fileinfo_util.get_offset(
+            self.object._config.documents_path
+        )
 
     def test_not_reading_any_logs_after_rotating_filechange_detected(self):
         wait_for_interval(check_interval)
         queued_logs = []
         while not self.object._messages.empty():
             self.object._messages.get(timeout=0.001)
-        before_change_offset = self.object._fileinfo_util.get_offset(self.object._config.documents_path)
-        before_change_fingerprint = self.object._fileinfo_util.get_fingerprint(self.object._config.documents_path)
+        before_change_offset = self.object._fileinfo_util.get_offset(
+            self.object._config.documents_path
+        )
+        before_change_fingerprint = self.object._fileinfo_util.get_fingerprint(
+            self.object._config.documents_path
+        )
         write_file(self.object._config.documents_path, test_rotated_log_data)
         wait_for_interval(check_interval)
         while not self.object._messages.empty():
             queued_logs.append(self.object._messages.get(timeout=0.001))
         assert len(queued_logs) == 0
-        assert before_change_fingerprint == self.object._fileinfo_util.get_fingerprint(self.object._config.documents_path)
-        assert before_change_offset == self.object._fileinfo_util.get_offset(self.object._config.documents_path)
+        assert before_change_fingerprint == self.object._fileinfo_util.get_fingerprint(
+            self.object._config.documents_path
+        )
+        assert before_change_offset == self.object._fileinfo_util.get_offset(
+            self.object._config.documents_path
+        )
