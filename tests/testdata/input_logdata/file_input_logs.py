@@ -1,3 +1,5 @@
+# pylint: disable=line-too-long
+
 test_initial_log_data = [
     "Jan 19 06:50:30 computer gdm-password]: gkr-pam: unable to locate daemon control file",
     "Jan 19 06:50:30 computer gdm-password]: gkr-pam: stashed password to try later in open session",
