@@ -5,10 +5,12 @@ A generic line input that returns the documents it was initialized with.
 If a "document" is derived from BaseException, that exception will be thrown instead of
 returning a document. The exception will be removed and subsequent calls may return documents or
 throw other exceptions in the given order.
+
 Example
 ^^^^^^^
 ..  code-block:: yaml
     :linenos:
+    
     input:
       myfileinput:
         type: file_input
@@ -81,11 +83,9 @@ class FileWatcherDict(object):
     """This class provides a helper utility which creates a nested dict
     which holds information for every file that is watched in this instance.
     After a file is initiated the dict would look like:        
-        {"/var/log/logfile1":
-            {"offset":123, "fingerprint": 0000001},
-         "/var/log/logfile2":
-            {"offset":456, "fingerprint": 00000002},
-        }
+    
+        {"/var/log/logfile1": {"offset":123, "fingerprint": 0000001, "fingerprint_size":256}}
+    
     The `offset` stores the current offset in the monitored file and the `fingerprint`
     stores the initial hash of a file that would change on log rotation.
 

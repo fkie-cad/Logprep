@@ -11,11 +11,10 @@ import pytest
 import requests
 from logprep.connector.file.input import FileInput
 from logprep.factory import Factory
-from tests.unit.connector.base import BaseConnectorTestCase
+from tests.unit.connector.base import BaseInputTestCase
 from tests.testdata.input_logdata.file_input_logs import test_initial_log_data, test_rotated_log_data, test_rotated_log_data_less_256
 import threading
 
-new_file, testfile_location = tempfile.mkstemp()
 check_interval = 0.1
 
 def wait_for_interval(interval):
@@ -35,35 +34,31 @@ def append_file(file_name: str, source_data: list):
             file.write(line + "\n")
 
 
-class TestFileInput(BaseConnectorTestCase):
-    def setup_class(self):
-        if os.path.exists(testfile_location):
-            os.remove(testfile_location)
-        write_file(testfile_location, test_initial_log_data)
+class TestFileInput(BaseInputTestCase):
+    CONFIG: dict = {
+        "type": "file_input",
+        "documents_path": "",
+        "start": "begin",
+        "watch_file": False,
+        "interval": check_interval
+    }
 
     def setup_method(self):
+        _,testfile = tempfile.mkstemp()
+        write_file(testfile, test_initial_log_data)
+        self.CONFIG["documents_path"] = testfile
         super().setup_method()
-        self.object.stopped = threading.Event()
         self.object.pipeline_index = 1
         self.object.setup()
         # we have to empty the queue for testing
         while not self.object._messages.empty():
             self.object._messages.get(timeout=0.001)
 
-    def teardown_class(self):
-        os.remove(testfile_location)
-
     def teardown_method(self):
-        self.object.stopped.set()
-
-    CONFIG: dict = {
-        "type": "file_input",
-        "documents_path": testfile_location,
-        "start": "begin",
-        "watch_file": False,
-        "interval": check_interval
-    }
-
+        self.object.stop_flag.set()
+        if not self.object.rt.is_alive():
+            os.remove(self.object._config.documents_path)
+    
     def test_create_connector(self):
         assert isinstance(self.object, FileInput)
    
@@ -95,7 +90,7 @@ class TestFileInput(BaseConnectorTestCase):
         wait_for_interval(check_interval)
         queued_logs = []
         before_append_offset = self.object._fileinfo_util.get_offset(self.object._config.documents_path)
-        append_file(testfile_location, test_rotated_log_data)
+        append_file(self.object._config.documents_path, test_rotated_log_data)
         wait_for_interval(check_interval)
         while not self.object._messages.empty():
             queued_logs.append(self.object._messages.get(timeout=0.001))
@@ -110,7 +105,7 @@ class TestFileInput(BaseConnectorTestCase):
             self.object._messages.get(timeout=0.001)
         before_change_offset = self.object._fileinfo_util.get_offset(self.object._config.documents_path)
         before_change_fingerprint = self.object._fileinfo_util.get_fingerprint(self.object._config.documents_path)
-        write_file(testfile_location, test_rotated_log_data)
+        write_file(self.object._config.documents_path, test_rotated_log_data)
         wait_for_interval(check_interval)
         while not self.object._messages.empty():
             queued_logs.append(self.object._messages.get(timeout=0.001))
