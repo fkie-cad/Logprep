@@ -87,6 +87,7 @@ services:
   logprep:
     build:
       context: ..
+      dockerfile: quickstart/Dockerfile
     image: logprep
     container_name: logprep
     networks:
