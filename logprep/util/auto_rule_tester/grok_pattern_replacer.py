@@ -45,7 +45,6 @@ class GrokPatternReplacer:
 
     @staticmethod
     def _change_dotted_field_value(event: dict, dotted_field: str, new_value: str):
-        print("NEW VALUE:", dotted_field, new_value)
         fields = dotted_field.split(".")
         dict_ = event
         last_field = None
@@ -108,10 +107,7 @@ class GrokPatternReplacer:
                     )
                     processed[new_key] = processed.pop(processed_field)
 
-            # Sort lists to have same ordering in raw and processed for later comparison
             if isinstance(processed_sub, list):
-                processed[processed_field] = sorted(processed_sub)
-
                 if self._is_regex_field(processed_field):
                     regex_selections = self._get_regex_selections(processed_field, processed_sub)
 
@@ -119,20 +115,18 @@ class GrokPatternReplacer:
                     values_raw = self._get_raw_value(target_field, reference_dict)
 
                     for idx_1, processed_val in enumerate(processed[processed_field]):
-                        for idx_2, value_raw in enumerate(values_raw):
-                            if idx_2 in regex_selections:
-                                processed_val_re = self._change_value_to_grok(processed_val)
+                        if idx_1 in regex_selections:
+                            value_raw = values_raw[idx_1]
+                            processed_val_re = self._change_value_to_grok(processed_val)
 
-                                if self._value_is_in_raw(processed_val_re, value_raw):
-                                    # processed[processed_field][idx_1] = value_raw
-                                    self._change_dotted_field_list_value(
-                                        reference_dict["processed"],
-                                        target_field,
-                                        value_raw,
-                                        idx_1,
-                                    )
-                                    break
-                                # processed[processed_field][idx_1] = processed_val
+                            if self._value_is_in_raw(processed_val_re, value_raw):
+                                self._change_dotted_field_list_value(
+                                    reference_dict["processed"],
+                                    target_field,
+                                    value_raw,
+                                    idx_1,
+                                )
+                            else:
                                 self._change_dotted_field_list_value(
                                     reference_dict["processed"],
                                     target_field,

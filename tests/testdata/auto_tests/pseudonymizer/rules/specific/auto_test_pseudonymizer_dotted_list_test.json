@@ -44,7 +44,7 @@
       "dotted": {"field": ["FOO\\BAR", "FOO\\BAR"]}
     },
     "processed": {
-      "dotted": {"field|re(1, 2)": ["FOO\\\\%{PSEUDONYM}", "FOO\\\\%{PSEUDONYM}"]}
+      "dotted": {"field|re(0, 1)": ["FOO\\\\%{PSEUDONYM}", "FOO\\\\%{PSEUDONYM}"]}
     }
   },
   {
@@ -66,14 +66,6 @@
   {
     "raw": {
       "dotted": {"field": ["FOO\\BAR", "BAZ\\BAR"]}
-    },
-    "processed": {
-      "dotted": {"field|re": ["FOO\\\\%{PSEUDONYM}", "BAZ\\\\%{PSEUDONYM}"]}
-    }
-  },
-  {
-    "raw": {
-      "dotted": {"field": ["BAZ\\BAR", "FOO\\BAR"]}
     },
     "processed": {
       "dotted": {"field|re": ["FOO\\\\%{PSEUDONYM}", "BAZ\\\\%{PSEUDONYM}"]}
