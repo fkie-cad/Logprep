@@ -12,10 +12,9 @@ RUN apt-get update && apt-get -y install git
 RUN python -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip python -m pip install --upgrade pip wheel
+RUN python -m pip install --upgrade pip wheel
 
-RUN --mount=type=cache,mode=0755,target=/root/.cache/pip \
-    if [ "$LOGPREP_VERSION" = "dev" ]; then python setup.py sdist bdist_wheel && pip install ./dist/logprep-*.whl;\
+RUN if [ "$LOGPREP_VERSION" = "dev" ]; then python setup.py sdist bdist_wheel && pip install ./dist/logprep-*.whl;\
     elif [ "$LOGPREP_VERSION" = "latest" ]; then pip install git+https://github.com/fkie-cad/Logprep.git@latest; \
     else pip install "logprep==$LOGPREP_VERSION"; fi
 
