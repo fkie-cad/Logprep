@@ -8,7 +8,7 @@ ARG no_proxy
 
 ADD . /logprep
 WORKDIR /logprep
-RUN apt-get update && apt-get -y install git
+RUN apt-get update && apt-get -y install build-essential pkg-config librdkafka-dev git
 RUN python -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
@@ -22,7 +22,7 @@ RUN --mount=type=cache,mode=0755,target=/root/.cache/pip \
 FROM python:${PYTHON_VERSION}-slim as prod
 ARG http_proxy
 ARG https_proxy
-RUN apt-get update && apt-get -y install --no-install-recommends libhyperscan5 librdkafka1
+RUN apt-get update && apt-get -y install --no-install-recommends libhyperscan5 librdkafka1 && apt-get clean
 RUN useradd -s /bin/sh -m -c "logprep user" logprep
 COPY --from=build /opt/venv /opt/venv
 USER logprep
