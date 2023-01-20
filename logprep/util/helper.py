@@ -248,8 +248,8 @@ def add_and_overwrite(event, target_field, content, *_):
 def append(event, target_field, content, separator):
     """appends to event"""
     target_value = get_dotted_field_value(event, target_field)
-    if isinstance(target_value, str):
-        separator = " " if separator is None else separator
+    if not isinstance(target_value, list):
+        target_value = "" if target_value is None else target_value
         target_value = f"{target_value}{separator}{content}"
         add_and_overwrite(event, target_field, target_value)
     else:
