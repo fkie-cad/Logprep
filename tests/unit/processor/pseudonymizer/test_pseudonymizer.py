@@ -653,3 +653,92 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         return event
+
+    def test_pseudonymize_list_with_one_element(self):
+        pseudonym = ["<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>"]
+
+        regex_pattern = "RE_WHOLE_FIELD"
+        event = {
+            "pseudo_this": ["foo"],
+        }
+        rule = {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event["pseudo_this"] == pseudonym
+
+    def test_pseudonymize_list_with_two_equal_element(self):
+        pseudonym = [
+            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+        ]
+
+        regex_pattern = "RE_WHOLE_FIELD"
+        event = {
+            "pseudo_this": ["foo", "foo"],
+        }
+        rule = {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event["pseudo_this"] == pseudonym
+
+    def test_pseudonymize_list_with_two_different_element(self):
+        pseudonym = [
+            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+            "<pseudonym:98b611cbecbd6a4533695fad8b40a46210f736ae3ef450fb9c4ab65638397113>",
+        ]
+
+        regex_pattern = "RE_WHOLE_FIELD"
+        event = {
+            "pseudo_this": ["foo", "bar"],
+        }
+        rule = {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event["pseudo_this"] == pseudonym
+
+    def test_pseudonymize_one_element_from_list_with_two_different_elements(self):
+        pseudonym = [
+            "foo\\<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>",
+            "bar",
+        ]
+
+        regex_pattern = "RE_DOMAIN_BACKSLASH_USERNAME"
+        event = {
+            "pseudo_this": ["foo\\test", "bar"],
+        }
+        rule = {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event["pseudo_this"] == pseudonym
