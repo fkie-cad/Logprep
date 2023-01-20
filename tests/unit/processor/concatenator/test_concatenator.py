@@ -166,8 +166,8 @@ class TestConcatenator(BaseProcessorTestCase):
         with pytest.raises(
             ProcessingWarning,
             match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-                  r"written, because one or more subfields existed and could not be extended: "
-                  r"target_field\)",
+            r"written, because one or more subfields existed and could not be extended: "
+            r"target_field\)",
         ):
             self.object.process(document)
         assert "target_field" in document

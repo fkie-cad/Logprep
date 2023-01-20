@@ -74,8 +74,8 @@ class TestNormalizer(BaseProcessorTestCase):
         with pytest.raises(
             ProcessingWarning,
             match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-                  r"written, because one or more subfields existed and could not be extended: "
-                  r"test_normalized\.something\)",
+            r"written, because one or more subfields existed and could not be extended: "
+            r"test_normalized\.something\)",
         ):
             self.object.process(document)
 
@@ -647,8 +647,8 @@ class TestNormalizer(BaseProcessorTestCase):
         with pytest.raises(
             ProcessingWarning,
             match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-                  r"written, because one or more subfields existed and could not be extended: "
-                  r"winlog\)",
+            r"written, because one or more subfields existed and could not be extended: "
+            r"winlog\)",
         ):
             self.object.process(event)
 
@@ -1075,8 +1075,8 @@ class TestNormalizer(BaseProcessorTestCase):
         with pytest.raises(
             ProcessingWarning,
             match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-                  r"written, because one or more subfields existed and could not be extended: "
-                  r"@timestamp\)",
+            r"written, because one or more subfields existed and could not be extended: "
+            r"@timestamp\)",
         ):
             self.object.process(event)
 

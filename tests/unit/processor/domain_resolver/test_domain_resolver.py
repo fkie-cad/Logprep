@@ -227,8 +227,8 @@ sth.ac.at
         with pytest.raises(
             ProcessingWarning,
             match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-                  r"written, because one or more subfields existed and could not be extended: "
-                  r"resolved_ip\)",
+            r"written, because one or more subfields existed and could not be extended: "
+            r"resolved_ip\)",
         ):
             self.object.process(document)
 

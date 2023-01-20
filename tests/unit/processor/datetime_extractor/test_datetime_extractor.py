@@ -213,8 +213,8 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         with pytest.raises(
             ProcessingWarning,
             match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-                  r"written, because one or more subfields existed and could not be extended: "
-                  r"@timestamp\)",
+            r"written, because one or more subfields existed and could not be extended: "
+            r"@timestamp\)",
         ):
             self.object.process(document)
 
