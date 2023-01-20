@@ -151,7 +151,7 @@ class TestFileInput(BaseInputTestCase):
         )
         # append first line to empty file with less than 256 byte in total
         append_file(self.object._config.documents_path, test_rotated_log_data_less_256)
-        wait_for_interval(2*check_interval)
+        wait_for_interval(2 * check_interval)
         first_small_file_fingerprint_size = self.object._fileinfo_util.get_fingerprint_size(
             self.object._config.documents_path
         )
