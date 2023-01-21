@@ -5,6 +5,7 @@ They can be multi-processed.
 
 """
 # pylint: disable=logging-fstring-interpolation
+from functools import cached_property
 import json
 from ctypes import c_bool, c_double, c_ulonglong
 from logging import INFO, NOTSET, Handler, Logger
@@ -36,8 +37,6 @@ from logprep.util.time_measurement import TimeMeasurement
 
 if TYPE_CHECKING:
     from logprep.abc.processor import Processor  # pragma: no cover
-    from logprep.abc.input import Input
-    from logprep.abc.output import Output
 
 
 class PipelineError(BaseException):
@@ -48,12 +47,67 @@ class MustProvideALogHandlerError(PipelineError):
     """Raise if no log handler was provided."""
 
 
-class MultiprocessingPipelineError(PipelineError):
-    """Generic multiprocessing exceptions."""
-
-
-class MustProvideAnMPLogHandlerError(MultiprocessingPipelineError):
+class MustProvideAnMPLogHandlerError(BaseException):
     """Raise if no multiprocessing log handler was provided."""
+
+
+class SharedCounter:
+    """A shared counter for multi-processing pipelines."""
+
+    CHECKING_PERIOD = 0.5
+
+    def __init__(self):
+        self._val = Value(c_ulonglong, 0)
+        self._lock = Lock()
+        self._timer = Value(c_double, 0)
+        self._checking_timer = 0
+        self._logger = None
+        self._period = None
+
+    def _init_timer(self, period: float):
+        if self._period is None:
+            self._period = period
+        with self._lock:
+            self._timer.value = time() + self._period
+
+    def _create_logger(self, log_handler: Handler):
+        if self._logger is None:
+            logger = Logger("Processing Counter", level=log_handler.level)
+            for handler in logger.handlers:
+                logger.removeHandler(handler)
+            logger.addHandler(log_handler)
+
+            self._logger = logger
+
+    def setup(self, print_processed_period: float, log_handler: Handler):
+        """Setup shared counter for multiprocessing pipeline."""
+        self._create_logger(log_handler)
+        self._init_timer(print_processed_period)
+        self._checking_timer = time() + self.CHECKING_PERIOD
+
+    def increment(self):
+        """Increment the counter."""
+        with self._lock:
+            self._val.value += 1
+
+    def print_if_ready(self):
+        """Periodically print the counter and reset it."""
+        current_time = time()
+        if current_time > self._checking_timer:
+            self._checking_timer = current_time + self.CHECKING_PERIOD
+            if self._timer.value != 0 and current_time >= self._timer.value:
+                with self._lock:
+                    if self._period / 60.0 < 1:
+                        msg = f"Processed events per {self._period} seconds: {self._val.value}"
+                    else:
+                        msg = (
+                            f"Processed events per {self._period / 60.0:.2f} minutes: "
+                            f"{self._val.value}"
+                        )
+                    if self._logger:
+                        self._logger.info(msg)
+                    self._val.value = 0
+                    self._timer.value = time() + self._period
 
 
 class Pipeline:
@@ -72,7 +126,7 @@ class Pipeline:
         """Input metrics"""
         output: Connector.ConnectorMetrics
         """Output metrics"""
-        pipeline: List["Processor.ProcessorMetrics"] = attrs.Factory(list)
+        pipeline: List["Processor.ProcessorMetrics"] = attrs.field(factory=list)
         """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
         """The current offset of the kafka input reader"""
@@ -113,20 +167,8 @@ class Pipeline:
     _log_handler: Handler
     """ the handler for the logs """
 
-    _logger: Logger
-    """ the logger """
-
     _continue_iterating: bool
     """ a flag to signal if iterating continues """
-
-    _pipeline: tuple
-    """ a tuple containing the processor objects as defined in configuration """
-
-    _input: "Input"
-    """ the defined input connector object """
-
-    _output: "Output"
-    """ the defined output connector object """
 
     _lock: Lock
     """ the lock for the pipeline process """
@@ -137,10 +179,11 @@ class Pipeline:
     _used_server_ports: dict
     """ a shard dict for signaling used ports between pipeline processes """
 
-    _processing_counter: "SharedCounter"
+    _processing_counter: SharedCounter
+    """A shared counter for multi-processing pipelines."""
 
-    _metrics: Metric
-    """ the configured metric object """
+    pipeline_index: int
+    """ the index of this pipeline """
 
     def __init__(
         self,
@@ -157,92 +200,74 @@ class Pipeline:
             raise MustProvideALogHandlerError
         self._logprep_config = config
         self._log_handler = log_handler
-        self._logger = None
 
         self._continue_iterating = False
-        self._pipeline = ()
-        self._input = None
-        self._output = None
         self._lock = lock
         self._shared_dict = shared_dict
         self._processing_counter = counter
-        self.metrics = None
         self._used_server_ports = used_server_ports
         self._metric_targets = metric_targets
-        self._metrics_exposer = None
-        self._metric_labels = {"pipeline": f"pipeline-{pipeline_index}"}
+        self.pipeline_index = pipeline_index
 
-        self._event_version_information = {
+    @cached_property
+    def _process_name(self):
+        return current_process().name
+
+    @cached_property
+    def _event_version_information(self):
+        return {
             "logprep": get_versions().get("version"),
             "configuration": self._logprep_config.get("version", "unset"),
         }
 
-    def _setup(self):
-        self._create_logger()
-        self._create_connectors()
-        self._create_metrics()
-        self._build_pipeline()
+    @cached_property
+    def _metric_labels(self):
+        return {"pipeline": f"pipeline-{self.pipeline_index}"}
 
-    def _create_metrics(self):
-        self._metrics_exposer = MetricExposer(
+    @cached_property
+    def _metrics_exposer(self):
+        return MetricExposer(
             self._logprep_config.get("metrics", {}),
             self._metric_targets,
             self._shared_dict,
             self._lock,
         )
-        self.metrics = self.PipelineMetrics(
+
+    @cached_property
+    def metrics(self):
+        """The pipeline metrics object"""
+        return self.PipelineMetrics(
             input=self._input.metrics, output=self._output.metrics, labels=self._metric_labels
         )
 
-    def _build_pipeline(self):
-        self._logger.debug(f"Building '{current_process().name}'")
-        self._pipeline = tuple(
+    @cached_property
+    def _pipeline(self):
+        self._logger.debug(f"Building '{self._process_name}'")
+        pipeline = tuple(
             (self._create_processor(entry) for entry in self._logprep_config.get("pipeline"))
         )
-        self._logger.debug(f"Finished building pipeline ({current_process().name})")
+        self._logger.debug(f"Finished building pipeline ({self._process_name})")
+        return pipeline
 
-    def _create_processor(self, entry: dict) -> "Processor":
-        processor_name = list(entry.keys())[0]
-        entry[processor_name]["metric_labels"] = self._metric_labels
-        processor = Factory.create(entry, self._logger)
-        processor.setup()
-        self.metrics.pipeline.append(processor.metrics)
-        self._logger.debug(f"Created '{processor}' processor ({current_process().name})")
-        return processor
-
-    def _create_connectors(self):
-        self._logger.debug(f"Creating connectors ({current_process().name})")
-        self._create_input_connector()
-        self._create_output_connector()
-        self._output.input_connector = self._input
-        self._logger.debug(
-            f"Created connectors -> input: '{self._input.describe()}',"
-            f" output -> '{self._output.describe()}' ({current_process().name})"
-        )
-        self._input.setup()
-        self._output.setup()
-        if hasattr(self._input, "server"):
-            while self._input.server.config.port in self._used_server_ports:
-                self._input.server.config.port += 1
-            self._used_server_ports.update({self._input.server.config.port: current_process().name})
-        self._logger.debug(f"Finished creating connectors ({current_process().name})")
-
-    def _create_output_connector(self):
+    @cached_property
+    def _output(self):
         output_connector_config = self._logprep_config.get("output")
         connector_name = list(output_connector_config.keys())[0]
         output_connector_config[connector_name]["metric_labels"] = self._metric_labels
-        self._output = Factory.create(output_connector_config, self._logger)
+        return Factory.create(output_connector_config, self._logger)
 
-    def _create_input_connector(self):
+    @cached_property
+    def _input(self):
         input_connector_config = self._logprep_config.get("input")
         connector_name = list(input_connector_config.keys())[0]
         input_connector_config[connector_name]["metric_labels"] = self._metric_labels
         input_connector_config[connector_name].update(
             {"version_information": self._event_version_information}
         )
-        self._input = Factory.create(input_connector_config, self._logger)
+        return Factory.create(input_connector_config, self._logger)
 
-    def _create_logger(self):
+    @cached_property
+    def _logger(self):
         if self._log_handler.level == NOTSET:
             self._log_handler.level = INFO
         logger = Logger("Pipeline", level=self._log_handler.level)
@@ -250,7 +275,31 @@ class Pipeline:
             logger.removeHandler(handler)
         logger.addHandler(self._log_handler)
 
-        self._logger = logger
+        return logger
+
+    def _setup(self):
+        self._logger.debug(f"Creating connectors ({self._process_name})")
+        self._output.input_connector = self._input
+        self._logger.debug(
+            f"Created connectors -> input: '{self._input.describe()}',"
+            f" output -> '{self._output.describe()}' ({self._process_name})"
+        )
+        self._input.setup()
+        self._output.setup()
+        if hasattr(self._input, "server"):
+            while self._input.server.config.port in self._used_server_ports:
+                self._input.server.config.port += 1
+            self._used_server_ports.update({self._input.server.config.port: self._process_name})
+        self._logger.debug(f"Finished creating connectors ({self._process_name})")
+
+    def _create_processor(self, entry: dict) -> "Processor":
+        processor_name = list(entry.keys())[0]
+        entry[processor_name]["metric_labels"] = self._metric_labels
+        processor = Factory.create(entry, self._logger)
+        processor.setup()
+        self.metrics.pipeline.append(processor.metrics)
+        self._logger.debug(f"Created '{processor}' processor ({self._process_name})")
+        return processor
 
     def run(self):
         """Start processing processors in the Pipeline."""
@@ -259,7 +308,7 @@ class Pipeline:
                 warnings.simplefilter("default")
                 self._setup()
         self._enable_iteration()
-        self._logger.debug(f"Start iterating ({current_process().name})")
+        self._logger.debug(f"Start iterating ({self._process_name})")
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
                 while self._iterate():
@@ -404,65 +453,6 @@ class Pipeline:
     def stop(self):
         """Stop processing processors in the Pipeline."""
         self._continue_iterating = False
-
-
-class SharedCounter:
-    """A shared counter for multi-processing pipelines."""
-
-    CHECKING_PERIOD = 0.5
-
-    def __init__(self):
-        self._val = Value(c_ulonglong, 0)
-        self._lock = Lock()
-        self._timer = Value(c_double, 0)
-        self._checking_timer = 0
-        self._logger = None
-        self._period = None
-
-    def _init_timer(self, period: float):
-        if self._period is None:
-            self._period = period
-        with self._lock:
-            self._timer.value = time() + self._period
-
-    def _create_logger(self, log_handler: Handler):
-        if self._logger is None:
-            logger = Logger("Processing Counter", level=log_handler.level)
-            for handler in logger.handlers:
-                logger.removeHandler(handler)
-            logger.addHandler(log_handler)
-
-            self._logger = logger
-
-    def setup(self, print_processed_period: float, log_handler: Handler):
-        """Setup shared counter for multiprocessing pipeline."""
-        self._create_logger(log_handler)
-        self._init_timer(print_processed_period)
-        self._checking_timer = time() + self.CHECKING_PERIOD
-
-    def increment(self):
-        """Increment the counter."""
-        with self._lock:
-            self._val.value += 1
-
-    def print_if_ready(self):
-        """Periodically print the counter and reset it."""
-        current_time = time()
-        if current_time > self._checking_timer:
-            self._checking_timer = current_time + self.CHECKING_PERIOD
-            if self._timer.value != 0 and current_time >= self._timer.value:
-                with self._lock:
-                    if self._period / 60.0 < 1:
-                        msg = f"Processed events per {self._period} seconds: {self._val.value}"
-                    else:
-                        msg = (
-                            f"Processed events per {self._period / 60.0:.2f} minutes: "
-                            f"{self._val.value}"
-                        )
-                    if self._logger:
-                        self._logger.info(msg)
-                    self._val.value = 0
-                    self._timer.value = time() + self._period
 
 
 class MultiprocessingPipeline(Process, Pipeline):

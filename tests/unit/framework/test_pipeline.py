@@ -87,9 +87,7 @@ class TestPipeline(ConfigurationForTests):
                     metric_targets=self.metric_targets,
                 )
 
-    def test_setup_builds_pipeline(self, mock_create):
-        assert len(self.pipeline._pipeline) == 0
-        self.pipeline._setup()
+    def test_pipeline_property_returns_pipeline(self, mock_create):
         assert len(self.pipeline._pipeline) == 2
         assert mock_create.call_count == 4  # 2 processors, 1 input, 1 output
 
@@ -106,13 +104,6 @@ class TestPipeline(ConfigurationForTests):
         for processor in processors:
             processor.shut_down.assert_called()
 
-    def test_setup_creates_connectors(self, _):
-        assert self.pipeline._input is None
-        assert self.pipeline._output is None
-        self.pipeline._setup()
-        assert self.pipeline._input is not None
-        assert self.pipeline._output is not None
-
     def test_setup_calls_setup_on_input_and_output(self, _):
         self.pipeline._setup()
         self.pipeline._input.setup.assert_called()
@@ -126,8 +117,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.assert_called_with(timeout)
 
     def test_empty_documents_are_not_forwarded_to_other_processors(self, _):
-        assert len(self.pipeline._pipeline) == 0
-        self.pipeline._setup()
         input_data = [{"do_not_delete": "1"}, {"delete_me": "2"}, {"do_not_delete": "3"}]
         connector_config = {"dummy": {"type": "dummy_input", "documents": input_data}}
         input_connector = original_create(connector_config, mock.MagicMock())
@@ -146,7 +135,6 @@ class TestPipeline(ConfigurationForTests):
         deleter_rule = DeleterRule._create_from_dict({"filter": "delete_me", "delete": True})
         deleter_processor._specific_tree.add_rule(deleter_rule)
         self.pipeline._pipeline = [mock.MagicMock(), deleter_processor, mock.MagicMock()]
-        self.pipeline._create_logger()
         self.pipeline._logger.setLevel(DEBUG)
         while self.pipeline._input._documents:
             self.pipeline._process_pipeline()
@@ -508,11 +496,8 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.metrics.pipeline = [mock_metrics_one, mock_metrics_two]
         assert self.pipeline.metrics.number_of_errors == 2
 
-    def test_create_connector_adds_versions_information_to_input_connector_config(
-        self, mock_create
-    ):
-        self.pipeline._create_logger()
-        self.pipeline._create_connectors()
+    def test_setup_adds_versions_information_to_input_connector_config(self, mock_create):
+        self.pipeline._setup()
         called_input_config = mock_create.call_args_list[0][0][0]["dummy"]
         assert "version_information" in called_input_config, "ensure version_information is added"
         assert "logprep" in called_input_config.get("version_information"), "ensure logprep key"
@@ -520,7 +505,7 @@ class TestPipeline(ConfigurationForTests):
         assert called_input_config.get("version_information").get("logprep"), "ensure values"
         assert called_input_config.get("version_information").get("configuration"), "ensure values"
 
-    def test_create_connectors_connects_output_with_input(self, _):
+    def test_setup_connects_output_with_input(self, _):
         self.pipeline._setup()
         assert self.pipeline._output.input_connector == self.pipeline._input
 
