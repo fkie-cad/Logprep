@@ -457,7 +457,7 @@ class Pipeline:
 class MultiprocessingPipeline(Process, Pipeline):
     """A thread-safe Pipeline for multi-processing."""
 
-    processed_counter = SharedCounter()
+    processed_counter: SharedCounter = SharedCounter()
 
     def __init__(
         self,
@@ -466,9 +466,9 @@ class MultiprocessingPipeline(Process, Pipeline):
         log_handler: Handler,
         lock: Lock,
         shared_dict: dict,
-        used_server_ports: list,
+        used_server_ports: dict,
         metric_targets: MetricTargets = None,
-    ):
+    ) -> None:
         if not isinstance(log_handler, MultiprocessingLogHandler):
             raise MustProvideAnMPLogHandlerError
 
