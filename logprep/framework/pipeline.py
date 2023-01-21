@@ -444,10 +444,10 @@ class Pipeline:
             processor.shut_down()
 
     def _drain_input_queues(self):
-        if not hasattr(self._input, "_messages"):
+        if not hasattr(self._input, "messages"):
             return
-        if isinstance(self._input._messages, queue.Queue):
-            while self._input._messages.qsize():
+        if isinstance(self._input.messages, queue.Queue):
+            while self._input.messages.qsize():
                 self._process_pipeline()
 
     def stop(self):

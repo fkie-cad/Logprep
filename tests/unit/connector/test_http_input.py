@@ -3,9 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 from copy import deepcopy
 import json
-import sys
 
-import pytest
 import requests
 import uvicorn
 from fastapi import FastAPI
@@ -20,8 +18,8 @@ class TestHttpConnector(BaseInputTestCase):
         super().setup_method()
         self.object.setup()
         # we have to empty the queue for testing
-        while not self.object._messages.empty():
-            self.object._messages.get(timeout=0.001)
+        while not self.object.messages.empty():
+            self.object.messages.get(timeout=0.001)
         self.client = TestClient(self.object.app)
 
     CONFIG: dict = {
@@ -45,7 +43,7 @@ class TestHttpConnector(BaseInputTestCase):
         data = {"message": "my log message"}
         resp = self.client.post(url="/json", data=json.dumps(data))
         assert resp.status_code == 200
-        event_from_queue = self.object._messages.get(timeout=0.001)
+        event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue == data
 
     def test_plaintext_endpoint_accepts_post_request(self):
@@ -57,7 +55,7 @@ class TestHttpConnector(BaseInputTestCase):
         data = "my log message"
         resp = self.client.post("/plaintext", data=data)
         assert resp.status_code == 200
-        event_from_queue = self.object._messages.get(timeout=0.001)
+        event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue.get("message") == data
 
     def test_jsonl_messages_are_put_in_queue(self):
@@ -68,12 +66,12 @@ class TestHttpConnector(BaseInputTestCase):
         """
         resp = self.client.post("/jsonl", data=data)
         assert resp.status_code == 200
-        assert self.object._messages.qsize() == 3
-        event_from_queue = self.object._messages.get(timeout=0.001)
+        assert self.object.messages.qsize() == 3
+        event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue == {"message": "my first log message"}
-        event_from_queue = self.object._messages.get(timeout=0.001)
+        event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue == {"message": "my second log message"}
-        event_from_queue = self.object._messages.get(timeout=0.001)
+        event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue == {"message": "my third log message"}
 
     def test_get_next_returns_message_from_queue(self):
@@ -121,7 +119,7 @@ class TestHttpConnector(BaseInputTestCase):
             for i in range(100):
                 message["message"] = f"message number {i}"
                 requests.post(url="http://127.0.0.1:9000/json", json=message)  # nosemgrep
-        assert self.object._messages.qsize() == 100, "messages are put to queue"
+        assert self.object.messages.qsize() == 100, "messages are put to queue"
 
     def test_get_next_with_hmac_of_raw_message(self):
         connector_config = deepcopy(self.CONFIG)

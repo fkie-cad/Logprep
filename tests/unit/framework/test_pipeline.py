@@ -577,10 +577,10 @@ class TestPipeline(ConfigurationForTests):
             }
         }
         self.pipeline._input = original_create(input_config, mock.MagicMock())
-        self.pipeline._input._messages.put({"message": "test message"})
-        assert self.pipeline._input._messages.qsize() == 1
+        self.pipeline._input.messages.put({"message": "test message"})
+        assert self.pipeline._input.messages.qsize() == 1
         self.pipeline._shut_down()
-        assert self.pipeline._input._messages.qsize() == 0
+        assert self.pipeline._input.messages.qsize() == 0
 
     def test_pipeline_raises_http_error_from_factory_create(self, mock_create):
         mock_create.side_effect = requests.HTTPError()
