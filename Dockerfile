@@ -21,9 +21,11 @@ RUN if [ "$LOGPREP_VERSION" = "dev" ]; then python setup.py sdist bdist_wheel &&
 FROM python:${PYTHON_VERSION}-slim as prod
 ARG http_proxy
 ARG https_proxy
-RUN apt-get update && apt-get -y install --no-install-recommends libhyperscan5 librdkafka1 && apt-get clean
-RUN useradd -s /bin/sh -m -c "logprep user" logprep
 COPY --from=build /opt/venv /opt/venv
+RUN apt-get update && \
+    apt-get -y install --no-install-recommends libhyperscan5 librdkafka1 && \
+    apt-get clean && \
+    useradd -s /bin/sh -m -c "logprep user" logprep
 USER logprep
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
