@@ -194,23 +194,8 @@ class FileInput(Input):
         for newly appended log lines or file changes
         ``False``: Read the file like defined in `start` param only once and exit afterwards"""
 
-        interval: int = field(default=1)
+        interval: int = field(default=1, validator=validators.instance_of((int, float)))
         """Defines the refresh interval, how often the file is checked for changes"""
-
-        @interval.validator
-        def validate_interval(self, attribute, value):
-            """Helper Function to validate the input values in the config file"""
-            possible_types = [int, float]
-            if not type(value) in possible_types:
-                raise ValueError(
-                    f"Config attribute {attribute} needs to be onf of types in {possible_types}"
-                )
-            possible_range = [0.05, 100]
-            if not possible_range[0] <= value <= possible_range[1]:
-                raise ValueError(
-                    f"Config attribute {attribute} needs to be in range of the \
-                            values in {possible_range}"
-                )
 
     def _calc_file_fingerprint(self, file_pointer, exist_fingerprint_size="") -> tuple:
         """This function creates a crc32 fingerprint of the first 256 bytes of a given file
