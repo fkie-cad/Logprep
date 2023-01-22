@@ -181,20 +181,12 @@ class FileInput(Input):
             if not os.path.exists(value):
                 raise ValueError(f"Config attribute {attribute} needs to point to a existing file")
 
-        start: str = field(validator=validators.instance_of(str), default="begin")
+        start: str = field(validator=[validators.instance_of(str), validators.in_(("begin","end"))], default="begin")
         """Defines the behaviour of the file monitor with the following options:
         ``begin``: starts to read from the beginning of a file
         ``end``: goes initially to the end of the file and waits for new content"""
 
-        @start.validator
-        def validate_start(self, attribute, value):
-            """Helper Function to validate the input values in config file"""
-            possible_values = ["begin", "end"]
-            if value not in possible_values:
-                raise ValueError(
-                    f"Config attribute {attribute} needs to be one of the \
-                            values in {possible_values}"
-                )
+        
 
         watch_file: str = field(validator=validators.instance_of(bool), default=True)
         """Defines the behaviour of the file monitor with the following options:
