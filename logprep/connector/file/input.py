@@ -197,15 +197,13 @@ class FileInput(Input):
         interval: int = field(default=1, validator=validators.instance_of((int, float)))
         """Defines the refresh interval, how often the file is checked for changes"""
 
-    def _calc_file_fingerprint(self, file_pointer, exist_fingerprint_size="") -> tuple:
+    def _calc_file_fingerprint(self, file_pointer, fingerprint_length="") -> tuple:
         """This function creates a crc32 fingerprint of the first 256 bytes of a given file
         If the existing log file is less than 256 bytes, it will take what is there
         and return also the size"""
-        if exist_fingerprint_size:
-            fingerprint_length = exist_fingerprint_size
-        else:
+        if not fingerprint_length:
             file_size = self._get_file_size(self._config.documents_path)
-            if 1 < file_size < 256:
+            if file_size > 1 and file_size < 256:
                 fingerprint_length = file_size
             else:
                 fingerprint_length = 256
