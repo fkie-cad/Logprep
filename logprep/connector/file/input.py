@@ -224,13 +224,7 @@ class FileInput(Input):
     def _get_initial_file_offset(self, file_name: str) -> int:
         """Calculates the file_size for given logfile if it's configured to start
         at the end of a log file"""
-        initial_filepointer = 0
-        if self._config.start == "begin":
-            initial_filepointer = 0
-        elif self._config.start == "end":
-            initial_filepointer = self._get_file_size(file_name)
-
-        return initial_filepointer
+        return self._get_file_size(file_name) if self._config.start == "end" else 0
 
     @threadsafe_function
     def _follow_file(self, file_name: str):
