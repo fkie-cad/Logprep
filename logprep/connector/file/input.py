@@ -14,7 +14,7 @@ Example
     input:
       myfileinput:
         type: file_input
-        documents_path: path/to/a/document
+        logfile_path: path/to/a/document
         start: begin
         interval: 1
         watch_file: True
@@ -25,6 +25,8 @@ import os
 import zlib
 import threading
 from attrs import define, field, validators
+from logprep.util.validators import file_validator
+from logging import Logger
 from logprep.abc.input import Input
 
 
@@ -149,14 +151,14 @@ class FileWatcherDict:
                 return self.dict[file_name]["fingerprint_size"]
         return ""
 
-    def check_fingerprint(self, file_name, check_fingerprint):
+    def has_fingerprint_changed(self, file_name, check_fingerprint):
         """compare a fingerprint with a existing fingerprint"""
         origin_fingerprint = self.get_fingerprint(file_name)
         if not origin_fingerprint:
-            return True
+            return False
         if origin_fingerprint == check_fingerprint:
-            return True
-        return False
+            return False
+        return True
 
 
 class FileInput(Input):
@@ -171,22 +173,17 @@ class FileInput(Input):
     class Config(Input.Config):
         """FileInput connector specific configuration"""
 
-        documents_path: str = field(validator=validators.instance_of(str))
+        logfile_path: str = field(validator=file_validator)
         """A path to a file in generic raw format, which can be in any string based
         format. Needs to be parsed with normalizer or another processor"""
 
-        @documents_path.validator
-        def validate_documents_path(self, attribute, value):
-            """ "Helper Function to validate the input values in the config file"""
-            if not os.path.exists(value):
-                raise ValueError(f"Config attribute {attribute} needs to point to a existing file")
-
-        start: str = field(validator=[validators.instance_of(str), validators.in_(("begin","end"))], default="begin")
+        start: str = field(
+            validator=[validators.instance_of(str), validators.in_(("begin", "end"))],
+            default="begin",
+        )
         """Defines the behaviour of the file monitor with the following options:
         ``begin``: starts to read from the beginning of a file
         ``end``: goes initially to the end of the file and waits for new content"""
-
-        
 
         watch_file: str = field(validator=validators.instance_of(bool), default=True)
         """Defines the behaviour of the file monitor with the following options:
@@ -197,12 +194,16 @@ class FileInput(Input):
         interval: int = field(default=1, validator=validators.instance_of((int, float)))
         """Defines the refresh interval, how often the file is checked for changes"""
 
+    def __init__(self, name: str, configuration: "FileInput.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self.stop_flag = threading.Event()
+
     def _calc_file_fingerprint(self, file_pointer, fingerprint_length="") -> tuple:
         """This function creates a crc32 fingerprint of the first 256 bytes of a given file
         If the existing log file is less than 256 bytes, it will take what is there
         and return also the size"""
         if not fingerprint_length:
-            file_size = self._get_file_size(self._config.documents_path)
+            file_size = self._get_file_size(self._config.logfile_path)
             if file_size > 1 and file_size < 256:
                 fingerprint_length = file_size
             else:
@@ -224,8 +225,27 @@ class FileInput(Input):
         at the end of a log file"""
         return self._get_file_size(file_name) if self._config.start == "end" else 0
 
+    def _follow_file(self, file_name: str, file):
+        while True:
+            if self._fileinfo_util.get_offset(file_name):
+                file.seek(self._fileinfo_util.get_offset(file_name))
+
+            line = file.readline()
+            self._fileinfo_util.add_offset(file_name, file.tell())
+            if line != "":
+                if line.endswith("\n"):
+                    message = self._line_to_dict(line)
+                    if message:
+                        self._messages.put(message)
+            else:
+                break
+
+    def _calc_and_update_fingerprint(self, file_name: str, file):
+        crc32, fingerprint_size = self._calc_file_fingerprint(file)
+        self._fileinfo_util.add_fingerprint(file_name, crc32, fingerprint_size)
+
     @threadsafe_function
-    def _follow_file(self, file_name: str):
+    def _file_input_handler(self, file_name: str):
         """Put log_line as a dict to threadsafe message queue from given input file.
         Depending on configuration it will continuously monitor a given file for new
         appending log lines. Depending on configuration it will start to process the
@@ -233,39 +253,16 @@ class FileInput(Input):
         the file fingerprints to detect file changes that typically occur on log rotation."""
 
         with open(file_name, encoding="utf-8") as file:
-            # creating the baseline fingerprint for the file
             if not self._fileinfo_util.get_fingerprint(file_name):
-                baseline_crc32, baseline_fingerprint_size = self._calc_file_fingerprint(file)
-                self._fileinfo_util.add_fingerprint(
-                    file_name, baseline_crc32, baseline_fingerprint_size
-                )
+                self._calc_and_update_fingerprint(file_name, file)
 
             baseline_fingerprint_size = self._fileinfo_util.get_fingerprint_size(file_name)
             check_crc32, _ = self._calc_file_fingerprint(file, baseline_fingerprint_size)
-            if not self._fileinfo_util.check_fingerprint(file_name, check_crc32):
-                # if the fingerprint in check_crc32 is not the same a non-appending
-                # file change happened, create new baseline with potential new fingerprint_size
-                new_check_crc32, new_fingerprint_size = self._calc_file_fingerprint(file)
-                self._fileinfo_util.add_fingerprint(
-                    file_name, new_check_crc32, new_fingerprint_size
-                )
+            if self._fileinfo_util.has_fingerprint_changed(file_name, check_crc32):
+                self._calc_and_update_fingerprint(file_name, file)
                 self._fileinfo_util.add_offset(file_name, 0)
 
-            while True:
-                if self._fileinfo_util.get_offset(file_name):
-                    # if the file offset already exists, continue from there
-                    file.seek(self._fileinfo_util.get_offset(file_name))
-
-                line = file.readline()
-                # add new file offset after line of file was read
-                self._fileinfo_util.add_offset(file_name, file.tell())
-                if line != "":
-                    if line.endswith("\n"):
-                        message = self._line_to_dict(line)
-                        if message:
-                            self._messages.put(message)
-                else:
-                    break
+            self._follow_file(file_name, file)
 
     def _line_to_dict(self, input_line: str) -> dict:
         """Takes an input string and turns it into a dict without any parsing or formatting.
@@ -293,18 +290,18 @@ class FileInput(Input):
         TODO (optional): when processing multiple files, map the threads
         equally-distributed to each process"""
         # create the event that will allow to kill the thread
-        self.stop_flag = threading.Event()
+        # self.stop_flag = threading.Event()
         # we only start a thread in the first pipeline process
         # when processing multiple files they could be mapped to different processes
         if self.pipeline_index == 1:
-            initial_pointer = self._get_initial_file_offset(self._config.documents_path)
-            self._fileinfo_util.add_offset(self._config.documents_path, initial_pointer)
+            initial_pointer = self._get_initial_file_offset(self._config.logfile_path)
+            self._fileinfo_util.add_offset(self._config.logfile_path, initial_pointer)
             self.rthread = RepeatedTimerThread(
                 self._config.interval,
-                self._follow_file,
+                self._file_input_handler,
                 self.stop_flag,
                 self._config.watch_file,
-                file_name=self._config.documents_path,
+                file_name=self._config.logfile_path,
             )
 
     def shut_down(self):
