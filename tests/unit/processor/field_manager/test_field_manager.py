@@ -1,6 +1,6 @@
 # pylint: disable=missing-docstring
 import pytest
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -358,13 +358,15 @@ class TestFieldManager(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
         with pytest.raises(
-            DuplicationError,
-            match=r"('Test Instance Name', 'The following fields could not be written, "
-            r"because one or more subfields existed and could not be extended: target_field')",
+            ProcessingWarning,
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+            r"written, because one or more subfields existed and could not be extended: "
+            r"target_field\)",
         ):
             self.object.process(document)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
+        assert document.get("tags") == ["_field_manager_failure"]
 
     def test_process_raises_processing_warning_with_missing_fields(
         self,

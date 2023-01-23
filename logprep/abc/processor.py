@@ -52,7 +52,7 @@ class Processor(Component):
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
         )
-        """Path to a JSON file with a valid rule tree configuration. 
+        """Path to a JSON file with a valid rule tree configuration.
         For string format see :ref:`getters`"""
 
     @define(kw_only=True)
@@ -187,7 +187,10 @@ class Processor(Component):
         )
 
     def _apply_rules_wrapper(self, event, rule):
-        self._apply_rules(event, rule)
+        try:
+            self._apply_rules(event, rule)
+        except ProcessingWarning as error:
+            self._handle_warning_error(event, rule, error)
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:
@@ -265,6 +268,8 @@ class Processor(Component):
             add_and_overwrite(event, "tags", sorted(list({*rule.failure_tags})))
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *rule.failure_tags})))
+        if isinstance(error, ProcessingWarning):
+            raise error
         raise ProcessingWarning(str(error)) from error
 
     def _check_for_missing_values(self, event, rule, source_field_dict):

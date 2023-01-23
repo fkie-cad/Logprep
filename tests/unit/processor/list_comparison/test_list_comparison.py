@@ -4,7 +4,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.list_comparison.processor import DuplicationError
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -124,9 +124,18 @@ class TestListComparison(BaseProcessorTestCase):
     def test_dotted_wrong_type(self):
         assert self.object.metrics.number_of_processed_events == 0
         document = {"dot_channel": "test", "user": "Franz", "dotted": "dotted_Franz"}
+        expected = {
+            "dot_channel": "test",
+            "user": "Franz",
+            "dotted": "dotted_Franz",
+            "tags": ["_list_comparison_failure"],
+            "user_results": {"in_list": ["user_list.txt"]},
+        }
 
-        with pytest.raises(DuplicationError):
+        with pytest.raises(ProcessingWarning):
             self.object.process(document)
+
+        assert document == expected
 
     def test_intermediate_output_field_is_wrong_type(self):
         assert self.object.metrics.number_of_processed_events == 0
@@ -135,9 +144,18 @@ class TestListComparison(BaseProcessorTestCase):
             "user": "Franz",
             "dotted": {"user_results": ["do_not_look_here"]},
         }
+        expected = {
+            "tags": ["_list_comparison_failure"],
+            "dot_channel": "test",
+            "user": "Franz",
+            "dotted": {"user_results": ["do_not_look_here"]},
+            "user_results": {"in_list": ["user_list.txt"]},
+        }
 
-        with pytest.raises(DuplicationError):
+        with pytest.raises(ProcessingWarning):
             self.object.process(document)
+
+        assert document == expected
 
     def test_check_in_dotted_subfield(self):
         assert self.object.metrics.number_of_processed_events == 0
@@ -179,6 +197,7 @@ class TestListComparison(BaseProcessorTestCase):
 
     def test_overwrite_target_field(self):
         document = {"user": "Franz"}
+        expected = {"user": "Franz", "tags": ["_list_comparison_failure"]}
         rule_dict = {
             "filter": "user",
             "list_comparison": {
@@ -192,11 +211,13 @@ class TestListComparison(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)
         self.object._init_rules_list_comparison()
         match = (
-            r"\('Test Instance Name', 'The following fields could not be written, because one "
-            r"or more subfields existed and could not be extended: user.in_list'\)"
+            r"ProcessingWarning: \(Test Instance Name - The following fields could not be written, "
+            r"because one or more subfields existed and could not be extended: user\.in_list\)"
         )
-        with pytest.raises(DuplicationError, match=match):
+        with pytest.raises(ProcessingWarning, match=match):
             self.object.process(document)
+
+        assert document == expected
 
     @responses.activate
     def test_list_comparison_loads_rule_with_http_template_in_list_search_base_path(self):
