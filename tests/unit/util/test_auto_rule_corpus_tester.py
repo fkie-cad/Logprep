@@ -89,7 +89,7 @@ class TestAutoRuleTester:
                     "Success rate: 0.00%",
                     "Detailed Reports",
                     "values differ between generated and expected output",
-                    "{\"root['winlog']['event_data']['Test2']\": {'generated': 2, 'expected': 4}}",
+                    "- root['winlog']['event_data']['Test2']: {'generated': 2, 'expected': 4}",
                 ],
                 1,
             ),
