@@ -24,27 +24,36 @@ import queue
 import os
 import zlib
 import threading
+from logging import Logger
 from attrs import define, field, validators
 from logprep.util.validators import file_validator
-from logging import Logger
 from logprep.abc.input import Input
+from logprep.abc.input import FatalInputError, CriticalInputError
 
-
-def threadsafe_function(func):
+def threadsafe_wrapper(func):
     """Decorator making sure that the decorated function is thread safe"""
     lock = threading.Lock()
-
-    def new(*args, **kwargs):
+    def func_wrapper(*args, **kwargs):
         lock.acquire()
         try:
             func_wrapper = func(*args, **kwargs)
-        except Exception as error:
-            raise error
         finally:
             lock.release()
         return func_wrapper
 
-    return new
+    return func_wrapper
+
+def runtime_file_exceptions(func):
+    """Decorator to wrap and catch file related errors that can occur during runtime"""
+    def func_wrapper(*args, **kwargs):
+        try:
+            return func(*args,**kwargs)
+        except FileNotFoundError as exc:
+            raise FatalInputError("File that was used in config doesn't exist anymore.") from exc
+        except PermissionError as exc:
+            raise FatalInputError(
+                "The Permissions changed of the File that was used in config.") from exc
+    return func_wrapper
 
 
 class RepeatedTimerThread(threading.Thread):
@@ -101,50 +110,50 @@ class FileWatcherDict:
         if file_name:
             self.add_file(file_name)
 
-    def add_file(self, file_name):
+    def add_file(self, file_name: str):
         """adds initial structure for a new file"""
         self.dict[file_name] = {"offset": 0, "fingerprint": "", "fingerprint_size": ""}
 
-    def add_offset(self, file_name, offset):
+    def add_offset(self, file_name: str, offset: int):
         """add new offset for file_name, add file as well if didn't exist"""
         if not self.get_fileinfo(file_name):
             self.add_file(file_name)
         self.dict[file_name]["offset"] = offset
 
-    def add_fingerprint(self, file_name, fingerprint, fingerprint_size=256):
+    def add_fingerprint(self, file_name: str, fingerprint: int, fingerprint_size=256):
         """add new fingerprint for file_name, add file as well if didn't exist"""
         if not self.get_fileinfo(file_name):
             self.add_file(file_name)
         self.dict[file_name]["fingerprint"] = fingerprint
         self.dict[file_name]["fingerprint_size"] = fingerprint_size
 
-    def add_fingerprint_size(self, file_name, fingerprint_size):
+    def add_fingerprint_size(self, file_name: str, fingerprint_size: int):
         """add new fingerprint_size for file_name, add file as well if didn't exist"""
         if not self.get_fileinfo(file_name):
             self.add_file(file_name)
         self.dict[file_name]["fingerprint_size"] = fingerprint_size
 
-    def get_fileinfo(self, file_name):
+    def get_fileinfo(self, file_name: str):
         """get offset and fingerprint for given filename"""
         if self.dict.get(file_name):
             return self.dict[file_name]
         return ""
 
-    def get_offset(self, file_name):
+    def get_offset(self, file_name: str):
         """get offset for given filename"""
         if self.get_fileinfo(file_name):
             if self.dict[file_name].get("offset"):
                 return self.dict[file_name]["offset"]
         return ""
 
-    def get_fingerprint(self, file_name):
+    def get_fingerprint(self, file_name: str):
         """get fingerprint for given filename"""
         if self.get_fileinfo(file_name):
             if self.dict[file_name].get("fingerprint"):
                 return self.dict[file_name]["fingerprint"]
         return ""
 
-    def get_fingerprint_size(self, file_name):
+    def get_fingerprint_size(self, file_name: str):
         """get fingerprint size for given filename"""
         if self.get_fileinfo(file_name):
             if self.dict[file_name].get("fingerprint_size"):
@@ -197,6 +206,7 @@ class FileInput(Input):
     def __init__(self, name: str, configuration: "FileInput.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self.stop_flag = threading.Event()
+        self.pipeline_index = 0
 
     def _calc_file_fingerprint(self, file_pointer, fingerprint_length="") -> tuple:
         """This function creates a crc32 fingerprint of the first 256 bytes of a given file
@@ -213,6 +223,7 @@ class FileInput(Input):
         file_pointer.seek(0)
         return crc32, fingerprint_length
 
+    @runtime_file_exceptions
     def _get_file_size(self, file_name: str) -> int:
         """Get the full file size as byte based integer offset"""
         with open(file_name, encoding="utf-8") as file:
@@ -244,7 +255,15 @@ class FileInput(Input):
         crc32, fingerprint_size = self._calc_file_fingerprint(file)
         self._fileinfo_util.add_fingerprint(file_name, crc32, fingerprint_size)
 
-    @threadsafe_function
+    def _calc_and_check_fingerprint(self, file_name: str, file)  -> bool:
+        baseline_fingerprint_size = self._fileinfo_util.get_fingerprint_size(file_name)
+        crc32, _ = self._calc_file_fingerprint(file, baseline_fingerprint_size)
+        if self._fileinfo_util.has_fingerprint_changed(file_name, crc32):
+            return True
+        return False
+
+    @threadsafe_wrapper
+    @runtime_file_exceptions
     def _file_input_handler(self, file_name: str):
         """Put log_line as a dict to threadsafe message queue from given input file.
         Depending on configuration it will continuously monitor a given file for new
@@ -256,9 +275,7 @@ class FileInput(Input):
             if not self._fileinfo_util.get_fingerprint(file_name):
                 self._calc_and_update_fingerprint(file_name, file)
 
-            baseline_fingerprint_size = self._fileinfo_util.get_fingerprint_size(file_name)
-            check_crc32, _ = self._calc_file_fingerprint(file, baseline_fingerprint_size)
-            if self._fileinfo_util.has_fingerprint_changed(file_name, check_crc32):
+            if self._calc_and_check_fingerprint(file_name, file):
                 self._calc_and_update_fingerprint(file_name, file)
                 self._fileinfo_util.add_offset(file_name, 0)
 
@@ -289,10 +306,8 @@ class FileInput(Input):
 
         TODO (optional): when processing multiple files, map the threads
         equally-distributed to each process"""
-        # create the event that will allow to kill the thread
-        # self.stop_flag = threading.Event()
-        # we only start a thread in the first pipeline process
-        # when processing multiple files they could be mapped to different processes
+        if not hasattr(self, "pipeline_index"):
+            raise FatalInputError("Instance attribute `pipeline_index` could not be found.")
         if self.pipeline_index == 1:
             initial_pointer = self._get_initial_file_offset(self._config.logfile_path)
             self._fileinfo_util.add_offset(self._config.logfile_path, initial_pointer)
