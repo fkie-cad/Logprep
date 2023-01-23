@@ -40,6 +40,7 @@ def append_file(file_name: str, source_data: list):
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
 
+
 @pytest.fixture(name="config")
 def config_fixture():
     pipeline = [
@@ -58,41 +59,60 @@ def config_fixture():
                 "generic_rules": ["tests/testdata/acceptance/selective_extractor/rules/generic"],
             }
         },
+        {
+            "datetime_extractor": {
+                "type": "datetime_extractor",
+                "specific_rules": ["tests/testdata/rules/specific/"],
+                "generic_rules": ["tests/testdata/rules/specific/"],
+            }
+        },
     ]
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config["input"] = {
-        "testoutput": {
+        "testinput": {
             "type": "file_input",
             "logfile_path": "",
             "start": "begin",
-            "interval": 1,
-            "watch_file": True
+            "interval": CHECK_INTERVAL,
+            "watch_file": True,
         }
     }
-    
+
     return config
+
 
 def setup_function():
     stop_logprep()
 
+
 def teardown_function():
     stop_logprep()
 
+
 def test_file_input_accepts_message_for_single_pipeline(tmp_path, config):
-    #output_path = tmp_path / "output.jsonl"
-    output_path = "/tmp/output_file"
-    #input_path = tmp_path / "input.log"
-    input_path = "/tmp/input_file"
-    config["input"]["testoutput"]["logfile_path"] = input_path
+    output_path = tmp_path / "output.jsonl"
+    input_path = tmp_path / "input.log"
+    config["input"]["testinput"]["logfile_path"] = str(input_path)
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
-    write_file(input_path, test_initial_log_data)
+    write_file(str(input_path), test_initial_log_data)
     proc = start_logprep(config_path)
     wait_for_output(proc, "Logprep INFO    : Log level set to 'INFO'")
-    wait_for_interval(CHECK_INTERVAL)
-    time.sleep(0.5)
-    with open(output_path) as file:
-        logline = file.readline()
-    print(logline)
-    assert test_initial_log_data[0] in logline
+    wait_for_interval(4 * CHECK_INTERVAL)
+    assert test_initial_log_data[0] in output_path.read_text()
+
+
+def test_file_input_accepts_message_for_two_pipelines(tmp_path, config):
+    config["process_count"] = 2
+    output_path = tmp_path / "output.jsonl"
+    input_path = tmp_path / "input.log"
+    config["input"]["testinput"]["logfile_path"] = str(input_path)
+    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
+    config_path = str(tmp_path / "generated_config.yml")
+    dump_config_as_file(config_path, config)
+    write_file(str(input_path), test_initial_log_data)
+    proc = start_logprep(config_path)
+    wait_for_output(proc, "Logprep INFO    : Log level set to 'INFO'")
+    wait_for_interval(4 * CHECK_INTERVAL)
+    assert test_initial_log_data[0] in output_path.read_text()
