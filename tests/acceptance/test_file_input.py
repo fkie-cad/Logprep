@@ -2,10 +2,7 @@
 # pylint: disable=line-too-long
 import time
 from logging import DEBUG, basicConfig, getLogger
-
 import pytest
-import requests
-
 from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import (
     get_default_logprep_config,
@@ -13,10 +10,35 @@ from tests.acceptance.util import (
     wait_for_output,
     stop_logprep,
 )
+from tests.testdata.input_logdata.file_input_logs import (
+    test_initial_log_data,
+)
+
+CHECK_INTERVAL = 0.1
+
+
+def wait_for_interval(interval):
+    time.sleep(2 * interval)
+
+
+def write_file(file_name: str, source_data: list):
+    with open(file_name, "w", encoding="utf-8") as file:
+        for line in source_data:
+            file.write(line + "\n")
+
+
+def write_empty_file(file_name: str):
+    open(file_name, "w", encoding="utf-8").close()
+
+
+def append_file(file_name: str, source_data: list):
+    with open(file_name, "a", encoding="utf-8") as file:
+        for line in source_data:
+            file.write(line + "\n")
+
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
-
 
 @pytest.fixture(name="config")
 def config_fixture():
@@ -39,100 +61,38 @@ def config_fixture():
     ]
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config["input"] = {
-        "testinput": {
-            "type": "http_input",
-            "uvicorn_config": {
-                "host": "127.0.0.1",
-                "port": 9000,
-                "ssl_certfile": "tests/testdata/acceptance/http_input/cert.crt",
-                "ssl_keyfile": "tests/testdata/acceptance/http_input/cert.key",
-            },
-            "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
+        "testoutput": {
+            "type": "file_input",
+            "logfile_path": "",
+            "start": "begin",
+            "interval": 1,
+            "watch_file": True
         }
     }
+    
     return config
-
 
 def setup_function():
     stop_logprep()
 
-
 def teardown_function():
     stop_logprep()
 
-
-def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
-    output_path = tmp_path / "output.jsonl"
+def test_file_input_accepts_message_for_single_pipeline(tmp_path, config):
+    #output_path = tmp_path / "output.jsonl"
+    output_path = "/tmp/output_file"
+    #input_path = tmp_path / "input.log"
+    input_path = "/tmp/input_file"
+    config["input"]["testoutput"]["logfile_path"] = input_path
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
+    write_file(input_path, test_initial_log_data)
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000")
-    # nosemgrep
-    requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
-    time.sleep(0.5)  # nosemgrep
-    assert "my message" in output_path.read_text()
-
-
-def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
-    config["process_count"] = 2
-    output_path = tmp_path / "output.jsonl"
-    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9001")
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9000/plaintext",
-        data="my first message",
-        verify=False,
-        timeout=5,
-    )
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9001/plaintext",
-        data="my second message",
-        verify=False,
-        timeout=5,
-    )
-    time.sleep(0.5)  # nosemgrep
-    output_content = output_path.read_text()
-    assert "my first message" in output_content
-    assert "my second message" in output_content
-
-
-def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
-    config["process_count"] = 3
-    output_path = tmp_path / "output.jsonl"
-    config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
-    proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9002", test_timeout=10)
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9000/plaintext",
-        data="my first message",
-        verify=False,
-        timeout=5,
-    )
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9001/plaintext",
-        data="my second message",
-        verify=False,
-        timeout=5,
-    )
-    # nosemgrep
-    requests.post(
-        "https://127.0.0.1:9002/plaintext",
-        data="my third message",
-        verify=False,
-        timeout=5,
-    )
-    time.sleep(0.5)  # nosemgrep
-    output_content = output_path.read_text()
-    assert "my first message" in output_content
-    assert "my second message" in output_content
-    assert "my third message" in output_content
+    wait_for_output(proc, "Logprep INFO    : Log level set to 'INFO'")
+    wait_for_interval(CHECK_INTERVAL)
+    time.sleep(0.5)
+    with open(output_path) as file:
+        logline = file.readline()
+    print(logline)
+    assert test_initial_log_data[0] in logline
