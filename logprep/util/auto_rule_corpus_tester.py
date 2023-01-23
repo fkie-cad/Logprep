@@ -73,13 +73,18 @@ class RuleCorpusTester:
     def _read_files(self):
         """Traverse the given input directory and find all test cases."""
         data_directory = self.input_test_data_path
-        file_paths = self.collect_test_case_file_paths(data_directory)
+        file_paths = self._collect_test_case_file_paths(data_directory)
+        test_cases = self._group_path_by_test_case(data_directory, file_paths)
+        self.test_cases = dict(sorted(test_cases.items()))
+
+    def _group_path_by_test_case(self, data_directory, file_paths):
         test_cases = {}
         for filename in file_paths:
             test_case_name = self._strip_input_file_type(filename)
             if test_case_name not in test_cases:
                 test_cases[test_case_name] = {
-                    "test_data_path": {"in": "", "out": "", "out_extra": ""}
+                    "test_data_path": {"in": "", "out": "", "out_extra": ""},
+                    "report_print_statements": []
                 }
             data_path = test_cases.get(test_case_name, {}).get("test_data_path", {})
             if "_in.json" in filename:
@@ -89,9 +94,9 @@ class RuleCorpusTester:
             if "_out_extra.json" in filename:
                 data_path.update({"out_extra": os.path.join(data_directory, filename)})
             test_cases.update({test_case_name: {"test_data_path": data_path}})
-        self.test_cases = dict(sorted(test_cases.items()))
+        return test_cases
 
-    def collect_test_case_file_paths(self, data_directory):
+    def _collect_test_case_file_paths(self, data_directory):
         file_paths = []
         for root, _, files in os.walk(data_directory):
             for filename in files:
@@ -117,27 +122,24 @@ class RuleCorpusTester:
         """Compare the generated logprep output with the current test case"""
         self.console.print("[b]# Test Cases Summary:")
         for test_case_id, test_case_data in self.test_cases.items():
-            prints = self.compare_and_collect_report_print_statements(test_case_data)
-            self._print_short_test_result(test_case_id, test_case_data, prints)
-            if prints:
+            self._compare_and_collect_report_print_statements(test_case_data)
+            self._print_short_test_result(test_case_id, test_case_data)
+            if len(test_case_data.get("report_print_statements", [])) > 0:
                 self.at_least_one_failed = True
-                test_case_data["report_print_statements"] = prints
 
-    def compare_and_collect_report_print_statements(self, test_case_data):
+    def _compare_and_collect_report_print_statements(self, test_case_data):
         event_output, extra_output, logprep_errors = test_case_data.get("logprep_output")
         expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
         expected_extra_data_path = test_case_data.get("test_data_path", {}).get("out_extra")
-        prints = []
+        print_statements = test_case_data.get("report_print_statements", [])
         if logprep_errors:
-            prints.append(("console", "[red]Following errors happened:"))
-            prints.append(("pprint", logprep_errors))
+            print_statements.append(("console", "[red]Following errors happened:"))
+            print_statements.append(("pprint", logprep_errors))
         if expected_parsed_event_path:
-            prints = self._parse_and_compare(expected_parsed_event_path, event_output, prints)
+            print_statements += self._parse_and_compare(expected_parsed_event_path, event_output)
         if expected_extra_data_path:
-            prints = self._parse_and_compare_extras(
-                expected_extra_data_path, extra_output, prints
-            )
-        return prints
+            print_statements += self._parse_and_compare_extras(expected_extra_data_path, extra_output)
+        test_case_data["report_print_statements"] = print_statements
 
     def _print_detailed_reports(self):
         """If test case reports exist print out each report"""
@@ -205,8 +207,9 @@ class RuleCorpusTester:
         self.pipeline = Pipeline(0, config, SharedCounter(), log_handler, None, {}, {})
         self.pipeline._setup()
 
-    def _parse_and_compare(self, expected_parsed_event_path, logprep_event_output, prints):
+    def _parse_and_compare(self, expected_parsed_event_path, logprep_event_output):
         """Parses the expected logprep output and starts the comparison"""
+        prints = []
         try:
             logprep_expected_output = parse_json(expected_parsed_event_path)
             prints += self._compare_outputs(logprep_event_output[0], logprep_expected_output[0])
@@ -215,8 +218,9 @@ class RuleCorpusTester:
             prints.append(("console", f"[red]Json-Error decoding file {filename}:[/red]\n{error}"))
         return prints
 
-    def _parse_and_compare_extras(self, expected_extra_data_path, logprep_extra_output, prints):
+    def _parse_and_compare_extras(self, expected_extra_data_path, logprep_extra_output):
         """Parses the expected extra data and starts the comparison"""
+        prints = []
         try:
             expected_extra_output = parse_json(expected_extra_data_path)
             prints += self._compare_extra_data_output(logprep_extra_output, expected_extra_output)
@@ -273,11 +277,11 @@ class RuleCorpusTester:
                     has_matching_output = True
         return has_matching_output
 
-    def _print_short_test_result(self, test_case_id, test_case_data, print_statements):
+    def _print_short_test_result(self, test_case_id, test_case_data):
         status = "[b green] PASSED"
         if not test_case_data.get("test_data_path", {}).get("out"):
             status = "[b grey53] SKIPPED[/b grey53] [grey53](no expected output given)[grey53]"
-        if print_statements:
+        if len(test_case_data.get("report_print_statements", [])) > 0:
             status = "[b red] FAILED"
         self.console.print(
             f"[b blue]Test Case: [not bold slate_blue1]{test_case_id} {status}",
