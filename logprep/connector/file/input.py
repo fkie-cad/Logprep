@@ -21,18 +21,19 @@ Example
 """
 
 import queue
-import os
 import zlib
 import threading
 from logging import Logger
 from attrs import define, field, validators
 from logprep.util.validators import file_validator
 from logprep.abc.input import Input
-from logprep.abc.input import FatalInputError, CriticalInputError
+from logprep.abc.input import FatalInputError
+
 
 def threadsafe_wrapper(func):
     """Decorator making sure that the decorated function is thread safe"""
     lock = threading.Lock()
+
     def func_wrapper(*args, **kwargs):
         lock.acquire()
         try:
@@ -43,16 +44,23 @@ def threadsafe_wrapper(func):
 
     return func_wrapper
 
+
 def runtime_file_exceptions(func):
-    """Decorator to wrap and catch file related errors that can occur during runtime"""
+    """Decorator to wrap and catch file related errors that can occur during runtime
+
+    TODO: Errors are isolated in Thread Context and wouldn't be raised in desired location
+    in Pipeline, needs bigger restructuring to fit this needs (for example queue for errors)
+    """
+
     def func_wrapper(*args, **kwargs):
         try:
-            return func(*args,**kwargs)
-        except FileNotFoundError as exc:
-            raise FatalInputError("File that was used in config doesn't exist anymore.") from exc
-        except PermissionError as exc:
-            raise FatalInputError(
-                "The Permissions changed of the File that was used in config.") from exc
+            func_wrapper = func(*args, **kwargs)
+        except FileNotFoundError:
+            return FatalInputError("File that was used in config doesn't exist anymore.")
+        except PermissionError:
+            return FatalInputError("The Permissions changed of the File that was used in config.")
+        return func_wrapper
+
     return func_wrapper
 
 
@@ -73,9 +81,11 @@ class RepeatedTimerThread(threading.Thread):
     :param args and kwargs: function specific arguments
     """
 
-    def __init__(self, interval, function, stop_flag, watch_file, *args, **kwargs):
+    def __init__(
+        self, interval: int, function, stop_flag: threading.Event, watch_file: bool, *args, **kwargs
+    ):
         super().__init__()
-        self._timer = None
+        self.exception = None
         self.interval = interval
         self.function = function
         self.args = args
@@ -86,9 +96,15 @@ class RepeatedTimerThread(threading.Thread):
 
     def run(self):
         while not self.stopped.wait(self.interval):
-            self.function(*self.args, **self.kwargs)
+            self.exception = self.function(*self.args, **self.kwargs)
             if not self.watch_file:
                 self.stopped.set()
+                break
+            if self.exception:
+                self.stopped.set()
+                # TODO: exception should be inserted into error queue
+                # raise self.exception
+        raise self.exception
 
 
 class FileWatcherDict:
@@ -174,8 +190,6 @@ class FileInput(Input):
     """FileInput Connector"""
 
     _messages: queue.Queue = queue.Queue()
-    # this object is an nested dict with additional functions that helps to
-    # keep track of file changes and current file offsets
     _fileinfo_util: object = FileWatcherDict()
 
     @define(kw_only=True)
@@ -206,7 +220,6 @@ class FileInput(Input):
     def __init__(self, name: str, configuration: "FileInput.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self.stop_flag = threading.Event()
-        self.pipeline_index = 0
 
     def _calc_file_fingerprint(self, file_pointer, fingerprint_length="") -> tuple:
         """This function creates a crc32 fingerprint of the first 256 bytes of a given file
@@ -237,7 +250,8 @@ class FileInput(Input):
         return self._get_file_size(file_name) if self._config.start == "end" else 0
 
     def _follow_file(self, file_name: str, file):
-        while True:
+        file_not_ended = False
+        while not file_not_ended:
             if self._fileinfo_util.get_offset(file_name):
                 file.seek(self._fileinfo_util.get_offset(file_name))
 
@@ -249,13 +263,13 @@ class FileInput(Input):
                     if message:
                         self._messages.put(message)
             else:
-                break
+                file_not_ended = True
 
     def _calc_and_update_fingerprint(self, file_name: str, file):
         crc32, fingerprint_size = self._calc_file_fingerprint(file)
         self._fileinfo_util.add_fingerprint(file_name, crc32, fingerprint_size)
 
-    def _calc_and_check_fingerprint(self, file_name: str, file)  -> bool:
+    def _calc_and_check_fingerprint(self, file_name: str, file) -> bool:
         baseline_fingerprint_size = self._fileinfo_util.get_fingerprint_size(file_name)
         crc32, _ = self._calc_file_fingerprint(file, baseline_fingerprint_size)
         if self._fileinfo_util.has_fingerprint_changed(file_name, crc32):
@@ -307,7 +321,9 @@ class FileInput(Input):
         TODO (optional): when processing multiple files, map the threads
         equally-distributed to each process"""
         if not hasattr(self, "pipeline_index"):
-            raise FatalInputError("Instance attribute `pipeline_index` could not be found.")
+            raise FatalInputError(
+                "Necessary instance attribute `pipeline_index` could not be found."
+            )
         if self.pipeline_index == 1:
             initial_pointer = self._get_initial_file_offset(self._config.logfile_path)
             self._fileinfo_util.add_offset(self._config.logfile_path, initial_pointer)

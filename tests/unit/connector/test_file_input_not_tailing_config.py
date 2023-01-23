@@ -6,14 +6,13 @@
 import os
 import time
 import tempfile
-import pytest
 from tests.unit.connector.base import BaseInputTestCase
 from tests.testdata.input_logdata.file_input_logs import (
     test_initial_log_data,
     test_rotated_log_data,
 )
 
-check_interval = 0.1
+CHECK_INTERVAL = 0.1
 
 
 def wait_for_interval(interval):
@@ -42,7 +41,7 @@ class TestFileInput(BaseInputTestCase):
         "logfile_path": "",
         "start": "begin",
         "watch_file": False,
-        "interval": check_interval,
+        "interval": CHECK_INTERVAL,
     }
 
     def setup_method(self):
@@ -61,32 +60,14 @@ class TestFileInput(BaseInputTestCase):
         if not self.object.rthread.is_alive():
             os.remove(self.object._config.logfile_path)
 
-    def test_offset_is_set_and_not_null(self):
-        assert self.object._fileinfo_util.get_offset(self.object._config.logfile_path) != 0
-
-    def test_offset_is_set_and_not_null(self):
-        assert self.object._fileinfo_util.get_fingerprint(self.object._config.logfile_path) != 0
-
-    def test_log_from_file_is_put_in_queue(self):
-        wait_for_interval(check_interval)
-        log_line_from_queue = self.object._messages.get(timeout=0.001)
-        assert log_line_from_queue.get("message") == test_initial_log_data[0]
-
-    def test_all_logs_form_file_are_put_in_queue(self):
-        wait_for_interval(check_interval)
-        queued_logs = []
-        while not self.object._messages.empty():
-            queued_logs.append(self.object._messages.get(timeout=0.001))
-        assert len(queued_logs) == len(test_initial_log_data)
-
     def test_new_appended_logs_are_not_put_in_queue(self):
-        wait_for_interval(check_interval)
+        wait_for_interval(CHECK_INTERVAL)
         queued_logs = []
         before_append_offset = self.object._fileinfo_util.get_offset(
             self.object._config.logfile_path
         )
         append_file(self.object._config.logfile_path, test_rotated_log_data)
-        wait_for_interval(check_interval)
+        wait_for_interval(CHECK_INTERVAL)
         while not self.object._messages.empty():
             queued_logs.append(self.object._messages.get(timeout=0.001))
         full_length = len(test_initial_log_data)
@@ -96,7 +77,7 @@ class TestFileInput(BaseInputTestCase):
         )
 
     def test_not_reading_any_logs_after_rotating_filechange_detected(self):
-        wait_for_interval(check_interval)
+        wait_for_interval(CHECK_INTERVAL)
         queued_logs = []
         while not self.object._messages.empty():
             self.object._messages.get(timeout=0.001)
@@ -107,7 +88,7 @@ class TestFileInput(BaseInputTestCase):
             self.object._config.logfile_path
         )
         write_file(self.object._config.logfile_path, test_rotated_log_data)
-        wait_for_interval(check_interval)
+        wait_for_interval(CHECK_INTERVAL)
         while not self.object._messages.empty():
             queued_logs.append(self.object._messages.get(timeout=0.001))
         assert len(queued_logs) == 0

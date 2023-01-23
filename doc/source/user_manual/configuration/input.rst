@@ -38,3 +38,10 @@ Input
    :undoc-members:
    :inherited-members:
    :noindex:
+
+.. automodule:: logprep.connector.file.input
+.. autoclass:: logprep.connector.file.input.FileInput.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
