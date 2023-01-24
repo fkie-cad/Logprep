@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
 from pathlib import Path
+import time
+import requests
 import re
 from tests.acceptance.util import (
     get_full_pipeline,
@@ -54,3 +56,40 @@ def test_start_of_logprep_with_full_configuration_http():
             if re.search("Startup complete", output):
                 break
             output = proc.stdout.readline().decode("utf8")
+
+
+def test_logprep_collects_metrics(tmp_path):
+    pipeline = get_full_pipeline(exclude=("requester"))
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+    config |= {
+        "metrics": {
+            "enabled": True,
+            "period": 10,
+            "cumulative": False,
+            "aggregate_processes": False,
+            "measure_time": {"enabled": True, "append_to_event": False},
+            "targets": [{"prometheus": {"port": 8000}}],
+        },
+        "input": {
+            "testinput": {
+                "type": "http_input",
+                "uvicorn_config": {
+                    "host": "127.0.0.1",
+                    "port": 9000,
+                },
+                "endpoints": {"/json": "json", "/jsonl": "jsonl", "/plaintext": "plaintext"},
+            }
+        },
+    }
+    config_path = str(tmp_path / "generated_config.yml")
+    dump_config_as_file(config_path, config)
+    proc = start_logprep(config_path, env={"PROMETHEUS_MULTIPROC_DIR": tmp_path})
+    output = proc.stdout.readline().decode("utf8")
+    while True:
+        if re.search("Prometheus Exporter started on port 8000", output):
+            break
+        output = proc.stdout.readline().decode("utf8")
+    requests.post("http://127.0.0.1:9000/plaintext", data="my message", timeout=5)
+    time.sleep(1)
+    metrics = requests.get("http://127.0.0.1:8000").text
+    assert metrics

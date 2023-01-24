@@ -176,8 +176,10 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
     return config_yml
 
 
-def start_logprep(config_path: str) -> subprocess.Popen:
+def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
     environment = {"PYTHONPATH": "."}
+    if isinstance(env, dict):
+        environment |= env
     return subprocess.Popen(  # nosemgrep
         f"{sys.executable} logprep/run_logprep.py {config_path}",
         shell=True,
@@ -219,12 +221,13 @@ def stop_logprep(proc=None):
             pass
 
 
-def get_full_pipeline():
-    processors = [
+def get_full_pipeline(exclude=None):
+    processors = (
         processor_name
         for processor_name, value in Registry.mapping.items()
         if issubclass(value, Processor)
-    ]
+    )
+    processors = filter(lambda x: x not in exclude, processors)
     processor_test_modules = []
     for processor in processors:
         processor_test_modules.append(

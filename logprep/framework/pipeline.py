@@ -323,6 +323,7 @@ class Pipeline:
     def _enable_iteration(self) -> None:
         self._continue_iterating = True
 
+    @TimeMeasurement.measure_time("pipeline")
     def _process_pipeline(self) -> None:
         self._metrics_exposer.expose(self.metrics)
         event = self._get_event()
@@ -331,6 +332,7 @@ class Pipeline:
         if event:
             self._store_event(event)
 
+    @TimeMeasurement.measure_time("output")
     def _store_event(self, event: dict) -> None:
         try:
             self._output.store(event)
@@ -349,6 +351,7 @@ class Pipeline:
             self._output.metrics.number_of_errors += 1
             self._continue_iterating = False
 
+    @TimeMeasurement.measure_time("input")
     def _get_event(self) -> dict:
         try:
             event, non_critical_error_msg = self._input.get_next(
@@ -382,7 +385,7 @@ class Pipeline:
             self._input.metrics.number_of_errors += 1
         return {}
 
-    @TimeMeasurement.measure_time("pipeline")
+    @TimeMeasurement.measure_time("processors")
     def _process_event(self, event: dict) -> None:
         event_received = json.dumps(event, separators=(",", ":"))
         for processor in self._pipeline:
