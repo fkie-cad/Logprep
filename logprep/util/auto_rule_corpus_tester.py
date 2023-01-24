@@ -80,20 +80,20 @@ class RuleCorpusTester:
     def _group_path_by_test_case(self, data_directory, file_paths):
         test_cases = {}
         for filename in file_paths:
-            test_case_name = self._strip_input_file_type(filename)
-            if test_case_name not in test_cases:
-                test_cases[test_case_name] = {
+            test_case_id = self._strip_input_file_type(filename)
+            if test_case_id not in test_cases:
+                test_cases[test_case_id] = {
                     "test_data_path": {"in": "", "out": "", "out_extra": ""},
                     "report_print_statements": [],
                 }
-            data_path = test_cases.get(test_case_name, {}).get("test_data_path", {})
+            data_path = test_cases.get(test_case_id, {}).get("test_data_path", {})
             if "_in.json" in filename:
                 data_path.update({"in": os.path.join(data_directory, filename)})
             if "_out.json" in filename:
                 data_path.update({"out": os.path.join(data_directory, filename)})
             if "_out_extra.json" in filename:
                 data_path.update({"out_extra": os.path.join(data_directory, filename)})
-            test_cases.update({test_case_name: {"test_data_path": data_path}})
+            test_cases[test_case_id]["test_data_path"].update(data_path)
         return test_cases
 
     def _collect_test_case_file_paths(self, data_directory):
@@ -121,26 +121,23 @@ class RuleCorpusTester:
     def _compare_with_expected_outputs(self):
         """Compare the generated logprep output with the current test case"""
         self.console.print("[b]# Test Cases Summary:")
-        for test_case_id, test_case_data in self.test_cases.items():
-            self._compare_and_collect_report_print_statements(test_case_data)
-            self._print_short_test_result(test_case_id, test_case_data)
-            if len(test_case_data.get("report_print_statements", [])) > 0:
+        for test_case_id in self.test_cases:
+            self._compare_and_collect_report_print_statements(test_case_id)
+            self._print_short_test_result(test_case_id)
+            if len(self.test_cases.get(test_case_id, {}).get("report_print_statements", [])) > 0:
                 self.at_least_one_failed = True
 
-    def _compare_and_collect_report_print_statements(self, test_case_data):
-        event_output, extra_output, logprep_errors = test_case_data.get("logprep_output")
-        expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
-        expected_extra_data_path = test_case_data.get("test_data_path", {}).get("out_extra")
-        print_statements = test_case_data.get("report_print_statements", [])
+    def _compare_and_collect_report_print_statements(self, test_case_id):
+        test_case_data = self.test_cases.get(test_case_id, {})
+        _, _, logprep_errors = test_case_data.get("logprep_output")
         if logprep_errors:
-            print_statements.extend(["[red]Following errors happened:", logprep_errors])
-        if expected_parsed_event_path:
-            print_statements += self._parse_and_compare(expected_parsed_event_path, event_output)
-        if expected_extra_data_path:
-            print_statements += self._parse_and_compare_extras(
-                expected_extra_data_path, extra_output
+            self.test_cases[test_case_id]["report_print_statements"].extend(
+                ["[red]Following errors happened:", logprep_errors]
             )
-        test_case_data["report_print_statements"] = print_statements
+        if test_case_data.get("test_data_path", {}).get("out"):
+            self._compare_logprep_outputs(test_case_id)
+        if test_case_data.get("test_data_path", {}).get("out_extra"):
+            self._compare_extra_data_output(test_case_id)
 
     def _print_detailed_reports(self):
         """If test case reports exist print out each report"""
@@ -208,54 +205,47 @@ class RuleCorpusTester:
         self.pipeline = Pipeline(0, config, SharedCounter(), log_handler, None, {}, {})
         self.pipeline._setup()
 
-    def _parse_and_compare(self, expected_parsed_event_path, logprep_event_output):
-        """Parses the expected logprep output and starts the comparison"""
-        prints = []
+    def _parse_json_with_error_handling(self, test_case_id, path):
         try:
-            logprep_expected_output = parse_json(expected_parsed_event_path)
-            prints += self._compare_outputs(logprep_event_output[0], logprep_expected_output[0])
+            parsed_json = parse_json(path)
+            return parsed_json
         except JSONDecodeError as error:
-            filename = os.path.basename(expected_parsed_event_path)
-            prints.append(f"[red]Json-Error decoding file {filename}:[/red]\n{error}")
-        return prints
+            filename = os.path.basename(path)
+            self.test_cases[test_case_id]["report_print_statements"].append(
+                f"[red]Json-Error decoding file {filename}:[/red]\n{error}"
+            )
 
-    def _parse_and_compare_extras(self, expected_extra_data_path, logprep_extra_output):
-        """Parses the expected extra data and starts the comparison"""
-        prints = []
-        try:
-            expected_extra_output = parse_json(expected_extra_data_path)
-            prints += self._compare_extra_data_output(logprep_extra_output, expected_extra_output)
-        except JSONDecodeError as error:
-            filename = os.path.basename(expected_extra_data_path)
-            prints.append(f"[red]Json-Error decoding file {filename}:[/red]\n{error}")
-        return prints
-
-    def _compare_extra_data_output(self, logprep_extra_outputs, expected_extra_outputs):
+    def _compare_extra_data_output(self, test_case_id):
         """
         Check if a generated extra output matches an expected extra output. If no match is found
         then the expected output is reported.
         """
-        print_statements = []
+        test_case_data = self.test_cases.get(test_case_id, {})
+        _, logprep_extra_outputs, _ = test_case_data.get("logprep_output")
+        expected_extra_outputs_path = test_case_data.get("test_data_path", {}).get("out_extra")
+        expected_extra_outputs = self._parse_json_with_error_handling(test_case_id, expected_extra_outputs_path)
+        if expected_extra_outputs is None:
+            return
+        prints = []
         if len(logprep_extra_outputs) > len(expected_extra_outputs):
-            print_statements.append(
-                "[red]There is at least one generated extra output that is unexpected"
-            )
+            prints.append("[red]There is at least one generated extra output that is unexpected")
         if len(logprep_extra_outputs) < len(expected_extra_outputs):
-            print_statements.append("[red]There is at least one expected extra output missing")
+            prints.append("[red]There is at least one expected extra output missing")
         for expected_extra_output in expected_extra_outputs:
             expected_extra_output_key = list(expected_extra_output.keys())[0]
             has_matching_output = self._has_matching_logprep_output(
+                test_case_id,
                 expected_extra_output, expected_extra_output_key, logprep_extra_outputs
             )
             if not has_matching_output:
-                print_statements.append(
+                prints.append(
                     "[red]For the following extra output, no matching extra output was generated by logprep",
                 )
-                print_statements.append(expected_extra_output)
-        return print_statements
+                prints.append(expected_extra_output)
+        self.test_cases[test_case_id]["report_print_statements"].extend(prints)
 
     def _has_matching_logprep_output(
-        self, expected_extra_output, expected_extra_output_key, logprep_extra_outputs
+        self, test_case_id, expected_extra_output, expected_extra_output_key, logprep_extra_outputs
     ):
         """
         Iterate over all logprep extra outputs and search for an output that matches the
@@ -265,15 +255,17 @@ class RuleCorpusTester:
         for logprep_extra_output in logprep_extra_outputs:
             logprep_extra_output_key = list(logprep_extra_output.keys())[0]
             if expected_extra_output_key == logprep_extra_output_key:
-                diff_print_statements = self._compare_outputs(
+                diff = self._compare_events(
+                    test_case_id,
                     logprep_extra_output[logprep_extra_output_key],
                     expected_extra_output[expected_extra_output_key],
                 )
-                if not diff_print_statements:
+                if diff is not None:
                     has_matching_output = True
         return has_matching_output
 
-    def _print_short_test_result(self, test_case_id, test_case_data):
+    def _print_short_test_result(self, test_case_id):
+        test_case_data = self.test_cases.get(test_case_id, {})
         status = "[b green] PASSED"
         if not test_case_data.get("test_data_path", {}).get("out"):
             status = "[b grey53] SKIPPED[/b grey53] [grey53](no expected output given)[grey53]"
@@ -317,52 +309,61 @@ class RuleCorpusTester:
             crop=False,
         )
 
-    def _compare_outputs(self, logprep_output, expected_output):
+    def _compare_logprep_outputs(self, test_case_id):
         """
         Compares a generated output with an expected output, by also ignoring keys that are marked
         as <IGNORE_VALUE>. For each difference a corresponding print statement is collected.
         """
-        search_results = expected_output | grep("<IGNORE_VALUE>")
+        test_case_data = self.test_cases.get(test_case_id, {})
+        logprep_output, _, _ = test_case_data.get("logprep_output")
+        expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
+        expected_output = self._parse_json_with_error_handling(test_case_id, expected_parsed_event_path)
+        if expected_output is None:
+            return
+        self._compare_events(test_case_id, logprep_output[0], expected_output[0])
+
+    def _compare_events(self, test_case_id, generated, expected):
+        search_results = expected | grep("<IGNORE_VALUE>")
         missing_keys = self._check_keys_of_ignored_values(
-            logprep_output, search_results.get("matched_values")
+            generated, search_results.get("matched_values")
         )
         ignore_paths = []
         if "matched_values" in search_results:
             ignore_paths = list(search_results["matched_values"])
             ignore_paths = [re.escape(path) for path in ignore_paths]
         diff = DeepDiff(
-            expected_output,
-            logprep_output,
+            expected,
+            generated,
             ignore_order=True,
             report_repetition=True,
             exclude_regex_paths=ignore_paths,
         )
-        print_statements = self._create_print_statements(diff, missing_keys)
-        return print_statements
-
-    def _create_print_statements(self, diff, missing_keys):
-        print_statements = []
         if missing_keys:
             diff.update({"dictionary_item_removed": missing_keys})
+        self._create_and_append_print_statements(test_case_id, diff)
+        return diff
+
+    def _create_and_append_print_statements(self, test_case_id, diff):
         if not diff:
-            return print_statements
+            return
+        prints = []
         if "dictionary_item_removed" in diff:
-            print_statements.append(
+            prints.append(
                 "[red]Following expected items are missing in the generated logprep output:",
             )
             for item in diff["dictionary_item_removed"]:
-                print_statements.append(f" - {item}")
+                prints.append(f" - {item}")
         if "dictionary_item_added" in diff:
-            print_statements.append("[red]Following unexpected values were generated by logprep")
+            prints.append("[red]Following unexpected values were generated by logprep")
             for item in diff["dictionary_item_added"]:
-                print_statements.append(f" - {item}")
+                prints.append(f" - {item}")
         if "values_changed" in diff:
-            print_statements.append(
+            prints.append(
                 "[red]Following values differ between generated and expected output",
             )
             for key, value in diff["values_changed"].items():
-                print_statements.append(f" - {key}: {self._rewrite_output(str(value))}")
-        return print_statements
+                prints.append(f" - {key}: {self._rewrite_output(str(value))}")
+        self.test_cases[test_case_id]["report_print_statements"].extend(prints)
 
     def _check_keys_of_ignored_values(self, logprep_output, field_paths) -> list:
         if not field_paths:
