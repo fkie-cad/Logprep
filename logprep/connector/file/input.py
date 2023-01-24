@@ -34,20 +34,14 @@ def threadsafe_wrapper(func: Callable):
     """Decorator making sure that the decorated function is thread safe"""
     lock = threading.Lock()
     def func_wrapper(*args, **kwargs):
-        lock.acquire()
-        try:
+        with lock:
             func_wrapper = func(*args, **kwargs)
-        finally:
-            lock.release()
         return func_wrapper
     return func_wrapper
 
 
 def runtime_file_exceptions(func: Callable):
     """Decorator to wrap and catch file related errors that can occur during runtime
-
-    TODO: Errors are isolated in Thread Context and wouldn't be raised in desired location
-    in Pipeline, needs bigger restructuring to fit this needs (for example queue for errors)
     """
     def func_wrapper(*args, **kwargs):
         try:
@@ -103,13 +97,12 @@ class RepeatedTimerThread(threading.Thread):
             if not self.watch_file:
                 self.stopped.set()
                 break
-            if self.exception:
+            if isinstance(self.exception,FatalInputError):
                 self.stopped.set()
-                # TODO: exception should be inserted into error queue
-        raise self.exception
+                raise self.exception
 
 
-class FileWatcherDict:
+class FileWatcherUtil:
     """This class provides a helper utility which creates a nested dict
     which holds information for every file that is watched in this instance.
     After a file is initiated the dict would look like:
@@ -136,7 +129,7 @@ class FileWatcherDict:
 
     def add_file(self, file_name: str):
         """adds initial structure for a new file"""
-        self.dict[file_name] = {"offset": 0, "fingerprint": "", "fingerprint_size": ""}
+        self.dict |= {file_name:{"offset": 0, "fingerprint": "", "fingerprint_size": ""}}
 
     def add_offset(self, file_name: str, offset: int):
         """add new offset for file_name, add file as well if didn't exist"""
@@ -198,7 +191,7 @@ class FileInput(Input):
     """FileInput Connector"""
 
     _messages: queue.Queue = queue.Queue()
-    _fileinfo_util: object = FileWatcherDict()
+    _fileinfo_util: object = FileWatcherUtil()
 
     @define(kw_only=True)
     class Config(Input.Config):
@@ -304,7 +297,7 @@ class FileInput(Input):
         """Takes an input string and turns it into a dict without any parsing or formatting.
         Only thing it does additionally is stripping the new lines away."""
         input_line: str = input_line.rstrip("\n")
-        if (isinstance(input_line, str)) and (len(input_line) > 0):
+        if (len(input_line) > 0):
             return {"message": input_line}
         return ""
 
@@ -321,17 +314,14 @@ class FileInput(Input):
         """Creates and starts the Thread that continously monitors the given logfile.
         Right now this input connector is only started in the first process.
         It needs the class attribute pipeline_index before running setup in Pipeline
-        Initiation
-
-        TODO (optional): when processing multiple files, map the threads
-        equally-distributed to each process"""
+        Initiation"""
         if not hasattr(self, "pipeline_index"):
             raise FatalInputError(
                 "Necessary instance attribute `pipeline_index` could not be found."
             )
         if self.pipeline_index == 1:
-            initial_pointer: int = self._get_initial_file_offset(self._config.logfile_path)
-            self._fileinfo_util.add_offset(self._config.logfile_path, initial_pointer)
+            initial_file_pointer: int = self._get_initial_file_offset(self._config.logfile_path)
+            self._fileinfo_util.add_offset(self._config.logfile_path, initial_file_pointer)
             self.rthread = RepeatedTimerThread(
                 self._config.interval,
                 self._file_input_handler,
@@ -341,8 +331,5 @@ class FileInput(Input):
             )
 
     def shut_down(self):
-        """Raises the Stop Event Flag that will stop the thread that monitors the logfile
-
-        TODO (optional): write the file offset and fingerprints to disk to continue later
-        on on the same position"""
+        """Raises the Stop Event Flag that will stop the thread that monitors the logfile"""
         self.stop_flag.set()
