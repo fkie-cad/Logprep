@@ -198,6 +198,7 @@ class FileInput(Input):
 
     _messages: queue.Queue = queue.Queue()
     _fileinfo_util: object = FileWatcherUtil()
+    rthread: threading.Event = None
 
     @define(kw_only=True)
     class Config(Input.Config):
@@ -234,7 +235,7 @@ class FileInput(Input):
         and return also the size"""
         if not fingerprint_length:
             file_size: int = self._get_file_size(self._config.logfile_path)
-            if file_size > 1 and file_size < 256:
+            if 1 < file_size < 256:
                 fingerprint_length = file_size
             else:
                 fingerprint_length = 256
