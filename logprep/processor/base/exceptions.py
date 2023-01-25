@@ -67,13 +67,13 @@ class ProcessingWarningCollection(ProcessingError):
         self.processing_warnings = processing_warnings
 
 
-class DuplicationError(BaseException):
+class DuplicationError(ProcessingWarning):
     """Raise if field already exists."""
 
     def __init__(self, name: str, skipped_fields: List[str]):
         message = (
-            "The following fields could not be written, because "
+            f"{name} - The following fields could not be written, because "
             "one or more subfields existed and could not be extended: "
         )
         message += " ".join(skipped_fields)
-        super().__init__(name, message)
+        super().__init__(message)

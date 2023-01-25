@@ -10,7 +10,7 @@ from unittest import mock
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -225,9 +225,10 @@ sth.ac.at
 
         # Due to duplication error logprep raises an ProcessingWarning
         with pytest.raises(
-            DuplicationError,
-            match=r"\('Test Instance Name', 'The following fields could not be written, "
-            r"because one or more subfields existed and could not be extended: resolved_ip'\)",
+            ProcessingWarning,
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+            r"written, because one or more subfields existed and could not be extended: "
+            r"resolved_ip\)",
         ):
             self.object.process(document)
 
@@ -278,7 +279,8 @@ sth.ac.at
     @responses.activate
     def test_setup_downloads_tld_lists_to_separate_process_file(self):
         tld_list = "http://db-path-target/list.dat"
-        tld_list_content = Path("/usr/bin/ls").read_bytes()
+        tld_list_path = Path("/usr/bin/ls") if Path("/usr/bin/ls").exists() else Path("/bin/ls")
+        tld_list_content = tld_list_path.read_bytes()
         expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, tld_list, tld_list_content)
         self.object._config.tld_lists = [tld_list]

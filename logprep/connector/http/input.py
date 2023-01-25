@@ -45,10 +45,10 @@ UVICORN_CONFIG_KEYS = [
 class HttpEndpoint(ABC):
     """interface for http endpoints"""
 
-    _messages: queue.Queue
+    messages: queue.Queue
 
     def __init__(self, messages: queue.Queue) -> None:
-        self._messages = messages
+        self.messages = messages
 
     @abstractmethod
     async def endpoint(self, **kwargs):
@@ -66,7 +66,7 @@ class JSONHttpEndpoint(HttpEndpoint):
 
     async def endpoint(self, event: Event):  # pylint: disable=arguments-differ
         """json endpoint method"""
-        self._messages.put(dict(event))
+        self.messages.put(dict(event))
 
 
 class JSONLHttpEndpoint(HttpEndpoint):
@@ -80,7 +80,7 @@ class JSONLHttpEndpoint(HttpEndpoint):
             line = line.strip()
             if line:
                 event = json.loads(line)
-                self._messages.put(event)
+                self.messages.put(event)
 
 
 class PlaintextHttpEndpoint(HttpEndpoint):
@@ -89,7 +89,7 @@ class PlaintextHttpEndpoint(HttpEndpoint):
     async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
         """plaintext endpoint method"""
         data = await request.body()
-        self._messages.put({"message": data.decode("utf8")})
+        self.messages.put({"message": data.decode("utf8")})
 
 
 class Server(uvicorn.Server):
@@ -115,7 +115,7 @@ class Server(uvicorn.Server):
 class HttpConnector(Input):
     """Connector to accept log messages as http post requests"""
 
-    _messages: queue.Queue = queue.Queue()
+    messages: queue.Queue = queue.Queue()
 
     _endpoint_registry: Mapping[str, HttpEndpoint] = {
         "json": JSONHttpEndpoint,
@@ -169,7 +169,7 @@ class HttpConnector(Input):
         self.app = FastAPI()
         for endpoint_path, endpoint_name in self._config.endpoints.items():
             endpoint_class = self._endpoint_registry.get(endpoint_name)
-            endpoint = endpoint_class(self._messages)
+            endpoint = endpoint_class(self.messages)
             self.app.add_api_route(
                 path=f"{endpoint_path}", endpoint=endpoint.endpoint, methods=["POST"]
             )
@@ -181,7 +181,7 @@ class HttpConnector(Input):
     def _get_event(self, timeout: float) -> Tuple:
         """returns the first message from the queue"""
         try:
-            message = self._messages.get(timeout=timeout)
+            message = self.messages.get(timeout=timeout)
             raw_message = str(message).encode("utf8")
             return message, raw_message
         except queue.Empty:

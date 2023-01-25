@@ -8,7 +8,7 @@ ARG no_proxy
 
 ADD . /logprep
 WORKDIR /logprep
-RUN apt-get update && apt-get -y install build-essential pkg-config libhyperscan-dev librdkafka-dev git
+RUN apt-get update && apt-get -y install git
 RUN python -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"

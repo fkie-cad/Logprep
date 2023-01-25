@@ -8,7 +8,7 @@ from datetime import datetime
 from dateutil.tz import tzlocal, tzutc
 from dateutil.parser import parse
 
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -211,9 +211,10 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         with pytest.raises(
-            DuplicationError,
-            match=r"('Test Instance Name', 'The following fields could not be written, because "
-            r"one or more subfields existed and could not be extended: @timestamp')",
+            ProcessingWarning,
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+            r"written, because one or more subfields existed and could not be extended: "
+            r"@timestamp\)",
         ):
             self.object.process(document)
 

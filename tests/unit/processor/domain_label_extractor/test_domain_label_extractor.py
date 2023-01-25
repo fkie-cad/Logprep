@@ -8,7 +8,6 @@ import pytest
 import responses
 
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.domain_label_extractor.processor import DuplicationError
 from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -256,9 +255,10 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
 
         with pytest.raises(
-            DuplicationError,
-            match=r"\('Test Instance Name', 'The following fields could not be written, "
-            r"because one or more subfields existed and could not be extended: url.subdomain'\)",
+            ProcessingWarning,
+            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
+            r"written, because one or more subfields existed and could not be extended: "
+            r"url.subdomain\)",
         ):
             self.object.process(document)
 
@@ -328,12 +328,13 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     def test_raises_duplication_error_if_target_field_exits(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
         expected = {
+            "tags": ["_domain_label_extractor_failure"],
             "url": {
                 "domain": "test.domain.de",
                 "subdomain": "exists already",
                 "registered_domain": "domain.de",
                 "top_level_domain": "de",
-            }
+            },
         }
 
         rule_dict = {
@@ -345,14 +346,15 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule_dict)
-        with pytest.raises(DuplicationError):
+        with pytest.raises(ProcessingWarning):
             self.object.process(document)
         assert document == expected
 
     @responses.activate
     def test_setup_downloads_tld_lists_to_separate_process_file(self):
         tld_list = "http://db-path-target/list.dat"
-        tld_list_content = Path("/usr/bin/ls").read_bytes()
+        tld_list_path = Path("/usr/bin/ls") if Path("/usr/bin/ls").exists() else Path("/bin/ls")
+        tld_list_content = tld_list_path.read_bytes()
         expected_checksum = hashlib.md5(tld_list_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, tld_list, tld_list_content)
         self.object._config.tld_lists = [tld_list]

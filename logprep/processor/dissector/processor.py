@@ -37,15 +37,17 @@ class Dissector(Processor):
         self._apply_convert_datatype(event, rule)
 
     def _apply_mapping(self, event, rule):
-        event_mappings = list(self._get_mappings(event, rule))
-        event_mappings.sort(key=lambda x: x[5])  # sort by position
-        _ = [caller(*args) for caller, *args, _ in event_mappings]
+        action_mappings_sorted_by_position = sorted(
+            self._get_mappings(event, rule), key=lambda x: x[5]
+        )
+        for action, *args, _ in action_mappings_sorted_by_position:
+            action(*args)
 
     def _get_mappings(self, event, rule) -> List[Tuple[Callable, dict, str, str, str, int]]:
         current_field = None
         target_field_mapping = {}
         for rule_action in rule.actions:
-            source_field, separator, target_field, rule_action, position = rule_action
+            source_field, delimeter, target_field, rule_action, separator, position = rule_action
             if current_field != source_field:
                 current_field = source_field
                 loop_content = get_dotted_field_value(event, current_field)
@@ -54,8 +56,8 @@ class Dissector(Processor):
                         f"dissector: mapping field '{source_field}' does not exist"
                     )
                     self._handle_warning_error(event, rule, error)
-            if separator:
-                content, _, loop_content = loop_content.partition(separator)
+            if delimeter is not None:
+                content, _, loop_content = loop_content.partition(delimeter)
             else:
                 content = loop_content
             if target_field.startswith("?"):

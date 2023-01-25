@@ -81,7 +81,7 @@ test_cases = [  # testcase, rule, event, expected
         "writes new fields and appends to existing string",
         {
             "filter": "message",
-            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{field1} is %{field3} %{+( )field4}"}},
         },
         {"message": "This is a message", "field4": "preexisting"},
         {
@@ -105,7 +105,7 @@ test_cases = [  # testcase, rule, event, expected
             "field1": "This",
             "my": {"new": {"field2": "is"}},
             "field3": "a",
-            "field4": "preexisting message",
+            "field4": "preexistingmessage",
         },
     ),
     (
@@ -113,7 +113,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "message",
             "dissector": {
-                "mapping": {"message": "%{field1} %{my.new.field2} %{field3} %{+field4}"}
+                "mapping": {"message": "%{field1} %{my.new.field2} %{field3} %{+( )field4}"}
             },
         },
         {
@@ -134,7 +134,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "message",
             "dissector": {
-                "mapping": {"message": "%{field1} %{+my.new.field2} %{field3} %{+field4}"}
+                "mapping": {"message": "%{field1} %{+my.new.field2} %{field3} %{+( )field4}"}
             },
         },
         {
@@ -145,7 +145,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "message": "This is a message",
             "field1": "This",
-            "my": {"new": {"field2": "preexisting is"}},
+            "my": {"new": {"field2": "preexistingis"}},
             "field3": "a",
             "field4": "preexisting message",
         },
@@ -155,7 +155,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "message",
             "dissector": {
-                "mapping": {"message": "%{field1} %{+my.new.field2} %{field3} %{+field4}"}
+                "mapping": {"message": "%{field1} %{+my.new.field2} %{field3} %{+( )field4}"}
             },
         },
         {
@@ -244,7 +244,7 @@ test_cases = [  # testcase, rule, event, expected
             "dissector": {
                 "mapping": {
                     "source1": "%{+extracted.key1} %{+extracted.key2} %{+extracted.key3}",
-                    "source2": "%{+extracted.key1} %{+extracted.key2} %{+extracted.key3}",
+                    "source2": "%{+( )extracted.key1} %{+( )extracted.key2} %{+( )extracted.key3}",
                 }
             },
         },
@@ -266,7 +266,7 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "dissector": {
                 "mapping": {
-                    "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
+                    "message": "%{+( )extracted/4} %{+( )extracted/3} %{+( )extracted/2} %{+extracted/1}"
                 }
             },
         },
@@ -279,7 +279,7 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "dissector": {
                 "mapping": {
-                    "message": "%{+extracted/4} %{+extracted/3} %{+extracted/2} %{+extracted/1}"
+                    "message": "%{+( )extracted/4} %{+( )extracted/3} %{+( )extracted/2} %{+( )extracted/1}"
                 }
             },
         },
@@ -321,7 +321,7 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "dissector": {
                 "mapping": {
-                    "message": "%{}: %{+extracted/2}",
+                    "message": "%{}: %{+( )extracted/2}",
                     "message2": "%{}: %{+extracted/1}",
                 }
             },
@@ -369,7 +369,7 @@ test_cases = [  # testcase, rule, event, expected
         "indirect field notation: uses captured field as key and appends to it",
         {
             "filter": "message",
-            "dissector": {"mapping": {"message": "%{?key} %{&key} %{} %{+&key}"}},
+            "dissector": {"mapping": {"message": "%{?key} %{&key} %{} %{+( )&key}"}},
         },
         {"message": "This is the message"},
         {"message": "This is the message", "This": "is message"},
@@ -445,6 +445,34 @@ test_cases = [  # testcase, rule, event, expected
             "field2": "is",
             "field3": "the",
             "field4": "path",
+        },
+    ),
+    (
+        "Appending without separator",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "INFO#%{date}#%{+date}#MOREINFO%{}"}},
+        },
+        {
+            "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
+        },
+        {
+            "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
+            "date": "2022 12 06 15:12:30:534+0100",
+        },
+    ),
+    (
+        "Appending with special field separator",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "INFO#%{+(\()date}#%{+(\))date}#MOREINFO%{}"}},
+        },
+        {
+            "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
+        },
+        {
+            "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
+            "date": "(2022 12 06 15:12:30:534)+0100",
         },
     ),
 ]
