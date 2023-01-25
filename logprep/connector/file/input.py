@@ -33,16 +33,18 @@ from logprep.abc.input import FatalInputError
 def threadsafe_wrapper(func: Callable):
     """Decorator making sure that the decorated function is thread safe"""
     lock = threading.Lock()
+
     def func_wrapper(*args, **kwargs):
         with lock:
             func_wrapper = func(*args, **kwargs)
         return func_wrapper
+
     return func_wrapper
 
 
 def runtime_file_exceptions(func: Callable):
-    """Decorator to wrap and catch file related errors that can occur during runtime
-    """
+    """Decorator to wrap and catch file related errors that can occur during runtime"""
+
     def func_wrapper(*args, **kwargs):
         try:
             func_wrapper = func(*args, **kwargs)
@@ -51,6 +53,7 @@ def runtime_file_exceptions(func: Callable):
         except PermissionError:
             return FatalInputError("The Permissions changed of the File that was used in config.")
         return func_wrapper
+
     return func_wrapper
 
 
@@ -73,13 +76,15 @@ class RepeatedTimerThread(threading.Thread):
     args: tuple
     kwargs: dict
     """
+
     def __init__(
-        self, interval: int,
+        self,
+        interval: int,
         function: Callable,
         stop_flag: threading.Event,
         watch_file: bool,
         *args: tuple,
-        **kwargs: dict
+        **kwargs: dict,
     ):
         super().__init__()
         self.exception = None
@@ -97,7 +102,7 @@ class RepeatedTimerThread(threading.Thread):
             if not self.watch_file:
                 self.stopped.set()
                 break
-            if isinstance(self.exception,FatalInputError):
+            if isinstance(self.exception, FatalInputError):
                 self.stopped.set()
                 raise self.exception
 
@@ -122,6 +127,7 @@ class FileWatcherUtil:
     file_name: str
         Name of the logfile that should be logged
     """
+
     def __init__(self, file_name: str = ""):
         self.dict = {}
         if file_name:
@@ -129,7 +135,7 @@ class FileWatcherUtil:
 
     def add_file(self, file_name: str):
         """adds initial structure for a new file"""
-        self.dict |= {file_name:{"offset": 0, "fingerprint": "", "fingerprint_size": ""}}
+        self.dict |= {file_name: {"offset": 0, "fingerprint": "", "fingerprint_size": ""}}
 
     def add_offset(self, file_name: str, offset: int):
         """add new offset for file_name, add file as well if didn't exist"""
@@ -297,7 +303,7 @@ class FileInput(Input):
         """Takes an input string and turns it into a dict without any parsing or formatting.
         Only thing it does additionally is stripping the new lines away."""
         input_line: str = input_line.rstrip("\n")
-        if (len(input_line) > 0):
+        if len(input_line) > 0:
             return {"message": input_line}
         return ""
 
