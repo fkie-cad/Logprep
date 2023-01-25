@@ -12,6 +12,7 @@
 ### Features
 
 * Add an `http input connector` that spawns a uvicorn server which parses requests content to events.
+* Add an `file input connector` that reads generic logfiles.
 * Provide the possibility to consume lists, rules and configuration from files and http endpoints
 * Add `requester` processor that enriches by making http requests with field values
 * Add `calculator` processor to calculate with or without field values
