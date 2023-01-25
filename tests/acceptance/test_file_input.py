@@ -59,7 +59,6 @@ def config_fixture():
                 "generic_rules": ["tests/testdata/acceptance/selective_extractor/rules/generic"],
             }
         },
-
     ]
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config["input"] = {
