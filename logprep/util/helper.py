@@ -104,6 +104,13 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     return False
 
 
+def _get_item(items, item):
+    try:
+        return dict.__getitem__(items, item)
+    except TypeError:
+        return list.__getitem__(items, int(item))
+
+
 def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
     """
     Returns the value of a requested dotted_field by iterating over the event dictionary until the
@@ -124,8 +131,10 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
 
     fields = [event, *dotted_field.split(".")]
     try:
-        return reduce(dict.__getitem__, fields)
+        return reduce(_get_item, fields)
     except KeyError:
+        return None
+    except ValueError:
         return None
     except TypeError:
         return None
