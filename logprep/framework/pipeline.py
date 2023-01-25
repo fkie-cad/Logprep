@@ -283,6 +283,7 @@ class Pipeline:
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{self._output.describe()}' ({self._process_name})"
         )
+        self._input.pipeline_index = self.pipeline_index
         self._input.setup()
         self._output.setup()
         if hasattr(self._input, "server"):

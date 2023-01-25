@@ -167,7 +167,8 @@ class Input(Connector):
             },
         )
 
-    __slots__ = []
+    pipeline_index: int
+    __slots__ = ["pipeline_index"]
 
     @property
     def _add_hmac(self):
