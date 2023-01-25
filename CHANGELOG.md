@@ -28,7 +28,7 @@
 * Add option to submit a template with `list_search_base_path` config parameter in `list_comparison` processor
 * Add functionality to `geoip_enricher` to download the geoip-database
 * Add ability to use environment variables in rules and config
-* Add simple list access to dotted field notation for getting values
+* Add list access including slicing to dotted field notation for getting values
 
 ### Bugfixes
 
