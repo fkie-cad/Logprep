@@ -104,11 +104,20 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     return False
 
 
+def _get_slice_arg(slice_item):
+    return int(slice_item) if slice_item else None
+
+
 def _get_item(items, item):
     try:
         return dict.__getitem__(items, item)
     except TypeError:
-        return list.__getitem__(items, int(item))
+        if ":" in item:
+            slice_args = map(_get_slice_arg, item.split(":"))
+            item = slice(*slice_args)
+        else:
+            item = int(item)
+        return list.__getitem__(items, item)
 
 
 def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:

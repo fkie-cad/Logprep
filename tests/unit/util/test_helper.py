@@ -169,6 +169,18 @@ class TestGetDottedFieldValue:
         value = get_dotted_field_value(event, dotted_field)
         assert value == "target"
 
+    def test_get_dotted_fiels_with_list_slicing(self):
+        event = {"get": ["dotted", "does_not_matter", "target"]}
+        dotted_field = "get.0:2"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == ["dotted", "does_not_matter"]
+
+    def test_get_dotted_fiels_with_list_slicing_2(self):
+        event = {"get": ["dotted", "does_not_matter", "target"]}
+        dotted_field = "get.::2"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == ["dotted", "target"]
+
 
 class TestPopDottedFieldValue:
     def test_get_dotted_field_removes_source_field_in_nested_structure_but_leaves_sibling(self):
