@@ -53,4 +53,10 @@ class StringSplitterRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for StringSplitterRule"""
 
-        ...
+        delimeter: str = field(validator=validators.instance_of(str), default=" ")
+        """The delimeter for splitting. Defaults to whitespace"""
+
+    @property
+    def delimeter(self):
+        """returns the configured delimeter"""
+        return self._config.delimeter

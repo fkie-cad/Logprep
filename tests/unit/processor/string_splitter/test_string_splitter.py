@@ -4,13 +4,19 @@ from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
-test_cases = [  # testcase, rule, event, expected
+test_cases = [
+    (
+        "splits without delimeter on whitespace",
+        {
+            "filter": "message",
+            "string_splitter": {"source_fields": ["message"], "target_field": "result"},
+        },
+        {"message": "this is the message"},
+        {"message": "this is the message", "result": ["this", "is", "the", "message"]},
+    )
+]  # testcase, rule, event, expected
 
-]
-
-failure_test_cases = [ # testcase, rule, event, expected
- 
-]  
+failure_test_cases = []  # testcase, rule, event, expected
 
 
 class TestStringSplitter(BaseProcessorTestCase):
