@@ -16,7 +16,26 @@ test_cases = [
     )
 ]  # testcase, rule, event, expected
 
-failure_test_cases = []  # testcase, rule, event, expected
+failure_test_cases = [
+    (
+        "splits without delimeter on whitespace",
+        {
+            "filter": "message",
+            "string_splitter": {"source_fields": ["message"], "target_field": "result"},
+        },
+        {"message": ["this", "is", "the", "message"]},
+        {"message": ["this", "is", "the", "message"], "tags": ["_string_splitter_failure"]},
+    ),
+    (
+        "splits without delimeter on whitespace",
+        {
+            "filter": "message",
+            "string_splitter": {"source_fields": ["message"], "target_field": "message"},
+        },
+        {"message": "this is the message"},
+        {"message": "this is the message", "tags": ["_string_splitter_failure"]},
+    ),
+]  # testcase, rule, event, expected
 
 
 class TestStringSplitter(BaseProcessorTestCase):

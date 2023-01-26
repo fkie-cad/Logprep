@@ -24,7 +24,16 @@ class TestStringSplitterRule:
                 },
                 None,
                 None,
-            )
+            ),
+            (
+                {
+                    "filter": "message",
+                    "string_splitter": {"source_fields": ["message"], "target_field": "message"},
+                    "delimeter": ",",
+                },
+                None,
+                None,
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
