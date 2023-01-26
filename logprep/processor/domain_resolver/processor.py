@@ -174,14 +174,18 @@ class DomainResolver(Processor):
             else:
                 resolved_ip = self._domain_ip_map.get(hash_string)
                 self.metrics.resolved_cached += 1
-            self._add_resolve_infos_to_event(event, target_field, resolved_ip, overwrite_target)
+            self._add_resolve_infos_to_event(
+                event, rule, target_field, resolved_ip, overwrite_target
+            )
             if self._config.debug_cache:
                 self._store_debug_infos(event, requires_storing)
         else:
             resolved_ip = self._resolve_ip(domain)
-            self._add_resolve_infos_to_event(event, target_field, resolved_ip, overwrite_target)
+            self._add_resolve_infos_to_event(
+                event, rule, target_field, resolved_ip, overwrite_target
+            )
 
-    def _add_resolve_infos_to_event(self, event, output_field, resolved_ip, overwrite_target):
+    def _add_resolve_infos_to_event(self, event, _, output_field, resolved_ip, overwrite_target):
         if resolved_ip:
             adding_was_successful = add_field_to(
                 event, output_field, resolved_ip, overwrite_output_field=overwrite_target

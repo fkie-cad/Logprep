@@ -19,3 +19,5 @@ coverage.xml
 -
 logs
 sql_db_table.json
+build/
+dist/

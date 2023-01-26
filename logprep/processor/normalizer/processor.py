@@ -42,12 +42,18 @@ from filelock import FileLock
 from pytz import timezone
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.normalizer.exceptions import DuplicationError, NormalizerError
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.normalizer.rule import NormalizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
+
+
+class NormalizerError(BaseException):
+    """Base class for Normalizer related exceptions."""
+
+    def __init__(self, name: str, message: str):
+        super().__init__(f"Normalizer ({name}): {message}")
 
 
 class Normalizer(Processor):
@@ -220,10 +226,7 @@ class Normalizer(Processor):
         super().process(event)
         if self._count_grok_pattern_matches:
             self._write_grok_matches()
-        try:
-            self._raise_warning_if_fields_already_existed()
-        except DuplicationError as error:
-            raise ProcessingWarning(str(error)) from error
+        self._raise_warning_if_fields_already_existed()
 
     def _apply_rules(self, event, rule):
         """Normalizes Windows Event Logs.

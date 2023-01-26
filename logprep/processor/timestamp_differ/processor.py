@@ -56,8 +56,7 @@ class TimestampDiffer(Processor):
             overwrite_output_field=rule.overwrite_target,
         )
         if not add_successful:
-            error = DuplicationError(self.name, [rule.target_field])
-            self._handle_warning_error(event, rule, error)
+            raise DuplicationError(self.name, [rule.target_field])
 
     @staticmethod
     def _create_timestamp_object(timestamp_str, timestamp_format):

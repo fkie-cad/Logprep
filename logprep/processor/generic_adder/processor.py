@@ -29,7 +29,7 @@ Example
 import json
 import re
 from logging import Logger
-from typing import List, Optional
+from typing import Optional
 import time
 import os
 from filelock import FileLock
@@ -37,10 +37,11 @@ from filelock import FileLock
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.factory_error import InvalidConfigurationError
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value, add_field_to
 
 
 class GenericAdderError(BaseException):
@@ -48,18 +49,6 @@ class GenericAdderError(BaseException):
 
     def __init__(self, name: str, message: str):
         super().__init__(f"GenericAdder ({name}): {message}")
-
-
-class DuplicationError(GenericAdderError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and were not overwritten by the GenericAdder: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 def sql_config_validator(_, attribute, value):
@@ -243,19 +232,15 @@ class GenericAdder(Processor):
 
         # Add the items to the event
         for dotted_field, value in items_to_add:
-            keys = dotted_field.split(".")
-            dict_ = event
-            for idx, key in enumerate(keys):
-                if key not in dict_:
-                    if idx == len(keys) - 1:
-                        dict_[key] = value
-                        break
-                    dict_[key] = {}
-
-                if isinstance(dict_[key], dict):
-                    dict_ = dict_[key]
-                else:
-                    conflicting_fields.append(keys[idx])
+            add_successful = add_field_to(
+                event,
+                output_field=dotted_field,
+                content=value,
+                extends_lists=rule.extend_target_list,
+                overwrite_output_field=rule.overwrite_target,
+            )
+            if not add_successful:
+                conflicting_fields.append(dotted_field)
 
         if conflicting_fields:
             raise DuplicationError(self.name, conflicting_fields)

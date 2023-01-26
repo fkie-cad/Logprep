@@ -7,10 +7,12 @@
 ### Breaking
 
 * drop support for python `3.6`, `3.7`, `3.8`
+* change default prefix behavior on appending to strings of `dissector`
 
 ### Features
 
 * Add an `http input connector` that spawns a uvicorn server which parses requests content to events.
+* Add an `file input connector` that reads generic logfiles.
 * Provide the possibility to consume lists, rules and configuration from files and http endpoints
 * Add `requester` processor that enriches by making http requests with field values
 * Add `calculator` processor to calculate with or without field values
@@ -18,6 +20,7 @@
 `customize_target_subfields`
 * Add a `timestamp_differ` processor that can parse two timestamps and calculate their respective time delta.
 * Add `config_refresh_interval` configuration option to refresh the configuration on a given timedelta
+* Add option to `dissector` to use a prefix pattern in dissect language for appending to strings and add the default behavior to append to strings without any prefixed separator
 
 ### Improvements
 

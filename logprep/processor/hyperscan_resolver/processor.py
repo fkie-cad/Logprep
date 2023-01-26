@@ -24,11 +24,11 @@ Example
 import errno
 from logging import Logger
 from os import path, makedirs
-from typing import List, Tuple, Any, Dict
+from typing import Tuple, Any, Dict
 from attr import define, field
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import SkipImportError
+from logprep.processor.base.exceptions import SkipImportError, DuplicationError
 from logprep.util.validators import directory_validator
 from logprep.util.helper import get_dotted_field_value
 
@@ -46,7 +46,10 @@ except ModuleNotFoundError as error:  # pragma: no cover
 
 # pylint: enable=no-name-in-module
 
+# pylint: disable=ungrouped-imports
 from logprep.processor.hyperscan_resolver.rule import HyperscanResolverRule
+
+# pylint: enable=ungrouped-imports
 
 
 class HyperscanResolverError(BaseException):
@@ -54,19 +57,6 @@ class HyperscanResolverError(BaseException):
 
     def __init__(self, name: str, message: str):
         super().__init__(f"HyperscanResolver ({name}): {message}")
-
-
-class DuplicationError(HyperscanResolverError):
-    """Raise if field already exists."""
-
-    def __init__(self, name: str, skipped_fields: List[str]):
-        message = (
-            "The following fields already existed and "
-            "were not overwritten by the Generic Resolver: "
-        )
-        message += " ".join(skipped_fields)
-
-        super().__init__(name, message)
 
 
 class HyperscanResolver(Processor):

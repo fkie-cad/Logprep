@@ -7,21 +7,22 @@ from copy import deepcopy
 
 import pytest
 
+from logprep.processor.base.exceptions import ProcessingWarning
+
 pytest.importorskip("hyperscan")
 
 from tests.unit.processor.base import BaseProcessorTestCase
 
+# pylint: disable=ungrouped-imports
 from logprep.processor.hyperscan_resolver.rule import (
     InvalidHyperscanResolverDefinition,
 )
 
+# pylint: enable=ungrouped-imports
+
 pytest.importorskip("logprep.processor.hyperscan_resolver")
 
-from logprep.processor.hyperscan_resolver.processor import (
-    HyperscanResolver,
-    DuplicationError,
-    HyperscanResolverError,
-)
+from logprep.processor.hyperscan_resolver.processor import HyperscanResolver, HyperscanResolverError
 
 
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
@@ -354,9 +355,16 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
         self._load_specific_rule(rule)
 
         document = {"to": {"resolve": "something HELLO1"}, "re": {"solved": "I already exist!"}}
+        expected = {
+            "to": {"resolve": "something HELLO1"},
+            "re": {"solved": "I already exist!"},
+            "tags": ["_hyperscan_resolver_failure"],
+        }
 
-        with pytest.raises(DuplicationError):
+        with pytest.raises(ProcessingWarning):
             self.object.process(document)
+
+        assert document == expected
 
     def test_resolve_with_multiple_match_first_only(self):
         rule = {
