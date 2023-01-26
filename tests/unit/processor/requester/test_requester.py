@@ -193,6 +193,27 @@ test_cases = [
         },
     ),
     (
+        "parses json list result with simple target field mapping and overwrite target",
+        {
+            "filter": "message",
+            "requester": {
+                "url": "http://mock-mock/",
+                "method": "GET",
+                "target_field_mapping": {"key1.0.key2.key3": "result.custom"},
+                "overwrite_target": True,
+            },
+        },
+        {"message": "the message", "result": {"custom", "preexisting"}},
+        {"message": "the message", "result": {"custom": "value"}},
+        {
+            "method": "GET",
+            "url": "http://mock-mock/",
+            "json": {"key1": [{"key2": {"key3": "value"}}]},
+            "content_type": "text/plain",
+            "status": 200,
+        },
+    ),
+    (
         "parses text result to preexisting target field",
         {
             "filter": "message",
