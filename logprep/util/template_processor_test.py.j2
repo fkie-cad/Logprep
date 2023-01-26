@@ -17,8 +17,8 @@ class Test{{ processor.class_name }}(BaseProcessorTestCase):
 
     CONFIG: dict = {
         "type": "{{ processor.name }}",
-        "specific_rules": ["tests/testdata/unit/field_manager/specific_rules"],
-        "generic_rules": ["tests/testdata/unit/field_manager/generic_rules"],
+        "specific_rules": [],
+        "generic_rules": [],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)

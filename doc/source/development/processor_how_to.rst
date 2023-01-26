@@ -11,11 +11,34 @@ Concurrency/IPC
 
 Processors can run in parallel on multiple different system processes.
 Therefore, it is not guaranteed that a specific processor will see all incoming log messages.
-Inter-process-communication (IPC) must be used if information of log messages has the be shared between multiple processor instances.
+Inter-process-communication (IPC) must be used if information of log messages has to be shared between multiple processor instances.
 IPC is relatively slow and can not be used if the processor instances are located on different machines.
 In those cases it should be reconsidered if it is necessary that information is being shared or if an implementation of the functionality is generally sensible in the context of ths framework.
 
 .. _implementing_a_new_processor:
+
+Getting started
+---------------
+
+If you want to implement a new processor, we have a tiny helper to generate the needed boilerplate code for you. You
+can run it in a python shell with:
+
+..  code-block:: python
+    :linenos:
+
+    from logprep.util.processor_generator import ProcessorCodeGenerator
+    processor_config = { "name": "NewProcessor", "base_class": "FieldManager" }
+    generator = ProcessorCodeGenerator(**processor_config)
+    generator.generate()
+
+after code is generated you have following new folders:
+
+* :code:`logprep/processor/<processor name>` with a file :code:`processor.py` and a file :code:`rule.py`
+* :code:`tests/unit/processor/<processor name>` with a file :code:`test_<processor name>.py` and a
+file :code:`test_<processor name>_rule.py`
+
+after registering your processor in :code:`logprep/registry.py` you can start implementing tests and :code:`_apply_rules`
+method as explained in the following sections.
 
 Processor
 ---------

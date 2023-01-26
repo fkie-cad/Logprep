@@ -27,7 +27,7 @@ from logprep.processor.{{ processor.name }}.rule import {{ processor.class_name 
 class {{ processor.class_name }}({{ processor.base_class.__name__ }}):
     """A processor that ..."""
 
-    rule_class = {{ class_name }}Rule
+    rule_class = {{ processor.class_name }}Rule
 
     @define(kw_only=True)
     class Config({{ processor.base_class.__name__}}.Config):
