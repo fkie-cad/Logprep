@@ -1,8 +1,9 @@
 """
 StringSplitter
-============
+==============
 
-The `string_splitter` processor ...
+The `string_splitter` processor splits string by whitespace (default) or a given delimeter and
+writes the resulting list to a target field.
 
 
 Example

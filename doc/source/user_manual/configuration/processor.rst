@@ -158,6 +158,13 @@ Processors
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.string_splitter.processor
+.. autoclass:: logprep.processor.string_splitter.processor.StringSplitter.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.template_replacer.processor
 .. autoclass:: logprep.processor.template_replacer.processor.TemplateReplacer.Config
    :members:

@@ -147,6 +147,13 @@ Rules
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.string_splitter.rule
+.. autoclass:: logprep.processor.string_splitter.rule.StringSplitterRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.template_replacer.rule
 .. autoclass:: logprep.processor.template_replacer.rule.TemplateReplacerRule.Config
    :members:

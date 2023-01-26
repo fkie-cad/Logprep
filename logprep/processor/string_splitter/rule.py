@@ -1,8 +1,9 @@
 """
 StringSplitter
-============
+==============
 
-The `string_splitter` processor ...
+The `string_splitter` processor splits string by whitespace (default) or a given delimeter and
+writes the resulting list to a target field.
 
 A speaking example:
 
@@ -12,20 +13,21 @@ A speaking example:
 
     filter: message
     string_splitter:
-        ...
+        source_fields: ["message"]
+        target_field: result
     description: '...'
 
 ..  code-block:: json
     :linenos:
     :caption: Incoming event
 
-    <INCOMMING_EVENT>
+    {"message": "this is the message"}
 
 ..  code-block:: json
     :linenos:
     :caption: Processed event
 
-    <PROCESSED_EVENT>
+    {"message": "this is the message", "result": ["this", "is", "the", "message"]}
 
 
 .. autoclass:: logprep.processor.string_splitter.rule.StringSplitterRule.Config
