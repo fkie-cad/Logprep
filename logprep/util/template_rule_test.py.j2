@@ -27,7 +27,7 @@ class Test{{ processor.class_name }}Rule:
         else:
             rule_instance = {{ processor.class_name }}Rule._create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
-            for key, value in rule.get("field_manager").items():
+            for key, value in rule.get("{{ processor.name }}").items():
                 assert hasattr(rule_instance._config, key)
                 assert value == getattr(rule_instance._config, key)
 
