@@ -42,8 +42,8 @@ class TestStringSplitter(BaseProcessorTestCase):
 
     CONFIG: dict = {
         "type": "string_splitter",
-        "specific_rules": [],
-        "generic_rules": [],
+        "specific_rules": ["tests/testdata/unit/string_splitter/specific/"],
+        "generic_rules": ["tests/testdata/unit/string_splitter/generic/"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
