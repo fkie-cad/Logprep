@@ -6,8 +6,10 @@ Processor Generator
 generates boilerplate code to implement a new processor for logprep
 """
 
+from typing import Type
 from pathlib import Path
 from attrs import field, validators, define
+from jinja2 import Template
 
 from logprep.abc.processor import Processor
 from logprep.util.helper import snake_to_camel, camel_to_snake
@@ -15,6 +17,7 @@ from logprep.registry import Registry
 
 PROCESSOR_BASE_PATH = "logprep/processor"
 PROCESSOR_UNIT_TEST_BASE_PATH = "tests/unit/processor"
+PROCESSOR_TEMPLATE_PATH = "logprep/util/template_processor.py.j2"
 
 
 def get_class(processor_name: str | type) -> type:
@@ -30,8 +33,8 @@ class ProcessorGenerator:
 
     name: str = field(validator=validators.instance_of(str), converter=camel_to_snake)
 
-    base_class: type = field(
-        validator=validators.instance_of(type), default=Processor, converter=get_class
+    base_class: Type = field(
+        validator=validators.instance_of(Type), default=Processor, converter=get_class
     )
 
     @property
@@ -49,8 +52,26 @@ class ProcessorGenerator:
         """returns the processor path"""
         return Path(PROCESSOR_UNIT_TEST_BASE_PATH) / self.name
 
+    @property
+    def processor_template(self) -> Template:
+        """returns the processor template"""
+        return Template(Path(PROCESSOR_TEMPLATE_PATH).read_text(encoding="utf8"))
+
+    @property
+    def processor_code(self) -> str:
+        """returns the rendered template"""
+        data = {
+            "class_name": self.class_name,
+            "name": self.name,
+            "base_class": self.base_class.__name__,  # pylint: disable=no-member
+        }
+        return self.processor_template.render(data)
+
     def generate(self):
         """creates processor boilerplate"""
+        self._create_files()
+
+    def _create_files(self):
         if not self.processor_path.exists():
             self.processor_path.mkdir()
             (self.processor_path / "processor.py").touch()

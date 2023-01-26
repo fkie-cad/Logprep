@@ -1,0 +1,31 @@
+"""
+{{ class_name }}
+============
+
+The `{{ name }}` processor ...
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - samplename:
+        type: {{ name }}
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
+
+from logprep.abc.processor import Processor
+from logprep.processor.{{ name }}.rule import {{ class_name }}Rule
+
+
+
+class {{ class_name }}({{ base_class }}):
+    """A processor that ..."""
+
+    rule_class = {{ class_name }}Rule
+
+    def _apply_rules(self, event, rule):

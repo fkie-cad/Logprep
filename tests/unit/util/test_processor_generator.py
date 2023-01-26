@@ -56,7 +56,7 @@ class TestProcessorGenerator:
         assert generator.processor_path == self.processor_path
         assert generator.processor_unit_test_path == self.processor_test_path
 
-    def test_generate_creates_processor_boilerplate(self):
+    def test_generate_creates_files(self):
         config = {"name": "TestProcessor", "base_class": "FieldManager"}
         generator = ProcessorGenerator(**config)
         generator.generate()
@@ -68,3 +68,8 @@ class TestProcessorGenerator:
         assert self.processor_test_path / "test_test_processor.py"
         assert self.processor_test_path / "test_test_processor_rule.py"
         assert self.processor_test_path / "__init__.py"
+
+    def test_generator_renders_template(self):
+        config = {"name": "TestProcessor", "base_class": "FieldManager"}
+        generator = ProcessorGenerator(**config)
+        assert "class TestProcessor(FieldManager):" in generator.processor_code
