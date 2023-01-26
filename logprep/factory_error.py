@@ -16,6 +16,13 @@ class NotExactlyOneEntryInConfigurationError(InvalidConfigurationError):
         super().__init__("There must be exactly one definition per pipeline entry.")
 
 
+class NotExactlyOneEntryInConnectorConfigurationError(InvalidConfigurationError):
+    """Raise if there is not exactly one definition per connector."""
+
+    def __init__(self):
+        super().__init__("There must be exactly one definition for input and output connectors.")
+
+
 class InvalidConfigSpecificationError(InvalidConfigurationError):
     """Raise if the configuration was not specified as an object."""
 

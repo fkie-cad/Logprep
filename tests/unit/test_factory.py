@@ -13,7 +13,6 @@ from logprep.factory import Factory
 from logprep.factory_error import (
     InvalidConfigurationError,
     UnknownComponentTypeError,
-    NotExactlyOneEntryInConfigurationError,
     NoTypeSpecifiedError,
     InvalidConfigSpecificationError,
 )
@@ -28,8 +27,8 @@ logger = getLogger()
 
 def test_create_fails_for_an_empty_section():
     with raises(
-        NotExactlyOneEntryInConfigurationError,
-        match="There must be exactly one definition per pipeline entry.",
+        InvalidConfigurationError,
+        match="The component definition is empty.",
     ):
         Factory.create({}, logger)
 
@@ -112,7 +111,8 @@ def test_create_clusterer_returns_clusterer_processor():
 def test_fails_when_section_contains_more_than_one_element():
     with raises(
         InvalidConfigurationError,
-        match="There must be exactly one definition per pipeline entry.",
+        match=r"Found multiple component definitions \(first, second\), "
+        r"but there must be exactly one\.",
     ):
         Factory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
 

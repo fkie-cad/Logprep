@@ -87,14 +87,14 @@ class TestConfiguration:
         self.assert_fails_when_replacing_key_with_value(
             "input",
             {"random_name": {"type": "unknown"}},
-            "Invalid connector configuration: Unknown type 'unknown'",
+            "Invalid input connector configuration: Unknown type 'unknown'",
         )
 
     def test_verify_verifies_output_config(self):
         self.assert_fails_when_replacing_key_with_value(
             "output",
             {"random_name": {"type": "unknown"}},
-            "Invalid connector configuration: Unknown type 'unknown'",
+            "Invalid output connector configuration: Unknown type 'unknown'",
         )
 
     @pytest.mark.parametrize(
@@ -287,7 +287,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: some_processor_name - Unknown type 'does_not_exist'",
                     )
                 ],
             ),
@@ -308,7 +308,53 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "missing 1 required keyword-only argument: 'generic_rules'",
+                        "Invalid processor configuration: labelername - Required option is missing: 'generic_rules'.",
+                    )
+                ],
+            ),
+            (
+                "unknown option without spaces in processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "some_unknown_option": "foo",
+                            }
+                        }
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor configuration: labelername - Unknown option: 'some_unknown_option'.",
+                    )
+                ],
+            ),
+            (
+                "unknown option with spaces in processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "some unknown option": "foo",
+                            }
+                        }
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor configuration: labelername - Unknown option: 'some unknown option'.",
                     )
                 ],
             ),
@@ -327,11 +373,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: some_processor_name - Unknown type 'does_not_exist'",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: another_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: another_processor_name - Unknown type 'does_not_exist'",
                     ),
                 ],
             ),
@@ -382,7 +428,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: some_processor_name - Unknown type 'does_not_exist'",
                     )
                 ],
             ),
@@ -403,7 +449,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "missing 1 required keyword-only argument: 'generic_rules'",
+                        "Invalid processor configuration: labelername - Required option is missing: 'generic_rules'.",
                     )
                 ],
             ),
@@ -422,11 +468,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: some_processor_name - Unknown type 'does_not_exist'",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: another_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: another_processor_name - Unknown type 'does_not_exist'",
                     ),
                 ],
             ),
@@ -440,7 +486,7 @@ class TestConfiguration:
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - The type specification is missing for element with name 'some_processor_name'",
+                        "Invalid processor configuration: some_processor_name - The type specification is missing for element with name 'some_processor_name'",
                     ),
                 ],
             ),

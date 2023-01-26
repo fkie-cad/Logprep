@@ -1,11 +1,10 @@
 """This module is used to create the configuration for the runner."""
 
-import json
+import re
 from logging import Logger
 from typing import List
 
 from colorama import Fore
-from yaml import safe_load
 
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError
@@ -13,6 +12,7 @@ from logprep.factory_error import (
     UnknownComponentTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,
 )
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import print_fcolor
 
@@ -62,7 +62,7 @@ class InvalidProcessorConfigurationError(InvalidConfigurationError):
     """Raise if processor configuration is invalid."""
 
     def __init__(self, message: str):
-        super().__init__(f"Invalid processor config: {message}")
+        super().__init__(f"Invalid processor configuration: {message}")
 
 
 class InvalidConnectorConfigurationError(InvalidConfigurationError):
@@ -70,6 +70,20 @@ class InvalidConnectorConfigurationError(InvalidConfigurationError):
 
     def __init__(self, message: str):
         super().__init__(f"Invalid connector configuration: {message}")
+
+
+class InvalidInputConnectorConfigurationError(InvalidConfigurationError):
+    """Raise if input connector configuration is invalid."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Invalid input connector configuration: {message}")
+
+
+class InvalidOutputConnectorConfigurationError(InvalidConfigurationError):
+    """Raise if output connector configuration is invalid."""
+
+    def __init__(self, message: str):
+        super().__init__(f"Invalid output connector configuration: {message}")
 
 
 class IncalidMetricsConfigurationError(InvalidConfigurationError):
@@ -195,7 +209,10 @@ class Configuration(dict):
         try:
             _ = Factory.create(self["input"], logger)
         except FactoryError as error:
-            raise InvalidConnectorConfigurationError(str(error)) from error
+            raise InvalidInputConnectorConfigurationError(str(error)) from error
+        except TypeError as error:
+            msg = self._format_type_error(error)
+            raise InvalidInputConnectorConfigurationError(msg) from error
         except KeyError as error:
             raise RequiredConfigurationKeyMissingError("input") from error
 
@@ -203,9 +220,26 @@ class Configuration(dict):
         try:
             _ = Factory.create(self["output"], logger)
         except FactoryError as error:
-            raise InvalidConnectorConfigurationError(str(error)) from error
+            raise InvalidOutputConnectorConfigurationError(str(error)) from error
+        except TypeError as error:
+            msg = self._format_type_error(error)
+            raise InvalidOutputConnectorConfigurationError(msg) from error
         except KeyError as error:
             raise RequiredConfigurationKeyMissingError("output") from error
+
+    @staticmethod
+    def _format_type_error(error: TypeError) -> str:
+        msg = str(error)
+        if "missing" in str(error):
+            parameters = re.split(r"argument(s)?:", str(error))[-1].strip()
+            if len(re.split("', '| and ", parameters)) > 1:
+                msg = f"Required options are missing: {parameters}."
+            else:
+                msg = f"Required option is missing: {parameters}."
+        elif "unexpected" in str(error):
+            parameter = str(error).rsplit("argument ", maxsplit=1)[-1].strip()
+            msg = f"Unknown option: {parameter}."
+        return msg
 
     def _verify_pipeline(self, logger: Logger):
         if not self.get("pipeline"):
@@ -215,16 +249,25 @@ class Configuration(dict):
         for processor_config in self["pipeline"]:
             try:
                 Factory.create(processor_config, logger)
-            except (
-                FactoryInvalidConfigurationError,
-                UnknownComponentTypeError,
-                TypeError,
-            ) as error:
+            except (FactoryInvalidConfigurationError, UnknownComponentTypeError) as error:
                 errors.append(
                     InvalidProcessorConfigurationError(
                         f"{list(processor_config.keys())[0]} - {error}"
                     )
                 )
+            except TypeError as error:
+                msg = self._format_type_error(error)
+                errors.append(
+                    InvalidProcessorConfigurationError(
+                        f"{list(processor_config.keys())[0]} - {msg}"
+                    )
+                )
+            except InvalidRuleDefinitionError:
+                error = InvalidConfigurationError(
+                    f"Could not verify configuration for processor instance "
+                    f"'{list(processor_config.keys())[0]}', because it has invalid rules."
+                )
+                errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
 
@@ -274,7 +317,7 @@ class Configuration(dict):
     @staticmethod
     def _verify_status_logger_prometheus_target(target_config):
         if target_config is None or not target_config.get("port"):
-            raise RequiredConfigurationKeyMissingError("metrics > targets > " "prometheus > port")
+            raise RequiredConfigurationKeyMissingError("metrics > targets > prometheus > port")
 
     @staticmethod
     def _verify_status_logger_file_target(target_config):

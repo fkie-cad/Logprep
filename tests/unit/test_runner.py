@@ -3,7 +3,6 @@
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=no-self-use
 import json
 from copy import deepcopy
 from functools import partial
@@ -14,7 +13,6 @@ from unittest import mock
 from pytest import raises
 from requests.exceptions import SSLError, HTTPError
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.labeler.labeling_schema import LabelingSchemaError
 from logprep.runner import (
     CannotReloadWhenConfigIsUnsetError,
@@ -27,6 +25,7 @@ from logprep.runner import (
     Runner,
     UseGetRunnerToCreateRunnerSingleton,
 )
+from logprep.util.configuration import InvalidConfigurationErrors
 from tests.testdata.ConfigurationForTest import ConfigurationForTest
 from tests.testdata.metadata import (
     path_to_alternative_config,
@@ -108,7 +107,11 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
             self.runner.start()
 
     def test_fails_when_rules_are_invalid(self):
-        with raises(InvalidRuleDefinitionError, match=r"no filter defined"):
+        with raises(
+            InvalidConfigurationErrors,
+            match=r"Could not verify configuration for processor instance 'labelername', "
+            r"because it has invalid rules\.",
+        ):
             with ConfigurationForTest(
                 inject_changes=[
                     {
