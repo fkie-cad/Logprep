@@ -91,6 +91,11 @@ class TestProcessorGenerator:
         generator = ProcessorGenerator(**config)
         assert "class TestProcessorRule(Rule):" in generator.rule_code
 
+    def test_generator_renders_processor_test_template(self):
+        config = {"name": "TestProcessor", "base_class": "FieldManager"}
+        generator = ProcessorGenerator(**config)
+        assert "class TestTestProcessor(BaseProcessorTestCase):" in generator.processor_test_code
+
     def test_generate_writes_rendered_templates(self):
         config = {"name": "TestProcessor", "base_class": "FieldManager"}
         generator = ProcessorGenerator(**config)

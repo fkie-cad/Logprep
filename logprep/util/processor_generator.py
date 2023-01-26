@@ -20,9 +20,10 @@ PROCESSOR_BASE_PATH = "logprep/processor"
 PROCESSOR_UNIT_TEST_BASE_PATH = "tests/unit/processor"
 PROCESSOR_TEMPLATE_PATH = "logprep/util/template_processor.py.j2"
 RULE_TEMPLATE_PATH = "logprep/util/template_rule.py.j2"
+PROCESSOR_TEST_TEMPLATE_PATH = "logprep/util/template_processor_test.py.j2"
 
 
-def get_class(processor_name: str | type) -> type:
+def get_class(processor_name: str) -> type:
     """returns the type by str"""
     if isinstance(processor_name, type):
         return processor_name
@@ -73,6 +74,16 @@ class ProcessorGenerator:
     def rule_code(self) -> str:
         """returns the rendered template"""
         return self.rule_template.render({"processor": self})
+
+    @property
+    def processor_test_template(self) -> Template:
+        """returns the processor_test template"""
+        return Template(Path(PROCESSOR_TEST_TEMPLATE_PATH).read_text(encoding="utf8"))
+
+    @property
+    def processor_test_code(self) -> str:
+        """returns the rendered template"""
+        return self.processor_test_template.render({"processor": self})
 
     def generate(self):
         """creates processor boilerplate"""
