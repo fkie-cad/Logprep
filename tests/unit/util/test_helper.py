@@ -169,6 +169,12 @@ class TestGetDottedFieldValue:
         value = get_dotted_field_value(event, dotted_field)
         assert value == "target"
 
+    def test_get_dotted_field_with_out_of_bounds_index(self):
+        event = {"get": ["dotted", "does_not_matter", "target"]}
+        dotted_field = "get.3"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value is None
+
     def test_get_dotted_fiels_with_list_slicing(self):
         event = {"get": ["dotted", "does_not_matter", "target"]}
         dotted_field = "get.0:2"

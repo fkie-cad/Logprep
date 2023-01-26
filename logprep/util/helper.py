@@ -147,6 +147,8 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         return None
     except TypeError:
         return None
+    except IndexError:
+        return None
 
 
 def pop_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
