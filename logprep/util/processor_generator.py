@@ -21,6 +21,7 @@ PROCESSOR_UNIT_TEST_BASE_PATH = "tests/unit/processor"
 PROCESSOR_TEMPLATE_PATH = "logprep/util/template_processor.py.j2"
 RULE_TEMPLATE_PATH = "logprep/util/template_rule.py.j2"
 PROCESSOR_TEST_TEMPLATE_PATH = "logprep/util/template_processor_test.py.j2"
+RULE_TEST_TEMPLATE_PATH = "logprep/util/template_rule_test.py.j2"
 
 
 def get_class(processor_name: str) -> type:
@@ -85,6 +86,16 @@ class ProcessorGenerator:
         """returns the rendered template"""
         return self.processor_test_template.render({"processor": self})
 
+    @property
+    def rule_test_template(self) -> Template:
+        """returns the processor_test template"""
+        return Template(Path(RULE_TEST_TEMPLATE_PATH).read_text(encoding="utf8"))
+
+    @property
+    def rule_test_code(self) -> str:
+        """returns the rendered template"""
+        return self.rule_test_template.render({"processor": self})
+
     def generate(self):
         """creates processor boilerplate"""
         if not self.processor_path.exists():
@@ -94,6 +105,10 @@ class ProcessorGenerator:
             (self.processor_path / "__init__.py").touch()
         if not self.processor_unit_test_path.exists():
             self.processor_unit_test_path.mkdir()
-            (self.processor_unit_test_path / f"test_{self.name}.py").touch()
-            (self.processor_unit_test_path / f"test_{self.name}_rule.py").touch()
+            (self.processor_unit_test_path / f"test_{self.name}.py").write_text(
+                self.processor_test_code
+            )
+            (self.processor_unit_test_path / f"test_{self.name}_rule.py").write_text(
+                self.rule_test_code
+            )
             (self.processor_unit_test_path / "__init__.py").touch()
