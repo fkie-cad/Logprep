@@ -104,9 +104,9 @@ class FieldManagerRule(Rule):
         """The fields from where to get the values which should be processed"""
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to"""
-        delete_source_fields: str = field(validator=validators.instance_of(bool), default=False)
+        delete_source_fields: bool = field(validator=validators.instance_of(bool), default=False)
         """Whether to delete all the source fields or not. Defaults to :code:`False`"""
-        overwrite_target: str = field(validator=validators.instance_of(bool), default=False)
+        overwrite_target: bool = field(validator=validators.instance_of(bool), default=False)
         """Overwrite the target field value if exists. Defaults to :code:`False`"""
         extend_target_list: bool = field(validator=validators.instance_of(bool), default=False)
         """If the target field exists and is a list, the list will be extended with the values
