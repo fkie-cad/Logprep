@@ -175,11 +175,23 @@ class TestGetDottedFieldValue:
         value = get_dotted_field_value(event, dotted_field)
         assert value is None
 
-    def test_get_dotted_fiels_with_list_slicing(self):
+    def test_get_dotted_fields_with_list_slicing(self):
         event = {"get": ["dotted", "does_not_matter", "target"]}
         dotted_field = "get.0:2"
         value = get_dotted_field_value(event, dotted_field)
         assert value == ["dotted", "does_not_matter"]
+
+    def test_get_dotted_fields_with_list_slicing_short(self):
+        event = {"get": ["dotted", "does_not_matter", "target"]}
+        dotted_field = "get.:2"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == ["dotted", "does_not_matter"]
+
+    def test_get_dotted_fields_reverse_order_with_slicing(self):
+        event = {"get": ["dotted", "does_not_matter", "target"]}
+        dotted_field = "get.::-1"
+        value = get_dotted_field_value(event, dotted_field)
+        assert value == ["target", "does_not_matter", "dotted"]
 
     def test_get_dotted_fiels_with_list_slicing_2(self):
         event = {"get": ["dotted", "does_not_matter", "target"]}
