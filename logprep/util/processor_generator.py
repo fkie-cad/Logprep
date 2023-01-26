@@ -6,6 +6,7 @@ Processor Generator
 generates boilerplate code to implement a new processor for logprep
 """
 
+import sys
 from typing import Type
 from pathlib import Path
 from attrs import field, validators, define
