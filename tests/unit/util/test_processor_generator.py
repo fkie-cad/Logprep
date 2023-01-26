@@ -11,6 +11,13 @@ class TestProcessorGenerator:
     processor_path = Path("logprep/processor/test_processor")
     processor_test_path = Path("tests/unit/processor/test_processor")
 
+    def setup_method(self):
+        for path in (self.processor_path, self.processor_test_path):
+            if path.exists():
+                for file in path.iterdir():
+                    file.unlink(missing_ok=True)
+                path.rmdir()
+
     def teardown_method(self):
         for path in (self.processor_path, self.processor_test_path):
             if path.exists():
@@ -69,7 +76,27 @@ class TestProcessorGenerator:
         assert self.processor_test_path / "test_test_processor_rule.py"
         assert self.processor_test_path / "__init__.py"
 
-    def test_generator_renders_template(self):
+    def test_generator_renders_processor_template(self):
         config = {"name": "TestProcessor", "base_class": "FieldManager"}
         generator = ProcessorGenerator(**config)
         assert "class TestProcessor(FieldManager):" in generator.processor_code
+        assert (
+            "from logprep.processor.field_manager.processor import FieldManager"
+            in generator.processor_code
+        )
+        assert "class Config(FieldManager.Config)" in generator.processor_code
+
+    def test_generator_renders_rule_template(self):
+        config = {"name": "TestProcessor", "base_class": "FieldManager"}
+        generator = ProcessorGenerator(**config)
+        assert "class TestProcessorRule(Rule):" in generator.rule_code
+
+    def test_generate_writes_rendered_templates(self):
+        config = {"name": "TestProcessor", "base_class": "FieldManager"}
+        generator = ProcessorGenerator(**config)
+        generator.generate()
+        assert (
+            "class TestProcessor(FieldManager):"
+            in (self.processor_path / "processor.py").read_text()
+        )
+        assert "class TestProcessorRule(Rule):" in (self.processor_path / "rule.py").read_text()

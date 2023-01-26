@@ -18,6 +18,7 @@ from logprep.registry import Registry
 PROCESSOR_BASE_PATH = "logprep/processor"
 PROCESSOR_UNIT_TEST_BASE_PATH = "tests/unit/processor"
 PROCESSOR_TEMPLATE_PATH = "logprep/util/template_processor.py.j2"
+RULE_TEMPLATE_PATH = "logprep/util/template_rule.py.j2"
 
 
 def get_class(processor_name: str | type) -> type:
@@ -60,22 +61,24 @@ class ProcessorGenerator:
     @property
     def processor_code(self) -> str:
         """returns the rendered template"""
-        data = {
-            "class_name": self.class_name,
-            "name": self.name,
-            "base_class": self.base_class.__name__,  # pylint: disable=no-member
-        }
-        return self.processor_template.render(data)
+        return self.processor_template.render({"processor": self})
+
+    @property
+    def rule_template(self) -> Template:
+        """returns the rule template"""
+        return Template(Path(RULE_TEMPLATE_PATH).read_text(encoding="utf8"))
+
+    @property
+    def rule_code(self) -> str:
+        """returns the rendered template"""
+        return self.rule_template.render({"processor": self})
 
     def generate(self):
         """creates processor boilerplate"""
-        self._create_files()
-
-    def _create_files(self):
         if not self.processor_path.exists():
             self.processor_path.mkdir()
-            (self.processor_path / "processor.py").touch()
-            (self.processor_path / "rule.py").touch()
+            (self.processor_path / "processor.py").write_text(self.processor_code)
+            (self.processor_path / "rule.py").write_text(self.rule_code)
             (self.processor_path / "__init__.py").touch()
         if not self.processor_unit_test_path.exists():
             self.processor_unit_test_path.mkdir()

@@ -1,8 +1,8 @@
 """
-{{ class_name }}
+{{ processor.class_name }}
 ============
 
-The `{{ name }}` processor ...
+The `{{ processor.name }}` processor ...
 
 
 Example
@@ -11,21 +11,27 @@ Example
     :linenos:
 
     - samplename:
-        type: {{ name }}
+        type: {{ processor.name }}
         specific_rules:
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
 """
+from attrs import define, field, validators
 
-from logprep.abc.processor import Processor
-from logprep.processor.{{ name }}.rule import {{ class_name }}Rule
+from {{ processor.base_class.__module__ }} import {{ processor.base_class.__name__}}
+from logprep.processor.{{ processor.name }}.rule import {{ processor.class_name }}Rule
 
 
 
-class {{ class_name }}({{ base_class }}):
+class {{ processor.class_name }}({{ processor.base_class.__name__ }}):
     """A processor that ..."""
 
     rule_class = {{ class_name }}Rule
 
+    @define(kw_only=True)
+    class Config({{ processor.base_class.__name__}}.Config):
+        ...
+
     def _apply_rules(self, event, rule):
+        ...
