@@ -391,6 +391,36 @@ class TestConfiguration:
                     ),
                 ],
             ),
+            (
+                "pipeline is empty list",
+                {"pipeline": []},
+                [
+                    (
+                        InvalidConfigurationError,
+                        'Invalid Configuration: "pipeline" must contain at least one item!',
+                    )
+                ],
+            ),
+            (
+                "pipeline is empty dict",
+                {"pipeline": {}},
+                [
+                    (
+                        InvalidConfigurationError,
+                        'Invalid Configuration: "pipeline" must contain at least one item!',
+                    )
+                ],
+            ),
+            (
+                "pipeline is string",
+                {"pipeline": "foo"},
+                [
+                    (
+                        InvalidConfigurationError,
+                        '"pipeline" must be a list of processor dictionary configurations!',
+                    )
+                ],
+            ),
         ],
     )
     def test_verify_error(self, config_dict, raised_errors, test_case):

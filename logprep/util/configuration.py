@@ -1,9 +1,11 @@
 """This module is used to create the configuration for the runner."""
 
 import re
+import sys
 from logging import Logger
 from typing import List
 
+from ruamel.yaml.scanner import ScannerError
 from colorama import Fore
 
 from logprep.factory import Factory
@@ -117,7 +119,11 @@ class Configuration(dict):
         try:
             configuration = config_getter.get_json()
         except ValueError:
-            configuration = config_getter.get_yaml()
+            try:
+                configuration = config_getter.get_yaml()
+            except ScannerError as error:
+                print_fcolor(Fore.RED, f"Error parsing YAML file: {path}\n{error}")
+                sys.exit(1)
         config = Configuration()
         config.path = f"{config_getter.protocol}://{config_getter.target}"
         config.update(configuration)
@@ -139,7 +145,7 @@ class Configuration(dict):
         """
         errors = []
         try:
-            self._verify_pipeline(logger)
+            self._verify_pipeline(logger, ignore_rule_errors=False)
         except InvalidConfigurationError as error:
             errors.append(error)
         self._print_errors(errors)
@@ -241,9 +247,15 @@ class Configuration(dict):
             msg = f"Unknown option: {parameter}."
         return msg
 
-    def _verify_pipeline(self, logger: Logger):
+    def _verify_pipeline(self, logger: Logger, ignore_rule_errors=False):
         if not self.get("pipeline"):
             raise RequiredConfigurationKeyMissingError("pipeline")
+
+        if not isinstance(self["pipeline"], list):
+            error = InvalidConfigurationError(
+                '"pipeline" must be a list of processor dictionary configurations!'
+            )
+            raise InvalidConfigurationErrors([error])
 
         errors = []
         for processor_config in self["pipeline"]:
@@ -263,11 +275,13 @@ class Configuration(dict):
                     )
                 )
             except InvalidRuleDefinitionError:
-                error = InvalidConfigurationError(
-                    f"Could not verify configuration for processor instance "
-                    f"'{list(processor_config.keys())[0]}', because it has invalid rules."
-                )
-                errors.append(error)
+                if not ignore_rule_errors:
+                    errors.append(
+                        InvalidConfigurationError(
+                            "Could not verify configuration for processor instance "
+                            f"'{list(processor_config.keys())[0]}', because it has invalid rules."
+                        )
+                    )
         if errors:
             raise InvalidConfigurationErrors(errors)
 

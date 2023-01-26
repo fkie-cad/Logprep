@@ -202,10 +202,9 @@ def main():
     config = _load_configuration(args)
     logger = _setup_logger(args, config)
 
+    _verify_configuration(args, config, logger)
     if args.validate_rules or args.auto_test:
         _validate_rules(args, logger)
-
-    _verify_configuration(args, config, logger)
     _setup_metrics_and_time_measurement(args, config, logger)
 
     if args.auto_test:
