@@ -43,12 +43,14 @@ Examples for string_splitter:
 """
 
 from attrs import define, field, validators
-from logprep.processor.base.rule import Rule
+from logprep.processor.field_manager.rule import FieldManagerRule
 
-class StringSplitterRule(Rule):
+
+class StringSplitterRule(FieldManagerRule):
     """..."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """Config for StringSplitterRule"""
+
         ...

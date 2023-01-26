@@ -37,6 +37,7 @@ from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.requester.processor import Requester
 from logprep.processor.selective_extractor.processor import SelectiveExtractor
+from logprep.processor.string_splitter.processor import StringSplitter
 from logprep.processor.template_replacer.processor import TemplateReplacer
 from logprep.processor.timestamp_differ.processor import TimestampDiffer
 
@@ -68,6 +69,7 @@ class Registry:
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,
         "selective_extractor": SelectiveExtractor,
+        "string_splitter": StringSplitter,
         "template_replacer": TemplateReplacer,
         "timestamp_differ": TimestampDiffer,
         # Connectors

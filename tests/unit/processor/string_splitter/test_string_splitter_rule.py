@@ -6,10 +6,10 @@ from logprep.processor.string_splitter.rule import StringSplitterRule
 
 
 class TestStringSplitterRule:
-    def test_create_from_dict_returns__rule(self):
+    def test_create_from_dict_returns_rule(self):
         rule = {
             "filter": "message",
-            "": {"source_fields": ["message"], "target_field": "new_field"},
+            "string_splitter": {"source_fields": ["message"], "target_field": "new_field"},
         }
         rule_dict = StringSplitterRule._create_from_dict(rule)
         assert isinstance(rule_dict, StringSplitterRule)
@@ -17,7 +17,14 @@ class TestStringSplitterRule:
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
         [
-            # add your tests here
+            (
+                {
+                    "filter": "message",
+                    "string_splitter": {"source_fields": ["message"], "target_field": "message"},
+                },
+                None,
+                None,
+            )
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
@@ -27,7 +34,7 @@ class TestStringSplitterRule:
         else:
             rule_instance = StringSplitterRule._create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
-            for key, value in rule.get("field_manager").items():
+            for key, value in rule.get("string_splitter").items():
                 assert hasattr(rule_instance._config, key)
                 assert value == getattr(rule_instance._config, key)
 
