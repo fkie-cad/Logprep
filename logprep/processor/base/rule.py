@@ -89,6 +89,44 @@ Further details can be found in the section for processors.
         "description": "..."
       }
     ]
+
+Log message field value access
+==============================
+
+All rules reference fields or field values of log messages.
+This can be done via the **dot notation**.
+To reference a nested field inside the log event, just give the whole path from the event root
+to the desired field.
+To reference the field :code:`information` in the following example you would use the following
+notation: :code:`more.nested.information`.
+If you do want to access a specific item inside a list of the event you can extend the dotted
+notation with indices.
+Given the following example you can access the list element :code:`lists` with the following
+notation: :code:`more.nested.sometimes.1`.
+In case you want to have more than one element then you can slice the list with the pattern
+:code:`start:stop:step_size`, e.g: :code:`more.nested.sometimes.0:2` which would return
+:code:`["inside", "lists"]`.
+This slicing is based on the native
+`python list slicing <https://docs.python.org/3/library/functions.html#slice>`_.
+
+..  code-block:: json
+    :linenos:
+    :caption: Example Event
+
+    {
+      "some": "data",
+      "more": {
+        "nested": {
+          "information": "is here",
+          "sometimes": ["inside", "lists", "of", "elements"]
+        }
+      }
+    }
+
+.. WARNING::
+   The dotted field notation is available in all processors, the use of indices to access list
+   elements is though not available in the :code:`Clusterer`, :code:`Labeler` and the
+   :code:`Pseudonymizer`.
 """
 
 import json
