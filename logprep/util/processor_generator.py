@@ -32,7 +32,7 @@ def get_class(processor_name: str) -> type:
 
 
 @define(kw_only=True)
-class ProcessorGenerator:
+class ProcessorCodeGenerator:
     """Processor generator"""
 
     name: str = field(validator=validators.instance_of(str), converter=camel_to_snake)
