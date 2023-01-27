@@ -428,3 +428,9 @@ class TestAutoRuleTester:
                 assert pipeline_input.get("version_information") is not None
                 corpus_tester._prepare_connector_files(test_case)
                 assert pipeline_input.get("version_information") is None
+
+    @mock.patch("logprep.util.auto_rule_corpus_tester.shutil.rmtree")
+    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    def test_run_removes_test_tmp_dir(self, _, mock_shutil, corpus_tester):
+        corpus_tester.run()
+        mock_shutil.assert_called_with(corpus_tester.tmp_dir)
