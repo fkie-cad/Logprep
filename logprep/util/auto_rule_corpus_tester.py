@@ -453,7 +453,7 @@ class RuleCorpusTester:
         # remove version_information from previous run
         if self.pipeline._logprep_config.get("input", {}).get("version_information"):
             del self.pipeline._logprep_config["input"]["version_information"]
-        self.pipeline._create_connectors()
+        del self.pipeline._input
 
         _, test_case_data = current_test_case
         test_case_input_file = test_case_data.get("test_data_path", {}).get("in")
