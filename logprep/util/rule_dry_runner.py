@@ -1,5 +1,40 @@
 #!/usr/bin/python3
-"""This module runs the pipeline for specified events and shows how processing changed them."""
+"""
+Dry Run
+-------
+
+Rules can be tested by executing them in a dry run of Logprep.
+Instead of the connectors defined in the configuration file,
+the dry run takes a path parameter to an input JSON (line) file that contains log messages.
+The output is displayed in the console and changes made by Logprep are being highlighted:
+
+..  code-block:: bash
+    :caption: Directly with Python
+
+    PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG --dry-run $EVENTS
+
+..  code-block:: bash
+    :caption: With a PEX file
+
+     logprep.pex $CONFIG --dry-run $EVENTS
+
+Where :code:`$CONFIG` is the path to a configuration file (see :doc:`configuration/configurationdata`).
+The only required section in the configuration is :code:`pipeline` (see tests/testdata/config/config-dry-run.yml for an example).
+The remaining options are set internally or are being ignored.
+
+:code:`$EVENTS` is the path to a file with one or multiple log messages.
+A single log message can be provided with a file containing a plain json or wrapped in brackets
+(beginning with `[` and ending with `]`).
+For multiple events it must be a list wrapped inside brackets, while each log object separated by a comma.
+By specifying the parameter :code:`--dry-run-input-type jsonl` a list of JSON lines can be used instead.
+Additional output, like pseudonyms, will be printed if :code:`--dry-run-full-output` is added.
+
+..  code-block:: bash
+    :caption: Example for execution with a JSON lines file (dry-run-input-type jsonl) printing all results, including pseudonyms (dry-run-full-output)
+
+    logprep.pex tests/testdata/config/config-dry-run.yml --dry-run tests/testdata/input_logdata/wineventlog_raw.jsonl --dry-run-input-type jsonl --dry-run-full-output
+
+"""
 
 import json
 import shutil

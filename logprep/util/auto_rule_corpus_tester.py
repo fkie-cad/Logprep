@@ -1,23 +1,79 @@
+# pylint: disable=anomalous-backslash-in-string
 """
-This module can be used to test a full logprep pipeline against expected outputs.
+Rule Corpus Tests
+-----------------
 
-To run this RuleCorpusTester you have to give it a logprep pipeline configuration as well as a
-directory with test data. Each test case should contain one input event (*_in.json), one expected
-output event (*_out.json) and expected extra outputs like predetections or pseudonyms
-(*_out_extra.json). The expected extra data is optional. But if given it is a single json file,
-where each output has a root key of the expected target. All files belonging to the same test case
-have to start with the same name. In each event a value can be marked as <IGNORE_VALUE>, with that
+The rule corpus tester can be used to test a full logprep pipeline and configuration against
+a set of expected outputs.
+
+To start the tester call:
+
+..  code-block:: bash
+    :caption: Run rule corpus test
+
+    logprep $CONFIG --auto-corpus-test --corpus-testdata $CORPUS_TEST_DATA
+
+Where in the parameter :code:`CONFIG` should point to a valid logprep configuration and
+:code:`CORPUS_TEST_DATA` to a directory containing the test data with the different test cases.
+The test cases can be organized into sub directories.
+Each test case should contain one input event (\*_in.json), one expected output event (\*_out.json)
+and an expected extra outputs like predetections or pseudonyms (\*_out_extra.json).
+The expected extra data is optional though, but if given, it is a single json file, where each
+output has a root key of the expected target.
+All files belonging to the same test case have to start with the same name, like the following
+example:
+
+..  code-block:: bash
+    :caption: Test data setup
+
+    - test_one_in.json
+    - test_one_out.json
+    - test_one_out_extra.json
+    - test_two_in.json
+    - test_two_out.json
+
+..  code-block:: json
+    :caption: Content of test_one_in.json - Logprep input
+
+    {
+        "test": "event"
+    }
+
+..  code-block:: json
+    :caption: Content of test_one_out.json - Expected Logprep Output
+
+    {
+        "processed": ["test", "event"]
+        "with": "<IGNORE_VALUE>"
+    }
+
+..  code-block:: json
+    :caption: Content of test_one_out_extra.json - Expected Logprep Extra Output
+
+    [
+        {
+            "predetection_target": {
+                "id": "..."
+            }
+        }
+    ]
+
+As sometimes test have cases where you don't want to test for a specific value of a key it is
+possible to test only for the key and ignore the value.
+In order to achieve this just set a filed in an expected output as :code:`<IGNORE_VALUE>`, with that
 the value won't be considered during the testing.
 
 While executing the tests report print statements are collected which will be printed to the console
-after the test run is completed. During the run itself only a short summary is given for each case.
+after the test run is completed.
+During the run itself only a short summary is given for each case.
 
 If during the test run logprep has an error or warning it logs it to the console as well, which will
 be printed inside the test cases summary and before the summary result of the test, which created
 the log message.
 
-If one or more test cases fail this module ends with an exit code of 1, otherwise 0.
+If one or more test cases fail this tester ends with an exit code of 1, otherwise 0.
 """
+# pylint: enable=anomalous-backslash-in-string
 # pylint: disable=protected-access
 import json
 import logging
