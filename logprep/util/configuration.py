@@ -238,10 +238,7 @@ class Configuration(dict):
         msg = str(error)
         if "missing" in str(error):
             parameters = re.split(r"argument(s)?:", str(error))[-1].strip()
-            if len(re.split("', '| and ", parameters)) > 1:
-                msg = f"Required options are missing: {parameters}."
-            else:
-                msg = f"Required option is missing: {parameters}."
+            msg = f"Required option(s) are missing: {parameters}."
         elif "unexpected" in str(error):
             parameter = str(error).rsplit("argument ", maxsplit=1)[-1].strip()
             msg = f"Unknown option: {parameter}."

@@ -308,7 +308,10 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor configuration: labelername - Required option is missing: 'generic_rules'.",
+                        re.escape(
+                            "Invalid processor configuration: labelername - Required option(s) are "
+                            + "missing: 'generic_rules'."
+                        ),
                     )
                 ],
             ),
@@ -479,7 +482,10 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor configuration: labelername - Required option is missing: 'generic_rules'.",
+                        re.escape(
+                            "Invalid processor configuration: labelername - Required option(s) are "
+                            + "missing: 'generic_rules'."
+                        ),
                     )
                 ],
             ),
