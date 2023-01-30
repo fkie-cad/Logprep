@@ -475,6 +475,12 @@ test_cases = [  # testcase, rule, event, expected
             "date": "(2022 12 06 15:12:30:534)+0100",
         },
     ),
+    (
+        "Dissection with delimeter ending",
+        {"filter": "message", "dissector": {"mapping": {"message": "this is %{target}."}}},
+        {"message": "this is the message."},
+        {"message": "this is the message.", "target": "the message"},
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (
