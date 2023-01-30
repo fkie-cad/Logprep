@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=too-many-lines
+import re
 from logging import getLogger
 from random import sample
 from string import ascii_letters
@@ -25,61 +26,43 @@ from tests.testdata.metadata import path_to_schema, path_to_single_rule
 logger = getLogger()
 
 
-def test_create_fails_for_an_empty_section():
-    with raises(
-        InvalidConfigurationError,
-        match="The component definition is empty.",
-    ):
-        Factory.create({}, logger)
-
-
-def test_create_fails_if_config_is_not_an_object():
-    with raises(
-        InvalidConfigSpecificationError,
-        match=r'The configuration for component "processorname" must be specified as an object\.',
-    ):
-        Factory.create({"processorname": "string"}, logger)
-
-
-def test_create_fails_if_config_does_not_contain_type():
-    with raises(NoTypeSpecifiedError, match="The type specification is missing"):
-        Factory.create({"processorname": {"other": "value"}}, logger)
-
-
-@mark.parametrize("component", [None, {}])
-def test_create_fails_if_config_component_is_empty(component):
-    with raises(InvalidConfigurationError, match=r"The component definition is empty\."):
-        Factory.create(component, logger)
-
-
-@mark.parametrize("component", ["foo", 1, True, ["foo"], [], "", 0, False])
-def test_create_fails_if_config_component_is_no_dict(component):
-    with raises(
-        InvalidConfigurationError, match=r"The configuration must be specified as an object\."
-    ):
-        Factory.create(component, logger)
-
-
-def test_create_fails_if_config_sub_component_is_empty():
-    with raises(InvalidConfigurationError, match=r'The definition of component "foo" is empty\.'):
-        Factory.create({"foo": None}, logger)
-
-
-def test_create_fails_if_config_sub_component_has_no_type_specification():
-    with raises(
-        NoTypeSpecifiedError,
-        match=r"The type specification is missing for element with name 'foo'",
-    ):
-        Factory.create({"foo": {}}, logger)
-
-
-@mark.parametrize("component", ["foo", 1, True, ["foo"], [], "", 0, False])
-def test_create_fails_if_config_sub_component_is_no_dict(component):
-    with raises(
-        InvalidConfigurationError,
-        match=r'The configuration for component "foo" must be specified as an object\.',
-    ):
-        Factory.create({"foo": component}, logger)
+@mark.parametrize(
+    ["configs", "error", "message"],
+    [
+        ((None, {}), InvalidConfigurationError, r"The component definition is empty\."),
+        (
+            ("string", 1, True, ["string"], [], "", 0, False),
+            InvalidConfigSpecificationError,
+            r"The configuration must be specified as an object\.",
+        ),
+        (
+            ({"foo": None},),
+            InvalidConfigurationError,
+            'The definition of component "foo" is empty.',
+        ),
+        (
+            ({"foo": {}}, {"foo": {"other": "value"}}),
+            NoTypeSpecifiedError,
+            "The type specification is missing for element with name 'foo'",
+        ),
+        (
+            ({"foo": value} for value in ("string", 1, True, ["string"], [], "", 0, False)),
+            InvalidConfigSpecificationError,
+            r'The configuration for component "foo" must be specified as an object\.',
+        ),
+    ],
+)
+def test_create_from_dict_validates_config(configs, error, message):
+    for config in configs:
+        with raises(error) as exception_info:
+            Factory.create(config, logger)
+        value = str(exception_info.value)
+        assertion_error_message = (
+            f'Error message of "{error.__name__}" did not match regex for test input '
+            + f'"{repr(config)}".\n Regex pattern: {message}\n Error message: {value}"'
+        )
+        if not re.search(message, value):
+            raise AssertionError(assertion_error_message)
 
 
 def test_create_fails_for_unknown_type():
