@@ -27,7 +27,7 @@ from logprep.abc.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.abc.output import CriticalOutputError, FatalOutputError, Output, WarningOutputError
+from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.metrics.metric import Metric, calculate_new_average, MetricTargets
@@ -123,7 +123,7 @@ class Pipeline:
 
         input: Connector.ConnectorMetrics
         """Input metrics"""
-        output: Connector.ConnectorMetrics
+        output: tuple[Connector.ConnectorMetrics]
         """Output metrics"""
         pipeline: List["Processor.ProcessorMetrics"] = attrs.field(factory=list)
         """Pipeline containing the metrics of all set processors"""
@@ -239,7 +239,9 @@ class Pipeline:
         if self._metric_targets is None:
             return None
         return self.PipelineMetrics(
-            input=self._input.metrics, output=self._output.metrics, labels=self._metric_labels
+            input=self._input.metrics,
+            output={output: self._output.get(output).metrics for output in self._output},
+            labels=self._metric_labels,
         )
 
     @cached_property
@@ -252,13 +254,17 @@ class Pipeline:
         return pipeline
 
     @cached_property
-    def _output(self) -> Output:
-        output_connector_config = self._logprep_config.get("output")
-        if output_connector_config is None:
+    def _output(self) -> dict:
+        output_configs = self._logprep_config.get("output")
+        if output_configs is None:
             return None
-        connector_name = list(output_connector_config.keys())[0]
-        output_connector_config[connector_name]["metric_labels"] = self._metric_labels
-        return Factory.create(output_connector_config, self._logger)
+        output_names = list(output_configs.keys())
+        outputs = {}
+        for output_name in output_names:
+            output_configs[output_name]["metric_labels"] = self._metric_labels
+            output_config = output_configs.get(output_name)
+            outputs |= {output_name: Factory.create(output_config, self._logger)}
+        return outputs
 
     @cached_property
     def _input(self) -> Input:
@@ -287,19 +293,21 @@ class Pipeline:
 
     def _setup(self):
         self._logger.debug(f"Creating connectors ({self._process_name})")
-        self._output.input_connector = self._input
+        for _, output in self._output.items():
+            output.input_connector = self._input
         self._logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
-            f" output -> '{self._output.describe()}' ({self._process_name})"
+            f" output -> '{[output.describe() for _, output in self._output.items()]}' ({self._process_name})"
         )
         self._input.pipeline_index = self.pipeline_index
         self._input.setup()
-        try:
-            self._output.setup()
-        except FatalOutputError as error:
-            self._logger.error(f"Output {self._output.describe()} failed: {error}")
-            self._output.metrics.number_of_errors += 1
-            self.stop()
+        for _, output in self._output.items():
+            try:
+                output.setup()
+            except FatalOutputError as error:
+                self._logger.error(f"Output {self._output.describe()} failed: {error}")
+                self._output.metrics.number_of_errors += 1
+                self.stop()
         if hasattr(self._input, "server"):
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
@@ -422,7 +430,7 @@ class Pipeline:
             except BaseException as error:  # pylint: disable=broad-except
                 msg = self._handle_fatal_processing_error(processor, error)
                 if self._output:
-                    self._output.store_failed(msg, json.loads(event_received), event)
+                    self._output[0].store_failed(msg, json.loads(event_received), event)
                 processor.metrics.number_of_errors += 1
                 event.clear()  # 'delete' the event, i.e. no regular output
             if not event:
@@ -465,7 +473,8 @@ class Pipeline:
         if hasattr(self._input, "server"):
             self._used_server_ports.pop(self._input.server.config.port)
         self._drain_input_queues()
-        self._output.shut_down()
+        for _, output in self._output.items():
+            output.shut_down()
         for processor in self._pipeline:
             processor.shut_down()
 

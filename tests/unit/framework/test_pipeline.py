@@ -109,7 +109,8 @@ class TestPipeline(ConfigurationForTests):
     def test_setup_calls_setup_on_input_and_output(self, _):
         self.pipeline._setup()
         self.pipeline._input.setup.assert_called()
-        self.pipeline._output.setup.assert_called()
+        for _, output in self.pipeline._output.items():
+            output.setup.assert_called()
 
     def test_passes_timeout_parameter_to_inputs_get_next(self, _):
         self.pipeline._setup()
@@ -123,9 +124,9 @@ class TestPipeline(ConfigurationForTests):
         connector_config = {"dummy": {"type": "dummy_input", "documents": input_data}}
         input_connector = original_create(connector_config, mock.MagicMock())
         self.pipeline._input = input_connector
-        self.pipeline._output = original_create(
-            {"dummy": {"type": "dummy_output"}}, mock.MagicMock()
-        )
+        self.pipeline._output = {
+            "dummy": original_create({"dummy": {"type": "dummy_output"}}, mock.MagicMock()),
+        }
         deleter_config = {
             "deleter processor": {
                 "type": "deleter",
@@ -160,7 +161,8 @@ class TestPipeline(ConfigurationForTests):
 
     def test_setup_calls_setup_on_output(self, _):
         self.pipeline._setup()
-        self.pipeline._output.setup.assert_called()
+        for _, output in self.pipeline._output.items():
+            output.setup.assert_called()
 
     def test_shut_down_calls_shut_down_on_input(self, _):
         self.pipeline._setup()
@@ -170,7 +172,8 @@ class TestPipeline(ConfigurationForTests):
     def test_shut_down_calls_shut_down_on_output(self, _):
         self.pipeline._setup()
         self.pipeline._shut_down()
-        self.pipeline._output.shut_down.assert_called()
+        for _, output in self.pipeline._output.items():
+            output.shut_down.assert_called()
 
     @mock.patch("logging.Logger.warning")
     def test_logs_source_disconnected_error_as_warning(self, mock_warning, _):
@@ -598,6 +601,13 @@ class TestPipeline(ConfigurationForTests):
         mock_create.side_effect = requests.HTTPError()
         with raises(requests.HTTPError):
             self.pipeline._setup()
+
+    def test_multiple_outputs(self, _):
+        output_config = {"kafka_output": {}, "opensearch_output": {}}
+        self.pipeline._logprep_config.update({"output": output_config})
+        self.pipeline._setup()
+        assert isinstance(self.pipeline._output, tuple)
+        assert len(self.pipeline._output) == 2
 
 
 class TestPipelineWithActualInput:
