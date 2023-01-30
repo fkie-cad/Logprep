@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
-
 from pathlib import Path
+
+import pytest
+
 from logprep.abc.processor import Processor
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.processor_generator import ProcessorCodeGenerator
@@ -30,6 +32,11 @@ class TestProcessorCodeGenerator:
         generator = ProcessorCodeGenerator(**config)
         assert generator
         assert generator.name == "test_processor"
+
+    def test_create_generator_returns_generator_valid_name(self):
+        config = {"name": "test processor"}
+        with pytest.raises(ValueError):
+            _ = ProcessorCodeGenerator(**config)
 
     def test_property_class_name_returns_name(self):
         config = {"name": "test_processor"}

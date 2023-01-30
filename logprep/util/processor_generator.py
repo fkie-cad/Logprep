@@ -59,7 +59,10 @@ class ProcessorCodeGenerator:
 
     """
 
-    name: str = field(validator=validators.instance_of(str), converter=camel_to_snake)
+    name: str = field(
+        validator=[validators.instance_of(str), validators.matches_re(r"[A-Za-z_]+")],
+        converter=camel_to_snake,
+    )
 
     base_class: Type = field(
         validator=validators.instance_of(Type), default=Processor, converter=get_class
