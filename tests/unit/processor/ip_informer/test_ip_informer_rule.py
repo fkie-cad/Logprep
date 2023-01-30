@@ -9,7 +9,7 @@ class TestIpInformerRule:
     def test_create_from_dict_returns__rule(self):
         rule = {
             "filter": "message",
-            "": {"source_fields": ["message"], "target_field": "new_field"},
+            "ip_informer": {"source_fields": ["message"], "target_field": "new_field"},
         }
         rule_dict = IpInformerRule._create_from_dict(rule)
         assert isinstance(rule_dict, IpInformerRule)
@@ -27,7 +27,7 @@ class TestIpInformerRule:
         else:
             rule_instance = IpInformerRule._create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
-            for key, value in rule.get("field_manager").items():
+            for key, value in rule.get("ip_informer").items():
                 assert hasattr(rule_instance._config, key)
                 assert value == getattr(rule_instance._config, key)
 

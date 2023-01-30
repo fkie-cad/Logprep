@@ -43,12 +43,14 @@ Examples for ip_informer:
 """
 
 from attrs import define, field, validators
-from logprep.processor.base.rule import Rule
+from logprep.processor.field_manager.rule import FieldManagerRule
 
-class IpInformerRule(Rule):
+
+class IpInformerRule(FieldManagerRule):
     """..."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """Config for IpInformerRule"""
+
         ...

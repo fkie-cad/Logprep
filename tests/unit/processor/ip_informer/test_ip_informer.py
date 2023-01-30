@@ -4,21 +4,17 @@ from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
-test_cases = [  # testcase, rule, event, expected
+test_cases = []  # testcase, rule, event, expected
 
-]
-
-failure_test_cases = [ # testcase, rule, event, expected
- 
-]  
+failure_test_cases = []  # testcase, rule, event, expected
 
 
 class TestIpInformer(BaseProcessorTestCase):
 
     CONFIG: dict = {
         "type": "ip_informer",
-        "specific_rules": [],
-        "generic_rules": [],
+        "specific_rules": ["tests/testdata/unit/ip_informer/specific/"],
+        "generic_rules": ["tests/testdata/unit/ip_informer/generic/"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
