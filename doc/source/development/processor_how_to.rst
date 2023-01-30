@@ -37,7 +37,7 @@ after code is generated you have following new folders:
 * :code:`tests/unit/processor/<processor name>` with a file :code:`test_<processor name>.py` and a
   file :code:`test_<processor name>_rule.py`
 
-after registering your processor in :code:`logprep/registry.py` you can start implementing tests and :code:`_apply_rules`
+After registering your processor in :code:`logprep/registry.py` you can start implementing tests and :code:`_apply_rules`
 method as explained in the following sections.
 
 Processor
