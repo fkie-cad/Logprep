@@ -8,7 +8,7 @@ test_cases = [  # testcase, rule, event, expected
 
 ]
 
-failure_test_cases = [ # testcase, rule, event, expected
+failure_test_cases = [  # testcase, rule, event, expected
  
 ]  
 
@@ -33,3 +33,4 @@ class Test{{ processor.class_name }}(BaseProcessorTestCase):
         with pytest.raises(ProcessingWarning):
             self.object.process(event)
         assert event == expected, testcase
+
