@@ -6,10 +6,10 @@ from logprep.processor.{{ processor.name }}.rule import {{ processor.class_name 
 
 
 class Test{{ processor.class_name }}Rule:
-    def test_create_from_dict_returns_{{ processor_name }}_rule(self):
+    def test_create_from_dict_returns_{{ processor.name }}_rule(self):
         rule = {
             "filter": "message",
-            "{{ processor_name }}": {"source_fields": ["message"], "target_field": "new_field"},
+            "{{ processor.name }}": {"source_fields": ["message"], "target_field": "new_field"},
         }
         rule_dict = {{ processor.class_name }}Rule._create_from_dict(rule)
         assert isinstance(rule_dict, {{ processor.class_name }}Rule)
