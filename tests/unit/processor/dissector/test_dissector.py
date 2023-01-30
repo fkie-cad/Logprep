@@ -266,7 +266,7 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "dissector": {
                 "mapping": {
-                    "message": "%{+( )extracted/4} %{+( )extracted/3} %{+( )extracted/2} %{+extracted/1}"
+                    "message": "%{+( )extracted/4} %{+( )extracted/3} %{+( )extracted/2} %{+extracted/1}"  # pylint: disable=line-too-long
                 }
             },
         },
@@ -279,7 +279,7 @@ test_cases = [  # testcase, rule, event, expected
             "filter": "message",
             "dissector": {
                 "mapping": {
-                    "message": "%{+( )extracted/4} %{+( )extracted/3} %{+( )extracted/2} %{+( )extracted/1}"
+                    "message": "%{+( )extracted/4} %{+( )extracted/3} %{+( )extracted/2} %{+( )extracted/1}"  # pylint: disable=line-too-long
                 }
             },
         },
@@ -465,7 +465,7 @@ test_cases = [  # testcase, rule, event, expected
         "Appending with special field separator",
         {
             "filter": "message",
-            "dissector": {"mapping": {"message": "INFO#%{+(\()date}#%{+(\))date}#MOREINFO%{}"}},
+            "dissector": {"mapping": {"message": r"INFO#%{+(\()date}#%{+(\))date}#MOREINFO%{}"}},
         },
         {
             "message": "INFO#2022 12 06 15:12:30:534#+0100#MOREINFO",
