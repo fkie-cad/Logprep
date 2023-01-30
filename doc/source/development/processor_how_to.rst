@@ -20,25 +20,11 @@ In those cases it should be reconsidered if it is necessary that information is 
 Getting started
 ---------------
 
-If you want to implement a new processor, we have a tiny helper to generate the needed boilerplate code for you. You
-can run it in a python shell with:
-
-..  code-block:: python
-    :linenos:
-
-    from logprep.util.processor_generator import ProcessorCodeGenerator
-    processor_config = { "name": "NewProcessor", "base_class": "FieldManager" }
-    generator = ProcessorCodeGenerator(**processor_config)
-    generator.generate()
-
-After the code is generated you have following new folders and files:
-
-* :code:`logprep/processor/<processor name>` with a file :code:`processor.py` and a file :code:`rule.py`
-* :code:`tests/unit/processor/<processor name>` with a file :code:`test_<processor name>.py` and a
-  file :code:`test_<processor name>_rule.py`
-
-After registering your processor in :code:`logprep/registry.py` you can start implementing tests and :code:`_apply_rules`
-method as explained in the following sections.
+.. autoclass:: logprep.util.processor_generator.ProcessorCodeGenerator
+   :no-members:
+   :no-undoc-members:
+   :no-inherited-members:
+   :noindex:
 
 Processor
 ---------
