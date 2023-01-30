@@ -31,7 +31,7 @@ can run it in a python shell with:
     generator = ProcessorCodeGenerator(**processor_config)
     generator.generate()
 
-after code is generated you have following new folders:
+After the code is generated you have following new folders and files:
 
 * :code:`logprep/processor/<processor name>` with a file :code:`processor.py` and a file :code:`rule.py`
 * :code:`tests/unit/processor/<processor name>` with a file :code:`test_<processor name>.py` and a
