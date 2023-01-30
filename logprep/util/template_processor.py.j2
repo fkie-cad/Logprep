@@ -30,7 +30,8 @@ class {{ processor.class_name }}({{ processor.base_class.__name__ }}):
 
     @define(kw_only=True)
     class Config({{ processor.base_class.__name__}}.Config):
+        """ Config of ..."""
         ...
 
     def _apply_rules(self, event, rule):
-        ...
+        pass
