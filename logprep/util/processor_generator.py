@@ -51,8 +51,12 @@ class ProcessorCodeGenerator:
     * :code:`tests/unit/processor/<processor name>` with a file :code:`test_<processor name>.py` and a file :code:`test_<processor name>_rule.py`.
 
     After registering your processor in :code:`logprep/registry.py` you can start implementing tests
-    and :code:`_apply_rules`
-    method as explained in the following sections.
+    and :code:`_apply_rules` method as explained in the following sections.
+    Do not forget to add the processor and rule configuration to
+
+    * :code:`doc/source/user_manual/configuration/processor.rst`
+    * :code:`doc/source/user_manual/configuration/rule.rst`
+
     """
 
     name: str = field(validator=validators.instance_of(str), converter=camel_to_snake)
