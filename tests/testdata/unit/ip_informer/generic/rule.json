@@ -1,0 +1,11 @@
+[
+    {
+        "filter": "message",
+        "ip_informer": {
+            "source_fields": [
+                "message"
+            ],
+            "target_field": "new_field"
+        }
+    }
+]
