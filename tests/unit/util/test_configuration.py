@@ -4,6 +4,7 @@
 from copy import deepcopy
 from logging import getLogger
 import re
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -18,7 +19,7 @@ from logprep.util.configuration import (
     InvalidInputConnectorConfigurationError,
     InvalidOutputConnectorConfigurationError,
 )
-from tests.testdata.metadata import path_to_config, path_to_invalid_yml_config
+from tests.testdata.metadata import path_to_config
 
 logger = getLogger()
 
@@ -45,9 +46,11 @@ class TestConfiguration:
             config.verify(logger)
 
     @mock.patch("logprep.util.configuration.print_fcolor")
-    def test_invalid_yml_prints_formatted_error(self, mock_print_fcolor):
+    def test_invalid_yml_prints_formatted_error(self, mock_print_fcolor, tmp_path):
+        broken_config_path = Path(tmp_path / "test_config")
+        broken_config_path.write_text("process_count: 5\ninvalid_yaml", encoding="utf8")
         with pytest.raises(SystemExit, match="1"):
-            Configuration.create_from_yaml(path_to_invalid_yml_config)
+            Configuration.create_from_yaml(str(broken_config_path))
         mock_print_fcolor.assert_called()
         call_msg = str(mock_print_fcolor.call_args_list[0][0][1])
         assert call_msg.startswith("Error parsing YAML file")
