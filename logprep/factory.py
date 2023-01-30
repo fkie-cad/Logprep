@@ -19,7 +19,7 @@ class Factory:
     @classmethod
     def create(cls, configuration: dict, logger: "Logger") -> Component:
         """Create component."""
-        if not configuration:
+        if configuration == {} or configuration is None:
             raise InvalidConfigurationError("The component definition is empty.")
         if not isinstance(configuration, dict):
             raise InvalidConfigSpecificationError()
@@ -29,10 +29,12 @@ class Factory:
                 + " but there must be exactly one."
             )
         for component_name, component_configuration_dict in configuration.items():
-            if component_configuration_dict is None:
-                raise InvalidConfigurationError("The component definition is empty.")
+            if configuration == {} or component_configuration_dict is None:
+                raise InvalidConfigurationError(
+                    f'The definition of component "{component_name}" is empty.'
+                )
             if not isinstance(component_configuration_dict, dict):
-                raise InvalidConfigSpecificationError()
+                raise InvalidConfigSpecificationError(component_name)
             metric_labels = {}
             if "metric_labels" in configuration[component_name]:
                 metric_labels = configuration[component_name].pop("metric_labels")

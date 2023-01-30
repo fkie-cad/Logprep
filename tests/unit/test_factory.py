@@ -6,7 +6,7 @@ from random import sample
 from string import ascii_letters
 from unittest import mock
 
-from pytest import raises
+from pytest import raises, mark
 
 from logprep.abc.input import Input
 from logprep.factory import Factory
@@ -36,7 +36,7 @@ def test_create_fails_for_an_empty_section():
 def test_create_fails_if_config_is_not_an_object():
     with raises(
         InvalidConfigSpecificationError,
-        match="The configuration must be specified as an object.",
+        match=r'The configuration for component "processorname" must be specified as an object\.',
     ):
         Factory.create({"processorname": "string"}, logger)
 
@@ -44,6 +44,42 @@ def test_create_fails_if_config_is_not_an_object():
 def test_create_fails_if_config_does_not_contain_type():
     with raises(NoTypeSpecifiedError, match="The type specification is missing"):
         Factory.create({"processorname": {"other": "value"}}, logger)
+
+
+@mark.parametrize("component", [None, {}])
+def test_create_fails_if_config_component_is_empty(component):
+    with raises(InvalidConfigurationError, match=r"The component definition is empty\."):
+        Factory.create(component, logger)
+
+
+@mark.parametrize("component", ["foo", 1, True, ["foo"], [], "", 0, False])
+def test_create_fails_if_config_component_is_no_dict(component):
+    with raises(
+        InvalidConfigurationError, match=r"The configuration must be specified as an object\."
+    ):
+        Factory.create(component, logger)
+
+
+def test_create_fails_if_config_sub_component_is_empty():
+    with raises(InvalidConfigurationError, match=r'The definition of component "foo" is empty\.'):
+        Factory.create({"foo": None}, logger)
+
+
+def test_create_fails_if_config_sub_component_has_no_type_specification():
+    with raises(
+        NoTypeSpecifiedError,
+        match=r"The type specification is missing for element with name 'foo'",
+    ):
+        Factory.create({"foo": {}}, logger)
+
+
+@mark.parametrize("component", ["foo", 1, True, ["foo"], [], "", 0, False])
+def test_create_fails_if_config_sub_component_is_no_dict(component):
+    with raises(
+        InvalidConfigurationError,
+        match=r'The configuration for component "foo" must be specified as an object\.',
+    ):
+        Factory.create({"foo": component}, logger)
 
 
 def test_create_fails_for_unknown_type():

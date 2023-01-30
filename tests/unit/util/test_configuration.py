@@ -4,6 +4,7 @@
 from copy import deepcopy
 from logging import getLogger
 import re
+from unittest import mock
 
 import pytest
 
@@ -14,8 +15,10 @@ from logprep.util.configuration import (
     RequiredConfigurationKeyMissingError,
     InvalidConfigurationErrors,
     InvalidProcessorConfigurationError,
+    InvalidInputConnectorConfigurationError,
+    InvalidOutputConnectorConfigurationError,
 )
-from tests.testdata.metadata import path_to_config
+from tests.testdata.metadata import path_to_config, path_to_invalid_yml_config
 
 logger = getLogger()
 
@@ -40,6 +43,14 @@ class TestConfiguration:
 
         with pytest.raises(InvalidConfigurationError, match=expected_message):
             config.verify(logger)
+
+    @mock.patch("logprep.util.configuration.print_fcolor")
+    def test_invalid_yml_prints_formatted_error(self, mock_print_fcolor):
+        with pytest.raises(SystemExit, match="1"):
+            Configuration.create_from_yaml(path_to_invalid_yml_config)
+        mock_print_fcolor.assert_called()
+        call_msg = str(mock_print_fcolor.call_args_list[0][0][1])
+        assert call_msg.startswith("Error parsing YAML file")
 
     def test_verify_passes_for_valid_configuration(self):
         try:
@@ -604,10 +615,34 @@ class TestConfiguration:
         ):
             config._verify_input(logger)
 
+    def test_verify_input_raises_type_error(self):
+        config = deepcopy(self.config)
+        del config["input"]["kafka_input"]["bootstrapservers"]
+        with pytest.raises(
+            InvalidInputConnectorConfigurationError,
+            match=re.escape(
+                "Invalid input connector configuration: Required option(s) are missing: "
+                + "'bootstrapservers'."
+            ),
+        ):
+            config._verify_input(logger)
+
     def test_verify_output_raises_missing_output_key(self):
         config = deepcopy(self.config)
         del config["output"]
         with pytest.raises(
             RequiredConfigurationKeyMissingError, match="Required option is missing: output"
+        ):
+            config._verify_output(logger)
+
+    def test_verify_output_raises_type_error(self):
+        config = deepcopy(self.config)
+        del config["output"]["kafka_output"]["bootstrapservers"]
+        with pytest.raises(
+            InvalidOutputConnectorConfigurationError,
+            match=re.escape(
+                "Invalid output connector configuration: Required option(s) are missing: "
+                + "'bootstrapservers'."
+            ),
         ):
             config._verify_output(logger)

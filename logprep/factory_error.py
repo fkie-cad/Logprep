@@ -9,18 +9,16 @@ class InvalidConfigurationError(FactoryError):
     """Raise if configuration is invalid."""
 
 
-class NotExactlyOneEntryInConfigurationError(InvalidConfigurationError):
-    """Raise if there is not exactly one definition per pipeline."""
-
-    def __init__(self):
-        super().__init__("There must be exactly one definition per pipeline entry.")
-
-
 class InvalidConfigSpecificationError(InvalidConfigurationError):
     """Raise if the configuration was not specified as an object."""
 
-    def __init__(self):
-        super().__init__("The configuration must be specified as an object.")
+    def __init__(self, component=None):
+        if component:
+            super().__init__(
+                f'The configuration for component "{component}" must be specified as an object.'
+            )
+        else:
+            super().__init__("The configuration must be specified as an object.")
 
 
 class NoTypeSpecifiedError(InvalidConfigurationError):
