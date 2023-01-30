@@ -1,19 +1,19 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=too-many-lines
+import re
 from logging import getLogger
 from random import sample
 from string import ascii_letters
 from unittest import mock
 
-from pytest import raises
+from pytest import raises, mark
 
 from logprep.abc.input import Input
 from logprep.factory import Factory
 from logprep.factory_error import (
     InvalidConfigurationError,
     UnknownComponentTypeError,
-    NotExactlyOneEntryInConfigurationError,
     NoTypeSpecifiedError,
     InvalidConfigSpecificationError,
 )
@@ -26,25 +26,43 @@ from tests.testdata.metadata import path_to_schema, path_to_single_rule
 logger = getLogger()
 
 
-def test_create_fails_for_an_empty_section():
-    with raises(
-        NotExactlyOneEntryInConfigurationError,
-        match="There must be exactly one definition per pipeline entry.",
-    ):
-        Factory.create({}, logger)
-
-
-def test_create_fails_if_config_is_not_an_object():
-    with raises(
-        InvalidConfigSpecificationError,
-        match="The configuration must be specified as an object.",
-    ):
-        Factory.create({"processorname": "string"}, logger)
-
-
-def test_create_fails_if_config_does_not_contain_type():
-    with raises(NoTypeSpecifiedError, match="The type specification is missing"):
-        Factory.create({"processorname": {"other": "value"}}, logger)
+@mark.parametrize(
+    ["configs", "error", "message"],
+    [
+        ((None, {}), InvalidConfigurationError, r"The component definition is empty\."),
+        (
+            ("string", 1, True, ["string"], [], "", 0, False),
+            InvalidConfigSpecificationError,
+            r"The configuration must be specified as an object\.",
+        ),
+        (
+            ({"foo": None},),
+            InvalidConfigurationError,
+            'The definition of component "foo" is empty.',
+        ),
+        (
+            ({"foo": {}}, {"foo": {"other": "value"}}),
+            NoTypeSpecifiedError,
+            "The type specification is missing for element with name 'foo'",
+        ),
+        (
+            ({"foo": value} for value in ("string", 1, True, ["string"], [], "", 0, False)),
+            InvalidConfigSpecificationError,
+            r'The configuration for component "foo" must be specified as an object\.',
+        ),
+    ],
+)
+def test_create_from_dict_validates_config(configs, error, message):
+    for config in configs:
+        with raises(error) as exception_info:
+            Factory.create(config, logger)
+        value = str(exception_info.value)
+        assertion_error_message = (
+            f'Error message of "{error.__name__}" did not match regex for test input '
+            + f'"{repr(config)}".\n Regex pattern: {message}\n Error message: {value}"'
+        )
+        if not re.search(message, value):
+            raise AssertionError(assertion_error_message)
 
 
 def test_create_fails_for_unknown_type():
@@ -112,7 +130,8 @@ def test_create_clusterer_returns_clusterer_processor():
 def test_fails_when_section_contains_more_than_one_element():
     with raises(
         InvalidConfigurationError,
-        match="There must be exactly one definition per pipeline entry.",
+        match=r"Found multiple component definitions \(first, second\), "
+        r"but there must be exactly one\.",
     ):
         Factory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
 
