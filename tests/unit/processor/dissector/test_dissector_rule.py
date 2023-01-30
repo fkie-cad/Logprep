@@ -82,16 +82,16 @@ class TestDissectorRule:
                     "filter": "message",
                     "dissector": {"mapping": {"field": "%{ts}:"}},
                 },
-                ValueError,
-                "must match regex",
+                None,
+                None,
             ),
             (
                 {
                     "filter": "message",
                     "dissector": {"mapping": {"field": "%{ts}:%{ts} "}},
                 },
-                ValueError,
-                "must match regex",
+                None,
+                None,
             ),
             (
                 {
