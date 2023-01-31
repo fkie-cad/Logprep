@@ -1,0 +1,37 @@
+"""
+{{ processor.class_name }}
+============
+
+The `{{ processor.name }}` processor ...
+
+
+Example
+^^^^^^^
+..  code-block:: yaml
+    :linenos:
+
+    - samplename:
+        type: {{ processor.name }}
+        specific_rules:
+            - tests/testdata/rules/specific/
+        generic_rules:
+            - tests/testdata/rules/generic/
+"""
+from attrs import define, field, validators
+
+from {{ processor.base_class.__module__ }} import {{ processor.base_class.__name__}}
+from logprep.processor.{{ processor.name }}.rule import {{ processor.class_name }}Rule
+
+
+class {{ processor.class_name }}({{ processor.base_class.__name__ }}):
+    """A processor that ..."""
+
+    rule_class = {{ processor.class_name }}Rule
+
+    @define(kw_only=True)
+    class Config({{ processor.base_class.__name__}}.Config):
+        """ Config of ..."""
+        ...
+
+    def _apply_rules(self, event, rule):
+        pass

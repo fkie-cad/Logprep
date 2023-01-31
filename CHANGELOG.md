@@ -29,6 +29,7 @@
 * Add functionality to `geoip_enricher` to download the geoip-database
 * Add ability to use environment variables in rules and config
 * Add list access including slicing to dotted field notation for getting values
+* Add processor boilerplate generator to help adding new processors
 
 ### Bugfixes
 
