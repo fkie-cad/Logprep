@@ -74,7 +74,7 @@ class TestPipeline(ConfigurationForTests):
         )
 
     def test_fails_if_log_handler_is_not_of_type_loghandler(self, _):
-        for not_a_log_handler in [None, 123, 45.67, TestPipeline()]:
+        for not_a_log_handler in [123, 45.67, TestPipeline()]:
             with raises(MustProvideALogHandlerError):
                 _ = Pipeline(
                     pipeline_index=1,
@@ -145,7 +145,7 @@ class TestPipeline(ConfigurationForTests):
         assert len(self.pipeline._output.events) == 2
 
     def test_empty_documents_are_not_stored_in_the_output(self, _):
-        self.pipeline._process_event = lambda x: x.clear()
+        self.pipeline.process_event = lambda x: x.clear()
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline._output.store = mock.MagicMock()
