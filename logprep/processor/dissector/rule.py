@@ -119,7 +119,7 @@ class DissectorRule(FieldManagerRule):
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
                     value_validator=validators.matches_re(
-                        rf"^({DELIMETER})?({DISSECT}{DELIMETER})+{DISSECT}$"
+                        rf"^({DELIMETER})?({DISSECT}{DELIMETER})+({DISSECT})?$"
                     ),
                 ),
             ],
