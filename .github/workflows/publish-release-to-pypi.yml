@@ -55,9 +55,9 @@ jobs:
         with:
           push: true # Will only build if this is not here
           build-args: |
-            LOGPREP_VERSION=${{ $GITHUB_REF_NAME }}
+            LOGPREP_VERSION=${{ github.ref_name }}
             PYTHON_VERSION=${{ matrix.python-version }}
           tags: |
-            ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ $GITHUB_REF_NAME }}
+            ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-${{ github.ref_name }}
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-stable
             ghcr.io/fkie-cad/logprep:py${{ matrix.python-version }}-latest
