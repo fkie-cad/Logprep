@@ -6,7 +6,6 @@ from json import JSONDecodeError
 from unittest import mock
 
 import pytest
-import yaml
 from rich.console import Console
 
 from logprep.util.auto_rule_corpus_tester import RuleCorpusTester
@@ -307,9 +306,15 @@ class TestAutoRuleTester:
     ):
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         if mock_output is not None:
-            corpus_tester._retrieve_pipeline_output = mock.MagicMock(return_value=mock_output)
-        with corpus_tester.console.capture() as capture:
-            corpus_tester.run()
+            with mock.patch(
+                "logprep.util.auto_rule_corpus_tester.get_runner_outputs"
+            ) as mocked_output:
+                mocked_output.return_value = mock_output
+                with corpus_tester.console.capture() as capture:
+                    corpus_tester.run()
+        else:
+            with corpus_tester.console.capture() as capture:
+                corpus_tester.run()
         console_output = capture.get()
         for expected_print in expected_prints:
             assert expected_print in console_output, test_case
@@ -379,56 +384,6 @@ class TestAutoRuleTester:
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(0)
-
-    def test_patch_config_rewrites_input_output_and_process_count(self, corpus_tester, tmp_path):
-        corpus_tester.tmp_dir = tmp_path
-        original_config_path = corpus_tester.path_to_original_config
-        with open(original_config_path, "r", encoding="utf8") as config_file:
-            original_config = yaml.load(config_file, Loader=yaml.FullLoader)
-        original_input_type = list(original_config.get("input").items())[0][1].get("type")
-        original_output_type = list(original_config.get("output").items())[0][1].get("type")
-        assert original_input_type == "confluentkafka_input"
-        assert original_output_type == "confluentkafka_output"
-        assert original_config.get("process_count") == 3
-        corpus_tester._create_patched_pipeline()
-        patched_input = corpus_tester.pipeline._logprep_config.get("input")
-        patched_output = corpus_tester.pipeline._logprep_config.get("output")
-        patched_input_type = list(patched_input.items())[0][1].get("type")
-        patched_output_type = list(patched_output.items())[0][1].get("type")
-        assert patched_input_type == "jsonl_input"
-        assert patched_output_type == "jsonl_output"
-        assert corpus_tester.pipeline._logprep_config.get("process_count") == 1
-        assert str(corpus_tester.tmp_dir) in patched_input.get("test_input").get("documents_path")
-        patched_test_output = patched_output.get("test_output")
-        assert str(corpus_tester.tmp_dir) in patched_test_output.get("output_file")
-        assert str(corpus_tester.tmp_dir) in patched_test_output.get("output_file_custom")
-        assert str(corpus_tester.tmp_dir) in patched_test_output.get("output_file_error")
-
-    def test_patch_config_removes_metrics_key_if_present(self, corpus_tester, tmp_path):
-        corpus_tester.tmp_dir = tmp_path
-        with open(corpus_tester.path_to_original_config, "r", encoding="utf8") as config_file:
-            original_config = yaml.load(config_file, Loader=yaml.FullLoader)
-        original_config["metrics"] = {"some_unimportant": "values"}
-        patched_test_config_path = f"{tmp_path}/patched_test_config.yaml"
-        corpus_tester.path_to_original_config = patched_test_config_path
-        with open(patched_test_config_path, "w", encoding="utf8") as generated_config_file:
-            yaml.safe_dump(original_config, generated_config_file)
-        corpus_tester._create_patched_pipeline()
-        assert corpus_tester.pipeline._logprep_config.get("metrics") is None
-
-    def test_prepare_connector_files_removes_version_info_from_previous_run(self, corpus_tester):
-        corpus_tester._create_patched_pipeline()
-        corpus_tester.pipeline._logprep_config["input"]["version_information"] = {
-            "logprep": 1,
-            "config": 2,
-        }
-        test_case = ("test_case", {"in": "path", "out": "path", "expected_out": "path"})
-        with mock.patch("builtins.open") as _:
-            with mock.patch("logprep.util.auto_rule_corpus_tester.json") as _:
-                pipeline_input = corpus_tester.pipeline._logprep_config.get("input", {})
-                assert pipeline_input.get("version_information") is not None
-                corpus_tester._prepare_connector_files(test_case)
-                assert pipeline_input.get("version_information") is None
 
     @mock.patch("logprep.util.auto_rule_corpus_tester.shutil.rmtree")
     @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")

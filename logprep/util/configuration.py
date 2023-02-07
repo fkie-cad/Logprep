@@ -3,6 +3,7 @@
 import re
 import sys
 from logging import Logger
+from pathlib import Path
 from typing import List
 
 from ruamel.yaml.scanner import ScannerError
@@ -17,6 +18,7 @@ from logprep.factory_error import (
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import print_fcolor
+from logprep.util.json_handling import dump_config_as_file
 
 
 class InvalidConfigurationError(BaseException):
@@ -127,8 +129,61 @@ class Configuration(dict):
         config = Configuration()
         config.path = f"{config_getter.protocol}://{config_getter.target}"
         config.update(configuration)
-
         return config
+
+    @staticmethod
+    def patch_yaml_with_json_connectors(
+        original_config_path: str, output_dir: str, input_file_path: str = None
+    ) -> str:
+        """
+        Patches a given configuration file with jsonl input and output connectors, while
+        maintaining the input preprocessors. Additionally, the process_count is set to one and the
+        metrics configuration are removed, if present.
+
+        Parameters
+        ----------
+        original_config_path : str
+            Path to the original configuration file that should be patched
+        output_dir : str
+            Path where the patched configuration file should be saved to. That is the same
+            path where the jsonl connectors read and write the input/output files.
+        input_file_path : Optional[str]
+            If a concrete input file is given, then it is used in the patched input connector
+
+        Returns
+        -------
+        patched_config_path : str
+            The path to the patched configuration file
+        """
+        configuration = GetterFactory.from_string(original_config_path).get_yaml()
+        configured_input = configuration.get("input", {})
+        input_file_path = input_file_path if input_file_path else f"{output_dir}/input.json"
+        input_type = "jsonl_input" if input_file_path.endswith(".jsonl") else "json_input"
+        configuration["input"] = {
+            "patched_input": {
+                "type": input_type,
+                "documents_path": input_file_path,
+            }
+        }
+        if configured_input:
+            input_name = list(configured_input.keys())[0]
+            preprocessors = configured_input.get(input_name, {}).get("preprocessing", {})
+            if preprocessors:
+                configuration["input"]["patched_input"]["preprocessing"] = preprocessors
+        configuration["output"] = {
+            "patched_output": {
+                "type": "jsonl_output",
+                "output_file": f"{output_dir}/output.json",
+                "output_file_custom": f"{output_dir}/output_custom.json",
+                "output_file_error": f"{output_dir}/output_error.json",
+            }
+        }
+        configuration["process_count"] = 1
+        if "metrics" in configuration:
+            del configuration["metrics"]
+        patched_config_path = Path(output_dir) / "patched_config.yml"
+        dump_config_as_file(str(patched_config_path), configuration)
+        return str(patched_config_path)
 
     def verify(self, logger: Logger):
         """Verify the configuration."""

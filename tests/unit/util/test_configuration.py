@@ -1,9 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+import re
 from copy import deepcopy
 from logging import getLogger
-import re
 from pathlib import Path
 from unittest import mock
 
@@ -19,6 +19,8 @@ from logprep.util.configuration import (
     InvalidInputConnectorConfigurationError,
     InvalidOutputConnectorConfigurationError,
 )
+from logprep.util.getter import GetterFactory
+from logprep.util.json_handling import dump_config_as_file
 from tests.testdata.metadata import path_to_config
 
 logger = getLogger()
@@ -648,3 +650,79 @@ class TestConfiguration:
             ),
         ):
             config._verify_output(logger)
+
+    def test_patch_yaml_with_json_connectors_inserts_json_input_connector(self, tmp_path):
+        regular_config = GetterFactory.from_string(path_to_config).get_yaml()
+        assert (
+            regular_config.get("input", {}).get("kafka_input", {}).get("type")
+            == "confluentkafka_input"
+        )
+        patched_config_path = Configuration.patch_yaml_with_json_connectors(
+            path_to_config, str(tmp_path)
+        )
+        patched_config = GetterFactory.from_string(patched_config_path).get_yaml()
+        assert patched_config.get("input", {}).get("patched_input", {}).get("type") == "json_input"
+
+    def test_patch_yaml_with_json_connectors_inserts_jsonl_input_connector(self, tmp_path):
+        regular_config = GetterFactory.from_string(path_to_config).get_yaml()
+        assert (
+            regular_config.get("input", {}).get("kafka_input", {}).get("type")
+            == "confluentkafka_input"
+        )
+        input_file_path = tmp_path / "test.jsonl"
+        patched_config_path = Configuration.patch_yaml_with_json_connectors(
+            path_to_config, str(tmp_path), str(input_file_path)
+        )
+        patched_config = GetterFactory.from_string(patched_config_path).get_yaml()
+        assert patched_config.get("input", {}).get("patched_input", {}).get("type") == "jsonl_input"
+
+    def test_patch_yaml_with_json_connectors_keeps_preprocessors(self, tmp_path):
+        regular_config = GetterFactory.from_string(path_to_config).get_yaml()
+        regular_config["input"]["kafka_input"]["preprocessing"] = {
+            "log_arrival_time_target_field": "foo"
+        }
+        test_config_path = str(tmp_path / "test_config.yaml")
+        dump_config_as_file(test_config_path, regular_config)
+        patched_config_path = Configuration.patch_yaml_with_json_connectors(
+            test_config_path, str(tmp_path)
+        )
+        patched_config = GetterFactory.from_string(patched_config_path).get_yaml()
+        assert patched_config.get("input", {}).get("patched_input", {}).get("preprocessing") == {
+            "log_arrival_time_target_field": "foo"
+        }
+
+    def test_patch_yaml_with_json_connectors_inserts_jsonl_output_connector(self, tmp_path):
+        regular_config = GetterFactory.from_string(path_to_config).get_yaml()
+        assert (
+            regular_config.get("output", {}).get("kafka_output", {}).get("type")
+            == "confluentkafka_output"
+        )
+        patched_config_path = Configuration.patch_yaml_with_json_connectors(
+            path_to_config, str(tmp_path)
+        )
+        patched_config = GetterFactory.from_string(patched_config_path).get_yaml()
+        assert (
+            patched_config.get("output", {}).get("patched_output", {}).get("type") == "jsonl_output"
+        )
+
+    def test_patch_yaml_with_json_connectors_set_process_count_to_one(self, tmp_path):
+        regular_config = GetterFactory.from_string(path_to_config).get_yaml()
+        assert regular_config.get("process_count") == 3
+        patched_config_path = Configuration.patch_yaml_with_json_connectors(
+            path_to_config, str(tmp_path)
+        )
+        patched_config = GetterFactory.from_string(patched_config_path).get_yaml()
+        assert patched_config.get("process_count") == 1
+
+    def test_patch_yaml_with_json_connectors_drops_metrics_config(self, tmp_path):
+        regular_config = GetterFactory.from_string(path_to_config).get_yaml()
+        regular_config["metrics"] = {
+            "enabled": "true"
+        }
+        test_config_path = str(tmp_path / "test_config.yaml")
+        dump_config_as_file(test_config_path, regular_config)
+        patched_config_path = Configuration.patch_yaml_with_json_connectors(
+            test_config_path, str(tmp_path)
+        )
+        patched_config = GetterFactory.from_string(patched_config_path).get_yaml()
+        assert patched_config.get("metrics") is None
