@@ -15,7 +15,7 @@ To start the tester call:
 
 Where in the parameter :code:`CONFIG` should point to a valid logprep configuration and
 :code:`CORPUS_TEST_DATA` to a directory containing the test data with the different test cases.
-The test cases can be organized into sub directories.
+The test cases can be organized into subdirectories.
 Each test case should contain one input event (\*_in.json), one expected output event (\*_out.json)
 and an expected extra outputs like predetections or pseudonyms (\*_out_extra.json).
 The expected extra data is optional though, but if given, it is a single json file, where each
@@ -81,6 +81,7 @@ import re
 import shutil
 import sys
 import tempfile
+from functools import cached_property
 from json import JSONDecodeError
 from logging import getLogger
 
@@ -97,14 +98,31 @@ from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
 class RuleCorpusTester:
     """This class can test a rule corpus against expected outputs"""
 
+    _tmp_dir: str
+    """ Temporary directory where test files will be saved temporarily """
+
+    _original_config_path: str
+    """ Path to the original configuration that should be tested """
+
+    _input_test_data_path: str
+    """ Path to the directory that contains the test data (in, out, extra_outs) """
+
+    _test_cases: dict
+    """ Dictionary that contains the test cases, their input data and their results """
+
+    _at_least_one_test_failed: bool
+    """ Flag that indicates that at least one test has failed """
+
     def __init__(self, config_path, input_test_data_path):
-        self.tmp_dir = tempfile.mkdtemp()
-        self.original_config_path = config_path
+        self._original_config_path = config_path
+        self._input_test_data_path = input_test_data_path
+        self._test_cases = {}
+        self._at_least_one_test_failed = False
         self.console = Console(color_system="256")
-        self.input_test_data_path = input_test_data_path
-        self.pipeline = None
-        self.test_cases = {}
-        self.at_least_one_failed = False
+
+    @cached_property
+    def _tmp_dir(self):
+        return tempfile.mkdtemp()
 
     def run(self):
         """
@@ -117,18 +135,18 @@ class RuleCorpusTester:
         self._compare_with_expected_outputs()
         self._print_detailed_reports()
         self._print_test_statistics()
-        shutil.rmtree(self.tmp_dir)
-        if self.at_least_one_failed:
+        shutil.rmtree(self._tmp_dir)
+        if self._at_least_one_test_failed:
             sys.exit(1)
         else:
             sys.exit(0)
 
     def _read_files(self):
         """Traverse the given input directory and find all test cases."""
-        data_directory = self.input_test_data_path
+        data_directory = self._input_test_data_path
         file_paths = self._collect_test_case_file_paths(data_directory)
         test_cases = self._group_path_by_test_case(data_directory, file_paths)
-        self.test_cases = dict(sorted(test_cases.items()))
+        self._test_cases = dict(sorted(test_cases.items()))
 
     def _group_path_by_test_case(self, data_directory, file_paths):
         test_cases = {}
@@ -161,14 +179,14 @@ class RuleCorpusTester:
         For each test case the logprep connector files are rewritten (only the current test case
         will be added to the input file), the pipline is run and the outputs are compared.
         """
-        for current_test_case in self.test_cases.items():
+        for current_test_case in self._test_cases.items():
             input_file_path = current_test_case[1].get("test_data_path", {}).get("in")
             if not input_file_path:
                 raise ValueError(
                     f"The test case '{current_test_case[0]}' is missing an input file."
                 )
             path_to_patched_config = Configuration.patch_yaml_with_json_connectors(
-                self.original_config_path, self.tmp_dir, input_file_path
+                self._original_config_path, self._tmp_dir, input_file_path
             )
             test_runner = get_patched_runner(path_to_patched_config, logger=getLogger())
             outputs = get_runner_outputs(test_runner)
@@ -177,17 +195,17 @@ class RuleCorpusTester:
     def _compare_with_expected_outputs(self):
         """Compare the generated logprep output with the current test case"""
         self.console.print("[b]# Test Cases Summary:")
-        for test_case_id in self.test_cases:
+        for test_case_id in self._test_cases:
             self._compare_and_collect_report_print_statements(test_case_id)
             self._print_short_test_result(test_case_id)
-            if len(self.test_cases.get(test_case_id, {}).get("report_print_statements", [])) > 0:
-                self.at_least_one_failed = True
+            if len(self._test_cases.get(test_case_id, {}).get("report_print_statements", [])) > 0:
+                self._at_least_one_test_failed = True
 
     def _compare_and_collect_report_print_statements(self, test_case_id):
-        test_case_data = self.test_cases.get(test_case_id, {})
+        test_case_data = self._test_cases.get(test_case_id, {})
         _, _, logprep_errors = test_case_data.get("logprep_output")
         if logprep_errors:
-            self.test_cases[test_case_id]["report_print_statements"].extend(
+            self._test_cases[test_case_id]["report_print_statements"].extend(
                 ["[red]Following errors happened:", logprep_errors]
             )
         if test_case_data.get("test_data_path", {}).get("out"):
@@ -198,13 +216,13 @@ class RuleCorpusTester:
     def _print_detailed_reports(self):
         """If test case reports exist print out each report"""
         has_failed_reports = any(
-            case[1].get("report_print_statements", False) for case in self.test_cases.items()
+            case[1].get("report_print_statements", False) for case in self._test_cases.items()
         )
         if not has_failed_reports:
             return
         self.console.print()
         self.console.print("[b]# Test Cases Detailed Reports:")
-        for test_case_id, test_case_data in self.test_cases.items():
+        for test_case_id, test_case_data in self._test_cases.items():
             if test_case_data.get("report_print_statements"):
                 self._print_long_test_result(test_case_id, test_case_data)
                 self.console.print()
@@ -212,9 +230,9 @@ class RuleCorpusTester:
     def _print_test_statistics(self):
         """Print minimal statistics of the test run"""
         self.console.print("[b]# Test Overview")
-        total_cases = len(self.test_cases)
+        total_cases = len(self._test_cases)
         failed_cases = len(
-            [case for case in self.test_cases.items() if case[1].get("report_print_statements")]
+            [case for case in self._test_cases.items() if case[1].get("report_print_statements")]
         )
         self.console.print(f"Failed tests: {failed_cases}")
         self.console.print(f"Total test cases: {total_cases}")
@@ -236,7 +254,7 @@ class RuleCorpusTester:
             return parsed_json
         except JSONDecodeError as error:
             filename = os.path.basename(path)
-            self.test_cases[test_case_id]["report_print_statements"].append(
+            self._test_cases[test_case_id]["report_print_statements"].append(
                 f"[red]Json-Error decoding file {filename}:[/red]\n{error}"
             )
         return None
@@ -246,7 +264,7 @@ class RuleCorpusTester:
         Check if a generated extra output matches an expected extra output. If no match is found
         then the expected output is reported.
         """
-        test_case_data = self.test_cases.get(test_case_id, {})
+        test_case_data = self._test_cases.get(test_case_id, {})
         _, logprep_extra_outputs, _ = test_case_data.get("logprep_output")
         expected_extra_outputs_path = test_case_data.get("test_data_path", {}).get("out_extra")
         expected_extra_outputs = self._parse_json_with_error_handling(
@@ -273,7 +291,7 @@ class RuleCorpusTester:
                     "no matching extra output was generated by logprep",
                 )
                 prints.append(expected_extra_output)
-        self.test_cases[test_case_id]["report_print_statements"].extend(prints)
+        self._test_cases[test_case_id]["report_print_statements"].extend(prints)
 
     def _has_matching_logprep_output(
         self, test_case_id, expected_extra_output, expected_extra_output_key, logprep_extra_outputs
@@ -296,7 +314,7 @@ class RuleCorpusTester:
         return has_matching_output
 
     def _print_short_test_result(self, test_case_id):
-        test_case_data = self.test_cases.get(test_case_id, {})
+        test_case_data = self._test_cases.get(test_case_id, {})
         status = "[b green] PASSED"
         if not test_case_data.get("test_data_path", {}).get("out"):
             status = "[b grey53] SKIPPED[/b grey53] [grey53](no expected output given)[grey53]"
@@ -345,7 +363,7 @@ class RuleCorpusTester:
         Compares a generated output with an expected output, by also ignoring keys that are marked
         as <IGNORE_VALUE>. For each difference a corresponding print statement is collected.
         """
-        test_case_data = self.test_cases.get(test_case_id, {})
+        test_case_data = self._test_cases.get(test_case_id, {})
         logprep_output, _, _ = test_case_data.get("logprep_output")
         expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
         expected_output = self._parse_json_with_error_handling(
@@ -396,7 +414,7 @@ class RuleCorpusTester:
             )
             for key, value in diff["values_changed"].items():
                 prints.append(f" - {key}: {self._rewrite_output(str(value))}")
-        self.test_cases[test_case_id]["report_print_statements"].extend(prints)
+        self._test_cases[test_case_id]["report_print_statements"].extend(prints)
 
     def _check_keys_of_ignored_values(self, logprep_output, field_paths) -> list:
         if not field_paths:

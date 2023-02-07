@@ -29,8 +29,8 @@ def prepare_corpus_tester(corpus_tester, tmp_path, test_data):
     expected_output_data_path.write_text(json.dumps(test_data.get("expected_output")))
     expected_extra_output_data_path = tmp_path / f"{case_name}_out_extra.json"
     expected_extra_output_data_path.write_text(json.dumps(test_data.get("expected_extra_output")))
-    corpus_tester.input_test_data_path = tmp_path
-    corpus_tester.tmp_dir = tmp_path
+    corpus_tester._input_test_data_path = tmp_path
+    corpus_tester._tmp_dir = tmp_path
 
 
 class TestAutoRuleTester:
@@ -356,7 +356,7 @@ class TestAutoRuleTester:
     def test_run_raises_if_case_misses_input_file(self, tmp_path, corpus_tester):
         expected_output_data_path = tmp_path / "rule_auto_corpus_test_out.json"
         expected_output_data_path.write_text("not important")
-        corpus_tester.input_test_data_path = tmp_path
+        corpus_tester._input_test_data_path = tmp_path
         with pytest.raises(ValueError, match="is missing an input file."):
             corpus_tester.run()
 
@@ -389,4 +389,4 @@ class TestAutoRuleTester:
     @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
     def test_run_removes_test_tmp_dir(self, _, mock_shutil, corpus_tester):
         corpus_tester.run()
-        mock_shutil.assert_called_with(corpus_tester.tmp_dir)
+        mock_shutil.assert_called_with(corpus_tester._tmp_dir)
