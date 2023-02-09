@@ -34,7 +34,7 @@ class DomainResolverRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """RuleConfig for DomainResolver"""
 
-        target_field: list = field(
+        target_field: str = field(
             validator=fields(FieldManagerRule.Config).target_field.validator,
             default="resolved_ip",
         )

@@ -30,12 +30,12 @@ basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(me
 logger = getLogger("Logprep-Test")
 
 
-class TestingHTTPServer(socketserver.TCPServer):
+class HTTPServerForTesting(socketserver.TCPServer):
     allow_reuse_address = True
 
     @classmethod
     def run_http_server(cls, port=32000):
-        with TestingHTTPServer(("", port), http.server.SimpleHTTPRequestHandler) as httpd:
+        with HTTPServerForTesting(("", port), http.server.SimpleHTTPRequestHandler) as httpd:
             try:
                 cls.httpd = httpd
                 cls.httpd.serve_forever()
