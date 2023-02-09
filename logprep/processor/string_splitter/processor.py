@@ -39,12 +39,12 @@ class StringSplitter(FieldManager):
                 f"{ self.describe() }: source_field '{source_field}' is not a string"
             )
         result = source_field_content.split(rule.delimeter)
-        successfull = add_field_to(
+        successful = add_field_to(
             event=event,
             output_field=target_field,
             content=result,
             extends_lists=rule.extend_target_list,
             overwrite_output_field=rule.overwrite_target,
         )
-        if not successfull:
+        if not successful:
             raise DuplicationError(self.describe(), target_field)
