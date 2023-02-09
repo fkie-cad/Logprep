@@ -1,3 +1,4 @@
+# pylint: disable=anomalous-backslash-in-string
 """
 Filter
 ======
@@ -79,6 +80,7 @@ require additional options.
     regex_fields:
     - ip_address
 """
+# pylint: enable=anomalous-backslash-in-string
 
 from typing import List, Union, Optional
 import re
@@ -92,7 +94,6 @@ from logprep.filter.expression.filter_expression import (
     Or,
     And,
     StringFilterExpression,
-    WildcardStringFilterExpression,
     SigmaFilterExpression,
     RegExFilterExpression,
     Not as NotExpression,
@@ -141,7 +142,7 @@ class LuceneFilter:
             tree = parser.parse(query_string)
             transformer = LuceneTransformer(tree, special_fields)
         except (ParseSyntaxError, IllegalCharacterError) as error:
-            raise LuceneFilterError(error)
+            raise LuceneFilterError(error) from error
 
         return transformer.build_filter()
 
@@ -173,13 +174,11 @@ class LuceneTransformer:
     def __init__(self, tree: luqum.tree, special_fields: dict = None):
         self._tree = tree
 
-        self._special_fields = dict()
+        self._special_fields = {}
 
-        special_fields = special_fields if special_fields else dict()
-        for key in self._special_fields_map.keys():
-            self._special_fields[key] = (
-                special_fields.get(key) if special_fields.get(key) else list()
-            )
+        special_fields = special_fields if special_fields else {}
+        for key in self._special_fields_map:
+            self._special_fields[key] = special_fields.get(key) if special_fields.get(key) else []
 
         self._last_search_field = None
 
@@ -200,9 +199,9 @@ class LuceneTransformer:
         if isinstance(tree, AndOperation):
             return And(*self._collect_children(tree))
         if isinstance(tree, Not):
-            return NotExpression(
-                *self._collect_children(tree)
-            )  # pylint: disable=no-value-for-parameter
+            # pylint: disable=no-value-for-parameter
+            return NotExpression(*self._collect_children(tree))
+            # pylint: enable=no-value-for-parameter
         if isinstance(tree, Group):
             return self._parse_tree(tree.children[0])
         if isinstance(tree, SearchField):
@@ -211,19 +210,16 @@ class LuceneTransformer:
                 parsed = self._parse_tree(tree.expr.children[0])
                 self._last_search_field = None
                 return parsed
-            else:
-                return self._create_field(tree)
+            return self._create_field(tree)
         if isinstance(tree, Word):
             if self._last_search_field:
                 return self._create_field_group_expression(tree)
-            else:
-                return self._create_value_expression(tree)
+            return self._create_value_expression(tree)
         if isinstance(tree, Phrase):
             if self._last_search_field:
                 return self._create_field_group_expression(tree)
-            else:
-                return self._create_value_expression(tree)
-        raise LuceneFilterError('The expression "{}" is invalid!'.format(str(tree)))
+            return self._create_value_expression(tree)
+        raise LuceneFilterError(f'The expression "{str(tree)}" is invalid!')
 
     def _create_field_group_expression(self, tree: luqum.tree) -> FilterExpression:
         """Creates filter expression that is resulting from a field group.
@@ -283,8 +279,7 @@ class LuceneTransformer:
         value = value.split(".")
         if value == ["*"]:
             return Always(True)
-        else:
-            return Exists(value)
+        return Exists(value)
 
     @staticmethod
     def _strip_quote_from_string(string: str) -> str:
@@ -305,8 +300,8 @@ class LuceneTransformer:
         string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
         backslashes = 0
-        for x in range(len(string)):
-            chara = string[len(string) - 1 - x]
+        for idx in range(len(string)):
+            chara = string[len(string) - 1 - idx]
             if chara == "\\":
                 backslashes += 1
             else:

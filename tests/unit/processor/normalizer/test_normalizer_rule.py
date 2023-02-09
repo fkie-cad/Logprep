@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
 
 import pytest
 
@@ -6,8 +7,8 @@ from logprep.filter.lucene_filter import LuceneFilter
 from logprep.processor.normalizer.rule import NormalizerRule
 
 
-@pytest.fixture()
-def specific_rule_definition():
+@pytest.fixture(name="specific_rule_definition")
+def fixture_specific_rule_definition():
     return {
         "filter": "message",
         "normalize": {

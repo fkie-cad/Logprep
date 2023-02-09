@@ -1,13 +1,16 @@
+# pylint: disable=anomalous-backslash-in-string
 """
 Normalizer
 ==========
 
 The normalizer requires the additional field :code:`normalize`.
 It contains key-value pairs that define if and how fields gets normalized.
-The keys describe fields that are going to be normalized and the values describe the new normalized fields.
-Through normalizing, old fields are being copied to new fields, but the old fields are not deleted.
+The keys describe fields that are going to be normalized and the values describe the new
+normalized fields. Through normalizing, old fields are being copied to new fields, but the old
+fields are not deleted.
 
-In the following example the field :code:`event_data.ClientAddress` is normalized to :code:`client.ip`.
+In the following example the field :code:`event_data.ClientAddress` is normalized to
+:code:`client.ip`.
 
 ..  code-block:: yaml
     :linenos:
@@ -23,12 +26,15 @@ Extraction and Replacement
 
 Instead of copying a whole field, it is possible to copy only parts of it via regex capture groups.
 These can be then extracted and rearranged in a new field.
-The groups are defined in a configurable file as keywords and can be referenced from within the rules via the Python regex syntax.
+The groups are defined in a configurable file as keywords and can be referenced from within the
+rules via the Python regex syntax.
 
 Instead of specifying a target field, a list with three elements has to be used.
-The first element is the target field, the second element is a regex keyword and the third field is a regex expression that defines how the value should be inserted into the new field.
+The first element is the target field, the second element is a regex keyword and the third field is
+a regex expression that defines how the value should be inserted into the new field.
 
-In the following example :code:`event_data.address_text: "The IP is 1.2.3.4 and the port is 1234!"` is normalized to :code:`address: "1.2.3.4:1234"`.
+In the following example :code:`event_data.address_text: "The IP is 1.2.3.4 and the port is 1234!"`
+is normalized to :code:`address: "1.2.3.4:1234"`.
 
 ..  code-block:: json
     :linenos:
@@ -62,9 +68,9 @@ All Grok normalizations are always performed before other normalizations.
 An example for this is the creation of nested fields.
 
 The following example would normalize
-:code:`event_data.ip_and_port: "Linus has the address 1.2.3.4 1234", event_data.address_text: "This is an address: 1.2.3.4:1234"` to
-:code:`address.ip: "1.2.3.4"`, :code:`address.port: 1234`, :code:`name: Linus` and
-:code:`address.combined: 1.2.3.4 and 1234`.
+:code:`event_data.ip_and_port: "Linus has the address 1.2.3.4 1234", event_data.address_text:
+"This is an address: 1.2.3.4:1234"` to :code:`address.ip: "1.2.3.4"`, :code:`address.port: 1234`,
+:code:`name: Linus` and :code:`address.combined: 1.2.3.4 and 1234`.
 
 ..  code-block:: yaml
     :linenos:
@@ -100,8 +106,8 @@ The following example would normalize :code:`some_field_with_an_ip: "1.2.3.4 123
 
 As Grok pattern are only applied when they match a given input string it is sometimes desired to
 know when none of the given pattern matches.
-This is helpful in identifying new, unknown or reconfigured log sources that are not correctly covered by the current
-rule set.
+This is helpful in identifying new, unknown or reconfigured log sources that are not correctly
+covered by the current rule set.
 To activate the output of this information it is required to add the field
 :code:`failure_target_field` to the grok rule.
 This will describe the output field where the grok failure should be written to.
@@ -175,21 +181,22 @@ Normalization of Timestamps
 ---------------------------
 
 There is a special functionality that allows to normalize timestamps.
-With this functionality different timestamp formats can be converted to ISO8601 and timezones can be adapted.
-Instead of giving a target field, the special field `timestamp` is used.
+With this functionality different timestamp formats can be converted to ISO8601 and timezones can
+be adapted. Instead of giving a target field, the special field `timestamp` is used.
 Under this field additional configurations for the normalization can be specified.
-Under `timestamp.source_formats` a list of possible source formats for the timestamp must be defined.
-The original timezone of the timestamp must be specified in `timestamp.source_timezone`.
+Under `timestamp.source_formats` a list of possible source formats for the timestamp must be
+defined. The original timezone of the timestamp must be specified in `timestamp.source_timezone`.
 Furthermore, in `timestamp.destination_timezone` the new timestamp must be specified.
-Finally, `timestamp.destination` defines the target field to which the new timestamp should be written.
-Optionally, it can be defined if the normalization is allowed to override existing values by setting `timestamp.allow_override` to `true` or `false`.
-It is allowed to override by default.
+Finally, `timestamp.destination` defines the target field to which the new timestamp should be
+written. Optionally, it can be defined if the normalization is allowed to override existing values
+by setting `timestamp.allow_override` to `true` or `false`. It is allowed to override by default.
 
 Valid formats for timestamps are defined by the notation of the Python datetime module.
-Additionally, the value `ISO8601` and `UNIX` can be used for the `source_formats` field. The former can be used if the
-timestamp already exists in the ISO98601 format, such that only a timezone conversion should be applied. And the latter
-can be used if the timestamp is given in the UNIX Epoch Time. This supports the Unix timestamps in seconds and
-milliseconds.
+Additionally, the value `ISO8601` and `UNIX` can be used for the `source_formats` field.
+The former can be used if the
+timestamp already exists in the ISO98601 format, such that only a timezone conversion should be
+applied. And the latter can be used if the timestamp is given in the UNIX Epoch Time. This supports
+the Unix timestamps in seconds and milliseconds.
 
 Valid timezones are defined in the pytz module:
 
@@ -783,7 +790,8 @@ Valid timezones are defined in the pytz module:
    </details>
    <br/>
 
-In the following example :code:`@timestamp: 2000 12 31 - 22:59:59` would be normalized to :code:`@timestamp: 2000-12-31T23:59:59+01:00`.
+In the following example :code:`@timestamp: 2000 12 31 - 22:59:59` would be normalized to
+:code:`@timestamp: 2000-12-31T23:59:59+01:00`.
 
 ..  code-block:: yaml
     :linenos:
@@ -800,9 +808,10 @@ In the following example :code:`@timestamp: 2000 12 31 - 22:59:59` would be norm
           destination_timezone: 'Europe/Berlin'
     description: 'Test-rule with matching auto-test'
 
-If Grok and a timestamp normalization is being used in the same rule, then Grok is being applied first,
-so that a time normalization can be performed on the Grok results.
+If Grok and a timestamp normalization is being used in the same rule, then Grok is being applied
+first, so that a time normalization can be performed on the Grok results.
 """
+# pylint: enable=anomalous-backslash-in-string
 
 import re
 from typing import Union, Dict, List
@@ -862,8 +871,8 @@ class GrokWrapper:
         self.failure_target_field = failure_target_field
 
     def __eq__(self, other: "GrokWrapper") -> bool:
-        return set([grok_item.regex_obj for grok_item in self._grok_list]) == set(
-            [grok_item.regex_obj for grok_item in other._grok_list]
+        return set(grok_item.regex_obj for grok_item in self._grok_list) == set(
+            grok_item.regex_obj for grok_item in other._grok_list
         )
 
     def match(self, text: str, pattern_matches: dict = None) -> Dict[str, str]:
