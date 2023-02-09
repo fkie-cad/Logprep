@@ -191,7 +191,7 @@ class TestListComparison(BaseProcessorTestCase):
         }
         expected = {"user_results": {"in_list": ["user_list.txt"]}}
         self._load_specific_rule(rule_dict)
-        self.object._init_rules_list_comparison()
+        self.object.setup()
         self.object.process(document)
         assert document == expected
 
@@ -209,7 +209,7 @@ class TestListComparison(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule_dict)
-        self.object._init_rules_list_comparison()
+        self.object.setup()
         match = (
             r"ProcessingWarning: \(Test Instance Name - The following fields could not be written, "
             r"because one or more subfields existed and could not be extended: user\.in_list\)"
@@ -247,7 +247,7 @@ Hans
         processor = Factory.create({"custom_lister": config}, self.logger)
         rule = processor.rule_class._create_from_dict(rule_dict)
         processor._specific_tree.add_rule(rule)
-        processor._init_rules_list_comparison()
+        processor.setup()
         assert processor._specific_rules[0].compare_sets == {
             "bad_users.list": {"Franz", "Heinz", "Hans"}
         }

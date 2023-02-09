@@ -14,17 +14,15 @@ from logging import getLogger
 from os import walk, path
 from pprint import pprint
 from typing import Tuple, TYPE_CHECKING
-from logprep.framework.rule_tree.rule_tree import RuleTree
 
-from typing.io import TextIO
 import regex as re
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
+from typing.io import TextIO
 
-from logprep.processor.pre_detector.processor import PreDetector
-from logprep.processor.pseudonymizer.processor import Pseudonymizer
-from logprep.processor.list_comparison.processor import ListComparison
 from logprep.factory import Factory
+from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.processor.pre_detector.processor import PreDetector
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
 from logprep.util.helper import print_fcolor, remove_file_if_exists, get_dotted_field_value
 
@@ -355,14 +353,8 @@ class AutoRuleTester:
             processor.load_rules(self._empty_rules_dirs, [])
         elif rule_type == "generic_rules":
             processor.load_rules([], self._empty_rules_dirs)
-        self._do_processor_specific_setup(processor)
+        processor.setup()
 
-    @staticmethod
-    def _do_processor_specific_setup(processor: "Processor"):
-        if isinstance(processor, Pseudonymizer):
-            processor._replace_regex_keywords_by_regex_expression()
-        if isinstance(processor, ListComparison):
-            processor._init_rules_list_comparison()
 
     def _prepare_test_eval(
         self, processor: "Processor", rule_dict: dict, rule_type: str, temp_rule_path: str

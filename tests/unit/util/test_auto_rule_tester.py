@@ -166,10 +166,10 @@ class TestAutoRuleTester:
         assert mock_replace_regex_keywords_by_regex_expression.call_count == 2
 
     @mock.patch(
-        "logprep.processor.list_comparison.processor.ListComparison._init_rules_list_comparison"
+        "logprep.processor.list_comparison.processor.ListComparison.setup"
     )
     def test_list_comparison_specific_setup_called_on_load_rules(
-        self, mock_init_rules_list_comparison, auto_rule_tester
+        self, mock_setup, auto_rule_tester
     ):
         list_comparison_cfg = {
             "type": "list_comparison",
@@ -178,16 +178,16 @@ class TestAutoRuleTester:
             "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
             "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
         }
-        mock_init_rules_list_comparison.assert_not_called()
+        mock_setup.assert_not_called()
         processor = auto_rule_tester._get_processor_instance(
             "list_comparison", list_comparison_cfg, LOGGER
         )
         auto_rule_tester._reset_trees(
             processor
         )  # Called every time by auto tester before adding rules instead
-        mock_init_rules_list_comparison.assert_called_once()
+        mock_setup.assert_called_once()
         auto_rule_tester._load_rules(processor, "specific_rules")
-        assert mock_init_rules_list_comparison.call_count == 2
+        assert mock_setup.call_count == 2
 
     def test_full_auto_rule_test_run(self, auto_rule_tester, capsys):
         with pytest.raises(SystemExit):
