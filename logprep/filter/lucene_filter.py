@@ -110,6 +110,9 @@ class LuceneFilterError(BaseException):
 class LuceneFilter:
     """A filter that allows using lucene query strings."""
 
+    find_escaping_pattern = re.compile(r'(?:\\)+"')
+    perform_escaping_pattern = re.compile(r'((?:\\)+"[\s\)]*(?:AND|OR|NOT|$))')
+
     @staticmethod
     def create(query_string: str, special_fields: dict = None) -> FilterExpression:
         """Create a FilterExpression from a lucene query string.
@@ -145,15 +148,15 @@ class LuceneFilter:
     @staticmethod
     def _add_lucene_escaping(query_string):
         """Ignore all escaping and escape only double quotes so that lucene can be parsed."""
-        matches = re.findall(r'.*?((?:\\)+").*?', query_string)
+        matches = LuceneFilter.find_escaping_pattern.findall(query_string)
         for idx, match in enumerate(matches):
             length = len(match) - 1
             if length > 1:
                 matches[idx] = "\\" + matches[idx]
-        split = re.split(r'(?:\\)+"', query_string)
+        split = LuceneFilter.find_escaping_pattern.split(query_string)
         query_string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
-        query_string = re.sub(r'((?:\\)+"[\s\)]*(?:AND|OR|NOT|$))', r"\\\g<1>", query_string)
+        query_string = LuceneFilter.perform_escaping_pattern.sub(r"\\\g<1>", query_string)
         return query_string
 
 
@@ -164,6 +167,8 @@ class LuceneTransformer:
         "regex_fields": RegExFilterExpression,
         "sigma_fields": SigmaFilterExpression,
     }
+
+    find_unescaping_pattern = re.compile(r'(?:\\)*"')
 
     def __init__(self, tree: luqum.tree, special_fields: dict = None):
         self._tree = tree
@@ -291,12 +296,12 @@ class LuceneTransformer:
     def _remove_lucene_escaping(string):
         """Remove previously added lucene escaping so that double quotes will be
         interpreted correctly by wildcard parser."""
-        matches = re.findall(r'.*?((?:\\)*").*?', string)
+        matches = LuceneTransformer.find_unescaping_pattern.findall(string)
         for idx, match in enumerate(matches):
             length = len(match) - 1
             matches[idx] = "\\" * (length // 2 - 1) + '"'
 
-        split = re.split(r'(?:\\)*"', string)
+        split = LuceneTransformer.find_unescaping_pattern.split(string)
         string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
         backslashes = 0
