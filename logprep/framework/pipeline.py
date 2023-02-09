@@ -4,11 +4,11 @@ Pipelines contain a list of processors that can be executed in order to process 
 They can be multi-processed.
 
 """
+# pylint: disable=logging-fstring-interpolation
 import json
 import queue
 import warnings
 from ctypes import c_bool, c_double, c_ulonglong
-# pylint: disable=logging-fstring-interpolation
 from functools import cached_property
 from logging import INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
