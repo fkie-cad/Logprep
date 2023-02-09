@@ -7,7 +7,9 @@ from typing import Dict, List, Union
 from ruamel.yaml import YAML
 from attrs import define, field, validators
 
-yaml = YAML(typ="safe", pure=True)
+pure_yaml = YAML(typ="safe", pure=True)
+impure_yaml = YAML(typ="safe", pure=False)
+base_yaml = YAML(typ="base", pure=False)
 
 
 @define(kw_only=True)
@@ -29,7 +31,28 @@ class Getter(ABC):
         return content
 
     def get_yaml(self) -> Union[Dict, List]:
-        """gets and parses the raw content to yaml"""
+        """gets and parses the raw content to yaml using only Python modules.
+
+        Is slower but, has always expected behaviour.
+        """
+        return self._get_yaml_with_loader(pure_yaml)
+
+    def get_impure_yaml(self) -> Union[Dict, List]:
+        """gets and parses the raw content to yaml using non-Python modules if faster.
+
+        Is faster, but may have different behaviour.
+        """
+        return self._get_yaml_with_loader(impure_yaml)
+
+    def get_basic_yaml(self) -> Union[Dict, List]:
+        """gets and parses the raw content to yaml into basic Python objects like lists and dicts.
+
+        Has limited functionality, but is very fast.
+        """
+        return self._get_yaml_with_loader(base_yaml)
+
+    def _get_yaml_with_loader(self, yaml: YAML) -> Union[Dict, List]:
+        """gets and parses the raw content to yaml with the given YAML object."""
         raw = self.get()
         parsed_yaml = list(yaml.load_all(raw))
         if not parsed_yaml:

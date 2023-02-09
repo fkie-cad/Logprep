@@ -173,7 +173,7 @@ class Pseudonymizer(Processor):
             self._tld_extractor = TLDExtract()
 
     def _load_regex_mapping(self, regex_mapping_path: str):
-        self._regex_mapping = GetterFactory.from_string(regex_mapping_path).get_yaml()
+        self._regex_mapping = GetterFactory.from_string(regex_mapping_path).get_impure_yaml()
 
     def process(self, event: dict):
         self.pseudonymized_fields = set()

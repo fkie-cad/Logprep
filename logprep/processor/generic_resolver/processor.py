@@ -120,7 +120,9 @@ class GenericResolver(Processor):
         if rule.resolve_from_file:
             if rule.resolve_from_file["path"] not in self._replacements_from_file:
                 try:
-                    add_dict = GetterFactory.from_string(rule.resolve_from_file["path"]).get_yaml()
+                    add_dict = GetterFactory.from_string(
+                        rule.resolve_from_file["path"]
+                    ).get_impure_yaml()
                     if isinstance(add_dict, dict) and all(
                         isinstance(value, str) for value in add_dict.values()
                     ):

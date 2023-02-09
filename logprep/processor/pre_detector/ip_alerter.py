@@ -35,7 +35,7 @@ class IPAlerter:
     def _init_alert_ip_list(self, alert_ip_lists: List):
         for alert_ip_list in alert_ip_lists:
             if alert_ip_list and isfile(alert_ip_list):
-                full_alert_ip_list = GetterFactory.from_string(alert_ip_list).get_yaml()
+                full_alert_ip_list = GetterFactory.from_string(alert_ip_list).get_impure_yaml()
                 self._filter_non_expired_alert_ips(full_alert_ip_list)
                 self._single_alert_ips.update(
                     set(ip_string for ip_string in self._alert_ips_map if "/" not in ip_string)

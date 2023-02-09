@@ -80,7 +80,7 @@ class HyperscanResolverRule(Rule):
         def _init_resolve_from_file(self):
             pattern, resolve_file_path = self._get_resolve_file_path_and_pattern()
             try:
-                add_dict = GetterFactory.from_string(resolve_file_path).get_yaml()
+                add_dict = GetterFactory.from_string(resolve_file_path).get_impure_yaml()
 
                 if isinstance(add_dict, dict) and all(
                     isinstance(value, str) for value in add_dict.values()

@@ -204,7 +204,7 @@ class GenericAdderRule(FieldManagerRule):
             missing_files = []
             for add_file in self.add_from_file:  # pylint: disable=not-an-iterable
                 try:
-                    add_dict = GetterFactory.from_string(add_file).get_yaml()
+                    add_dict = GetterFactory.from_string(add_file).get_impure_yaml()
                 except FileNotFoundError:
                     missing_files.append(add_file)
                     continue

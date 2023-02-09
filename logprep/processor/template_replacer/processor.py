@@ -92,7 +92,7 @@ class TemplateReplacer(Processor):
         allow_delimiter_index = self._fields.index(allow_delimiter_field)
 
         self._mapping = {}
-        template = GetterFactory.from_string(template_path).get_yaml()
+        template = GetterFactory.from_string(template_path).get_basic_yaml()
 
         for key, value in template.items():
             split_key = key.split(delimiter)

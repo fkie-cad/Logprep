@@ -1,5 +1,4 @@
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
 # pylint: disable=line-too-long
 # pylint: disable=unspecified-encoding
 # pylint: disable=protected-access
@@ -122,7 +121,7 @@ class TestFileGetter:
             (
                 "get_yaml",
                 b"""---
-first_dict:
+first_dict:  #foo
     key:
         - valid_list_element
         - valid_list_element
@@ -132,7 +131,63 @@ first_dict:
             (
                 "get_yaml",
                 b"""---
-first_dict:
+first_dict:  #foo
+    key:
+        - valid_list_element
+        - valid_list_element
+---
+second_dict:
+    key:
+        - valid_list_element
+        - valid_list_element
+                """,
+                [
+                    {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                    {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                ],
+            ),
+            (
+                "get_impure_yaml",
+                b"""---
+first_dict:  #foo
+    key:
+        - valid_list_element
+        - valid_list_element
+                """,
+                {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+            ),
+            (
+                "get_impure_yaml",
+                b"""---
+first_dict:  #foo
+    key:
+        - valid_list_element
+        - valid_list_element
+---
+second_dict:
+    key:
+        - valid_list_element
+        - valid_list_element
+                """,
+                [
+                    {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                    {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                ],
+            ),
+            (
+                "get_basic_yaml",
+                b"""---
+first_dict:  #foo
+    key:
+        - valid_list_element
+        - valid_list_element
+                """,
+                {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+            ),
+            (
+                "get_basic_yaml",
+                b"""---
+first_dict:  #foo
     key:
         - valid_list_element
         - valid_list_element
