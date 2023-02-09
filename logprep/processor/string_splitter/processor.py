@@ -26,7 +26,7 @@ from logprep.processor.base.exceptions import DuplicationError, ProcessingWarnin
 
 
 class StringSplitter(FieldManager):
-    """A processor that ..."""
+    """A processor that splits strings"""
 
     rule_class = StringSplitterRule
 
