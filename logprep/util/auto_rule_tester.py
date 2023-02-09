@@ -355,7 +355,6 @@ class AutoRuleTester:
             processor.load_rules([], self._empty_rules_dirs)
         processor.setup()
 
-
     def _prepare_test_eval(
         self, processor: "Processor", rule_dict: dict, rule_type: str, temp_rule_path: str
     ):

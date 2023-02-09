@@ -165,9 +165,7 @@ class TestAutoRuleTester:
         auto_rule_tester._load_rules(processor, "specific_rules")
         assert mock_replace_regex_keywords_by_regex_expression.call_count == 2
 
-    @mock.patch(
-        "logprep.processor.list_comparison.processor.ListComparison.setup"
-    )
+    @mock.patch("logprep.processor.list_comparison.processor.ListComparison.setup")
     def test_list_comparison_specific_setup_called_on_load_rules(
         self, mock_setup, auto_rule_tester
     ):
