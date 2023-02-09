@@ -652,3 +652,14 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         return event
+
+    def test_replace_regex_keywords_by_regex_expression_can_be_called_multiple_times(self):
+        rule_dict = {
+            "filter": "event_id: 1234",
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "description": "description content irrelevant for these tests",
+        }
+        self._load_specific_rule(rule_dict)  # First call
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something": "(.*)"}
+        self.object._replace_regex_keywords_by_regex_expression()  # Second Call
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something": "(.*)"}
