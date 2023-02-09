@@ -13,7 +13,20 @@ test_cases = [
         },
         {"message": "this is the message"},
         {"message": "this is the message", "result": ["this", "is", "the", "message"]},
-    )
+    ),
+    (
+        "splits with delimeter",
+        {
+            "filter": "message",
+            "string_splitter": {
+                "source_fields": ["message"],
+                "target_field": "result",
+                "delimeter": ", ",
+            },
+        },
+        {"message": "this, is, the, message"},
+        {"message": "this, is, the, message", "result": ["this", "is", "the", "message"]},
+    ),
 ]  # testcase, rule, event, expected
 
 failure_test_cases = [
