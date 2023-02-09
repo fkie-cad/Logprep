@@ -210,3 +210,69 @@ class TestNormalizerRule:
             other_rule_definition["normalize"],
         )
         assert (rule1 == rule2) == is_equal, testcase
+
+    def test_grok_loads_one_pattern(self):
+        grok_rule = {
+            "filter": "message",
+            "normalize": {
+                "some_grok_field": {"grok": "%{IP:ip_foo}"},
+            },
+        }
+
+        rule = NormalizerRule(LuceneFilter.create(grok_rule["filter"]), grok_rule["normalize"])
+        assert len(rule.grok) == 1
+        assert rule.grok.get("some_grok_field")._grok_list[0].pattern == "^%{IP:ip_foo}$"
+
+    def test_grok_loads_one_pattern_from_list(self):
+        grok_rule = {
+            "filter": "message",
+            "normalize": {
+                "some_grok_field": {"grok": ["%{IP:ip_foo}"]},
+            },
+        }
+
+        rule = NormalizerRule(LuceneFilter.create(grok_rule["filter"]), grok_rule["normalize"])
+        assert len(rule.grok) == 1
+        patterns = [grok.pattern for grok in rule.grok.get("some_grok_field")._grok_list]
+        assert len(patterns) == 1
+        assert patterns[0] == "^%{IP:ip_foo}$"
+
+    def test_grok_loads_multiple_patterns_from_one_list(self):
+        grok_patterns = ["%{IP:ip_foo}", "%{IP:ip_bar}", "%{IP:ip_baz}"]
+        grok_rule = {
+            "filter": "message",
+            "normalize": {
+                "some_grok_field": {"grok": grok_patterns},
+            },
+        }
+
+        rule = NormalizerRule(LuceneFilter.create(grok_rule["filter"]), grok_rule["normalize"])
+        assert len(rule.grok) == 1
+        patterns = [grok.pattern for grok in rule.grok.get("some_grok_field")._grok_list]
+        assert len(patterns) == 3
+        assert patterns == ["^%{IP:ip_foo}$", "^%{IP:ip_bar}$", "^%{IP:ip_baz}$"]
+
+    def test_grok_loads_multiple_patterns_from_multiple_lists(self):
+        grok_rule = {
+            "filter": "message",
+            "normalize": {
+                "some_grok_field_1": {"grok": ["%{IP:ip_foo}"]},
+                "some_grok_field_2": {"grok": ["%{IP:ip_bar}"]},
+                "some_grok_field_3": {"grok": ["%{IP:ip_baz}"]},
+            },
+        }
+
+        rule = NormalizerRule(LuceneFilter.create(grok_rule["filter"]), grok_rule["normalize"])
+
+        assert len(rule.grok) == 3
+        patterns = [grok.pattern for grok in rule.grok.get("some_grok_field_1")._grok_list]
+        assert len(patterns) == 1
+        assert patterns[0] == "^%{IP:ip_foo}$"
+
+        patterns = [grok.pattern for grok in rule.grok.get("some_grok_field_2")._grok_list]
+        assert len(patterns) == 1
+        assert patterns[0] == "^%{IP:ip_bar}$"
+
+        patterns = [grok.pattern for grok in rule.grok.get("some_grok_field_3")._grok_list]
+        assert len(patterns) == 1
+        assert patterns[0] == "^%{IP:ip_baz}$"

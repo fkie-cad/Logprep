@@ -929,16 +929,19 @@ class NormalizerRule(Rule):
         for idx, grok in enumerate(normalization["grok"]):
             patterns = self.extract_field_pattern.findall(grok)
             self._reformat_grok_pattern(idx, normalization, patterns)
-            failure_target_field = normalization.get("failure_target_field")
-            self._grok.update(
-                {
-                    source_field: GrokWrapper(
-                        patterns=normalization["grok"],
-                        custom_patterns_dir=NormalizerRule.additional_grok_patterns,
-                        failure_target_field=failure_target_field,
-                    )
-                }
-            )
+        self._add_grok_patterns(normalization, source_field)
+
+    def _add_grok_patterns(self, normalization, source_field):
+        failure_target_field = normalization.get("failure_target_field")
+        self._grok.update(
+            {
+                source_field: GrokWrapper(
+                    patterns=normalization["grok"],
+                    custom_patterns_dir=NormalizerRule.additional_grok_patterns,
+                    failure_target_field=failure_target_field,
+                )
+            }
+        )
 
     def _reformat_grok_pattern(self, idx, normalization, patterns):
         """
