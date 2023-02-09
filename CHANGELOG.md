@@ -4,6 +4,12 @@
 
 ## next release
 
+### Features
+
+* Add `string_splitter` processor to split strings of variable length into lists
+
+## v5.0.1
+
 ### Breaking
 
 * drop support for python `3.6`, `3.7`, `3.8`
@@ -16,7 +22,6 @@
 * Provide the possibility to consume lists, rules and configuration from files and http endpoints
 * Add `requester` processor that enriches by making http requests with field values
 * Add `calculator` processor to calculate with or without field values
-* Add `string_splitter` processor to split strings of variable length into lists
 * Make output subfields of the `geoip_enricher` configurable by introducing the rule config
 `customize_target_subfields`
 * Add a `timestamp_differ` processor that can parse two timestamps and calculate their respective time delta.
