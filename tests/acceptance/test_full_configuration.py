@@ -7,7 +7,7 @@ from tests.acceptance.util import (
     start_logprep,
     stop_logprep,
     convert_to_http_config,
-    TestingHTTPServer,
+    HTTPServerForTesting,
 )
 from logprep.util.json_handling import dump_config_as_file
 
@@ -42,7 +42,7 @@ def test_start_of_logprep_with_full_configuration_http():
     config = convert_to_http_config(config, endpoint)
     config_path = "generated_config.yml"
     dump_config_as_file(config_path, config)
-    with TestingHTTPServer.run_in_thread():
+    with HTTPServerForTesting.run_in_thread():
         proc = start_logprep(f"{endpoint}/{config_path}")
         output = proc.stdout.readline().decode("utf8")
         while True:
