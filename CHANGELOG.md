@@ -4,6 +4,12 @@
 
 ## next release
 
+### Features
+
+* Add `string_splitter` processor to split strings of variable length into lists
+
+## v5.0.1
+
 ### Breaking
 
 * drop support for python `3.6`, `3.7`, `3.8`
