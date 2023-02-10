@@ -140,7 +140,6 @@ class Pseudonymizer(Processor):
         self.pseudonyms = []
         self.pseudonymized_fields = set()
         self.setup()
-        self._replace_regex_keywords_by_regex_expression()
 
     @cached_property
     def _url_extractor(self):
@@ -165,6 +164,7 @@ class Pseudonymizer(Processor):
         )
         self._init_tld_extractor()
         self._load_regex_mapping(self._config.regex_mapping)
+        self._replace_regex_keywords_by_regex_expression()
 
     def _init_tld_extractor(self):
         if self._config.tld_lists is not None:
@@ -346,10 +346,12 @@ class Pseudonymizer(Processor):
     def _replace_regex_keywords_by_regex_expression(self):
         for rule in self._specific_rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
-                rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
+                if regex_keyword in self._regex_mapping:
+                    rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
         for rule in self._generic_rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
-                rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
+                if regex_keyword in self._regex_mapping:
+                    rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
 
     def _wrap_hash(self, hash_string: str) -> str:
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX

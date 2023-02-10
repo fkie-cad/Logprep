@@ -6,8 +6,9 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -102,8 +103,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         )
 
     def test_recently_stored_pseudonyms_are_not_stored_again(self):
-        self.object._cache_max_timedelta = CACHE_MAX_TIMEDELTA
-        self.object.setup()
+        self.object._cache._max_timedelta = CACHE_MAX_TIMEDELTA
         event = {"event_id": 1234, "something": "something"}
 
         rule_dict = {
@@ -312,7 +312,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
             }
         }
 
-        self.object.setup()
         self.object.process(event)
 
         assert (
@@ -653,3 +652,14 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         return event
+
+    def test_replace_regex_keywords_by_regex_expression_can_be_called_multiple_times(self):
+        rule_dict = {
+            "filter": "event_id: 1234",
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "description": "description content irrelevant for these tests",
+        }
+        self._load_specific_rule(rule_dict)  # First call
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something": "(.*)"}
+        self.object._replace_regex_keywords_by_regex_expression()  # Second Call
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something": "(.*)"}

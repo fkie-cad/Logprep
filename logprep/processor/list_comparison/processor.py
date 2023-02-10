@@ -54,9 +54,9 @@ class ListComparison(Processor):
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
         super().__init__(name, configuration, logger)
-        self._init_rules_list_comparison()
+        self.setup()
 
-    def _init_rules_list_comparison(self):
+    def setup(self):
         for rule in [*self._specific_rules, *self._generic_rules]:
             rule.init_list_comparison(self._config.list_search_base_path)
 
