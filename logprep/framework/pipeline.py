@@ -27,7 +27,7 @@ from logprep.abc.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
+from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError, Output
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.metrics.metric import Metric, calculate_new_average, MetricTargets
@@ -254,7 +254,7 @@ class Pipeline:
         return pipeline
 
     @cached_property
-    def _output(self) -> dict:
+    def _output(self) -> dict[str, Output]:
         output_configs = self._logprep_config.get("output")
         if output_configs is None:
             return None
@@ -362,30 +362,36 @@ class Pipeline:
         return event, extra_outputs
 
     def _store_event(self, event: dict) -> None:
-        try:
-            self._output.store(event)
-            self._logger.debug("Stored output")
-        except WarningOutputError as error:
-            self._logger.warning(f"An error occurred for output {self._output.describe()}: {error}")
-            self._output.metrics.number_of_warnings += 1
-        except CriticalOutputError as error:
-            msg = f"A critical error occurred for output " f"{self._output.describe()}: {error}"
-            self._logger.error(msg)
-            if error.raw_input:
-                self._output.store_failed(msg, error.raw_input, {})
-            self._output.metrics.number_of_errors += 1
-        except FatalOutputError as error:
-            self._logger.error(f"Output {self._output.describe()} failed: {error}")
-            self._output.metrics.number_of_errors += 1
-            self.stop()
+        for output_name, output in self._output.items():
+            if output.default:
+                try:
+                    output.store(event)
+                    self._logger.debug(f"Stored output in {output_name}")
+                except WarningOutputError as error:
+                    self._logger.warning(
+                        f"An error occurred for output {output.describe()}: {error}"
+                    )
+                    output.metrics.number_of_warnings += 1
+                except CriticalOutputError as error:
+                    msg = f"A critical error occurred for output " f"{output.describe()}: {error}"
+                    self._logger.error(msg)
+                    if error.raw_input:
+                        output.store_failed(msg, error.raw_input, {})
+                    output.metrics.number_of_errors += 1
+                except FatalOutputError as error:
+                    self._logger.error(f"Output {output.describe()} failed: {error}")
+                    output.metrics.number_of_errors += 1
+                    self.stop()
 
     def _get_event(self) -> dict:
         try:
             event, non_critical_error_msg = self._input.get_next(
                 self._logprep_config.get("timeout")
             )
-            if self._output and non_critical_error_msg:
-                self._output.store_failed(non_critical_error_msg, event, None)
+            if non_critical_error_msg:
+                for _, output in self._output.items():
+                    if output.default:
+                        output.store_failed(non_critical_error_msg, event, None)
             try:
                 self.metrics.kafka_offset = self._input.current_offset
             except AttributeError:
@@ -406,8 +412,10 @@ class Pipeline:
         except CriticalInputError as error:
             msg = f"A critical error occurred for input {self._input.describe()}: {error}"
             self._logger.error(msg)
-            if error.raw_input and self._output:
-                self._output.store_failed(msg, error.raw_input, {})
+            if error.raw_input:
+                for _, output in self._output.items():
+                    if output.default:
+                        output.store_failed(msg, error.raw_input, {})
             self._input.metrics.number_of_errors += 1
         return {}
 
@@ -429,8 +437,9 @@ class Pipeline:
                     self._handle_processing_warning(processor, warning)
             except BaseException as error:  # pylint: disable=broad-except
                 msg = self._handle_fatal_processing_error(processor, error)
-                if self._output:
-                    self._output[0].store_failed(msg, json.loads(event_received), event)
+                for _, output in self._output.items():
+                    if output.default:
+                        output.store_failed(msg, json.loads(event_received), event)
                 processor.metrics.number_of_errors += 1
                 event.clear()  # 'delete' the event, i.e. no regular output
             if not event:
@@ -462,9 +471,9 @@ class Pipeline:
     def _store_extra_data(self, extra_data: List[tuple]) -> None:
         self._logger.debug("Storing extra data")
         if isinstance(extra_data, tuple):
-            documents, target = extra_data
+            documents, output_name, target = extra_data
             for document in documents:
-                self._output.store_custom(document, target)
+                self._output[output_name].store_custom(document, target)
             return
         list(map(self._store_extra_data, extra_data))
 
