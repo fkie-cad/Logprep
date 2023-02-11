@@ -263,7 +263,7 @@ class Pipeline:
         for output_name in output_names:
             output_configs[output_name]["metric_labels"] = self._metric_labels
             output_config = output_configs.get(output_name)
-            outputs |= {output_name: Factory.create(output_config, self._logger)}
+            outputs |= {output_name: Factory.create({output_name: output_config}, self._logger)}
         return outputs
 
     @cached_property

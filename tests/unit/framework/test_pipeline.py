@@ -18,8 +18,8 @@ from logprep.abc.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
 from logprep.abc.processor import Processor
+from logprep.abc.output import CriticalOutputError, FatalOutputError, Output, WarningOutputError
 from logprep.factory import Factory
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
@@ -615,6 +615,18 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         assert isinstance(self.pipeline._output, dict)
         assert len(self.pipeline._output) == 2
+
+    def test_output_creates_real_outputs(self, _):
+        self.pipeline._logprep_config["output"] = {
+            "dummy1": {"type": "dummy_output", "default": False},
+            "dummy2": {"type": "dummy_output"},
+        }
+        with mock.patch("logprep.factory.Factory.create", original_create):
+            output = self.pipeline._output
+            assert isinstance(output, dict)
+            for output_connector in output.items():
+                assert isinstance(output_connector[1], Output)
+        assert not self.pipeline._output["dummy1"].default
 
 
 class TestPipelineWithActualInput:
