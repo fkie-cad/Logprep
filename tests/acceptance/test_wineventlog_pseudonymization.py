@@ -26,6 +26,7 @@ def get_config():
                 "pubkey_analyst": "tests/testdata/acceptance/pseudonymizer/example_analyst_pub.pem",
                 "pubkey_depseudo": "tests/testdata/acceptance/pseudonymizer/example_depseudo_pub.pem",
                 "hash_salt": "a_secret_tasty_ingredient",
+                "pseudonyms_output": "jsonl",
                 "pseudonyms_topic": "pseudonyms",
                 "specific_rules": ["tests/testdata/acceptance/pseudonymizer/rules_static/specific"],
                 "generic_rules": ["tests/testdata/acceptance/pseudonymizer/rules_static/generic"],

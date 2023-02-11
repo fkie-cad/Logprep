@@ -17,6 +17,7 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+        pre_detector_output: kafka
         pre_detector_topic: sre_topic
         alert_ip_list_path: /tmp/ip_list.yml
 """
@@ -49,9 +50,13 @@ class PreDetector(Processor):
     class Config(Processor.Config):
         """PreDetector config"""
 
+        pre_detector_output: str = field(validator=validators.instance_of(str))
+        """The desired output connector to store predetections in"""
+
         pre_detector_topic: str = field(validator=validators.instance_of(str))
         """
-        A Kafka topic for the detection results of the Predetector.
+        A topic or index at the desired :code:`pre_detector_output` for the
+        detection results of the Predetector.
         Results in this topic can be linked to the original event via a `pre_detector_id`.
         """
         alert_ip_list_path: str = field(
@@ -92,7 +97,11 @@ class PreDetector(Processor):
         self.detection_results = []
         super().process(event)
         return (
-            (self.detection_results, self._config.pre_detector_topic)
+            (
+                self.detection_results,
+                self._config.pre_detector_output,
+                self._config.pre_detector_topic,
+            )
             if self.detection_results
             else None
         )

@@ -38,6 +38,7 @@ class TestRunLogprep:
               pubkey_depseudo: tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem
               regex_mapping: tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml
               hash_salt: a_secret_tasty_ingredient
+              pseudonyms_output: jsonl_output
               pseudonyms_topic: pseudonyms
               specific_rules:
                 - tests/testdata/unit/pseudonymizer/rules/specific/
@@ -51,6 +52,7 @@ class TestRunLogprep:
                 - tests/testdata/unit/pre_detector/rules/specific/
               generic_rules:
                 - tests/testdata/unit/pre_detector/rules/generic/
+              pre_detector_output: jsonl_output
               pre_detector_topic: sre_topic
         """
         self.config_path = os.path.join(tempfile.gettempdir(), "dry-run-config.yml")

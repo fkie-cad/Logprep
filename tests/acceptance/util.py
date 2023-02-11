@@ -18,6 +18,7 @@ from copy import deepcopy
 from importlib import import_module
 from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
+from typing import List
 
 from logprep.abc.processor import Processor
 from logprep.registry import Registry

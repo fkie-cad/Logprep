@@ -62,7 +62,7 @@ from logprep.util.json_handling import parse_jsonl, parse_json
 yaml = YAML(typ="safe", pure=True)
 
 
-def get_runner_outputs(patched_runner):
+def get_runner_outputs(patched_runner) -> list:
     # pylint: disable=protected-access
     """
     Extracts the outputs of a patched logprep runner.

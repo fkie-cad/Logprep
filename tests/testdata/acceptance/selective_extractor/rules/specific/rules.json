@@ -2,24 +2,22 @@
     {
         "filter": "event",
         "selective_extractor": {
-            "extract": {
-                "extracted_field_list": [
-                    "event.action",
-                    "field2",
-                    "specific"
-                ],
-                "target_topic": "test_topic_2"
-            }
+            "source_fields": [
+                "event.action",
+                "field2",
+                "specific"
+            ],
+            "target_topic": "test_topic_2",
+            "target_output": "jsonl"
         },
         "description": "write field action from event to test_topic_2"
     },
     {
         "filter": "user",
         "selective_extractor": {
-            "extract": {
-                "extract_from_file": "tests/testdata/acceptance/selective_extractor/test_extraction_list.txt",
-                "target_topic": "test_topic_1"
-            }
+            "extract_from_file": "tests/testdata/acceptance/selective_extractor/test_extraction_list.txt",
+            "target_topic": "test_topic_1",
+            "target_output": "jsonl"
         },
         "description": "my reference rule"
     }

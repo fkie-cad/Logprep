@@ -11,6 +11,7 @@ pipeline = [
     {
         "pre_detector": {
             "type": "pre_detector",
+            "pre_detector_output": "jsonl",
             "pre_detector_topic": "pre_detector_topic",
             "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
             "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/"],

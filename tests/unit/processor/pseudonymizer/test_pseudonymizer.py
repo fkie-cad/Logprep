@@ -24,6 +24,7 @@ TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 class TestPseudonymizer(BaseProcessorTestCase):
     CONFIG = {
         "type": "pseudonymizer",
+        "pseudonyms_output": "kafka",
         "pseudonyms_topic": "pseudonyms",
         "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
         "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
