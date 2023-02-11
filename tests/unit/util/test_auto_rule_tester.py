@@ -144,6 +144,7 @@ class TestAutoRuleTester:
     ):
         pseudonymizer_cfg = {
             "type": "pseudonymizer",
+            "pseudonyms_output": "jsonl",
             "pseudonyms_topic": "pseudonyms",
             "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
             "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
