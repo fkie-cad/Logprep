@@ -70,7 +70,7 @@ It contains the path to a text file with a list of fields per line to be extract
 The file has to exist.
 
 It is possible to mix both extraction sources. They will be merged to one list without duplicates.
-For string format of :code:`extract_from_file` see :ref:`getters`.
+
 
 ..  code-block:: yaml
     :linenos:
@@ -94,14 +94,12 @@ For string format of :code:`extract_from_file` see :ref:`getters`.
 
 """
 
-from functools import partial
-from typing import List, Optional
-
+from typing import List
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
+from logprep.processor.base.rule import InvalidRuleDefinitionError
+from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.validators import dict_structure_validator, one_of_validator
 
 
 class SelectiveExtractorRuleError(InvalidRuleDefinitionError):
@@ -111,47 +109,43 @@ class SelectiveExtractorRuleError(InvalidRuleDefinitionError):
         super().__init__(f"SelectiveExtractor rule ({message})")
 
 
-class SelectiveExtractorRule(Rule):
+class SelectiveExtractorRule(FieldManagerRule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(FieldManagerRule.Config):
         """RuleConfig for SelectiveExtractor"""
 
-        extract: dict = field(
+        source_fields: list = field(
             validator=[
-                validators.instance_of(dict),
-                validators.deep_mapping(
-                    key_validator=validators.in_(
-                        ["extract_from_file", "target_topic", "extracted_field_list"]
-                    ),
-                    value_validator=validators.instance_of((str, list)),
-                ),
-                partial(
-                    one_of_validator, member_list=["extracted_field_list", "extract_from_file"]
-                ),
-                partial(
-                    dict_structure_validator,
-                    reference_dict={
-                        "extract_from_file": Optional[str],
-                        "target_topic": str,
-                        "extracted_field_list": Optional[list],
-                    },
-                ),
-            ]
+                validators.deep_iterable(
+                    member_validator=validators.instance_of(str),
+                    iterable_validator=validators.instance_of(list),
+                )
+            ],
+            factory=list,
+            converter=sorted,
         )
-        """the extraction mapping"""
+        """List of fields in dotted field notation"""
 
-        @property
-        def extract_from_file(self) -> str:
-            """Returns the PosixPath representation of extract_from_file"""
-            return self.extract.get("extract_from_file")
+        target_output: str = field(validator=validators.instance_of(str))
+        """Name of the desired output connector"""
+
+        target_topic: str = field(validator=validators.instance_of(str))
+        """Name of the index or topic of the desired output connector"""
+
+        extract_from_file: str = field(validator=validators.instance_of(str), default="", eq=False)
+        """The path or url to a file with a flat list of fields to extract.
+        For string format see :ref:`getters`."""
+
+        target_field: str = field(default="", init=False)
+
+        overwrite_target: bool = field(default=False, init=False)
+
+        extend_target_list: bool = field(default=False, init=False)
 
         def __attrs_post_init__(self):
-            self._add_from_file()
-
-        def _add_from_file(self):
-            if self.extract_from_file is None:
+            if not self.extract_from_file:
                 return
             try:
                 content = GetterFactory.from_string(self.extract_from_file).get()
@@ -159,12 +153,9 @@ class SelectiveExtractorRule(Rule):
                 raise SelectiveExtractorRuleError(
                     "extract_from_file is not a valid file handle"
                 ) from error
-            extract_list = self.extract.get("extracted_field_list")
-            if extract_list is None:
-                extract_list = []
-            lines_from_file = content.splitlines()
-            extract_list = list({*extract_list, *lines_from_file})
-            self.extract = {**self.extract, **{"extracted_field_list": extract_list}}
+            self.source_fields = list({*self.source_fields, *content.splitlines()})
+            if len(self.source_fields) < 1:
+                raise InvalidRuleDefinitionError("no field to extract")
 
     @property
     def target_topic(self) -> str:
@@ -173,7 +164,16 @@ class SelectiveExtractorRule(Rule):
         --------
         target_topic: the topic where to write the extracted fields to
         """
-        return self._config.extract.get("target_topic")
+        return self._config.target_topic
+
+    @property
+    def target_output(self) -> str:
+        """
+        returns:
+        --------
+        target_output: the name of the output connector where to write the extracted fields to
+        """
+        return self._config.target_output
 
     @property
     def extracted_field_list(self) -> List[str]:
@@ -182,13 +182,7 @@ class SelectiveExtractorRule(Rule):
         --------
         extracted_field_list: a list with extraction field names
         """
-        return self._config.extract.get("extracted_field_list")
+        return self._config.source_fields
 
     def __eq__(self, other: "SelectiveExtractorRule") -> bool:
-        return all(
-            [
-                other.filter == self._filter,
-                set(self.extracted_field_list) == set(other.extracted_field_list),
-                self.target_topic == other.target_topic,
-            ]
-        )
+        return all([other.filter == self._filter, other._config == self._config])

@@ -36,48 +36,74 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             {
                 "filter": field_name,
                 "selective_extractor": {
-                    "extract": {
-                        "extracted_field_list": [field_name],
-                        "target_topic": "my topic",
-                    },
+                    "source_fields": [field_name],
+                    "target_topic": "my topic",
+                    "target_output": "kafka",
                 },
             }
         )
         self.object._specific_tree.add_rule(rule)
         document = {field_name: "the value"}
         tuple_list = self.object.process(document)
-        for filtered_event, _ in tuple_list:
+        for filtered_event, *_ in tuple_list:
             if field_name in filtered_event[0]:
                 break
         else:
             assert False
 
-    def test_process_returns_selective_extractor_topic(self):
+    def test_process_returns_selective_extractor_target_topic(self):
         field_name = f"{uuid.uuid4()}"
         rule = SelectiveExtractorRule._create_from_dict(
             {
                 "filter": field_name,
                 "selective_extractor": {
-                    "extract": {
-                        "extracted_field_list": [field_name],
-                        "target_topic": "my topic",
-                    },
+                    "source_fields": [field_name],
+                    "target_topic": "my topic",
+                    "target_output": "opensearch",
                 },
             }
         )
         self.object._specific_tree.add_rule(rule)
         document = {field_name: "test_message", "other": "field"}
         result = self.object.process(document)
-        for _, topic in result:
+        for *_, topic in result:
             if topic == "my topic":
+                break
+        else:
+            assert False
+
+    def test_process_returns_selective_extractor_target_output(self):
+        field_name = f"{uuid.uuid4()}"
+        rule = {
+            "filter": field_name,
+            "selective_extractor": {
+                "source_fields": [field_name],
+                "target_topic": "my topic",
+                "target_output": "opensearch",
+            },
+        }
+        self._load_specific_rule(rule)
+        document = {field_name: "test_message", "other": "field"}
+        result = self.object.process(document)
+        for _, output, _ in result:
+            if output == "opensearch":
                 break
         else:
             assert False
 
     def test_process_returns_extracted_fields(self):
         document = {"message": "test_message", "other": "field"}
+        rule = {
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["message"],
+                "target_topic": "my topic",
+                "target_output": "opensearch",
+            },
+        }
+        self._load_specific_rule(rule)
         result = self.object.process(document)
-        for filtered_event, _ in result:
+        for filtered_event, *_ in result:
             if filtered_event[0] == {"message": "test_message"}:
                 break
         else:
@@ -104,22 +130,19 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             mock_apply_rules.assert_called()
 
     def test_process_extracts_dotted_fields(self):
-        rule = SelectiveExtractorRule._create_from_dict(
-            {
-                "filter": "message",
-                "selective_extractor": {
-                    "extract": {
-                        "extracted_field_list": ["other.message", "message"],
-                        "target_topic": "my topic",
-                    },
-                },
-            }
-        )
-        self.object._specific_tree.add_rule(rule)
+        rule = {
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["other.message", "message"],
+                "target_topic": "my topic",
+                "target_output": "kafka",
+            },
+        }
+        self._load_specific_rule(rule)
         document = {"message": "test_message", "other": {"message": "my message value"}}
         result = self.object.process(document)
 
-        for extracted_event, _ in result:
+        for extracted_event, *_ in result:
             if extracted_event[0].get("other", {}).get("message") is not None:
                 break
         else:
