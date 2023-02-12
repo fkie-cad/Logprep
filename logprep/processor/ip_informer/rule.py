@@ -47,12 +47,6 @@ A speaking example:
     }
 
 
-.. autoclass:: logprep.processor.ip_informer.rule.IpInformerRule.Config
-   :members:
-   :undoc-members:
-   :inherited-members:
-   :noindex:
-
 Examples for ip_informer:
 ------------------------------------------------
 
