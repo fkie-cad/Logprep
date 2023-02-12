@@ -65,6 +65,6 @@ class IpInformer(FieldManager):
             )
         return {
             prop_name: getattr(ip_address, prop_name)
-            for prop_name in dir(ip_address.__class__)
+            for prop_name in filter(lambda x: x != "packed", dir(ip_address.__class__))
             if isinstance(getattr(ip_address.__class__, prop_name), property)
-        }
+        }  # we have to remove the property `packed` because it is not json serializable

@@ -2,7 +2,7 @@
 IpInformer
 ============
 
-The `ip_informer` processor ...
+The `ip_informer` processor is a processor to enrich events with ip information.
 
 A speaking example:
 
@@ -12,20 +12,39 @@ A speaking example:
 
     filter: message
     ip_informer:
-        ...
+        source_fields: ["ip"]
+        target_field: result
     description: '...'
 
 ..  code-block:: json
     :linenos:
     :caption: Incoming event
 
-    <INCOMMING_EVENT>
+    {"ip": "192.168.5.1"}
 
 ..  code-block:: json
     :linenos:
     :caption: Processed event
 
-    <PROCESSED_EVENT>
+    {
+        "ip": "192.168.5.1",
+        "result": {
+            "192.168.5.1": {
+                "compressed": "192.168.5.1",
+                "exploded": "192.168.5.1",
+                "is_global": false,
+                "is_link_local": false,
+                "is_loopback": false,
+                "is_multicast": false,
+                "is_private": true,
+                "is_reserved": false,
+                "is_unspecified": false,
+                "max_prefixlen": 32,
+                "reverse_pointer": "1.5.168.192.in-addr.arpa",
+                "version": 4
+            }
+        }
+    }
 
 
 .. autoclass:: logprep.processor.ip_informer.rule.IpInformerRule.Config
