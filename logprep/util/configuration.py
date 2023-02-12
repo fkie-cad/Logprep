@@ -318,6 +318,8 @@ class Configuration(dict):
             raise InvalidOutputConnectorConfigurationError(msg) from error
         except KeyError as error:
             raise RequiredConfigurationKeyMissingError("output") from error
+        except AttributeError as error:
+            raise RequiredConfigurationKeyMissingError("output") from error
 
     @staticmethod
     def _format_type_error(error: TypeError) -> str:
