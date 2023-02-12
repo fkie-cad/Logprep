@@ -1,9 +1,9 @@
 [
     {
-        "filter": "message1",
+        "filter": "ip_addresses",
         "ip_informer": {
             "source_fields": [
-                "message"
+                "ip_addresses"
             ],
             "target_field": "new_field"
         }
