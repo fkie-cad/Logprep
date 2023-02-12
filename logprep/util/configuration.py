@@ -306,7 +306,11 @@ class Configuration(dict):
 
     def _verify_output(self, logger):
         try:
-            _ = Factory.create(self["output"], logger)
+            output_configs = self.get("output")
+            output_names = list(output_configs.keys())
+            for output_name in output_names:
+                output_config = output_configs.get(output_name)
+                Factory.create({output_name: output_config}, logger)
         except FactoryError as error:
             raise InvalidOutputConnectorConfigurationError(str(error)) from error
         except TypeError as error:

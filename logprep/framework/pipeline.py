@@ -167,7 +167,7 @@ class Pipeline:
     _log_handler: Handler
     """ the handler for the logs """
 
-    _continue_iterating: bool
+    _continue_iterating: Value
     """ a flag to signal if iterating continues """
 
     _lock: Lock
@@ -200,8 +200,8 @@ class Pipeline:
             raise MustProvideALogHandlerError
         self._logprep_config = config
         self._log_handler = log_handler
+        self._continue_iterating = Value(c_bool)
 
-        self._continue_iterating = False
         self._lock = lock
         self._shared_dict = shared_dict
         self._processing_counter = counter
@@ -344,10 +344,11 @@ class Pipeline:
         self._shut_down()
 
     def _iterate(self) -> bool:
-        return self._continue_iterating
+        return self._continue_iterating.value
 
     def _enable_iteration(self) -> None:
-        self._continue_iterating = True
+        with self._continue_iterating.get_lock():
+            self._continue_iterating.value = True
 
     def process_pipeline(self) -> Tuple[dict, list]:
         """Retrieve next event, process event with full pipeline and store or return results"""
@@ -496,7 +497,8 @@ class Pipeline:
 
     def stop(self) -> None:
         """Stop processing processors in the Pipeline."""
-        self._continue_iterating = False
+        with self._continue_iterating.get_lock():
+            self._continue_iterating.value = False
 
 
 class MultiprocessingPipeline(Process, Pipeline):
