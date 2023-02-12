@@ -17,7 +17,14 @@ class TestIpInformerRule:
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
         [
-            # add your tests here
+            (
+                {
+                    "filter": "message",
+                    "ip_informer": {"source_fields": ["message"], "target_field": "result"},
+                },
+                None,
+                None,
+            )
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
