@@ -1,7 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.ip_informer.rule import IpInformerRule
 
 
@@ -37,14 +36,3 @@ class TestIpInformerRule:
             for key, value in rule.get("ip_informer").items():
                 assert hasattr(rule_instance._config, key)
                 assert value == getattr(rule_instance._config, key)
-
-    @pytest.mark.parametrize(
-        ["testcase", "rule1", "rule2", "equality"],
-        [
-            # add your tests here
-        ],
-    )
-    def test_equality(self, testcase, rule1, rule2, equality):
-        rule1 = IpInformerRule._create_from_dict(rule1)
-        rule2 = IpInformerRule._create_from_dict(rule2)
-        assert (rule1 == rule2) == equality, testcase

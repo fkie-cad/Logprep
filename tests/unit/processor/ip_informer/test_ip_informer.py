@@ -192,7 +192,148 @@ test_cases = [
     ),
 ]  # testcase, rule, event, expected
 
-failure_test_cases = []  # testcase, rule, event, expected
+failure_test_cases = [
+    (
+        "single field is not a ip address",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip"],
+                "target_field": "result",
+            },
+        },
+        {"ip": "not an ip"},
+        {"ip": "not an ip", "tags": ["_ip_informer_failure"]},
+    ),
+    (
+        "single field is not an ip address and other field is an ip address",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip", "notip"],
+                "target_field": "result",
+            },
+        },
+        {"notip": "not an ip", "ip": "192.168.5.1"},
+        {
+            "notip": "not an ip",
+            "ip": "192.168.5.1",
+            "result": {
+                "192.168.5.1": {
+                    "compressed": "192.168.5.1",
+                    "exploded": "192.168.5.1",
+                    "is_global": False,
+                    "is_link_local": False,
+                    "is_loopback": False,
+                    "is_multicast": False,
+                    "is_private": True,
+                    "is_reserved": False,
+                    "is_unspecified": False,
+                    "max_prefixlen": 32,
+                    "packed": b"\xc0\xa8\x05\x01",
+                    "reverse_pointer": "1.5.168.192.in-addr.arpa",
+                    "version": 4,
+                }
+            },
+            "tags": ["_ip_informer_failure"],
+        },
+    ),
+    (
+        "single field is not an ip address and other field is a list with valid ips",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip", "notip"],
+                "target_field": "result",
+            },
+        },
+        {"notip": "not an ip", "ip": ["192.168.5.1", "127.0.0.1"]},
+        {
+            "notip": "not an ip",
+            "ip": ["192.168.5.1", "127.0.0.1"],
+            "result": {
+                "192.168.5.1": {
+                    "compressed": "192.168.5.1",
+                    "exploded": "192.168.5.1",
+                    "is_global": False,
+                    "is_link_local": False,
+                    "is_loopback": False,
+                    "is_multicast": False,
+                    "is_private": True,
+                    "is_reserved": False,
+                    "is_unspecified": False,
+                    "max_prefixlen": 32,
+                    "packed": b"\xc0\xa8\x05\x01",
+                    "reverse_pointer": "1.5.168.192.in-addr.arpa",
+                    "version": 4,
+                },
+                "127.0.0.1": {
+                    "compressed": "127.0.0.1",
+                    "exploded": "127.0.0.1",
+                    "is_global": False,
+                    "is_link_local": False,
+                    "is_loopback": True,
+                    "is_multicast": False,
+                    "is_private": True,
+                    "is_reserved": False,
+                    "is_unspecified": False,
+                    "max_prefixlen": 32,
+                    "packed": b"\x7f\x00\x00\x01",
+                    "reverse_pointer": "1.0.0.127.in-addr.arpa",
+                    "version": 4,
+                },
+            },
+            "tags": ["_ip_informer_failure"],
+        },
+    ),
+    (
+        "not valid ip in list",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip", "notip"],
+                "target_field": "result",
+            },
+        },
+        {"ip": ["192.168.5.1", "not valid", "127.0.0.1"]},
+        {
+            "ip": ["192.168.5.1", "not valid", "127.0.0.1"],
+            "result": {
+                "192.168.5.1": {
+                    "compressed": "192.168.5.1",
+                    "exploded": "192.168.5.1",
+                    "is_global": False,
+                    "is_link_local": False,
+                    "is_loopback": False,
+                    "is_multicast": False,
+                    "is_private": True,
+                    "is_reserved": False,
+                    "is_unspecified": False,
+                    "max_prefixlen": 32,
+                    "packed": b"\xc0\xa8\x05\x01",
+                    "reverse_pointer": "1.5.168.192.in-addr.arpa",
+                    "version": 4,
+                },
+                "127.0.0.1": {
+                    "compressed": "127.0.0.1",
+                    "exploded": "127.0.0.1",
+                    "is_global": False,
+                    "is_link_local": False,
+                    "is_loopback": True,
+                    "is_multicast": False,
+                    "is_private": True,
+                    "is_reserved": False,
+                    "is_unspecified": False,
+                    "max_prefixlen": 32,
+                    "packed": b"\x7f\x00\x00\x01",
+                    "reverse_pointer": "1.0.0.127.in-addr.arpa",
+                    "version": 4,
+                },
+            },
+            "tags": ["_ip_informer_failure"],
+        },
+    ),
+]  # testcase, rule, event, expected
 
 
 class TestIpInformer(BaseProcessorTestCase):
@@ -204,10 +345,10 @@ class TestIpInformer(BaseProcessorTestCase):
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
-    def test_testcases(self, testcase, rule, event, expected):  # pylint: disable=unused-argument
+    def test_testcases(self, testcase, rule, event, expected):
         self._load_specific_rule(rule)
         self.object.process(event)
-        assert event == expected
+        assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected):
