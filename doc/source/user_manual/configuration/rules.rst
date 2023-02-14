@@ -96,6 +96,13 @@ Rules
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.ip_informer.rule
+.. autoclass:: logprep.processor.ip_informer.rule.IpInformerRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.key_checker.rule
 .. autoclass:: logprep.processor.key_checker.rule.KeyCheckerRule.Config
    :members:

@@ -7,6 +7,7 @@
 ### Features
 
 * Add `string_splitter` processor to split strings of variable length into lists
+* Add `ip_informer` processor to enrich events with ip information
 
 ## v5.0.1
 

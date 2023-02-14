@@ -9,6 +9,7 @@ Processor Case Examples
    notebooks/processor_examples/dissector.ipynb
    notebooks/processor_examples/field_manager.ipynb
    notebooks/processor_examples/geo_ip_enricher_custom_outputfields.ipynb
+   notebooks/processor_examples/ip_informer.ipynb
    notebooks/processor_examples/key_checker.ipynb
    notebooks/processor_examples/requester.ipynb
    notebooks/processor_examples/string_splitter.ipynb
