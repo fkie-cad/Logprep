@@ -1,0 +1,11 @@
+[
+    {
+        "filter": "ip_addresses",
+        "ip_informer": {
+            "source_fields": [
+                "ip_addresses"
+            ],
+            "target_field": "new_field"
+        }
+    }
+]

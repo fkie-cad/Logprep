@@ -4,6 +4,8 @@
 from copy import deepcopy
 from logging import getLogger
 import re
+from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -14,6 +16,8 @@ from logprep.util.configuration import (
     RequiredConfigurationKeyMissingError,
     InvalidConfigurationErrors,
     InvalidProcessorConfigurationError,
+    InvalidInputConnectorConfigurationError,
+    InvalidOutputConnectorConfigurationError,
 )
 from tests.testdata.metadata import path_to_config
 
@@ -40,6 +44,16 @@ class TestConfiguration:
 
         with pytest.raises(InvalidConfigurationError, match=expected_message):
             config.verify(logger)
+
+    @mock.patch("logprep.util.configuration.print_fcolor")
+    def test_invalid_yml_prints_formatted_error(self, mock_print_fcolor, tmp_path):
+        broken_config_path = Path(tmp_path / "test_config")
+        broken_config_path.write_text("process_count: 5\ninvalid_yaml", encoding="utf8")
+        with pytest.raises(SystemExit, match="1"):
+            Configuration.create_from_yaml(str(broken_config_path))
+        mock_print_fcolor.assert_called()
+        call_msg = str(mock_print_fcolor.call_args_list[0][0][1])
+        assert call_msg.startswith("Error parsing YAML file")
 
     def test_verify_passes_for_valid_configuration(self):
         try:
@@ -87,14 +101,14 @@ class TestConfiguration:
         self.assert_fails_when_replacing_key_with_value(
             "input",
             {"random_name": {"type": "unknown"}},
-            "Invalid connector configuration: Unknown type 'unknown'",
+            "Invalid input connector configuration: Unknown type 'unknown'",
         )
 
     def test_verify_verifies_output_config(self):
         self.assert_fails_when_replacing_key_with_value(
             "output",
             {"random_name": {"type": "unknown"}},
-            "Invalid connector configuration: Unknown type 'unknown'",
+            "Invalid output connector configuration: Unknown type 'unknown'",
         )
 
     @pytest.mark.parametrize(
@@ -287,7 +301,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: some_processor_name - Unknown type 'does_not_exist'",
                     )
                 ],
             ),
@@ -308,7 +322,56 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "missing 1 required keyword-only argument: 'generic_rules'",
+                        re.escape(
+                            "Invalid processor configuration: labelername - Required option(s) are "
+                            + "missing: 'generic_rules'."
+                        ),
+                    )
+                ],
+            ),
+            (
+                "unknown option without spaces in processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "some_unknown_option": "foo",
+                            }
+                        }
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor configuration: labelername - Unknown option: 'some_unknown_option'.",
+                    )
+                ],
+            ),
+            (
+                "unknown option with spaces in processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "some unknown option": "foo",
+                            }
+                        }
+                    ]
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor configuration: labelername - Unknown option: 'some unknown option'.",
                     )
                 ],
             ),
@@ -327,11 +390,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: some_processor_name - Unknown type 'does_not_exist'",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: another_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: another_processor_name - Unknown type 'does_not_exist'",
                     ),
                 ],
             ),
@@ -343,6 +406,36 @@ class TestConfiguration:
                         InvalidConfigurationError,
                         "Invalid Configuration: Process count must be an integer of one or larger, not: 0",
                     ),
+                ],
+            ),
+            (
+                "pipeline is empty list",
+                {"pipeline": []},
+                [
+                    (
+                        InvalidConfigurationError,
+                        'Invalid Configuration: "pipeline" must contain at least one item!',
+                    )
+                ],
+            ),
+            (
+                "pipeline is empty dict",
+                {"pipeline": {}},
+                [
+                    (
+                        InvalidConfigurationError,
+                        'Invalid Configuration: "pipeline" must contain at least one item!',
+                    )
+                ],
+            ),
+            (
+                "pipeline is string",
+                {"pipeline": "foo"},
+                [
+                    (
+                        InvalidConfigurationError,
+                        '"pipeline" must be a list of processor dictionary configurations!',
+                    )
                 ],
             ),
         ],
@@ -382,7 +475,7 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: some_processor_name - Unknown type 'does_not_exist'",
                     )
                 ],
             ),
@@ -403,7 +496,10 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "missing 1 required keyword-only argument: 'generic_rules'",
+                        re.escape(
+                            "Invalid processor configuration: labelername - Required option(s) are "
+                            + "missing: 'generic_rules'."
+                        ),
                     )
                 ],
             ),
@@ -422,11 +518,11 @@ class TestConfiguration:
                 [
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: some_processor_name - Unknown type 'does_not_exist'",
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: another_processor_name - Unknown type 'does_not_exist'",
+                        "Invalid processor configuration: another_processor_name - Unknown type 'does_not_exist'",
                     ),
                 ],
             ),
@@ -440,7 +536,7 @@ class TestConfiguration:
                     ),
                     (
                         InvalidProcessorConfigurationError,
-                        "Invalid processor config: some_processor_name - The type specification is missing for element with name 'some_processor_name'",
+                        "Invalid processor configuration: some_processor_name - The type specification is missing for element with name 'some_processor_name'",
                     ),
                 ],
             ),
@@ -522,10 +618,34 @@ class TestConfiguration:
         ):
             config._verify_input(logger)
 
+    def test_verify_input_raises_type_error(self):
+        config = deepcopy(self.config)
+        del config["input"]["kafka_input"]["bootstrapservers"]
+        with pytest.raises(
+            InvalidInputConnectorConfigurationError,
+            match=re.escape(
+                "Invalid input connector configuration: Required option(s) are missing: "
+                + "'bootstrapservers'."
+            ),
+        ):
+            config._verify_input(logger)
+
     def test_verify_output_raises_missing_output_key(self):
         config = deepcopy(self.config)
         del config["output"]
         with pytest.raises(
             RequiredConfigurationKeyMissingError, match="Required option is missing: output"
+        ):
+            config._verify_output(logger)
+
+    def test_verify_output_raises_type_error(self):
+        config = deepcopy(self.config)
+        del config["output"]["kafka_output"]["bootstrapservers"]
+        with pytest.raises(
+            InvalidOutputConnectorConfigurationError,
+            match=re.escape(
+                "Invalid output connector configuration: Required option(s) are missing: "
+                + "'bootstrapservers'."
+            ),
         ):
             config._verify_output(logger)

@@ -4,6 +4,13 @@
 
 ## next release
 
+### Features
+
+* Add `string_splitter` processor to split strings of variable length into lists
+* Add `ip_informer` processor to enrich events with ip information
+
+## v5.0.1
+
 ### Breaking
 
 * drop support for python `3.6`, `3.7`, `3.8`
@@ -28,6 +35,8 @@
 * Add option to submit a template with `list_search_base_path` config parameter in `list_comparison` processor
 * Add functionality to `geoip_enricher` to download the geoip-database
 * Add ability to use environment variables in rules and config
+* Add list access including slicing to dotted field notation for getting values
+* Add processor boilerplate generator to help adding new processors
 
 ### Bugfixes
 

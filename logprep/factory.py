@@ -7,7 +7,6 @@ from logprep.configuration import Configuration
 from logprep.factory_error import (
     InvalidConfigSpecificationError,
     InvalidConfigurationError,
-    NotExactlyOneEntryInConfigurationError,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -19,22 +18,29 @@ class Factory:
 
     @classmethod
     def create(cls, configuration: dict, logger: "Logger") -> Component:
-        """Create connector."""
-        if not configuration:
-            raise NotExactlyOneEntryInConfigurationError()
+        """Create component."""
+        if configuration == {} or configuration is None:
+            raise InvalidConfigurationError("The component definition is empty.")
+        if not isinstance(configuration, dict):
+            raise InvalidConfigSpecificationError()
         if len(configuration) > 1:
             raise InvalidConfigurationError(
-                "There must be exactly one definition per pipeline entry."
+                f"Found multiple component definitions ({', '.join(configuration.keys())}),"
+                + " but there must be exactly one."
             )
-        for connector_name, connector_configuration_dict in configuration.items():
-            if not isinstance(connector_configuration_dict, dict):
-                raise InvalidConfigSpecificationError()
+        for component_name, component_configuration_dict in configuration.items():
+            if configuration == {} or component_configuration_dict is None:
+                raise InvalidConfigurationError(
+                    f'The definition of component "{component_name}" is empty.'
+                )
+            if not isinstance(component_configuration_dict, dict):
+                raise InvalidConfigSpecificationError(component_name)
             metric_labels = {}
-            if "metric_labels" in configuration[connector_name]:
-                metric_labels = configuration[connector_name].pop("metric_labels")
-            connector = Configuration.get_class(connector_name, connector_configuration_dict)
-            connector_configuration = Configuration.create(
-                connector_name, connector_configuration_dict
+            if "metric_labels" in configuration[component_name]:
+                metric_labels = configuration[component_name].pop("metric_labels")
+            component = Configuration.get_class(component_name, component_configuration_dict)
+            component_configuration = Configuration.create(
+                component_name, component_configuration_dict
             )
-            connector_configuration.metric_labels = copy.deepcopy(metric_labels)
-            return connector(connector_name, connector_configuration, logger)
+            component_configuration.metric_labels = copy.deepcopy(metric_labels)
+            return component(component_name, component_configuration, logger)

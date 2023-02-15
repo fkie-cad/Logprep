@@ -11,11 +11,20 @@ Concurrency/IPC
 
 Processors can run in parallel on multiple different system processes.
 Therefore, it is not guaranteed that a specific processor will see all incoming log messages.
-Inter-process-communication (IPC) must be used if information of log messages has the be shared between multiple processor instances.
+Inter-process-communication (IPC) must be used if information of log messages has to be shared between multiple processor instances.
 IPC is relatively slow and can not be used if the processor instances are located on different machines.
 In those cases it should be reconsidered if it is necessary that information is being shared or if an implementation of the functionality is generally sensible in the context of ths framework.
 
 .. _implementing_a_new_processor:
+
+Getting started
+---------------
+
+.. autoclass:: logprep.util.processor_generator.ProcessorCodeGenerator
+   :no-members:
+   :no-undoc-members:
+   :no-inherited-members:
+   :noindex:
 
 Processor
 ---------

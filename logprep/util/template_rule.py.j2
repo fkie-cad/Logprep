@@ -1,0 +1,57 @@
+"""
+{{ processor.class_name}}
+============
+
+The `{{ processor.name }}` processor ...
+
+A speaking example:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Given {{ processor.name }} rule
+
+    filter: message
+    {{ processor.name }}:
+        ...
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incoming event
+
+    <INCOMMING_EVENT>
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    <PROCESSED_EVENT>
+
+
+.. autoclass:: logprep.processor.{{ processor.name }}.rule.{{ processor.class_name}}Rule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+Examples for {{ processor.name }}:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.{{ processor.name }}.test_{{ processor.name }}
+   :template: testcase-renderer.tmpl
+
+"""
+
+from attrs import define, field, validators
+from logprep.processor.base.rule import Rule
+
+
+
+class {{ processor.class_name}}Rule(Rule):
+    """..."""
+
+    @define(kw_only=True)
+    class Config(Rule.Config):
+        """Config for {{ processor.class_name}}Rule"""
+        ...
+

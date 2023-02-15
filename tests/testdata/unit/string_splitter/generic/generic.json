@@ -1,0 +1,11 @@
+[
+    {
+        "filter": "message",
+        "string_splitter": {
+            "source_fields": [
+                "message"
+            ],
+            "target_field": "result"
+        }
+    }
+]

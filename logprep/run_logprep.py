@@ -4,6 +4,7 @@
 import inspect
 import logging
 import sys
+import warnings
 from argparse import ArgumentParser
 from logging import ERROR, Logger, getLogger
 from os.path import basename
@@ -23,6 +24,7 @@ from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement
 
+warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
 
 DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
@@ -201,11 +203,11 @@ def main():
 
     config = _load_configuration(args)
     logger = _setup_logger(args, config)
-    _verify_configuration(args, config, logger)
-    _setup_metrics_and_time_measurement(args, config, logger)
 
+    _verify_configuration(args, config, logger)
     if args.validate_rules or args.auto_test:
         _validate_rules(args, logger)
+    _setup_metrics_and_time_measurement(args, config, logger)
 
     if args.auto_test:
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
