@@ -472,9 +472,11 @@ class Pipeline:
     def _store_extra_data(self, extra_data: List[tuple]) -> None:
         self._logger.debug("Storing extra data")
         if isinstance(extra_data, tuple):
-            documents, output_name, target = extra_data
+            documents, outputs = extra_data
             for document in documents:
-                self._output[output_name].store_custom(document, target)
+                for output in outputs:
+                    output_name, topic = output
+                    self._output[output_name].store_custom(document, topic)
             return
         list(map(self._store_extra_data, extra_data))
 

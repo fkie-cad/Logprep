@@ -20,8 +20,7 @@ def fixture_specific_rule_definition():
         "filter": "test",
         "selective_extractor": {
             "source_fields": ["field1", "field2"],
-            "target_output": "kafka",
-            "target_topic": "topic1",
+            "output_mapping": {"kafka": "topic"},
         },
         "description": "my reference rule",
     }
@@ -34,8 +33,7 @@ class TestSelectiveExtractorRule:
             "filter": "test",
             "selective_extractor": {
                 "extract_from_file": "my/file",
-                "target_topic": "topic1",
-                "target_output": "kafka",
+                "output_mapping": {"kafka": "topic"},
             },
         }
         read_lines = b"test1\r\ntest2"
@@ -52,8 +50,7 @@ class TestSelectiveExtractorRule:
             "filter": "test",
             "selective_extractor": {
                 "extract_from_file": "my/path/",
-                "target_topic": "topic1",
-                "target_output": "kafka",
+                "output_mapping": {"kafka": "topic"},
             },
         }
         with pytest.raises(SelectiveExtractorRuleError):
@@ -68,8 +65,7 @@ class TestSelectiveExtractorRule:
                     "filter": "test",
                     "selective_extractor": {
                         "source_fields": ["field1", "field2"],
-                        "target_topic": "topic1",
-                        "target_output": "kafka",
+                        "output_mapping": {"kafka": "topic"},
                     },
                 },
                 True,
@@ -207,8 +203,7 @@ class TestSelectiveExtractorRule:
                     "filter": "test",
                     "selective_extractor": {
                         "extract_from_file": "my/path/",
-                        "target_topic": "topic1",
-                        "target_output": "kafka",
+                        "output_mapping": {"kafka": "topic"},
                     },
                 },
                 b"",
@@ -220,8 +215,7 @@ class TestSelectiveExtractorRule:
                     "filter": "test",
                     "selective_extractor": {
                         "extract_from_file": "my/path/",
-                        "target_topic": "topic1",
-                        "target_output": "kafka",
+                        "output_mapping": {"kafka": "topic"},
                     },
                 },
                 b"field1",
@@ -234,8 +228,7 @@ class TestSelectiveExtractorRule:
                     "selective_extractor": {
                         "source_fields": ["field1"],
                         "extract_from_file": "my/path/",
-                        "target_topic": "topic1",
-                        "target_output": "kafka",
+                        "output_mapping": {"kafka": "topic"},
                     },
                 },
                 b"",
@@ -248,32 +241,18 @@ class TestSelectiveExtractorRule:
                     "selective_extractor": {
                         "source_fields": ["field1"],
                         "extract_from_file": "my/path/",
-                        "target_topic": "topic1",
                     },
                 },
                 b"",
                 TypeError,
-                "missing 1 required keyword-only argument: 'target_output'",
+                "missing 1 required keyword-only argument: 'output_mapping'",
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
                         "source_fields": ["field1"],
-                        "extract_from_file": "my/path/",
-                    },
-                },
-                b"",
-                TypeError,
-                "missing 2 required keyword-only arguments: 'target_output' and 'target_topic'",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": {
-                        "source_fields": ["field1"],
-                        "target_output": "kafka",
-                        "target_topic": "topic.bla",
+                        "output_mapping": {"kafka": "topic1", "opensearch": "_target"},
                     },
                 },
                 b"",
@@ -285,8 +264,7 @@ class TestSelectiveExtractorRule:
                     "filter": "test",
                     "selective_extractor": {
                         "source_fields": ["field1"],
-                        "target_output": "kafka",
-                        "target_topic": "topic.bla",
+                        "output_mapping": {"kafka": "topic1"},
                         "target_field": "bla",
                     },
                 },

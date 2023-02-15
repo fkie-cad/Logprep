@@ -24,8 +24,7 @@ TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 class TestPseudonymizer(BaseProcessorTestCase):
     CONFIG = {
         "type": "pseudonymizer",
-        "pseudonyms_output": "kafka",
-        "pseudonyms_topic": "pseudonyms",
+        "outputs": [{"kafka": "topic"}],
         "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
         "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
         "hash_salt": "a_secret_tasty_ingredient",
@@ -39,6 +38,21 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def setup_method(self) -> None:
         super().setup_method()
         self.regex_mapping = self.CONFIG.get("regex_mapping")
+
+    @pytest.mark.parametrize(
+        "config_change, error, msg",
+        [
+            ({"outputs": [{"kafka": "topic"}]}, None, None),
+        ],
+    )
+    def test_config_validation(self, config_change, error, msg):
+        config = deepcopy(self.CONFIG)
+        config |= config_change
+        if error:
+            with pytest.raises(error, match=msg):
+                Factory.create({"name": config}, self.logger)
+        else:
+            Factory.create({"name": config}, self.logger)
 
     def test_pseudonymize_event(self):
         event_raw = {"foo": "bar"}

@@ -50,15 +50,14 @@ class PreDetector(Processor):
     class Config(Processor.Config):
         """PreDetector config"""
 
-        pre_detector_output: str = field(validator=validators.instance_of(str))
-        """The desired output connector to store predetections in"""
+        output_mapping: dict = field(
+            validator=validators.deep_mapping(
+                key_validator=validators.instance_of(str),
+                value_validator=validators.instance_of(str),
+            )
+        )
+        """Mapping of an output name to a output topic or index"""
 
-        pre_detector_topic: str = field(validator=validators.instance_of(str))
-        """
-        A topic or index at the desired :code:`pre_detector_output` for the
-        detection results of the Predetector.
-        Results in this topic can be linked to the original event via a `pre_detector_id`.
-        """
         alert_ip_list_path: str = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
@@ -76,11 +75,11 @@ class PreDetector(Processor):
         then the expiration date of the IP is being used.
         """
 
-    __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
+    __slots__ = ["_extra_data", "_pre_detector_topic", "_ids"]
 
     _ids: list
 
-    detection_results: list
+    _extra_data: list
 
     rule_class = PreDetectorRule
 
@@ -94,17 +93,9 @@ class PreDetector(Processor):
 
     def process(self, event: dict) -> tuple:
         self._event = event
-        self.detection_results = []
+        self._extra_data = []
         super().process(event)
-        return (
-            (
-                self.detection_results,
-                self._config.pre_detector_output,
-                self._config.pre_detector_topic,
-            )
-            if self.detection_results
-            else None
-        )
+        return (self._extra_data, self._config.output_mapping) if self._extra_data else None
 
     def _apply_rules(self, event, rule):
         if not (
@@ -113,9 +104,9 @@ class PreDetector(Processor):
         ):
             if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug(f"{self.describe()} processing matching event")
-            self._get_detection_result(rule, self.detection_results)
+            self._get_detection_result(rule, self._extra_data)
         if "@timestamp" in event:
-            for detection in self.detection_results:
+            for detection in self._extra_data:
                 detection["@timestamp"] = event["@timestamp"]
 
     def _get_detection_result(self, rule: PreDetectorRule, detection_results: list):

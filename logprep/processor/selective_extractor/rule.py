@@ -128,11 +128,13 @@ class SelectiveExtractorRule(FieldManagerRule):
         )
         """List of fields in dotted field notation"""
 
-        target_output: str = field(validator=validators.instance_of(str))
-        """Name of the desired output connector"""
-
-        target_topic: str = field(validator=validators.instance_of(str))
-        """Name of the index or topic of the desired output connector"""
+        output_mapping: dict = field(
+            validator=validators.deep_mapping(
+                key_validator=validators.instance_of(str),
+                value_validator=validators.instance_of(str),
+            )
+        )
+        """Mapping of an output name to a output topic or index"""
 
         extract_from_file: str = field(validator=validators.instance_of(str), default="", eq=False)
         """The path or url to a file with a flat list of fields to extract.
@@ -158,22 +160,13 @@ class SelectiveExtractorRule(FieldManagerRule):
                 raise InvalidRuleDefinitionError("no field to extract")
 
     @property
-    def target_topic(self) -> str:
+    def output_mapping(self) -> str:
         """
         returns:
         --------
         target_topic: the topic where to write the extracted fields to
         """
-        return self._config.target_topic
-
-    @property
-    def target_output(self) -> str:
-        """
-        returns:
-        --------
-        target_output: the name of the output connector where to write the extracted fields to
-        """
-        return self._config.target_output
+        return self._config.output_mapping
 
     @property
     def extracted_field_list(self) -> List[str]:

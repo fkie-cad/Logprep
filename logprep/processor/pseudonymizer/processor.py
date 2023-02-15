@@ -30,7 +30,7 @@ Example
 """
 import datetime
 import re
-from functools import cached_property
+from functools import cached_property, partial
 from logging import Logger
 from typing import Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs
@@ -45,7 +45,7 @@ from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.validators import list_of_urls_validator
+from logprep.util.validators import list_of_urls_validator, min_len_validator
 
 
 class Pseudonymizer(Processor):
@@ -55,15 +55,19 @@ class Pseudonymizer(Processor):
     class Config(Processor.Config):
         """Pseudonymizer config"""
 
-        pseudonyms_output: str = field(validator=validators.instance_of(str))
-        """The desired output connector name to store pseudonyms"""
+        outputs: tuple[dict[str, str]] = field(
+            validator=[
+                validators.deep_iterable(
+                    member_validator=validators.instance_of(dict),
+                    iterable_validator=validators.instance_of(tuple),
+                ),
+                partial(min_len_validator, min_length=1),
+                validators.deep_iterable(member_validator=validators.max_len(2)),
+            ],
+            converter=tuple,
+        )
+        """list of output mappings in form of :code:`output_name:topic`"""
 
-        pseudonyms_topic: str = field(validator=validators.instance_of(str))
-        """
-        A topic or index for pseudonyms.
-        These are not the pseudonymized events, but just the pseudonyms with the encrypted real
-        values.
-        """
         pubkey_analyst: str = field(validator=validators.instance_of(str))
         """
         Path to the public key of an analyst. For string format see :ref:`getters`.
@@ -184,11 +188,7 @@ class Pseudonymizer(Processor):
         self.pseudonymized_fields = set()
         self.pseudonyms = []
         super().process(event)
-        return (
-            (self.pseudonyms, self._config.pseudonyms_output, self._config.pseudonyms_topic)
-            if self.pseudonyms != []
-            else None
-        )
+        return (self.pseudonyms, self._config.outputs) if self.pseudonyms != [] else None
 
     def _apply_rules(self, event: dict, rule: PseudonymizerRule):
         for dotted_field, regex in rule.pseudonyms.items():
