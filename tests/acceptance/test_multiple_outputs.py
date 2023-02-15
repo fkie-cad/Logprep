@@ -51,8 +51,7 @@ def get_config():
                     "pubkey_analyst": "tests/testdata/acceptance/pseudonymizer/example_analyst_pub.pem",
                     "pubkey_depseudo": "tests/testdata/acceptance/pseudonymizer/example_depseudo_pub.pem",
                     "hash_salt": "a_secret_tasty_ingredient",
-                    "pseudonyms_output": "jsonl",
-                    "pseudonyms_topic": "pseudonyms",
+                    "outputs": [{"jsonl": "pseudonyms"}],
                     "specific_rules": [
                         "tests/testdata/acceptance/pseudonymizer/rules_static/specific"
                     ],
@@ -67,8 +66,7 @@ def get_config():
             {
                 "pre_detector": {
                     "type": "pre_detector",
-                    "pre_detector_output": "jsonl",
-                    "pre_detector_topic": "pre_detector_topic",
+                    "outputs": [{"jsonl": "pre_detector_topic"}],
                     "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
                     "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
                     "tree_config": "tests/testdata/acceptance/pre_detector/tree_config.json",

@@ -23,8 +23,8 @@ pipeline:
       pubkey_depseudo: tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem
       regex_mapping: tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml
       hash_salt: a_secret_tasty_ingredient
-      pseudonyms_output: kafka_output
-      pseudonyms_topic: pseudonyms
+      outputs:
+        - kafka_output: pseudonyms
       specific_rules:
         - tests/testdata/unit/pseudonymizer/rules/specific/
       generic_rules:

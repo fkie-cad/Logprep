@@ -17,8 +17,8 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        pre_detector_output: kafka
-        pre_detector_topic: sre_topic
+        outputs:
+            - kafka: sre_topic
         alert_ip_list_path: /tmp/ip_list.yml
 """
 from functools import cached_property

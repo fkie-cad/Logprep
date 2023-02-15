@@ -29,16 +29,16 @@ pipeline:
         - tests/testdata/auto_tests/pre_detector/rules/specific/
       generic_rules:
         - tests/testdata/auto_tests/pre_detector/rules/generic/
-      pre_detector_output: jsonl
-      pre_detector_topic: sre
+      outputs:
+        - jsonl: sre
   - pseudonymizer:
       type: pseudonymizer
       pubkey_analyst: tests/testdata/auto_tests/pseudonymizer/example_analyst_pub.pem
       pubkey_depseudo: tests/testdata/auto_tests/pseudonymizer/example_depseudo_pub.pem
       regex_mapping: tests/testdata/auto_tests/pseudonymizer/regex_mapping.yml
       hash_salt: a_secret_tasty_ingredient
-      pseudonyms_output: jsonl
-      pseudonyms_topic: pseudonyms
+      outputs:
+        - jsonl: pseudonyms
       specific_rules:
         - tests/testdata/auto_tests/pseudonymizer/rules/generic/
       generic_rules:

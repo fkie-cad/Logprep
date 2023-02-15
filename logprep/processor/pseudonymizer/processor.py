@@ -17,8 +17,8 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        pseudonyms_output: kafka
-        pseudonyms_topic: pseudonyms_topic
+        outputs:
+            - kafka: pseudonyms_topic
         pubkey_analyst: /path/to/analyst_pubkey.pem
         pubkey_depseudo: /path/to/depseudo_pubkey.pem
         hash_salt: secret_salt
@@ -30,7 +30,7 @@ Example
 """
 import datetime
 import re
-from functools import cached_property, partial
+from functools import cached_property
 from logging import Logger
 from typing import Any, List, Optional, Tuple, Union
 from urllib.parse import parse_qs

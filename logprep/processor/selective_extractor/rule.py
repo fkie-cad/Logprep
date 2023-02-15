@@ -3,14 +3,14 @@ Selective Extractor
 ===================
 
 The selective extractor requires the additional field :code:`selective_extractor`.
-The field :code:`selective_extractor.extract` has to be defined.
-It contains a dictionary of field names that should be extracted and
-a target topic to which they should be send to.
-If dot notation is being used, then all fields on the path are being automatically created.
+It contains a list of field names that should be extracted (:code:`source_fields`)
+and list of output mappings to which they should be send to (:code:`outputs`).
+If dotted notation is being used, then all fields on the path are being automatically
+created.
 
 In the following example, the field :code:`field.extract` with
 the value :code:`extracted value` is being extracted
-and send to the topic :code:`topic_to_send_to`.
+and send to the output named :code:`kafka` and the topic named :code:`topic_to_send_to`.
 
 ..  code-block:: yaml
     :linenos:
@@ -18,9 +18,9 @@ and send to the topic :code:`topic_to_send_to`.
 
     filter: extract_test
     selective_extractor:
-      extract:
-        extracted_field_list: ["field.extract", "field2", "field3"]
-        target_topic: topic_to_send_to
+      source_fields: ["field.extract", "field2", "field3"]
+      outputs:
+        - kafka: topic_to_send_to
     description: '...'
 
 
@@ -54,9 +54,9 @@ It contains the path to a text file with a list of fields per line to be extract
 
     filter: extract_test
     selective_extractor:
-      extract:
         extract_from_file: /path/to/file
-        target_topic: topic_to_send_to
+        outputs: 
+            - opensearch: topic_to_send_to
     description: '...'
 
 
@@ -78,10 +78,10 @@ It is possible to mix both extraction sources. They will be merged to one list w
 
     filter: extract_test
     selective_extractor:
-      extract:
         extract_from_file: /path/to/file
-        extracted_field_list: ["field1", "field2", "field4"]
-        target_topic: topic_to_send_to
+        source_fields: ["field1", "field2", "field4"]
+        outputs:
+          - kafka: topic_to_send_to
     description: '...'
 
 

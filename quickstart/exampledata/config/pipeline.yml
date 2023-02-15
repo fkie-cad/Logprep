@@ -35,8 +35,8 @@ pipeline:
         - quickstart/exampledata/rules/pre_detector/specific
       generic_rules:
         - quickstart/exampledata/rules/pre_detector/generic
-      pre_detector_output: kafka
-      pre_detector_topic: sre
+      outputs:
+        - kafka: sre
       tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
       alert_ip_list_path: quickstart/exampledata/rules/pre_detector/alert_ips.yml
 
@@ -46,8 +46,8 @@ pipeline:
       pubkey_depseudo: quickstart/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
       regex_mapping: quickstart/exampledata/rules/pseudonymizer/regex_mapping.yml
       hash_salt: a_secret_tasty_ingredient
-      pseudonyms_output: kafka
-      pseudonyms_topic: pseudonyms
+      outputs:
+        - kafka: pseudonyms
       specific_rules:
         - quickstart/exampledata/rules/pseudonymizer/specific/
       generic_rules:
