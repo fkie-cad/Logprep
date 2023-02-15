@@ -4,7 +4,7 @@
 #
 #    pip-compile --resolver=backtracking requirements_dev.in
 #
-aiohttp==3.8.3
+aiohttp==3.8.4
     # via
     #   -r requirements.txt
     #   geoip2
@@ -19,13 +19,13 @@ anyio==3.6.2
     #   starlette
 arrow==1.2.3
     # via -r requirements.txt
-astroid==2.13.3
+astroid==2.14.2
     # via pylint
 async-timeout==4.0.2
     # via
     #   -r requirements.txt
     #   aiohttp
-attrs==21.4.0
+attrs==22.2.0
     # via
     #   -r requirements.txt
     #   aiohttp
@@ -33,7 +33,7 @@ attrs==21.4.0
     #   jsonschema
     #   pytest
     #   semgrep
-black==22.12.0
+black==23.1.0
     # via -r requirements_dev.in
 boltons==21.0.0
     # via
@@ -50,7 +50,7 @@ certifi==2022.12.7
     #   httpx
     #   opensearch-py
     #   requests
-charset-normalizer==2.1.1
+charset-normalizer==3.0.1
     # via
     #   -r requirements.txt
     #   aiohttp
@@ -76,13 +76,13 @@ defusedxml==0.7.1
     # via semgrep
 dill==0.3.6
     # via pylint
-elasticsearch==7.17.8
+elasticsearch==7.17.9
     # via -r requirements.txt
 exceptiongroup==1.1.0
     # via pytest
 face==22.0.0
     # via glom
-fastapi==0.89.1
+fastapi==0.92.0
     # via -r requirements.txt
 filelock==3.9.0
     # via
@@ -120,7 +120,7 @@ idna==3.4
     #   yarl
 iniconfig==2.0.0
     # via pytest
-isort==5.11.4
+isort==5.12.0
     # via
     #   -r requirements_dev.in
     #   pylint
@@ -132,8 +132,10 @@ jsonschema==4.17.3
     # via semgrep
 lazy-object-proxy==1.9.0
     # via astroid
-luqum==0.12.0
+luqum==0.12.1
     # via -r requirements.txt
+markdown-it-py==2.1.0
+    # via rich
 markupsafe==2.1.2
     # via jinja2
 maxminddb==2.2.0
@@ -142,30 +144,31 @@ maxminddb==2.2.0
     #   geoip2
 mccabe==0.7.0
     # via pylint
+mdurl==0.1.2
+    # via markdown-it-py
 multidict==6.0.4
     # via
     #   -r requirements.txt
     #   aiohttp
     #   yarl
-mypy-extensions==0.4.3
+mypy-extensions==1.0.0
     # via black
 mysql-connector-python==8.0.32
     # via -r requirements.txt
-numpy==1.24.1
+numpy==1.24.2
     # via -r requirements.txt
-opensearch-py==2.0.1
+opensearch-py==2.1.1
     # via -r requirements.txt
-packaging==21.3
+packaging==23.0
     # via
+    #   black
     #   pytest
     #   semgrep
-parsy==2.0
-    # via semgrep
 pathspec==0.11.0
     # via black
 peewee==3.15.4
     # via semgrep
-platformdirs==2.6.2
+platformdirs==3.0.0
     # via
     #   -r requirements.txt
     #   black
@@ -177,26 +180,26 @@ ply==3.11
     # via
     #   -r requirements.txt
     #   luqum
-prometheus-client==0.15.0
+prometheus-client==0.16.0
     # via -r requirements.txt
 protobuf==3.20.3
     # via
     #   -r requirements.txt
     #   mysql-connector-python
-pycryptodome==3.16.0
+pycryptodome==3.17
     # via -r requirements.txt
 pydantic==1.10.4
     # via
     #   -r requirements.txt
     #   fastapi
+pygments==2.14.0
+    # via rich
 pygrok==1.0.0
     # via -r requirements.txt
-pylint==2.15.10
+pylint==2.16.2
     # via -r requirements_dev.in
 pyparsing==3.0.9
-    # via
-    #   -r requirements.txt
-    #   packaging
+    # via -r requirements.txt
 pyrsistent==0.19.3
     # via jsonschema
 pytest==7.2.1
@@ -236,6 +239,8 @@ responses==0.22.0
     # via -r requirements_dev.in
 rfc3986[idna2008]==1.5.0
     # via httpx
+rich==13.3.1
+    # via semgrep
 ruamel-yaml==0.17.21
     # via
     #   -r requirements.txt
@@ -246,7 +251,7 @@ ruamel-yaml-clib==0.2.7
     #   ruamel-yaml
 schedule==1.1.0
     # via -r requirements.txt
-semgrep==1.5.1
+semgrep==1.12.0
     # via -r requirements_dev.in
 six==1.16.0
     # via
@@ -259,7 +264,7 @@ sniffio==1.3.0
     #   anyio
     #   httpcore
     #   httpx
-starlette==0.22.0
+starlette==0.25.0
     # via
     #   -r requirements.txt
     #   fastapi
@@ -278,9 +283,9 @@ tomlkit==0.11.6
     # via pylint
 tqdm==4.64.1
     # via semgrep
-types-toml==0.10.8.1
+types-toml==0.10.8.4
     # via responses
-typing-extensions==4.4.0
+typing-extensions==4.5.0
     # via
     #   -r requirements.txt
     #   astroid
