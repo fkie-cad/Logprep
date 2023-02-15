@@ -8,6 +8,8 @@
 
 * Add `string_splitter` processor to split strings of variable length into lists
 * Add `ip_informer` processor to enrich events with ip information
+* Apply processors multiple times until no new rule matches anymore. This enables applying rules on 
+results of previous rules.
 
 ## v5.0.1
 
