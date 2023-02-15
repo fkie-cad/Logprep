@@ -58,15 +58,22 @@ class Pseudonymizer(Processor):
         outputs: tuple[dict[str, str]] = field(
             validator=[
                 validators.deep_iterable(
-                    member_validator=validators.instance_of(dict),
+                    member_validator=[
+                        validators.instance_of(dict),
+                        validators.deep_mapping(
+                            key_validator=validators.instance_of(str),
+                            value_validator=validators.instance_of(str),
+                            mapping_validator=validators.max_len(1),
+                        ),
+                    ],
                     iterable_validator=validators.instance_of(tuple),
                 ),
-                partial(min_len_validator, min_length=1),
-                validators.deep_iterable(member_validator=validators.max_len(2)),
+                validators.min_len(1),
             ],
             converter=tuple,
         )
-        """list of output mappings in form of :code:`output_name:topic`"""
+        """list of output mappings in form of :code:`output_name:topic`.
+        Only one mapping is allowed per list element"""
 
         pubkey_analyst: str = field(validator=validators.instance_of(str))
         """

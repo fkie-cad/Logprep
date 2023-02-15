@@ -37,15 +37,14 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
                 "filter": field_name,
                 "selective_extractor": {
                     "source_fields": [field_name],
-                    "target_topic": "my topic",
-                    "target_output": "kafka",
+                    "outputs": [{"kafka": "topic"}],
                 },
             }
         )
         self.object._specific_tree.add_rule(rule)
         document = {field_name: "the value"}
         tuple_list = self.object.process(document)
-        for filtered_event, *_ in tuple_list:
+        for filtered_event, _ in tuple_list:
             if field_name in filtered_event[0]:
                 break
         else:
@@ -53,24 +52,18 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
 
     def test_process_returns_selective_extractor_target_topic(self):
         field_name = f"{uuid.uuid4()}"
-        rule = SelectiveExtractorRule._create_from_dict(
-            {
-                "filter": field_name,
-                "selective_extractor": {
-                    "source_fields": [field_name],
-                    "target_topic": "my topic",
-                    "target_output": "opensearch",
-                },
-            }
-        )
-        self.object._specific_tree.add_rule(rule)
+        rule = {
+            "filter": field_name,
+            "selective_extractor": {
+                "source_fields": [field_name],
+                "outputs": [{"opensearch": "my topic"}],
+            },
+        }
+        self._load_specific_rule(rule)
         document = {field_name: "test_message", "other": "field"}
         result = self.object.process(document)
-        for *_, topic in result:
-            if topic == "my topic":
-                break
-        else:
-            assert False
+        output = result[0][1][0]
+        assert "my topic" in output.values()
 
     def test_process_returns_selective_extractor_target_output(self):
         field_name = f"{uuid.uuid4()}"
@@ -78,18 +71,14 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             "filter": field_name,
             "selective_extractor": {
                 "source_fields": [field_name],
-                "target_topic": "my topic",
-                "target_output": "opensearch",
+                "outputs": [{"opensearch": "index"}],
             },
         }
         self._load_specific_rule(rule)
         document = {field_name: "test_message", "other": "field"}
         result = self.object.process(document)
-        for _, output, _ in result:
-            if output == "opensearch":
-                break
-        else:
-            assert False
+        output = result[0][1][0]
+        assert "opensearch" in output.keys()
 
     def test_process_returns_extracted_fields(self):
         document = {"message": "test_message", "other": "field"}
@@ -97,8 +86,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             "filter": "message",
             "selective_extractor": {
                 "source_fields": ["message"],
-                "target_topic": "my topic",
-                "target_output": "opensearch",
+                "outputs": [{"opensearch": "index"}],
             },
         }
         self._load_specific_rule(rule)
@@ -134,8 +122,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             "filter": "message",
             "selective_extractor": {
                 "source_fields": ["other.message", "message"],
-                "target_topic": "my topic",
-                "target_output": "kafka",
+                "outputs": [{"opensearch": "index"}],
             },
         }
         self._load_specific_rule(rule)
@@ -149,9 +136,9 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             assert False, f"other.message not in {result}"
 
     def test_process_clears_internal_filtered_events_list_before_every_event(self):
-        assert len(self.object._filtered_events) == 0
+        assert len(self.object._extra_data) == 0
         document = {"message": "test_message", "other": {"message": "my message value"}}
         _ = self.object.process(document)
-        assert len(self.object._filtered_events) == 1
+        assert len(self.object._extra_data) == 1
         _ = self.object.process(document)
-        assert len(self.object._filtered_events) == 1
+        assert len(self.object._extra_data) == 1

@@ -6,8 +6,11 @@
                 "field1",
                 "field2"
             ],
-            "target_topic": "test_topic",
-            "target_output": "kafka"
+            "outputs": [
+                {
+                    "kafka": "topic"
+                }
+            ]
         },
         "description": "my reference rule"
     }

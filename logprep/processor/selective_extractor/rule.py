@@ -128,13 +128,25 @@ class SelectiveExtractorRule(FieldManagerRule):
         )
         """List of fields in dotted field notation"""
 
-        output_mapping: dict = field(
-            validator=validators.deep_mapping(
-                key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of(str),
-            )
+        outputs: tuple[dict[str, str]] = field(
+            validator=[
+                validators.deep_iterable(
+                    member_validator=[
+                        validators.instance_of(dict),
+                        validators.deep_mapping(
+                            key_validator=validators.instance_of(str),
+                            value_validator=validators.instance_of(str),
+                            mapping_validator=validators.max_len(1),
+                        ),
+                    ],
+                    iterable_validator=validators.instance_of(tuple),
+                ),
+                validators.min_len(1),
+            ],
+            converter=tuple,
         )
-        """Mapping of an output name to a output topic or index"""
+        """list of output mappings in form of :code:`output_name:topic`.
+        Only one mapping is allowed per list element"""
 
         extract_from_file: str = field(validator=validators.instance_of(str), default="", eq=False)
         """The path or url to a file with a flat list of fields to extract.
@@ -160,13 +172,13 @@ class SelectiveExtractorRule(FieldManagerRule):
                 raise InvalidRuleDefinitionError("no field to extract")
 
     @property
-    def output_mapping(self) -> str:
+    def outputs(self) -> str:
         """
         returns:
         --------
-        target_topic: the topic where to write the extracted fields to
+        outputs: list of output mappings
         """
-        return self._config.output_mapping
+        return self._config.outputs
 
     @property
     def extracted_field_list(self) -> List[str]:

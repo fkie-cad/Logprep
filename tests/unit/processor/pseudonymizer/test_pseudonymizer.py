@@ -43,6 +43,22 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "config_change, error, msg",
         [
             ({"outputs": [{"kafka": "topic"}]}, None, None),
+            ({"outputs": []}, ValueError, "Length of 'outputs' must be => 1"),
+            (
+                {"outputs": [{"kafka": 1}]},
+                TypeError,
+                "must be <class 'str'>",
+            ),
+            (
+                {"outputs": [{1: "topic"}]},
+                TypeError,
+                "must be <class 'str'>",
+            ),
+            (
+                {"outputs": [{"kafka": "topic", "opensearch": "index_1"}]},
+                ValueError,
+                "Length of 'outputs' must be <= 1",
+            ),
         ],
     )
     def test_config_validation(self, config_change, error, msg):

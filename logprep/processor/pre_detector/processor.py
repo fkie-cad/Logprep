@@ -50,13 +50,25 @@ class PreDetector(Processor):
     class Config(Processor.Config):
         """PreDetector config"""
 
-        output_mapping: dict = field(
-            validator=validators.deep_mapping(
-                key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of(str),
-            )
+        outputs: tuple[dict[str, str]] = field(
+            validator=[
+                validators.deep_iterable(
+                    member_validator=[
+                        validators.instance_of(dict),
+                        validators.deep_mapping(
+                            key_validator=validators.instance_of(str),
+                            value_validator=validators.instance_of(str),
+                            mapping_validator=validators.max_len(1),
+                        ),
+                    ],
+                    iterable_validator=validators.instance_of(tuple),
+                ),
+                validators.min_len(1),
+            ],
+            converter=tuple,
         )
-        """Mapping of an output name to a output topic or index"""
+        """list of output mappings in form of :code:`output_name:topic`.
+        Only one mapping is allowed per list element"""
 
         alert_ip_list_path: str = field(
             default=None, validator=validators.optional(validators.instance_of(str))
@@ -95,7 +107,7 @@ class PreDetector(Processor):
         self._event = event
         self._extra_data = []
         super().process(event)
-        return (self._extra_data, self._config.output_mapping) if self._extra_data else None
+        return (self._extra_data, self._config.outputs) if self._extra_data else None
 
     def _apply_rules(self, event, rule):
         if not (

@@ -82,4 +82,4 @@ class SelectiveExtractor(FieldManager):
             filtered_event = {}
             for field, content in flattened_fields.items():
                 add_field_to(filtered_event, field, content)
-            self._extra_data.append(([filtered_event], rule.output_mapping))
+            self._extra_data.append(([filtered_event], rule.outputs))
