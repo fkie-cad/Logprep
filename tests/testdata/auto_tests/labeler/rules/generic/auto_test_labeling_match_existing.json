@@ -1,0 +1,7 @@
+[{
+  "filter": "some_field: (stop OR end)",
+  "label": {
+    "action": ["terminate"]
+  },
+  "description": "Test-rule with matching auto-test"
+}]

@@ -6,25 +6,24 @@ import json
 import sys
 import tempfile
 import traceback
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict, defaultdict
 from contextlib import redirect_stdout
 from difflib import ndiff
 from io import StringIO
 from logging import getLogger
-from os import walk, path
+from os import path, walk
 from pprint import pprint
-from typing import Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple, TextIO
 
 import regex as re
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
-from typing.io import TextIO
 
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.pre_detector.processor import PreDetector
-from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
-from logprep.util.helper import print_fcolor, remove_file_if_exists, get_dotted_field_value
+from logprep.util.auto_rule_tester.grok_pattern_replacer import GrokPatternReplacer
+from logprep.util.helper import print_fcolor, remove_file_if_exists
 
 if TYPE_CHECKING:
     from logprep.abc.processor import Processor
@@ -42,125 +41,6 @@ class AutoRuleTesterException(BaseException):
 
     def __init__(self, message: str):
         super().__init__(f"AutoRuleTester ({message}): ")
-
-
-class GrokPatternReplacer:
-    """Used to replace strings with pre-defined grok patterns."""
-
-    def __init__(self, config: dict):
-        self._grok_patterns = {
-            "PSEUDONYM": r"<pseudonym:[a-fA-F0-9]{64}>",
-            "UUID": r"[a-fA-F0-9]{8}-(?:[a-fA-F0-9]{4}-){3}[a-fA-F0-9]{12}",
-            "NUMBER": r"[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?",
-            "WORD": r"\w+",
-            "IPV4": r"\d{1,3}(\.\d{1,3}){3}",
-            "IPV4_PORT": r"\d{1,3}(\.\d{1,3}){3}:\d+",
-        }
-
-        additional_patterns_list = []
-        pipeline_cfg = config.get("pipeline", [])
-        for processor_cfg in pipeline_cfg:
-            processor_values = list(processor_cfg.values())[0]
-            additional_patterns = processor_values.get("grok_patterns")
-            if additional_patterns:
-                additional_patterns_list.append(processor_values.get("grok_patterns"))
-
-        for additional_patterns in additional_patterns_list:
-            if isinstance(additional_patterns, str):
-                additional_patterns = [additional_patterns]
-            for auto_test_pattern in additional_patterns:
-                self._grok_patterns.update(gpl.load(auto_test_pattern))
-
-        print("\nGrok Patterns:")
-        pprint(self._grok_patterns)
-
-        self._grok_base = re.compile(r"%\{.*?\}")
-
-    @staticmethod
-    def _change_dotted_field_value(event: dict, dotted_field: str, new_value: str):
-        fields = dotted_field.split(".")
-        dict_ = event
-        last_field = None
-        for field in fields:
-            if field in dict_ and isinstance(dict_[field], dict):
-                dict_ = dict_[field]
-            last_field = field
-        if last_field:
-            dict_[last_field] = new_value
-
-    def _replace_all_keywords_in_value(self, dotted_value: str) -> str:
-        while bool(self._grok_base.search(str(dotted_value))):
-            for identifier, grok_value in self._grok_patterns.items():
-                pattern = "%{" + identifier + "}"
-                dotted_value = str(dotted_value)
-                dotted_value = dotted_value.replace(pattern, grok_value)
-        return dotted_value
-
-    def replace_grok_keywords(self, processed: dict, reference_dict: dict, dotted_field: str = ""):
-        """Create aggregating logger.
-
-        Parameters
-        ----------
-        processed : dict
-            Expected test result for rule test.
-        reference_dict : dict
-            Original test data containing test input and expected.
-        dotted_field : str
-            Field that contains value that should be replaced.
-
-        """
-        for processed_field, processed_sub in list(processed.items()):
-            dotted_field_tmp = dotted_field
-            dotted_field += f".{processed_field}" if dotted_field else processed_field
-            dotted_value = get_dotted_field_value(reference_dict["processed"], dotted_field)
-
-            if isinstance(dotted_value, (str, int, float)):
-                if processed_field.endswith("|re"):
-                    new_key = processed_field.replace("|re", "")
-                    dotted_value_raw = get_dotted_field_value(
-                        reference_dict["raw"], dotted_field.replace("|re", "")
-                    )
-
-                    grok_keywords_in_value = set(self._grok_base.findall(str(dotted_value)))
-                    defined_grok_keywords = [
-                        "%{" + grok_definition + "}" for grok_definition in self._grok_patterns
-                    ]
-
-                    if all(
-                        (
-                            (grok_keyword in defined_grok_keywords)
-                            for grok_keyword in grok_keywords_in_value
-                        )
-                    ):
-                        dotted_value = self._replace_all_keywords_in_value(dotted_value)
-
-                    dotted_value = "^" + dotted_value + "$"
-
-                    if dotted_value_raw:
-                        grok_keywords_in_value = bool(
-                            re.search(dotted_value, str(dotted_value_raw))
-                        )
-                    else:
-                        grok_keywords_in_value = False
-
-                    if grok_keywords_in_value:
-                        self._change_dotted_field_value(
-                            reference_dict["processed"], dotted_field, dotted_value_raw
-                        )
-                    else:
-                        self._change_dotted_field_value(
-                            reference_dict["processed"], dotted_field, dotted_value
-                        )
-
-                    processed[new_key] = processed.pop(processed_field)
-
-            # Sort lists to have same ordering in raw and processed for later comparison
-            if isinstance(processed_sub, list):
-                processed[processed_field] = sorted(processed_sub)
-
-            if isinstance(processed_sub, dict):
-                self.replace_grok_keywords(processed_sub, reference_dict, dotted_field=dotted_field)
-            dotted_field = dotted_field_tmp
 
 
 class PreDetectionExtraHandler:
@@ -245,7 +125,7 @@ class AutoRuleTester:
 
         self._filename_printed = False
 
-        self._gpl = GrokPatternReplacer(self._config_yml)
+        self._gpr = GrokPatternReplacer(self._config_yml)
 
         self._custom_tests_output = ""
         self._custom_tests = []
@@ -560,7 +440,7 @@ class AutoRuleTester:
                 nested_dict[key] = sorted(nested_dict[key])
 
     def _get_diff_raw_test(self, test: dict) -> list:
-        self._gpl.replace_grok_keywords(test["processed"], test)
+        self._gpr.replace_grok_keywords(test["processed"], test)
 
         self._sort_lists_in_nested_dict(test)
 

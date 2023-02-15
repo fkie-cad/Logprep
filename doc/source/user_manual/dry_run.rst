@@ -61,6 +61,11 @@ Fields with variable results can be matched via regex expressions by appending `
 It is furthermore possible to use GROK patterns.
 Some patterns are pre-defined, but others can be added by adding a directory with GROK patterns to the configuration file.
 
+If the `raw` value is a list, it is possible to select which elements of that list will be interpreted as regex.
+To do this the index of the element in that list must be added in parenthesis after `|re`,
+i.e. `|re(0)` to select the first element.
+Multiple indices can be delimited by commas to select more than one element, i.e. `|re(0,3)` to select the 1. and the 4. element.
+
 The rules get automatically validated if an auto-test is being executed.
 The rule tests will be only performed if the validation was successful.
 

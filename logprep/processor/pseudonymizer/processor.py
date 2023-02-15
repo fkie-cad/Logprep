@@ -75,7 +75,8 @@ class Pseudonymizer(Processor):
         """A salt that is used for hashing."""
         regex_mapping: str = field(validator=validators.instance_of(str))
         """
-        Path to a file (for string format see :ref:`getters`) with a regex mapping for pseudonymization, i.e.:
+        Path to a file (for string format see :ref:`getters`) with a regex mapping for 
+        pseudonymization, i.e.:
 
         * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
         """
@@ -187,13 +188,16 @@ class Pseudonymizer(Processor):
                 try:
                     dict_, key = self._innermost_field(dotted_field, event)
                     pre_pseudonymization_value = dict_[key]
+
                     dict_[key], new_pseudonyms, is_match = self._pseudonymize_field(
-                        regex, str(dict_[key])
+                        regex, dict_[key]
                     )
+
                     if is_match and dotted_field in rule.url_fields:
                         dict_[key] = self._get_field_with_pseudonymized_urls(
                             dict_[key], new_pseudonyms
                         )
+
                     if pre_pseudonymization_value != dict_[key]:
                         self.pseudonymized_fields.add(dotted_field)
                 except KeyError:
@@ -213,20 +217,41 @@ class Pseudonymizer(Processor):
             event = event[keys[i]]
         return event, keys[-1]
 
-    def _pseudonymize_field(self, pattern: str, field_: str) -> Tuple[str, Optional[list], bool]:
-        matches = re.match(pattern, field_)
-
-        # No matches, no change
-        if matches is None:
-            return field_, None, False
-
+    def _pseudonymize_field(
+        self, pattern: str, field_: Union[str, List[str]]
+    ) -> Tuple[Union[str, List[str]], Optional[list], bool]:
         new_pseudonyms = []
 
-        # Replace capture groups if there are any, else pseudonymize whole match (group(0))
-        if any(matches.groups()):
-            field_ = self._get_field_with_pseudonymized_capture_groups(matches, new_pseudonyms)
+        if isinstance(field_, list):
+            values = [str(value) for value in field_]
+            matches_list = [re.match(pattern, value) for value in values]
+            if not any(matches_list):
+                return field_, None, False
 
-        return field_, new_pseudonyms if new_pseudonyms else None, True
+            new_field = []
+
+            for idx, matches in enumerate(matches_list):
+                if matches and any(matches.groups()):
+                    new_field.append(
+                        self._get_field_with_pseudonymized_capture_groups(matches, new_pseudonyms)
+                    )
+                else:
+                    new_field.append(field_[idx])
+        else:
+            new_field = str(field_)
+            matches = re.match(pattern, new_field)
+
+            # No matches, no change
+            if matches is None:
+                return new_field, None, False
+
+            # Replace capture groups if there are any, else pseudonymize whole match (group(0))
+            if any(matches.groups()):
+                new_field = self._get_field_with_pseudonymized_capture_groups(
+                    matches, new_pseudonyms
+                )
+
+        return new_field, new_pseudonyms if new_pseudonyms else None, True
 
     def _get_field_with_pseudonymized_capture_groups(self, matches, pseudonyms: List[dict]) -> str:
         field_ = ""

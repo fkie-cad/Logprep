@@ -1,0 +1,22 @@
+[
+  {
+    "raw": {
+      "some_field": "stop",
+      "label": {"action": ["terminate"]}
+    },
+    "processed": {
+      "some_field": "stop",
+      "label": {"action": ["terminate"]}
+    }
+  },
+  {
+    "raw": {
+      "some_field": "end",
+      "label": {"action": ["end"]}
+    },
+    "processed": {
+      "some_field": "end",
+      "label": {"action": ["terminate", "end"]}
+    }
+  }
+]

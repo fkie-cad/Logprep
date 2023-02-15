@@ -17,7 +17,7 @@ from logprep._version import get_versions
 from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
 from logprep.util.aggregating_logger import AggregatingLogger
-from logprep.util.auto_rule_tester import AutoRuleTester
+from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import print_fcolor
 from logprep.util.rule_dry_runner import DryRunner

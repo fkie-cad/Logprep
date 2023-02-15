@@ -1,0 +1,98 @@
+[
+  {
+    "raw": {
+      "some_field": ["..."]
+    },
+    "processed": {
+      "some_field": ["..."]
+    }
+  },
+  {
+    "raw": {
+      "some_field": "FOO\\BAR"
+    },
+    "processed": {
+      "some_field|re": "FOO\\\\%{PSEUDONYM}"
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR"]
+    },
+    "processed": {
+      "some_field|re(0)": ["FOO\\\\%{PSEUDONYM}"]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR", "..."]
+    },
+    "processed": {
+      "some_field|re(0)": ["FOO\\\\%{PSEUDONYM}", "..."]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["...", "FOO\\BAR"]
+    },
+    "processed": {
+      "some_field|re(1)": ["...", "FOO\\\\%{PSEUDONYM}"]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR", "FOO\\BAR"]
+    },
+    "processed": {
+      "some_field|re(0, 1)": ["FOO\\\\%{PSEUDONYM}", "FOO\\\\%{PSEUDONYM}"]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR", "FOO\\BAR"]
+    },
+    "processed": {
+      "some_field|re": ["FOO\\\\%{PSEUDONYM}", "FOO\\\\%{PSEUDONYM}"]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR", "...", "FOO\\BAR"]
+    },
+    "processed": {
+      "some_field|re": ["FOO\\\\%{PSEUDONYM}", "...", "FOO\\\\%{PSEUDONYM}"]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR", "BAZ\\BAR"]
+    },
+    "processed": {
+      "some_field|re": ["FOO\\\\%{PSEUDONYM}", "BAZ\\\\%{PSEUDONYM}"]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR", "BAZ\\BAR"]
+    },
+    "processed": {
+      "some_field|re": ["FOO\\\\%{PSEUDONYM}", "BAZ\\\\%{PSEUDONYM}"]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR", "BAZ\\QUX"]
+    },
+    "processed": {
+      "some_field|re": ["FOO\\\\%{PSEUDONYM}", "BAZ\\\\%{PSEUDONYM}"]
+    }
+  },
+  {
+    "raw": {
+      "some_field": ["FOO\\BAR", "FOO\\BAZ"]
+    },
+    "processed": {
+      "some_field|re": ["FOO\\\\%{PSEUDONYM}", "FOO\\\\%{PSEUDONYM}"]
+    }
+  }
+]
