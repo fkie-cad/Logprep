@@ -536,8 +536,7 @@ class MultiprocessingPipeline(Process, Pipeline):
         )
 
         self._continue_iterating = Value(c_bool)
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = False
+        self.stop()
         Process.__init__(self)
 
     def run(self) -> None:
