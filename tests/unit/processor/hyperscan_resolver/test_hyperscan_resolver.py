@@ -26,7 +26,6 @@ from logprep.processor.hyperscan_resolver.processor import HyperscanResolver, Hy
 
 
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "hyperscan_resolver",
         "specific_rules": ["tests/testdata/unit/hyperscan_resolver/rules/specific/"],
@@ -392,7 +391,6 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
 
 
 class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
-
     CONFIG = deepcopy(TestHyperscanResolverProcessor.CONFIG)
 
     def test_resolve_no_conflict_from_file(self):

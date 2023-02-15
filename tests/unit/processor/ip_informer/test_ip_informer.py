@@ -325,7 +325,6 @@ failure_test_cases = [
 
 
 class TestIpInformer(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "ip_informer",
         "specific_rules": ["tests/testdata/unit/ip_informer/specific/"],

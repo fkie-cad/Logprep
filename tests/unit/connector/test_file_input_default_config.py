@@ -43,7 +43,6 @@ def append_file(file_name: str, source_data: list):
 
 
 class TestFileInput(BaseInputTestCase):
-
     CONFIG: dict = {
         "type": "file_input",
         "logfile_path": "",

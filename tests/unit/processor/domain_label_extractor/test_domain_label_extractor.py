@@ -13,7 +13,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDomainLabelExtractor(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "domain_label_extractor",
         "generic_rules": ["tests/testdata/unit/domain_label_extractor/rules/generic"],

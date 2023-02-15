@@ -7,7 +7,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDropper(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "dropper",
         "specific_rules": ["tests/testdata/unit/dropper/rules/specific/"],

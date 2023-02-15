@@ -42,7 +42,6 @@ elasticsearch.helpers.bulk = mock_bulk
 
 
 class TestElasticsearchOutput(BaseOutputTestCase):
-
     CONFIG = {
         "type": "elasticsearch_output",
         "hosts": ["host:123"],

@@ -135,6 +135,7 @@ class BNF(Forward):
         super().__init__()
         self.exprStack = []
         expr_list = delimitedList(Group(self))
+
         # add parse action that replaces the function identifier with a (name, number of args) tuple
         def insert_fn_argcount_tuple(t):
             fn = t.pop(0)  # pylint: disable=redefined-outer-name

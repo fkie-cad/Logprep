@@ -27,7 +27,6 @@ yaml = YAML(typ="safe", pure=True)
 
 
 class BaseProcessorTestCase(ABC):
-
     mocks: dict = {}
 
     CONFIG: dict = {}
