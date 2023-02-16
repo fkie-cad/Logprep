@@ -39,11 +39,9 @@ can store all missing keys.
 
 """
 
-from functools import partial
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.validators import min_len_validator
 
 
 class KeyCheckerRule(FieldManagerRule):
@@ -59,7 +57,7 @@ class KeyCheckerRule(FieldManagerRule):
                     member_validator=validators.instance_of(str),
                     iterable_validator=validators.instance_of(set),
                 ),
-                partial(min_len_validator, min_length=1),
+                validators.min_len(1),
             ],
             converter=set,
         )

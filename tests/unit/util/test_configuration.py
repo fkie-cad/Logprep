@@ -25,7 +25,6 @@ logger = getLogger()
 
 
 class TestConfiguration:
-
     config: dict
 
     def setup_method(self):

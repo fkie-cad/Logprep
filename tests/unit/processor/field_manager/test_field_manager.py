@@ -323,7 +323,6 @@ failure_test_cases = [
 
 
 class TestFieldManager(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "field_manager",
         "specific_rules": ["tests/testdata/unit/field_manager/specific_rules"],

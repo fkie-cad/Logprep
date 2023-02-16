@@ -9,7 +9,6 @@ from logprep.util.processor_generator import ProcessorCodeGenerator
 
 
 class TestProcessorCodeGenerator:
-
     processor_path = Path("logprep/processor/test_processor")
     processor_test_path = Path("tests/unit/processor/test_processor")
 

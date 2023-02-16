@@ -22,7 +22,6 @@ TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 
 
 class TestPseudonymizer(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "pseudonymizer",
         "pseudonyms_topic": "pseudonyms",

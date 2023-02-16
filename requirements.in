@@ -1,5 +1,5 @@
 arrow
-attrs~=21.3 # because of semgrep in development
+attrs
 certifi>=2022.12.07
 colorama
 confluent-kafka<1.9.0

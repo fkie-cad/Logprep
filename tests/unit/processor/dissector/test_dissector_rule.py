@@ -8,7 +8,6 @@ from logprep.processor.dissector.rule import DissectorRule, add_and_overwrite, a
 
 
 class TestDissectorRule:
-
     rule = {"filter": "message", "dissector": {"mapping": {}}}
 
     def test_create_from_dict_returns_dissector_rule(self):

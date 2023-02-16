@@ -8,7 +8,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestSelectiveExtractor(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "selective_extractor",
         "specific_rules": ["tests/testdata/unit/selective_extractor/rules/specific"],

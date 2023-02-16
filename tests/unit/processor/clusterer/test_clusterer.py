@@ -7,7 +7,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestClusterer(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "clusterer",
         "output_field_name": "cluster_signature",

@@ -289,7 +289,6 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
 
 
 class TestCalculator(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "calculator",
         "specific_rules": ["tests/testdata/unit/calculator/specific_rules"],

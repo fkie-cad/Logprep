@@ -240,7 +240,6 @@ test_cases = [  # testcase, rule, event, expected
 
 
 class TestKeyChecker(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "key_checker",
         "specific_rules": ["tests/testdata/unit/key_checker/specific_rules/"],
