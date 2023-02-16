@@ -456,7 +456,7 @@ class Pipeline:
 
 
 class MultiprocessingPipeline(Process, Pipeline):
-    """A thread-safe Pipeline for multi-processing."""
+    """A thread-safe Pipeline for multiprocessing."""
 
     processed_counter: SharedCounter = SharedCounter()
 
