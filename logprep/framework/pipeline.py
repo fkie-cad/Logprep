@@ -5,15 +5,15 @@ They can be multi-processed.
 
 """
 # pylint: disable=logging-fstring-interpolation
-from functools import cached_property
 import json
+import queue
+import warnings
 from ctypes import c_bool, c_double, c_ulonglong
+from functools import cached_property
 from logging import INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
-import queue
 from time import time
 from typing import List
-import warnings
 
 import attrs
 import numpy as np
@@ -28,6 +28,7 @@ from logprep.abc.input import (
     WarningInputError,
 )
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output, WarningOutputError
+from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.metrics.metric import Metric, calculate_new_average, MetricTargets
 from logprep.metrics.metric_exposer import MetricExposer
@@ -35,7 +36,6 @@ from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarni
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.time_measurement import TimeMeasurement
-from logprep.abc.processor import Processor
 
 
 class PipelineError(BaseException):
@@ -348,7 +348,7 @@ class Pipeline:
         except FatalOutputError as error:
             self._logger.error(f"Output {self._output.describe()} failed: {error}")
             self._output.metrics.number_of_errors += 1
-            self._continue_iterating = False
+            self.stop()
 
     def _get_event(self) -> dict:
         try:
@@ -367,11 +367,11 @@ class Pipeline:
             self._logger.warning(
                 f"Lost or failed to establish connection to {self._input.describe()}"
             )
-            self._continue_iterating = False
+            self.stop()
         except FatalInputError as error:
             self._logger.error(f"Input {self._input.describe()} failed: {error}")
             self._input.metrics.number_of_errors += 1
-            self._continue_iterating = False
+            self.stop()
         except WarningInputError as error:
             self._logger.warning(f"An error occurred for input {self._input.describe()}: {error}")
             self._input.metrics.number_of_warnings += 1
@@ -456,7 +456,7 @@ class Pipeline:
 
 
 class MultiprocessingPipeline(Process, Pipeline):
-    """A thread-safe Pipeline for multi-processing."""
+    """A thread-safe Pipeline for multiprocessing."""
 
     processed_counter: SharedCounter = SharedCounter()
 

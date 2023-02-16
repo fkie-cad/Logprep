@@ -11,7 +11,6 @@ import requests
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
-from logprep.abc.processor import Processor
 from logprep.abc.input import (
     CriticalInputError,
     FatalInputError,
@@ -19,6 +18,7 @@ from logprep.abc.input import (
     WarningInputError,
 )
 from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError
+from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
@@ -663,6 +663,60 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
 
         pipeline.stop()
         assert not pipeline._iterate()
+
+    def test_graceful_shutdown_of_pipeline_on_source_disconnected_error(self, capfd):
+        pipeline = MultiprocessingPipeline(
+            pipeline_index=1,
+            config=self.logprep_config,
+            log_handler=self.log_handler,
+            lock=self.lock,
+            used_server_ports=mock.MagicMock(),
+            shared_dict=self.shared_dict,
+        )
+        pipeline._input = mock.MagicMock()
+        pipeline._input.get_next = mock.MagicMock()
+        pipeline._input.get_next.side_effect = SourceDisconnectedError()
+        pipeline.start()
+        pipeline.stop()
+        pipeline.join()
+        out, err = capfd.readouterr()
+        assert "AttributeError: 'bool' object has no attribute 'get_lock'" not in err
+
+    def test_graceful_shutdown_of_pipeline_on_fata_input_error(self, capfd):
+        pipeline = MultiprocessingPipeline(
+            pipeline_index=1,
+            config=self.logprep_config,
+            log_handler=self.log_handler,
+            lock=self.lock,
+            used_server_ports=mock.MagicMock(),
+            shared_dict=self.shared_dict,
+        )
+        pipeline._input = mock.MagicMock()
+        pipeline._input.get_next = mock.MagicMock()
+        pipeline._input.get_next.side_effect = FatalInputError()
+        pipeline.start()
+        pipeline.stop()
+        pipeline.join()
+        out, err = capfd.readouterr()
+        assert "AttributeError: 'bool' object has no attribute 'get_lock'" not in err
+
+    def test_graceful_shutdown_of_pipeline_on_fatal_output_error(self, capfd):
+        pipeline = MultiprocessingPipeline(
+            pipeline_index=1,
+            config=self.logprep_config,
+            log_handler=self.log_handler,
+            lock=self.lock,
+            used_server_ports=mock.MagicMock(),
+            shared_dict=self.shared_dict,
+        )
+        pipeline._output = mock.MagicMock()
+        pipeline._output.store = mock.MagicMock()
+        pipeline._output.store.side_effect = FatalOutputError()
+        pipeline.start()
+        pipeline.stop()
+        pipeline.join()
+        out, err = capfd.readouterr()
+        assert "AttributeError: 'bool' object has no attribute 'get_lock'" not in err
 
     @staticmethod
     def start_and_stop_pipeline(wrapper):
