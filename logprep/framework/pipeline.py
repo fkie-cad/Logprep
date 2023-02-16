@@ -13,7 +13,7 @@ from functools import cached_property
 from logging import INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 from time import time
-from typing import List
+from typing import List, Tuple
 
 import attrs
 import numpy as np
@@ -313,6 +313,8 @@ class Pipeline:
 
     def run(self) -> None:
         """Start processing processors in the Pipeline."""
+        assert self._input, "Pipeline should not be run without input connector"
+        assert self._output, "Pipeline should not be run without output connector"
         with self._lock:
             with warnings.catch_warnings():
                 warnings.simplefilter("default")
@@ -322,10 +324,10 @@ class Pipeline:
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
                 while self._iterate():
-                    self._process_pipeline()
+                    self.process_pipeline()
         else:
             while self._iterate():
-                self._process_pipeline()
+                self.process_pipeline()
         self._shut_down()
 
     def _iterate(self) -> bool:
@@ -334,13 +336,17 @@ class Pipeline:
     def _enable_iteration(self) -> None:
         self._continue_iterating = True
 
-    def _process_pipeline(self) -> None:
+    def process_pipeline(self) -> Tuple[dict, list]:
+        """Retrieve next event, process event with full pipeline and store or return results"""
+        assert self._input, "Run process_pipeline only with an valid input connector"
         self._metrics_exposer.expose(self.metrics)
         event = self._get_event()
+        extra_outputs = []
         if event:
-            self.process_event(event)
-        if event:
+            extra_outputs = self.process_event(event)
+        if event and self._output:
             self._store_event(event)
+        return event, extra_outputs
 
     def _store_event(self, event: dict) -> None:
         try:
@@ -365,9 +371,8 @@ class Pipeline:
             event, non_critical_error_msg = self._input.get_next(
                 self._logprep_config.get("timeout")
             )
-            if non_critical_error_msg:
+            if self._output and non_critical_error_msg:
                 self._output.store_failed(non_critical_error_msg, event, None)
-
             try:
                 self.metrics.kafka_offset = self._input.current_offset
             except AttributeError:
@@ -388,7 +393,7 @@ class Pipeline:
         except CriticalInputError as error:
             msg = f"A critical error occurred for input {self._input.describe()}: {error}"
             self._logger.error(msg)
-            if error.raw_input:
+            if error.raw_input and self._output:
                 self._output.store_failed(msg, error.raw_input, {})
             self._input.metrics.number_of_errors += 1
         return {}
@@ -411,7 +416,8 @@ class Pipeline:
                     self._handle_processing_warning(processor, warning)
             except BaseException as error:  # pylint: disable=broad-except
                 msg = self._handle_fatal_processing_error(processor, error)
-                self._output.store_failed(msg, json.loads(event_received), event)
+                if self._output:
+                    self._output.store_failed(msg, json.loads(event_received), event)
                 processor.metrics.number_of_errors += 1
                 event.clear()  # 'delete' the event, i.e. no regular output
             if not event:
@@ -463,7 +469,7 @@ class Pipeline:
             return
         if isinstance(self._input.messages, queue.Queue):
             while self._input.messages.qsize():
-                self._process_pipeline()
+                self.process_pipeline()
 
     def stop(self) -> None:
         """Stop processing processors in the Pipeline."""
