@@ -4,6 +4,12 @@
 Output
 ======
 
+It is possible to define multiple outputs as a dictionary of :code:`<output name>: <output config>`.
+If you define multiple outputs with the attribute :code:`default: true` then be aware, that
+logprep only guaranties that one output has received data by calling the :code:`batch_finished_callback`.
+
+We recommed to only use one default output and define other outputs only for storing custom extra data.
+
 .. automodule:: logprep.connector.confluent_kafka.output
 .. autoclass:: logprep.connector.confluent_kafka.input.ConfluentKafkaInput.Config
    :members:
