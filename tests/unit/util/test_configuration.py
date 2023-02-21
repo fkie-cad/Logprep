@@ -716,9 +716,7 @@ class TestConfiguration:
 
     def test_patch_yaml_with_json_connectors_drops_metrics_config(self, tmp_path):
         regular_config = GetterFactory.from_string(path_to_config).get_yaml()
-        regular_config["metrics"] = {
-            "enabled": "true"
-        }
+        regular_config["metrics"] = {"enabled": "true"}
         test_config_path = str(tmp_path / "test_config.yaml")
         dump_config_as_file(test_config_path, regular_config)
         patched_config_path = Configuration.patch_yaml_with_json_connectors(
