@@ -20,6 +20,16 @@ def teardown_function():
 def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
     pipeline = get_full_pipeline()
     config = get_default_logprep_config(pipeline, with_hmac=False)
+    config.get("output").update(
+        {
+            "kafka": {
+                "type": "jsonl_output",
+                "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
+                "output_file_custom": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
+                "output_file_error": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_error.out",
+            }
+        }
+    )
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path)
@@ -38,6 +48,16 @@ def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
 def test_start_of_logprep_with_full_configuration_http():
     pipeline = get_full_pipeline()
     config = get_default_logprep_config(pipeline, with_hmac=False)
+    config.get("output").update(
+        {
+            "kafka": {
+                "type": "jsonl_output",
+                "output_file": "tests/testdata/acceptance/test_kafka_data_processing_acceptance.out",
+                "output_file_custom": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_custom.out",
+                "output_file_error": "tests/testdata/acceptance/test_kafka_data_processing_acceptance_error.out",
+            }
+        }
+    )
     endpoint = "http://localhost:32000"
     config = convert_to_http_config(config, endpoint)
     config_path = "generated_config.yml"

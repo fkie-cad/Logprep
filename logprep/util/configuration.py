@@ -1,5 +1,6 @@
 """This module is used to create the configuration for the runner."""
 
+from copy import deepcopy
 import re
 import sys
 from logging import Logger
@@ -367,8 +368,27 @@ class Configuration(dict):
                             f"'{list(processor_config.keys())[0]}', because it has invalid rules."
                         )
                     )
+            try:
+                self._verify_processor_outputs(processor_config)
+            except InvalidProcessorConfigurationError as error:
+                errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
+
+    def _verify_processor_outputs(self, processor_config):
+        processor_config = deepcopy(processor_config)
+        processor_name, processor_config = processor_config.popitem()
+        if "outputs" not in processor_config:
+            return
+        if "output" not in self:
+            return
+        outputs = processor_config.get("outputs")
+        for output in outputs:
+            for output_name, _ in output.items():
+                if output_name not in self["output"]:
+                    raise InvalidProcessorConfigurationError(
+                        f"{processor_name}: output '{output_name}' does not exist in logprep outputs"
+                    )
 
     def _verify_metrics_config(self):
         if self.get("metrics"):

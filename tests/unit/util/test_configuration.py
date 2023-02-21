@@ -454,6 +454,52 @@ class TestConfiguration:
                     )
                 ],
             ),
+            (
+                "processor error for config and output does not exists",
+                {
+                    "output": {},
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "some unknown option": "foo",
+                            }
+                        },
+                        {
+                            "pseudo": {
+                                "type": "pseudonymizer",
+                                "outputs": [{"kafka": "topic"}],
+                                "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
+                                "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
+                                "hash_salt": "a_secret_tasty_ingredient",
+                                "specific_rules": [
+                                    "tests/testdata/unit/pseudonymizer/rules/specific/"
+                                ],
+                                "generic_rules": [
+                                    "tests/testdata/unit/pseudonymizer/rules/generic/"
+                                ],
+                                "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
+                                "max_cached_pseudonyms": 1000000,
+                                "max_caching_days": 1,
+                            }
+                        },
+                    ],
+                },
+                [
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor configuration: labelername - Unknown option: 'some unknown option'.",
+                    ),
+                    (
+                        InvalidProcessorConfigurationError,
+                        "Invalid processor configuration: pseudo: output 'kafka' does not exist in logprep outputs",
+                    ),
+                ],
+            ),
         ],
     )
     def test_verify_error(self, config_dict, raised_errors, test_case):
@@ -860,3 +906,44 @@ output:
             match=r"Environment variable\(s\) used, but not set: I_DO_NOT_EXIST",
         ):
             config.verify(mock.MagicMock())
+
+    def test_verifies_processor_configs_against_defined_outputs(self):
+        config = Configuration()
+        pipeline = [
+            {
+                "se": {
+                    "type": "selective_extractor",
+                    "specific_rules": ["tests/testdata/unit/selective_extractor/rules/specific"],
+                    "generic_rules": ["tests/testdata/unit/selective_extractor/rules/generic"],
+                }
+            },
+            {
+                "pd": {
+                    "type": "pre_detector",
+                    "generic_rules": ["tests/testdata/unit/pre_detector/rules/generic"],
+                    "specific_rules": ["tests/testdata/unit/pre_detector/rules/specific"],
+                    "outputs": [{"kafka": "pre_detector_alerts"}],
+                    "alert_ip_list_path": "tests/testdata/unit/pre_detector/alert_ips.yml",
+                }
+            },
+            {
+                "pseudo": {
+                    "type": "pseudonymizer",
+                    "outputs": [{"kafka": "topic"}],
+                    "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
+                    "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
+                    "hash_salt": "a_secret_tasty_ingredient",
+                    "specific_rules": ["tests/testdata/unit/pseudonymizer/rules/specific/"],
+                    "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic/"],
+                    "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
+                    "max_cached_pseudonyms": 1000000,
+                    "max_caching_days": 1,
+                }
+            },
+        ]
+        config.update({"pipeline": pipeline, "output": {}})
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config._verify_pipeline(logger=logger)
+        assert len(raised.value.errors) == 2
+        for error in raised.value.errors:
+            assert "output 'kafka' does not exist in logprep outputs" in error.args[0]
