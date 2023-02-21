@@ -256,7 +256,7 @@ class Pipeline:
     @cached_property
     def _output(self) -> dict[str, Output]:
         output_configs = self._logprep_config.get("output")
-        if output_configs is None:
+        if not output_configs:
             return None
         output_names = list(output_configs.keys())
         outputs = {}
