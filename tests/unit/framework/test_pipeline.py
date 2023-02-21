@@ -446,6 +446,26 @@ class TestPipeline(ConfigurationForTests):
         assert self.pipeline._output["dummy"].store_custom.call_count == 1
         self.pipeline._output["dummy"].store_custom.assert_called_with({"foo": "bar"}, "target")
 
+    def test_store_custom_calls_all_defined_outputs(self, _):
+        self.pipeline._output.update({"dummy1": mock.MagicMock()})
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
+        processor_with_extra_data = mock.MagicMock()
+        processor_with_extra_data.process = mock.MagicMock()
+        processor_with_extra_data.process.return_value = (
+            [{"foo": "bar"}],
+            ({"dummy": "target"}, {"dummy1": "second_target"}),
+        )
+        self.pipeline._pipeline = [mock.MagicMock(), processor_with_extra_data, mock.MagicMock()]
+        self.pipeline.process_pipeline()
+        assert self.pipeline._input.get_next.call_count == 1
+        assert self.pipeline._output["dummy"].store_custom.call_count == 1
+        assert self.pipeline._output["dummy1"].store_custom.call_count == 1
+        self.pipeline._output["dummy"].store_custom.assert_called_with({"foo": "bar"}, "target")
+        self.pipeline._output["dummy1"].store_custom.assert_called_with(
+            {"foo": "bar"}, "second_target"
+        )
+
     def test_extra_data_list_is_passed_to_store_custom(self, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
