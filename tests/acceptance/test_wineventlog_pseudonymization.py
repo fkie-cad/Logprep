@@ -9,7 +9,6 @@ from logprep.util.json_handling import parse_jsonl
 from tests.acceptance.util import (
     get_default_logprep_config,
     get_test_output,
-    store_latest_test_output,
     get_difference,
 )
 
@@ -39,25 +38,31 @@ def get_config():
 
 
 def test_events_pseudonymized_correctly(tmp_path, config):
-    expected_output = "pseudonymized_win_event_log.jsonl"
-    expected_output_path = path.join("tests/testdata/acceptance/expected_result", expected_output)
+    expected_output_file_name = "pseudonymized_win_event_log.jsonl"
+    expected_output_path = path.join(
+        "tests/testdata/acceptance/expected_result", expected_output_file_name
+    )
+    expected_output = parse_jsonl(expected_output_path)
+    expected_logprep_outputs = [
+        event for event in expected_output if "pseudonym" not in event.keys()
+    ]
+    expected_logprep_extra_outputs = [
+        event for event in expected_output if "pseudonym" in event.keys()
+    ]
+
     config["input"]["jsonl"][
         "documents_path"
     ] = "tests/testdata/input_logdata/wineventlog_raw.jsonl"
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
 
-    test_output, _, _ = get_test_output(config_path)
-    assert test_output, "should not be empty"
-    store_latest_test_output(expected_output, test_output)
-
-    expected_output = parse_jsonl(expected_output_path)
-
-    test_output = [event for event in test_output if "pseudonym" not in event.keys()]
-    expected_output = [event for event in expected_output if "pseudonym" not in event.keys()]
-
-    result = get_difference(test_output, expected_output)
-
+    logprep_output, logprep_extra_output, logprep_error_output = get_test_output(config_path)
+    assert logprep_output, "should not be empty"
+    assert len(logprep_error_output) == 0, "There shouldn't be any logprep errors"
+    result = get_difference(logprep_output, expected_logprep_outputs)
     assert (
         result["difference"][0] == result["difference"][1]
     ), "Missmatch in event at line {}!".format(result["event_line_no"])
+
+    # FIXME: Test is only testing for the logprep outputs with the pseudonym inside, but not the
+    #   extra outputs.

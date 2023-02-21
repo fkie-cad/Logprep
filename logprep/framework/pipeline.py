@@ -475,8 +475,8 @@ class Pipeline:
             documents, outputs = extra_data
             for document in documents:
                 for output in outputs:
-                    output_name, topic = output.popitem()
-                    self._output[output_name].store_custom(document, topic)
+                    for output_name, topic in output.items():
+                        self._output[output_name].store_custom(document, topic)
             return
         list(map(self._store_extra_data, extra_data))
 
