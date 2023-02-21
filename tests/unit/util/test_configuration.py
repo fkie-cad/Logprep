@@ -944,6 +944,6 @@ output:
         config.update({"pipeline": pipeline, "output": {}})
         with pytest.raises(InvalidConfigurationErrors) as raised:
             config._verify_pipeline(logger=logger)
-        assert len(raised.value.errors) == 2
+        assert len(raised.value.errors) == 3
         for error in raised.value.errors:
             assert "output 'kafka' does not exist in logprep outputs" in error.args[0]

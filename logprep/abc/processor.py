@@ -161,7 +161,7 @@ class Processor(Component):
         return self._generic_tree.rules
 
     @property
-    def _rules(self):
+    def rules(self):
         """Returns all rules
 
         Returns

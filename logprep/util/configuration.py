@@ -9,6 +9,7 @@ from typing import List
 
 from ruamel.yaml.scanner import ScannerError
 from colorama import Fore
+from logprep.abc.processor import Processor
 
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError
@@ -345,8 +346,9 @@ class Configuration(dict):
 
         errors = []
         for processor_config in self["pipeline"]:
+            processor = None
             try:
-                Factory.create(processor_config, logger)
+                processor = Factory.create(processor_config, logger)
             except (FactoryInvalidConfigurationError, UnknownComponentTypeError) as error:
                 errors.append(
                     InvalidProcessorConfigurationError(
@@ -369,11 +371,28 @@ class Configuration(dict):
                         )
                     )
             try:
+                if processor:
+                    self._verify_rules_outputs(processor)
+            except InvalidRuleDefinitionError as error:
+                errors.append(error)
+            try:
                 self._verify_processor_outputs(processor_config)
             except InvalidProcessorConfigurationError as error:
                 errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
+
+    def _verify_rules_outputs(self, processor: Processor):
+        if not hasattr(processor.rule_class, "outputs"):
+            return
+        for rule in processor.rules:
+            for output in rule.outputs:
+                for output_name, _ in output.items():
+                    if output_name not in self["output"]:
+                        raise InvalidRuleDefinitionError(
+                            f"{processor.describe()}: output"
+                            f" '{output_name}' does not exist in logprep outputs"
+                        )
 
     def _verify_processor_outputs(self, processor_config):
         processor_config = deepcopy(processor_config)

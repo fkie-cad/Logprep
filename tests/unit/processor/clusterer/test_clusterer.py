@@ -144,7 +144,7 @@ class TestClusterer(BaseProcessorTestCase):
         }
 
         rule = ClustererRule._create_from_dict(rule_definition)
-        self.object._rules.append(rule)
+        self.object.rules.append(rule)
 
         results = self.object.test_rules()
         for rule_results in results.values():
