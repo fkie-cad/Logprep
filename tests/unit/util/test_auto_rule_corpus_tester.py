@@ -8,7 +8,7 @@ from unittest import mock
 import pytest
 from rich.console import Console
 
-from logprep.util.auto_rule_corpus_tester import RuleCorpusTester
+from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 
 
 @pytest.fixture(name="corpus_tester")
@@ -292,7 +292,7 @@ class TestAutoRuleTester:
             ),
         ],
     )
-    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
     def test_run_prints_expected_outputs_to_console(
         self,
         mock_exit,
@@ -307,7 +307,7 @@ class TestAutoRuleTester:
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         if mock_output is not None:
             with mock.patch(
-                "logprep.util.auto_rule_corpus_tester.get_runner_outputs"
+                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.get_runner_outputs"
             ) as mocked_output:
                 mocked_output.return_value = mock_output
                 with corpus_tester.console.capture() as capture:
@@ -320,8 +320,8 @@ class TestAutoRuleTester:
             assert expected_print in console_output, test_case
         mock_exit.assert_called_with(exit_code)
 
-    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
-    @mock.patch("logprep.util.auto_rule_corpus_tester.parse_json")
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.parse_json")
     def test_run_logs_json_decoding_error(
         self,
         mock_parse_json,
@@ -360,7 +360,7 @@ class TestAutoRuleTester:
         with pytest.raises(ValueError, match="is missing an input file."):
             corpus_tester.run()
 
-    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
     def test_run_skips_test_if_expected_output_is_missing(self, mock_exit, tmp_path, corpus_tester):
         test_data = {
             "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
@@ -385,8 +385,8 @@ class TestAutoRuleTester:
             assert expected_print in console_output
         mock_exit.assert_called_with(0)
 
-    @mock.patch("logprep.util.auto_rule_corpus_tester.shutil.rmtree")
-    @mock.patch("logprep.util.auto_rule_corpus_tester.sys.exit")
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.shutil.rmtree")
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
     def test_run_removes_test_tmp_dir(self, _, mock_shutil, corpus_tester):
         corpus_tester.run()
         mock_shutil.assert_called_with(corpus_tester._tmp_dir)
