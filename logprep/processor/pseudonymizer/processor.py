@@ -45,7 +45,7 @@ from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.validators import list_of_urls_validator, min_len_validator
+from logprep.util.validators import list_of_urls_validator
 
 
 class Pseudonymizer(Processor):
