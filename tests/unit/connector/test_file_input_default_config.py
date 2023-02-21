@@ -118,6 +118,7 @@ class TestFileInput(BaseInputTestCase):
         with pytest.raises(FatalInputError):
             self.object.setup()
 
+    @pytest.mark.filterwarnings("ignore:Exception in thread")
     def test_raise_error_file_gets_removed(self):
         wait_for_interval(CHECK_INTERVAL)
         os.remove(self.object._config.logfile_path)
@@ -125,6 +126,7 @@ class TestFileInput(BaseInputTestCase):
         assert self.object.rthread.is_alive() is False
         assert isinstance(self.object.rthread.exception, FatalInputError)
 
+    @pytest.mark.filterwarnings("ignore:Exception in thread")
     def test_raise_error_file_gets_unreadable_permissions(self):
         wait_for_interval(CHECK_INTERVAL)
         os.chmod(self.object._config.logfile_path, 0o111)
