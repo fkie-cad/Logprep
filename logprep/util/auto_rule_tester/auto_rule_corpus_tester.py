@@ -175,26 +175,6 @@ class RuleCorpusTester:
         else:
             sys.exit(0)
 
-    def _group_path_by_test_case(self, data_directory, file_paths):
-        test_cases = {}
-        for filename in file_paths:
-            test_case_id = self._strip_input_file_type(filename)
-            if test_case_id not in test_cases:
-                test_cases[test_case_id] = {
-                    "test_data_path": {"in": "", "out": "", "out_extra": ""},
-                    "report_print_statements": [],
-                    "test_failed": False,
-                }
-            data_path = test_cases.get(test_case_id, {}).get("test_data_path", {})
-            if "_in.json" in filename:
-                data_path.update({"in": os.path.join(data_directory, filename)})
-            if "_out.json" in filename:
-                data_path.update({"out": os.path.join(data_directory, filename)})
-            if "_out_extra.json" in filename:
-                data_path.update({"out_extra": os.path.join(data_directory, filename)})
-            test_cases[test_case_id]["test_data_path"].update(data_path)
-        return test_cases
-
     def _run_pipeline_per_test_case(self):
         """
         For each test case the logprep connector files are rewritten (only the current test case
@@ -221,35 +201,6 @@ class RuleCorpusTester:
                     reformatted_extra_outputs.append({output[1]: output[0][0]})
         return reformatted_extra_outputs
 
-    def _print_test_reports(self):
-        """If test case reports exist print out each report"""
-        if not any(self._test_cases[case]["test_failed"] for case in self._test_cases):
-            return
-        print(Style.BRIGHT + "# Test Cases Detailed Reports:" + Style.RESET_ALL)
-        for test_case_id, test_case_data in self._test_cases.items():
-            if test_case_data.get("report_print_statements"):
-                self._print_long_test_result(test_case_id, test_case_data)
-                print()
-
-    def _print_test_summary(self):
-        """Print minimal statistics of the test run"""
-        print(Fore.RESET + Style.BRIGHT + "# Test Overview" + Style.RESET_ALL)
-        total_cases = len(self._test_cases)
-        failed_cases = sum(self._test_cases[case]["test_failed"] for case in self._test_cases)
-        print(f"Failed tests: {failed_cases}")
-        print(f"Total test cases: {total_cases}")
-        if total_cases:
-            success_rate = (total_cases - failed_cases) / total_cases * 100
-            print(f"Success rate: {success_rate:.2f}%")
-
-    def _strip_input_file_type(self, filename):
-        """Remove the input file suffix to identify the case name"""
-        filename = filename.replace("_in", "")
-        filename = filename.replace("_out_extra", "")
-        filename = filename.replace("_out", "")
-        filename = filename.replace(".json", "*")
-        return filename
-
     def _parse_json_with_error_handling(self, test_case_id, path):
         try:
             parsed_json = parse_json(path)
@@ -260,6 +211,23 @@ class RuleCorpusTester:
             error_print = f"{Fore.RED}Json-Error decoding file {filename}:{Fore.RESET}\n{error}"
             self._test_cases[test_case_id]["report_print_statements"].append(error_print)
         return None
+
+    def _compare_logprep_outputs(self, test_case_id, logprep_output):
+        """
+        Compares a generated output with an expected output, by also ignoring keys that are marked
+        as <IGNORE_VALUE>. For each difference a corresponding print statement is collected.
+        """
+        test_case_data = self._test_cases.get(test_case_id, {})
+        expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
+        if not expected_parsed_event_path:
+            return
+        expected_output = self._parse_json_with_error_handling(
+            test_case_id, expected_parsed_event_path
+        )
+        if expected_output is None:
+            return
+        diff = self._compare_events(logprep_output, expected_output[0])
+        self._extract_print_statements_from_diff(test_case_id, diff)
 
     def _compare_extra_data_output(self, test_case_id, logprep_extra_outputs):
         """
@@ -299,6 +267,54 @@ class RuleCorpusTester:
             self._test_cases[test_case_id]["test_failed"] = True
             self._test_cases[test_case_id]["report_print_statements"].extend(prints)
 
+    def _compare_events(self, generated, expected):
+        ignore_value_search_results = expected | grep("<IGNORE_VALUE>")
+        optional_keys_search_results = expected | grep("<OPTIONAL_KEY>")
+        missing_keys = self._check_keys_of_ignored_values(
+            generated, ignore_value_search_results.get("matched_values")
+        )
+        ignore_paths = []
+        if "matched_values" in ignore_value_search_results:
+            path = list(ignore_value_search_results["matched_values"])
+            ignore_paths.extend([re.escape(path) for path in path])
+        if "matched_values" in optional_keys_search_results:
+            path = list(optional_keys_search_results["matched_values"])
+            ignore_paths.extend([re.escape(path) for path in path])
+        diff = DeepDiff(
+            expected,
+            generated,
+            ignore_order=True,
+            report_repetition=True,
+            exclude_regex_paths=ignore_paths,
+        )
+        if missing_keys:
+            diff.update({"dictionary_item_removed": missing_keys})
+        return diff
+
+    def _extract_print_statements_from_diff(self, test_case_id, diff):
+        if not diff:
+            return
+        prints = []
+        if "dictionary_item_removed" in diff:
+            prints.append(
+                f"{Fore.RED}Following expected items are missing in the generated logprep output:",
+            )
+            for item in diff["dictionary_item_removed"]:
+                prints.append(f" - {item}")
+        if "dictionary_item_added" in diff:
+            prints.append(f"{Fore.RED}Following unexpected values were generated by logprep")
+            for item in diff["dictionary_item_added"]:
+                prints.append(f" - {item}")
+        if "values_changed" in diff:
+            prints.append(
+                f"{Fore.RED}Following values differ between generated and expected output",
+            )
+            for key, value in diff["values_changed"].items():
+                prints.append(f" - {key}: {self._rewrite_output(str(value))}")
+        if prints:
+            self._test_cases[test_case_id]["test_failed"] = True
+            self._test_cases[test_case_id]["report_print_statements"].extend(prints)
+
     def _has_matching_logprep_output(
         self, expected_extra_output, expected_extra_output_key, logprep_extra_outputs
     ):
@@ -327,6 +343,16 @@ class RuleCorpusTester:
             status = f"{Style.BRIGHT}{Fore.RED} FAILED"
         print(f"{Fore.BLUE} Test Case: {Fore.CYAN}{test_case_id} {status}{Style.RESET_ALL}")
 
+    def _print_test_reports(self):
+        """If test case reports exist print out each report"""
+        if not any(self._test_cases[case]["test_failed"] for case in self._test_cases):
+            return
+        print(Style.BRIGHT + "# Test Cases Detailed Reports:" + Style.RESET_ALL)
+        for test_case_id, test_case_data in self._test_cases.items():
+            if test_case_data.get("report_print_statements"):
+                self._print_long_test_result(test_case_id, test_case_data)
+                print()
+
     def _print_long_test_result(self, test_case_id, test_case_data):
         """
         Prints out the collected print statements of a test case, resulting in a test
@@ -346,70 +372,16 @@ class RuleCorpusTester:
         pprint(extra_data)
         print(f"{Fore.RED}{Style.BRIGHT}↑ {report_title} ↑ {Style.RESET_ALL}")
 
-    def _compare_logprep_outputs(self, test_case_id, logprep_output):
-        """
-        Compares a generated output with an expected output, by also ignoring keys that are marked
-        as <IGNORE_VALUE>. For each difference a corresponding print statement is collected.
-        """
-        test_case_data = self._test_cases.get(test_case_id, {})
-        expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
-        if not expected_parsed_event_path:
-            return
-        expected_output = self._parse_json_with_error_handling(
-            test_case_id, expected_parsed_event_path
-        )
-        if expected_output is None:
-            return
-        diff = self._compare_events(logprep_output, expected_output[0])
-        self._create_and_append_print_statements(test_case_id, diff)
-
-    def _compare_events(self, generated, expected):
-        ignore_value_search_results = expected | grep("<IGNORE_VALUE>")
-        optional_keys_search_results = expected | grep("<OPTIONAL_KEY>")
-        missing_keys = self._check_keys_of_ignored_values(
-            generated, ignore_value_search_results.get("matched_values")
-        )
-        ignore_paths = []
-        if "matched_values" in ignore_value_search_results:
-            path = list(ignore_value_search_results["matched_values"])
-            ignore_paths.extend([re.escape(path) for path in path])
-        if "matched_values" in optional_keys_search_results:
-            path = list(optional_keys_search_results["matched_values"])
-            ignore_paths.extend([re.escape(path) for path in path])
-        diff = DeepDiff(
-            expected,
-            generated,
-            ignore_order=True,
-            report_repetition=True,
-            exclude_regex_paths=ignore_paths,
-        )
-        if missing_keys:
-            diff.update({"dictionary_item_removed": missing_keys})
-        return diff
-
-    def _create_and_append_print_statements(self, test_case_id, diff):
-        if not diff:
-            return
-        prints = []
-        if "dictionary_item_removed" in diff:
-            prints.append(
-                f"{Fore.RED}Following expected items are missing in the generated logprep output:",
-            )
-            for item in diff["dictionary_item_removed"]:
-                prints.append(f" - {item}")
-        if "dictionary_item_added" in diff:
-            prints.append(f"{Fore.RED}Following unexpected values were generated by logprep")
-            for item in diff["dictionary_item_added"]:
-                prints.append(f" - {item}")
-        if "values_changed" in diff:
-            prints.append(
-                f"{Fore.RED}Following values differ between generated and expected output",
-            )
-            for key, value in diff["values_changed"].items():
-                prints.append(f" - {key}: {self._rewrite_output(str(value))}")
-        if prints:
-            self._test_cases[test_case_id]["test_failed"] = True
-            self._test_cases[test_case_id]["report_print_statements"].extend(prints)
+    def _print_test_summary(self):
+        """Print minimal statistics of the test run"""
+        print(Fore.RESET + Style.BRIGHT + "# Test Overview" + Style.RESET_ALL)
+        total_cases = len(self._test_cases)
+        failed_cases = sum(self._test_cases[case]["test_failed"] for case in self._test_cases)
+        print(f"Failed tests: {failed_cases}")
+        print(f"Total test cases: {total_cases}")
+        if total_cases:
+            success_rate = (total_cases - failed_cases) / total_cases * 100
+            print(f"Success rate: {success_rate:.2f}%")
 
     def _check_keys_of_ignored_values(self, logprep_output, field_paths) -> list:
         if not field_paths:
@@ -421,6 +393,34 @@ class RuleCorpusTester:
             if field_value is None:
                 missing_keys.append(path)
         return missing_keys
+
+    def _group_path_by_test_case(self, data_directory, file_paths):
+        test_cases = {}
+        for filename in file_paths:
+            test_case_id = self._strip_input_file_type(filename)
+            if test_case_id not in test_cases:
+                test_cases[test_case_id] = {
+                    "test_data_path": {"in": "", "out": "", "out_extra": ""},
+                    "report_print_statements": [],
+                    "test_failed": False,
+                }
+            data_path = test_cases.get(test_case_id, {}).get("test_data_path", {})
+            if "_in.json" in filename:
+                data_path.update({"in": os.path.join(data_directory, filename)})
+            if "_out.json" in filename:
+                data_path.update({"out": os.path.join(data_directory, filename)})
+            if "_out_extra.json" in filename:
+                data_path.update({"out_extra": os.path.join(data_directory, filename)})
+            test_cases[test_case_id]["test_data_path"].update(data_path)
+        return test_cases
+
+    def _strip_input_file_type(self, filename):
+        """Remove the input file suffix to identify the case name"""
+        filename = filename.replace("_in", "")
+        filename = filename.replace("_out_extra", "")
+        filename = filename.replace("_out", "")
+        filename = filename.replace(".json", "*")
+        return filename
 
     def _rewrite_output(self, statement):
         statement = statement.replace("new_value", "generated")
