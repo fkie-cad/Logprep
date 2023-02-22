@@ -6,7 +6,6 @@ from json import JSONDecodeError
 from unittest import mock
 
 import pytest
-from rich.console import Console
 
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 
@@ -15,9 +14,7 @@ from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTest
 def fixture_auto_rule_corpus_tester():
     config_path = "tests/testdata/config/config.yml"
     data_dir = "will be overwritten in test cases"
-    console = Console()
     corpus_tester = RuleCorpusTester(config_path, data_dir)
-    corpus_tester.console = console
     return corpus_tester
 
 
@@ -306,6 +303,7 @@ class TestAutoRuleTester:
         mock_output,
         expected_prints,
         exit_code,
+        capsys
     ):
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         if mock_output is not None:
@@ -313,12 +311,10 @@ class TestAutoRuleTester:
                 "logprep.util.auto_rule_tester.auto_rule_corpus_tester.Pipeline.process_pipeline"
             ) as mock_process_pipeline:
                 mock_process_pipeline.return_value = mock_output
-                with corpus_tester.console.capture() as capture:
-                    corpus_tester.run()
-        else:
-            with corpus_tester.console.capture() as capture:
                 corpus_tester.run()
-        console_output = capture.get()
+        else:
+            corpus_tester.run()
+        console_output, console_error = capsys.readouterr()
         for expected_print in expected_prints:
             assert expected_print in console_output, test_case
         mock_exit.assert_called_with(exit_code)
@@ -331,6 +327,7 @@ class TestAutoRuleTester:
         mock_exit,
         tmp_path,
         corpus_tester,
+        capsys
     ):
         test_data = {
             "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
@@ -350,9 +347,8 @@ class TestAutoRuleTester:
         ]
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         mock_parse_json.side_effect = JSONDecodeError("Some Error", "in doc", 0)
-        with corpus_tester.console.capture() as capture:
-            corpus_tester.run()
-        console_output = capture.get()
+        corpus_tester.run()
+        console_output, console_error = capsys.readouterr()
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(1)
@@ -365,7 +361,7 @@ class TestAutoRuleTester:
             corpus_tester.run()
 
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
-    def test_run_skips_test_if_expected_output_is_missing(self, mock_exit, tmp_path, corpus_tester):
+    def test_run_skips_test_if_expected_output_is_missing(self, mock_exit, tmp_path, corpus_tester, capsys):
         test_data = {
             "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
             "expected_output": {
@@ -382,9 +378,8 @@ class TestAutoRuleTester:
         ]
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         os.remove(tmp_path / "rule_auto_corpus_test_out.json")
-        with corpus_tester.console.capture() as capture:
-            corpus_tester.run()
-        console_output = capture.get()
+        corpus_tester.run()
+        console_output, console_error = capsys.readouterr()
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(0)
