@@ -333,7 +333,6 @@ class RuleCorpusTester:
             logprep_extra_output_key = list(logprep_extra_output.keys())[0]
             if expected_extra_output_key == logprep_extra_output_key:
                 diff = self._compare_events(
-                    test_case_id,
                     logprep_extra_output[logprep_extra_output_key],
                     expected_extra_output[expected_extra_output_key],
                 )
@@ -395,9 +394,10 @@ class RuleCorpusTester:
         )
         if expected_output is None:
             return
-        self._compare_events(test_case_id, logprep_output[0], expected_output[0])
+        diff = self._compare_events(logprep_output[0], expected_output[0])
+        self._create_and_append_print_statements(test_case_id, diff)
 
-    def _compare_events(self, test_case_id, generated, expected):
+    def _compare_events(self, generated, expected):
         ignore_value_search_results = expected | grep("<IGNORE_VALUE>")
         optional_keys_search_results = expected | grep("<OPTIONAL_KEY>")
         missing_keys = self._check_keys_of_ignored_values(
@@ -419,7 +419,6 @@ class RuleCorpusTester:
         )
         if missing_keys:
             diff.update({"dictionary_item_removed": missing_keys})
-        self._create_and_append_print_statements(test_case_id, diff)
         return diff
 
     def _create_and_append_print_statements(self, test_case_id, diff):

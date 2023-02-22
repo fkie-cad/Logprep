@@ -8,6 +8,7 @@ from unittest import mock
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
+from logprep.util.getter import GetterFactory
 
 
 @pytest.fixture(name="corpus_tester")
@@ -20,13 +21,15 @@ def fixture_auto_rule_corpus_tester():
 
 def prepare_corpus_tester(corpus_tester, tmp_path, test_data):
     case_name = "rule_auto_corpus_test"
-    input_data_path = tmp_path / f"{case_name}_in.json"
+    test_data_dir = tmp_path / "test_data"
+    os.makedirs(test_data_dir, exist_ok=True)
+    input_data_path = test_data_dir / f"{case_name}_in.json"
     input_data_path.write_text(json.dumps(test_data.get("input")))
-    expected_output_data_path = tmp_path / f"{case_name}_out.json"
+    expected_output_data_path = test_data_dir / f"{case_name}_out.json"
     expected_output_data_path.write_text(json.dumps(test_data.get("expected_output")))
-    expected_extra_output_data_path = tmp_path / f"{case_name}_out_extra.json"
+    expected_extra_output_data_path = test_data_dir / f"{case_name}_out_extra.json"
     expected_extra_output_data_path.write_text(json.dumps(test_data.get("expected_extra_output")))
-    corpus_tester._input_test_data_path = tmp_path
+    corpus_tester._input_test_data_path = test_data_dir
     corpus_tester._tmp_dir = tmp_path
 
 
@@ -176,7 +179,7 @@ class TestAutoRuleTester:
                         "winlog": {"event_id": "2222", "event_data": {"Test1": 1}},
                         "test_normalized": {"test": {"field1": 1}},
                     },
-                    []
+                    [],
                 ],
                 [
                     "FAILED",
@@ -303,7 +306,7 @@ class TestAutoRuleTester:
         mock_output,
         expected_prints,
         exit_code,
-        capsys
+        capsys,
     ):
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         if mock_output is not None:
@@ -322,12 +325,7 @@ class TestAutoRuleTester:
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.parse_json")
     def test_run_logs_json_decoding_error(
-        self,
-        mock_parse_json,
-        mock_exit,
-        tmp_path,
-        corpus_tester,
-        capsys
+        self, mock_parse_json, mock_exit, tmp_path, corpus_tester, capsys
     ):
         test_data = {
             "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
@@ -361,7 +359,9 @@ class TestAutoRuleTester:
             corpus_tester.run()
 
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
-    def test_run_skips_test_if_expected_output_is_missing(self, mock_exit, tmp_path, corpus_tester, capsys):
+    def test_run_skips_test_if_expected_output_is_missing(
+        self, mock_exit, tmp_path, corpus_tester, capsys
+    ):
         test_data = {
             "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
             "expected_output": {
@@ -377,7 +377,7 @@ class TestAutoRuleTester:
             "Success rate: 100.00%",
         ]
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
-        os.remove(tmp_path / "rule_auto_corpus_test_out.json")
+        os.remove(tmp_path / "test_data" / "rule_auto_corpus_test_out.json")
         corpus_tester.run()
         console_output, console_error = capsys.readouterr()
         for expected_print in expected_prints:
@@ -389,3 +389,50 @@ class TestAutoRuleTester:
     def test_run_removes_test_tmp_dir(self, _, mock_shutil, corpus_tester):
         corpus_tester.run()
         mock_shutil.assert_called_with(corpus_tester._tmp_dir)
+
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
+    def test_run_with_two_processors_that_have_different_extra_outputs(
+        self, mock_exit, tmp_path, capsys
+    ):
+        config_path = "tests/testdata/config/config.yml"
+        config = GetterFactory.from_string(config_path).get_yaml()
+        config["pipeline"].append(
+            {
+                "selective_extractor": {
+                    "type": "selective_extractor",
+                    "specific_rules": ["tests/testdata/unit/selective_extractor/rules/specific"],
+                    "generic_rules": [],
+                }
+            }
+        )
+        test_config_path = tmp_path / "test_config.yml"
+        test_config_path.write_text(json.dumps(config), encoding="utf8")
+        corpus_tester = RuleCorpusTester(str(test_config_path), "")
+        test_data = {
+            "input": {
+                "message": "something",
+                "field1": "field 1 value",
+                "winlog": {"event_id": "2222", "event_data": {"IpAddress": "1.2.3.4"}},
+            },
+            "expected_output": {
+                "message": "something",
+                "field1": "field 1 value",
+                "winlog": {"event_id": "2222", "event_data": {"IpAddress": "<IGNORE_VALUE>"}},
+            },
+            "expected_extra_output": [
+                {"test_specific_topic": {"field1": "field 1 value"}},
+                {"test_specific_topic": {"message": "something"}},
+                {"pseudonyms": {"origin": "<IGNORE_VALUE>", "pseudonym": "<IGNORE_VALUE>"}},
+            ],
+        }
+        expected_prints = [
+            "PASSED",
+            "Total test cases: 1",
+            "Success rate: 100.00%",
+        ]
+        prepare_corpus_tester(corpus_tester, tmp_path, test_data)
+        corpus_tester.run()
+        console_output, console_error = capsys.readouterr()
+        for expected_print in expected_prints:
+            assert expected_print in console_output
+        mock_exit.assert_called_with(0)
