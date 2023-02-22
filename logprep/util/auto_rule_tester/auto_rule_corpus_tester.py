@@ -75,6 +75,7 @@ If one or more test cases fail this tester ends with an exit code of 1, otherwis
 """
 # pylint: enable=anomalous-backslash-in-string
 # pylint: disable=protected-access
+import json
 import math
 import os
 import re
@@ -83,16 +84,16 @@ import sys
 import tempfile
 from functools import cached_property
 from json import JSONDecodeError
-from logging import getLogger
+from pathlib import Path
 
 from deepdiff import DeepDiff, grep
 from rich.console import Console
 from rich.pretty import pprint
 
+from logprep.framework.pipeline import Pipeline
 from logprep.util.configuration import Configuration
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.json_handling import parse_json
-from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
 
 
 class RuleCorpusTester:
@@ -179,18 +180,50 @@ class RuleCorpusTester:
         For each test case the logprep connector files are rewritten (only the current test case
         will be added to the input file), the pipline is run and the outputs are compared.
         """
+        test_input_documents = self._collect_input_events()
+        pipeline = self._create_logprep_pipeline(test_input_documents)
+        for current_test_case in self._test_cases.items():
+            parsed_event, extra_outputs = pipeline.process_pipeline()
+            reformatted_extra_outputs = self._align_extra_output_formats(extra_outputs)
+            current_test_case[1].update(
+                {"logprep_output": [[parsed_event], reformatted_extra_outputs, []]}
+            )
+
+    def _create_logprep_pipeline(self, test_input_documents):
+        merged_input_file_path = Path(self._tmp_dir) / "input.json"
+        merged_input_file_path.write_text(json.dumps(test_input_documents), encoding="utf8")
+        path_to_patched_config = Configuration.patch_yaml_with_json_connectors(
+            self._original_config_path, self._tmp_dir, str(merged_input_file_path)
+        )
+        config = Configuration.create_from_yaml(path_to_patched_config)
+        del config["output"]
+        pipeline = Pipeline(config=config)
+        return pipeline
+
+    def _collect_input_events(self):
+        test_input_documents = []
         for current_test_case in self._test_cases.items():
             input_file_path = current_test_case[1].get("test_data_path", {}).get("in")
             if not input_file_path:
                 raise ValueError(
                     f"The test case '{current_test_case[0]}' is missing an input file."
                 )
-            path_to_patched_config = Configuration.patch_yaml_with_json_connectors(
-                self._original_config_path, self._tmp_dir, input_file_path
-            )
-            test_runner = get_patched_runner(path_to_patched_config, logger=getLogger())
-            outputs = get_runner_outputs(test_runner)
-            current_test_case[1].update({"logprep_output": outputs})
+            test_event = self._parse_json_with_error_handling(current_test_case[0], input_file_path)
+            if test_event:
+                test_input_documents.append(test_event[0])
+        return test_input_documents
+
+    def _align_extra_output_formats(self, extra_outputs):
+        reformatted_extra_outputs = []
+        for extra_output in extra_outputs:
+            if isinstance(extra_output, tuple):
+                documents, target = extra_output
+                for document in documents:
+                    reformatted_extra_outputs.append({target: document})
+            else:
+                for output in extra_output:
+                    reformatted_extra_outputs.append({output[1]: output[0][0]})
+        return reformatted_extra_outputs
 
     def _compare_with_expected_outputs(self):
         """Compare the generated logprep output with the current test case"""
@@ -349,7 +382,7 @@ class RuleCorpusTester:
                 self.console.print(statement, overflow="ignore", crop=False)
         self.console.print()
         self.console.print("[red]Logprep Event Output:")
-        pprint(parsed_event[0], console=self.console, expand_all=True, indent_guides=False)
+        pprint(parsed_event, console=self.console, expand_all=True, indent_guides=False)
         self.console.print("[red]Logprep Extra Data Output:")
         pprint(extra_data, console=self.console, expand_all=True, indent_guides=False)
         self.console.print(
@@ -374,14 +407,18 @@ class RuleCorpusTester:
         self._compare_events(test_case_id, logprep_output[0], expected_output[0])
 
     def _compare_events(self, test_case_id, generated, expected):
-        search_results = expected | grep("<IGNORE_VALUE>")
+        ignore_value_search_results = expected | grep("<IGNORE_VALUE>")
+        optional_keys_search_results = expected | grep("<OPTIONAL_KEY>")
         missing_keys = self._check_keys_of_ignored_values(
-            generated, search_results.get("matched_values")
+            generated, ignore_value_search_results.get("matched_values")
         )
         ignore_paths = []
-        if "matched_values" in search_results:
-            ignore_paths = list(search_results["matched_values"])
-            ignore_paths = [re.escape(path) for path in ignore_paths]
+        if "matched_values" in ignore_value_search_results:
+            path = list(ignore_value_search_results["matched_values"])
+            ignore_paths.extend([re.escape(path) for path in path])
+        if "matched_values" in optional_keys_search_results:
+            path = list(optional_keys_search_results["matched_values"])
+            ignore_paths.extend([re.escape(path) for path in path])
         diff = DeepDiff(
             expected,
             generated,
