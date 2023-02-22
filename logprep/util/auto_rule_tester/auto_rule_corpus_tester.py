@@ -185,7 +185,7 @@ class RuleCorpusTester:
             parsed_event, extra_outputs = pipeline.process_pipeline()
             reformatted_extra_outputs = self._align_extra_output_formats(extra_outputs)
             current_test_case[1].update(
-                {"logprep_output": [[parsed_event], reformatted_extra_outputs, []]}
+                {"logprep_output": [[parsed_event], reformatted_extra_outputs]}
             )
 
     def _create_logprep_pipeline(self, test_input_documents):
@@ -235,11 +235,6 @@ class RuleCorpusTester:
 
     def _compare_and_collect_report_print_statements(self, test_case_id):
         test_case_data = self._test_cases.get(test_case_id, {})
-        _, _, logprep_errors = test_case_data.get("logprep_output")
-        if logprep_errors:
-            self._test_cases[test_case_id]["report_print_statements"].extend(
-                [f"{Fore.RED}Following errors happened:", logprep_errors]
-            )
         if test_case_data.get("test_data_path", {}).get("out"):
             self._compare_logprep_outputs(test_case_id)
         if test_case_data.get("test_data_path", {}).get("out_extra"):
@@ -296,7 +291,7 @@ class RuleCorpusTester:
         then the expected output is reported.
         """
         test_case_data = self._test_cases.get(test_case_id, {})
-        _, logprep_extra_outputs, _ = test_case_data.get("logprep_output")
+        _, logprep_extra_outputs = test_case_data.get("logprep_output")
         expected_extra_outputs_path = test_case_data.get("test_data_path", {}).get("out_extra")
         expected_extra_outputs = self._parse_json_with_error_handling(
             test_case_id, expected_extra_outputs_path
@@ -362,7 +357,7 @@ class RuleCorpusTester:
         Prints out the collected print statements of a test case, resulting in a test
         case reports
         """
-        parsed_event, extra_data, _ = test_case_data.get("logprep_output")
+        parsed_event, extra_data = test_case_data.get("logprep_output")
         report_title = f"test report for '{test_case_id}'"
         report_title_length = len(report_title) + 4
         title_target_length = 120
@@ -393,7 +388,7 @@ class RuleCorpusTester:
         as <IGNORE_VALUE>. For each difference a corresponding print statement is collected.
         """
         test_case_data = self._test_cases.get(test_case_id, {})
-        logprep_output, _, _ = test_case_data.get("logprep_output")
+        logprep_output, _ = test_case_data.get("logprep_output")
         expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
         expected_output = self._parse_json_with_error_handling(
             test_case_id, expected_parsed_event_path
