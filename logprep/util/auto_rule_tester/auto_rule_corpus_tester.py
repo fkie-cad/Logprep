@@ -76,7 +76,6 @@ If one or more test cases fail this tester ends with an exit code of 1, otherwis
 # pylint: enable=anomalous-backslash-in-string
 # pylint: disable=protected-access
 import json
-import math
 import os
 import re
 import shutil
@@ -111,95 +110,25 @@ class RuleCorpusTester:
     _test_cases: dict
     """ Dictionary that contains the test cases, their input data and their results """
 
-    _at_least_one_test_failed: bool
-    """ Flag that indicates that at least one test has failed """
-
     def __init__(self, config_path, input_test_data_path):
         self._original_config_path = config_path
         self._input_test_data_path = input_test_data_path
-        self._test_cases = {}
-        self._at_least_one_test_failed = False
 
     @cached_property
     def _tmp_dir(self):
         return tempfile.mkdtemp()
 
-    def run(self):
-        """
-        Starts the test routine by reading all input files, patching the logprep pipline, executing
-        the pipeline for each input event, comparing the generated output with the expected output
-        and printing out the test results.
-        """
-        self._read_files()
-        self._run_logprep_per_test_case()
-        self._compare_with_expected_outputs()
-        self._print_detailed_reports()
-        self._print_test_statistics()
-        shutil.rmtree(self._tmp_dir)
-        if self._at_least_one_test_failed:
-            sys.exit(1)
-        else:
-            sys.exit(0)
-
-    def _read_files(self):
-        """Traverse the given input directory and find all test cases."""
-        data_directory = self._input_test_data_path
-        file_paths = self._collect_test_case_file_paths(data_directory)
-        test_cases = self._group_path_by_test_case(data_directory, file_paths)
-        self._test_cases = dict(sorted(test_cases.items()))
-
-    def _group_path_by_test_case(self, data_directory, file_paths):
-        test_cases = {}
-        for filename in file_paths:
-            test_case_id = self._strip_input_file_type(filename)
-            if test_case_id not in test_cases:
-                test_cases[test_case_id] = {
-                    "test_data_path": {"in": "", "out": "", "out_extra": ""},
-                    "report_print_statements": [],
-                }
-            data_path = test_cases.get(test_case_id, {}).get("test_data_path", {})
-            if "_in.json" in filename:
-                data_path.update({"in": os.path.join(data_directory, filename)})
-            if "_out.json" in filename:
-                data_path.update({"out": os.path.join(data_directory, filename)})
-            if "_out_extra.json" in filename:
-                data_path.update({"out_extra": os.path.join(data_directory, filename)})
-            test_cases[test_case_id]["test_data_path"].update(data_path)
-        return test_cases
-
-    def _collect_test_case_file_paths(self, data_directory):
+    @cached_property
+    def _test_cases(self):
         file_paths = []
-        for root, _, files in os.walk(data_directory):
+        for root, _, files in os.walk(self._input_test_data_path):
             for filename in files:
                 file_paths.append(os.path.abspath(os.path.join(root, filename)))
-        return file_paths
+        test_cases = self._group_path_by_test_case(self._input_test_data_path, file_paths)
+        return dict(sorted(test_cases.items()))
 
-    def _run_logprep_per_test_case(self):
-        """
-        For each test case the logprep connector files are rewritten (only the current test case
-        will be added to the input file), the pipline is run and the outputs are compared.
-        """
-        test_input_documents = self._collect_input_events()
-        pipeline = self._create_logprep_pipeline(test_input_documents)
-        for current_test_case in self._test_cases.items():
-            parsed_event, extra_outputs = pipeline.process_pipeline()
-            reformatted_extra_outputs = self._align_extra_output_formats(extra_outputs)
-            current_test_case[1].update(
-                {"logprep_output": [[parsed_event], reformatted_extra_outputs]}
-            )
-
-    def _create_logprep_pipeline(self, test_input_documents):
-        merged_input_file_path = Path(self._tmp_dir) / "input.json"
-        merged_input_file_path.write_text(json.dumps(test_input_documents), encoding="utf8")
-        path_to_patched_config = Configuration.patch_yaml_with_json_connectors(
-            self._original_config_path, self._tmp_dir, str(merged_input_file_path)
-        )
-        config = Configuration.create_from_yaml(path_to_patched_config)
-        del config["output"]
-        pipeline = Pipeline(config=config)
-        return pipeline
-
-    def _collect_input_events(self):
+    @cached_property
+    def _aggregated_input_events(self):
         test_input_documents = []
         for current_test_case in self._test_cases.items():
             input_file_path = current_test_case[1].get("test_data_path", {}).get("in")
@@ -211,6 +140,69 @@ class RuleCorpusTester:
             if test_event:
                 test_input_documents.append(test_event[0])
         return test_input_documents
+
+    @cached_property
+    def _pipeline(self):
+        merged_input_file_path = Path(self._tmp_dir) / "input.json"
+        merged_input_file_path.write_text(
+            json.dumps(self._aggregated_input_events), encoding="utf8"
+        )
+        path_to_patched_config = Configuration.patch_yaml_with_json_connectors(
+            self._original_config_path, self._tmp_dir, str(merged_input_file_path)
+        )
+        config = Configuration.create_from_yaml(path_to_patched_config)
+        del config["output"]
+        pipeline = Pipeline(config=config)
+        return pipeline
+
+    def run(self):
+        """
+        Starts the test routine by reading all input files, patching the logprep pipline, executing
+        the pipeline for each input event, comparing the generated output with the expected output
+        and printing out the test results.
+        """
+        self._run_pipeline_per_test_case()
+        self._print_test_reports()
+        self._print_test_summary()
+        shutil.rmtree(self._tmp_dir)
+        if any(self._test_cases[case]["test_failed"] for case in self._test_cases):
+            sys.exit(1)
+        else:
+            sys.exit(0)
+
+    def _group_path_by_test_case(self, data_directory, file_paths):
+        test_cases = {}
+        for filename in file_paths:
+            test_case_id = self._strip_input_file_type(filename)
+            if test_case_id not in test_cases:
+                test_cases[test_case_id] = {
+                    "test_data_path": {"in": "", "out": "", "out_extra": ""},
+                    "report_print_statements": [],
+                    "test_failed": False,
+                }
+            data_path = test_cases.get(test_case_id, {}).get("test_data_path", {})
+            if "_in.json" in filename:
+                data_path.update({"in": os.path.join(data_directory, filename)})
+            if "_out.json" in filename:
+                data_path.update({"out": os.path.join(data_directory, filename)})
+            if "_out_extra.json" in filename:
+                data_path.update({"out_extra": os.path.join(data_directory, filename)})
+            test_cases[test_case_id]["test_data_path"].update(data_path)
+        return test_cases
+
+    def _run_pipeline_per_test_case(self):
+        """
+        For each test case the logprep connector files are rewritten (only the current test case
+        will be added to the input file), the pipline is run and the outputs are compared.
+        """
+        print(Style.BRIGHT + "# Test Cases Summary:" + Style.RESET_ALL)
+        for test_case_id, test_case_data in self._test_cases.items():
+            parsed_event, extra_outputs = self._pipeline.process_pipeline()
+            extra_outputs = self._align_extra_output_formats(extra_outputs)
+            test_case_data.update({"logprep_output": [[parsed_event], extra_outputs]})
+            self._compare_logprep_outputs(test_case_id, parsed_event)
+            self._compare_extra_data_output(test_case_id, extra_outputs)
+            self._print_pass_fail_statements(test_case_id)
 
     def _align_extra_output_formats(self, extra_outputs):
         reformatted_extra_outputs = []
@@ -224,28 +216,9 @@ class RuleCorpusTester:
                     reformatted_extra_outputs.append({output[1]: output[0][0]})
         return reformatted_extra_outputs
 
-    def _compare_with_expected_outputs(self):
-        """Compare the generated logprep output with the current test case"""
-        print(Style.BRIGHT + "# Test Cases Summary:" + Style.RESET_ALL)
-        for test_case_id in self._test_cases:
-            self._compare_and_collect_report_print_statements(test_case_id)
-            self._print_short_test_result(test_case_id)
-            if len(self._test_cases.get(test_case_id, {}).get("report_print_statements", [])) > 0:
-                self._at_least_one_test_failed = True
-
-    def _compare_and_collect_report_print_statements(self, test_case_id):
-        test_case_data = self._test_cases.get(test_case_id, {})
-        if test_case_data.get("test_data_path", {}).get("out"):
-            self._compare_logprep_outputs(test_case_id)
-        if test_case_data.get("test_data_path", {}).get("out_extra"):
-            self._compare_extra_data_output(test_case_id)
-
-    def _print_detailed_reports(self):
+    def _print_test_reports(self):
         """If test case reports exist print out each report"""
-        has_failed_reports = any(
-            case[1].get("report_print_statements", False) for case in self._test_cases.items()
-        )
-        if not has_failed_reports:
+        if not any(self._test_cases[case]["test_failed"] for case in self._test_cases):
             return
         print(Style.BRIGHT + "# Test Cases Detailed Reports:" + Style.RESET_ALL)
         for test_case_id, test_case_data in self._test_cases.items():
@@ -253,13 +226,11 @@ class RuleCorpusTester:
                 self._print_long_test_result(test_case_id, test_case_data)
                 print()
 
-    def _print_test_statistics(self):
+    def _print_test_summary(self):
         """Print minimal statistics of the test run"""
         print(Fore.RESET + Style.BRIGHT + "# Test Overview" + Style.RESET_ALL)
         total_cases = len(self._test_cases)
-        failed_cases = len(
-            [case for case in self._test_cases.items() if case[1].get("report_print_statements")]
-        )
+        failed_cases = sum(self._test_cases[case]["test_failed"] for case in self._test_cases)
         print(f"Failed tests: {failed_cases}")
         print(f"Total test cases: {total_cases}")
         if total_cases:
@@ -280,19 +251,20 @@ class RuleCorpusTester:
             return parsed_json
         except JSONDecodeError as error:
             filename = os.path.basename(path)
-            self._test_cases[test_case_id]["report_print_statements"].append(
-                f"{Fore.RED}Json-Error decoding file {filename}:{Fore.RESET}\n{error}"
-            )
+            self._test_cases[test_case_id]["test_failed"] = True
+            error_print = f"{Fore.RED}Json-Error decoding file {filename}:{Fore.RESET}\n{error}"
+            self._test_cases[test_case_id]["report_print_statements"].append(error_print)
         return None
 
-    def _compare_extra_data_output(self, test_case_id):
+    def _compare_extra_data_output(self, test_case_id, logprep_extra_outputs):
         """
         Check if a generated extra output matches an expected extra output. If no match is found
         then the expected output is reported.
         """
         test_case_data = self._test_cases.get(test_case_id, {})
-        _, logprep_extra_outputs = test_case_data.get("logprep_output")
         expected_extra_outputs_path = test_case_data.get("test_data_path", {}).get("out_extra")
+        if not expected_extra_outputs_path:
+            return
         expected_extra_outputs = self._parse_json_with_error_handling(
             test_case_id, expected_extra_outputs_path
         )
@@ -308,7 +280,6 @@ class RuleCorpusTester:
         for expected_extra_output in expected_extra_outputs:
             expected_extra_output_key = list(expected_extra_output.keys())[0]
             has_matching_output = self._has_matching_logprep_output(
-                test_case_id,
                 expected_extra_output,
                 expected_extra_output_key,
                 logprep_extra_outputs,
@@ -319,10 +290,12 @@ class RuleCorpusTester:
                     "no matching extra output was generated by logprep",
                 )
                 prints.append(expected_extra_output)
-        self._test_cases[test_case_id]["report_print_statements"].extend(prints)
+        if prints:
+            self._test_cases[test_case_id]["test_failed"] = True
+            self._test_cases[test_case_id]["report_print_statements"].extend(prints)
 
     def _has_matching_logprep_output(
-        self, test_case_id, expected_extra_output, expected_extra_output_key, logprep_extra_outputs
+        self, expected_extra_output, expected_extra_output_key, logprep_extra_outputs
     ):
         """
         Iterate over all logprep extra outputs and search for an output that matches the
@@ -340,61 +313,49 @@ class RuleCorpusTester:
                     has_matching_output = True
         return has_matching_output
 
-    def _print_short_test_result(self, test_case_id):
+    def _print_pass_fail_statements(self, test_case_id):
         test_case_data = self._test_cases.get(test_case_id, {})
-        status = f"{Style.BRIGHT + Fore.GREEN} PASSED"
+        status = f"{Style.BRIGHT}{Fore.GREEN} PASSED"
         if not test_case_data.get("test_data_path", {}).get("out"):
-            status = (
-                f"{Style.BRIGHT + Fore.WHITE} SKIPPED {Style.RESET_ALL}- (no expected output given)"
-            )
+            status = f"{Style.BRIGHT}{Fore.RESET} SKIPPED - (no expected output given)"
         if len(test_case_data.get("report_print_statements", [])) > 0:
-            status = f"{Fore.RED} FAILED"
-        print(Fore.BLUE + "Test Case: " + Fore.CYAN + f"{test_case_id} {status}" + Fore.RESET)
+            status = f"{Style.BRIGHT}{Fore.RED} FAILED"
+        print(f"{Fore.BLUE} Test Case: {Fore.CYAN}{test_case_id} {status}{Style.RESET_ALL}")
 
     def _print_long_test_result(self, test_case_id, test_case_data):
         """
         Prints out the collected print statements of a test case, resulting in a test
         case reports
         """
-        parsed_event, extra_data = test_case_data.get("logprep_output")
         report_title = f"test report for '{test_case_id}'"
-        report_title_length = len(report_title) + 4
-        title_target_length = 120
-        padding_length = (title_target_length - report_title_length) / 2
-        padding = f"{'#' * math.floor(padding_length)}"
-        print(
-            Fore.RED
-            + f"{padding}"
-            + Style.BRIGHT
-            + f"↓ {report_title} ↓"
-            + Style.RESET_ALL
-            + f"{padding}"
-        )
+        print(f"{Fore.RED}{Style.BRIGHT}↓ {report_title} ↓ {Style.RESET_ALL}")
         for statement in test_case_data.get("report_print_statements"):
             if isinstance(statement, (dict, list)):
                 pprint(statement)
             else:
                 print(statement)
+        parsed_event, extra_data = test_case_data.get("logprep_output")
         print(Fore.RED + "Logprep Event Output:" + Fore.RESET)
         pprint(parsed_event[0])
         print(Fore.RED + "Logprep Extra Data Output:" + Fore.RESET)
         pprint(extra_data)
-        print(Fore.RED + f"{padding} " + Style.BRIGHT + f"↑ {report_title} ↑" + f" {padding}")
+        print(f"{Fore.RED}{Style.BRIGHT}↑ {report_title} ↑ {Style.RESET_ALL}")
 
-    def _compare_logprep_outputs(self, test_case_id):
+    def _compare_logprep_outputs(self, test_case_id, logprep_output):
         """
         Compares a generated output with an expected output, by also ignoring keys that are marked
         as <IGNORE_VALUE>. For each difference a corresponding print statement is collected.
         """
         test_case_data = self._test_cases.get(test_case_id, {})
-        logprep_output, _ = test_case_data.get("logprep_output")
         expected_parsed_event_path = test_case_data.get("test_data_path", {}).get("out")
+        if not expected_parsed_event_path:
+            return
         expected_output = self._parse_json_with_error_handling(
             test_case_id, expected_parsed_event_path
         )
         if expected_output is None:
             return
-        diff = self._compare_events(logprep_output[0], expected_output[0])
+        diff = self._compare_events(logprep_output, expected_output[0])
         self._create_and_append_print_statements(test_case_id, diff)
 
     def _compare_events(self, generated, expected):
@@ -441,7 +402,9 @@ class RuleCorpusTester:
             )
             for key, value in diff["values_changed"].items():
                 prints.append(f" - {key}: {self._rewrite_output(str(value))}")
-        self._test_cases[test_case_id]["report_print_statements"].extend(prints)
+        if prints:
+            self._test_cases[test_case_id]["test_failed"] = True
+            self._test_cases[test_case_id]["report_print_statements"].extend(prints)
 
     def _check_keys_of_ignored_values(self, logprep_output, field_paths) -> list:
         if not field_paths:
