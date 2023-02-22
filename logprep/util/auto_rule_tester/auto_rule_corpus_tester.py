@@ -58,10 +58,15 @@ example:
         }
     ]
 
-As sometimes test have cases where you don't want to test for a specific value of a key it is
+As sometimes test could have cases where you don't want to test for a specific value of a key it is
 possible to test only for the key and ignore the value.
-In order to achieve this just set a filed in an expected output as :code:`<IGNORE_VALUE>`, with that
+In order to achieve this just set a field in an expected output as :code:`<IGNORE_VALUE>`, with that
 the value won't be considered during the testing.
+Furthermore, it is possible to set an entire field as optional with :code:`<OPTIONAL_KEY>`.
+This way fields can be testet for their presents when they exist, and will be ignored when they do
+not exist.
+This can for example be the case for the geo ip enricher, which sometimes finds city information
+about an ip and sometimes not.
 
 While executing the tests report print statements are collected which will be printed to the console
 after the test run is completed.
