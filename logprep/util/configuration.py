@@ -318,9 +318,7 @@ class Configuration(dict):
         except TypeError as error:
             msg = self._format_type_error(error)
             raise InvalidOutputConnectorConfigurationError(msg) from error
-        except KeyError as error:
-            raise RequiredConfigurationKeyMissingError("output") from error
-        except AttributeError as error:
+        except (AttributeError, KeyError) as error:
             raise RequiredConfigurationKeyMissingError("output") from error
 
     @staticmethod

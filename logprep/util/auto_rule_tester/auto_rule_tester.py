@@ -316,7 +316,7 @@ class AutoRuleTester:
     @staticmethod
     def _clear_rules(processor: "Processor"):
         if hasattr(processor, "_rules"):
-            processor.rules.clear()  # pylint: disable=protected-access
+            processor.rules.clear()
 
     @staticmethod
     def _reset_trees(processor: "Processor"):
