@@ -322,40 +322,19 @@ class TestAutoRuleTester:
             assert expected_print in console_output, test_case
         mock_exit.assert_called_with(exit_code)
 
-    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.parse_json")
-    def test_run_logs_json_decoding_error(
-        self, mock_parse_json, mock_exit, tmp_path, corpus_tester, capsys
-    ):
-        test_data = {
-            "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
-            "expected_output": {
-                "winlog": {"event_id": "2222", "event_data": "<IGNORE_VALUE>"},
-                "test_normalized": {"test": {"field1": 1, "field2": 2}},
-            },
-            "expected_extra_output": [],
-        }
-        expected_prints = [
-            "FAILED",
-            "Json-Error decoding file rule_auto_corpus_test_in.json:",
-            "Json-Error decoding file rule_auto_corpus_test_out.json:",
-            "Json-Error decoding file rule_auto_corpus_test_out_extra.json:",
-            "Some Error: line 1 column 1 (char 0)",
-            "Success rate: 0.00%",
-        ]
+    def test_run_logs_json_decoding_error(self, mock_parse_json, tmp_path, corpus_tester, capsys):
+        test_data = {"input": {}, "expected_output": {}, "expected_extra_output": []}
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         mock_parse_json.side_effect = JSONDecodeError("Some Error", "in doc", 0)
-        corpus_tester.run()
-        console_output, console_error = capsys.readouterr()
-        for expected_print in expected_prints:
-            assert expected_print in console_output
-        mock_exit.assert_called_with(1)
+        with pytest.raises(ValueError, match="Following parsing errors were found"):
+            corpus_tester.run()
 
     def test_run_raises_if_case_misses_input_file(self, tmp_path, corpus_tester):
         expected_output_data_path = tmp_path / "rule_auto_corpus_test_out.json"
-        expected_output_data_path.write_text("not important")
+        expected_output_data_path.write_text('{"json":"file"}')
         corpus_tester._input_test_data_path = tmp_path
-        with pytest.raises(ValueError, match="is missing an input file."):
+        with pytest.raises(ValueError, match="The following TestCases have no input document"):
             corpus_tester.run()
 
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
@@ -364,10 +343,7 @@ class TestAutoRuleTester:
     ):
         test_data = {
             "input": {"winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}},
-            "expected_output": {
-                "winlog": {"event_id": "2222", "event_data": "<IGNORE_VALUE>"},
-                "test_normalized": {"test": {"field1": 1, "field2": 2}},
-            },
+            "expected_output": {},
             "expected_extra_output": [],
         }
         expected_prints = [
