@@ -2,5 +2,6 @@ sphinx
 sphinx_rtd_theme
 sphinxcontrib-mermaid
 sphinxcontrib.datatemplates
+sphinx-copybutton
 nbsphinx
 ipython

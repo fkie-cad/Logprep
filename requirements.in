@@ -27,3 +27,4 @@ tldextract
 urlextract
 uvicorn
 wheel
+deepdiff

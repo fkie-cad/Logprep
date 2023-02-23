@@ -1,5 +1,54 @@
 #!/usr/bin/python3
-"""This module implements an auto-tester that can execute tests for rules."""
+"""
+Rule Tests
+----------
+
+It is possible to write tests for rules.
+In those tests it is possible to define inputs and expected outputs for these inputs.
+Only one test file can exist per rule file.
+The tests must be located in the same directory as the rule files.
+They are identified by naming them like the rule, but ending with `_test.json`.
+For example `rule_one.json` and `rule_one_test.json`.
+
+The rule file must contain a JSON list of JSON objects.
+Each object corresponds to a test.
+They must have the fields `raw` and `processed`.
+`raw` contains an input log message and `processed` the corresponding processed result.
+
+When using multi-rules it may be necessary to restrict tests to specific rules in the file.
+This can be achieved by the field `target_rule_idx`.
+The value of that field corresponds to the index of the rule in the JSON list of multi-rules
+(starting with 0).
+
+Logprep gets the events in `raw` as input.
+The result will be compared with the content of `processed`.
+
+Fields with variable results can be matched via regex expressions by appending `|re` to a field
+name and using a regex expression as value.
+It is furthermore possible to use GROK patterns.
+Some patterns are pre-defined, but others can be added by adding a directory with GROK patterns to
+the configuration file.
+
+The rules get automatically validated if an auto-test is being executed.
+The rule tests will be only performed if the validation was successful.
+
+The output is printed to the console, highlighting differences between `raw` and `processed`:
+
+..  code-block:: bash
+    :caption: Directly with Python
+
+    PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG --auto-test
+
+..  code-block:: bash
+    :caption: With PEX file
+
+    logprep.pex $CONFIG --auto-test
+
+Where :code:`$CONFIG` is the path to a configuration file
+(see :doc:`configuration/configurationdata`).
+
+Auto-testing does also perform a verification of the pipeline section of the Logprep configuration.
+"""
 
 import hashlib
 import json
@@ -18,6 +67,7 @@ from typing import TYPE_CHECKING, Tuple, TextIO
 import regex as re
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
+from typing.io import TextIO
 
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree

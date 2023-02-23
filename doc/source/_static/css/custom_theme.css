@@ -3,3 +3,27 @@
 .wy-nav-content {
     max-width: 100% !important;
 }
+
+.rst-content .code-block-caption {
+    text-align: left !important;
+    background: #37373711;
+    padding: 5px 0 5px 10px;
+    font-style: revert;
+    font-weight: 700;
+    border: 1px solid #e2e2e2;
+    border-bottom: 0px;
+    box-shadow: 2px 2px 1px 0px #ededed;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+.rst-content div[class^=highlight], .rst-content pre.literal-block {
+    margin: 0px 0 24px !important;
+    box-shadow: 2px 2px 1px 0px #ededed;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.rst-content div[class^=highlight] div[class^=highlight], .rst-content pre.literal-block div[class^=highlight] {
+    margin: 0 !important;
+}

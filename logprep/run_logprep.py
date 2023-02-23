@@ -17,6 +17,7 @@ from logprep._version import get_versions
 from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
 from logprep.util.aggregating_logger import AggregatingLogger
+from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import print_fcolor
@@ -75,6 +76,12 @@ def _parse_arguments():
         action="store_true",
     )
     argument_parser.add_argument("--auto-test", help="Run rule-tests", action="store_true")
+    argument_parser.add_argument(
+        "--auto-corpus-test", help="Run rule-corpus-test", action="store_true"
+    )
+    argument_parser.add_argument(
+        "--corpus-testdata", help="Directory to the test data for the rule-corpus-test"
+    )
     arguments = argument_parser.parse_args()
 
     requires_dry_run = arguments.dry_run_full_output or arguments.dry_run_input_type == "jsonl"
@@ -221,6 +228,15 @@ def main():
         dry_runner.run()
     elif args.verify_config:
         print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
+    elif args.auto_corpus_test:
+        if args.corpus_testdata is None:
+            logger.error(
+                "In order to start the auto-rule-corpus-tester you have to configure the "
+                "directory to the test data with '--corpus-testdata'. See '--help' for "
+                "more information."
+            )
+            sys.exit(1)
+        RuleCorpusTester(args.config, args.corpus_testdata).run()
     else:
         _run_logprep(args, logger)
 
