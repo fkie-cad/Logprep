@@ -9,6 +9,7 @@
 * Add `string_splitter` processor to split strings of variable length into lists
 * Add `ip_informer` processor to enrich events with ip information
 * Allow running the `Pipeline` in python without input/output connectors
+* Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
 
 ## v5.0.1
 
@@ -29,7 +30,6 @@
 * Add a `timestamp_differ` processor that can parse two timestamps and calculate their respective time delta.
 * Add `config_refresh_interval` configuration option to refresh the configuration on a given timedelta
 * Add option to `dissector` to use a prefix pattern in dissect language for appending to strings and add the default behavior to append to strings without any prefixed separator
-* Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
 
 ### Improvements
 
