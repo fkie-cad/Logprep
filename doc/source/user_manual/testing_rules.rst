@@ -2,8 +2,8 @@ Testing Rules
 =============
 
 .. automodule:: logprep.util.rule_dry_runner
-.. automodule:: logprep.util.auto_rule_tester
-.. automodule:: logprep.util.auto_rule_corpus_tester
+.. automodule:: logprep.util.auto_rule_tester.auto_rule_tester
+.. automodule:: logprep.util.auto_rule_tester.auto_rule_corpus_tester
 
 
 Custom Tests
