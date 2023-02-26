@@ -183,6 +183,26 @@ test_cases = [
             },
         },
     ),
+    (
+        "single field with ipv4 address and filtered properties",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip"],
+                "target_field": "result",
+                "properties": ["is_loopback"],
+            },
+        },
+        {"ip": "192.168.5.1"},
+        {
+            "ip": "192.168.5.1",
+            "result": {
+                "192.168.5.1": {
+                    "is_loopback": False,
+                }
+            },
+        },
+    ),
 ]  # testcase, rule, event, expected
 
 failure_test_cases = [

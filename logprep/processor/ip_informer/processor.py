@@ -40,14 +40,14 @@ class IpInformer(FieldManager):
     def _apply_rules(self, event: dict, rule: IpInformerRule) -> None:
         self._processing_warnings = []
         ip_address_list = self._get_flat_ip_address_list(event, rule)
-        results = self._get_results(ip_address_list)
+        results = self._get_results(ip_address_list, rule)
         if results:
             self._write_target_field(event, rule, results)
         for msg, error in self._processing_warnings:
             raise ProcessingWarning(msg) from error
 
-    def _get_results(self, ip_address_list: Iterable) -> dict:
-        results = [(ip, self._ip_properties(ip)) for ip in ip_address_list]
+    def _get_results(self, ip_address_list: Iterable, rule: IpInformerRule) -> dict:
+        results = [(ip, self._ip_properties(ip, rule)) for ip in ip_address_list]
         return dict(filter(lambda x: bool(x[1]), results))
 
     def _get_flat_ip_address_list(self, event: dict, rule: IpInformerRule) -> Iterable:
@@ -56,7 +56,7 @@ class IpInformer(FieldManager):
         str_elements = filter(lambda x: isinstance(x, str), source_field_values)
         return chain(*list_elements, str_elements)
 
-    def _ip_properties(self, ip_address: str) -> dict[str, any]:
+    def _ip_properties(self, ip_address: str, rule: IpInformerRule) -> dict[str, any]:
         try:
             ip_address = ipaddress.ip_address(ip_address)
         except ValueError as error:
@@ -65,6 +65,6 @@ class IpInformer(FieldManager):
             )
         return {
             prop_name: getattr(ip_address, prop_name)
-            for prop_name in filter(lambda x: x != "packed", dir(ip_address.__class__))
-            if isinstance(getattr(ip_address.__class__, prop_name), property)
-        }  # we have to remove the property `packed` because it is not json serializable
+            for prop_name in rule.properties
+            if prop_name in dir(ip_address.__class__)
+        }
