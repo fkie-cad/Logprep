@@ -24,7 +24,7 @@ from typing import Iterable
 from logprep.processor.base.exceptions import ProcessingWarning
 
 from logprep.processor.field_manager.processor import FieldManager
-from logprep.processor.ip_informer.rule import IpInformerRule
+from logprep.processor.ip_informer.rule import IpInformerRule, get_ip_property_names
 from logprep.util.helper import get_dotted_field_value
 
 
@@ -63,8 +63,10 @@ class IpInformer(FieldManager):
             self._processing_warnings.append(
                 (f"({self.name}): '{ip_address}' is not a valid IPAddress", error)
             )
-        return {
-            prop_name: getattr(ip_address, prop_name)
-            for prop_name in rule.properties
-            if prop_name in dir(ip_address.__class__)
-        }
+        properties = rule.properties
+        if "default" in properties:
+            return {
+                prop_name: getattr(ip_address, prop_name)
+                for prop_name in get_ip_property_names(ip_address.__class__)
+            }
+        return {prop_name: getattr(ip_address, prop_name, False) for prop_name in rule.properties}

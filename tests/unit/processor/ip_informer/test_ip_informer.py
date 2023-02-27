@@ -203,6 +203,26 @@ test_cases = [
             },
         },
     ),
+    (
+        "get field value for non existent property",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip"],
+                "target_field": "result",
+                "properties": ["teredo"],
+            },
+        },
+        {"ip": "192.168.5.1"},
+        {
+            "ip": "192.168.5.1",
+            "result": {
+                "192.168.5.1": {
+                    "teredo": False,
+                }
+            },
+        },
+    ),
 ]  # testcase, rule, event, expected
 
 failure_test_cases = [

@@ -60,7 +60,8 @@ from attrs import define, field, validators
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
-def _get_properties(cls):
+def get_ip_property_names(cls):
+    """Returns all property names"""
     return [
         prop_name
         for prop_name in filter(lambda x: x != "packed", dir(cls))
@@ -68,7 +69,7 @@ def _get_properties(cls):
     ]  # we have to remove the property `packed` because it is not json serializable
 
 
-IP_PROPERTIES = [*_get_properties(IPv4Address), *_get_properties(IPv6Address)]
+IP_PROPERTIES = [*get_ip_property_names(IPv4Address), *get_ip_property_names(IPv6Address)]
 
 
 class IpInformerRule(FieldManagerRule):
@@ -82,18 +83,23 @@ class IpInformerRule(FieldManagerRule):
             validator=[
                 validators.instance_of(list),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
-                validators.deep_iterable(member_validator=validators.in_(IP_PROPERTIES)),
+                validators.deep_iterable(
+                    member_validator=validators.in_(["default", *IP_PROPERTIES])
+                ),
             ],
-            default=IP_PROPERTIES,
+            default=["default"],
         )
         """(Optional) configures the properties to extract. Default is to extract all
-        properties. Possible Properties are
-        ['compressed', 'exploded', 'is_global', 'is_link_local', 'is_loopback',
+        properties. Possible properties are: :code:`['compressed', 'exploded', 'is_global', 'is_link_local', 'is_loopback',
         'is_multicast', 'is_private', 'is_reserved', 'is_unspecified', 'max_prefixlen',
         'reverse_pointer', 'version', 'compressed', 'exploded', 'ipv4_mapped', 'is_global',
         'is_link_local', 'is_loopback', 'is_multicast', 'is_private', 'is_reserved',
         'is_site_local', 'is_unspecified', 'max_prefixlen', 'reverse_pointer', 'scope_id',
-        'sixtofour', 'teredo', 'version']
+        'sixtofour', 'teredo', 'version']`.
+
+        Default is to extract all available properties. If you explicitly want to extract a property,
+        which is not existent for an IPAddress (e.g. toredo which is only existend for IPv4Addresses),
+        the propyerty will be extracted with the value :code:`False`.
         """
 
     @property
