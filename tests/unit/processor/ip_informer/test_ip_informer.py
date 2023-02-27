@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=line-too-long
 import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase

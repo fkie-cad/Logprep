@@ -90,15 +90,17 @@ class IpInformerRule(FieldManagerRule):
             default=["default"],
         )
         """(Optional) configures the properties to extract. Default is to extract all
-        properties. Possible properties are: :code:`['compressed', 'exploded', 'is_global', 'is_link_local', 'is_loopback',
-        'is_multicast', 'is_private', 'is_reserved', 'is_unspecified', 'max_prefixlen',
+        properties. Possible properties are: :code:`['compressed', 'exploded', 'is_global',
+        'is_link_local', 'is_loopback', 'is_multicast', 'is_private', 'is_reserved',
+        'is_unspecified', 'max_prefixlen',
         'reverse_pointer', 'version', 'compressed', 'exploded', 'ipv4_mapped', 'is_global',
         'is_link_local', 'is_loopback', 'is_multicast', 'is_private', 'is_reserved',
         'is_site_local', 'is_unspecified', 'max_prefixlen', 'reverse_pointer', 'scope_id',
         'sixtofour', 'teredo', 'version']`.
 
-        Default is to extract all available properties. If you explicitly want to extract a property,
-        which is not existent for an IPAddress (e.g. toredo which is only existend for IPv4Addresses),
+        Default is to extract all available properties. If you explicitly want to extract
+        a property, which is not existent for an IPAddress
+        (e.g. toredo which is only existend for IPv4Addresses),
         the propyerty will be extracted with the value :code:`False`.
         """
 
