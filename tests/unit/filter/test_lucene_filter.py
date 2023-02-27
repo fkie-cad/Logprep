@@ -208,66 +208,80 @@ class TestLueceneFilter:
 
         assert lucene_filter == Always(True)
 
+    add_escaping_test_cases = [
+        ("Empty string", "", ""),
+        ("No escaping", "foo bar baz", "foo bar baz"),
+        ("Escaped words", "\\foo \\bar \\baz", "\\foo \\bar \\baz"),
+        ("One quotation", '"', '"'),
+        ("One single escaped quotation", '"', '"'),
+        ("One double escaped quotation", '\\"', '\\\\"'),
+        ("One quadruple escaped quotation", '\\\\"', '\\\\\\\\"'),
+        ("Escaped not last", '\\"foo\\"', '\\"foo\\\\"'),
+        ("Two quotations", '""', '""'),
+        ("Three double escaped quotation", '\\"\\"\\"', '\\"\\"\\\\"'),
+        ("One double escaped quotation at beginning", '\\"\\"', '\\"\\\\"'),
+        ("One quadruple escaped quotation at beginning", '\\\\"\\"', '\\\\\\"\\\\"'),
+        ("Quotation ends with AND", '\\" AND', '\\\\" AND'),
+        ("Quotation ends with OR", '\\" OR', '\\\\" OR'),
+        ("Quotation ends with NOT", '\\" NOT', '\\\\" NOT'),
+        ("Quotation doesn't end with AND/OR/NOT/$", '\\" foo', '\\" foo'),
+        ("Quotation with parenthesis ends with AND", '\\") AND', '\\\\") AND'),
+        ("Quotation with parenthesis ends with OR", '\\") OR', '\\\\") OR'),
+        ("Quotation with parenthesis ends with NOT", '\\") NOT', '\\\\") NOT'),
+        ("Quotation with parenthesis doesn't end with AND/OR/NOT/$", '\\") foo', '\\") foo'),
+        ("Word between quotation and AND", '\\"foo AND', '\\"foo AND'),
+        ("Word between quotation and OR", '\\"foo OR', '\\"foo OR'),
+        ("Word between quotation and NOT", '\\"foo NOT', '\\"foo NOT'),
+    ]
+
+    add_escaping_test_cases_end_escaping = [
+        ("One escape character", "\\", "\\"),
+        ("Two escape characters", "\\\\", "\\\\"),
+    ]
+
     @pytest.mark.parametrize(
         "testcase, query_string, escaped_string",
-        [
-            ("Empty string", "", ""),
-            ("No escaping", "foo bar baz", "foo bar baz"),
-            ("One escape character", "\\", "\\"),
-            ("One quotation", '"', '"'),
-            ("One single escaped quotation", '"', '"'),
-            ("One double escaped quotation", '\\"', '\\\\"'),
-            ("One triple escaped quotation", '\\"', '\\\\"'),
-            ("One quadruple escaped quotation", '\\\\"', '\\\\\\\\"'),
-            ("Two single escaped quotation", '""', '""'),
-            ("Two double escaped quotation", '\\"\\"', '\\"\\\\"'),
-            ("Three double escaped quotation", '\\"\\"\\"', '\\"\\"\\\\"'),
-            ("Quotation ends with AND", '\\" AND', '\\\\" AND'),
-            ("Quotation ends with OR", '\\" OR', '\\\\" OR'),
-            ("Quotation ends with NOT", '\\" NOT', '\\\\" NOT'),
-            ("Quotation doesn't end with AND/OR/NOT/$", '\\" foo', '\\" foo'),
-            ("Quotation with parenthesis ends with AND", '\\") AND', '\\\\") AND'),
-            ("Quotation with parenthesis ends with OR", '\\") OR', '\\\\") OR'),
-            ("Quotation with parenthesis ends with NOT", '\\") NOT', '\\\\") NOT'),
-            ("Quotation with parenthesis doesn't end with AND/OR/NOT/$", '\\") foo', '\\") foo'),
-            ("Word between quotation and AND", '\\"foo AND', '\\"foo AND'),
-            ("Word between quotation and OR", '\\"foo OR', '\\"foo OR'),
-            ("Word between quotation and NOT", '\\"foo NOT', '\\"foo NOT'),
-        ],
+        add_escaping_test_cases + add_escaping_test_cases_end_escaping,
     )
     def test_add_lucene_escaping(self, testcase, query_string, escaped_string):
         result = LuceneFilter._add_lucene_escaping(query_string)
 
         assert result == escaped_string, testcase
 
+    remove_escaping_test_cases = [
+        (case, expected, test_input) for case, test_input, expected in add_escaping_test_cases
+    ]
+
+    remove_escaping_test_cases_end_escaping = [
+        ("One escape character", "\\", ""),
+        ("Two escape characters", "\\\\", "\\"),
+        ("Four escape characters", "\\\\\\\\", "\\\\"),
+    ]
+
     @pytest.mark.parametrize(
         "testcase, escaped_string, unescaped_string",
-        [
-            ("Empty string", "", ""),
-            ("No escaping", "foo bar baz", "foo bar baz"),
-            ("One escape character", "\\", ""),
-            ("One quotation", '"', '"'),
-            ("One single escaped quotation", '"', '"'),
-            ("One double escaped quotation", '\\\\"', '"'),
-            ("One triple escaped quotation", '\\\\"', '"'),
-            ("One quadruple escaped quotation", '\\\\\\\\"', '\\"'),
-            ("Two single escaped quotation", '""', '""'),
-            ("Two double escaped quotation", '\\"\\\\"', '""'),
-            ("Three double escaped quotation", '\\"\\"\\\\"', '"""'),
-            ("Quotation ends with AND", '\\\\" AND', '" AND'),
-            ("Quotation ends with OR", '\\\\" OR', '" OR'),
-            ("Quotation ends with NOT", '\\\\" NOT', '" NOT'),
-            ("Quotation doesn't end with AND/OR/NOT/$", '\\" foo', '" foo'),
-            ("Quotation with parenthesis ends with AND", '\\\\") AND', '") AND'),
-            ("Quotation with parenthesis ends with OR", '\\\\") OR', '") OR'),
-            ("Quotation with parenthesis ends with NOT", '\\\\") NOT', '") NOT'),
-            ("Quotation with parenthesis doesn't end with AND/OR/NOT/$", '\\") foo', '") foo'),
-            ("Word between quotation and AND", '\\"foo AND', '"foo AND'),
-            ("Word between quotation and OR", '\\"foo OR', '"foo OR'),
-            ("Word between quotation and NOT", '\\"foo NOT', '"foo NOT'),
-        ],
+        remove_escaping_test_cases + remove_escaping_test_cases_end_escaping,
     )
     def test_remove_lucene_escaping(self, testcase, escaped_string, unescaped_string):
         result = LuceneTransformer._remove_lucene_escaping(escaped_string)
 
         assert result == unescaped_string, testcase
+
+    create_filter_test_cases = [
+        ("Empty string", ""),
+        ("No escaping", "foo bar baz"),
+        ("Escaped words", "\\foo \\bar \\baz"),
+        ("One double escaped quotation", '\\"'),
+        ("One quadruple escaped quotation", '\\\\"'),
+        ("Path", "\\foo\\bar\\baz\\"),
+        ("Escaped path", "\\\\foo\\\\bar\\\\baz\\\\"),
+        ("Three double escaped quotation", '\\"\\"\\"'),
+        ("One double escaped quotation at beginning", '\\"\\"'),
+        ("One quadruple escaped quotation at beginning", '\\\\"\\"'),
+        ("One quadruple escaped quotation at end", '\\"\\\\"'),
+    ]
+
+    @pytest.mark.parametrize("testcase, input_string", create_filter_test_cases)
+    def test_creates_expected_filter_from_windows_path_query(self, testcase, input_string):
+        test_filter = LuceneFilter.create(f'foo: "{input_string}"')
+        assert test_filter == StringFilterExpression(["foo"], input_string), testcase

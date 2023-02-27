@@ -81,7 +81,7 @@ require additional options.
     - ip_address
 """
 # pylint: enable=anomalous-backslash-in-string
-
+import math
 from typing import List, Union, Optional
 import re
 from itertools import chain, zip_longest
@@ -169,7 +169,8 @@ class LuceneTransformer:
         "sigma_fields": SigmaFilterExpression,
     }
 
-    find_unescaping_pattern = re.compile(r'(?:\\)*"')
+    find_unescaping_quote_pattern = re.compile(r'(?:\\)*"')
+    find_unescaping_end_pattern = re.compile(r"(?:\\)*$")
 
     def __init__(self, tree: luqum.tree, special_fields: dict = None):
         self._tree = tree
@@ -291,23 +292,22 @@ class LuceneTransformer:
     def _remove_lucene_escaping(string):
         """Remove previously added lucene escaping so that double quotes will be
         interpreted correctly by wildcard parser."""
-        matches = LuceneTransformer.find_unescaping_pattern.findall(string)
+        matches = LuceneTransformer.find_unescaping_quote_pattern.findall(string)
+        if matches is None:
+            return string
+
         for idx, match in enumerate(matches):
             length = len(match) - 1
-            matches[idx] = "\\" * (length // 2 - 1) + '"'
+            matches[idx] = "\\" * math.ceil(length / 2) + '"'
 
-        split = LuceneTransformer.find_unescaping_pattern.split(string)
+        split = LuceneTransformer.find_unescaping_quote_pattern.split(string)
         string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
-        backslashes = 0
-        for idx in range(len(string)):
-            chara = string[len(string) - 1 - idx]
-            if chara == "\\":
-                backslashes += 1
-            else:
-                break
+        escaping_end = LuceneTransformer.find_unescaping_end_pattern.search(string)
+        if escaping_end is None:
+            return string
 
-        if backslashes > 0:
-            string = string[:-backslashes] + "\\" * (backslashes // 2 - 2)
+        backslashes_end_cnt = len(escaping_end.group())
+        string = string[: escaping_end.start()] + "\\" * (backslashes_end_cnt // 2)
 
         return string

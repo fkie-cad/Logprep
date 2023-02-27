@@ -408,6 +408,33 @@ class TestWildcardFilterExpression(ValueBasedFilterExpressionTest):
                 }
             )
 
+    @pytest.mark.parametrize(
+        "filter_expression, expected_expression",
+        [
+            (r"*", r"^.*$"),
+            (r"?", r"^.?$"),
+            (r"(*)", r"^\(.*\)$"),
+            (r"(?)", r"^\(.?\)$"),
+            (r"**", r"^.*.*$"),
+            (r"??", r"^.?.?$"),
+            (r"start*end", r"^start.*end$"),
+            (r"start**end", r"^start.*.*end$"),
+            (r"start?end", r"^start.?end$"),
+            (r"\\", r"^\\\\$"),
+            (r"\\\\", r"^\\\\\\\\$"),
+            (r"\*", r"^\*$"),
+            (r"\\*", r"^\\.*$"),
+            (r"\\\*", r"^\\\\.*$"),
+            (r"\\\\*", r"^\\\\\\.*$"),
+            (r'"', r'^"$'),
+            (r"\"", r'^\\"$'),
+            (r'\\"', r'^\\\\"$'),
+        ],
+    )
+    def test_escaped_expected(self, filter_expression, expected_expression):
+        _filter = WildcardStringFilterExpression(["key1", "key2"], filter_expression)
+        assert _filter.escaped_expected == expected_expression
+
 
 class TestSigmaFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
@@ -464,3 +491,33 @@ class TestSigmaFilterExpression(ValueBasedFilterExpressionTest):
                     }
                 }
             )
+
+    @pytest.mark.parametrize(
+        "filter_expression, expected_expression",
+        [
+            (r"*", r"^.*$"),
+            (r"?", r"^.?$"),
+            (r"(*)", r"^\(.*\)$"),
+            (r"(?)", r"^\(.?\)$"),
+            (r"**", r"^.*.*$"),
+            (r"??", r"^.?.?$"),
+            (r"start*end", r"^start.*end$"),
+            (r"start**end", r"^start.*.*end$"),
+            (r"start?end", r"^start.?end$"),
+            (r"\\", r"^\\\\$"),
+            (r"\\\\", r"^\\\\\\\\$"),
+            (r"\*", r"^\*$"),
+            (r"\\*", r"^\\.*$"),
+            (r"\\\*", r"^\\\\.*$"),
+            (r"\\\\*", r"^\\\\\\.*$"),
+            (r'"', r'^"$'),
+            (r"\"", r'^\\"$'),
+            (r'\\"', r'^\\\\"$'),
+            (r'te"st', r'^te"st$'),
+            (r'te\\"st', r'^te\\\\"st$'),
+            (r'te\\"st"', r'^te\\\\"st"$'),
+        ],
+    )
+    def test_escaped_expected(self, filter_expression, expected_expression):
+        _filter = SigmaFilterExpression(["key1", "key2"], filter_expression)
+        assert _filter.escaped_expected == expected_expression
