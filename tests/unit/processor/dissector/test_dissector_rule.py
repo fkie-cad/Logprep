@@ -124,7 +124,7 @@ class TestDissectorRule:
             (
                 {"filter": "message", "dissector": {"convert_datatype": {"field1": "char"}}},
                 ValueError,
-                r"'convert_datatype' must be in \['float', 'int', 'string'\]",
+                r"'convert_datatype' must be in \['float', 'int', 'bool', 'string'\]",
             ),
             (
                 {
@@ -189,6 +189,26 @@ class TestDissectorRule:
                 },
                 None,
                 None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {
+                        "mapping": {"message": "%{} %{} %{field1|int} %{} %{} %{} %{field2|bool}"}
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "dissector": {
+                        "mapping": {"message": "%{} %{} %{field1/3|int} %{} %{} %{} %{field2|bool}"}
+                    },
+                },
+                ValueError,
+                "must match regex",
             ),
         ],
     )
@@ -426,3 +446,14 @@ class TestDissectorRule:
         assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", 0)
         assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "#", 1)
         assert dissector_rule.actions[2] == ("field1", None, "field4", append, "}", 3)
+
+    def test_parses_datatype_conversion_from_dissect_pattern(self):
+        rule = {
+            "filter": "message",
+            "dissector": {
+                "mapping": {"field1": "%{field2}:%{field3|int} %{field4}"},
+            },
+        }
+        dissector_rule = DissectorRule._create_from_dict(rule)
+        assert dissector_rule._config.convert_datatype.get("field3") == "int"
+        assert len(dissector_rule._config.convert_datatype.keys()) == 1
