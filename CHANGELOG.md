@@ -10,6 +10,7 @@
 * Add `ip_informer` processor to enrich events with ip information
 * Allow running the `Pipeline` in python without input/output connectors
 * Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
+* Add shorthand for converting datatypes to `dissector` dissect pattern language
 
 ## v5.0.1
 
