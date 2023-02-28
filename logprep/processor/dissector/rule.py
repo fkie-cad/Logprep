@@ -115,11 +115,11 @@ def _do_nothing(*_):
 
 def str_to_bool(input_str: str) -> bool:
     """converts an input string to bool by meaning"""
-    if input_str.lower() in ("yes", "true", "on", "y"):
-        return True
     try:
+        if input_str.lower() in ("yes", "true", "on", "y"):
+            return True
         return bool(int(input_str))
-    except ValueError:
+    except (ValueError, AttributeError):
         pass
     return False
 

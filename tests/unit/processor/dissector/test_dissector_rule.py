@@ -4,7 +4,7 @@
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.dissector.rule import DissectorRule, add_and_overwrite, append
+from logprep.processor.dissector.rule import DissectorRule, add_and_overwrite, append, str_to_bool
 
 
 class TestDissectorRule:
@@ -457,3 +457,10 @@ class TestDissectorRule:
         dissector_rule = DissectorRule._create_from_dict(rule)
         assert dissector_rule._config.convert_datatype.get("field3") == "int"
         assert len(dissector_rule._config.convert_datatype.keys()) == 1
+
+    @pytest.mark.parametrize(
+        "input_str, expected",
+        [("yes", True), ("no", False), (None, False), ("42", True), ("on", True), ("off", False)],
+    )
+    def test_str_to_bool_returns(self, input_str, expected):
+        assert str_to_bool(input_str) == expected
