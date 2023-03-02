@@ -12,6 +12,10 @@
 * Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
 * Add shorthand for converting datatypes to `dissector` dissect pattern language
 
+### Improvements
+
+* Bump `attrs` to `>=22.2.0` and delete redundant `min_len_validator`
+
 ## v5.0.1
 
 ### Breaking
