@@ -14,7 +14,7 @@
 
 ### Improvements
 
-* bump `attrs` to `>=22.2.0` and delete redundant `min_len_validator`
+* Bump `attrs` to `>=22.2.0` and delete redundant `min_len_validator`
 
 ## v5.0.1
 
