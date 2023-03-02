@@ -463,7 +463,7 @@ class TestConfiguration:
             with pytest.raises(InvalidConfigurationErrors) as e_info:
                 config.verify(logger)
             errors_set = [(type(err), str(err)) for err in e_info.value.errors]
-            assert len(raised_errors) == len(errors_set)
+            assert len(raised_errors) == len(errors_set), test_case
             zipped_errors = zip(raised_errors, errors_set)
             for expected_error, raised_error in zipped_errors:
                 assert expected_error[0] == raised_error[0], "error class differ"
@@ -618,7 +618,7 @@ class TestConfiguration:
             for error in errors:
                 collected_errors += error.errors
             errors_set = [(type(error), str(error)) for error in collected_errors]
-            assert len(raised_errors) == len(errors_set)
+            assert len(raised_errors) == len(errors_set), test_case
             zipped_errors = zip(raised_errors, errors_set)
             for expected_error, raised_error in zipped_errors:
                 assert expected_error[0] == raised_error[0], "error class differ"
@@ -794,22 +794,6 @@ output:
 """
         os.environ[
             "LOGPREP_INPUT"
-        ] = """
-input:
-    kafka:
-        type: confluentkafka_input
-        bootstrapservers:
-        - 172.21.0.5:9092
-        topic: consumer
-        group: cgroup3
-        auto_commit: true
-        session_timeout: 6000
-        offset_reset_policy: smallest
-        ssl:
-            cafile:
-            certfile:
-            keyfile:
-            password:
-            """
+        ] = "input:\n    kafka:\n        type: confluentkafka_input\n        bootstrapservers:\n        - 172.21.0.5:9092\n        topic: consumer\n        group: cgroup3\n        auto_commit: true\n        session_timeout: 6000\n        offset_reset_policy: smallest\n        ssl:\n            cafile:\n            certfile:\n            keyfile:\n            password:\n            "
         config = Configuration.create_from_yaml(str(config_path))
         config.verify(mock.MagicMock())
