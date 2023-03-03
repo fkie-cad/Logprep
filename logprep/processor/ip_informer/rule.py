@@ -99,9 +99,9 @@ class IpInformerRule(FieldManagerRule):
         'sixtofour', 'teredo', 'version']`.
 
         Default is to extract all available properties. If you explicitly want to extract
-        a property, which is not existent for an IPAddress
-        (e.g. toredo which is only existend for IPv4Addresses),
-        the propyerty will be extracted with the value :code:`False`.
+        a property, which does not exist for an IPAddress
+        (e.g. toredo which is only given for IPv4Addresses),
+        the property will be extracted with the value :code:`False`.
         """
 
     @property
