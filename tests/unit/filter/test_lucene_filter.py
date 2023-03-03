@@ -16,7 +16,8 @@ from logprep.filter.expression.filter_expression import (
 )
 
 
-def esc(count):
+def esc(count: int) -> str:
+    """Returns given amount of escaping characters"""
     return count * "\\"
 
 
@@ -362,7 +363,7 @@ class TestLueceneFilter:
         ("One double escaped quotation (2->1)", '\\\\"', '\\"'),
         ("One triple escaped quotation (3->2)", '\\\\\\"', '\\\\"'),
         ("Escaped not last", '\\"foo\\"', '"foo"'),
-        ("Three single escaped quotation", '\\"\\"\\"', f'"""'),
+        ("Three single escaped quotation", '\\"\\"\\"', '"""'),
         ("Quotation ends with AND", '\\" AND', '" AND'),
         ("Quotation ends with OR", '\\" OR', '" OR'),
         ("Quotation ends with NOT", '\\" NOT', '" NOT'),

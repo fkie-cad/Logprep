@@ -144,13 +144,13 @@ class LuceneFilter:
         except ParseSyntaxError as error:
             msg = (
                 f"{error} Expression: '{escaped_string}'"
-                + f" - Ensure that the expression is escaped correctly!"
+                + " - Ensure that the expression is escaped correctly!"
             )
             raise LuceneFilterError(msg) from error
         except IllegalCharacterError as error:
             msg = (
                 f"{error} in '{escaped_string}'"
-                + f" - Ensure that the expression is escaped correctly!"
+                + " - Ensure that the expression is escaped correctly!"
             )
             raise LuceneFilterError(msg) from error
 
@@ -188,14 +188,14 @@ class LuceneFilter:
         """
         split_string = LuceneFilter.end_escaping_pattern.split(query_string)
         new_string = ""
-        for idx, part in enumerate([split for split in split_string if split]):
+        for part in [split for split in split_string if split]:
             escaped_quotation = LuceneFilter.end_escaping_pattern.search(part)
             if escaped_quotation and part.startswith("\\"):
-                for idx_2, char in enumerate(part):
+                for idx, char in enumerate(part):
                     if char == "\\":
                         new_string += char * 2
                     else:
-                        new_string += part[idx_2:]
+                        new_string += part[idx:]
                         break
             else:
                 new_string += part
