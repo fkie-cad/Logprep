@@ -81,7 +81,6 @@ require additional options.
     - ip_address
 """
 # pylint: enable=anomalous-backslash-in-string
-import math
 from typing import List, Union, Optional
 import re
 from itertools import chain, zip_longest
@@ -111,8 +110,9 @@ class LuceneFilterError(BaseException):
 class LuceneFilter:
     """A filter that allows using lucene query strings."""
 
-    find_escaping_pattern = re.compile(r'(?:\\)+"')
-    perform_escaping_pattern = re.compile(r'((?:\\)+"[\s\)]*(?:AND|OR|NOT|$))')
+    last_quotation_pattern = re.compile(r'((?:\\)+")$')
+    escaping_pattern = re.compile(r'(?:\\)+"')
+    end_escaping_pattern = re.compile(r'((?:\\)+"[\s\)]+(?:AND|OR|NOT|$))')
 
     @staticmethod
     def create(query_string: str, special_fields: dict = None) -> FilterExpression:
@@ -136,29 +136,75 @@ class LuceneFilter:
             Raises if lucene filter could not be built.
 
         """
-        query_string = LuceneFilter._add_lucene_escaping(query_string)
+        escaped_string = LuceneFilter._add_lucene_escaping(query_string)
 
         try:
-            tree = parser.parse(query_string)
+            tree = parser.parse(escaped_string)
             transformer = LuceneTransformer(tree, special_fields)
-        except (ParseSyntaxError, IllegalCharacterError) as error:
-            raise LuceneFilterError(error) from error
+        except ParseSyntaxError as error:
+            msg = (
+                f"{error} Expression: '{escaped_string}'"
+                + f" - Ensure that the expression is escaped correctly!"
+            )
+            raise LuceneFilterError(msg) from error
+        except IllegalCharacterError as error:
+            msg = (
+                f"{error} in '{escaped_string}'"
+                + f" - Ensure that the expression is escaped correctly!"
+            )
+            raise LuceneFilterError(msg) from error
 
         return transformer.build_filter()
 
     @staticmethod
-    def _add_lucene_escaping(query_string):
-        """Ignore all escaping and escape only double quotes so that lucene can be parsed."""
-        matches = LuceneFilter.find_escaping_pattern.findall(query_string)
+    def _add_lucene_escaping(string: str) -> str:
+        """Escape double quotes so that the string can be parsed by lucene."""
+
+        string = LuceneFilter._make_uneven_double_quotes_escaping(string)
+        string = LuceneFilter._escape_ends_of_expressions(string)
+        return string
+
+    @staticmethod
+    def _make_uneven_double_quotes_escaping(query_string: str) -> str:
+        """Escape double quotes in such a way that the escaping is always uneven.
+
+        It doubles all backslashes and adds one. This allows to revert the operation later on.
+        """
+        matches = LuceneFilter.escaping_pattern.findall(query_string)
         for idx, match in enumerate(matches):
-            length = len(match) - 1
-            if length > 1:
-                matches[idx] = "\\" + matches[idx]
-        split = LuceneFilter.find_escaping_pattern.split(query_string)
+            cnt_backslashes = len(match) - 1
+            if cnt_backslashes > 0:
+                matches[idx] = f'{2 * matches[idx][:-1]}\\"'
+        split = LuceneFilter.escaping_pattern.split(query_string)
         query_string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
-        query_string = LuceneFilter.perform_escaping_pattern.sub(r"\\\g<1>", query_string)
         return query_string
+
+    @staticmethod
+    def _escape_ends_of_expressions(query_string):
+        """Escape double quotes at the end of expressions so that it can be parsed by lucene.
+
+        This is necessary, since double quotes can delimit expressions in the lucene syntax.
+        """
+        split_string = LuceneFilter.end_escaping_pattern.split(query_string)
+        new_string = ""
+        for idx, part in enumerate([split for split in split_string if split]):
+            escaped_quotation = LuceneFilter.end_escaping_pattern.search(part)
+            if escaped_quotation and part.startswith("\\"):
+                for idx_2, char in enumerate(part):
+                    if char == "\\":
+                        new_string += char * 2
+                    else:
+                        new_string += part[idx_2:]
+                        break
+            else:
+                new_string += part
+        last_quotation = LuceneFilter.last_quotation_pattern.search(new_string)
+        if last_quotation:
+            cnt_backslashes = len(last_quotation.group()) - 1
+            new_end = "\\" * cnt_backslashes * 2 + '"'
+            new_string = new_string[: -(cnt_backslashes + 1)] + new_end
+        return new_string
 
 
 class LuceneTransformer:
@@ -289,25 +335,67 @@ class LuceneTransformer:
         return string
 
     @staticmethod
-    def _remove_lucene_escaping(string):
-        """Remove previously added lucene escaping so that double quotes will be
-        interpreted correctly by wildcard parser."""
-        matches = LuceneTransformer.find_unescaping_quote_pattern.findall(string)
-        if matches is None:
-            return string
+    def _remove_lucene_escaping(string: str) -> str:
+        """Remove previously added lucene escaping."""
+        string = LuceneTransformer._remove_escaping_from_end_of_expression(string)
+        string = LuceneTransformer._remove_uneven_double_quotes_escaping(string)
+        string = LuceneTransformer._remove_one_escaping_from_quotes(string)
+        return string
 
-        for idx, match in enumerate(matches):
-            length = len(match) - 1
-            matches[idx] = "\\" * math.ceil(length / 2) + '"'
+    @staticmethod
+    def _remove_escaping_from_end_of_expression(string: str) -> str:
+        """Remove previously escaping from ends of expressions.
 
-        split = LuceneTransformer.find_unescaping_quote_pattern.split(string)
-        string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
-
+        It halves the amount of all backslashes at the end of expressions.
+        This method should be called only on already parsed expressions.
+        """
         escaping_end = LuceneTransformer.find_unescaping_end_pattern.search(string)
         if escaping_end is None:
             return string
 
         backslashes_end_cnt = len(escaping_end.group())
         string = string[: escaping_end.start()] + "\\" * (backslashes_end_cnt // 2)
+
+        escaping_end = LuceneTransformer.find_unescaping_end_pattern.search(string)
+        if escaping_end:
+            new_escaping = "\\" * ((len(escaping_end.group()) - 1) // 2)
+            string = f"{string[:escaping_end.start()]}{new_escaping}"
+
+        return string
+
+    @staticmethod
+    def _remove_uneven_double_quotes_escaping(string: str) -> str:
+        """Remove previously added lucene escaping that made quotes uneven.
+
+        It removes one backslash and halves the remaining backslashes.
+        """
+        matches = LuceneTransformer.find_unescaping_quote_pattern.findall(string)
+        if matches is None:
+            return string
+
+        for idx, match in enumerate(matches):
+            cnt_backslashes = len(match) - 1
+            if cnt_backslashes >= 3:
+                matches[idx] = f'{matches[idx][:(cnt_backslashes - 2) // 2]}\\"'
+
+        split = LuceneTransformer.find_unescaping_quote_pattern.split(string)
+        string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
+
+        return string
+
+    @staticmethod
+    def _remove_one_escaping_from_quotes(string: str) -> str:
+        """Remove one backslash from quotes, since it is only used by lucene but not filters."""
+        matches = LuceneTransformer.find_unescaping_quote_pattern.findall(string)
+        if matches is None:
+            return string
+
+        for idx, match in enumerate(matches):
+            len_match = len(match) - 1
+            if len_match >= 1:
+                matches[idx] = matches[idx][1:]
+
+        split = LuceneTransformer.find_unescaping_quote_pattern.split(string)
+        string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
         return string
