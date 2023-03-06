@@ -10,6 +10,12 @@ from attrs import define, field, validators
 
 yaml = YAML(typ="safe", pure=True)
 
+BLACKLIST_VARIABLE_NAMES = [
+    "",
+    " ",
+    "LOGPREP_LIST",  # used by list_comparison processor
+]
+
 
 @define(kw_only=True)
 class Getter(ABC):
@@ -51,8 +57,10 @@ class Getter(ABC):
         used_env_vars = map(lambda x: x[1], found_variables)
         used_braced_env_vars = map(lambda x: x[2], found_variables)
         return [
-            var for var in {*used_env_vars, *used_braced_env_vars} if var
-        ]  # deduplicate and clean out whitespace
+            var
+            for var in {*used_env_vars, *used_braced_env_vars}
+            if var not in BLACKLIST_VARIABLE_NAMES
+        ]  # deduplicate and clean blacklisted values
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""

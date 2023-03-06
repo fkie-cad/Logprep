@@ -108,6 +108,14 @@ class TestGetterFactory:
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my ${not_a_token}"
 
+    def test_getter_ignores_list_comparison_logprep_list_variable(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${LOGPREP_LIST}")
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my ${LOGPREP_LIST}"
+        assert len(my_getter.missing_env_vars) == 0
+
     def test_getter_expands_environment_variables_in_yaml_content(self, tmp_path):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
