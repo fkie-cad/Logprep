@@ -16,6 +16,8 @@ class Getter(ABC):
     """Abstract base class describing the getter interface and providing of a factory method."""
 
     class EnvTemplate(Template):
+        """Template class for uppercase only template variables"""
+
         idpattern = r"(?a:[_A-Z][_A-Z0-9]*)"
         flags = re.VERBOSE
 
