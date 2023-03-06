@@ -10,7 +10,7 @@ from attrs import define, field, validators
 
 yaml = YAML(typ="safe", pure=True)
 
-BLACKLIST_VARIABLE_NAMES = [
+BLOCKLIST_VARIABLE_NAMES = [
     "",
     " ",
     "LOGPREP_LIST",  # used by list_comparison processor
@@ -59,7 +59,7 @@ class Getter(ABC):
         return [
             var
             for var in {*used_env_vars, *used_braced_env_vars}
-            if var not in BLACKLIST_VARIABLE_NAMES
+            if var not in BLOCKLIST_VARIABLE_NAMES
         ]  # deduplicate and clean blacklisted values
 
     def get_yaml(self) -> Union[Dict, List]:
