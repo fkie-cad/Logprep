@@ -61,6 +61,7 @@ def teardown_function():
     stop_logprep()
 
 
+@pytest.mark.filterwarnings("ignore: Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     output_path = tmp_path / "output.jsonl"
     config["output"] = {"testoutput": {"type": "jsonl_output", "output_file": str(output_path)}}
@@ -74,6 +75,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     assert "my message" in output_path.read_text()
 
 
+@pytest.mark.filterwarnings("ignore: Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
     config["process_count"] = 2
     output_path = tmp_path / "output.jsonl"
@@ -102,6 +104,7 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
     assert "my second message" in output_content
 
 
+@pytest.mark.filterwarnings("ignore: Unverified HTTPS request is being made to host '127.0.0.1'")
 def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
     config["process_count"] = 3
     output_path = tmp_path / "output.jsonl"

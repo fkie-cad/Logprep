@@ -48,7 +48,7 @@ class TestConfiguration:
             os.environ.pop("LOGPREP_INPUT")
 
     def assert_fails_when_replacing_key_with_value(self, key, value, expected_message):
-        config = Configuration(deepcopy(self.config))
+        config = Configuration.create_from_yaml(path_to_config)
 
         parent = config
         if not isinstance(key, str):
@@ -855,4 +855,8 @@ output:
             "LOGPREP_INPUT"
         ] = "input:\n    kafka:\n        type: confluentkafka_input\n        bootstrapservers:\n        - 172.21.0.5:9092\n        topic: consumer\n        group: cgroup3\n        auto_commit: true\n        session_timeout: 6000\n        offset_reset_policy: smallest\n        ssl:\n            cafile:\n            certfile:\n            keyfile:\n            password:\n            "
         config = Configuration.create_from_yaml(str(config_path))
-        config.verify(mock.MagicMock())
+        with pytest.raises(
+            InvalidConfigurationErrors,
+            match=r"Environment variables used, but not set: I_DO_NOT_EXIST",
+        ):
+            config.verify(mock.MagicMock())

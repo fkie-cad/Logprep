@@ -17,6 +17,7 @@ from logprep.factory_error import (
 )
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
+from logprep.abc.getter import Getter
 from logprep.util.helper import print_fcolor
 from logprep.util.json_handling import dump_config_as_file
 
@@ -97,13 +98,30 @@ class IncalidMetricsConfigurationError(InvalidConfigurationError):
         super().__init__(f"Invalid metrics configuration: {message}")
 
 
+class MissingEnvironmentError(InvalidConfigurationError):
+    """Raise if environment variables are missing"""
+
+    def __init__(self, message: str):
+        super().__init__(f"Environment variables used, but not set: {message}")
+
+
 class Configuration(dict):
     """Used to create and verify a configuration dict parsed from a YAML file."""
 
-    path: str
+    _getter: Getter
 
-    @staticmethod
-    def create_from_yaml(path: str) -> "Configuration":
+    @property
+    def path(self):
+        """returns the path of the configuration"""
+        return f"{self._getter.protocol}://{self._getter.target}"
+
+    @path.setter
+    def path(self, path):
+        """sets the path and getter"""
+        self._getter = GetterFactory.from_string(path)
+
+    @classmethod
+    def create_from_yaml(cls, path: str) -> "Configuration":
         """Create configuration from a YAML file.
 
         Parameters
@@ -119,16 +137,16 @@ class Configuration(dict):
         """
         config_getter = GetterFactory.from_string(path)
         try:
-            configuration = config_getter.get_json()
+            config_dict = config_getter.get_json()
         except ValueError:
             try:
-                configuration = config_getter.get_yaml()
+                config_dict = config_getter.get_yaml()
             except ScannerError as error:
                 print_fcolor(Fore.RED, f"Error parsing YAML file: {path}\n{error}")
                 sys.exit(1)
         config = Configuration()
-        config.path = f"{config_getter.protocol}://{config_getter.target}"
-        config.update(configuration)
+        config._getter = config_getter
+        config.update(config_dict)
         return config
 
     @staticmethod
@@ -213,6 +231,10 @@ class Configuration(dict):
     ) -> List[InvalidConfigurationError]:
         errors = []
         try:
+            self._verify_environment()
+        except MissingEnvironmentError as error:
+            errors.append(error)
+        try:
             self._verify_required_keys_exist()
         except InvalidConfigurationError as error:
             errors.append(error)
@@ -238,6 +260,13 @@ class Configuration(dict):
             except InvalidConfigurationError as error:
                 errors.append(error)
         return errors
+
+    def _verify_environment(self):
+        errors = []
+        for missing_var in self._getter.missing_env_vars:
+            errors.append(MissingEnvironmentError(missing_var))
+        if errors:
+            raise InvalidConfigurationErrors(errors)
 
     def _verify_required_keys_exist(self):
         required_keys = ["process_count", "timeout"]

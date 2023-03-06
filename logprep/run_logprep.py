@@ -28,7 +28,7 @@ from logprep.util.time_measurement import TimeMeasurement
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
 
-DEFAULT_LOCATION_CONFIG = "/etc/logprep/pipeline.yml"
+DEFAULT_LOCATION_CONFIG = "file:///etc/logprep/pipeline.yml"
 getLogger("filelock").setLevel(ERROR)
 getLogger("urllib3.connectionpool").setLevel(ERROR)
 getLogger("elasticsearch").setLevel(ERROR)
