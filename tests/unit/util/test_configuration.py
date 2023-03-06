@@ -48,7 +48,7 @@ class TestConfiguration:
             os.environ.pop("LOGPREP_INPUT")
 
     def assert_fails_when_replacing_key_with_value(self, key, value, expected_message):
-        config = Configuration(deepcopy(self.config))
+        config = Configuration.create_from_yaml(path_to_config)
 
         parent = config
         if not isinstance(key, str):
@@ -797,3 +797,66 @@ output:
         ] = "input:\n    kafka:\n        type: confluentkafka_input\n        bootstrapservers:\n        - 172.21.0.5:9092\n        topic: consumer\n        group: cgroup3\n        auto_commit: true\n        session_timeout: 6000\n        offset_reset_policy: smallest\n        ssl:\n            cafile:\n            certfile:\n            keyfile:\n            password:\n            "
         config = Configuration.create_from_yaml(str(config_path))
         config.verify(mock.MagicMock())
+
+    def test_config_gets_enriched_by_environment_with_non_existent_variable(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+version: $LOGPREP_VERSION
+process_count: $LOGPREP_PROCESS_COUNT
+timeout: 0.1
+logger:
+    level: $LOGPREP_LOG_LEVEL
+$I_DO_NOT_EXIST
+$LOGPREP_PIPELINE
+$LOGPREP_INPUT
+$LOGPREP_OUTPUT
+"""
+        )
+        os.environ["LOGPREP_VERSION"] = "1"
+        os.environ["LOGPREP_PROCESS_COUNT"] = "1"
+        os.environ["LOGPREP_LOG_LEVEL"] = "DEBUG"
+        os.environ[
+            "LOGPREP_PIPELINE"
+        ] = """
+pipeline:
+    - labelername:
+        type: labeler
+        schema: quickstart/exampledata/rules/labeler/schema.json
+        include_parent_labels: true
+        specific_rules:
+            - quickstart/exampledata/rules/labeler/specific
+        generic_rules:
+            - quickstart/exampledata/rules/labeler/generic
+"""
+        os.environ[
+            "LOGPREP_OUTPUT"
+        ] = """
+output:
+    kafka:
+        type: confluentkafka_output
+        bootstrapservers:
+        - 172.21.0.5:9092
+        topic: producer
+        error_topic: producer_error
+        ack_policy: all
+        compression: none
+        maximum_backlog: 10000
+        linger_duration: 0
+        flush_timeout: 30
+        send_timeout: 2
+        ssl:
+            cafile:
+            certfile:
+            keyfile:
+            password:
+"""
+        os.environ[
+            "LOGPREP_INPUT"
+        ] = "input:\n    kafka:\n        type: confluentkafka_input\n        bootstrapservers:\n        - 172.21.0.5:9092\n        topic: consumer\n        group: cgroup3\n        auto_commit: true\n        session_timeout: 6000\n        offset_reset_policy: smallest\n        ssl:\n            cafile:\n            certfile:\n            keyfile:\n            password:\n            "
+        config = Configuration.create_from_yaml(str(config_path))
+        with pytest.raises(
+            InvalidConfigurationErrors,
+            match=r"Environment variable\(s\) used, but not set: I_DO_NOT_EXIST",
+        ):
+            config.verify(mock.MagicMock())

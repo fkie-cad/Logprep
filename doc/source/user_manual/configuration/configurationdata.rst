@@ -21,8 +21,10 @@ They contain settings for each separate processor and connector.
 Details for configuring connectors are described in :ref:`output` and :ref:`input` and for processors in :ref:`processors` .
 General information about the configuration of the pipeline can be found in :ref:`pipeline_config` .
 
-It is possible to use environment variables in all configuration and rules files in all places. The following config file
-will be valid by setting the given environment variables:
+It is possible to use environment variables in all configuration and rules files in all places.
+Environment variables have to be set in uppercase. Lowercase variables are ignored.
+
+The following config file will be valid by setting the given environment variables:
 
 ..  code-block:: yaml
     :caption: pipeline.yml config file

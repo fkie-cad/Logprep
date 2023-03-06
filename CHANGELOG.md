@@ -16,6 +16,11 @@
 
 * Bump `attrs` to `>=22.2.0` and delete redundant `min_len_validator`
 
+### Bugfix
+
+* fixes a bug that breaks templating config and rule files with environment variables if one or more
+variables are not set in environment
+
 ## v5.0.1
 
 ### Breaking

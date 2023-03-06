@@ -1,6 +1,7 @@
 """Module for getter interface"""
 from abc import ABC, abstractmethod
 import os
+import re
 from string import Template
 import json
 from typing import Dict, List, Union
@@ -14,19 +15,44 @@ yaml = YAML(typ="safe", pure=True)
 class Getter(ABC):
     """Abstract base class describing the getter interface and providing of a factory method."""
 
+    class EnvTemplate(Template):
+        """Template class for uppercase only template variables"""
+
+        idpattern = r"(?a:[_A-Z][_A-Z0-9]*)"
+        flags = re.VERBOSE
+
     protocol: str = field(validator=validators.instance_of(str))
     """Indicates the protocol for the factory to chose a matching getter."""
     target: str = field(validator=validators.instance_of(str))
     """The target which holds the content to return by get method."""
 
+    missing_env_vars: list = field(
+        validator=[
+            validators.instance_of(list),
+            validators.deep_iterable(member_validator=validators.instance_of(str)),
+        ],
+        factory=list,
+    )
+    """used variables in content but not set in environment"""
+
     def get(self) -> str:
-        """calls the get_raw method and returns the decoded content"""
+        """calls the get_raw method, decodes the bytes to string and
+        enriches by environment variables.
+        """
         content = self.get_raw().decode("utf8")
-        try:
-            content = Template(content).substitute(**os.environ)
-        except (KeyError, ValueError):
-            pass
-        return content
+        template = self.EnvTemplate(content)
+        used_env_vars = self._get_used_env_vars(content, template)
+        self.missing_env_vars = [env_var for env_var in used_env_vars if env_var not in os.environ]
+        defaults_for_missing = {missing_key: "" for missing_key in self.missing_env_vars}
+        return template.safe_substitute({**os.environ, **defaults_for_missing})
+
+    def _get_used_env_vars(self, content, template):
+        found_variables = template.pattern.findall(content)
+        used_env_vars = map(lambda x: x[1], found_variables)
+        used_braced_env_vars = map(lambda x: x[2], found_variables)
+        return [
+            var for var in {*used_env_vars, *used_braced_env_vars} if var
+        ]  # deduplicate and clean out whitespace
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""
