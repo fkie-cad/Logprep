@@ -299,7 +299,7 @@ class Pipeline:
         except FatalOutputError as error:
             self._logger.error(f"Output {self._output.describe()} failed: {error}")
             self._output.metrics.number_of_errors += 1
-            raise error
+            self.stop()
         if hasattr(self._input, "server"):
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
@@ -318,13 +318,13 @@ class Pipeline:
 
     def run(self) -> None:
         """Start processing processors in the Pipeline."""
+        self._enable_iteration()
         assert self._input, "Pipeline should not be run without input connector"
         assert self._output, "Pipeline should not be run without output connector"
         with self._lock:
             with warnings.catch_warnings():
                 warnings.simplefilter("default")
                 self._setup()
-        self._enable_iteration()
         self._logger.debug(f"Start iterating ({self._process_name})")
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
