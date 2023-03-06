@@ -262,11 +262,9 @@ class Configuration(dict):
         return errors
 
     def _verify_environment(self):
-        errors = []
-        for missing_var in self._getter.missing_env_vars:
-            errors.append(MissingEnvironmentError(missing_var))
-        if errors:
-            raise InvalidConfigurationErrors(errors)
+        if self._getter.missing_env_vars:
+            missing_env_error = MissingEnvironmentError(", ".join(self._getter.missing_env_vars))
+            raise InvalidConfigurationErrors([missing_env_error])
 
     def _verify_required_keys_exist(self):
         required_keys = ["process_count", "timeout"]
