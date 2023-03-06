@@ -34,6 +34,7 @@ import logging
 from functools import cached_property
 
 import opensearchpy as opensearch
+from opensearchpy import AuthenticationException
 
 from logprep.abc.output import FatalOutputError, Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
@@ -147,3 +148,9 @@ class OpensearchOutput(ElasticsearchOutput):
 
         """
         raise FatalOutputError(f"{error.args[1]} in document {error.args[0]}")
+
+    def setup(self):
+        try:
+            super().setup()
+        except AuthenticationException as error:
+            raise FatalOutputError(error) from error

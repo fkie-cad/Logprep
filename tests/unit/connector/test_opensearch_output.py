@@ -248,3 +248,9 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_handle_serialization_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
             self.object._handle_serialization_error(mock.MagicMock())
+
+    def test_setup_raises_fatal_output_error_if_unauthenticated(self):
+        self.object._search_context.info = mock.MagicMock()
+        self.object._search_context.info.side_effect = opensearchpy.AuthenticationException
+        with pytest.raises(FatalOutputError):
+            self.object.setup()
