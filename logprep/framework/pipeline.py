@@ -299,7 +299,7 @@ class Pipeline:
         except FatalOutputError as error:
             self._logger.error(f"Output {self._output.describe()} failed: {error}")
             self._output.metrics.number_of_errors += 1
-            self.stop()
+            raise error
         if hasattr(self._input, "server"):
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
