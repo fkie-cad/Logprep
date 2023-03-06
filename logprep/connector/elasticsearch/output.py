@@ -360,3 +360,8 @@ class ElasticsearchOutput(Output):
             for date_format_match in date_format_matches:
                 formatted_date = now.format(date_format_match[2:-1])
                 document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])
+
+    def setup(self):
+        super().setup()
+        info = self._search_context.info()
+        assert info
