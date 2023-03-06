@@ -294,7 +294,12 @@ class Pipeline:
         )
         self._input.pipeline_index = self.pipeline_index
         self._input.setup()
-        self._output.setup()
+        try:
+            self._output.setup()
+        except FatalOutputError as error:
+            self._logger.error(f"Output {self._output.describe()} failed: {error}")
+            self._output.metrics.number_of_errors += 1
+            self.stop()
         if hasattr(self._input, "server"):
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
