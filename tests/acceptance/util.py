@@ -176,12 +176,12 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
     return config_yml
 
 
-def start_logprep(config_path: str) -> subprocess.Popen:
-    environment = {"PYTHONPATH": "."}
+def start_logprep(config_path: str, env: dict = {}) -> subprocess.Popen:
+    env.update({"PYTHONPATH": "."})
     return subprocess.Popen(  # nosemgrep
         f"{sys.executable} logprep/run_logprep.py {config_path}",
         shell=True,
-        env=environment,
+        env=env,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
