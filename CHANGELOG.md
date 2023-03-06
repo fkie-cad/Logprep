@@ -18,8 +18,8 @@
 
 ### Bugfix
 
-* fixes a bug that breaks templating config and rule files with environment variables if one or more
-variables are not set in environment
+* fixes a bug that breaks templating config and rule files with environment variables if one or more variables are not set in environment
+* fixes a bug for `opensearch_output` and `elasticsearch_output` not handling authentication issues
 
 ## v5.0.1
 
