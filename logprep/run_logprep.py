@@ -170,7 +170,8 @@ def _verify_configuration(args, config, logger):
             config.verify_pipeline_only(logger)
         else:
             config.verify(logger)
-    except InvalidConfigurationError:
+    except InvalidConfigurationError as error:
+        logger.critical(error)
         sys.exit(1)
     except BaseException as error:  # pylint: disable=broad-except
         logger.exception(error)
