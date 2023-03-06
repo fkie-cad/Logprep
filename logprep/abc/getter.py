@@ -33,7 +33,7 @@ class Getter(ABC):
         ],
         factory=list,
     )
-    """used variables in content but not setted in environment"""
+    """used variables in content but not set in environment"""
 
     def get(self) -> str:
         """calls the get_raw method, decodes the bytes to string and
@@ -47,10 +47,11 @@ class Getter(ABC):
         return template.safe_substitute({**os.environ, **defaults_for_missing})
 
     def _get_used_env_vars(self, content, template):
-        used_env_vars = map(lambda x: x[1], template.pattern.findall(content))
-        used_braced_env_vars = map(lambda x: x[2], template.pattern.findall(content))
+        found_variables = template.pattern.findall(content)
+        used_env_vars = map(lambda x: x[1], found_variables)
+        used_braced_env_vars = map(lambda x: x[2], found_variables)
         return [
-            x for x in {*used_env_vars, *used_braced_env_vars} if x
+            var for var in {*used_env_vars, *used_braced_env_vars} if var
         ]  # deduplicate and clean out whitespace
 
     def get_yaml(self) -> Union[Dict, List]:

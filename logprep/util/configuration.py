@@ -102,7 +102,7 @@ class MissingEnvironmentError(InvalidConfigurationError):
     """Raise if environment variables are missing"""
 
     def __init__(self, message: str):
-        super().__init__(f"Environment variables used, but not set: {message}")
+        super().__init__(f"Environment variable(s) used, but not set: {message}")
 
 
 class Configuration(dict):

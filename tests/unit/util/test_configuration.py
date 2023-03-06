@@ -857,6 +857,6 @@ output:
         config = Configuration.create_from_yaml(str(config_path))
         with pytest.raises(
             InvalidConfigurationErrors,
-            match=r"Environment variables used, but not set: I_DO_NOT_EXIST",
+            match=r"Environment variable\(s\) used, but not set: I_DO_NOT_EXIST",
         ):
             config.verify(mock.MagicMock())
