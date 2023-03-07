@@ -428,7 +428,7 @@ class TestPipeline(ConfigurationForTests):
     def test_processor_fatal_output_error_in_setup_is_logged_pipeline_is_rebuilt(
         self, mock_error, _
     ):
-        self.pipeline._output = mock.MagicMock()
+        self.pipeline._output = {"dummy": mock.MagicMock()}
         self.pipeline._output["dummy"].setup.side_effect = FatalOutputError
         self.pipeline.run()
         mock_error.assert_called()
@@ -707,7 +707,7 @@ class TestPipelineWithActualInput:
         }
         pipeline = Pipeline(config=self.config)
         assert pipeline._output is None
-        event, extra_outputs = pipeline.process_pipeline()
+        event, _ = pipeline.process_pipeline()
         assert event["hmac"]["hmac"] == "error"
 
     def test_pipeline_run_raises_assertion_when_run_without_input(self):

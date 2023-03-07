@@ -305,8 +305,8 @@ class Pipeline:
             try:
                 output.setup()
             except FatalOutputError as error:
-                self._logger.error(f"Output {self._output.describe()} failed: {error}")
-                self._output.metrics.number_of_errors += 1
+                self._logger.error(f"Output {output.describe()} failed: {error}")
+                output.metrics.number_of_errors += 1
                 self.stop()
         if hasattr(self._input, "server"):
             while self._input.server.config.port in self._used_server_ports:
@@ -389,7 +389,7 @@ class Pipeline:
             event, non_critical_error_msg = self._input.get_next(
                 self._logprep_config.get("timeout")
             )
-            if non_critical_error_msg:
+            if non_critical_error_msg and self._output:
                 for _, output in self._output.items():
                     if output.default:
                         output.store_failed(non_critical_error_msg, event, None)

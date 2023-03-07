@@ -104,7 +104,7 @@ class TestAutoRuleTester:
                     "expected_output": {"winlog": {"event_data": {"IpAddress": "<IGNORE_VALUE>"}}},
                     "expected_extra_output": [
                         {
-                            "pseudonyms": {
+                            "({'kafka_output': 'pseudonyms'},)": {
                                 "pseudonym": "<IGNORE_VALUE>",
                                 "origin": "<IGNORE_VALUE>",
                             }
@@ -396,9 +396,14 @@ class TestAutoRuleTester:
                 "winlog": {"event_id": "2222", "event_data": {"IpAddress": "<IGNORE_VALUE>"}},
             },
             "expected_extra_output": [
-                {"test_specific_topic": {"field1": "field 1 value"}},
-                {"test_specific_topic": {"message": "something"}},
-                {"pseudonyms": {"origin": "<IGNORE_VALUE>", "pseudonym": "<IGNORE_VALUE>"}},
+                {"({'kafka': 'topic'},)": {"field1": "field 1 value"}},
+                {"({'kafka': 'topic'},)": {"message": "something"}},
+                {
+                    "({'kafka_output': 'pseudonyms'},)": {
+                        "origin": "<IGNORE_VALUE>",
+                        "pseudonym": "<IGNORE_VALUE>",
+                    }
+                },
             ],
         }
         expected_prints = [

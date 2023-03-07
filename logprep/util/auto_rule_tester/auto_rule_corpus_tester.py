@@ -199,10 +199,10 @@ class RuleCorpusTester:
             if isinstance(extra_output, tuple):
                 documents, target = extra_output
                 for document in documents:
-                    reformatted_extra_outputs.append({target: document})
+                    reformatted_extra_outputs.append({str(target): document})
             else:
                 for output in extra_output:
-                    reformatted_extra_outputs.append({output[1]: output[0][0]})
+                    reformatted_extra_outputs.append({str(output[1]): output[0][0]})
         return reformatted_extra_outputs
 
     def _compare_logprep_outputs(self, test_case_id, logprep_output):
