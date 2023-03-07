@@ -116,7 +116,7 @@ class TestGetterFactory:
         assert my_getter.get() == "this is my mytoken, and this is my ${LOGPREP_LIST}"
         assert len(my_getter.missing_env_vars) == 0
 
-    def test_getter_ignores_list_comparison_logprep_list_variable_if_setted(self, tmp_path):
+    def test_getter_ignores_list_comparison_logprep_list_variable_if_set(self, tmp_path):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         os.environ.update({"LOGPREP_LIST": "foo"})
         testfile = tmp_path / "test_getter.json"
