@@ -60,7 +60,7 @@ class Getter(ABC):
             var
             for var in {*used_env_vars, *used_braced_env_vars}
             if var not in BLOCKLIST_VARIABLE_NAMES
-        ]  # deduplicate and clean blacklisted values
+        ]  # deduplicate and clean blocklisted values
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""
