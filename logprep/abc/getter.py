@@ -1,5 +1,6 @@
 """Module for getter interface"""
 from abc import ABC, abstractmethod
+from copy import deepcopy
 import os
 import re
 from string import Template
@@ -9,6 +10,12 @@ from ruamel.yaml import YAML
 from attrs import define, field, validators
 
 yaml = YAML(typ="safe", pure=True)
+
+BLOCKLIST_VARIABLE_NAMES = [
+    "",
+    " ",
+    "LOGPREP_LIST",  # used by list_comparison processor
+]
 
 
 @define(kw_only=True)
@@ -41,18 +48,28 @@ class Getter(ABC):
         """
         content = self.get_raw().decode("utf8")
         template = self.EnvTemplate(content)
+        kwargs = self._get_kwargs(template, content)
+        return template.safe_substitute(**kwargs)
+
+    def _get_kwargs(self, template, content):
         used_env_vars = self._get_used_env_vars(content, template)
         self.missing_env_vars = [env_var for env_var in used_env_vars if env_var not in os.environ]
         defaults_for_missing = {missing_key: "" for missing_key in self.missing_env_vars}
-        return template.safe_substitute({**os.environ, **defaults_for_missing})
+        kwargs = deepcopy(os.environ)
+        kwargs |= defaults_for_missing
+        return dict(filter(lambda item: self._not_in_blocklist(item[0]), kwargs.items()))
 
     def _get_used_env_vars(self, content, template):
-        found_variables = template.pattern.findall(content)
-        used_env_vars = map(lambda x: x[1], found_variables)
+        found_variables = template.pattern.findall(
+            content
+        )  # returns a list of tuples in form (escaped, named, braced, invalid)
+        used_named_env_vars = map(lambda x: x[1], found_variables)
         used_braced_env_vars = map(lambda x: x[2], found_variables)
-        return [
-            var for var in {*used_env_vars, *used_braced_env_vars} if var
-        ]  # deduplicate and clean out whitespace
+        return filter(self._not_in_blocklist, {*used_named_env_vars, *used_braced_env_vars})
+
+    @staticmethod
+    def _not_in_blocklist(var):
+        return var not in BLOCKLIST_VARIABLE_NAMES
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""

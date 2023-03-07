@@ -414,6 +414,16 @@ class TestPipeline(ConfigurationForTests):
         assert re.search("Output .* failed:", mock_error.call_args[0][0]), "error message is logged"
         mock_shut_down.assert_called()
 
+    @mock.patch("logging.Logger.error")
+    def test_processor_fatal_output_error_in_setup_is_logged_pipeline_is_rebuilt(
+        self, mock_error, _
+    ):
+        self.pipeline._output = mock.MagicMock()
+        self.pipeline._output.setup.side_effect = FatalOutputError
+        self.pipeline.run()
+        mock_error.assert_called()
+        assert re.search("Output .* failed:", mock_error.call_args[0][0]), "error message is logged"
+
     def test_extra_data_tuple_is_passed_to_store_custom(self, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
