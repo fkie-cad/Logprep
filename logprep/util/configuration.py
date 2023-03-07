@@ -1,5 +1,6 @@
 """This module is used to create the configuration for the runner."""
 
+from copy import deepcopy
 import re
 import sys
 from logging import Logger
@@ -8,6 +9,7 @@ from typing import List
 
 from ruamel.yaml.scanner import ScannerError
 from colorama import Fore
+from logprep.abc.processor import Processor
 
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError
@@ -306,13 +308,17 @@ class Configuration(dict):
 
     def _verify_output(self, logger):
         try:
-            _ = Factory.create(self["output"], logger)
+            output_configs = self.get("output")
+            output_names = list(output_configs.keys())
+            for output_name in output_names:
+                output_config = output_configs.get(output_name)
+                Factory.create({output_name: output_config}, logger)
         except FactoryError as error:
             raise InvalidOutputConnectorConfigurationError(str(error)) from error
         except TypeError as error:
             msg = self._format_type_error(error)
             raise InvalidOutputConnectorConfigurationError(msg) from error
-        except KeyError as error:
+        except (AttributeError, KeyError) as error:
             raise RequiredConfigurationKeyMissingError("output") from error
 
     @staticmethod
@@ -338,8 +344,9 @@ class Configuration(dict):
 
         errors = []
         for processor_config in self["pipeline"]:
+            processor = None
             try:
-                Factory.create(processor_config, logger)
+                processor = Factory.create(processor_config, logger)
             except (FactoryInvalidConfigurationError, UnknownComponentTypeError) as error:
                 errors.append(
                     InvalidProcessorConfigurationError(
@@ -361,8 +368,44 @@ class Configuration(dict):
                             f"'{list(processor_config.keys())[0]}', because it has invalid rules."
                         )
                     )
+            try:
+                if processor:
+                    self._verify_rules_outputs(processor)
+            except InvalidRuleDefinitionError as error:
+                errors.append(error)
+            try:
+                self._verify_processor_outputs(processor_config)
+            except InvalidProcessorConfigurationError as error:
+                errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
+
+    def _verify_rules_outputs(self, processor: Processor):
+        if not hasattr(processor.rule_class, "outputs"):
+            return
+        for rule in processor.rules:
+            for output in rule.outputs:
+                for output_name, _ in output.items():
+                    if output_name not in self["output"]:
+                        raise InvalidRuleDefinitionError(
+                            f"{processor.describe()}: output"
+                            f" '{output_name}' does not exist in logprep outputs"
+                        )
+
+    def _verify_processor_outputs(self, processor_config):
+        processor_config = deepcopy(processor_config)
+        processor_name, processor_config = processor_config.popitem()
+        if "outputs" not in processor_config:
+            return
+        if "output" not in self:
+            return
+        outputs = processor_config.get("outputs")
+        for output in outputs:
+            for output_name, _ in output.items():
+                if output_name not in self["output"]:
+                    raise InvalidProcessorConfigurationError(
+                        f"{processor_name}: output '{output_name}' does not exist in logprep outputs"
+                    )
 
     def _verify_metrics_config(self):
         if self.get("metrics"):

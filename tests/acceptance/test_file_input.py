@@ -51,14 +51,7 @@ def config_fixture():
                 "generic_rules": ["tests/testdata/acceptance/normalizer/rules_static/generic"],
                 "regex_mapping": "tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml",
             }
-        },
-        {
-            "selective_extractor": {
-                "type": "selective_extractor",
-                "specific_rules": ["tests/testdata/acceptance/selective_extractor/rules/specific"],
-                "generic_rules": ["tests/testdata/acceptance/selective_extractor/rules/generic"],
-            }
-        },
+        }
     ]
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config["input"] = {

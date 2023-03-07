@@ -236,7 +236,7 @@ class BaseProcessorTestCase(ABC):
         generic_rules = self.generic_rules
         specific_rules = self.specific_rules
         all_rules_count = len(generic_rules) + len(specific_rules)
-        object_rules_count = len(self.object._rules)
+        object_rules_count = len(self.object.rules)
         assert all_rules_count == object_rules_count
 
     def test_process_strategy_returns_strategy_object(self):

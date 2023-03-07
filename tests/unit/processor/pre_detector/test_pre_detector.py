@@ -11,7 +11,7 @@ class TestPreDetector(BaseProcessorTestCase):
         "type": "pre_detector",
         "generic_rules": ["tests/testdata/unit/pre_detector/rules/generic"],
         "specific_rules": ["tests/testdata/unit/pre_detector/rules/specific"],
-        "pre_detector_topic": "pre_detector_alerts",
+        "outputs": [{"kafka": "pre_detector_alerts"}],
         "alert_ip_list_path": "tests/testdata/unit/pre_detector/alert_ips.yml",
     }
 
@@ -33,7 +33,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
-            "pre_detector_alerts",
+            ({"kafka": "pre_detector_alerts"},),
         )
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
@@ -60,7 +60,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
-            "pre_detector_alerts",
+            ({"kafka": "pre_detector_alerts"},),
         )
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
@@ -83,7 +83,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
-            "pre_detector_alerts",
+            ({"kafka": "pre_detector_alerts"},),
         )
 
         document["pre_detection_id"] = "11fdfc1f-8e00-476e-b88f-753d92af989c"
@@ -111,7 +111,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     'message:"test2*xyz"))',
                 }
             ],
-            "pre_detector_alerts",
+            ({"kafka": "pre_detector_alerts"},),
         )
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
@@ -137,7 +137,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     'message:"test2?xyz"))',
                 }
             ],
-            "pre_detector_alerts",
+            ({"kafka": "pre_detector_alerts"},),
         )
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
@@ -169,7 +169,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "title": "RULE_TWO",
                 },
             ],
-            "pre_detector_alerts",
+            ({"kafka": "pre_detector_alerts"},),
         )
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
@@ -258,7 +258,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "rule_filter": 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))',  # pylint: disable=line-too-long
                 }
             ],
-            "pre_detector_alerts",
+            ({"kafka": "pre_detector_alerts"},),
         )
         detection_results = self.object.process(document)
         self._assert_equality_of_results(
@@ -281,7 +281,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "rule_filter": 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))',  # pylint: disable=line-too-long
                 }
             ],
-            "pre_detector_alerts",
+            ({"kafka": "pre_detector_alerts"},),
         )
         detection_results = self.object.process(document)
         self._assert_equality_of_results(

@@ -1,8 +1,12 @@
 ## Upcoming Changes
 
-* Remove rules deprecations
 
 ## next release
+
+## Breaking
+
+* Remove rules deprecations introduced in `v4.0.0`
+* changes rule language of `selective_extractor`, `pseudonymizer`, `pre_detector` to support multiple outputs
 
 ### Features
 
@@ -11,6 +15,7 @@
 * Allow running the `Pipeline` in python without input/output connectors
 * Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
 * Add shorthand for converting datatypes to `dissector` dissect pattern language
+* Add support for multiple output connectors
 
 ### Improvements
 
@@ -20,6 +25,10 @@
 
 * fixes a bug that breaks templating config and rule files with environment variables if one or more variables are not set in environment
 * fixes a bug for `opensearch_output` and `elasticsearch_output` not handling authentication issues
+
+### Improvements
+
+* reimplements the `selective_extractor`
 
 ## v5.0.1
 

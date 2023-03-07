@@ -23,40 +23,41 @@ Example
 """
 
 from logging import Logger
-from typing import List
+from typing import List, Tuple
 
-from logprep.abc.processor import Processor
+from logprep.processor.field_manager.processor import FieldManager
 
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import add_field_to, get_source_fields_dict
 
 
-class SelectiveExtractor(Processor):
+class SelectiveExtractor(FieldManager):
     """Processor used to selectively extract fields from log events."""
 
-    __slots__ = ["_filtered_events"]
+    __slots__ = ("_extra_data",)
 
-    _filtered_events: List[tuple]
+    _extra_data: List[Tuple[List, str, str]]
+    """has to be a list of tuples with a List of event, target_output, target_topic"""
 
     rule_class = SelectiveExtractorRule
 
     def __init__(
         self,
         name: str,
-        configuration: Processor.Config,
+        configuration: FieldManager.Config,
         logger: Logger,
     ):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self._filtered_events = []
+        self._extra_data = []
 
-    def process(self, event: dict) -> tuple:
-        self._filtered_events = []
+    def process(self, event: dict) -> List[Tuple[List, str, str]]:
+        self._extra_data = []
         super().process(event)
-        if self._filtered_events:
-            return self._filtered_events
+        if self._extra_data:
+            return self._extra_data
         return None
 
-    def _apply_rules(self, event, rule):
+    def _apply_rules(self, event: dict, rule: SelectiveExtractorRule):
         """
         Generates a filtered event based on the incoming event and the configured
         extraction_fields list in processor configuration or from rule.
@@ -71,13 +72,14 @@ class SelectiveExtractor(Processor):
             The rule to apply
 
         """
-        # filtered events has to be a tuple of (events, target)
-        filtered_event = {}
-
-        for field in rule.extracted_field_list:
-            field_value = get_dotted_field_value(event, field)
-            if field_value is not None:
-                add_field_to(filtered_event, field, field_value)
-
-        if filtered_event:
-            self._filtered_events.append(([filtered_event], rule.target_topic))
+        flattened_fields = get_source_fields_dict(event, rule)
+        flattened_fields = {
+            dotted_field: content
+            for dotted_field, content in flattened_fields.items()
+            if content is not None
+        }
+        if flattened_fields:
+            filtered_event = {}
+            for field, content in flattened_fields.items():
+                add_field_to(filtered_event, field, content)
+            self._extra_data.append(([filtered_event], rule.outputs))

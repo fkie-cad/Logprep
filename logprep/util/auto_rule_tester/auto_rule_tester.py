@@ -316,7 +316,7 @@ class AutoRuleTester:
     @staticmethod
     def _clear_rules(processor: "Processor"):
         if hasattr(processor, "_rules"):
-            processor._rules.clear()  # pylint: disable=protected-access
+            processor.rules.clear()
 
     @staticmethod
     def _reset_trees(processor: "Processor"):
@@ -400,7 +400,7 @@ class AutoRuleTester:
 
     def _run_custom_tests(self, processor, rule_test):
         results_for_all_rules = processor.test_rules()
-        results = results_for_all_rules.get(processor._rules[0].__repr__(), [])
+        results = results_for_all_rules.get(processor.rules[0].__repr__(), [])
         if not results:
             self._missing_custom_tests.append(rule_test["file"])
         else:
