@@ -175,7 +175,12 @@ def _setup_metrics_and_time_measurement(args, config, logger):
     logger.debug(f"Config path: {args.config}")
 
 
-def _validate_rules(args, logger):
+def _validate_rules(args, config: Configuration, logger: Logger):
+    try:
+        config.verify_pipeline_only(logger)
+    except InvalidConfigurationError as error:
+        logger.critical(error)
+        sys.exit(1)
     type_rule_map = get_processor_type_and_rule_class()
     rules_valid = []
     for processor_type, rule_class in type_rule_map.items():
@@ -200,7 +205,7 @@ def main():
     logger = _setup_logger(args, config)
 
     if args.validate_rules or args.auto_test:
-        _validate_rules(args, logger)
+        _validate_rules(args, config, logger)
     _setup_metrics_and_time_measurement(args, config, logger)
 
     if args.auto_test:
