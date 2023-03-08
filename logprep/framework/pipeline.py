@@ -123,7 +123,7 @@ class Pipeline:
 
         input: Connector.ConnectorMetrics
         """Input metrics"""
-        output: tuple[Connector.ConnectorMetrics]
+        output: List[Connector.ConnectorMetrics]
         """Output metrics"""
         pipeline: List["Processor.ProcessorMetrics"] = attrs.field(factory=list)
         """Pipeline containing the metrics of all set processors"""
@@ -240,7 +240,7 @@ class Pipeline:
             return None
         return self.PipelineMetrics(
             input=self._input.metrics,
-            output={output: self._output.get(output).metrics for output in self._output},
+            output=[self._output.get(output).metrics for output in self._output],
             labels=self._metric_labels,
         )
 
