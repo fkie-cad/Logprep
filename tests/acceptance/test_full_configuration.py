@@ -1,6 +1,13 @@
 # pylint: disable=missing-docstring
-from pathlib import Path
+import os
 import re
+import tempfile
+import time
+from pathlib import Path
+
+import requests
+
+from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import (
     get_full_pipeline,
     get_default_logprep_config,
@@ -9,7 +16,6 @@ from tests.acceptance.util import (
     convert_to_http_config,
     HTTPServerForTesting,
 )
-from logprep.util.json_handling import dump_config_as_file
 
 
 def teardown_function():
@@ -108,3 +114,75 @@ output:
             if re.search("Startup complete", output):
                 break
             output = proc.stdout.readline().decode("utf8")
+
+
+def test_logprep_exposes_prometheus_metrics(tmp_path):
+    temp_dir = tempfile.gettempdir()
+    input_file_path = Path(os.path.join(temp_dir, "input.txt"))
+    input_file_path.touch()
+    pipeline = get_full_pipeline()
+    config = get_default_logprep_config(pipeline, with_hmac=False)
+    config |= {
+        "metrics": {
+            "enabled": True,
+            "period": 1,
+            "cumulative": False,
+            "aggregate_processes": False,
+            "measure_time": {"enabled": True, "append_to_event": False},
+            "targets": [{"prometheus": {"port": 8000}}],
+        },
+        "input": {
+            "fileinput": {
+                "type": "file_input",
+                "logfile_path": str(input_file_path),
+                "start": "begin",
+                "interval": 1,
+                "watch_file": True,
+            }
+        },
+        "output": {
+            "kafka": {
+                "type": "console_output",
+            }
+        },
+    }
+    config_path = str(tmp_path / "generated_config.yml")
+    dump_config_as_file(config_path, config)
+    proc = start_logprep(config_path, env={"PROMETHEUS_MULTIPROC_DIR": tmp_path})
+    output = proc.stdout.readline().decode("utf8")
+    while True:
+        if re.search("Startup complete", output):
+            break
+        output = proc.stdout.readline().decode("utf8")
+    input_file_path.write_text("test event\n")
+    metrics = ""
+    while "logprep_" not in metrics:
+        metrics = requests.get("http://127.0.0.1:8000", timeout=0.1).text
+    time.sleep(0.2)
+    metrics = requests.get("http://127.0.0.1:8000", timeout=0.1).text
+    proc.kill()
+    metric_names = [
+        "logprep_connector_number_of_processed_events",
+        "logprep_connector_mean_processing_time_per_event",
+        "logprep_connector_number_of_warnings",
+        "logprep_connector_number_of_errors",
+        "logprep_processor_number_of_processed_events",
+        "logprep_processor_mean_processing_time_per_event",
+        "logprep_processor_number_of_warnings",
+        "logprep_processor_number_of_errors",
+        "logprep_number_of_rules",
+        "logprep_number_of_matches",
+        "logprep_mean_processing_time",
+        "logprep_processor_total_urls",
+        "logprep_processor_resolved_new",
+        "logprep_processor_resolved_cached",
+        "logprep_processor_timeouts",
+        "logprep_processor_pseudonymized_urls",
+        "logprep_pipeline_kafka_offset",
+        "logprep_pipeline_mean_processing_time_per_event",
+        "logprep_pipeline_number_of_processed_events",
+        "logprep_pipeline_number_of_warnings",
+        "logprep_pipeline_number_of_errors",
+    ]
+    for metric_name in metric_names:
+        assert metric_name in metrics, metric_name
