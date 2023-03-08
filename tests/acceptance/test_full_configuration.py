@@ -157,9 +157,13 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     input_file_path.write_text("test event\n")
     metrics = ""
     while "logprep_" not in metrics:
-        metrics = requests.get("http://127.0.0.1:8000", timeout=0.1).text
-    time.sleep(0.2)
-    metrics = requests.get("http://127.0.0.1:8000", timeout=0.1).text
+        response = requests.get("http://127.0.0.1:8000", timeout=0.1)
+        response.raise_for_status()
+        metrics = response.text
+    time.sleep(0.2)  #nosemgrep
+    response = requests.get("http://127.0.0.1:8000", timeout=0.1)
+    response.raise_for_status()
+    metrics = response.text
     proc.kill()
     metric_names = [
         "logprep_connector_number_of_processed_events",
