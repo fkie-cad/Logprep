@@ -227,8 +227,9 @@ class TestRunLogprep:
     def test_main_calls_runner_stop_on_any_exception(self, mock_stop, mock_start):
         mock_start.side_effect = Exception
         config_path = "quickstart/exampledata/config/pipeline.yml"
-        with mock.patch("sys.argv", ["logprep", config_path]):
-            run_logprep.main()
+        with pytest.raises(SystemExit):
+            with mock.patch("sys.argv", ["logprep", config_path]):
+                run_logprep.main()
         mock_stop.assert_called()
 
     def test_logprep_exits_if_logger_can_not_be_created(self):
