@@ -20,6 +20,7 @@
 ### Improvements
 
 * Bump `attrs` to `>=22.2.0` and delete redundant `min_len_validator`
+* Specify the metric labels for connectors (add name, type and direction as labels) 
 
 ### Bugfix
 
