@@ -144,7 +144,10 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         "output": {
             "kafka": {  # the name has to be kafka for some default rules
                 "type": "console_output",
-            }
+            },
+            "second_output": {
+                "type": "console_output",
+            },
         },
     }
     config_path = str(tmp_path / "generated_config.yml")
@@ -162,16 +165,26 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     response = requests.get("http://127.0.0.1:8000", timeout=0.1)
     response.raise_for_status()
     metrics = response.text
-    connector_types = ["file_input", "console_output"]
-    for connector_type in connector_types:
+    connector_name_type_tuples = [
+        ("fileinput", "file_input"),
+        ("kafka", "console_output"),
+        ("second_output", "console_output"),
+    ]
+    for name, connector_type in connector_name_type_tuples:
         assert re.search(
-            rf"logprep_connector_number_of_processed_events.*{connector_type}.* 1\.0", metrics
+            rf"logprep_connector_number_of_processed_events.*{name}.*{connector_type}.* 1\.0",
+            metrics,
         )
         assert re.search(
-            rf"logprep_connector_mean_processing_time_per_event.*{connector_type}.* \d\..*", metrics
+            rf"logprep_connector_mean_processing_time_per_event.*{name}.*{connector_type}.* \d\..*",
+            metrics,
         )
-        assert re.search(rf"logprep_connector_number_of_warnings.*{connector_type}.* 0\.0", metrics)
-        assert re.search(rf"logprep_connector_number_of_errors.*{connector_type}.* 0\.0", metrics)
+        assert re.search(
+            rf"logprep_connector_number_of_warnings.*{name}.*{connector_type}.* 0\.0", metrics
+        )
+        assert re.search(
+            rf"logprep_connector_number_of_errors.*{name}.*{connector_type}.* 0\.0", metrics
+        )
 
     processor_names = [list(p.keys())[0] for p in config.get("pipeline")]
     for processor_name in processor_names:
