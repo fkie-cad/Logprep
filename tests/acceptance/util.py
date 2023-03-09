@@ -3,22 +3,23 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 import contextlib
-import threading
-import socketserver
 import http.server
 import inspect
 import json
 import os
 import re
 import signal
+import socketserver
 import subprocess
 import sys
+import threading
 import time
 from copy import deepcopy
 from importlib import import_module
 from logging import DEBUG, basicConfig, getLogger
 from os import makedirs, path
-from typing import List
+
+import requests
 
 from logprep.abc.processor import Processor
 from logprep.registry import Registry
@@ -189,6 +190,7 @@ def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         close_fds=True,
+        bufsize=1,
     )
 
 
@@ -201,6 +203,23 @@ def wait_for_output(proc, expected_output, test_timeout=10):
             time.sleep(0.1)  # nosemgrep
 
     wait_for_output_inner(proc, expected_output)
+
+
+def wait_for_prometheus_metrics(test_timeout=10):
+    @timeout(test_timeout)
+    def wait_for_output_inner():
+        while True:
+            try:
+                response = requests.get("http://127.0.0.1:8000", timeout=0.1)
+                response.raise_for_status()
+                metrics = response.text
+                if "logprep_" in metrics:
+                    break
+                time.sleep(0.1)  # nosemgrep
+            except requests.exceptions.ConnectionError:
+                ...
+
+    wait_for_output_inner()
 
 
 def stop_logprep(proc=None):
@@ -222,12 +241,14 @@ def stop_logprep(proc=None):
             pass
 
 
-def get_full_pipeline():
+def get_full_pipeline(exclude=None):
     processors = [
         processor_name
         for processor_name, value in Registry.mapping.items()
         if issubclass(value, Processor)
     ]
+    if exclude:
+        processors = filter(lambda x: x not in exclude, processors)
     processor_test_modules = []
     for processor in processors:
         processor_test_modules.append(

@@ -15,6 +15,7 @@ from tests.acceptance.util import (
     stop_logprep,
     convert_to_http_config,
     HTTPServerForTesting,
+    wait_for_prometheus_metrics,
 )
 
 
@@ -120,7 +121,9 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     temp_dir = tempfile.gettempdir()
     input_file_path = Path(os.path.join(temp_dir, "input.txt"))
     input_file_path.touch()
-    pipeline = get_full_pipeline()
+    # requester is excluded because it tries to connect to non-existing server
+    # selective_extractor is excluded because of output mismatch (rules expect kafka as output)
+    pipeline = get_full_pipeline(exclude=["requester", "selective_extractor"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config |= {
         "metrics": {
@@ -141,7 +144,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
             }
         },
         "output": {
-            "kafka": {
+            "kafka": {  # the name has to be kafka for some default rules
                 "type": "console_output",
             }
         },
@@ -149,22 +152,14 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path, env={"PROMETHEUS_MULTIPROC_DIR": tmp_path})
-    output = proc.stdout.readline().decode("utf8")
-    while True:
-        if re.search("Startup complete", output):
-            break
-        output = proc.stdout.readline().decode("utf8")
-    input_file_path.write_text("test event\n")
-    metrics = ""
-    while "logprep_" not in metrics:
-        response = requests.get("http://127.0.0.1:8000", timeout=0.1)
-        response.raise_for_status()
-        metrics = response.text
+    input_file_path.write_text("test event\n", encoding="utf8")
+    # if the timer expires there was probably an error in the logprep run
+    # inspect with proc.stdout.readline().decode("utf8")
+    wait_for_prometheus_metrics()
     time.sleep(0.2)  # nosemgrep
     response = requests.get("http://127.0.0.1:8000", timeout=0.1)
     response.raise_for_status()
     metrics = response.text
-    proc.kill()
     metric_names = [
         "logprep_connector_number_of_processed_events",
         "logprep_connector_mean_processing_time_per_event",
@@ -190,3 +185,4 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     ]
     for metric_name in metric_names:
         assert metric_name in metrics, metric_name
+    proc.kill()
