@@ -11,12 +11,14 @@ from logprep.metrics.metric_targets import split_key_label_string
 class MetricExposer:
     """The MetricExposer collects all metrics and exposes them via configured outputs"""
 
-    def __init__(self, config, metric_targets, shared_dict, lock):
+    def __init__(self, config, metric_targets, shared_dict, lock, logger):
         self._shared_dict = shared_dict
         self._print_period = config.get("period", 180)
         self._cumulative = config.get("cumulative", True)
         self._aggregate_processes = config.get("aggregate_processes", True)
         self._lock = lock
+        self._logger = logger
+        self._first_metrics_exposed = False
         self._timer = Value(c_double, time() + self._print_period)
 
         self.output_targets = []
@@ -45,6 +47,10 @@ class MetricExposer:
 
             if not self._cumulative:
                 metrics.reset_statistics()
+
+            if not self._first_metrics_exposed:
+                self._logger.info("Started exposing metrics")
+                self._first_metrics_exposed = True
 
     def _store_metrics(self, metrics):
         with self._lock:

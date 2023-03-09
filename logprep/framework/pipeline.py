@@ -51,7 +51,7 @@ class MustProvideAnMPLogHandlerError(BaseException):
 
 
 class SharedCounter:
-    """A shared counter for multi-processing pipelines."""
+    """A shared counter for multiprocessing pipelines."""
 
     CHECKING_PERIOD = 0.5
 
@@ -231,6 +231,7 @@ class Pipeline:
             self._metric_targets,
             self._shared_dict,
             self._lock,
+            self._logger,
         )
 
     @cached_property

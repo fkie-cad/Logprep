@@ -2,7 +2,6 @@
 import os
 import re
 import tempfile
-import time
 from pathlib import Path
 
 import requests
@@ -15,7 +14,6 @@ from tests.acceptance.util import (
     stop_logprep,
     convert_to_http_config,
     HTTPServerForTesting,
-    wait_for_prometheus_metrics,
 )
 
 
@@ -153,36 +151,60 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path, env={"PROMETHEUS_MULTIPROC_DIR": tmp_path})
     input_file_path.write_text("test event\n", encoding="utf8")
-    # if the timer expires there was probably an error in the logprep run
-    # inspect with proc.stdout.readline().decode("utf8")
-    wait_for_prometheus_metrics()
-    time.sleep(0.2)  # nosemgrep
+    while True:
+        output = proc.stdout.readline().decode("utf8")
+        assert "error" not in output.lower(), "error message"
+        assert "critical" not in output.lower(), "error message"
+        assert "exception" not in output.lower(), "error message"
+        assert "error" not in output.lower(), "error message"
+        if "Started exposing metrics" in output:
+            break
     response = requests.get("http://127.0.0.1:8000", timeout=0.1)
     response.raise_for_status()
     metrics = response.text
-    metric_names = [
-        "logprep_connector_number_of_processed_events",
-        "logprep_connector_mean_processing_time_per_event",
-        "logprep_connector_number_of_warnings",
-        "logprep_connector_number_of_errors",
-        "logprep_processor_number_of_processed_events",
-        "logprep_processor_mean_processing_time_per_event",
-        "logprep_processor_number_of_warnings",
-        "logprep_processor_number_of_errors",
-        "logprep_number_of_rules",
-        "logprep_number_of_matches",
-        "logprep_mean_processing_time",
-        "logprep_processor_total_urls",
-        "logprep_processor_resolved_new",
-        "logprep_processor_resolved_cached",
-        "logprep_processor_timeouts",
-        "logprep_processor_pseudonymized_urls",
-        "logprep_pipeline_kafka_offset",
-        "logprep_pipeline_mean_processing_time_per_event",
-        "logprep_pipeline_number_of_processed_events",
-        "logprep_pipeline_number_of_warnings",
-        "logprep_pipeline_number_of_errors",
-    ]
-    for metric_name in metric_names:
-        assert metric_name in metrics, metric_name
+    connector_types = ["file_input", "console_output"]
+    for connector_type in connector_types:
+        assert re.search(
+            rf"logprep_connector_number_of_processed_events.*{connector_type}.* 1.0", metrics
+        )
+        assert re.search(
+            rf"logprep_connector_mean_processing_time_per_event.*{connector_type}.* \d\..*", metrics
+        )
+        assert re.search(rf"logprep_connector_number_of_warnings.*{connector_type}.* 0.0", metrics)
+        assert re.search(rf"logprep_connector_number_of_errors.*{connector_type}.* 0.0", metrics)
+
+    processor_names = [list(p.keys())[0] for p in config.get("pipeline")]
+    for processor_name in processor_names:
+        assert re.search(
+            rf"logprep_processor_number_of_processed_events.*{processor_name}.* 1\.0", metrics
+        )
+        assert re.search(
+            rf"logprep_processor_mean_processing_time_per_event.*{processor_name}.* \d\..*", metrics
+        )
+        assert re.search(rf"logprep_processor_number_of_warnings.*{processor_name}.* 0\.0", metrics)
+        assert re.search(rf"logprep_processor_number_of_errors.*{processor_name}.* 0\.0", metrics)
+        assert re.search(rf"logprep_number_of_rules.*{processor_name}.*generic.* \d\.0", metrics)
+        assert re.search(rf"logprep_number_of_rules.*{processor_name}.*specific.* \d\.0", metrics)
+        assert re.search(rf"logprep_number_of_matches.*{processor_name}.*specific.* \d\.0", metrics)
+        assert re.search(rf"logprep_number_of_matches.*{processor_name}.*generic.* \d\.0", metrics)
+        assert re.search(
+            rf"logprep_mean_processing_time.*{processor_name}.*specific.* \d\..*", metrics
+        )
+        assert re.search(
+            rf"logprep_mean_processing_time.*{processor_name}.*generic.* \d\..*", metrics
+        )
+
+    assert re.search("logprep_processor_total_urls.*domain_resolver.* 0.0", metrics)
+    assert re.search("logprep_processor_resolved_new.*domain_resolver.* 0.0", metrics)
+    assert re.search("logprep_processor_resolved_cached.*domain_resolver.* 0.0", metrics)
+    assert re.search("logprep_processor_timeouts.*domain_resolver.* 0.0", metrics)
+    assert re.search("logprep_processor_pseudonymized_urls.*pseudonymizer.* 0.0", metrics)
+
+    assert re.search("logprep_pipeline_kafka_offset.*pipeline-1.* 0.0", metrics)
+    assert re.search(
+        r"logprep_pipeline_mean_processing_time_per_event.*pipeline-1.* \d\..*", metrics
+    )
+    assert re.search("logprep_pipeline_number_of_processed_events.*pipeline-1.* 23.0", metrics)
+    assert re.search("logprep_pipeline_number_of_warnings.*pipeline-1.* 0.0", metrics)
+    assert re.search("logprep_pipeline_number_of_errors.*pipeline-1.* 0.0", metrics)
     proc.kill()
