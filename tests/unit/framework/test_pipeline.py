@@ -18,8 +18,8 @@ from logprep.abc.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.abc.processor import Processor
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output, WarningOutputError
+from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.pipeline import (
     MultiprocessingPipeline,
@@ -480,24 +480,12 @@ class TestPipeline(ConfigurationForTests):
         assert self.pipeline._output["dummy"].store_custom.call_count == 1
         self.pipeline._output["dummy"].store_custom.assert_called_with({"foo": "bar"}, "target")
 
-    def test_pipeline_metrics_number_of_events_counts_events_of_all_processor_metrics(
+    def test_pipeline_metrics_number_of_events_counts_process_event_method_counts(
         self,
         _,
     ):
-        mock_metrics_one = Processor.ProcessorMetrics(
-            labels={"any": "label"},
-            generic_rule_tree=mock.MagicMock(),
-            specific_rule_tree=mock.MagicMock(),
-        )
-        mock_metrics_one.number_of_processed_events = 1
-        mock_metrics_two = Processor.ProcessorMetrics(
-            labels={"any_other": "label"},
-            generic_rule_tree=mock.MagicMock(),
-            specific_rule_tree=mock.MagicMock(),
-        )
-        mock_metrics_two.number_of_processed_events = 1
-        self.pipeline._setup()
-        self.pipeline.metrics.pipeline = [mock_metrics_one, mock_metrics_two]
+        self.pipeline.process_event({"sample_event": "one"})
+        self.pipeline.process_event({"sample_event": "two"})
         assert self.pipeline.metrics.number_of_processed_events == 2
 
     def test_pipeline_metrics_number_of_warnings_counts_warnings_of_all_processor_metrics(
@@ -518,7 +506,7 @@ class TestPipeline(ConfigurationForTests):
         mock_metrics_two.number_of_warnings = 1
         self.pipeline._setup()
         self.pipeline.metrics.pipeline = [mock_metrics_one, mock_metrics_two]
-        assert self.pipeline.metrics.number_of_warnings == 2
+        assert self.pipeline.metrics.sum_of_processor_warnings == 2
 
     def test_pipeline_metrics_number_of_errors_counts_errors_of_all_processor_metrics(
         self,
@@ -538,7 +526,7 @@ class TestPipeline(ConfigurationForTests):
         mock_metrics_two.number_of_errors = 1
         self.pipeline._setup()
         self.pipeline.metrics.pipeline = [mock_metrics_one, mock_metrics_two]
-        assert self.pipeline.metrics.number_of_errors == 2
+        assert self.pipeline.metrics.sum_of_processor_errors == 2
 
     def test_setup_adds_versions_information_to_input_connector_config(self, mock_create):
         self.pipeline._setup()

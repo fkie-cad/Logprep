@@ -1,6 +1,8 @@
 """ abstract module for connectors"""
 from logging import Logger
+
 from attr import define
+
 from logprep.abc.component import Component
 from logprep.metrics.metric import Metric, calculate_new_average
 
@@ -44,7 +46,11 @@ class Connector(Component):
         super().__init__(name, configuration, logger)
         self.metric_labels = self._config.metric_labels
         self.metric_labels.update(
-            {"connector": "input" if self._config.type.endswith("_input") else "output"}
+            {
+                "direction": "input" if self._config.type.endswith("_input") else "output",
+                "name": name,
+                "type": self._config.type,
+            }
         )
         self.metrics = self.ConnectorMetrics(
             labels=self.metric_labels,
