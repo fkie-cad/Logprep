@@ -204,7 +204,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     assert re.search(
         r"logprep_pipeline_mean_processing_time_per_event.*pipeline-1.* \d\..*", metrics
     )
-    assert re.search("logprep_pipeline_number_of_processed_events.*pipeline-1.* 23.0", metrics)
-    assert re.search("logprep_pipeline_number_of_warnings.*pipeline-1.* 0.0", metrics)
-    assert re.search("logprep_pipeline_number_of_errors.*pipeline-1.* 0.0", metrics)
+    assert re.search("logprep_pipeline_number_of_processed_events.*pipeline-1.* 1.0", metrics)
+    assert re.search("logprep_pipeline_sum_of_processor_warnings.*pipeline-1.* 0.0", metrics)
+    assert re.search("logprep_pipeline_sum_of_processor_errors.*pipeline-1.* 0.0", metrics)
     proc.kill()

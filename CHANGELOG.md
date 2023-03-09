@@ -20,12 +20,16 @@
 ### Improvements
 
 * Bump `attrs` to `>=22.2.0` and delete redundant `min_len_validator`
-* Specify the metric labels for connectors (add name, type and direction as labels) 
+* Specify the metric labels for connectors (add name, type and direction as labels)
+* Rename metric names to clarify their meanings (`logprep_pipeline_number_of_warnings` to
+`logprep_pipeline_sum_of_processor_warnings` and `logprep_pipeline_number_of_errors` to
+`logprep_pipeline_sum_of_processor_errors`)
 
 ### Bugfix
 
-* fixes a bug that breaks templating config and rule files with environment variables if one or more variables are not set in environment
-* fixes a bug for `opensearch_output` and `elasticsearch_output` not handling authentication issues
+* Fixes a bug that breaks templating config and rule files with environment variables if one or more variables are not set in environment
+* Fixes a bug for `opensearch_output` and `elasticsearch_output` not handling authentication issues
+* Fix metric `logprep_pipeline_number_of_processed_events` to actually count the processed events per pipeline
 
 ### Improvements
 

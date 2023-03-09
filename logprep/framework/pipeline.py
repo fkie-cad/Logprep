@@ -129,23 +129,20 @@ class Pipeline:
         """Pipeline containing the metrics of all set processors"""
         kafka_offset: int = 0
         """The current offset of the kafka input reader"""
+        number_of_processed_events: int = 0
+        """Number of events that this pipeline has processed"""
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
 
         # pylint: disable=not-an-iterable
         @property
-        def number_of_processed_events(self):
-            """Sum of all processed events of all processors"""
-            return np.sum([processor.number_of_processed_events for processor in self.pipeline])
-
-        @property
-        def number_of_warnings(self):
+        def sum_of_processor_warnings(self):
             """Sum of all warnings of all processors"""
             return np.sum([processor.number_of_warnings for processor in self.pipeline])
 
         @property
-        def number_of_errors(self):
+        def sum_of_processor_errors(self):
             """Sum of all errors of all processors"""
             return np.sum([processor.number_of_errors for processor in self.pipeline])
 
@@ -450,6 +447,8 @@ class Pipeline:
         if self._processing_counter:
             self._processing_counter.increment()
             self._processing_counter.print_if_ready()
+        if self.metrics:
+            self.metrics.number_of_processed_events += 1
         return extra_outputs
 
     def _handle_fatal_processing_error(self, processor: Processor, error: Exception) -> str:
