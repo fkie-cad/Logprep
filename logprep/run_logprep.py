@@ -219,6 +219,11 @@ def main():
         )
         dry_runner.run()
     elif args.verify_config:
+        try:
+            config.verify(logger)
+        except InvalidConfigurationError as error:
+            logger.critical(error)
+            sys.exit(1)
         print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
     elif args.auto_corpus_test:
         if args.corpus_testdata is None:
