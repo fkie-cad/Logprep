@@ -257,7 +257,10 @@ class Rule:
             rule_data = json.loads(content)
         except ValueError:
             rule_data = yaml.load_all(content)
-        rules = [cls._create_from_dict(rule) for rule in rule_data]
+        try:
+            rules = [cls._create_from_dict(rule) for rule in rule_data]
+        except InvalidRuleDefinitionError as error:
+            raise InvalidRuleDefinitionError(f"{path}: {error}") from error
         if len(rules) == 0:
             raise InvalidRuleDefinitionError("no rules in file")
         for rule in rules:
@@ -266,7 +269,9 @@ class Rule:
 
     @classmethod
     def normalize_rule_dict(cls, rule: dict) -> None:
-        """normalizes rule dict before create rule config object"""
+        """normalizes rule dict before create rule config object
+        can be used for deprecating rule language.
+        """
 
     @classmethod
     def _create_from_dict(cls, rule: dict) -> "Rule":

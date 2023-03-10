@@ -130,12 +130,14 @@ class TestPipeline(ConfigurationForTests):
         deleter_config = {
             "deleter processor": {
                 "type": "deleter",
-                "specific_rules": ["tests/testdata/unit/deleter/rules/specific"],
-                "generic_rules": ["tests/testdata/unit/deleter/rules/generic"],
+                "specific_rules": [],
+                "generic_rules": [],
             }
         }
         deleter_processor = original_create(deleter_config, mock.MagicMock())
-        deleter_rule = DeleterRule._create_from_dict({"filter": "delete_me", "delete": True})
+        deleter_rule = DeleterRule._create_from_dict(
+            {"filter": "delete_me", "deleter": {"delete": True}}
+        )
         deleter_processor._specific_tree.add_rule(deleter_rule)
         self.pipeline._pipeline = [mock.MagicMock(), deleter_processor, mock.MagicMock()]
         self.pipeline._logger.setLevel(DEBUG)

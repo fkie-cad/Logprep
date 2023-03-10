@@ -62,20 +62,6 @@ class DropperRule(Rule):
         drop_full: bool = field(validator=validators.instance_of(bool), default=True)
         """Drop recursive? defaults to [True]"""
 
-    @classmethod
-    def normalize_rule_dict(cls, rule: dict) -> None:
-        if rule.get("dropper") is None:
-            drop_fields = pop_dotted_field_value(rule, "drop")
-            if drop_fields is not None:
-                add_and_overwrite(rule, "dropper.drop", drop_fields)
-                warnings.warn("drop is deprecated. Use dropper.drop instead", DeprecationWarning)
-            drop_full = pop_dotted_field_value(rule, "drop_full")
-            if drop_full is not None:
-                add_and_overwrite(rule, "dropper.drop_full", drop_full)
-                warnings.warn(
-                    "drop_full is deprecated. Use dropper.drop_full instead", DeprecationWarning
-                )
-
     @property
     def fields_to_drop(self) -> List[str]:
         """Returns fields_to_drop"""

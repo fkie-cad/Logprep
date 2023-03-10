@@ -188,7 +188,6 @@ def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         close_fds=True,
-        bufsize=1,
     )
 
 

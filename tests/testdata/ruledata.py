@@ -1,11 +1,11 @@
 simple_rule_dict = {"filter": 'applyrule: "yes"', "labeler": {"label": {"reporter": ["windows"]}}}
 
-null_rule_dict = {"filter": "applyrule: null", "label": {"reporter": ["windows"]}}
+null_rule_dict = {"filter": "applyrule: null", "labeler": {"label": {"reporter": ["windows"]}}}
 
 simple_regex_rule_dict = {
     "filter": 'applyrule: ".*yes.*"',
     "regex_fields": ["applyrule"],
-    "label": {"reporter": ["windows"]},
+    "labeler": {"label": {"reporter": ["windows"]}},
 }
 
 # String of length >= 8 with at least 3 of these: upper-case, lower-case, number, non-alphanumeric
@@ -13,7 +13,7 @@ simple_regex_rule_dict = {
 complex_regex_rule_dict = {
     "filter": r'applyrule: "(?:(?=.*[a-z])(?:(?=.*[A-Z])(?=.*[\d\W])|(?=.*\W)(?=.*\d))|(?=.*\W)(?=.*[A-Z])(?=.*\d)).{8,}"',
     "regex_fields": ["applyrule"],
-    "label": {"reporter": ["windows"]},
+    "labeler": {"label": {"reporter": ["windows"]}},
 }
 
 simple_rule = [simple_rule_dict]

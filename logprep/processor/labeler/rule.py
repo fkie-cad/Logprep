@@ -21,12 +21,10 @@ to the labels of the category :code:`action`:
     description: '...'
 
 """
-import warnings
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule
 from logprep.processor.labeler.labeling_schema import LabelingSchema
-from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class LabelerRule(Rule):
@@ -53,14 +51,6 @@ class LabelerRule(Rule):
         return self._config.label
 
     # pylint: enable=C0111
-
-    @classmethod
-    def normalize_rule_dict(cls, rule: dict) -> None:
-        """normalizes rule dict to stay backwards compatible"""
-        if rule.get("label") is not None:
-            label_value = pop_dotted_field_value(rule, "label")
-            add_and_overwrite(rule, "labeler.label", label_value)
-            warnings.warn("label is deprecated. Use labeler.label instead", DeprecationWarning)
 
     def conforms_to_schema(self, schema: LabelingSchema) -> bool:
         """Check if labels are valid."""

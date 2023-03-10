@@ -36,24 +36,24 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_json_endpoint_accepts_post_request(self):
         data = {"message": "my log message"}
-        resp = self.client.post(url="/json", data=json.dumps(data))
+        resp = self.client.post(url="/json", content=json.dumps(data))
         assert resp.status_code == 200
 
     def test_json_message_is_put_in_queue(self):
         data = {"message": "my log message"}
-        resp = self.client.post(url="/json", data=json.dumps(data))
+        resp = self.client.post(url="/json", content=json.dumps(data))
         assert resp.status_code == 200
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue == data
 
     def test_plaintext_endpoint_accepts_post_request(self):
         data = "my log message"
-        resp = self.client.post(url="/plaintext", data=data)
+        resp = self.client.post(url="/plaintext", content=data)
         assert resp.status_code == 200
 
     def test_plaintext_message_is_put_in_queue(self):
         data = "my log message"
-        resp = self.client.post("/plaintext", data=data)
+        resp = self.client.post("/plaintext", content=data)
         assert resp.status_code == 200
         event_from_queue = self.object.messages.get(timeout=0.001)
         assert event_from_queue.get("message") == data
@@ -64,7 +64,7 @@ class TestHttpConnector(BaseInputTestCase):
         {"message": "my second log message"}
         {"message": "my third log message"}
         """
-        resp = self.client.post("/jsonl", data=data)
+        resp = self.client.post("/jsonl", content=data)
         assert resp.status_code == 200
         assert self.object.messages.qsize() == 3
         event_from_queue = self.object.messages.get(timeout=0.001)
@@ -76,7 +76,7 @@ class TestHttpConnector(BaseInputTestCase):
 
     def test_get_next_returns_message_from_queue(self):
         data = {"message": "my log message"}
-        self.client.post(url="/json", data=json.dumps(data))
+        self.client.post(url="/json", content=json.dumps(data))
         assert self.object.get_next(0.001) == (data, None)
 
     def test_get_next_returns_first_in_first_out(self):
@@ -86,7 +86,7 @@ class TestHttpConnector(BaseInputTestCase):
             {"message": "third message"},
         ]
         for message in data:
-            self.client.post(url="/json", data=json.dumps(message))
+            self.client.post(url="/json", content=json.dumps(message))
         assert self.object.get_next(0.001) == (data[0], None)
         assert self.object.get_next(0.001) == (data[1], None)
         assert self.object.get_next(0.001) == (data[2], None)
@@ -100,9 +100,9 @@ class TestHttpConnector(BaseInputTestCase):
         for message in data:
             endpoint, post_data = message.values()
             if endpoint == "json":
-                self.client.post(url="/json", data=json.dumps(post_data))
+                self.client.post(url="/json", content=json.dumps(post_data))
             if endpoint == "plaintext":
-                self.client.post("/plaintext", data=post_data)
+                self.client.post("/plaintext", content=post_data)
         assert self.object.get_next(0.001)[0] == data[0].get("data")
         assert self.object.get_next(0.001)[0] == {"message": data[1].get("data")}
         assert self.object.get_next(0.001)[0] == data[2].get("data")
