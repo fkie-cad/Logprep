@@ -41,7 +41,7 @@ import arrow
 import elasticsearch
 from attr import define, field
 from attrs import validators
-from elasticsearch import helpers, AuthenticationException
+from elasticsearch import helpers, AuthenticationException, ConnectionError
 
 from logprep.abc.output import FatalOutputError, Output
 
@@ -365,5 +365,5 @@ class ElasticsearchOutput(Output):
         super().setup()
         try:
             self._search_context.info()
-        except AuthenticationException as error:
+        except (AuthenticationException, ConnectionError) as error:
             raise FatalOutputError(error) from error
