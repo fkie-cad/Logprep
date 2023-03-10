@@ -19,6 +19,7 @@ import attrs
 import numpy as np
 
 from logprep._version import get_versions
+from logprep.abc.component import Component
 from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
@@ -352,6 +353,7 @@ class Pipeline:
         """Retrieve next event, process event with full pipeline and store or return results"""
         assert self._input, "Run process_pipeline only with an valid input connector"
         self._metrics_exposer.expose(self.metrics)
+        Component.scheduler.run_pending()
         event = self._get_event()
         extra_outputs = []
         if event:
@@ -420,6 +422,7 @@ class Pipeline:
 
     @TimeMeasurement.measure_time("pipeline")
     def process_event(self, event: dict):
+        """process all processors for one event"""
         event_received = json.dumps(event, separators=(",", ":"))
         extra_outputs = []
         for processor in self._pipeline:

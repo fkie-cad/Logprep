@@ -70,18 +70,20 @@ class ElasticsearchOutput(Output):
         error_index: str = field(validator=validators.instance_of(str))
         """Index to write documents to that could not be processed."""
         message_backlog_size: int = field(validator=validators.instance_of(int))
-        """Amount of documents to store before sending them to Elasticsearch."""
+        """Amount of documents to store before sending them."""
         timeout: int = field(validator=validators.instance_of(int), default=500)
-        """Timeout for Elasticsearch connection (default is 500ms)"""
+        """(Optional) Timeout for the connection (default is 500ms)."""
         max_retries: int = field(validator=validators.instance_of(int), default=0)
-        """Maximum number of retries for documents rejected with code 429 (default is 0).
+        """(Optional) Maximum number of retries for documents rejected with code 429 (default is 0).
         Increases backoff time by 2 seconds per try, but never exceeds 600 seconds."""
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """The user used for authentication (optional)."""
+        """(Optional) The user used for authentication (optional)."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """The secret used for authentication (optional)."""
+        """(Optional) The secret used for authentication (optional)."""
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """The path to a SSL ca certificate to verify the ssl context (optional)"""
+        """(Optional) The path to a SSL ca certificate to verify the ssl context (optional)."""
+        flush_timout: Optional[int] = field(validator=validators.instance_of(int), default=60)
+        """(Optional) The timout after message_backlog is flushed if message_backlog_size is not reached"""
 
     __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
 
@@ -194,24 +196,27 @@ class ElasticsearchOutput(Output):
         self._message_backlog[self._processed_cnt] = document
         currently_processed_cnt = self._processed_cnt + 1
         if currently_processed_cnt == self._config.message_backlog_size:
-            try:
-                helpers.bulk(
-                    self._search_context,
-                    self._message_backlog,
-                    max_retries=self._config.max_retries,
-                    chunk_size=self._config.message_backlog_size,
-                )
-            except elasticsearch.SerializationError as error:
-                self._handle_serialization_error(error)
-            except elasticsearch.ConnectionError as error:
-                self._handle_connection_error(error)
-            except helpers.BulkIndexError as error:
-                self._handle_bulk_index_error(error)
-            self._processed_cnt = 0
-            if self.input_connector:
-                self.input_connector.batch_finished_callback()
+            self._write_backlog()
         else:
             self._processed_cnt = currently_processed_cnt
+
+    def _write_backlog(self):
+        try:
+            helpers.bulk(
+                self._search_context,
+                self._message_backlog,
+                max_retries=self._config.max_retries,
+                chunk_size=self._config.message_backlog_size,
+            )
+        except elasticsearch.SerializationError as error:
+            self._handle_serialization_error(error)
+        except elasticsearch.ConnectionError as error:
+            self._handle_connection_error(error)
+        except helpers.BulkIndexError as error:
+            self._handle_bulk_index_error(error)
+        self._processed_cnt = 0
+        if self.input_connector:
+            self.input_connector.batch_finished_callback()
 
     def _handle_bulk_index_error(self, error: helpers.BulkIndexError):
         """Handle bulk indexing error for elasticsearch bulk indexing.
@@ -367,3 +372,4 @@ class ElasticsearchOutput(Output):
             self._search_context.info()
         except ElasticsearchException as error:
             raise FatalOutputError(error) from error
+        self.scheduler.every(self._config.flush_timeout).seconds.do(self._write_backlog())

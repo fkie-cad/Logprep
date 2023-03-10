@@ -3,6 +3,8 @@ from abc import ABC
 from logging import Logger
 
 from attr import define, field, validators
+from schedule import Scheduler
+
 from logprep.util.helper import camel_to_snake
 
 
@@ -20,6 +22,8 @@ class Component(ABC):
     __slots__ = ["name", "_logger", "_config", "__dict__"]
 
     name: str
+    scheduler = Scheduler()
+
     _logger: Logger
     _config: Config
 
