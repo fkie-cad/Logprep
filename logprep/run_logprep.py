@@ -104,6 +104,7 @@ def _run_logprep(arguments, logger: Logger):
         logger.critical(f"A critical error occurred: {error}")
         if runner:
             runner.stop()
+        sys.exit(1)
     # pylint: enable=broad-except
 
 
@@ -164,20 +165,6 @@ def _load_configuration(args):
     return config
 
 
-def _verify_configuration(args, config, logger):
-    try:
-        if args.validate_rules or args.auto_test:
-            config.verify_pipeline_only(logger)
-        else:
-            config.verify(logger)
-    except InvalidConfigurationError as error:
-        logger.critical(error)
-        sys.exit(1)
-    except BaseException as error:  # pylint: disable=broad-except
-        logger.exception(error)
-        sys.exit(1)
-
-
 def _setup_metrics_and_time_measurement(args, config, logger):
     measure_time_config = config.get("metrics", {}).get("measure_time", {})
     TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)
@@ -188,7 +175,12 @@ def _setup_metrics_and_time_measurement(args, config, logger):
     logger.debug(f"Config path: {args.config}")
 
 
-def _validate_rules(args, logger):
+def _validate_rules(args, config: Configuration, logger: Logger):
+    try:
+        config.verify_pipeline_only(logger)
+    except InvalidConfigurationError as error:
+        logger.critical(error)
+        sys.exit(1)
     type_rule_map = get_processor_type_and_rule_class()
     rules_valid = []
     for processor_type, rule_class in type_rule_map.items():
@@ -212,9 +204,8 @@ def main():
     config = _load_configuration(args)
     logger = _setup_logger(args, config)
 
-    _verify_configuration(args, config, logger)
     if args.validate_rules or args.auto_test:
-        _validate_rules(args, logger)
+        _validate_rules(args, config, logger)
     _setup_metrics_and_time_measurement(args, config, logger)
 
     if args.auto_test:
@@ -228,6 +219,11 @@ def main():
         )
         dry_runner.run()
     elif args.verify_config:
+        try:
+            config.verify(logger)
+        except InvalidConfigurationError as error:
+            logger.critical(error)
+            sys.exit(1)
         print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
     elif args.auto_corpus_test:
         if args.corpus_testdata is None:
