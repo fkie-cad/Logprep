@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=no-self-use
 
-from pathlib import Path
 from typing import Hashable
 from unittest import mock
 import pytest
@@ -20,36 +19,21 @@ def fixture_specific_rule_definition():
     return {
         "filter": "test",
         "selective_extractor": {
-            "extract": {
-                "extracted_field_list": ["field1", "field2"],
-                "target_topic": "topic1",
-            },
+            "source_fields": ["field1", "field2"],
+            "outputs": [{"kafka": "topic"}],
         },
         "description": "my reference rule",
     }
 
 
 class TestSelectiveExtractorRule:
-    def test_rule_has_extract_fields(self, specific_rule_definition):
-        rule = SelectiveExtractorRule._create_from_dict(specific_rule_definition)
-        extracted_field_list = rule._config.extract.get("extracted_field_list")
-        assert isinstance(extracted_field_list, list)
-        assert "field1" in extracted_field_list
-
-    def test_rule_has_target_topic(self, specific_rule_definition):
-        rule = SelectiveExtractorRule._create_from_dict(specific_rule_definition)
-        assert rule.target_topic is not None
-        assert rule.target_topic == "topic1"
-
     @mock.patch("pathlib.Path.is_file", return_value=True)
     def test_rule_has_fields_from_file_path(self, _):
         rule_definition = {
             "filter": "test",
             "selective_extractor": {
-                "extract": {
-                    "extract_from_file": "my/file",
-                    "target_topic": "topic1",
-                },
+                "extract_from_file": "my/file",
+                "outputs": [{"kafka": "topic"}],
             },
         }
         read_lines = b"test1\r\ntest2"
@@ -65,10 +49,8 @@ class TestSelectiveExtractorRule:
         rule_definition = {
             "filter": "test",
             "selective_extractor": {
-                "extract": {
-                    "extract_from_file": "my/path/",
-                    "target_topic": "topic1",
-                },
+                "extract_from_file": "my/path/",
+                "outputs": [{"kafka": "topic"}],
             },
         }
         with pytest.raises(SelectiveExtractorRuleError):
@@ -82,10 +64,8 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1", "field2"],
-                            "target_topic": "topic1",
-                        },
+                        "source_fields": ["field1", "field2"],
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
                 True,
@@ -95,10 +75,8 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "other_filter",
                     "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1", "field2"],
-                            "target_topic": "topic1",
-                        },
+                        "source_fields": ["field1", "field2"],
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
                 False,
@@ -108,10 +86,8 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1"],
-                            "target_topic": "topic1",
-                        },
+                        "source_fields": ["field1"],
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
                 False,
@@ -121,10 +97,30 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1", "field2"],
-                            "target_topic": "other_topic",
-                        },
+                        "source_fields": ["field1", "field2"],
+                        "outputs": [{"kafka": "other"}],
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause other output",
+                {
+                    "filter": "test",
+                    "selective_extractor": {
+                        "source_fields": ["field1", "field2"],
+                        "outputs": [{"opensearch": "topic"}],
+                    },
+                },
+                False,
+            ),
+            (
+                "Should be not equal cause other output and other topic",
+                {
+                    "filter": "test",
+                    "selective_extractor": {
+                        "source_fields": ["field1", "field2"],
+                        "outputs": [{"opensearch": "_other"}],
                     },
                 },
                 False,
@@ -134,10 +130,8 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extract_from_file": "field1\r\nfield2",
-                            "target_topic": "topic1",
-                        },
+                        "extract_from_file": "field1\r\nfield2",
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
                 True,
@@ -147,10 +141,8 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extract_from_file": "field1\r\nfield2\r\nfield3",
-                            "target_topic": "topic1",
-                        },
+                        "extract_from_file": "field1\r\nfield2\r\nfield3",
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
                 False,
@@ -160,11 +152,9 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1", "field2"],
-                            "extract_from_file": "field1\r\nfield2\r\nfield3",
-                            "target_topic": "topic1",
-                        },
+                        "source_fields": ["field1", "field2"],
+                        "extract_from_file": "field1\r\nfield2\r\nfield3",
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
                 False,
@@ -174,11 +164,9 @@ class TestSelectiveExtractorRule:
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1"],
-                            "extract_from_file": "field1\r\nfield2",
-                            "target_topic": "topic1",
-                        },
+                        "source_fields": ["field1"],
+                        "extract_from_file": "field1\r\nfield2",
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
                 True,
@@ -189,11 +177,7 @@ class TestSelectiveExtractorRule:
         self, specific_rule_definition, testcase, other_rule_definition, is_equal
     ):
         with mock.patch("pathlib.Path.is_file", return_value=True):
-            read_lines = (
-                other_rule_definition.get("selective_extractor")
-                .get("extract")
-                .get("extract_from_file")
-            )
+            read_lines = other_rule_definition.get("selective_extractor").get("extract_from_file")
             if read_lines is not None:
                 read_lines = read_lines.encode("utf8")
 
@@ -203,151 +187,117 @@ class TestSelectiveExtractorRule:
                 assert (rule1 == rule2) == is_equal, testcase
 
     @pytest.mark.parametrize(
-        "rule_definition, raised, message",
+        "rule_definition, read_lines, raised, message",
         [
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extract_from_file": "my/path/",
-                            "target_topic": "topic1",
-                        },
+                        "extract_from_file": "my/path/",
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
-                None,
-                "extract_from_file and target topic",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": {},
-                },
-                TypeError,
-                "missing 1 required keyword-only argument: 'extract'",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": "field1, field2",
-                },
+                b"",
                 InvalidRuleDefinitionError,
-                "config is not a dict",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": {"extract": "field1"},
-                },
-                TypeError,
-                "'extract' must be <class 'dict'>",
+                "no field to extract",
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {},
+                        "extract_from_file": "my/path/",
+                        "outputs": [{"kafka": "topic"}],
                     },
                 },
-                ValueError,
-                r"extract has to contain one of these members \['extracted_field_list', 'extract_from_file'\]",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": {
-                        "extract": {"extracted_field_list": "field1", "target_topic": "test_topic"},
-                    },
-                },
-                InvalidConfigurationError,
-                "'extracted_field_list' has wrong type",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": {
-                        "extract": {
-                            "extract_from_file": ["file1", "file2"],
-                            "target_topic": "test_topic",
-                        },
-                    },
-                },
-                InvalidConfigurationError,
-                "'extract_from_file' has wrong type",
-            ),
-            (
-                {
-                    "filter": "test",
-                    "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1", "field2"],
-                            "target_topic": "topic1",
-                        },
-                    },
-                    "description": "my reference rule",
-                },
+                b"field1",
                 None,
-                "extracted field list with target topic",
+                None,
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {"extracted_field_list": ["field1", "field2"]},
+                        "source_fields": ["field1"],
+                        "extract_from_file": "my/path/",
+                        "outputs": [{"kafka": "topic"}],
                     },
-                    "description": "rule with list and without target_topic should raise",
                 },
-                InvalidConfigurationError,
-                "following key is missing: 'target_topic'",
+                b"",
+                None,
+                None,
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extracted_field_list": ["field1", "field2"],
-                            "target_topic": ["topic1", "topic2"],
-                        },
+                        "source_fields": ["field1"],
+                        "extract_from_file": "my/path/",
                     },
-                    "description": "rule with list and without target_topic should raise",
                 },
-                InvalidConfigurationError,
-                "'target_topic' has wrong type",
+                b"",
+                TypeError,
+                "missing 1 required keyword-only argument: 'outputs'",
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {"extract_from_file": "mockfile"},
+                        "source_fields": ["field1"],
+                        "outputs": [{"kafka": "topic1"}, {"opensearch": "_target"}],
                     },
-                    "description": "rule with list and without target_topic should raise",
                 },
-                InvalidConfigurationError,
-                "following key is missing: 'target_topic'",
+                b"",
+                None,
+                None,
             ),
             (
                 {
                     "filter": "test",
                     "selective_extractor": {
-                        "extract": {
-                            "extract_from_file": "mockfile",
-                            "target_topic": ["topic1", "topic2"],
-                        },
+                        "source_fields": ["field1"],
+                        "outputs": [{"kafka": "topic1"}],
+                        "target_field": "bla",
                     },
-                    "description": "rule with list and without target_topic should raise",
                 },
-                InvalidConfigurationError,
-                "'target_topic' has wrong type",
+                b"",
+                TypeError,
+                "got an unexpected keyword argument 'target_field'",
+            ),
+            (
+                {
+                    "filter": "test",
+                    "selective_extractor": {
+                        "source_fields": ["field1"],
+                        "outputs": [{"kafka": "topic"}],
+                        "overwrite_target": False,
+                    },
+                },
+                b"",
+                TypeError,
+                "got an unexpected keyword argument 'overwrite_target'",
+            ),
+            (
+                {
+                    "filter": "test",
+                    "selective_extractor": {
+                        "source_fields": ["field1"],
+                        "outputs": [{"kafka": "topic"}],
+                        "extend_target_list": True,
+                    },
+                },
+                b"",
+                TypeError,
+                "got an unexpected keyword argument 'extend_target_list'",
             ),
         ],
     )
-    def test_rule_create_from_dict(self, rule_definition, raised, message):
+    def test_rule_create_from_dict(self, rule_definition, read_lines, raised, message):
         with mock.patch("pathlib.Path.is_file", return_value=True):
-            if raised:
-                with pytest.raises(raised, match=message):
-                    _ = SelectiveExtractorRule._create_from_dict(rule_definition)
-            else:
-                with mock.patch("pathlib.Path.read_bytes", return_value=b""):
+            with mock.patch("pathlib.Path.read_bytes", return_value=read_lines):
+                if raised:
+                    with pytest.raises(raised, match=message):
+                        _ = SelectiveExtractorRule._create_from_dict(rule_definition)
+                else:
                     extractor_rule = SelectiveExtractorRule._create_from_dict(rule_definition)
                     assert isinstance(extractor_rule, SelectiveExtractorRule)
 

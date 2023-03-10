@@ -23,7 +23,31 @@ class TestIpInformerRule:
                 },
                 None,
                 None,
-            )
+            ),
+            (
+                {
+                    "filter": "message",
+                    "ip_informer": {
+                        "source_fields": ["message"],
+                        "target_field": "result",
+                        "properties": ["is_loopback"],
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "ip_informer": {
+                        "source_fields": ["message"],
+                        "target_field": "result",
+                        "properties": ["not_a_property"],
+                    },
+                },
+                ValueError,
+                "must be in",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):

@@ -52,7 +52,6 @@ failure_test_cases = [
 
 
 class TestStringSplitter(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "string_splitter",
         "specific_rules": ["tests/testdata/unit/string_splitter/specific/"],

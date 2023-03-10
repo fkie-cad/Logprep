@@ -60,6 +60,11 @@ It is possible to capture the target field name from the source field value with
 this can be referred to with the notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`).
 References can be combined with the append operator.
 
+Optional convert datatype can be provided after the key using :code:`|` as separator
+to convert the value from string to :code:`int`, :code:`float` or :code:`bool`.
+The conversion to :code:`bool` is interpreted by meaning.
+(e.g. :code:`yes` is translated to :code:`True`)
+
 .. autoclass:: logprep.processor.dissector.rule.DissectorRule.Config
    :members:
    :undoc-members:
@@ -84,23 +89,39 @@ from logprep.util.helper import append, add_and_overwrite
 
 START = r"%\{"
 END = r"\}"
-VALID_TARGET_FIELD = r"[^\}\%\{\}\+]*"
+VALID_TARGET_FIELD = r"[^\}\%\{\}\+\/\|]*"
 APPEND_WITH_SEPERATOR = r"(\+\([^%]+\))"
 APPEND_WITHOUT_SEPERATOR = r"(\+(?!\([^%]))"
 INDIRECT_FIELD_NOTATION = r"([&\?]))"
 VALID_ACTION = rf"({APPEND_WITH_SEPERATOR}|{APPEND_WITHOUT_SEPERATOR}|{INDIRECT_FIELD_NOTATION}"
 VALID_POSITION = r"(\/\d*)"
-DISSECT = rf"{START}{VALID_ACTION}?{VALID_TARGET_FIELD}{VALID_POSITION}?{END}"
+VALID_DATATYPE = r"(\|(int|float|str|bool))"
+POSITION_OR_DATATYPE = rf"({VALID_POSITION}|{VALID_DATATYPE})"
+DISSECT = rf"{START}{VALID_ACTION}?{VALID_TARGET_FIELD}{POSITION_OR_DATATYPE}?{END}"
 DELIMETER = r"([^%]+)"
 ACTION = r"(?P<action>[+])?"
 SEPERATOR = r"(\((?P<separator>.+)\))?"
-TARGET_FIELD = r"(?P<target_field>[^\/]*)"
+TARGET_FIELD = r"(?P<target_field>[^\/\|]*)"
 POSITION = r"(\/(?P<position>\d*))?"
-SECTION_MATCH = rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{POSITION}{END}(?P<delimeter>.*)"
+DATATYPE = r"(\|(?P<datatype>int|float|bool))?"
+SECTION_MATCH = (
+    rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{POSITION}{DATATYPE}{END}(?P<delimeter>.*)"
+)
 
 
 def _do_nothing(*_):
     return
+
+
+def str_to_bool(input_str: str) -> bool:
+    """converts an input string to bool by meaning"""
+    try:
+        if input_str.lower() in ("yes", "true", "on", "y"):
+            return True
+        return bool(int(input_str))
+    except (ValueError, AttributeError):
+        pass
+    return False
 
 
 class DissectorRule(FieldManagerRule):
@@ -133,13 +154,13 @@ class DissectorRule(FieldManagerRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.in_(["float", "int", "string"]),
+                    value_validator=validators.in_(["float", "int", "bool", "string"]),
                 ),
             ],
             default=Factory(dict),
         )
         """A mapping from source field and desired datatype [optional].
-        The datatypes could be [`float`, `int`, `string`]
+        The datatypes could be :code:`float`, :code:`int`, :code:`bool`, :code:`string`
         """
 
         def __attrs_post_init__(self):
@@ -150,7 +171,7 @@ class DissectorRule(FieldManagerRule):
         "+": append,
     }
 
-    _converter_mapping: dict = {"int": int, "float": float, "string": str}
+    _converter_mapping: dict = {"int": int, "float": float, "string": str, "bool": str_to_bool}
 
     _config: "DissectorRule.Config"
 
@@ -184,7 +205,10 @@ class DissectorRule(FieldManagerRule):
                 separator = separator.replace("\\)", ")")
                 action_key = section_match.group("action")
                 target_field = section_match.group("target_field")
+                datatype = section_match.group("datatype")
                 position = section_match.group("position")
+                if datatype is not None:
+                    self._config.convert_datatype.update({target_field: datatype})
                 delimeter = section_match.group("delimeter")
                 delimeter = None if delimeter == "" else delimeter
                 position = int(position) if position is not None else 0

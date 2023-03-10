@@ -85,12 +85,10 @@ The calc expression is not whitespace sensitive.
 
 """
 import re
-from functools import partial
 
 from attrs import field, define, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule, FIELD_PATTERN
-from logprep.util.validators import min_len_validator
 
 
 class CalculatorRule(FieldManagerRule):
@@ -101,7 +99,7 @@ class CalculatorRule(FieldManagerRule):
         """Config for Calculator"""
 
         calc: str = field(
-            validator=[validators.instance_of(str), partial(min_len_validator, min_length=3)],
+            validator=[validators.instance_of(str), validators.min_len(3)],
         )
         """The calculation expression. Fields from the event can be used by
         surrounding them with :code:`${` and :code:`}`."""

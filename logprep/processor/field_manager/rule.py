@@ -79,9 +79,7 @@ Examples for field_manager:
    :template: testcase-renderer.tmpl
 
 """
-from functools import partial
 from attrs import define, field, validators
-from logprep.util.validators import min_len_validator
 from logprep.processor.base.rule import Rule
 
 FIELD_PATTERN = r"\$\{([+&?]?[^${}]*)\}"
@@ -98,7 +96,7 @@ class FieldManagerRule(Rule):
             validator=[
                 validators.instance_of(list),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
-                partial(min_len_validator, min_length=1),
+                validators.min_len(1),
             ]
         )
         """The fields from where to get the values which should be processed"""

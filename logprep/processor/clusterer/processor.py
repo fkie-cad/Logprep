@@ -132,7 +132,7 @@ class Clusterer(Processor):
 
     def test_rules(self):
         results = {}
-        for _, rule in enumerate(self._rules):
+        for _, rule in enumerate(self.rules):
             rule_repr = rule.__repr__()
             results[rule_repr] = []
             try:

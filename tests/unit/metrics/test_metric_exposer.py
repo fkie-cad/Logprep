@@ -41,12 +41,14 @@ class TestMetricExposer:
         for idx in range(process_count):
             self.shared_dict[idx] = None
 
-        logger = logging.getLogger("test-file-metric-logger")
+        self.logger = logging.getLogger("test-file-metric-logger")
         self.metric_targets = MetricTargets(
-            file_target=logger,
-            prometheus_target=PrometheusStatsExporter(self.config, logger),
+            file_target=self.logger,
+            prometheus_target=PrometheusStatsExporter(self.config, self.logger),
         )
-        self.exposer = MetricExposer(self.config, self.metric_targets, self.shared_dict, Lock())
+        self.exposer = MetricExposer(
+            self.config, self.metric_targets, self.shared_dict, Lock(), self.logger
+        )
 
     def test_time_to_expose_returns_true_after_enough_time_has_passed(self):
         self.exposer._timer = Value(c_double, time() - self.config["period"])
@@ -133,7 +135,9 @@ class TestMetricExposer:
     def test_expose_calls_send_to_output_if_no_aggregation_is_configured(self, send_to_output_mock):
         config = self.config.copy()
         config["aggregate_processes"] = False
-        self.exposer = MetricExposer(config, self.metric_targets, self.shared_dict, Lock())
+        self.exposer = MetricExposer(
+            config, self.metric_targets, self.shared_dict, Lock(), self.logger
+        )
         self.exposer._timer = Value(c_double, time() - self.config["period"])
         mock_metrics = mock.MagicMock()
         self.exposer.expose(mock_metrics)
@@ -143,7 +147,9 @@ class TestMetricExposer:
     def test_expose_resets_statistics_if_cumulative_config_is_false(self):
         config = self.config.copy()
         config["cumulative"] = False
-        self.exposer = MetricExposer(config, self.metric_targets, self.shared_dict, Lock())
+        self.exposer = MetricExposer(
+            config, self.metric_targets, self.shared_dict, Lock(), self.logger
+        )
         self.exposer._timer = Value(c_double, time() - self.config["period"])
         metrics = Rule.RuleMetrics(labels={"type": "generic"})
         metrics._number_of_matches = 3

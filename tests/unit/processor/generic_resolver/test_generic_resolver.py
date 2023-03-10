@@ -12,7 +12,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestGenericResolver(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "generic_resolver",
         "specific_rules": ["tests/testdata/unit/generic_resolver/rules/specific/"],

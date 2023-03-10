@@ -16,7 +16,6 @@ from logprep.registry import Registry
 class MockProcessor(Processor):
     @define(kw_only=True)
     class Config(Processor.Config):
-
         mandatory_attribute: str = field(validator=validators.instance_of(str))
         optional_attribute: Optional[str] = field(
             default=None, validator=validators.optional(validator=validators.instance_of(str))

@@ -6,7 +6,9 @@ from abc import abstractmethod
 from logging import Logger
 from typing import Optional
 
-from .connector import Connector
+from attrs import define, field, validators
+
+from logprep.abc.connector import Connector
 
 
 class OutputError(BaseException):
@@ -32,6 +34,15 @@ class WarningOutputError(OutputError):
 class Output(Connector):
     """Connect to a output destination."""
 
+    @define(kw_only=True)
+    class Config(Connector.Config):
+        """output config parameters"""
+
+        default: bool = field(validator=validators.instance_of(bool), default=True)
+        """ (Optional) if :code:`false` the event are not delivered to this output.
+        But this output can be called as output for extra_data.
+        """
+
     __slots__ = {"input_connector"}
 
     input_connector: Connector
@@ -39,6 +50,11 @@ class Output(Connector):
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self.input_connector = None
+
+    @property
+    def default(self):
+        """returns the default parameter"""
+        return self._config.default
 
     @abstractmethod
     def store(self, document: dict) -> Optional[bool]:

@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring
+# pylint: disable=line-too-long
 import pytest
 from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -183,6 +184,46 @@ test_cases = [
             },
         },
     ),
+    (
+        "single field with ipv4 address and filtered properties",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip"],
+                "target_field": "result",
+                "properties": ["is_loopback"],
+            },
+        },
+        {"ip": "192.168.5.1"},
+        {
+            "ip": "192.168.5.1",
+            "result": {
+                "192.168.5.1": {
+                    "is_loopback": False,
+                }
+            },
+        },
+    ),
+    (
+        "get field value for non existent property",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip"],
+                "target_field": "result",
+                "properties": ["teredo"],
+            },
+        },
+        {"ip": "192.168.5.1"},
+        {
+            "ip": "192.168.5.1",
+            "result": {
+                "192.168.5.1": {
+                    "teredo": False,
+                }
+            },
+        },
+    ),
 ]  # testcase, rule, event, expected
 
 failure_test_cases = [
@@ -325,7 +366,6 @@ failure_test_cases = [
 
 
 class TestIpInformer(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "ip_informer",
         "specific_rules": ["tests/testdata/unit/ip_informer/specific/"],

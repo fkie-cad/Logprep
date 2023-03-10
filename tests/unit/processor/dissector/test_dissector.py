@@ -481,6 +481,17 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "this is the message."},
         {"message": "this is the message.", "target": "the message"},
     ),
+    (
+        "Convert datatype via dissect pattern",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {"message": "this is %{field1|int} message and this is %{field2|bool}"}
+            },
+        },
+        {"message": "this is 42 message and this is 0"},
+        {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (

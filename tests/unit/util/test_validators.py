@@ -18,7 +18,6 @@ from logprep.util.validators import (
     list_of_urls_validator,
     directory_validator,
     dict_structure_validator,
-    min_len_validator,
 )
 
 
@@ -333,21 +332,6 @@ class TestDictStructureValidator:
         }
         reference_dict = {"some_option": str, "sub_options": Optional[SomeNestedOptionClass]}
         dict_structure_validator(None, None, value, reference_dict)
-
-
-class TestMinLenValidator:
-    def test_does_not_raise_if_len_is_equal_than_expected_length(self):
-        attribute = type("myclass", (), {"name": "testname", "default": None})
-        min_len_validator(None, attribute(), ["first", "second"], min_length=2)
-
-    def test_does_not_raise_if_len_is_bigger_than_expected_length(self):
-        attribute = type("myclass", (), {"name": "testname", "default": None})
-        min_len_validator(None, attribute(), ["first", "second", "third"], min_length=2)
-
-    def test_raises_if_len_is_smaller_than_expected(self):
-        attribute = type("myclass", (), {"name": "testname", "default": None})
-        with pytest.raises(ValueError, match=r"Length of 'testname' must be => 2: 1"):
-            min_len_validator(None, attribute(), ["only one element"], min_length=2)
 
 
 class TestOneOfValidator:

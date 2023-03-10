@@ -33,7 +33,6 @@ class KeyChecker(Processor):
     rule_class: Rule = KeyCheckerRule
 
     def _apply_rules(self, event, rule):
-
         not_existing_fields = list(
             {
                 dotted_field

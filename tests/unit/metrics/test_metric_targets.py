@@ -15,8 +15,8 @@ import pytest
 from prometheus_client import Gauge
 
 from logprep._version import get_versions
-from logprep.abc.processor import Processor
 from logprep.abc.connector import Connector
+from logprep.abc.processor import Processor
 from logprep.framework.pipeline import Pipeline
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric_exposer import MetricExposer
@@ -263,8 +263,8 @@ class TestMetricFileTarget:
                     "logprep_pipeline_kafka_offset": 0.0,
                     "logprep_pipeline_mean_processing_time_per_event": 0.0,
                     "logprep_pipeline_number_of_processed_events": 0.0,
-                    "logprep_pipeline_number_of_warnings": 0.0,
-                    "logprep_pipeline_number_of_errors": 0.0,
+                    "logprep_pipeline_sum_of_processor_warnings": 0.0,
+                    "logprep_pipeline_sum_of_processor_errors": 0.0,
                 }
             }
         }
