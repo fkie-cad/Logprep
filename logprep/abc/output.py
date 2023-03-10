@@ -14,13 +14,17 @@ from logprep.abc.connector import Connector
 class OutputError(BaseException):
     """Base class for Output related exceptions."""
 
+    def __init__(self, output, message) -> None:
+        self.output = output
+        super().__init__(f"{self.__class__.__name__} in {output}: {message}")
+
 
 class CriticalOutputError(OutputError):
     """A significant error occurred - log and don't process the event."""
 
-    def __init__(self, message, raw_input):
+    def __init__(self, output, message, raw_input):
         self.raw_input = raw_input
-        super().__init__(message)
+        super().__init__(output, f"{message} for event: {raw_input}")
 
 
 class FatalOutputError(OutputError):

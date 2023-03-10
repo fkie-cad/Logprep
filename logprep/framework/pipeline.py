@@ -110,6 +110,18 @@ class SharedCounter:
                     self._timer.value = time() + self._period
 
 
+def _handle_pipeline_error(func):
+    def _inner(self):
+        try:
+            func(self)
+        except FatalOutputError as error:
+            self._logger.error(str(error))
+            error.output.metrics.number_of_errors += 1
+            self.stop()
+
+    return _inner
+
+
 class Pipeline:
     """Pipeline of processors to be processed."""
 
@@ -290,6 +302,7 @@ class Pipeline:
 
         return logger
 
+    @_handle_pipeline_error
     def _setup(self):
         self._logger.debug(f"Creating connectors ({self._process_name})")
         for _, output in self._output.items():
@@ -301,12 +314,8 @@ class Pipeline:
         self._input.pipeline_index = self.pipeline_index
         self._input.setup()
         for _, output in self._output.items():
-            try:
-                output.setup()
-            except FatalOutputError as error:
-                self._logger.error(f"Output {output.describe()} failed: {error}")
-                output.metrics.number_of_errors += 1
-                self.stop()
+            output.setup()
+
         if hasattr(self._input, "server"):
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
@@ -369,18 +378,15 @@ class Pipeline:
                     output.store(event)
                     self._logger.debug(f"Stored output in {output_name}")
                 except WarningOutputError as error:
-                    self._logger.warning(
-                        f"An error occurred for output {output.describe()}: {error}"
-                    )
+                    self._logger.warning(str(error))
                     output.metrics.number_of_warnings += 1
                 except CriticalOutputError as error:
-                    msg = f"A critical error occurred for output " f"{output.describe()}: {error}"
-                    self._logger.error(msg)
+                    self._logger.error(str(error))
                     if error.raw_input:
-                        output.store_failed(msg, error.raw_input, {})
+                        output.store_failed(str(error), error.raw_input, {})
                     output.metrics.number_of_errors += 1
                 except FatalOutputError as error:
-                    self._logger.error(f"Output {output.describe()} failed: {error}")
+                    self._logger.error(str(error))
                     output.metrics.number_of_errors += 1
                     self.stop()
 

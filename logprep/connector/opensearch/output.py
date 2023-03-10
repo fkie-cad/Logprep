@@ -147,10 +147,10 @@ class OpensearchOutput(ElasticsearchOutput):
             This causes a pipeline rebuild and gives an appropriate error log message.
 
         """
-        raise FatalOutputError(f"{error.args[1]} in document {error.args[0]}")
+        raise FatalOutputError(self, f"{error.args[1]} in document {error.args[0]}")
 
     def setup(self):
         try:
             super().setup()
         except OpenSearchException as error:
-            raise FatalOutputError(error) from error
+            raise FatalOutputError(self, error) from error

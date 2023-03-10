@@ -261,7 +261,7 @@ class ElasticsearchOutput(Output):
             This causes a pipeline rebuild and gives an appropriate error log message.
 
         """
-        raise FatalOutputError(error.error)
+        raise FatalOutputError(self, error.error)
 
     def _handle_serialization_error(self, error: elasticsearch.SerializationError):
         """Handle serialization error for elasticsearch bulk indexing.
@@ -281,7 +281,7 @@ class ElasticsearchOutput(Output):
             This causes a pipeline rebuild and gives an appropriate error log message.
 
         """
-        raise FatalOutputError(f"{error.args[1]} in document {error.args[0]}")
+        raise FatalOutputError(self, f"{error.args[1]} in document {error.args[0]}")
 
     def store(self, document: dict) -> bool:
         """Store a document in the index.
@@ -371,5 +371,5 @@ class ElasticsearchOutput(Output):
         try:
             self._search_context.info()
         except ElasticsearchException as error:
-            raise FatalOutputError(error) from error
+            raise FatalOutputError(self, error) from error
         self._schedule_task(self._write_backlog, seconds=self._config.flush_timeout)

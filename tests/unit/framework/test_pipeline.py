@@ -236,18 +236,15 @@ class TestPipeline(ConfigurationForTests):
 
     @mock.patch("logging.Logger.error")
     def test_critical_output_error_is_logged_and_stored_as_failed(self, mock_error, _):
-        def raise_critical_output_error(event):
-            raise CriticalOutputError("An error message", event)
-
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"order": 1}, None)
-        self.pipeline._output["dummy"].store.side_effect = raise_critical_output_error
+        raised_error = CriticalOutputError(
+            mock.MagicMock(), "An error message", {"failed": "event"}
+        )
+        self.pipeline._output["dummy"].store.side_effect = raised_error
         self.pipeline.process_pipeline()
         self.pipeline._output["dummy"].store_failed.assert_called()
-        mock_error.assert_called()
-        assert re.search(
-            r"A critical error occurred for output .*: An error message", mock_error.call_args[0][0]
-        )
+        mock_error.assert_called_with(str(raised_error))
 
     @mock.patch("logging.Logger.warning")
     def test_input_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
@@ -272,7 +269,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._output["dummy"].metrics = mock.MagicMock()
         self.pipeline._output["dummy"].metrics.number_of_warnings = 0
         self.pipeline.process_pipeline()
-        self.pipeline._output["dummy"].store.side_effect = WarningOutputError
+        self.pipeline._output["dummy"].store.side_effect = WarningOutputError(mock.MagicMock(), "")
         self.pipeline.process_pipeline()
         self.pipeline._output["dummy"].store.side_effect = None
         self.pipeline.process_pipeline()
@@ -370,34 +367,28 @@ class TestPipeline(ConfigurationForTests):
 
     @mock.patch("logging.Logger.error")
     def test_critical_output_error_is_logged(self, mock_error, _):
-        def raise_critical(args):
-            raise CriticalOutputError("mock output error", args)
-
+        raised_error = CriticalOutputError(
+            mock.MagicMock(), "mock output error", {"failed": "event"}
+        )
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"test": "message"}, None)
         self.pipeline._output["dummy"].metrics = mock.MagicMock()
         self.pipeline._output["dummy"].metrics.number_of_errors = 0
-        self.pipeline._output["dummy"].store.side_effect = raise_critical
+        self.pipeline._output["dummy"].store.side_effect = raised_error
         self.pipeline.process_pipeline()
         self.pipeline._output["dummy"].store_failed.assert_called()
-        mock_error.assert_called()
-        assert re.search(
-            r"A critical error occurred for output .*: mock output error",
-            mock_error.call_args[0][0],
-        ), "error message is logged"
+        mock_error.assert_called_with(str(raised_error))
         assert self.pipeline._output["dummy"].metrics.number_of_errors == 1, "counts error metric"
 
     @mock.patch("logging.Logger.warning")
     def test_warning_output_error_is_logged(self, mock_warning, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
-        self.pipeline._output["dummy"].store.side_effect = WarningOutputError("mock output warning")
+        raised_error = WarningOutputError(self.pipeline._output["dummy"], "mock output warning")
+        self.pipeline._output["dummy"].store.side_effect = raised_error
         self.pipeline.process_pipeline()
         self.pipeline._output["dummy"].store.assert_called()
-        mock_warning.assert_called()
-        assert mock_warning.call_args[0][0].startswith(
-            "An error occurred for output"
-        ), "error message is logged"
+        mock_warning.assert_called_with(str(raised_error))
 
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
     @mock.patch("logging.Logger.error")
@@ -415,26 +406,26 @@ class TestPipeline(ConfigurationForTests):
     @mock.patch("logprep.framework.pipeline.Pipeline._shut_down")
     @mock.patch("logging.Logger.error")
     def test_processor_fatal_output_error_is_logged_pipeline_is_rebuilt(
-        self, mock_error, mock_shut_down, _
+        self, mock_log_error, mock_shut_down, _
     ):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"some": "event"}, None)
-        self.pipeline._output["dummy"].store.side_effect = FatalOutputError
+        raised_error = FatalOutputError(mock.MagicMock(), "fatal output error")
+        self.pipeline._output["dummy"].store.side_effect = raised_error
         self.pipeline.run()
         self.pipeline._output["dummy"].store.assert_called()
-        mock_error.assert_called()
-        assert re.search("Output .* failed:", mock_error.call_args[0][0]), "error message is logged"
+        mock_log_error.assert_called_with(str(raised_error))
         mock_shut_down.assert_called()
 
     @mock.patch("logging.Logger.error")
     def test_processor_fatal_output_error_in_setup_is_logged_pipeline_is_rebuilt(
-        self, mock_error, _
+        self, mock_log_error, _
     ):
         self.pipeline._output = {"dummy": mock.MagicMock()}
-        self.pipeline._output["dummy"].setup.side_effect = FatalOutputError
+        raised_error = FatalOutputError(mock.MagicMock(), "bad things happened")
+        self.pipeline._output["dummy"].setup.side_effect = raised_error
         self.pipeline.run()
-        mock_error.assert_called()
-        assert re.search("Output .* failed:", mock_error.call_args[0][0]), "error message is logged"
+        mock_log_error.assert_called_with(str(raised_error))
 
     def test_extra_data_tuple_is_passed_to_store_custom(self, _):
         self.pipeline._setup()
@@ -847,7 +838,9 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         )
         pipeline._output = mock.MagicMock()
         pipeline._output.store = mock.MagicMock()
-        pipeline._output.store.side_effect = FatalOutputError()
+        pipeline._output.store.side_effect = FatalOutputError(
+            pipeline._output, "bad things happened"
+        )
         pipeline.start()
         pipeline.stop()
         pipeline.join()
