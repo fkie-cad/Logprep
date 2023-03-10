@@ -353,7 +353,7 @@ class Pipeline:
         """Retrieve next event, process event with full pipeline and store or return results"""
         assert self._input, "Run process_pipeline only with an valid input connector"
         self._metrics_exposer.expose(self.metrics)
-        Component.scheduler.run_pending()
+        Component.run_pending_tasks()
         event = self._get_event()
         extra_outputs = []
         if event:

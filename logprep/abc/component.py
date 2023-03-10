@@ -1,6 +1,7 @@
 """ abstract module for connectors"""
 from abc import ABC
 from logging import Logger
+from typing import Callable
 
 from attr import define, field, validators
 from schedule import Scheduler
@@ -22,7 +23,7 @@ class Component(ABC):
     __slots__ = ["name", "_logger", "_config", "__dict__"]
 
     name: str
-    scheduler = Scheduler()
+    _scheduler = Scheduler()
 
     _logger: Logger
     _config: Config
@@ -61,3 +62,15 @@ class Component(ABC):
         Optional: Called when stopping the pipeline
 
         """
+
+    def _schedule_task(
+        self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None
+    ) -> None:
+        args = () if args is None else args
+        kwargs = {} if kwargs is None else kwargs
+        self._scheduler.every(seconds).seconds.do(task(*args, **kwargs))
+
+    @classmethod
+    def run_pending_tasks(cls) -> None:
+        """starts all pending tasks"""
+        cls._scheduler.run_pending()

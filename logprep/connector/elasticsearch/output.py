@@ -372,4 +372,4 @@ class ElasticsearchOutput(Output):
             self._search_context.info()
         except ElasticsearchException as error:
             raise FatalOutputError(error) from error
-        self.scheduler.every(self._config.flush_timeout).seconds.do(self._write_backlog())
+        self._schedule_task(self._write_backlog, seconds=self._config.flush_timeout)
