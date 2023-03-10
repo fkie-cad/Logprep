@@ -48,20 +48,7 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
         processor_metrics: "Processor.ProcessorMetrics",
     ):
         """method for processing specific rules"""
-        applied_rules = set()
-        matching_rules = set(specific_tree.get_matching_rules(event))
-        while True:
-            for rule in matching_rules:
-                begin = time()
-                callback(event, rule)
-                processing_time = time() - begin
-                rule.metrics._number_of_matches += 1
-                rule.metrics.update_mean_processing_time(processing_time)
-                processor_metrics.update_mean_processing_time_per_event(processing_time)
-                applied_rules.add(rule)
-            matching_rules = set(specific_tree.get_matching_rules(event))
-            if not matching_rules.difference(applied_rules):
-                break
+        self._process_rule_tree(event, specific_tree, callback, processor_metrics)
 
     def _process_generic(
         self,
@@ -71,8 +58,17 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
         processor_metrics: "Processor.ProcessorMetrics",
     ):
         """method for processing generic rules"""
+        self._process_rule_tree(event, generic_tree, callback, processor_metrics)
+
+    def _process_rule_tree(
+        self,
+        event: dict,
+        tree: "RuleTree",
+        callback: Callable,
+        processor_metrics: "Processor.ProcessorMetrics",
+    ):
         applied_rules = set()
-        matching_rules = set(generic_tree.get_matching_rules(event))
+        matching_rules = set(tree.get_matching_rules(event))
         while True:
             for rule in matching_rules:
                 begin = time()
@@ -82,6 +78,6 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
                 rule.metrics.update_mean_processing_time(processing_time)
                 processor_metrics.update_mean_processing_time_per_event(processing_time)
                 applied_rules.add(rule)
-            matching_rules = set(generic_tree.get_matching_rules(event))
+            matching_rules = set(tree.get_matching_rules(event))
             if not matching_rules.difference(applied_rules):
                 break
