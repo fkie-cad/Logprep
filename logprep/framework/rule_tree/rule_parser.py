@@ -277,7 +277,8 @@ class RuleParser:
         for parsed_rule in result_list.copy():
             for segment in parsed_rule:
                 if isinstance(segment, list):
-                    result_list.remove(parsed_rule)
+                    if parsed_rule in result_list:
+                        result_list.remove(parsed_rule)
                     rule_list = RuleParser._parse_or(parsed_rule)
 
                     for rule in rule_list:

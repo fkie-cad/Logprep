@@ -1,10 +1,14 @@
-import pytest
+# pylint: disable=protected-access
+# pylint: disable=missing-docstring
+# pylint: disable=line-too-long
 
-pytest.importorskip("logprep.processor.pre_detector")
+import pytest
 
 from logprep.filter.expression.filter_expression import And, Or, StringFilterExpression, Not, Exists
 from logprep.framework.rule_tree.rule_parser import RuleParser as RP
 from logprep.processor.pre_detector.rule import PreDetectorRule
+
+pytest.importorskip("logprep.processor.pre_detector")
 
 str1 = StringFilterExpression(["key1"], "value1")
 str2 = StringFilterExpression(["key2"], "value2")
@@ -464,6 +468,47 @@ class TestRuleParser:
             ]
         ]
 
+        rule = PreDetectorRule._create_from_dict(
+            {
+                "filter": "(A1 OR A2) AND (B1 OR B2) AND (C1 OR C2) AND (D1 OR D2)",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+
+        parsed_rule = RP.parse_rule(rule, {}, {})
+        assert parsed_rule == [
+            [Exists(["A1"]), Exists(["B1"]), Exists(["C1"]), Exists(["D1"])],
+            [Exists(["A1"]), Exists(["B1"]), Exists(["C1"]), Exists(["D2"])],
+            [Exists(["A1"]), Exists(["B1"]), Exists(["C2"]), Exists(["D1"])],
+            [Exists(["A1"]), Exists(["B1"]), Exists(["C2"]), Exists(["D2"])],
+            [Exists(["A1"]), Exists(["B2"]), Exists(["C1"]), Exists(["D1"])],
+            [Exists(["A1"]), Exists(["B2"]), Exists(["C1"]), Exists(["D2"])],
+            [Exists(["A1"]), Exists(["B2"]), Exists(["C2"]), Exists(["D1"])],
+            [Exists(["A1"]), Exists(["B2"]), Exists(["C2"]), Exists(["D2"])],
+            [Exists(["A1"]), Exists(["C1"]), Exists(["D1"])],
+            [Exists(["A1"]), Exists(["C1"]), Exists(["D2"])],
+            [Exists(["A1"]), Exists(["C2"]), Exists(["D1"])],
+            [Exists(["A1"]), Exists(["C2"]), Exists(["D2"])],
+            [Exists(["A2"]), Exists(["B1"]), Exists(["C1"]), Exists(["D1"])],
+            [Exists(["A2"]), Exists(["B1"]), Exists(["C1"]), Exists(["D2"])],
+            [Exists(["A2"]), Exists(["B1"]), Exists(["C2"]), Exists(["D1"])],
+            [Exists(["A2"]), Exists(["B1"]), Exists(["C2"]), Exists(["D2"])],
+            [Exists(["A2"]), Exists(["B2"]), Exists(["C1"]), Exists(["D1"])],
+            [Exists(["A2"]), Exists(["B2"]), Exists(["C1"]), Exists(["D2"])],
+            [Exists(["A2"]), Exists(["B2"]), Exists(["C2"]), Exists(["D1"])],
+            [Exists(["A2"]), Exists(["B2"]), Exists(["C2"]), Exists(["D2"])],
+            [Exists(["A2"]), Exists(["C1"]), Exists(["D1"])],
+            [Exists(["A2"]), Exists(["C1"]), Exists(["D2"])],
+            [Exists(["A2"]), Exists(["C2"]), Exists(["D1"])],
+            [Exists(["A2"]), Exists(["C2"]), Exists(["D2"])],
+        ]
+
     def test_has_unresolved_not_expression(self):
         exp = And(str1, str2)
         assert not RP._has_unresolved_not_expression(exp)
@@ -486,6 +531,7 @@ class TestRuleParser:
         exp = Or(Not(And(str1, str2)), str3)
         assert RP._has_unresolved_not_expression(exp)
 
+    # pylint: disable=invalid-name
     def test_parse_NOT(self):
         exp = Not(str1)
         assert RP._parse_not_expression(exp) == exp
@@ -567,6 +613,8 @@ class TestRuleParser:
 
         exp = Or(And(str1, Or(str2, str3)), str4)
         assert RP._parse_or_expression(exp) == [[str1, str2], [str1, str3], [str4]]
+
+    # pylint: enable=invalid-name
 
     def test_has_or_expression(self):
         exp = And(str1, str2)
