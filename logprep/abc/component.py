@@ -68,7 +68,7 @@ class Component(ABC):
     ) -> None:
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
-        self._scheduler.every(seconds).seconds.do(task(*args, **kwargs))
+        self._scheduler.every(seconds).seconds.do(task, *args, **kwargs)
 
     @classmethod
     def run_pending_tasks(cls) -> None:

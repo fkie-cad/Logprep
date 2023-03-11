@@ -41,7 +41,7 @@ import arrow
 import elasticsearch
 from attr import define, field
 from attrs import validators
-from elasticsearch import helpers, ElasticsearchException
+from elasticsearch import ElasticsearchException, helpers
 
 from logprep.abc.output import FatalOutputError, Output
 
@@ -82,7 +82,7 @@ class ElasticsearchOutput(Output):
         """(Optional) The secret used for authentication (optional)."""
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) The path to a SSL ca certificate to verify the ssl context (optional)."""
-        flush_timout: Optional[int] = field(validator=validators.instance_of(int), default=60)
+        flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
         """(Optional) The timout after message_backlog is flushed if message_backlog_size is not reached"""
 
     __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
@@ -368,8 +368,9 @@ class ElasticsearchOutput(Output):
 
     def setup(self):
         super().setup()
+        flush_timeout = self._config.flush_timeout
+        self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
         try:
             self._search_context.info()
         except ElasticsearchException as error:
             raise FatalOutputError(self, error) from error
-        self._schedule_task(self._write_backlog, seconds=self._config.flush_timeout)

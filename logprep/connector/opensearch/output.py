@@ -84,24 +84,27 @@ class OpensearchOutput(ElasticsearchOutput):
         self._message_backlog[self._processed_cnt] = document
         currently_processed_cnt = self._processed_cnt + 1
         if currently_processed_cnt == self._config.message_backlog_size:
-            try:
-                opensearch.helpers.bulk(
-                    self._search_context,
-                    self._message_backlog,
-                    max_retries=self._config.max_retries,
-                    chunk_size=self._config.message_backlog_size,
-                )
-            except opensearch.SerializationError as error:
-                self._handle_serialization_error(error)
-            except opensearch.ConnectionError as error:
-                self._handle_connection_error(error)
-            except opensearch.helpers.BulkIndexError as error:
-                self._handle_bulk_index_error(error)
-            self._processed_cnt = 0
-            if self.input_connector:
-                self.input_connector.batch_finished_callback()
+            self._write_backlog()
         else:
             self._processed_cnt = currently_processed_cnt
+
+    def _write_backlog(self):
+        try:
+            opensearch.helpers.bulk(
+                self._search_context,
+                self._message_backlog,
+                max_retries=self._config.max_retries,
+                chunk_size=self._config.message_backlog_size,
+            )
+        except opensearch.SerializationError as error:
+            self._handle_serialization_error(error)
+        except opensearch.ConnectionError as error:
+            self._handle_connection_error(error)
+        except opensearch.helpers.BulkIndexError as error:
+            self._handle_bulk_index_error(error)
+        self._processed_cnt = 0
+        if self.input_connector:
+            self.input_connector.batch_finished_callback()
 
     def _handle_bulk_index_error(self, error: opensearch.helpers.BulkIndexError):
         """Handle bulk indexing error for OpenSearch bulk indexing.

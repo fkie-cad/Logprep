@@ -17,6 +17,7 @@ import elasticsearch
 import elasticsearch.helpers
 import pytest
 
+from logprep.abc.component import Component
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
@@ -231,3 +232,9 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         self.object._search_context.info.side_effect = elasticsearch.ElasticsearchException
         with pytest.raises(FatalOutputError):
             self.object.setup()
+
+    def test_setup_registers_flush_timout_tasks(self):
+        assert len(Component._scheduler.jobs) == 0
+        with pytest.raises(FatalOutputError):
+            self.object.setup()
+        assert len(Component._scheduler.jobs) == 1
