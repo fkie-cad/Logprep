@@ -23,10 +23,12 @@ from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
 
+from tests.unit.component.base import BaseCompontentTestCase
+
 yaml = YAML(typ="safe", pure=True)
 
 
-class BaseProcessorTestCase(ABC):
+class BaseProcessorTestCase(BaseCompontentTestCase):
     mocks: dict = {}
 
     CONFIG: dict = {}
@@ -117,16 +119,6 @@ class BaseProcessorTestCase(ABC):
         self.object.process(document)
 
         assert self.object.metrics.number_of_processed_events == count + 1
-
-    def test_uses_python_slots(self):
-        assert isinstance(self.object.__slots__, Iterable)
-
-    def test_describe(self):
-        describe_string = self.object.describe()
-        assert f"{self.object.__class__.__name__} (Test Instance Name)" == describe_string
-
-    def test_snake_type(self):
-        assert str(self.object) == camel_to_snake(self.object.__class__.__name__)
 
     def test_generic_specific_rule_trees(self):
         assert isinstance(self.object._generic_tree, RuleTree)
