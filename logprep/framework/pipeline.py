@@ -13,7 +13,7 @@ from functools import cached_property
 from logging import INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 from time import time
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import attrs
 import numpy as np
@@ -111,7 +111,7 @@ class SharedCounter:
 
 
 def _handle_pipeline_error(func):
-    def _inner(self: "Pipeline"):
+    def _inner(self: "Pipeline") -> Any:
         try:
             return func(self)
         except WarningOutputError as error:
@@ -121,6 +121,7 @@ def _handle_pipeline_error(func):
         except FatalOutputError as error:
             self.logger.error(str(error))
             self.stop()
+        return None
 
     return _inner
 

@@ -42,6 +42,13 @@ class BaseConnectorTestCase(ABC):
     def test_snake_type(self):
         assert str(self.object) == camel_to_snake(self.object.__class__.__name__)
 
+    def test_schedules_tasks(self):
+        mock_task = mock.MagicMock()
+        self.object._schedule_task(task=mock_task, seconds=1)
+        with mock.patch("schedule.Job.should_run", return_value=True):
+            self.object.run_pending_tasks()
+        mock_task.assert_called()
+
 
 class BaseInputTestCase(BaseConnectorTestCase):
     def test_is_input_instance(self):
