@@ -4,21 +4,21 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
-from copy import deepcopy
 import json
 import re
-import pytest
+from copy import deepcopy
 from datetime import datetime
-from json import loads, dumps
+from json import dumps, loads
 from math import isclose
 from unittest import mock
 
 import arrow
 import elasticsearch
 import elasticsearch.helpers
+import pytest
 
-from logprep.factory import Factory
 from logprep.abc.output import CriticalOutputError, FatalOutputError
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -34,7 +34,7 @@ def mock_bulk(
             loads(dumps(document))
         except TypeError as error:
             raise CriticalOutputError(
-                "Error storing output document: Serialization Error", document
+                mock.MagicMock(), "Error storing output document: Serialization Error", document
             ) from error
 
 

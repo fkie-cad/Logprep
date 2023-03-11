@@ -1,22 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import base64
-import json
-import zlib
 from abc import ABC
-from copy import deepcopy
 from logging import getLogger
 from typing import Iterable
 from unittest import mock
 
-import arrow
-
 from logprep.abc.connector import Connector
-from logprep.abc.input import Input
-from logprep.abc.output import Output
 from logprep.factory import Factory
 from logprep.util.helper import camel_to_snake
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class BaseCompontentTestCase(ABC):

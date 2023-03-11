@@ -13,7 +13,9 @@ import pytest
 from logprep.abc.output import CriticalOutputError
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
-from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
+from tests.unit.connector.test_confluent_kafka_common import (
+    CommonConfluentKafkaTestCase,
+)
 
 
 class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):

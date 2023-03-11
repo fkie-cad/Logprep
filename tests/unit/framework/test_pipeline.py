@@ -18,7 +18,12 @@ from logprep.abc.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.abc.output import CriticalOutputError, FatalOutputError, Output, WarningOutputError
+from logprep.abc.output import (
+    CriticalOutputError,
+    FatalOutputError,
+    Output,
+    WarningOutputError,
+)
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.pipeline import (
@@ -29,7 +34,10 @@ from logprep.framework.pipeline import (
     SharedCounter,
 )
 from logprep.metrics.metric import MetricTargets
-from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
+from logprep.processor.base.exceptions import (
+    ProcessingWarning,
+    ProcessingWarningCollection,
+)
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.getter import GetterFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
