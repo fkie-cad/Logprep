@@ -251,6 +251,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
 
     def test_setup_raises_fatal_output_error_if_unauthenticated(self):
         self.object._search_context.info = mock.MagicMock()
-        self.object._search_context.info.side_effect = opensearchpy.AuthenticationException
+        self.object._search_context.info.side_effect = opensearchpy.OpenSearchException
         with pytest.raises(FatalOutputError):
             self.object.setup()

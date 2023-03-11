@@ -23,16 +23,26 @@ class CriticalOutputError(OutputError):
     """A significant error occurred - log and don't process the event."""
 
     def __init__(self, output, message, raw_input):
-        self.raw_input = raw_input
+        if raw_input:
+            output.store_failed(str(self), raw_input, {})
+        output.metrics.number_of_errors += 1
         super().__init__(output, f"{message} for event: {raw_input}")
 
 
 class FatalOutputError(OutputError):
     """Must not be catched."""
 
+    def __init__(self, output, message) -> None:
+        output.metrics.number_of_errors += 1
+        super().__init__(output, message)
+
 
 class WarningOutputError(OutputError):
     """May be catched but must be displayed to the user/logged."""
+
+    def __init__(self, output, message) -> None:
+        output.metrics.number_of_warnings += 1
+        super().__init__(output, message)
 
 
 class Output(Connector):

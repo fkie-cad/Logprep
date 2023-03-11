@@ -113,10 +113,12 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         kafka_producer.flush.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_create_confluent_settings_contains_expected_values2(self, _):
-        self.object._producer.produce.side_effect = BaseException
-        with pytest.raises(CriticalOutputError, match=r"Error storing output document:"):
+    def test_raises_critical_output_on_any_exception(self, _):
+        self.object._producer.produce.side_effect = [BaseException, None, None]
+        self.object.store_failed = mock.MagicMock()
+        with pytest.raises(CriticalOutputError, match=r"Error storing output document"):
             self.object.store({"message": "test message"})
+        self.object.store_failed.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
