@@ -6,7 +6,7 @@
 ## Breaking
 
 * Remove rules deprecations introduced in `v4.0.0`
-* changes rule language of `selective_extractor`, `pseudonymizer`, `pre_detector` to support multiple outputs
+* Changes rule language of `selective_extractor`, `pseudonymizer`, `pre_detector` to support multiple outputs
 
 ### Features
 
@@ -16,6 +16,8 @@
 * Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
 * Add shorthand for converting datatypes to `dissector` dissect pattern language
 * Add support for multiple output connectors
+* Apply processors multiple times until no new rule matches anymore. This enables applying rules on 
+results of previous rules.
 
 ### Improvements
 
