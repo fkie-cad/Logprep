@@ -22,6 +22,7 @@ pipeline = [
     },
 ]
 
+
 # fmt: off
 @pytest.mark.parametrize(
     "input_event, expected_output_event, expected_extra_output",
