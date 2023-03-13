@@ -18,8 +18,8 @@ Example
 """
 from functools import cached_property
 from ipaddress import ip_address
-from pathlib import Path
 from multiprocessing import current_process
+from pathlib import Path
 
 from attr import define, field, validators
 from geoip2 import database
@@ -27,9 +27,9 @@ from geoip2.errors import AddressNotFoundError
 
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import DuplicationError
-from logprep.processor.geoip_enricher.rule import GeoipEnricherRule, GEOIP_DATA_STUBS
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class GeoipEnricher(Processor):
@@ -111,4 +111,4 @@ class GeoipEnricher(Processor):
                 overwrite_output_field=rule.overwrite_target,
             )
             if not adding_was_successful:
-                raise DuplicationError(self.name, [full_output_field])
+                raise DuplicationError(self, [full_output_field])

@@ -39,8 +39,9 @@ from logprep.factory import Factory
 from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.exceptions import (
+    ProcessingCriticalError,
+    ProcessingError,
     ProcessingWarning,
-    ProcessingWarningCollection,
 )
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
@@ -425,19 +426,13 @@ class Pipeline:
                 if extra_data:
                     extra_outputs.append(extra_data)
             except ProcessingWarning as error:
-                self._handle_processing_warning(processor, error)
-            except ProcessingWarningCollection as error:
-                for warning in error.processing_warnings:
-                    self._handle_processing_warning(processor, warning)
-            except BaseException as error:  # pylint: disable=broad-except
-                msg = self._handle_fatal_processing_error(processor, error)
+                self.logger.warning(str(error))
+            except ProcessingCriticalError as error:
+                self.logger.error(str(error))
                 for _, output in self._output.items():
                     if output.default:
-                        output.store_failed(msg, json.loads(event_received), event)
-                processor.metrics.number_of_errors += 1
-                event.clear()  # 'delete' the event, i.e. no regular output
+                        output.store_failed(str(error), json.loads(event_received), event)
             if not event:
-                self.logger.debug(f"Event deleted by processor {processor}")
                 break
         if self._processing_counter:
             self._processing_counter.increment()
@@ -445,24 +440,6 @@ class Pipeline:
         if self.metrics:
             self.metrics.number_of_processed_events += 1
         return extra_outputs
-
-    def _handle_fatal_processing_error(self, processor: Processor, error: Exception) -> str:
-        original_error_msg = type(error).__name__
-        if str(error):
-            original_error_msg += f": {error}"
-        msg = (
-            f"A critical error occurred for processor {processor.describe()} when "
-            f"processing an event, processing was aborted: ({original_error_msg})"
-        )
-        self.logger.error(msg)
-        return msg
-
-    def _handle_processing_warning(self, processor: Processor, error: Exception) -> None:
-        self.logger.warning(
-            f"A non-fatal error occurred for processor {processor.describe()} "
-            f"when processing an event: {error}"
-        )
-        processor.metrics.number_of_warnings += 1
 
     def _store_extra_data(self, extra_data: List[tuple]) -> None:
         self.logger.debug("Storing extra data")

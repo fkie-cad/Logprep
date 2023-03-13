@@ -82,11 +82,4 @@ class DatetimeExtractor(Processor):
             }
 
             if split_timestamp:
-                adding_was_successful = add_field_to(
-                    event,
-                    rule.target_field,
-                    split_timestamp,
-                    overwrite_output_field=rule.overwrite_target,
-                )
-                if not adding_was_successful:
-                    raise DuplicationError(self.name, [rule.target_field])
+                self._write_target_field(event, rule, split_timestamp)

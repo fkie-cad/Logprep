@@ -7,22 +7,22 @@ from copy import deepcopy
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 
 pytest.importorskip("hyperscan")
 
-from tests.unit.processor.base import BaseProcessorTestCase
-
 # pylint: disable=ungrouped-imports
-from logprep.processor.hyperscan_resolver.rule import (
-    InvalidHyperscanResolverDefinition,
-)
+from logprep.processor.hyperscan_resolver.rule import InvalidHyperscanResolverDefinition
+from tests.unit.processor.base import BaseProcessorTestCase
 
 # pylint: enable=ungrouped-imports
 
 pytest.importorskip("logprep.processor.hyperscan_resolver")
 
-from logprep.processor.hyperscan_resolver.processor import HyperscanResolver, HyperscanResolverError
+from logprep.processor.hyperscan_resolver.processor import (
+    HyperscanResolver,
+    HyperscanResolverError,
+)
 
 
 class TestHyperscanResolverProcessor(BaseProcessorTestCase):
@@ -625,7 +625,7 @@ class TestHyperscanResolverProcessorWithPatterns(BaseProcessorTestCase):
         document = {"to_resolve": "12ab34"}
 
         with pytest.raises(
-            HyperscanResolverError, match=r"No patter to compile for hyperscan database!"
+            ProcessingCriticalError, match=r"No patter to compile for hyperscan database!"
         ):
             self.object.process(document)
 

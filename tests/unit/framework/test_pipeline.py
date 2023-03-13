@@ -1,7 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-import re
 from copy import deepcopy
 from logging import DEBUG, WARNING, getLogger
 from multiprocessing import Lock, active_children
@@ -12,7 +11,6 @@ import requests
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
-from logprep.abc.component import Component
 from logprep.abc.input import (
     CriticalInputError,
     FatalInputError,
@@ -36,8 +34,9 @@ from logprep.framework.pipeline import (
 )
 from logprep.metrics.metric import MetricTargets
 from logprep.processor.base.exceptions import (
+    ProcessingCriticalError,
+    ProcessingError,
     ProcessingWarning,
-    ProcessingWarningCollection,
 )
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.getter import GetterFactory
@@ -287,50 +286,53 @@ class TestPipeline(ConfigurationForTests):
     def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        self.pipeline._pipeline[1].process.side_effect = ProcessorWarningMockError
+
+        def raise_processing_warning(_):
+            raise ProcessingWarning(self.pipeline._pipeline[1], "not so bad")
+
+        self.pipeline._pipeline[1].process.side_effect = raise_processing_warning
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline.process_pipeline()
-        mock_warning.assert_called()
-        assert (
-            "ProcessorWarningMockError" in mock_warning.call_args[0][0]
-        ), "the log message was written"
+        mock_warning.assert_called_with(
+            str(ProcessingWarning(self.pipeline._pipeline[1], "not so bad"))
+        )
         assert self.pipeline._output["dummy"].store.call_count == 2, "all events are processed"
-
-    @mock.patch("logging.Logger.warning")
-    def test_processor_warning_error_is_logged_for_processingwarningcollection(
-        self, mock_warning, _
-    ):
-        class ProcessingWarningMockCollection(ProcessingWarningCollection):
-            def __init__(self):
-                super().__init__(
-                    "name",
-                    "message",
-                    [ProcessingWarning("warning1"), ProcessingWarning("warning2")],
-                )
-
-        self.pipeline._setup()
-        self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        self.pipeline._pipeline[0].process.side_effect = ProcessingWarningMockCollection
-        self.pipeline.process_pipeline()
-        assert mock_warning.call_count == 4, "called 2 times for 2 processors in pipeline"
-        assert self.pipeline._output["dummy"].store.call_count == 1, "the event is processed"
 
     @mock.patch("logging.Logger.error")
     def test_processor_critical_error_is_logged_event_is_stored_in_error_output(
         self, mock_error, _
     ):
         self.pipeline._setup()
-        self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        self.pipeline._pipeline[1].process.side_effect = Exception
+        input_event1 = {"message": "first event"}
+        input_event2 = {"message": "second event"}
+        self.pipeline._input.get_next.return_value = (input_event1, None)
+
+        def raise_critical_processing_error(event):
+            raise ProcessingCriticalError(
+                self.pipeline._pipeline[1], "really bad things happened", event
+            )
+
+        self.pipeline._pipeline[1].process.side_effect = raise_critical_processing_error
         self.pipeline.process_pipeline()
-        self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
+        self.pipeline._input.get_next.return_value = (input_event2, None)
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
         assert mock_error.call_count == 2, "two errors occured"
-        assert (
-            "A critical error occurred for processor" in mock_error.call_args[0][0]
-        ), "the log error message was written"
+        mock_error.assert_called_with(
+            str(
+                ProcessingCriticalError(
+                    self.pipeline._pipeline[1], "really bad things happened", input_event1
+                )
+            )
+        )
+        mock_error.assert_called_with(
+            str(
+                ProcessingCriticalError(
+                    self.pipeline._pipeline[1], "really bad things happened", input_event2
+                )
+            )
+        )
         assert self.pipeline._output["dummy"].store.call_count == 0, "no event in output"
         assert (
             self.pipeline._output["dummy"].store_failed.call_count == 2

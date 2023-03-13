@@ -4,11 +4,12 @@
 import hashlib
 from multiprocessing import current_process
 from pathlib import Path
+
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -255,9 +256,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
 
         with pytest.raises(
             ProcessingWarning,
-            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-            r"written, because one or more subfields existed and could not be extended: "
-            r"url.subdomain\)",
+            match=r"DuplicationError in DomainLabelExtractor \(Test Instance Name\): "
+            r"The following fields could not be written, because "
+            r"one or more subfields existed and could not be extended: url.subdomain",
         ):
             self.object.process(document)
 
