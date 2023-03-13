@@ -1,10 +1,14 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+import json
+import re
+from logging import basicConfig, DEBUG, getLogger
+
 import pytest
 from deepdiff import DeepDiff
 
 from logprep.util.json_handling import dump_config_as_file
-from tests.acceptance.util import *
+from tests.acceptance.util import get_default_logprep_config, get_test_output
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
