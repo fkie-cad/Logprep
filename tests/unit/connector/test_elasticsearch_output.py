@@ -234,7 +234,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
             self.object.setup()
 
     def test_setup_registers_flush_timout_tasks(self):
-        assert len(Component._scheduler.jobs) == 0
+        job_count = len(Component._scheduler.jobs)
         with pytest.raises(FatalOutputError):
             self.object.setup()
-        assert len(Component._scheduler.jobs) == 1
+        assert len(Component._scheduler.jobs) == job_count + 1

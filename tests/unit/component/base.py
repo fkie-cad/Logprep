@@ -5,6 +5,7 @@ from logging import getLogger
 from typing import Iterable
 from unittest import mock
 
+from logprep.abc.component import Component
 from logprep.abc.connector import Connector
 from logprep.factory import Factory
 from logprep.util.helper import camel_to_snake
@@ -30,9 +31,16 @@ class BaseCompontentTestCase(ABC):
     def test_snake_type(self):
         assert str(self.object) == camel_to_snake(self.object.__class__.__name__)
 
-    def test_schedules_tasks(self):
+    def test_schedules_and_runs_tasks(self):
         mock_task = mock.MagicMock()
         self.object._schedule_task(task=mock_task, seconds=1)
         with mock.patch("schedule.Job.should_run", return_value=True):
             self.object.run_pending_tasks()
         mock_task.assert_called()
+
+    def test_schedules_tasks_only_once(self):
+        mock_task = mock.MagicMock()
+        self.object._schedule_task(task=mock_task, seconds=1)
+        job_count = len(Component._scheduler.jobs)
+        self.object._schedule_task(task=mock_task, seconds=1)
+        assert job_count == len(Component._scheduler.jobs)

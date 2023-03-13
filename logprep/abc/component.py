@@ -66,6 +66,8 @@ class Component(ABC):
     def _schedule_task(
         self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None
     ) -> None:
+        if task in map(lambda job: job.job_func.func, self._scheduler.jobs):
+            return
         args = () if args is None else args
         kwargs = {} if kwargs is None else kwargs
         self._scheduler.every(seconds).seconds.do(task, *args, **kwargs)
