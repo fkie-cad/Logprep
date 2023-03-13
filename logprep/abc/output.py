@@ -14,9 +14,9 @@ from logprep.abc.connector import Connector
 class OutputError(BaseException):
     """Base class for Output related exceptions."""
 
-    def __init__(self, output, message) -> None:
+    def __init__(self, output: "Output", message: str) -> None:
         self.output = output
-        super().__init__(f"{self.__class__.__name__} in {output}: {message}")
+        super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
 
 
 class CriticalOutputError(OutputError):

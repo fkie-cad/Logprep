@@ -116,9 +116,19 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_raises_critical_output_on_any_exception(self, _):
-        self.object._producer.produce.side_effect = [BaseException, None, None]
+        self.object._producer.produce.side_effect = [
+            BaseException("bad things happened"),
+            None,
+            None,
+        ]
         self.object.store_failed = mock.MagicMock()
-        with pytest.raises(CriticalOutputError, match=r"Error storing output document"):
+        with pytest.raises(
+            CriticalOutputError,
+            match=r"CriticalOutputError in ConfluentKafkaOutput"
+            r" \(Test Instance Name\) - Kafka Output: testserver:9092: "
+            r"Error storing output document -> bad things happened for event: "
+            r"\{'message': 'test message'\}",
+        ):
             self.object.store({"message": "test message"})
         self.object.store_failed.assert_called()
 

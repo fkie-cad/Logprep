@@ -28,12 +28,20 @@ from logprep.abc.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError, Output
+from logprep.abc.output import (
+    CriticalOutputError,
+    FatalOutputError,
+    Output,
+    WarningOutputError,
+)
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.metrics.metric import Metric, calculate_new_average, MetricTargets
+from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
-from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
+from logprep.processor.base.exceptions import (
+    ProcessingWarning,
+    ProcessingWarningCollection,
+)
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.time_measurement import TimeMeasurement
@@ -114,13 +122,22 @@ def _handle_pipeline_error(func):
     def _inner(self: "Pipeline") -> Any:
         try:
             return func(self)
-        except WarningOutputError as error:
+        except SourceDisconnectedError as error:
+            self.logger.warning(str(error))
+            self.stop()
+        except (WarningOutputError, WarningInputError) as error:
             self.logger.warning(str(error))
         except CriticalOutputError as error:
             self.logger.error(str(error))
-        except FatalOutputError as error:
+        except (FatalOutputError, FatalInputError) as error:
             self.logger.error(str(error))
             self.stop()
+        except CriticalInputError as error:
+            if raw_input := error.raw_input:
+                for _, output in self._output.items():  # pylint: disable=protected-access
+                    if output.default:
+                        output.store_failed(str(self), raw_input, {})
+            self.logger.error(str(error))
         return None
 
     return _inner
@@ -384,40 +401,16 @@ class Pipeline:
                 self.logger.debug(f"Stored output in {output_name}")
 
     def _get_event(self) -> dict:
+        event, non_critical_error_msg = self._input.get_next(self._logprep_config.get("timeout"))
+        if non_critical_error_msg and self._output:
+            for _, output in self._output.items():
+                if output.default:
+                    output.store_failed(non_critical_error_msg, event, None)
         try:
-            event, non_critical_error_msg = self._input.get_next(
-                self._logprep_config.get("timeout")
-            )
-            if non_critical_error_msg and self._output:
-                for _, output in self._output.items():
-                    if output.default:
-                        output.store_failed(non_critical_error_msg, event, None)
-            try:
-                self.metrics.kafka_offset = self._input.current_offset
-            except AttributeError:
-                pass
-            return event
-        except SourceDisconnectedError:
-            self.logger.warning(
-                f"Lost or failed to establish connection to {self._input.describe()}"
-            )
-            self.stop()
-        except FatalInputError as error:
-            self.logger.error(f"Input {self._input.describe()} failed: {error}")
-            self._input.metrics.number_of_errors += 1
-            self.stop()
-        except WarningInputError as error:
-            self.logger.warning(f"An error occurred for input {self._input.describe()}: {error}")
-            self._input.metrics.number_of_warnings += 1
-        except CriticalInputError as error:
-            msg = f"A critical error occurred for input {self._input.describe()}: {error}"
-            self.logger.error(msg)
-            if error.raw_input:
-                for _, output in self._output.items():
-                    if output.default:
-                        output.store_failed(msg, error.raw_input, {})
-            self._input.metrics.number_of_errors += 1
-        return {}
+            self.metrics.kafka_offset = self._input.current_offset
+        except AttributeError:
+            pass
+        return event
 
     @TimeMeasurement.measure_time("pipeline")
     def process_event(self, event: dict):
