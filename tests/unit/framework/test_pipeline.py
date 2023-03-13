@@ -12,6 +12,7 @@ import requests
 from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
+from logprep.abc.component import Component
 from logprep.abc.input import (
     CriticalInputError,
     FatalInputError,
@@ -655,6 +656,22 @@ class TestPipeline(ConfigurationForTests):
             for output_connector in output.items():
                 assert isinstance(output_connector[1], Output)
         assert not self.pipeline._output["dummy1"].default
+
+    def test_process_pipeline_runs_scheduled_tasks(self, _):
+        self.pipeline._logprep_config["output"] = {
+            "dummy": {"type": "dummy_output"},
+        }
+        with mock.patch("logprep.factory.Factory.create", original_create):
+            output = self.pipeline._output
+
+        mock_task = mock.MagicMock()
+        self.pipeline._get_event = mock.MagicMock()
+        self.pipeline._store_event = mock.MagicMock()
+        self.pipeline.process_event = mock.MagicMock()
+        output["dummy"]._schedule_task(task=mock_task, seconds=30)
+        with mock.patch("schedule.Job.should_run", return_value=True):
+            self.pipeline.process_pipeline()
+        mock_task.assert_called()
 
 
 class TestPipelineWithActualInput:
