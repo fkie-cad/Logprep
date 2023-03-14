@@ -4,6 +4,7 @@ from copy import deepcopy
 import pytest
 
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.template_replacer.processor import TemplateReplacerError
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -154,9 +155,10 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         }
 
         with pytest.raises(
-            TemplateReplacerError,
-            match="Parent field 'dotted' of target field 'dotted.message' exists "
-            "and is not a dict!",
+            DuplicationError,
+            match=r"DuplicationError in TemplateReplacer \(test instance\): "
+            r"The following fields could not be written, because one or more subfields "
+            r"existed and could not be extended: dotted",
         ):
             self.object.process(document)
 

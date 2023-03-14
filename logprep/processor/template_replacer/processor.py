@@ -32,6 +32,7 @@ from typing import Optional
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
@@ -144,18 +145,13 @@ class TemplateReplacer(Processor):
         return replacement
 
     def _perform_replacement(self, event: dict, replacement: str):
-        _event = event
         for subfield in self._target_field_split[:-1]:
-            event_sub = _event.get(subfield)
+            event_sub = event.get(subfield)
             if isinstance(event_sub, dict):
-                _event = event_sub
+                event = event_sub
             elif event_sub is None:
-                _event[subfield] = {}
-                _event = _event[subfield]
+                event[subfield] = {}
+                event = event[subfield]
             else:
-                raise TemplateReplacerError(
-                    self.name,
-                    f"Parent field '{subfield}' of target field '{self._target_field}' "
-                    f"exists and is not a dict!",
-                )
-        _event[self._target_field_split[-1]] = replacement
+                raise DuplicationError(self, [subfield])
+        event[self._target_field_split[-1]] = replacement
