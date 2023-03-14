@@ -1,11 +1,13 @@
 """This module contains exceptions for rules."""
 
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any, List
 
 from logprep.factory_error import FactoryError
 
 if TYPE_CHECKING:
     from logprep.abc.processor import Processor
+    from logprep.processor.base.rule import Rule
 
 
 class RuleError(BaseException):
@@ -59,6 +61,7 @@ class ProcessingCriticalError(ProcessingError):
     """A critical error occured - stop processing of this event"""
 
     def __init__(self, processor: "Processor", message: str, event: dict):
+        self.event = deepcopy(event)
         event.clear()
         processor.metrics.number_of_errors += 1
         super().__init__(processor, f"{message} -> event was deleted")
@@ -67,18 +70,29 @@ class ProcessingCriticalError(ProcessingError):
 class ProcessingWarning(ProcessingError):
     """An minor error occurred - log the error but continue processing the event."""
 
-    def __init__(self, processor: "Processor", message: str):
+    def __init__(self, processor: "Processor", message: str, rule: "Rule", event: dict):
+        self.event = event
         processor.metrics.number_of_warnings += 1
+        message = f"""{message}
+Rule: {rule},
+Event: {event}
+        """
         super().__init__(processor, message)
 
 
 class DuplicationError(ProcessingWarning):
     """Raise if field already exists."""
 
-    def __init__(self, processor: "Processor", skipped_fields: List[str]):
+    def __init__(
+        self,
+        processor: "Processor",
+        rule: "Rule",
+        event: dict,
+        skipped_fields: List[str],
+    ):
         message = (
             "The following fields could not be written, because "
             "one or more subfields existed and could not be extended: "
+            f"{''.join(skipped_fields)}"
         )
-        message += " ".join(skipped_fields)
-        super().__init__(processor, message)
+        super().__init__(processor, message, rule, event)
