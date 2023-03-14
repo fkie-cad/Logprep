@@ -42,18 +42,15 @@ from filelock import FileLock
 from pytz import timezone
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from logprep.processor.normalizer.rule import NormalizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
 
-class NormalizerError(BaseException):
+class NormalizerError(ProcessingWarning):
     """Base class for Normalizer related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"Normalizer ({name}): {message}")
 
 
 class Normalizer(Processor):
@@ -344,7 +341,7 @@ class Normalizer(Processor):
                 f"Could not parse source timestamp "
                 f"{source_timestamp}' with formats '{source_formats}'"
             )
-            raise NormalizerError(self.name, error_message)
+            raise NormalizerError(self, error_message)
         return timestamp
 
     def _convert_timezone(self, timestamp, timestamp_normalization):
@@ -373,7 +370,7 @@ class Normalizer(Processor):
 
     def _raise_warning_if_fields_already_existed(self):
         if self._conflicting_fields:
-            raise DuplicationError(self.name, self._conflicting_fields)
+            raise DuplicationError(self, self._conflicting_fields)
 
     def shut_down(self):
         """
