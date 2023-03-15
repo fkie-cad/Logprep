@@ -91,9 +91,9 @@ class TestGetterFactory:
     def test_getter_expands_only_uppercase_variable_names(self, tmp_path):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
-        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $not_a_token")
+        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $pytest_test_token")
         my_getter = GetterFactory.from_string(str(testfile))
-        assert my_getter.get() == "this is my mytoken, and this is my $not_a_token"
+        assert my_getter.get() == "this is my mytoken, and this is my $pytest_test_token"
 
     def test_getter_expands_setted_environment_variables_and_missing_to_blank_with_braced_variables(
         self, tmp_path
@@ -174,6 +174,17 @@ dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
             "dict": {"key": "value", "second_key": "mytoken"},
         }
         assert my_getter.get_yaml() == expected
+
+    def test_getter_does_not_reduces_double_dollar_for_unvalid_prefixes(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        os.environ.update({"LOGPREP_LIST": "foo"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text(
+            "this is my $PYTEST_TEST_TOKEN, and this is my $$UNVALID_PREFIXED_TOKEN"
+        )
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my $$UNVALID_PREFIXED_TOKEN"
+        assert len(my_getter.missing_env_vars) == 0
 
 
 class TestFileGetter:
