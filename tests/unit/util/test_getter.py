@@ -14,7 +14,12 @@ from requests.exceptions import Timeout
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
-from logprep.util.getter import FileGetter, GetterFactory, GetterNotFoundError, HttpGetter
+from logprep.util.getter import (
+    FileGetter,
+    GetterFactory,
+    GetterNotFoundError,
+    HttpGetter,
+)
 
 yaml = YAML(pure=True, typ="safe")
 
@@ -142,6 +147,28 @@ dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
         expected = {
             "key": "mytoken",
             "list": ["first element", "mytoken", "mytoken-with-additional-string"],
+            "dict": {"key": "value", "second_key": "mytoken"},
+        }
+        assert my_getter.get_yaml() == expected
+
+    def test_getter_expands_only_whitelisted_in_yaml_content(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text(
+            """---
+key: $PYTEST_TEST_TOKEN
+list:
+    - first element
+    - $HOME
+    - $PYTEST_TEST_TOKEN
+    - ${PYTEST_TEST_TOKEN}-with-additional-string
+dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
+"""
+        )
+        my_getter = GetterFactory.from_string(str(testfile))
+        expected = {
+            "key": "mytoken",
+            "list": ["first element", "$HOME", "mytoken", "mytoken-with-additional-string"],
             "dict": {"key": "value", "second_key": "mytoken"},
         }
         assert my_getter.get_yaml() == expected

@@ -1,13 +1,14 @@
 """Module for getter interface"""
-from abc import ABC, abstractmethod
-from copy import deepcopy
+import json
 import os
 import re
+from abc import ABC, abstractmethod
+from copy import deepcopy
 from string import Template
-import json
 from typing import Dict, List, Union
-from ruamel.yaml import YAML
+
 from attrs import define, field, validators
+from ruamel.yaml import YAML
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -16,6 +17,8 @@ BLOCKLIST_VARIABLE_NAMES = [
     " ",
     "LOGPREP_LIST",  # used by list_comparison processor
 ]
+
+VALID_PREFIXES = ["LOGPREP", "CI", "GITHUB", "PYTEST"]
 
 
 @define(kw_only=True)
@@ -57,7 +60,9 @@ class Getter(ABC):
         defaults_for_missing = {missing_key: "" for missing_key in self.missing_env_vars}
         kwargs = deepcopy(os.environ)
         kwargs |= defaults_for_missing
-        return dict(filter(lambda item: self._not_in_blocklist(item[0]), kwargs.items()))
+        blocklist_free = filter(lambda item: self._not_in_blocklist(item[0]), kwargs.items())
+        valid_prefixed = filter(lambda item: self._has_valid_prefix(item[0]), blocklist_free)
+        return dict(valid_prefixed)
 
     def _get_used_env_vars(self, content, template):
         found_variables = template.pattern.findall(
@@ -68,8 +73,12 @@ class Getter(ABC):
         return filter(self._not_in_blocklist, {*used_named_env_vars, *used_braced_env_vars})
 
     @staticmethod
-    def _not_in_blocklist(var):
+    def _not_in_blocklist(var: str):
         return var not in BLOCKLIST_VARIABLE_NAMES
+
+    @staticmethod
+    def _has_valid_prefix(var: str):
+        return any([var.startswith(prefix) for prefix in VALID_PREFIXES])
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""
