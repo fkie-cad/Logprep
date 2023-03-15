@@ -19,6 +19,9 @@ pygrok
 pyparsing
 python-dateutil
 pytz
+scikit-learn>=1.2.0
+scipy>=1.9.2
+joblib
 pyyaml
 requests
 ruamel.yaml
