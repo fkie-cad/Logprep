@@ -1,4 +1,4 @@
-""" abstract module for connectors"""
+""" abstract module for components"""
 from abc import ABC
 from logging import Logger
 from typing import Callable
@@ -66,6 +66,25 @@ class Component(ABC):
     def _schedule_task(
         self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None
     ) -> None:
+        """Schedule a task to run periodicly during pipeline run.
+        The task is run in :code:`pipeline.py` in the :code:`process_pipeline` method.
+
+        Parameters
+        ----------
+
+        task: Callable
+            a callable to run
+
+        args: tuple, optional
+            the arguments for the Callable
+
+        kwargs: dict, optional
+            the keyword arguments for the Callable
+
+        seconds: int
+            the time interval in seconds
+
+        """
         if task in map(lambda job: job.job_func.func, self._scheduler.jobs):
             return
         args = () if args is None else args
@@ -74,5 +93,5 @@ class Component(ABC):
 
     @classmethod
     def run_pending_tasks(cls) -> None:
-        """starts all pending tasks"""
+        """Starts all pending tasks. This is called in :code:`pipeline.py`"""
         cls._scheduler.run_pending()

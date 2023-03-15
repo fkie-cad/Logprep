@@ -17,7 +17,6 @@ from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
     ProcessingWarning,
 )
-from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"
