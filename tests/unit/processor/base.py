@@ -10,8 +10,8 @@ from typing import Iterable
 from unittest import mock
 
 import pytest
-import responses
 import requests
+import responses
 from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
@@ -22,13 +22,12 @@ from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
-
-from tests.unit.component.base import BaseCompontentTestCase
+from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
 
 
-class BaseProcessorTestCase(BaseCompontentTestCase):
+class BaseProcessorTestCase(BaseComponentTestCase):
     mocks: dict = {}
 
     CONFIG: dict = {}

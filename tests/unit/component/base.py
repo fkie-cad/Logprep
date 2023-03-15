@@ -11,7 +11,7 @@ from logprep.factory import Factory
 from logprep.util.helper import camel_to_snake
 
 
-class BaseCompontentTestCase(ABC):
+class BaseComponentTestCase(ABC):
     CONFIG: dict = {}
     object: Connector = None
     logger = getLogger()

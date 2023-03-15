@@ -14,11 +14,10 @@ from logprep.abc.input import Input
 from logprep.abc.output import Output
 from logprep.factory import Factory
 from logprep.util.time_measurement import TimeMeasurement
+from tests.unit.component.base import BaseComponentTestCase
 
-from tests.unit.component.base import BaseCompontentTestCase
 
-
-class BaseConnectorTestCase(BaseCompontentTestCase):
+class BaseConnectorTestCase(BaseComponentTestCase):
     CONFIG: dict = {}
     object: Connector = None
     logger = getLogger()
