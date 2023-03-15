@@ -199,6 +199,7 @@ def wait_for_output(proc, expected_output, test_timeout=10):
             output = proc.stdout.readline()
 
     wait_for_output_inner(proc, expected_output)
+    time.sleep(0.1)  # nosemgrep
 
 
 def stop_logprep(proc=None):
