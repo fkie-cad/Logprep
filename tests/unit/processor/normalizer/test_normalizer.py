@@ -71,12 +71,7 @@ class TestNormalizer(BaseProcessorTestCase):
             },
             "test_normalized": {"something": "I already exist but I am different!"},
         }
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"DuplicationError in Normalizer \(Test Instance Name\): "
-            r"The following fields could not be written, because one or more subfields "
-            r"existed and could not be extended: test_normalized.something",
-        ):
+        with pytest.raises(DuplicationError):
             self.object.process(document)
 
         assert document["test_normalized"]["something"] == "I already exist but I am different!"
@@ -644,12 +639,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"DuplicationError in Normalizer \(Test Instance Name\): "
-            r"The following fields could not be written, because one or more"
-            r" subfields existed and could not be extended: winlog",
-        ):
+        with pytest.raises(DuplicationError):
             self.object.process(event)
 
     def test_incorrect_grok_identifier_definition(self):

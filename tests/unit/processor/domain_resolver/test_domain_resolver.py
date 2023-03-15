@@ -11,7 +11,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -222,13 +222,7 @@ sth.ac.at
     def test_duplication_error(self, _):
         document = {"client": "google.de"}
 
-        # Due to duplication error logprep raises an ProcessingWarning
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"DuplicationError in DomainResolver \(Test Instance Name\): "
-            r"The following fields could not be written, because one or more "
-            r"subfields existed and could not be extended: resolved_ip",
-        ):
+        with pytest.raises(DuplicationError):
             self.object.process(document)
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
