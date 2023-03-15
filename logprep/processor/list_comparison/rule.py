@@ -112,27 +112,3 @@ class ListComparisonRule(FieldManagerRule):
     @property
     def compare_sets(self) -> dict:  # pylint: disable=missing-docstring
         return self._compare_sets
-
-    @classmethod
-    def normalize_rule_dict(cls, rule: dict) -> None:
-        """normalizes rule dict before create rule config object"""
-        if rule.get("list_comparison", {}).get("check_field") is not None:
-            source_field_value = pop_dotted_field_value(rule, "list_comparison.check_field")
-            add_and_overwrite(rule, "list_comparison.source_fields", [source_field_value])
-            warnings.warn(
-                (
-                    "list_comparison.check_field is deprecated. "
-                    "Use list_comparison.source_fields instead"
-                ),
-                DeprecationWarning,
-            )
-        if rule.get("list_comparison", {}).get("output_field") is not None:
-            target_field_value = pop_dotted_field_value(rule, "list_comparison.output_field")
-            add_and_overwrite(rule, "list_comparison.target_field", target_field_value)
-            warnings.warn(
-                (
-                    "list_comparison.output_field is deprecated. "
-                    "Use list_comparison.target_field instead"
-                ),
-                DeprecationWarning,
-            )
