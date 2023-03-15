@@ -2,11 +2,15 @@
 # pylint: disable=protected-access
 from logging import getLogger
 from unittest import mock
+from unittest.mock import call
+
+import pytest
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.dissector.rule import DissectorRule
+from logprep.processor.normalizer.rule import NormalizerRule
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 
 
@@ -89,3 +93,40 @@ class TestSpecificGenericProcessStrategy:
             processor_metrics=mock_metrics,
         )
         assert expected_event == event
+
+    @pytest.mark.parametrize("execution_number", range(5))  # repeat test to ensure determinism
+    def test_strategy_applies_rules_in_deterministic_order(self, execution_number):
+        generic_tree = RuleTree()
+        specific_tree = RuleTree()
+        rule_one_dict = {"filter": "field", "normalize": {"field.one": "copy.one"}}
+        rule_two_dict = {"filter": "NOT field.two", "normalize": {"field.one": "field.two"}}
+        rule_one = NormalizerRule._create_from_dict(rule_one_dict)
+        rule_two = NormalizerRule._create_from_dict(rule_two_dict)
+        specific_tree.add_rule(rule_one)
+        specific_tree.add_rule(rule_two)
+        config = {
+            "type": "normalizer",
+            "specific_rules": [],
+            "generic_rules": [],
+            "regex_mapping": "tests/testdata/unit/normalizer/regex_mapping.yml",
+        }
+
+        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
+        processor._specific_tree = specific_tree
+        mock_metrics = Processor.ProcessorMetrics(
+            labels={}, specific_rule_tree=[], generic_rule_tree=[]
+        )
+        event = {"field": {"one": 1}}
+        mock_callback = mock.MagicMock()
+        processor._strategy.process(
+            event,
+            generic_tree=generic_tree,
+            specific_tree=specific_tree,
+            callback=mock_callback,
+            processor_stats=mock.Mock(),
+            processor_metrics=mock_metrics,
+        )
+        expected_call_order = [call(event, rule_one), call(event, rule_two)]
+        assert (
+            mock_callback.mock_calls == expected_call_order
+        ), f"Call order was wrong in test {execution_number}"
