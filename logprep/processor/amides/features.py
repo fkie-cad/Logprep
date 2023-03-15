@@ -1,5 +1,5 @@
-"""This module contains several implementations which are
-used by text feature extraction to split (raw) documents into a list
+"""This module contains several preprocessing, tokenization,
+and token filtering callables to split (raw) documents into a list
 of token words.
 """
 import re
@@ -144,7 +144,7 @@ class NumericValues(TokenFilter):
             Maximum length of (hex-)numerical values which should not be filtered.
         """
         super().__init__()
-        self._re = r"^(?:0x)?[0-9a-f]{{{0},}}$".format(length + 1)
+        self._re = rf"^(?:0x)?[0-9a-f]{{{length + 1},}}$"
 
     def __call__(self, token_list):
         tokens = [token for token in token_list if not re.match(self._re, token)]

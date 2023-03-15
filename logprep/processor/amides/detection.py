@@ -1,3 +1,6 @@
+"""This module contains classes for misuse detection and rule attribution
+as used by AMIDES."""
+
 from typing import List, Tuple, Dict
 
 from sklearn.base import BaseEstimator
@@ -19,8 +22,8 @@ class ModelComponentError(DetectionModelError):
 
 
 class DetectionModel:
-    """DetectionModel combines vectorizer fitted used taining data and classifier trained on same data to detect
-    malicious data samples.
+    """DetectionModel combines vectorizer fitted used taining data and
+    classifier trained on same data to detect malicious data samples.
     """
 
     __slots__ = ["_clf", "_vectorizer", "_scaler"]

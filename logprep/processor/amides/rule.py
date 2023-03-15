@@ -18,7 +18,6 @@ from ruamel.yaml import YAML
 
 from attrs import define, field, validators
 
-from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 
 yaml = YAML(typ="safe", pure=True)
@@ -38,6 +37,9 @@ class AmidesRule(Rule):
 
     @define(kw_only=True)
     class Config(Rule.Config):
+        """Config of AmidesRule to catchcommand-line field and
+        rule attributions field from rule file."""
+
         commandline_field: str = field(validator=validators.instance_of(str))
         rule_attributions_field: str = field(validator=validators.instance_of(str))
 

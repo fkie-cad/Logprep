@@ -1,4 +1,5 @@
 # pylint: disable=unused-variable
+# pylint: disable=missing-docstring
 import pytest
 
 from logprep.processor.amides.lru import LRUCache

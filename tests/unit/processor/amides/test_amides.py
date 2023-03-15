@@ -1,8 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import pytest
-
 from copy import deepcopy
+import pytest
 
 from logprep.processor.amides.processor import AmidesError
 from tests.unit.processor.base import BaseProcessorTestCase

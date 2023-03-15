@@ -1,4 +1,5 @@
 # pylint: disable=no-self-use
+# pylint: disable=missing-docstring
 import pytest
 import numpy as np
 
