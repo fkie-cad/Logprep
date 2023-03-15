@@ -38,12 +38,11 @@ from attr import define, field, validators
 from tldextract import TLDExtract
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 
@@ -155,8 +154,6 @@ class DomainResolver(Processor):
 
     def _apply_rules(self, event, rule):
         source_field = rule.source_fields[0]
-        target_field = rule.target_field
-        overwrite_target = rule.overwrite_target
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
             return
