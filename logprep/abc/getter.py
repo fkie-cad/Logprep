@@ -18,7 +18,7 @@ BLOCKLIST_VARIABLE_NAMES = [
     "LOGPREP_LIST",  # used by list_comparison processor
 ]
 
-VALID_PREFIXES = ["LOGPREP", "CI", "GITHUB", "PYTEST"]
+VALID_PREFIXES = ["LOGPREP_", "CI_", "GITHUB_", "PYTEST_"]
 
 
 @define(kw_only=True)
