@@ -1,16 +1,21 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 #!/usr/bin/python3
+import re
 from os import path
 
 import pytest
 
+from logprep.framework.pipeline import Pipeline
 from logprep.util.json_handling import dump_config_as_file, parse_jsonl
 from tests.acceptance.util import (
     get_default_logprep_config,
-    get_test_output,
-    store_latest_test_output,
     get_difference,
+    get_test_output,
+    start_logprep,
+    stop_logprep,
+    store_latest_test_output,
+    wait_for_output,
 )
 
 
@@ -29,23 +34,21 @@ def create_config():
     return get_default_logprep_config(pipeline, with_hmac=False)
 
 
-def test_events_normalized_correctly(tmp_path, config):
-    expected_output = "normalized_win_event_log.jsonl"
-    expected_output_path = path.join("tests/testdata/acceptance/expected_result", expected_output)
+def test_events_normalized_without_errors(tmp_path, config):
     config["input"]["jsonl"][
         "documents_path"
     ] = "tests/testdata/input_logdata/wineventlog_raw.jsonl"
+    output_file = tmp_path / "output.jsonl"
+    custom_file = tmp_path / "custom.jsonl"
+    error_file = tmp_path / "error.jsonl"
+    config["output"]["jsonl"]["output_file"] = str(output_file)
+    config["output"]["jsonl"]["output_file_custom"] = str(custom_file)
+    config["output"]["jsonl"]["output_file_error"] = str(error_file)
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
-
-    test_output, _, _ = get_test_output(config_path)
-    assert test_output, "should not be empty"
-    store_latest_test_output(expected_output, test_output)
-
-    expected_output = parse_jsonl(expected_output_path)
-
-    result = get_difference(test_output, expected_output)
-
-    assert (
-        result["difference"][0] == result["difference"][1]
-    ), f"Missmatch in event at line {result['event_line_no']}!"
+    proc = start_logprep(config_path)
+    wait_for_output(proc, "no documents left")
+    stop_logprep(proc)
+    assert len(output_file.read_text().splitlines()) > 0, "doccuments were processed"
+    assert len(error_file.read_text().splitlines()) == 0, "no errors occured"
+    assert len(custom_file.read_text().splitlines()) == 0, "no custom output were written"

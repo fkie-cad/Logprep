@@ -191,18 +191,18 @@ class Normalizer(Processor):
     def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
         fields = dotted_field.split(".")
         missing_fields = json.loads(json.dumps(fields))
-        for field in fields:
-            if isinstance(event, dict) and field in event:
-                event = event[field]
+        for event_field in fields:
+            if isinstance(event, dict) and event_field in event:
+                event = event[event_field]
                 missing_fields.pop(0)
             else:
                 break
         if not isinstance(event, dict):
             self._conflicting_fields.append(dotted_field)
             return
-        for field in missing_fields[:-1]:
-            event[field] = {}
-            event = event[field]
+        for event_field in missing_fields[:-1]:
+            event[event_field] = {}
+            event = event[event_field]
         event[missing_fields[-1]] = value
 
         if self._html_replace_fields and dotted_field in self._html_replace_fields:
