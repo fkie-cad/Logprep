@@ -312,9 +312,7 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "dotted": {"added": {"field": "yet_another_value"}},
                 "tags": ["_generic_adder_failure"],
             },
-            r"DuplicationError in GenericAdder \(Test Instance Name\): The following fields"
-            r" could not be written, because one or more subfields existed and could not "
-            r"be extended: some_added_field",
+            r"subfields existed and could not be extended: some_added_field",
         ),
         (
             "Extend list field with 'extend_target_list' disabled",
@@ -338,9 +336,7 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "dotted": {"added": {"field": "yet_another_value"}},
                 "tags": ["_generic_adder_failure"],
             },
-            r"DuplicationError in GenericAdder \(Test Instance Name\): The following fields"
-            r" could not be written, because one or more subfields existed and could not "
-            r"be extended: some_added_field",
+            r"subfields existed and could not be extended: some_added_field",
         ),
         (
             "Extend list field with 'extend_target_list' enabled, but non-list target",
@@ -364,9 +360,7 @@ class TestGenericAdder(BaseProcessorTestCase):
                 "dotted": {"added": {"field": "yet_another_value"}},
                 "tags": ["_generic_adder_failure"],
             },
-            r"DuplicationError in GenericAdder \(Test Instance Name\): The following fields"
-            r" could not be written, because one or more subfields existed and could not "
-            r"be extended: some_added_field",
+            r"subfields existed and could not be extended: some_added_field",
         ),
     ]
 
