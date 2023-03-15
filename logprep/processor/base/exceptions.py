@@ -66,7 +66,7 @@ class ProcessingCriticalError(ProcessingError):
         super().__init__(processor, f"{message} -> event was deleted")
 
 
-class ProcessingWarning(ProcessingError):
+class ProcessingWarning(Warning):
     """A minor error occurred - log the error, but continue processing the event."""
 
     def __init__(self, processor: "Processor", message: str, rule: "Rule", event: dict):
@@ -75,11 +75,11 @@ class ProcessingWarning(ProcessingError):
 Rule: {rule},
 Event: {event}
         """
-        super().__init__(processor, message)
+        super().__init__(f"{self.__class__.__name__} in {processor.describe()}: {message}")
 
 
-class DuplicationError(ProcessingWarning):
-    """Raise if field already exists."""
+class FieldExsistsWarning(ProcessingWarning):
+    """Raised if field already exists."""
 
     def __init__(
         self,

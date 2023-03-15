@@ -20,7 +20,7 @@ import re
 from logging import Logger
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.generic_resolver.rule import GenericResolverRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
@@ -113,7 +113,7 @@ class GenericResolver(Processor):
                     break
 
         if conflicting_fields:
-            raise DuplicationError(self, rule, event, conflicting_fields)
+            raise FieldExsistsWarning(self, rule, event, conflicting_fields)
 
     def ensure_rules_from_file(self, rule):
         """loads rules from file"""

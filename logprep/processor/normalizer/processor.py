@@ -42,7 +42,7 @@ from filelock import FileLock
 from pytz import timezone
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from logprep.processor.normalizer.rule import NormalizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -372,7 +372,7 @@ class Normalizer(Processor):
 
     def _raise_warning_if_fields_already_existed(self, rule, event):
         if self._conflicting_fields:
-            raise DuplicationError(self, rule, event, self._conflicting_fields)
+            raise FieldExsistsWarning(self, rule, event, self._conflicting_fields)
 
     def shut_down(self):
         """

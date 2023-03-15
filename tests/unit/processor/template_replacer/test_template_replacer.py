@@ -4,7 +4,7 @@ from copy import deepcopy
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.template_replacer.processor import TemplateReplacerError
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -154,7 +154,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
             "dotted": "foo",
         }
 
-        with pytest.raises(DuplicationError):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
 
     def test_replace_fails_with_invalid_template(self):

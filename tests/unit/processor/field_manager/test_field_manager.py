@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -356,7 +356,7 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        with pytest.raises(DuplicationError):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"

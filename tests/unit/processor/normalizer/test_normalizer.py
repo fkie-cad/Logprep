@@ -13,7 +13,7 @@ import arrow
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from logprep.processor.normalizer.processor import NormalizerError
 from logprep.processor.normalizer.rule import (
     InvalidGrokDefinition,
@@ -71,7 +71,7 @@ class TestNormalizer(BaseProcessorTestCase):
             },
             "test_normalized": {"something": "I already exist but I am different!"},
         }
-        with pytest.raises(DuplicationError):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
 
         assert document["test_normalized"]["something"] == "I already exist but I am different!"
@@ -639,7 +639,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        with pytest.raises(DuplicationError):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(event)
 
     def test_incorrect_grok_identifier_definition(self):
@@ -1064,7 +1064,7 @@ class TestNormalizer(BaseProcessorTestCase):
         }
 
         self._load_specific_rule(rule)
-        with pytest.raises(DuplicationError):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(event)
 
         assert event == expected

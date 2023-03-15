@@ -26,7 +26,7 @@ import re
 import requests
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import (
     add_field_to,
@@ -77,7 +77,7 @@ class Requester(Processor):
                 if not successful:
                     conflicting_fields.append(rule.target_field)
         if conflicting_fields:
-            raise DuplicationError(self, rule, event, [rule.target_field])
+            raise FieldExsistsWarning(self, rule, event, [rule.target_field])
 
     def _request(self, event, rule, kwargs):
         try:

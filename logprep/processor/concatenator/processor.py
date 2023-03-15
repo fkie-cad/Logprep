@@ -20,7 +20,7 @@ Example
             - tests/testdata/rules/generic/
 """
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.concatenator.rule import ConcatenatorRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 

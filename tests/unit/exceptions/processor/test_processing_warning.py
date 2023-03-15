@@ -8,7 +8,7 @@ from logging import getLogger
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from logprep.processor.base.rule import Rule
 
 
@@ -33,10 +33,16 @@ Event: {'message': 'test_event'}
         with pytest.raises(self.exception, match=re.escape(self.error_message)):
             raise self.exception(*self.exception_args)
 
+    def test_metrics_counts(self):
+        assert self.processor.metrics.number_of_warnings == 0
+        with pytest.raises(self.exception, match=re.escape(self.error_message)):
+            raise self.exception(*self.exception_args)
+        assert self.processor.metrics.number_of_warnings == 1
 
-class TestDuplicationError(TestProcessingWarning):
-    exception = DuplicationError
-    error_message = """DuplicationError in Dissector (my_dissector): The following fields could not be written, because one or more subfields existed and could not be extended: my_field
+
+class TestFieldExsitsWarning(TestProcessingWarning):
+    exception = FieldExsistsWarning
+    error_message = """FieldExsistsWarning in Dissector (my_dissector): The following fields could not be written, because one or more subfields existed and could not be extended: my_field
 Rule: filename=None, filter="message", Rule.Config(description='', regex_fields=[], tests=[], tag_on_failure=[\'_rule_failure\']),
 Event: {'message': 'test_event'}
 """

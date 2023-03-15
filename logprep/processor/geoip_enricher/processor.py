@@ -26,7 +26,7 @@ from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.geoip_enricher.rule import GEOIP_DATA_STUBS, GeoipEnricherRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -111,4 +111,4 @@ class GeoipEnricher(Processor):
                 overwrite_output_field=rule.overwrite_target,
             )
             if not adding_was_successful:
-                raise DuplicationError(self, rule, event, [full_output_field])
+                raise FieldExsistsWarning(self, rule, event, [full_output_field])
