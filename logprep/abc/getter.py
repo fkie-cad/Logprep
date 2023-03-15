@@ -78,7 +78,7 @@ class Getter(ABC):
 
     @staticmethod
     def _has_valid_prefix(var: str):
-        return any([var.startswith(prefix) for prefix in VALID_PREFIXES])
+        return any((var.startswith(prefix) for prefix in VALID_PREFIXES))
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml"""
