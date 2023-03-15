@@ -32,6 +32,7 @@ results of previous rules.
 * Fixes a bug that breaks templating config and rule files with environment variables if one or more variables are not set in environment
 * Fixes a bug for `opensearch_output` and `elasticsearch_output` not handling authentication issues
 * Fix metric `logprep_pipeline_number_of_processed_events` to actually count the processed events per pipeline
+* Fix a bug for enrichment with environment variables. Variables must have one of the following prefixes now: `LOGPREP_`, `CI_`, `GITHUB_` or `PYTEST_`
 
 ### Improvements
 
