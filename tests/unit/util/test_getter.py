@@ -79,13 +79,13 @@ class TestGetterFactory:
 
     def test_getter_expands_setted_environment_variables_and_missing_to_blank(self, tmp_path):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
-        if "MISSING_TOKEN" in os.environ:
-            os.environ.pop("MISSING_TOKEN")
+        if "LOGPREP_MISSING_TOKEN" in os.environ:
+            os.environ.pop("LOGPREP_MISSING_TOKEN")
         testfile = tmp_path / "test_getter.json"
-        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $MISSING_TOKEN")
+        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $LOGPREP_MISSING_TOKEN")
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my "
-        assert "MISSING_TOKEN" in my_getter.missing_env_vars
+        assert "LOGPREP_MISSING_TOKEN" in my_getter.missing_env_vars
         assert len(my_getter.missing_env_vars) == 1
 
     def test_getter_expands_only_uppercase_variable_names(self, tmp_path):
@@ -99,10 +99,12 @@ class TestGetterFactory:
         self, tmp_path
     ):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
-        if "MISSING_TOKEN" in os.environ:
-            os.environ.pop("MISSING_TOKEN")
+        if "LOGPREP_MISSING_TOKEN" in os.environ:
+            os.environ.pop("LOGPREP_MISSING_TOKEN")
         testfile = tmp_path / "test_getter.json"
-        testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${MISSING_TOKEN}")
+        testfile.write_text(
+            "this is my ${PYTEST_TEST_TOKEN}, and this is my ${LOGPREP_MISSING_TOKEN}"
+        )
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my "
 
