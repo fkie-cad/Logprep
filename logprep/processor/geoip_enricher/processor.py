@@ -111,4 +111,4 @@ class GeoipEnricher(Processor):
                 overwrite_output_field=rule.overwrite_target,
             )
             if not adding_was_successful:
-                raise DuplicationError(self, [full_output_field])
+                raise DuplicationError(self, rule, event, [full_output_field])

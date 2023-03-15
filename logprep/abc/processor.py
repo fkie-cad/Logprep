@@ -280,7 +280,7 @@ class Processor(Component):
             add_and_overwrite(event, "tags", sorted(list({*tags, *rule.failure_tags})))
         if isinstance(error, ProcessingWarning):
             raise error
-        raise ProcessingWarning(self, str(error)) from error
+        raise ProcessingWarning(self, str(error), rule, event) from error
 
     def _check_for_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
@@ -299,4 +299,4 @@ class Processor(Component):
             overwrite_output_field=rule.overwrite_target,
         )
         if not add_successful:
-            raise DuplicationError(self, [rule.target_field])
+            raise DuplicationError(self, rule, event, [rule.target_field])

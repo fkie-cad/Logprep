@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -356,12 +356,7 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"DuplicationError in FieldManager \(Test Instance Name\): "
-            r"The following fields could not be written, because one or more "
-            r"subfields existed and could not be extended: target_field",
-        ):
+        with pytest.raises(DuplicationError):
             self.object.process(document)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"

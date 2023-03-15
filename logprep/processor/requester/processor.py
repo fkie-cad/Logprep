@@ -77,7 +77,7 @@ class Requester(Processor):
                 if not successful:
                     conflicting_fields.append(rule.target_field)
         if conflicting_fields:
-            raise DuplicationError(self, [rule.target_field])
+            raise DuplicationError(self, rule, event, [rule.target_field])
 
     def _request(self, event, rule, kwargs):
         try:

@@ -129,7 +129,7 @@ class TemplateReplacer(Processor):
     def _apply_rules(self, event, rule):
         replacement = self._get_replacement_value(event)
         if replacement is not None:
-            self._perform_replacement(event, replacement)
+            self._perform_replacement(event, replacement, rule)
 
     def _get_replacement_value(self, event: dict) -> Optional[str]:
         replacement = self._mapping
@@ -144,7 +144,7 @@ class TemplateReplacer(Processor):
                 return None
         return replacement
 
-    def _perform_replacement(self, event: dict, replacement: str):
+    def _perform_replacement(self, event: dict, replacement: str, rule: TemplateReplacerRule):
         for subfield in self._target_field_split[:-1]:
             event_sub = event.get(subfield)
             if isinstance(event_sub, dict):
@@ -153,5 +153,5 @@ class TemplateReplacer(Processor):
                 event[subfield] = {}
                 event = event[subfield]
             else:
-                raise DuplicationError(self, [subfield])
+                raise DuplicationError(self, event, rule, [subfield])
         event[self._target_field_split[-1]] = replacement

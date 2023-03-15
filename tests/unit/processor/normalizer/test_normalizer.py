@@ -13,7 +13,7 @@ import arrow
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from logprep.processor.normalizer.processor import NormalizerError
 from logprep.processor.normalizer.rule import (
     InvalidGrokDefinition,
@@ -1056,6 +1056,7 @@ class TestNormalizer(BaseProcessorTestCase):
         }
 
         expected = copy.deepcopy(event)
+        expected.update({"tags": ["_normalizer_failure"]})
 
         rule = {
             "filter": "winlog.event_id: 123456789",
@@ -1073,12 +1074,7 @@ class TestNormalizer(BaseProcessorTestCase):
         }
 
         self._load_specific_rule(rule)
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"DuplicationError in Normalizer \(Test Instance Name\): "
-            r"The following fields could not be written, because one or more subfields "
-            r"existed and could not be extended: @timestamp",
-        ):
+        with pytest.raises(DuplicationError):
             self.object.process(event)
 
         assert event == expected

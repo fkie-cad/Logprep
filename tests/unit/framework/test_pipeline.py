@@ -286,17 +286,18 @@ class TestPipeline(ConfigurationForTests):
     def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
+        processing_warning = ProcessingWarning(
+            self.pipeline._pipeline[1], "not so bad", None, {"message": "test"}
+        )
 
         def raise_processing_warning(_):
-            raise ProcessingWarning(self.pipeline._pipeline[1], "not so bad")
+            raise processing_warning
 
         self.pipeline._pipeline[1].process.side_effect = raise_processing_warning
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
         self.pipeline.process_pipeline()
-        mock_warning.assert_called_with(
-            str(ProcessingWarning(self.pipeline._pipeline[1], "not so bad"))
-        )
+        mock_warning.assert_called_with(str(processing_warning))
         assert self.pipeline._output["dummy"].store.call_count == 2, "all events are processed"
 
     @mock.patch("logging.Logger.error")

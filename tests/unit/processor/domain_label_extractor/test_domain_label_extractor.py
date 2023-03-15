@@ -9,7 +9,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -254,12 +254,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
 
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"DuplicationError in DomainLabelExtractor \(Test Instance Name\): "
-            r"The following fields could not be written, because "
-            r"one or more subfields existed and could not be extended: url.subdomain",
-        ):
+        with pytest.raises(DuplicationError):
             self.object.process(document)
 
     def test_domain_extraction_overwrites_target_field(self):

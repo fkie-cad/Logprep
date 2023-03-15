@@ -18,6 +18,7 @@
 * Add support for multiple output connectors
 * Apply processors multiple times until no new rule matches anymore. This enables applying rules on 
 results of previous rules.
+* `Normalizer` writes failure tags if nomalization fails
 
 ### Improvements
 

@@ -4,7 +4,6 @@
 # pylint: disable=too-many-arguments
 import json
 import os
-import re
 import tempfile
 import time
 from copy import deepcopy

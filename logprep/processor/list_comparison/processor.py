@@ -82,7 +82,7 @@ class ListComparison(Processor):
             output_field = f"{ rule.target_field }.{ comparison_key }"
             field_possible = add_field_to(event, output_field, comparison_result, True)
             if not field_possible:
-                raise DuplicationError(self, [output_field])
+                raise DuplicationError(self, rule, event, [output_field])
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
         """

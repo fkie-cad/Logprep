@@ -132,7 +132,7 @@ class HyperscanResolver(Processor):
                     if has_conflict:
                         conflicting_fields.append(split_dotted_keys[idx])
         if conflicting_fields:
-            raise DuplicationError(self, conflicting_fields)
+            raise DuplicationError(self, rule, event, conflicting_fields)
 
     @staticmethod
     def _try_adding_value_to_existing_field(

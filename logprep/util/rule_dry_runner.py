@@ -45,7 +45,7 @@ import tempfile
 from copy import deepcopy
 from difflib import ndiff
 
-from colorama import Fore, Back
+from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.runner import Runner
@@ -53,16 +53,16 @@ from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import (
     color_print_line,
+    color_print_title,
     recursive_compare,
     remove_file_if_exists,
-    color_print_title,
 )
-from logprep.util.json_handling import parse_jsonl, parse_json
+from logprep.util.json_handling import parse_json, parse_jsonl
 
 yaml = YAML(typ="safe", pure=True)
 
 
-def get_runner_outputs(patched_runner) -> list:
+def get_runner_outputs(patched_runner: Runner) -> list:
     # pylint: disable=protected-access
     """
     Extracts the outputs of a patched logprep runner.

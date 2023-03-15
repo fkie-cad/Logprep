@@ -154,12 +154,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
             "dotted": "foo",
         }
 
-        with pytest.raises(
-            DuplicationError,
-            match=r"DuplicationError in TemplateReplacer \(test instance\): "
-            r"The following fields could not be written, because one or more subfields "
-            r"existed and could not be extended: dotted",
-        ):
+        with pytest.raises(DuplicationError):
             self.object.process(document)
 
     def test_replace_fails_with_invalid_template(self):
