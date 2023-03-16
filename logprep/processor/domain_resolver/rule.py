@@ -39,29 +39,3 @@ class DomainResolverRule(FieldManagerRule):
             default="resolved_ip",
         )
         """The field where to write the processor output to. Defaults to :code:`resovled_ip`"""
-
-    @classmethod
-    def normalize_rule_dict(cls, rule: dict) -> None:
-        """normalizes rule dict before create rule config object"""
-        if rule.get("domain_resolver", {}).get("source_url_or_domain") is not None:
-            source_field_value = pop_dotted_field_value(
-                rule, "domain_resolver.source_url_or_domain"
-            )
-            add_and_overwrite(rule, "domain_resolver.source_fields", [source_field_value])
-            warnings.warn(
-                (
-                    "domain_resolver.source_url_or_domain is deprecated. "
-                    "Use domain_resolver.source_fields instead"
-                ),
-                DeprecationWarning,
-            )
-        if rule.get("domain_resolver", {}).get("output_field") is not None:
-            target_field_value = pop_dotted_field_value(rule, "domain_resolver.output_field")
-            add_and_overwrite(rule, "domain_resolver.target_field", target_field_value)
-            warnings.warn(
-                (
-                    "domain_resolver.output_field is deprecated. "
-                    "Use domain_resolver.target_field instead"
-                ),
-                DeprecationWarning,
-            )

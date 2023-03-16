@@ -1,7 +1,13 @@
-[{
-  "filter": "some_field: (stop OR end)",
-  "label": {
-    "action": ["terminate"]
-  },
-  "description": "Test-rule with matching auto-test"
-}]
+[
+  {
+    "filter": "some_field: (stop OR end)",
+    "labeler": {
+      "label": {
+        "action": [
+          "terminate"
+        ]
+      }
+    },
+    "description": "Test-rule with matching auto-test"
+  }
+]

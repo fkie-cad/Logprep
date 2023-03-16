@@ -38,8 +38,7 @@ class PipelineManager:
         self._used_server_ports = None
 
     def set_configuration(self, configuration: Configuration):
-        """Verify the configuration and set it in the pipeline manager."""
-        configuration.verify(self._logger)
+        """set the verified config"""
         self._configuration = configuration
 
         manager = Manager()

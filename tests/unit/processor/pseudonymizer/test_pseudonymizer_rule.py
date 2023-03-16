@@ -73,20 +73,3 @@ class TestPseudonomyzerRule:
         rule_1 = PseudonymizerRule._create_from_dict(specific_rule_definition)
         rule_2 = PseudonymizerRule._create_from_dict(other_rule_definition)
         assert (rule_1 == rule_2) == is_equal, testcase
-
-    def test_deprecation_warning(self):
-        rule_dict = {
-            "filter": 'winlog.event_id: 123 AND source_name: "Test123"',
-            "pseudonymize": {
-                "winlog.event_data.param1": "RE_WHOLE_FIELD",
-                "winlog.event_data.param2": "RE_WHOLE_FIELD",
-            },
-            "url_fields": ["test"],
-            "description": "insert a description text",
-        }
-        with pytest.deprecated_call() as warnings:
-            PseudonymizerRule._create_from_dict(rule_dict)
-            assert len(warnings.list) == 2
-            matches = [warning.message.args[0] for warning in warnings.list]
-            assert "Use pseudonymizer.pseudonyms instead" in matches[0]
-            assert "Use pseudonymizer.url_fields instead" in matches[1]

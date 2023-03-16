@@ -1,7 +1,11 @@
-[{
-  "filter": "dotted.field: FOO\\BAR",
-  "pseudonymize": {
-    "dotted.field": "RE_DOMAIN_BACKSLASH_USERNAME"
-  },
-  "description": "Test-rule with list auto-test"
-}]
+[
+  {
+    "filter": "dotted.field: FOO\\BAR",
+    "pseudonymizer": {
+      "pseudonyms": {
+        "dotted.field": "RE_DOMAIN_BACKSLASH_USERNAME"
+      }
+    },
+    "description": "Test-rule with list auto-test"
+  }
+]

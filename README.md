@@ -230,7 +230,7 @@ The condition of this rule would check if the field `message` exists in the log.
 If it does exist then the dropper would delete this field from the log message.
 
 Details about the rule language and how to write rules for the processors can be found in the
-[rule language documentation](https://logprep.readthedocs.io/en/latest/user_manual/rule_language.html).
+[rule configuration documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/rules.html).
 
 ## Getting Started
 
