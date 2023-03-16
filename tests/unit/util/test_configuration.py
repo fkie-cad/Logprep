@@ -853,7 +853,7 @@ process_count: $LOGPREP_PROCESS_COUNT
 timeout: 0.1
 logger:
     level: $LOGPREP_LOG_LEVEL
-$I_DO_NOT_EXIST
+$LOGPREP_I_DO_NOT_EXIST
 $LOGPREP_PIPELINE
 $LOGPREP_INPUT
 $LOGPREP_OUTPUT
@@ -903,7 +903,7 @@ output:
         config = Configuration.create_from_yaml(str(config_path))
         with pytest.raises(
             InvalidConfigurationErrors,
-            match=r"Environment variable\(s\) used, but not set: I_DO_NOT_EXIST",
+            match=r"Environment variable\(s\) used, but not set: LOGPREP_I_DO_NOT_EXIST",
         ):
             config.verify(mock.MagicMock())
 
