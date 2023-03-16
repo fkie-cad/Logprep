@@ -103,7 +103,7 @@ class RuleParser:
 
                 if isinstance(exp, StringFilterExpression):
                     return rule
-                elif isinstance(exp, Or):
+                if isinstance(exp, Or):
                     result_segments = ()
 
                     for or_segment in exp.expressions:
@@ -115,7 +115,7 @@ class RuleParser:
                         result = RuleParser._parse_not_expression(result)
 
                     return result
-                elif isinstance(exp, And):
+                if isinstance(exp, And):
                     result_segments = ()
 
                     for and_segment in exp.expressions:
@@ -151,7 +151,7 @@ class RuleParser:
             return rule
 
     @staticmethod
-    def _has_unresolved_not_expression(rule: FilterExpression):
+    def _has_unresolved_not_expression(rule: FilterExpression) -> bool:
         """Check if given filter expression contains NOT-expressions.
 
         This function checks if the given filter expression contains any unresolved NOT-expressions.
@@ -207,7 +207,8 @@ class RuleParser:
                     # Recursively parse subexpressions of current expressions
                     loop_result = RuleParser._parse_or_expression(exp)
 
-                    # Differentiate between different loop_result types and construct result_list accordingly
+                    # Differentiate between different loop_result types
+                    # and construct result_list accordingly
                     if not isinstance(loop_result, list):
                         if isinstance(loop_result, tuple):
                             loop_result = list(loop_result)
@@ -220,8 +221,9 @@ class RuleParser:
                         result_list.append(loop_result)
 
                 return result_list
-            # Else, if expression is AND-expression, parse it and continue to parse OR-expression afterwards
-            elif isinstance(rule, And):
+            # Else, if expression is AND-expression,
+            # parse it and continue to parse OR-expression afterwards
+            if isinstance(rule, And):
                 loop_results = []
 
                 for exp in rule.expressions:
@@ -243,8 +245,7 @@ class RuleParser:
             # Handle cases that may occur in recursive parsing process
             if isinstance(rule, And):
                 return tuple(RuleParser._parse_and_expression(rule))
-            else:
-                return rule
+            return rule
 
     @staticmethod
     def _parse_or(loop_results: list):
@@ -331,7 +332,7 @@ class RuleParser:
         """
         if isinstance(expression, Or):
             return True
-        elif isinstance(expression, CompoundFilterExpression):
+        if isinstance(expression, CompoundFilterExpression):
             for exp in expression.expressions:
                 if RuleParser._has_or_expression(exp):
                     return True
@@ -365,7 +366,7 @@ class RuleParser:
             parsed_rule.sort(key=lambda r: RuleParser._sort(r, priority_dict))
 
     @staticmethod
-    def _sort(r: StringFilterExpression, priority_dict: dict) -> Union[dict, str]:
+    def _sort(expr: StringFilterExpression, priority_dict: dict) -> Union[dict, str]:
         """Helper function for _sort_rule_segments.
 
         This function is used by the _sort_rule_segments() function in the sorting key.
@@ -376,7 +377,7 @@ class RuleParser:
 
         Parameters
         ----------
-        r: StringFilterExpression
+        expr: StringFilterExpression
             Filter expression to get comparison value for.
         priority_dict: dict
             Dictionary with sorting priority information (key -> field name; value -> priority).
@@ -387,28 +388,30 @@ class RuleParser:
             Comparison value to use for sorting.
 
         """
-        if isinstance(r, Always):
+        if isinstance(expr, Always):
             return
-        elif isinstance(r, Not):
+        elif isinstance(expr, Not):
             try:
-                if isinstance(r.expression, Exists):
-                    return priority_dict[r.expression._as_dotted_string(r.expression.split_field)]
-                elif isinstance(r.expression, Not):
-                    return priority_dict[r.expression.expression.split_field[0]]
+                if isinstance(expr.expression, Exists):
+                    return priority_dict[
+                        expr.expression._as_dotted_string(expr.expression.split_field)
+                    ]
+                elif isinstance(expr.expression, Not):
+                    return priority_dict[expr.expression.expression.split_field[0]]
                 else:
-                    return priority_dict[r._as_dotted_string(r.expression._key)]
+                    return priority_dict[expr._as_dotted_string(expr.expression._key)]
             except KeyError:
-                return RuleParser._sort(r.expression, priority_dict)
-        elif isinstance(r, Exists):
+                return RuleParser._sort(expr.expression, priority_dict)
+        elif isinstance(expr, Exists):
             try:
-                return priority_dict[r._as_dotted_string(r.split_field)]
+                return priority_dict[expr._as_dotted_string(expr.split_field)]
             except KeyError:
-                return r.__repr__()[1:-1]
+                return expr.__repr__()[1:-1]
         else:
             try:
-                return priority_dict[r._as_dotted_string(r._key)]
+                return priority_dict[expr._as_dotted_string(expr._key)]
             except KeyError:
-                return r.__repr__()
+                return expr.__repr__()
 
     @staticmethod
     def _parse_and_expression(expression: FilterExpression) -> list:
