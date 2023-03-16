@@ -227,8 +227,9 @@ class TestRunLogprep:
     def test_main_calls_runner_stop_on_any_exception(self, mock_stop, mock_start):
         mock_start.side_effect = Exception
         config_path = "quickstart/exampledata/config/pipeline.yml"
-        with mock.patch("sys.argv", ["logprep", config_path]):
-            run_logprep.main()
+        with pytest.raises(SystemExit):
+            with mock.patch("sys.argv", ["logprep", config_path]):
+                run_logprep.main()
         mock_stop.assert_called()
 
     def test_logprep_exits_if_logger_can_not_be_created(self):
@@ -261,3 +262,23 @@ class TestRunLogprep:
             with mock.patch("sys.argv", ["logprep", "http://localhost/does-not-exists"]):
                 with pytest.raises(SystemExit):
                     run_logprep.main()
+
+    @mock.patch("logprep.util.configuration.Configuration.verify")
+    def test_logprep_verifies_config(self, mock_verify):
+        with mock.patch(
+            "sys.argv",
+            ["logprep", "quickstart/exampledata/config/pipeline.yml", "--verify-config"],
+        ):
+            run_logprep.main()
+        mock_verify.assert_called()
+
+    @mock.patch("logprep.util.configuration.Configuration.verify")
+    def test_logprep_exits_on_verify_config_with_invalid_config(self, mock_verify):
+        mock_verify.side_effect = InvalidConfigurationError
+        with mock.patch(
+            "sys.argv",
+            ["logprep", "quickstart/exampledata/config/pipeline.yml", "--verify-config"],
+        ):
+            with pytest.raises(SystemExit):
+                run_logprep.main()
+        mock_verify.assert_called()

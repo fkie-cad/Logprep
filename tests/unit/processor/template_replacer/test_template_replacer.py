@@ -9,7 +9,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestTemplateReplacer(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "template_replacer",
         "generic_rules": ["tests/testdata/unit/template_replacer/rules/generic"],

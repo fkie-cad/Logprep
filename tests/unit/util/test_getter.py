@@ -71,6 +71,59 @@ class TestGetterFactory:
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken"
 
+    def test_getter_expands_setted_environment_variables_and_missing_to_blank(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        if "MISSING_TOKEN" in os.environ:
+            os.environ.pop("MISSING_TOKEN")
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $MISSING_TOKEN")
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my "
+        assert "MISSING_TOKEN" in my_getter.missing_env_vars
+        assert len(my_getter.missing_env_vars) == 1
+
+    def test_getter_expands_only_uppercase_variable_names(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $not_a_token")
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my $not_a_token"
+
+    def test_getter_expands_setted_environment_variables_and_missing_to_blank_with_braced_variables(
+        self, tmp_path
+    ):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        if "MISSING_TOKEN" in os.environ:
+            os.environ.pop("MISSING_TOKEN")
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${MISSING_TOKEN}")
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my "
+
+    def test_getter_expands_only_uppercase_variable_names_with_braced_variables(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${not_a_token}")
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my ${not_a_token}"
+
+    def test_getter_ignores_list_comparison_logprep_list_variable(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${LOGPREP_LIST}")
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my ${LOGPREP_LIST}"
+        assert len(my_getter.missing_env_vars) == 0
+
+    def test_getter_ignores_list_comparison_logprep_list_variable_if_set(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        os.environ.update({"LOGPREP_LIST": "foo"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${LOGPREP_LIST}")
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my ${LOGPREP_LIST}"
+        assert len(my_getter.missing_env_vars) == 0
+
     def test_getter_expands_environment_variables_in_yaml_content(self, tmp_path):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"

@@ -1,12 +1,15 @@
 """This module is used to create the configuration for the runner."""
 
+from copy import deepcopy
 import re
 import sys
 from logging import Logger
+from pathlib import Path
 from typing import List
 
 from ruamel.yaml.scanner import ScannerError
 from colorama import Fore
+from logprep.abc.processor import Processor
 
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError
@@ -16,7 +19,9 @@ from logprep.factory_error import (
 )
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
+from logprep.abc.getter import Getter
 from logprep.util.helper import print_fcolor
+from logprep.util.json_handling import dump_config_as_file
 
 
 class InvalidConfigurationError(BaseException):
@@ -95,13 +100,30 @@ class IncalidMetricsConfigurationError(InvalidConfigurationError):
         super().__init__(f"Invalid metrics configuration: {message}")
 
 
+class MissingEnvironmentError(InvalidConfigurationError):
+    """Raise if environment variables are missing"""
+
+    def __init__(self, message: str):
+        super().__init__(f"Environment variable(s) used, but not set: {message}")
+
+
 class Configuration(dict):
     """Used to create and verify a configuration dict parsed from a YAML file."""
 
-    path: str
+    _getter: Getter
 
-    @staticmethod
-    def create_from_yaml(path: str) -> "Configuration":
+    @property
+    def path(self):
+        """returns the path of the configuration"""
+        return f"{self._getter.protocol}://{self._getter.target}"
+
+    @path.setter
+    def path(self, path):
+        """sets the path and getter"""
+        self._getter = GetterFactory.from_string(path)
+
+    @classmethod
+    def create_from_yaml(cls, path: str) -> "Configuration":
         """Create configuration from a YAML file.
 
         Parameters
@@ -117,18 +139,71 @@ class Configuration(dict):
         """
         config_getter = GetterFactory.from_string(path)
         try:
-            configuration = config_getter.get_json()
+            config_dict = config_getter.get_json()
         except ValueError:
             try:
-                configuration = config_getter.get_yaml()
+                config_dict = config_getter.get_yaml()
             except ScannerError as error:
                 print_fcolor(Fore.RED, f"Error parsing YAML file: {path}\n{error}")
                 sys.exit(1)
         config = Configuration()
-        config.path = f"{config_getter.protocol}://{config_getter.target}"
-        config.update(configuration)
-
+        config._getter = config_getter
+        config.update(config_dict)
         return config
+
+    @staticmethod
+    def patch_yaml_with_json_connectors(
+        original_config_path: str, output_dir: str, input_file_path: str = None
+    ) -> str:
+        """
+        Patches a given configuration file with jsonl input and output connectors, while
+        maintaining the input preprocessors. Additionally, the process_count is set to one and the
+        metrics configuration are removed, if present.
+
+        Parameters
+        ----------
+        original_config_path : str
+            Path to the original configuration file that should be patched
+        output_dir : str
+            Path where the patched configuration file should be saved to. That is the same
+            path where the jsonl connectors read and write the input/output files.
+        input_file_path : Optional[str]
+            If a concrete input file is given, then it is used in the patched input connector
+
+        Returns
+        -------
+        patched_config_path : str
+            The path to the patched configuration file
+        """
+        configuration = GetterFactory.from_string(original_config_path).get_yaml()
+        configured_input = configuration.get("input", {})
+        input_file_path = input_file_path if input_file_path else f"{output_dir}/input.json"
+        input_type = "jsonl_input" if input_file_path.endswith(".jsonl") else "json_input"
+        configuration["input"] = {
+            "patched_input": {
+                "type": input_type,
+                "documents_path": input_file_path,
+            }
+        }
+        if configured_input:
+            input_name = list(configured_input.keys())[0]
+            preprocessors = configured_input.get(input_name, {}).get("preprocessing", {})
+            if preprocessors:
+                configuration["input"]["patched_input"]["preprocessing"] = preprocessors
+        configuration["output"] = {
+            "patched_output": {
+                "type": "jsonl_output",
+                "output_file": f"{output_dir}/output.json",
+                "output_file_custom": f"{output_dir}/output_custom.json",
+                "output_file_error": f"{output_dir}/output_error.json",
+            }
+        }
+        configuration["process_count"] = 1
+        if "metrics" in configuration:
+            del configuration["metrics"]
+        patched_config_path = Path(output_dir) / "patched_config.yml"
+        dump_config_as_file(str(patched_config_path), configuration)
+        return str(patched_config_path)
 
     def verify(self, logger: Logger):
         """Verify the configuration."""
@@ -158,6 +233,10 @@ class Configuration(dict):
     ) -> List[InvalidConfigurationError]:
         errors = []
         try:
+            self._verify_environment()
+        except MissingEnvironmentError as error:
+            errors.append(error)
+        try:
             self._verify_required_keys_exist()
         except InvalidConfigurationError as error:
             errors.append(error)
@@ -183,6 +262,11 @@ class Configuration(dict):
             except InvalidConfigurationError as error:
                 errors.append(error)
         return errors
+
+    def _verify_environment(self):
+        if self._getter.missing_env_vars:
+            missing_env_error = MissingEnvironmentError(", ".join(self._getter.missing_env_vars))
+            raise InvalidConfigurationErrors([missing_env_error])
 
     def _verify_required_keys_exist(self):
         required_keys = ["process_count", "timeout"]
@@ -224,13 +308,17 @@ class Configuration(dict):
 
     def _verify_output(self, logger):
         try:
-            _ = Factory.create(self["output"], logger)
+            output_configs = self.get("output")
+            output_names = list(output_configs.keys())
+            for output_name in output_names:
+                output_config = output_configs.get(output_name)
+                Factory.create({output_name: output_config}, logger)
         except FactoryError as error:
             raise InvalidOutputConnectorConfigurationError(str(error)) from error
         except TypeError as error:
             msg = self._format_type_error(error)
             raise InvalidOutputConnectorConfigurationError(msg) from error
-        except KeyError as error:
+        except (AttributeError, KeyError) as error:
             raise RequiredConfigurationKeyMissingError("output") from error
 
     @staticmethod
@@ -256,8 +344,9 @@ class Configuration(dict):
 
         errors = []
         for processor_config in self["pipeline"]:
+            processor = None
             try:
-                Factory.create(processor_config, logger)
+                processor = Factory.create(processor_config, logger)
             except (FactoryInvalidConfigurationError, UnknownComponentTypeError) as error:
                 errors.append(
                     InvalidProcessorConfigurationError(
@@ -279,8 +368,44 @@ class Configuration(dict):
                             f"'{list(processor_config.keys())[0]}', because it has invalid rules."
                         )
                     )
+            try:
+                if processor:
+                    self._verify_rules_outputs(processor)
+            except InvalidRuleDefinitionError as error:
+                errors.append(error)
+            try:
+                self._verify_processor_outputs(processor_config)
+            except InvalidProcessorConfigurationError as error:
+                errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
+
+    def _verify_rules_outputs(self, processor: Processor):
+        if not hasattr(processor.rule_class, "outputs"):
+            return
+        for rule in processor.rules:
+            for output in rule.outputs:
+                for output_name, _ in output.items():
+                    if output_name not in self["output"]:
+                        raise InvalidRuleDefinitionError(
+                            f"{processor.describe()}: output"
+                            f" '{output_name}' does not exist in logprep outputs"
+                        )
+
+    def _verify_processor_outputs(self, processor_config):
+        processor_config = deepcopy(processor_config)
+        processor_name, processor_config = processor_config.popitem()
+        if "outputs" not in processor_config:
+            return
+        if "output" not in self:
+            return
+        outputs = processor_config.get("outputs")
+        for output in outputs:
+            for output_name, _ in output.items():
+                if output_name not in self["output"]:
+                    raise InvalidProcessorConfigurationError(
+                        f"{processor_name}: output '{output_name}' does not exist in logprep outputs"
+                    )
 
     def _verify_metrics_config(self):
         if self.get("metrics"):

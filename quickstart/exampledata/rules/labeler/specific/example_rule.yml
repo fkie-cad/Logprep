@@ -1,5 +1,6 @@
 filter: "test_label: specific"
-label:
-  action:
-    - execute
+labeler:
+  label:
+    action:
+      - execute
 description: "..."

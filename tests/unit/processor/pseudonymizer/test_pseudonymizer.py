@@ -6,8 +6,9 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -21,10 +22,9 @@ TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
 
 
 class TestPseudonymizer(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "pseudonymizer",
-        "pseudonyms_topic": "pseudonyms",
+        "outputs": [{"kafka": "topic"}],
         "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
         "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
         "hash_salt": "a_secret_tasty_ingredient",
@@ -38,6 +38,37 @@ class TestPseudonymizer(BaseProcessorTestCase):
     def setup_method(self) -> None:
         super().setup_method()
         self.regex_mapping = self.CONFIG.get("regex_mapping")
+
+    @pytest.mark.parametrize(
+        "config_change, error, msg",
+        [
+            ({"outputs": [{"kafka": "topic"}]}, None, None),
+            ({"outputs": []}, ValueError, "Length of 'outputs' must be => 1"),
+            (
+                {"outputs": [{"kafka": 1}]},
+                TypeError,
+                "must be <class 'str'>",
+            ),
+            (
+                {"outputs": [{1: "topic"}]},
+                TypeError,
+                "must be <class 'str'>",
+            ),
+            (
+                {"outputs": [{"kafka": "topic", "opensearch": "index_1"}]},
+                ValueError,
+                "Length of 'outputs' must be <= 1",
+            ),
+        ],
+    )
+    def test_config_validation(self, config_change, error, msg):
+        config = deepcopy(self.CONFIG)
+        config |= config_change
+        if error:
+            with pytest.raises(error, match=msg):
+                Factory.create({"name": config}, self.logger)
+        else:
+            Factory.create({"name": config}, self.logger)
 
     def test_pseudonymize_event(self):
         event_raw = {"foo": "bar"}
@@ -102,8 +133,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         )
 
     def test_recently_stored_pseudonyms_are_not_stored_again(self):
-        self.object._cache_max_timedelta = CACHE_MAX_TIMEDELTA
-        self.object.setup()
+        self.object._cache._max_timedelta = CACHE_MAX_TIMEDELTA
         event = {"event_id": 1234, "something": "something"}
 
         rule_dict = {
@@ -312,7 +342,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
             }
         }
 
-        self.object.setup()
         self.object.process(event)
 
         assert (
@@ -653,3 +682,103 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         return event
+
+    def test_pseudonymize_list_with_one_element(self):
+        pseudonym = ["<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>"]
+
+        regex_pattern = "RE_WHOLE_FIELD"
+        event = {
+            "pseudo_this": ["foo"],
+        }
+        rule = {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event["pseudo_this"] == pseudonym
+
+    def test_pseudonymize_list_with_two_equal_element(self):
+        pseudonym = [
+            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+        ]
+
+        regex_pattern = "RE_WHOLE_FIELD"
+        event = {
+            "pseudo_this": ["foo", "foo"],
+        }
+        rule = {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event["pseudo_this"] == pseudonym
+
+    def test_pseudonymize_list_with_two_different_element(self):
+        pseudonym = [
+            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+            "<pseudonym:98b611cbecbd6a4533695fad8b40a46210f736ae3ef450fb9c4ab65638397113>",
+        ]
+
+        regex_pattern = "RE_WHOLE_FIELD"
+        event = {
+            "pseudo_this": ["foo", "bar"],
+        }
+        rule = {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event["pseudo_this"] == pseudonym
+
+    def test_pseudonymize_one_element_from_list_with_two_different_elements(self):
+        pseudonym = [
+            "foo\\<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>",
+            "bar",
+        ]
+
+        regex_pattern = "RE_DOMAIN_BACKSLASH_USERNAME"
+        event = {
+            "pseudo_this": ["foo\\test", "bar"],
+        }
+        rule = {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": regex_pattern,
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        self.object.process(event)
+
+        assert event["pseudo_this"] == pseudonym
+
+    def test_replace_regex_keywords_by_regex_expression_can_be_called_multiple_times(self):
+        rule_dict = {
+            "filter": "event_id: 1234",
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "description": "description content irrelevant for these tests",
+        }
+        self._load_specific_rule(rule_dict)  # First call
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something": "(.*)"}
+        self.object._replace_regex_keywords_by_regex_expression()  # Second Call
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something": "(.*)"}

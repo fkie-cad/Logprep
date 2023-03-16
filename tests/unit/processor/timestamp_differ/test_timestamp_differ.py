@@ -449,7 +449,6 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
 
 
 class TestTimestampDiffer(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "timestamp_differ",
         "specific_rules": ["tests/testdata/unit/timestamp_differ/specific_rules"],

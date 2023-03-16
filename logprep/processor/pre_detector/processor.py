@@ -17,7 +17,8 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        pre_detector_topic: sre_topic
+        outputs:
+            - kafka: sre_topic
         alert_ip_list_path: /tmp/ip_list.yml
 """
 from functools import cached_property
@@ -49,11 +50,26 @@ class PreDetector(Processor):
     class Config(Processor.Config):
         """PreDetector config"""
 
-        pre_detector_topic: str = field(validator=validators.instance_of(str))
-        """
-        A Kafka topic for the detection results of the Predetector.
-        Results in this topic can be linked to the original event via a `pre_detector_id`.
-        """
+        outputs: tuple[dict[str, str]] = field(
+            validator=[
+                validators.deep_iterable(
+                    member_validator=[
+                        validators.instance_of(dict),
+                        validators.deep_mapping(
+                            key_validator=validators.instance_of(str),
+                            value_validator=validators.instance_of(str),
+                            mapping_validator=validators.max_len(1),
+                        ),
+                    ],
+                    iterable_validator=validators.instance_of(tuple),
+                ),
+                validators.min_len(1),
+            ],
+            converter=tuple,
+        )
+        """list of output mappings in form of :code:`output_name:topic`.
+        Only one mapping is allowed per list element"""
+
         alert_ip_list_path: str = field(
             default=None, validator=validators.optional(validators.instance_of(str))
         )
@@ -71,11 +87,11 @@ class PreDetector(Processor):
         then the expiration date of the IP is being used.
         """
 
-    __slots__ = ["detection_results", "_pre_detector_topic", "_ids"]
+    __slots__ = ["_extra_data", "_pre_detector_topic", "_ids"]
 
     _ids: list
 
-    detection_results: list
+    _extra_data: list
 
     rule_class = PreDetectorRule
 
@@ -89,13 +105,9 @@ class PreDetector(Processor):
 
     def process(self, event: dict) -> tuple:
         self._event = event
-        self.detection_results = []
+        self._extra_data = []
         super().process(event)
-        return (
-            (self.detection_results, self._config.pre_detector_topic)
-            if self.detection_results
-            else None
-        )
+        return (self._extra_data, self._config.outputs) if self._extra_data else None
 
     def _apply_rules(self, event, rule):
         if not (
@@ -104,9 +116,9 @@ class PreDetector(Processor):
         ):
             if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
                 self._logger.debug(f"{self.describe()} processing matching event")
-            self._get_detection_result(rule, self.detection_results)
+            self._get_detection_result(rule, self._extra_data)
         if "@timestamp" in event:
-            for detection in self.detection_results:
+            for detection in self._extra_data:
                 detection["@timestamp"] = event["@timestamp"]
 
     def _get_detection_result(self, rule: PreDetectorRule, detection_results: list):

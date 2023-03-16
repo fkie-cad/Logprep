@@ -60,7 +60,6 @@ class ReaderMock(mock.MagicMock):
 
 
 class TestGeoipEnricher(BaseProcessorTestCase):
-
     mocks = {"geoip2.database.Reader": {"new": ReaderMock()}}
 
     CONFIG = {

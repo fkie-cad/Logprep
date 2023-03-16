@@ -7,7 +7,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestClusterer(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "clusterer",
         "output_field_name": "cluster_signature",
@@ -145,7 +144,7 @@ class TestClusterer(BaseProcessorTestCase):
         }
 
         rule = ClustererRule._create_from_dict(rule_definition)
-        self.object._rules.append(rule)
+        self.object.rules.append(rule)
 
         results = self.object.test_rules()
         for rule_results in results.values():

@@ -23,7 +23,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestNormalizer(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "normalizer",
         "specific_rules": ["tests/testdata/unit/normalizer/rules/specific/"],

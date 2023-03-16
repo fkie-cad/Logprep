@@ -30,6 +30,7 @@ from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.geoip_enricher.processor import GeoipEnricher
 from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
 from logprep.processor.key_checker.processor import KeyChecker
+from logprep.processor.ip_informer.processor import IpInformer
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.list_comparison.processor import ListComparison
 from logprep.processor.normalizer.processor import Normalizer
@@ -37,6 +38,7 @@ from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from logprep.processor.requester.processor import Requester
 from logprep.processor.selective_extractor.processor import SelectiveExtractor
+from logprep.processor.string_splitter.processor import StringSplitter
 from logprep.processor.template_replacer.processor import TemplateReplacer
 from logprep.processor.timestamp_differ.processor import TimestampDiffer
 
@@ -60,6 +62,7 @@ class Registry:
         "generic_resolver": GenericResolver,
         "geoip_enricher": GeoipEnricher,
         "hyperscan_resolver": HyperscanResolver,
+        "ip_informer": IpInformer,
         "key_checker": KeyChecker,
         "labeler": Labeler,
         "list_comparison": ListComparison,
@@ -68,6 +71,7 @@ class Registry:
         "pseudonymizer": Pseudonymizer,
         "requester": Requester,
         "selective_extractor": SelectiveExtractor,
+        "string_splitter": StringSplitter,
         "template_replacer": TemplateReplacer,
         "timestamp_differ": TimestampDiffer,
         # Connectors

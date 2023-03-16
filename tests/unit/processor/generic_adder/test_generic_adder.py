@@ -12,8 +12,7 @@ from unittest import mock
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.generic_adder.rule import InvalidGenericAdderDefinition
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError, ProcessingWarning
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -410,7 +409,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         assert event == expected, testcase
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
-        with pytest.raises(InvalidGenericAdderDefinition, match=r"files do not exist"):
+        with pytest.raises(InvalidRuleDefinitionError, match=r"files do not exist"):
             config = deepcopy(self.CONFIG)
             config["specific_rules"] = [RULES_DIR_MISSING]
             configuration = {"test_instance_name": config}
@@ -418,7 +417,7 @@ class TestGenericAdder(BaseProcessorTestCase):
 
     def test_add_generic_fields_from_file_invalid(self):
         with pytest.raises(
-            InvalidGenericAdderDefinition,
+            InvalidRuleDefinitionError,
             match=r"must be a dictionary with string values",
         ):
             config = deepcopy(self.CONFIG)

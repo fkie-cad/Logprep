@@ -1,15 +1,15 @@
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=protected-access
-# pylint: disable=no-self-use
 # pylint: disable=broad-except
 # pylint: disable=line-too-long
 import logging
+import re
 from unittest import mock
 
 import pytest
 
-from logprep.util.auto_rule_tester import AutoRuleTester
+from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 
 LOGGER = logging.getLogger()
 
@@ -144,7 +144,7 @@ class TestAutoRuleTester:
     ):
         pseudonymizer_cfg = {
             "type": "pseudonymizer",
-            "pseudonyms_topic": "pseudonyms",
+            "outputs": [{"jsonl": "pseudonyms"}],
             "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
             "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
             "hash_salt": "a_secret_tasty_ingredient",
@@ -165,11 +165,9 @@ class TestAutoRuleTester:
         auto_rule_tester._load_rules(processor, "specific_rules")
         assert mock_replace_regex_keywords_by_regex_expression.call_count == 2
 
-    @mock.patch(
-        "logprep.processor.list_comparison.processor.ListComparison._init_rules_list_comparison"
-    )
+    @mock.patch("logprep.processor.list_comparison.processor.ListComparison.setup")
     def test_list_comparison_specific_setup_called_on_load_rules(
-        self, mock_init_rules_list_comparison, auto_rule_tester
+        self, mock_setup, auto_rule_tester
     ):
         list_comparison_cfg = {
             "type": "list_comparison",
@@ -178,16 +176,16 @@ class TestAutoRuleTester:
             "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
             "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
         }
-        mock_init_rules_list_comparison.assert_not_called()
+        mock_setup.assert_not_called()
         processor = auto_rule_tester._get_processor_instance(
             "list_comparison", list_comparison_cfg, LOGGER
         )
         auto_rule_tester._reset_trees(
             processor
         )  # Called every time by auto tester before adding rules instead
-        mock_init_rules_list_comparison.assert_called_once()
+        mock_setup.assert_called_once()
         auto_rule_tester._load_rules(processor, "specific_rules")
-        assert mock_init_rules_list_comparison.call_count == 2
+        assert mock_setup.call_count == 2
 
     def test_full_auto_rule_test_run(self, auto_rule_tester, capsys):
         with pytest.raises(SystemExit):
@@ -218,15 +216,27 @@ class TestAutoRuleTester:
             "RULES WITH CUSTOM TESTS:",
             "tests/testdata/auto_tests/clusterer/rules/specific/rule_with_custom_tests.yml",
         ]
+
         expected_overall_results = [
             "Results:",
             "Failed tests: 7",
-            "Successful tests: 8",
-            "Total tests: 15",
-            "Rule Test Coverage: 75.00%",
+            "Successful tests: 33",
+            "Total tests: 40",
+            "Rule Test Coverage: 80.00%",
             "Warnings: 2",
         ]
         captured = capsys.readouterr()
+
+        float_pattern = r"(\d+(?:\.\d+)?).*"
+        for expected_result in expected_overall_results:
+            split_sample = expected_result.rsplit(" ", maxsplit=1)
+            if len(split_sample) == 2:
+                expected = re.search(float_pattern, split_sample[1]).group(1)
+                pattern = f".*?{re.escape(split_sample[0])} {float_pattern}.*"
+                match = re.search(pattern, captured.out)
+                if match:
+                    assert match.group(1) == expected, f'Expected: "{expected_result}"'
+
         expected_sample_lines = (
             expected_rules_with_tests
             + expected_rules_without_tests

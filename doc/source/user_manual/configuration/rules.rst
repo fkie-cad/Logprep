@@ -96,6 +96,13 @@ Rules
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.ip_informer.rule
+.. autoclass:: logprep.processor.ip_informer.rule.IpInformerRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.key_checker.rule
 .. autoclass:: logprep.processor.key_checker.rule.KeyCheckerRule.Config
    :members:
@@ -142,6 +149,13 @@ Rules
 
 .. automodule:: logprep.processor.selective_extractor.rule
 .. autoclass:: logprep.processor.selective_extractor.rule.SelectiveExtractorRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.string_splitter.rule
+.. autoclass:: logprep.processor.string_splitter.rule.StringSplitterRule.Config
    :members:
    :undoc-members:
    :inherited-members:

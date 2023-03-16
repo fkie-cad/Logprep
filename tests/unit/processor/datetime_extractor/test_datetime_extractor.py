@@ -14,7 +14,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDatetimeExtractor(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "datetime_extractor",
         "specific_rules": ["tests/testdata/unit/datetime_extractor/rules/specific"],

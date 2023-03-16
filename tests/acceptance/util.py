@@ -3,16 +3,16 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 import contextlib
-import threading
-import socketserver
 import http.server
 import inspect
 import json
 import os
 import re
 import signal
+import socketserver
 import subprocess
 import sys
+import threading
 import time
 from copy import deepcopy
 from importlib import import_module
@@ -30,12 +30,12 @@ basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(me
 logger = getLogger("Logprep-Test")
 
 
-class TestingHTTPServer(socketserver.TCPServer):
+class HTTPServerForTesting(socketserver.TCPServer):
     allow_reuse_address = True
 
     @classmethod
     def run_http_server(cls, port=32000):
-        with TestingHTTPServer(("", port), http.server.SimpleHTTPRequestHandler) as httpd:
+        with HTTPServerForTesting(("", port), http.server.SimpleHTTPRequestHandler) as httpd:
             try:
                 cls.httpd = httpd
                 cls.httpd.serve_forever()
@@ -176,12 +176,14 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
     return config_yml
 
 
-def start_logprep(config_path: str) -> subprocess.Popen:
-    environment = {"PYTHONPATH": "."}
+def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
+    if env is None:
+        env = {}
+    env.update({"PYTHONPATH": "."})
     return subprocess.Popen(  # nosemgrep
         f"{sys.executable} logprep/run_logprep.py {config_path}",
         shell=True,
-        env=environment,
+        env=env,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -219,12 +221,14 @@ def stop_logprep(proc=None):
             pass
 
 
-def get_full_pipeline():
+def get_full_pipeline(exclude=None):
     processors = [
         processor_name
         for processor_name, value in Registry.mapping.items()
         if issubclass(value, Processor)
     ]
+    if exclude:
+        processors = filter(lambda x: x not in exclude, processors)
     processor_test_modules = []
     for processor in processors:
         processor_test_modules.append(

@@ -9,5 +9,5 @@ User Manual
    execution
    verification
    validation
-   dry_run
+   testing_rules
    configuration/index

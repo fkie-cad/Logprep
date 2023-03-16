@@ -67,25 +67,6 @@ class PseudonymizerRule(Rule):
         )
         """url fields to pseudonymize"""
 
-    @classmethod
-    def normalize_rule_dict(cls, rule):
-        if rule.get("pseudonymizer", {}).get("pseudonyms") is None:
-            pseudonyms = pop_dotted_field_value(rule, "pseudonymize")
-            if pseudonyms is not None:
-                add_and_overwrite(rule, "pseudonymizer.pseudonyms", pseudonyms)
-                warnings.warn(
-                    "pseudonymize is deprecated. Use pseudonymizer.pseudonyms instead",
-                    DeprecationWarning,
-                )
-        if rule.get("pseudonymizer", {}).get("url_fields") is None:
-            url_fields = pop_dotted_field_value(rule, "url_fields")
-            if url_fields is not None:
-                add_and_overwrite(rule, "pseudonymizer.url_fields", url_fields)
-                warnings.warn(
-                    "url_fields is deprecated. Use pseudonymizer.url_fields instead",
-                    DeprecationWarning,
-                )
-
     # pylint: disable=C0111
     @property
     def pseudonyms(self) -> dict:

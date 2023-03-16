@@ -1,8 +1,43 @@
 ## Upcoming Changes
 
-* Remove rules deprecations
 
 ## next release
+
+## Breaking
+
+* Remove rules deprecations introduced in `v4.0.0`
+* Changes rule language of `selective_extractor`, `pseudonymizer`, `pre_detector` to support multiple outputs
+
+### Features
+
+* Add `string_splitter` processor to split strings of variable length into lists
+* Add `ip_informer` processor to enrich events with ip information
+* Allow running the `Pipeline` in python without input/output connectors
+* Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
+* Add shorthand for converting datatypes to `dissector` dissect pattern language
+* Add support for multiple output connectors
+* Apply processors multiple times until no new rule matches anymore. This enables applying rules on 
+results of previous rules.
+
+### Improvements
+
+* Bump `attrs` to `>=22.2.0` and delete redundant `min_len_validator`
+* Specify the metric labels for connectors (add name, type and direction as labels)
+* Rename metric names to clarify their meanings (`logprep_pipeline_number_of_warnings` to
+`logprep_pipeline_sum_of_processor_warnings` and `logprep_pipeline_number_of_errors` to
+`logprep_pipeline_sum_of_processor_errors`)
+
+### Bugfix
+
+* Fixes a bug that breaks templating config and rule files with environment variables if one or more variables are not set in environment
+* Fixes a bug for `opensearch_output` and `elasticsearch_output` not handling authentication issues
+* Fix metric `logprep_pipeline_number_of_processed_events` to actually count the processed events per pipeline
+
+### Improvements
+
+* reimplements the `selective_extractor`
+
+## v5.0.1
 
 ### Breaking
 

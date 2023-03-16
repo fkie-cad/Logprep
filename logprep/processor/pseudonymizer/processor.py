@@ -17,7 +17,8 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
-        pseudonyms_topic: pseudonyms_topic
+        outputs:
+            - kafka: pseudonyms_topic
         pubkey_analyst: /path/to/analyst_pubkey.pem
         pubkey_depseudo: /path/to/depseudo_pubkey.pem
         hash_salt: secret_salt
@@ -54,12 +55,26 @@ class Pseudonymizer(Processor):
     class Config(Processor.Config):
         """Pseudonymizer config"""
 
-        pseudonyms_topic: str = field(validator=validators.instance_of(str))
-        """
-        A Kafka-topic for pseudonyms.
-        These are not the pseudonymized events, but just the pseudonyms with the encrypted real
-        values.
-        """
+        outputs: tuple[dict[str, str]] = field(
+            validator=[
+                validators.deep_iterable(
+                    member_validator=[
+                        validators.instance_of(dict),
+                        validators.deep_mapping(
+                            key_validator=validators.instance_of(str),
+                            value_validator=validators.instance_of(str),
+                            mapping_validator=validators.max_len(1),
+                        ),
+                    ],
+                    iterable_validator=validators.instance_of(tuple),
+                ),
+                validators.min_len(1),
+            ],
+            converter=tuple,
+        )
+        """list of output mappings in form of :code:`output_name:topic`.
+        Only one mapping is allowed per list element"""
+
         pubkey_analyst: str = field(validator=validators.instance_of(str))
         """
         Path to the public key of an analyst. For string format see :ref:`getters`.
@@ -75,7 +90,8 @@ class Pseudonymizer(Processor):
         """A salt that is used for hashing."""
         regex_mapping: str = field(validator=validators.instance_of(str))
         """
-        Path to a file (for string format see :ref:`getters`) with a regex mapping for pseudonymization, i.e.:
+        Path to a file (for string format see :ref:`getters`) with a regex mapping for 
+        pseudonymization, i.e.:
 
         * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
         """
@@ -140,7 +156,6 @@ class Pseudonymizer(Processor):
         self.pseudonyms = []
         self.pseudonymized_fields = set()
         self.setup()
-        self._replace_regex_keywords_by_regex_expression()
 
     @cached_property
     def _url_extractor(self):
@@ -165,6 +180,7 @@ class Pseudonymizer(Processor):
         )
         self._init_tld_extractor()
         self._load_regex_mapping(self._config.regex_mapping)
+        self._replace_regex_keywords_by_regex_expression()
 
     def _init_tld_extractor(self):
         if self._config.tld_lists is not None:
@@ -179,7 +195,7 @@ class Pseudonymizer(Processor):
         self.pseudonymized_fields = set()
         self.pseudonyms = []
         super().process(event)
-        return (self.pseudonyms, self._config.pseudonyms_topic) if self.pseudonyms != [] else None
+        return (self.pseudonyms, self._config.outputs) if self.pseudonyms != [] else None
 
     def _apply_rules(self, event: dict, rule: PseudonymizerRule):
         for dotted_field, regex in rule.pseudonyms.items():
@@ -187,13 +203,16 @@ class Pseudonymizer(Processor):
                 try:
                     dict_, key = self._innermost_field(dotted_field, event)
                     pre_pseudonymization_value = dict_[key]
+
                     dict_[key], new_pseudonyms, is_match = self._pseudonymize_field(
-                        regex, str(dict_[key])
+                        regex, dict_[key]
                     )
+
                     if is_match and dotted_field in rule.url_fields:
                         dict_[key] = self._get_field_with_pseudonymized_urls(
                             dict_[key], new_pseudonyms
                         )
+
                     if pre_pseudonymization_value != dict_[key]:
                         self.pseudonymized_fields.add(dotted_field)
                 except KeyError:
@@ -213,20 +232,41 @@ class Pseudonymizer(Processor):
             event = event[keys[i]]
         return event, keys[-1]
 
-    def _pseudonymize_field(self, pattern: str, field_: str) -> Tuple[str, Optional[list], bool]:
-        matches = re.match(pattern, field_)
-
-        # No matches, no change
-        if matches is None:
-            return field_, None, False
-
+    def _pseudonymize_field(
+        self, pattern: str, field_: Union[str, List[str]]
+    ) -> Tuple[Union[str, List[str]], Optional[list], bool]:
         new_pseudonyms = []
 
-        # Replace capture groups if there are any, else pseudonymize whole match (group(0))
-        if any(matches.groups()):
-            field_ = self._get_field_with_pseudonymized_capture_groups(matches, new_pseudonyms)
+        if isinstance(field_, list):
+            values = [str(value) for value in field_]
+            matches_list = [re.match(pattern, value) for value in values]
+            if not any(matches_list):
+                return field_, None, False
 
-        return field_, new_pseudonyms if new_pseudonyms else None, True
+            new_field = []
+
+            for idx, matches in enumerate(matches_list):
+                if matches and any(matches.groups()):
+                    new_field.append(
+                        self._get_field_with_pseudonymized_capture_groups(matches, new_pseudonyms)
+                    )
+                else:
+                    new_field.append(field_[idx])
+        else:
+            new_field = str(field_)
+            matches = re.match(pattern, new_field)
+
+            # No matches, no change
+            if matches is None:
+                return new_field, None, False
+
+            # Replace capture groups if there are any, else pseudonymize whole match (group(0))
+            if any(matches.groups()):
+                new_field = self._get_field_with_pseudonymized_capture_groups(
+                    matches, new_pseudonyms
+                )
+
+        return new_field, new_pseudonyms if new_pseudonyms else None, True
 
     def _get_field_with_pseudonymized_capture_groups(self, matches, pseudonyms: List[dict]) -> str:
         field_ = ""
@@ -346,10 +386,12 @@ class Pseudonymizer(Processor):
     def _replace_regex_keywords_by_regex_expression(self):
         for rule in self._specific_rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
-                rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
+                if regex_keyword in self._regex_mapping:
+                    rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
         for rule in self._generic_rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
-                rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
+                if regex_keyword in self._regex_mapping:
+                    rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
 
     def _wrap_hash(self, hash_string: str) -> str:
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX

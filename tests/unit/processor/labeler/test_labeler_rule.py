@@ -214,15 +214,3 @@ class TestRule:
         document = {"applyrule": None}
 
         assert rule.matches(document)
-
-    def test_deprecation_warning(self):
-        rule_dict = {
-            "filter": "other_message",
-            "label": {"reporter": ["windows"]},
-            "description": "",
-        }
-        with pytest.deprecated_call() as warnings:
-            LabelerRule._create_from_dict(rule_dict)
-            assert len(warnings.list) == 1
-            matches = [warning.message.args[0] for warning in warnings.list]
-            assert "Use labeler.label instead" in matches[0]

@@ -11,10 +11,15 @@ from attr import define, field, validators
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import Metric, calculate_new_average
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util import getter
-from logprep.util.helper import pop_dotted_field_value, get_dotted_field_value, add_and_overwrite
+from logprep.util.helper import (
+    add_field_to,
+    pop_dotted_field_value,
+    get_dotted_field_value,
+    add_and_overwrite,
+)
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
 
@@ -156,7 +161,7 @@ class Processor(Component):
         return self._generic_tree.rules
 
     @property
-    def _rules(self):
+    def rules(self):
         """Returns all rules
 
         Returns
@@ -279,3 +284,14 @@ class Processor(Component):
         if missing_fields:
             error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)
+
+    def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
+        add_successful = add_field_to(
+            event,
+            output_field=rule.target_field,
+            content=result,
+            extends_lists=rule.extend_target_list,
+            overwrite_output_field=rule.overwrite_target,
+        )
+        if not add_successful:
+            raise DuplicationError(self.name, [rule.target_field])

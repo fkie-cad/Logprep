@@ -322,7 +322,6 @@ failure_test_cases = [
 
 
 class TestRequester(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "requester",
         "specific_rules": ["tests/testdata/unit/requester/specific_rules"],

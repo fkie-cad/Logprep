@@ -62,6 +62,7 @@ extensions = [
     "sphinxcontrib.datatemplates",
     "nbsphinx",
     "IPython.sphinxext.ipython_console_highlighting",
+    "sphinx_copybutton",
 ]
 
 extensions.append("sphinx.ext.todo")

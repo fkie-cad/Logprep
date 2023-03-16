@@ -175,19 +175,3 @@ class TestDatetimeExtractorRule:
     def test_rule_is_hashable(self, specific_rule_definition):
         rule = DatetimeExtractorRule._create_from_dict(specific_rule_definition)
         assert isinstance(rule, Hashable)
-
-    def test_deprecation_warning(self):
-        rule_dict = {
-            "filter": "field.a",
-            "datetime_extractor": {
-                "datetime_field": "field.b",
-                "destination_field": "other",
-            },
-            "description": "",
-        }
-        with pytest.deprecated_call() as deprecations:
-            DatetimeExtractorRule._create_from_dict(rule_dict)
-            assert len(deprecations.list) == 2
-            matches = [warning.message.args[0] for warning in deprecations.list]
-            assert "Use datetime_extractor.target_field instead" in matches[1]
-            assert "Use datetime_extractor.source_fields instead" in matches[0]

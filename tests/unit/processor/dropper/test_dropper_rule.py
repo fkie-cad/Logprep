@@ -122,12 +122,3 @@ class TestDropperRule:
     def test_rule_is_hashable(self, specific_rule_definition):
         rule = DropperRule._create_from_dict(specific_rule_definition)
         assert isinstance(rule, Hashable)
-
-    def test_deprecation_warning(self):
-        rule_dict = {"filter": "test", "drop": ["field1", "field2"], "drop_full": True}
-        with pytest.deprecated_call() as warnings:
-            DropperRule._create_from_dict(rule_dict)
-            assert len(warnings.list) == 2
-            matches = [warning.message.args[0] for warning in warnings.list]
-            assert "Use dropper.drop instead" in matches[0]
-            assert "Use dropper.drop_full instead" in matches[1]

@@ -94,11 +94,21 @@ class TestListComparison(BaseProcessorTestCase):
         # tests if list_comparison properly extends lists already present in output fields.
         assert self.object.metrics.number_of_processed_events == 0
         document = {
-            "dot_channel": "test",
             "user": "Franz",
             "dotted": {"user_results": {"in_list": ["already_present"]}},
         }
 
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "dotted.user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.setup()
         self.object.process(document)
 
         assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
@@ -108,11 +118,21 @@ class TestListComparison(BaseProcessorTestCase):
         # tests if list_comparison properly extends lists already present in output fields.
         assert self.object.metrics.number_of_processed_events == 0
         document = {
-            "dot_channel": "test",
             "user": "Franz",
             "dotted": {"preexistent_output_field": {"in_list": ["already_present"]}},
         }
 
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "dotted.user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.setup()
         self.object.process(document)
 
         assert document.get("dotted", {}).get("user_results", {}).get("not_in_list") is None
@@ -121,7 +141,7 @@ class TestListComparison(BaseProcessorTestCase):
             len(document.get("dotted", {}).get("preexistent_output_field", {}).get("in_list")) == 1
         )
 
-    def test_dotted_wrong_type(self):
+    def test_target_field_exists_and_cant_be_extended(self):
         assert self.object.metrics.number_of_processed_events == 0
         document = {"dot_channel": "test", "user": "Franz", "dotted": "dotted_Franz"}
         expected = {
@@ -129,12 +149,21 @@ class TestListComparison(BaseProcessorTestCase):
             "user": "Franz",
             "dotted": "dotted_Franz",
             "tags": ["_list_comparison_failure"],
-            "user_results": {"in_list": ["user_list.txt"]},
         }
 
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "dotted.user_results",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.setup()
         with pytest.raises(ProcessingWarning):
             self.object.process(document)
-
         assert document == expected
 
     def test_intermediate_output_field_is_wrong_type(self):
@@ -149,12 +178,21 @@ class TestListComparison(BaseProcessorTestCase):
             "dot_channel": "test",
             "user": "Franz",
             "dotted": {"user_results": ["do_not_look_here"]},
-            "user_results": {"in_list": ["user_list.txt"]},
         }
 
+        rule_dict = {
+            "filter": "user",
+            "list_comparison": {
+                "source_fields": ["user"],
+                "target_field": "dotted.user_results.do_not_look_here",
+                "list_file_paths": ["../lists/user_list.txt"],
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.setup()
         with pytest.raises(ProcessingWarning):
             self.object.process(document)
-
         assert document == expected
 
     def test_check_in_dotted_subfield(self):
@@ -191,7 +229,7 @@ class TestListComparison(BaseProcessorTestCase):
         }
         expected = {"user_results": {"in_list": ["user_list.txt"]}}
         self._load_specific_rule(rule_dict)
-        self.object._init_rules_list_comparison()
+        self.object.setup()
         self.object.process(document)
         assert document == expected
 
@@ -209,7 +247,7 @@ class TestListComparison(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule_dict)
-        self.object._init_rules_list_comparison()
+        self.object.setup()
         match = (
             r"ProcessingWarning: \(Test Instance Name - The following fields could not be written, "
             r"because one or more subfields existed and could not be extended: user\.in_list\)"
@@ -247,7 +285,7 @@ Hans
         processor = Factory.create({"custom_lister": config}, self.logger)
         rule = processor.rule_class._create_from_dict(rule_dict)
         processor._specific_tree.add_rule(rule)
-        processor._init_rules_list_comparison()
+        processor.setup()
         assert processor._specific_rules[0].compare_sets == {
             "bad_users.list": {"Franz", "Heinz", "Hans"}
         }

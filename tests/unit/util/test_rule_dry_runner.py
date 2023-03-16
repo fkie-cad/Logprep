@@ -15,7 +15,6 @@ class TestRunLogprep:
         config = """
         process_count: 1
         timeout: 0.1
-
         pipeline:
           - normalizer:
               type: normalizer
@@ -38,7 +37,8 @@ class TestRunLogprep:
               pubkey_depseudo: tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem
               regex_mapping: tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml
               hash_salt: a_secret_tasty_ingredient
-              pseudonyms_topic: pseudonyms
+              outputs:
+                - patched_output: pseudonyms
               specific_rules:
                 - tests/testdata/unit/pseudonymizer/rules/specific/
               generic_rules:
@@ -51,7 +51,8 @@ class TestRunLogprep:
                 - tests/testdata/unit/pre_detector/rules/specific/
               generic_rules:
                 - tests/testdata/unit/pre_detector/rules/generic/
-              pre_detector_topic: sre_topic
+              outputs:
+                - patched_output: sre_topic
         """
         self.config_path = os.path.join(tempfile.gettempdir(), "dry-run-config.yml")
         with open(self.config_path, "w", encoding="utf8") as config_file:

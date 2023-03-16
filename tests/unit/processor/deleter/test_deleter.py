@@ -4,7 +4,6 @@ from tests.unit.processor.base import BaseProcessorTestCase
 
 
 class TestDeleter(BaseProcessorTestCase):
-
     CONFIG = {
         "type": "deleter",
         "specific_rules": ["tests/testdata/unit/deleter/rules/specific/"],

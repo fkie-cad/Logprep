@@ -102,6 +102,13 @@ Processors
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.ip_informer.processor
+.. autoclass:: logprep.processor.ip_informer.processor.IpInformer.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.key_checker.processor
 .. autoclass:: logprep.processor.key_checker.processor.KeyChecker.Config
    :members:
@@ -153,6 +160,13 @@ Processors
 
 .. automodule:: logprep.processor.selective_extractor.processor
 .. autoclass:: logprep.processor.selective_extractor.processor.SelectiveExtractor.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.string_splitter.processor
+.. autoclass:: logprep.processor.string_splitter.processor.StringSplitter.Config
    :members:
    :undoc-members:
    :inherited-members:

@@ -97,21 +97,6 @@ from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory
 
 
-class GenericAdderRuleError(InvalidRuleDefinitionError):
-    """Base class for GenericAdder rule related exceptions."""
-
-    def __init__(self, message: str):
-        super().__init__(f"GenericAdder rule ({message})")
-
-
-class InvalidGenericAdderDefinition(GenericAdderRuleError):
-    """Raise if GenericAdder definition invalid."""
-
-    def __init__(self, definition):
-        message = f"The following GenericAdder definition is invalid: {definition}"
-        super().__init__(message)
-
-
 class GenericAdderRule(FieldManagerRule):
     """Check if documents match a filter and initialize the fields and values can be added."""
 
@@ -216,11 +201,11 @@ class GenericAdderRule(FieldManagerRule):
                     error_msg = (
                         f"Additions file '{add_file}' must be a dictionary with string values!"
                     )
-                    raise InvalidGenericAdderDefinition(error_msg)
+                    raise InvalidRuleDefinitionError(error_msg)
                 if self.only_first_existing_file:
                     break
             if missing_files and not self.only_first_existing_file:
-                raise InvalidGenericAdderDefinition(
+                raise InvalidRuleDefinitionError(
                     f"The following required files do not exist: '{missing_files}'"
                 )
 

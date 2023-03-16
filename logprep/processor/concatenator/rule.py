@@ -38,12 +38,10 @@ A speaking example:
         "timetsamp": "01.01.1007 13:07"
     }
 """
-from functools import partial
 
 from attrs import define, field, fields, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.validators import min_len_validator
 
 
 class ConcatenatorRule(FieldManagerRule):
@@ -56,7 +54,7 @@ class ConcatenatorRule(FieldManagerRule):
         source_fields: list = field(
             validator=[
                 fields(FieldManagerRule.Config).source_fields.validator,
-                partial(min_len_validator, min_length=2),
+                validators.min_len(2),
             ]
         )
         """The source fields that should be concatenated, can contain dotted field paths."""
