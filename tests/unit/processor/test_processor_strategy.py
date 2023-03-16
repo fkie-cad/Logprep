@@ -8,9 +8,8 @@ import pytest
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.dissector.rule import DissectorRule
-from logprep.processor.normalizer.rule import NormalizerRule
+from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 
 
@@ -50,8 +49,8 @@ class TestSpecificGenericProcessStrategy:
         assert call_order == [mock_process_specific, mock_process_generic]
 
     def test_apply_processor_multiple_times_until_no_new_rule_matches(self):
-        generic_tree = RuleTree()
-        specific_tree = RuleTree()
+        config = {"type": "dissector", "specific_rules": [], "generic_rules": []}
+        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
         rule_one_dict = {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{time} [%{protocol}] %{url}"}},
@@ -62,19 +61,8 @@ class TestSpecificGenericProcessStrategy:
         }
         rule_one = DissectorRule._create_from_dict(rule_one_dict)
         rule_two = DissectorRule._create_from_dict(rule_two_dict)
-        specific_tree.add_rule(rule_one)
-        specific_tree.add_rule(rule_two)
-        config = {
-            "type": "dissector",
-            "specific_rules": [],
-            "generic_rules": [],
-        }
-        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
-        processor._specific_tree = specific_tree
-        mock_metrics = Processor.ProcessorMetrics(
-            labels={}, specific_rule_tree=[], generic_rule_tree=[]
-        )
-
+        processor._specific_tree.add_rule(rule_one)
+        processor._specific_tree.add_rule(rule_two)
         event = {"message": "time [proto col] url"}
         expected_event = {
             "message": "time [proto col] url",
@@ -86,47 +74,35 @@ class TestSpecificGenericProcessStrategy:
         }
         processor._strategy.process(
             event,
-            generic_tree=generic_tree,
-            specific_tree=specific_tree,
+            generic_tree=processor._generic_tree,
+            specific_tree=processor._specific_tree,
             callback=processor._apply_rules_wrapper,
             processor_stats=mock.Mock(),
-            processor_metrics=mock_metrics,
+            processor_metrics=mock.MagicMock(),
         )
         assert expected_event == event
 
     @pytest.mark.parametrize("execution_number", range(5))  # repeat test to ensure determinism
     def test_strategy_applies_rules_in_deterministic_order(self, execution_number):
-        generic_tree = RuleTree()
-        specific_tree = RuleTree()
-        rule_one_dict = {"filter": "field", "normalize": {"field.one": "copy.one"}}
-        rule_two_dict = {"filter": "NOT field.two", "normalize": {"field.one": "field.two"}}
-        rule_one = NormalizerRule._create_from_dict(rule_one_dict)
-        rule_two = NormalizerRule._create_from_dict(rule_two_dict)
-        specific_tree.add_rule(rule_one)
-        specific_tree.add_rule(rule_two)
-        config = {
-            "type": "normalizer",
-            "specific_rules": [],
-            "generic_rules": [],
-            "regex_mapping": "tests/testdata/unit/normalizer/regex_mapping.yml",
-        }
-
+        config = {"type": "generic_adder", "specific_rules": [], "generic_rules": []}
         processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
-        processor._specific_tree = specific_tree
-        mock_metrics = Processor.ProcessorMetrics(
-            labels={}, specific_rule_tree=[], generic_rule_tree=[]
-        )
-        event = {"field": {"one": 1}}
+        rule_one_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
+        rule_two_dict = {"filter": "NOT something", "generic_adder": {"add": {"something": "else"}}}
+        rule_one = GenericAdderRule._create_from_dict(rule_one_dict)
+        rule_two = GenericAdderRule._create_from_dict(rule_two_dict)
+        processor._specific_tree.add_rule(rule_one)
+        processor._specific_tree.add_rule(rule_two)
+        event = {"val": "content"}
         mock_callback = mock.MagicMock()
         processor._strategy.process(
-            event,
-            generic_tree=generic_tree,
-            specific_tree=specific_tree,
+            event=event,
+            generic_tree=processor._generic_tree,
+            specific_tree=processor._specific_tree,
             callback=mock_callback,
             processor_stats=mock.Mock(),
-            processor_metrics=mock_metrics,
+            processor_metrics=mock.MagicMock(),
         )
         expected_call_order = [call(event, rule_one), call(event, rule_two)]
         assert (
             mock_callback.mock_calls == expected_call_order
-        ), f"Call order was wrong in test {execution_number}"
+        ), f"Wrong call order in test {execution_number}"
