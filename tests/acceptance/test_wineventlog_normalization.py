@@ -49,6 +49,6 @@ def test_events_normalized_without_errors(tmp_path, config):
     proc = start_logprep(config_path)
     wait_for_output(proc, "no documents left")
     stop_logprep(proc)
-    assert len(output_file.read_text().splitlines()) > 0, "doccuments were processed"
-    assert len(error_file.read_text().splitlines()) == 0, "no errors occured"
-    assert len(custom_file.read_text().splitlines()) == 0, "no custom output were written"
+    assert len(output_file.read_text().splitlines()) > 0, "documents were processed"
+    assert len(error_file.read_text().splitlines()) == 0, "no errors occurred"
+    assert len(custom_file.read_text().splitlines()) == 0, "no custom output was written"

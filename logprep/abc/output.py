@@ -15,7 +15,6 @@ class OutputError(BaseException):
     """Base class for Output related exceptions."""
 
     def __init__(self, output: "Output", message: str) -> None:
-        self.output = output
         super().__init__(f"{self.__class__.__name__} in {output.describe()}: {message}")
 
 

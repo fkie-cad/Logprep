@@ -58,7 +58,7 @@ class ProcessingError(Exception):
 
 
 class ProcessingCriticalError(ProcessingError):
-    """A critical error occured - stop processing of this event"""
+    """A critical error occurred - stop processing of this event"""
 
     def __init__(self, processor: "Processor", message: str, event: dict):
         self.event = deepcopy(event)
@@ -68,7 +68,7 @@ class ProcessingCriticalError(ProcessingError):
 
 
 class ProcessingWarning(ProcessingError):
-    """An minor error occurred - log the error but continue processing the event."""
+    """A minor error occurred - log the error, but continue processing the event."""
 
     def __init__(self, processor: "Processor", message: str, rule: "Rule", event: dict):
         self.event = event

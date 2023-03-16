@@ -77,13 +77,13 @@ class ElasticsearchOutput(Output):
         """(Optional) Maximum number of retries for documents rejected with code 429 (default is 0).
         Increases backoff time by 2 seconds per try, but never exceeds 600 seconds."""
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """(Optional) The user used for authentication (optional)."""
+        """(Optional) User used for authentication."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """(Optional) The secret used for authentication (optional)."""
+        """(Optional) Secret used for authentication."""
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """(Optional) The path to a SSL ca certificate to verify the ssl context (optional)."""
+        """(Optional) Path to a SSL ca certificate to verify the ssl context."""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) The timout after message_backlog is flushed if message_backlog_size is not reached"""
+        """(Optional) Timout after :code:`message_backlog` is flushed if :code:`message_backlog_size` is not reached."""
 
     __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
 
