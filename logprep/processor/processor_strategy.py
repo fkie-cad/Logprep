@@ -68,7 +68,7 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
         processor_metrics: "Processor.ProcessorMetrics",
     ):
         applied_rules = set()
-        matching_rules = set(tree.get_matching_rules(event))
+        matching_rules = tree.get_matching_rules(event)
         while True:
             for rule in matching_rules:
                 begin = time()
@@ -78,6 +78,6 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
                 rule.metrics.update_mean_processing_time(processing_time)
                 processor_metrics.update_mean_processing_time_per_event(processing_time)
                 applied_rules.add(rule)
-            matching_rules = set(tree.get_matching_rules(event))
-            if not matching_rules.difference(applied_rules):
+            matching_rules = tree.get_matching_rules(event)
+            if not set(matching_rules).difference(applied_rules):
                 break
