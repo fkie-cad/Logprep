@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=attribute-defined-outside-init
 import datetime
+import re
 import time
 from copy import deepcopy
 from pathlib import Path
@@ -779,6 +781,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "description": "description content irrelevant for these tests",
         }
         self._load_specific_rule(rule_dict)  # First call
-        assert self.object._specific_tree.rules[0].pseudonyms == {"something": "(.*)"}
+        expected_pattern = re.compile("(.*)")
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something": expected_pattern}
         self.object._replace_regex_keywords_by_regex_expression()  # Second Call
-        assert self.object._specific_tree.rules[0].pseudonyms == {"something": "(.*)"}
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something":  expected_pattern}
