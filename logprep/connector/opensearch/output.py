@@ -27,7 +27,7 @@ Example
         max_retries:
         user:
         secret:
-        cert: /path/to/cert.crt
+        ca_cert: /path/to/cert.crt
 """
 
 import logging
