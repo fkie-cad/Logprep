@@ -13,7 +13,12 @@ from requests.exceptions import Timeout
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
-from logprep.util.getter import FileGetter, GetterFactory, GetterNotFoundError, HttpGetter
+from logprep.util.getter import (
+    FileGetter,
+    GetterFactory,
+    GetterNotFoundError,
+    HttpGetter,
+)
 
 yaml = YAML(pure=True, typ="safe")
 
@@ -73,30 +78,32 @@ class TestGetterFactory:
 
     def test_getter_expands_setted_environment_variables_and_missing_to_blank(self, tmp_path):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
-        if "MISSING_TOKEN" in os.environ:
-            os.environ.pop("MISSING_TOKEN")
+        if "LOGPREP_MISSING_TOKEN" in os.environ:
+            os.environ.pop("LOGPREP_MISSING_TOKEN")
         testfile = tmp_path / "test_getter.json"
-        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $MISSING_TOKEN")
+        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $LOGPREP_MISSING_TOKEN")
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my "
-        assert "MISSING_TOKEN" in my_getter.missing_env_vars
+        assert "LOGPREP_MISSING_TOKEN" in my_getter.missing_env_vars
         assert len(my_getter.missing_env_vars) == 1
 
     def test_getter_expands_only_uppercase_variable_names(self, tmp_path):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
         testfile = tmp_path / "test_getter.json"
-        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $not_a_token")
+        testfile.write_text("this is my $PYTEST_TEST_TOKEN, and this is my $pytest_test_token")
         my_getter = GetterFactory.from_string(str(testfile))
-        assert my_getter.get() == "this is my mytoken, and this is my $not_a_token"
+        assert my_getter.get() == "this is my mytoken, and this is my $pytest_test_token"
 
     def test_getter_expands_setted_environment_variables_and_missing_to_blank_with_braced_variables(
         self, tmp_path
     ):
         os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
-        if "MISSING_TOKEN" in os.environ:
-            os.environ.pop("MISSING_TOKEN")
+        if "LOGPREP_MISSING_TOKEN" in os.environ:
+            os.environ.pop("LOGPREP_MISSING_TOKEN")
         testfile = tmp_path / "test_getter.json"
-        testfile.write_text("this is my ${PYTEST_TEST_TOKEN}, and this is my ${MISSING_TOKEN}")
+        testfile.write_text(
+            "this is my ${PYTEST_TEST_TOKEN}, and this is my ${LOGPREP_MISSING_TOKEN}"
+        )
         my_getter = GetterFactory.from_string(str(testfile))
         assert my_getter.get() == "this is my mytoken, and this is my "
 
@@ -144,6 +151,39 @@ dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
             "dict": {"key": "value", "second_key": "mytoken"},
         }
         assert my_getter.get_yaml() == expected
+
+    def test_getter_expands_only_whitelisted_in_yaml_content(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text(
+            """---
+key: $PYTEST_TEST_TOKEN
+list:
+    - first element
+    - $HOME
+    - $PYTEST_TEST_TOKEN
+    - ${PYTEST_TEST_TOKEN}-with-additional-string
+dict: {key: value, second_key: $PYTEST_TEST_TOKEN}
+"""
+        )
+        my_getter = GetterFactory.from_string(str(testfile))
+        expected = {
+            "key": "mytoken",
+            "list": ["first element", "$HOME", "mytoken", "mytoken-with-additional-string"],
+            "dict": {"key": "value", "second_key": "mytoken"},
+        }
+        assert my_getter.get_yaml() == expected
+
+    def test_getter_does_not_reduces_double_dollar_for_unvalid_prefixes(self, tmp_path):
+        os.environ.update({"PYTEST_TEST_TOKEN": "mytoken"})
+        os.environ.update({"LOGPREP_LIST": "foo"})
+        testfile = tmp_path / "test_getter.json"
+        testfile.write_text(
+            "this is my $PYTEST_TEST_TOKEN, and this is my $$UNVALID_PREFIXED_TOKEN"
+        )
+        my_getter = GetterFactory.from_string(str(testfile))
+        assert my_getter.get() == "this is my mytoken, and this is my $$UNVALID_PREFIXED_TOKEN"
+        assert len(my_getter.missing_env_vars) == 0
 
 
 class TestFileGetter:

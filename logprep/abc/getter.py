@@ -1,13 +1,14 @@
 """Module for getter interface"""
-from abc import ABC, abstractmethod
-from copy import deepcopy
+import json
 import os
 import re
+from abc import ABC, abstractmethod
+from copy import deepcopy
 from string import Template
-import json
 from typing import Dict, List, Union
-from ruamel.yaml import YAML
+
 from attrs import define, field, validators
+from ruamel.yaml import YAML
 
 pure_yaml = YAML(typ="safe", pure=True)
 impure_yaml = YAML(typ="safe", pure=False)
@@ -18,6 +19,8 @@ BLOCKLIST_VARIABLE_NAMES = [
     "LOGPREP_LIST",  # used by list_comparison processor
 ]
 
+VALID_PREFIXES = ["LOGPREP_", "CI_", "GITHUB_", "PYTEST_"]
+
 
 @define(kw_only=True)
 class Getter(ABC):
@@ -26,7 +29,14 @@ class Getter(ABC):
     class EnvTemplate(Template):
         """Template class for uppercase only template variables"""
 
-        idpattern = r"(?a:[_A-Z][_A-Z0-9]*)"
+        pattern = r"""
+        \$(?:
+            (?P<escaped>\$\$\$)|
+            (?P<named>(?!LOGPREP_LIST)(?=LOGPREP_|CI_|GITHUB_|PYTEST_)[_A-Z0-9]*)|
+            {(?P<braced>(?!LOGPREP_LIST)(?=LOGPREP_|CI_|GITHUB_|PYTEST_)[_A-Z0-9]*)}|
+            (?P<invalid>)
+        )
+        """
         flags = re.VERBOSE
 
     protocol: str = field(validator=validators.instance_of(str))
@@ -53,12 +63,12 @@ class Getter(ABC):
         return template.safe_substitute(**kwargs)
 
     def _get_kwargs(self, template, content):
-        used_env_vars = self._get_used_env_vars(content, template)
+        used_env_vars = list(self._get_used_env_vars(content, template))
         self.missing_env_vars = [env_var for env_var in used_env_vars if env_var not in os.environ]
         defaults_for_missing = {missing_key: "" for missing_key in self.missing_env_vars}
         kwargs = deepcopy(os.environ)
         kwargs |= defaults_for_missing
-        return dict(filter(lambda item: self._not_in_blocklist(item[0]), kwargs.items()))
+        return kwargs
 
     def _get_used_env_vars(self, content, template):
         found_variables = template.pattern.findall(
@@ -66,11 +76,7 @@ class Getter(ABC):
         )  # returns a list of tuples in form (escaped, named, braced, invalid)
         used_named_env_vars = map(lambda x: x[1], found_variables)
         used_braced_env_vars = map(lambda x: x[2], found_variables)
-        return filter(self._not_in_blocklist, {*used_named_env_vars, *used_braced_env_vars})
-
-    @staticmethod
-    def _not_in_blocklist(var):
-        return var not in BLOCKLIST_VARIABLE_NAMES
+        return (item for item in {*used_named_env_vars, *used_braced_env_vars} if item)
 
     def get_yaml(self) -> Union[Dict, List]:
         """gets and parses the raw content to yaml using only Python modules.
