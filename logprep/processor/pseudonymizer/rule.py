@@ -40,10 +40,8 @@ in a capture group and therefore pseudonymizes it completely.
 """
 
 from typing import List
-import warnings
 from attrs import define, field, validators
 
-from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 from logprep.processor.base.rule import Rule
 
 
