@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
+# pylint: disable=too-many-statements
 
 import pytest
 

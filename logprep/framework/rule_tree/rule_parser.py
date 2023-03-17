@@ -176,9 +176,10 @@ class RuleParser:
             for expression in rule.expressions:
                 if RuleParser._has_unresolved_not_expression(expression):
                     return True
+        return False
 
     @staticmethod
-    def _parse_or_expression(rule: FilterExpression) -> Union[list, tuple, FilterExpression]:
+    def _parse_or_expression(rule: FilterExpression) -> Union[list, tuple, FilterExpression, None]:
         """Parse filters with OR-expressions.
 
         This function parses filter expressions with OR-expressions recursively by splitting them
@@ -193,7 +194,7 @@ class RuleParser:
 
         Returns
         -------
-        result: Union[list, tuple, FilterExpression]
+        result: Union[list, tuple, FilterExpression, None]
             Resulting filter expression created by resolving OR- and AND-expressions in the given
             filter expression. The return type may differ depending on the level of recursion.
 
@@ -234,7 +235,7 @@ class RuleParser:
                 for loop_result in loop_results:
                     if isinstance(loop_result, tuple):
                         tuple_segment = loop_result
-                        loop_results.remove(tuple_segment)
+                        loop_results.remove(tuple_segment)  # pylint: disable=W4701
 
                         for tuple_element in tuple_segment:
                             loop_results.insert(0, tuple_element)
@@ -246,6 +247,7 @@ class RuleParser:
             if isinstance(rule, And):
                 return tuple(RuleParser._parse_and_expression(rule))
             return rule
+        return None
 
     @staticmethod
     def _parse_or(loop_results: list):
@@ -366,7 +368,7 @@ class RuleParser:
             parsed_rule.sort(key=lambda r: RuleParser._sort(r, priority_dict))
 
     @staticmethod
-    def _sort(expr: StringFilterExpression, priority_dict: dict) -> Union[dict, str]:
+    def _sort(expr: StringFilterExpression, priority_dict: dict) -> Union[dict, str, None]:
         """Helper function for _sort_rule_segments.
 
         This function is used by the _sort_rule_segments() function in the sorting key.
@@ -384,34 +386,33 @@ class RuleParser:
 
         Returns
         -------
-        comparison_value: str
+        comparison_value: Union[dict, str, None]
             Comparison value to use for sorting.
 
         """
         if isinstance(expr, Always):
-            return
-        elif isinstance(expr, Not):
+            return None
+        if isinstance(expr, Not):
             try:
                 if isinstance(expr.expression, Exists):
                     return priority_dict[
-                        expr.expression._as_dotted_string(expr.expression.split_field)
+                        expr.expression.as_dotted_string(expr.expression.split_field)
                     ]
-                elif isinstance(expr.expression, Not):
+                if isinstance(expr.expression, Not):
                     return priority_dict[expr.expression.expression.split_field[0]]
-                else:
-                    return priority_dict[expr._as_dotted_string(expr.expression._key)]
+                return priority_dict[expr.as_dotted_string(expr.expression.key)]
             except KeyError:
                 return RuleParser._sort(expr.expression, priority_dict)
         elif isinstance(expr, Exists):
             try:
-                return priority_dict[expr._as_dotted_string(expr.split_field)]
+                return priority_dict[expr.as_dotted_string(expr.split_field)]
             except KeyError:
-                return expr.__repr__()[1:-1]
+                return repr(expr)[1:-1]
         else:
             try:
-                return priority_dict[expr._as_dotted_string(expr._key)]
+                return priority_dict[expr.as_dotted_string(expr.key)]
             except KeyError:
-                return expr.__repr__()
+                return repr(expr)
 
     @staticmethod
     def _parse_and_expression(expression: FilterExpression) -> list:
@@ -440,8 +441,8 @@ class RuleParser:
                 else:
                     looped_result = RuleParser._parse_and_expression(segment)
 
-                    for s in looped_result:
-                        rule_list.append(s)
+                    for looped_segment in looped_result:
+                        rule_list.append(looped_segment)
 
         return rule_list
 
@@ -484,14 +485,14 @@ class RuleParser:
                         if isinstance(expression, Exists):
                             if expression.split_field[0] in tag_map.keys():
                                 RuleParser._add_tag(rule, tag_map[expression.split_field[0]])
-                        elif expression._key[0] in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[expression._key[0]])
+                        elif expression.key[0] in tag_map.keys():
+                            RuleParser._add_tag(rule, tag_map[expression.key[0]])
                     # Always Expressions do not need tags
                     elif isinstance(segment, Always):
                         continue
                     else:
-                        if segment._key[0] in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[segment._key[0]])
+                        if segment.key[0] in tag_map.keys():
+                            RuleParser._add_tag(rule, tag_map[segment.key[0]])
 
     @staticmethod
     def _add_tag(rule, tag_map_value: str):
@@ -523,7 +524,7 @@ class RuleParser:
             rule.insert(0, Exists(tag_map_value.split(".")))
 
     @staticmethod
-    def _tag_exists(segment, tag):
+    def _tag_exists(segment: Union[Exists, StringFilterExpression], tag: str) -> bool:
         """Helper function for _add_tag.
 
         Checks if the given segment is equal to the given tag.
@@ -542,11 +543,12 @@ class RuleParser:
 
         """
         if isinstance(segment, Exists):
-            if segment.__repr__()[1:-1] == tag:
+            if repr(segment)[1:-1] == tag:
                 return True
         elif isinstance(segment, StringFilterExpression):
-            if segment.__repr__().replace('"', "") == tag:
+            if repr(segment).replace('"', "") == tag:
                 return True
+        return False
 
     @staticmethod
     def _add_exists_filter(parsed_rules: list):
@@ -568,8 +570,7 @@ class RuleParser:
             temp_parsed_rule = parsed_rule.copy()
             skipped_counter = 0
 
-            for segment_index in range(len(temp_parsed_rule)):
-                segment = temp_parsed_rule[segment_index]
+            for segment_index, segment in enumerate(temp_parsed_rule):
                 # Skip Always()-, Exists()- and Not()-expressions when adding Exists()-filter
                 # Not()-expressions need to be skipped for cases where the field does not exist
                 if (
@@ -577,7 +578,7 @@ class RuleParser:
                     and not isinstance(segment, Not)
                     and not isinstance(segment, Always)
                 ):
-                    exists_filter = Exists(segment._key)
+                    exists_filter = Exists(segment.key)
 
                     # Skip if Exists()-filter already exists in Rule. No need to add it twice
                     if exists_filter in parsed_rule:
