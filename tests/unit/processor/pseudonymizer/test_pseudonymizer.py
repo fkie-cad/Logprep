@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+# pylint: disable=too-many-public-methods
 import datetime
 import re
 import time
@@ -784,4 +785,4 @@ class TestPseudonymizer(BaseProcessorTestCase):
         expected_pattern = re.compile("(.*)")
         assert self.object._specific_tree.rules[0].pseudonyms == {"something": expected_pattern}
         self.object._replace_regex_keywords_by_regex_expression()  # Second Call
-        assert self.object._specific_tree.rules[0].pseudonyms == {"something":  expected_pattern}
+        assert self.object._specific_tree.rules[0].pseudonyms == {"something": expected_pattern}
