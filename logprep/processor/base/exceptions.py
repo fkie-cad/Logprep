@@ -1,6 +1,5 @@
 """This module contains exceptions for rules."""
 
-from copy import deepcopy
 from typing import TYPE_CHECKING, Any, List
 
 from logprep.factory_error import FactoryError
