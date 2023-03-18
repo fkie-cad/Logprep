@@ -193,21 +193,13 @@ class ElasticsearchOutput(Output):
     def _write_backlog(self):
         if not self._message_backlog:
             return
-        try:
-            helpers.bulk(
-                self._search_context,
-                self._message_backlog,
-                max_retries=self._config.max_retries,
-                chunk_size=self._config.message_backlog_size,
-            )
-        except search.SerializationError as error:
-            self._handle_serialization_error(error)
-        except search.ConnectionError as error:
-            self._handle_connection_error(error)
-        except helpers.BulkIndexError as error:
-            self._handle_bulk_index_error(error)
-        if self.input_connector:
-            self.input_connector.batch_finished_callback()
+
+        self._bulk(
+            self._search_context,
+            self._message_backlog,
+            max_retries=self._config.max_retries,
+            chunk_size=self._config.message_backlog_size,
+        )
         self._message_backlog.clear()
 
     def _handle_bulk_index_error(self, error: helpers.BulkIndexError):
@@ -233,7 +225,19 @@ class ElasticsearchOutput(Output):
             error_document = self._build_failed_index_document(data, reason)
             self._add_dates(error_document)
             error_documents.append(error_document)
-        helpers.bulk(self._search_context, error_documents)
+        self._bulk(self._search_context, error_documents)
+
+    def _bulk(self, *args, **kwargs):
+        try:
+            helpers.bulk(*args, **kwargs)
+        except search.SerializationError as error:
+            self._handle_serialization_error(error)
+        except search.ConnectionError as error:
+            self._handle_connection_error(error)
+        except helpers.BulkIndexError as error:
+            self._handle_bulk_index_error(error)
+        if self.input_connector:
+            self.input_connector.batch_finished_callback()
 
     def _handle_connection_error(self, error: search.ConnectionError):
         """Handle connection error for elasticsearch bulk indexing.

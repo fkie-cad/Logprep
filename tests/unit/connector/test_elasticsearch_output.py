@@ -7,7 +7,6 @@
 import json
 import re
 from datetime import datetime
-from json import dumps, loads
 from math import isclose
 from unittest import mock
 
@@ -18,7 +17,7 @@ from elasticsearch import ElasticsearchException as SearchException
 from elasticsearch import helpers
 
 from logprep.abc.component import Component
-from logprep.abc.output import CriticalOutputError, FatalOutputError
+from logprep.abc.output import FatalOutputError
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -26,19 +25,7 @@ class NotJsonSerializableMock:
     pass
 
 
-def mock_bulk(
-    _, documents: list, max_retries: int = 0, chunk_size: int = 500
-):  # pylint: disable=unused-argument
-    for document in documents:
-        try:
-            loads(dumps(document))
-        except TypeError as error:
-            raise CriticalOutputError(
-                mock.MagicMock(), "Error storing output document: Serialization Error", document
-            ) from error
-
-
-helpers.bulk = mock_bulk
+helpers.bulk = mock.MagicMock()
 
 
 class TestElasticsearchOutput(BaseOutputTestCase):
