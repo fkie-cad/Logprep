@@ -276,9 +276,7 @@ class Pipeline:
     @cached_property
     def _pipeline(self) -> tuple:
         self.logger.debug(f"Building '{self._process_name}'")
-        pipeline = tuple(
-            (self._create_processor(entry) for entry in self._logprep_config.get("pipeline"))
-        )
+        pipeline = [self._create_processor(entry) for entry in self._logprep_config.get("pipeline")]
         self.logger.debug(f"Finished building pipeline ({self._process_name})")
         return pipeline
 

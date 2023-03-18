@@ -188,15 +188,8 @@ class ElasticsearchOutput(Output):
         configured input
         """
         self._message_backlog.append(document)
-        backlog_size = len(self._message_backlog)
-        if backlog_size >= self._config.message_backlog_size:
-            self._bulk(
-                self._search_context,
-                self._message_backlog,
-                max_retries=self._config.max_retries,
-                chunk_size=backlog_size,
-            )
-            self._message_backlog.clear()
+        if len(self._message_backlog) >= self._config.message_backlog_size:
+            self._write_backlog()
 
     def _write_backlog(self):
         if not self._message_backlog:
