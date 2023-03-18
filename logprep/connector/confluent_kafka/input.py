@@ -26,7 +26,6 @@ Example
         session_timeout: 6000
         offset_reset_policy: smallest
 """
-import json
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
@@ -125,6 +124,8 @@ class ConfluentKafkaInput(Input):
 
     _last_valid_records: dict
 
+    _decoder: msgspec.json.Decoder = msgspec.json.Decoder()
+
     __slots__ = [
         "current_offset",
         "_record",
@@ -213,7 +214,7 @@ class ConfluentKafkaInput(Input):
         if raw_event is None:
             return None, None
         try:
-            event_dict = msgspec.json.decode(raw_event)
+            event_dict = self._decoder.decode(raw_event)
         except msgspec.DecodeError as error:
             raise CriticalInputError(
                 "Input record value is not a valid json string", raw_event
