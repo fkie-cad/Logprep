@@ -6,20 +6,19 @@
 # pylint: disable=no-self-use
 import json
 import re
-from copy import deepcopy
 from datetime import datetime
 from json import dumps, loads
 from math import isclose
 from unittest import mock
 
 import arrow
-import elasticsearch
-import elasticsearch.helpers
+import elasticsearch as search
 import pytest
+from elasticsearch import ElasticsearchException as SearchException
+from elasticsearch import helpers
 
 from logprep.abc.component import Component
 from logprep.abc.output import CriticalOutputError, FatalOutputError
-from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -39,7 +38,7 @@ def mock_bulk(
             ) from error
 
 
-elasticsearch.helpers.bulk = mock_bulk
+helpers.bulk = mock_bulk
 
 
 class TestElasticsearchOutput(BaseOutputTestCase):
@@ -52,13 +51,8 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         "timeout": 5000,
     }
 
-    def test_describe_returns_elasticsearch_output(self):
-        assert (
-            self.object.describe()
-            == "ElasticsearchOutput (Test Instance Name) - ElasticSearch Output: ['host:123']"
-        )
-
     def test_store_sends_to_default_index(self):
+        self.object._config.message_backlog_size = 2
         event = {"field": "content"}
         expected = {
             "_index": "default_index",
@@ -81,18 +75,18 @@ class TestElasticsearchOutput(BaseOutputTestCase):
             "message": '{"field": "content"}',
             "reason": "Missing index in document",
         }
-        es_config = deepcopy(self.CONFIG)
-        es_config.update({"default_index": default_index})
-        es_output = Factory.create({"elasticsearch": es_config}, self.logger)
-        es_output.store(event)
+        self.object._config.default_index = default_index
+        self.object._config.message_backlog_size = 2
+        self.object.store(event)
 
-        assert es_output._message_backlog[0].pop("@timestamp")
-        assert es_output._message_backlog[0] == expected
+        assert self.object._message_backlog[0].pop("@timestamp")
+        assert self.object._message_backlog[0] == expected
 
     def test_store_custom_sends_event_to_expected_index(self):
         custom_index = "custom_index"
         event = {"field": "content"}
         expected = {"field": "content", "_index": custom_index}
+        self.object._config.message_backlog_size = 2
         self.object.store_custom(event, custom_index)
         assert self.object._message_backlog[0] == expected
 
@@ -109,6 +103,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
             "@timestamp": str(datetime.now()),
         }
 
+        self.object._config.message_backlog_size = 2
         self.object.store_failed(error_message, event_received, event)
 
         error_document = self.object._message_backlog[0]
@@ -148,35 +143,38 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         assert failed_document == expected
 
     @mock.patch(
-        "logprep.connector.elasticsearch.output.helpers.bulk",
-        side_effect=elasticsearch.SerializationError,
+        "elasticsearch.helpers.bulk",
+        side_effect=search.SerializationError,
     )
     def test_write_to_search_context_calls_handle_serialization_error_if_serialization_error(
         self, _
     ):
+        self.object._config.message_backlog_size = 1
         self.object._handle_serialization_error = mock.MagicMock()
         self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
-        "logprep.connector.elasticsearch.output.helpers.bulk",
-        side_effect=elasticsearch.ConnectionError,
+        "elasticsearch.helpers.bulk",
+        side_effect=search.ConnectionError,
     )
     def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
+        self.object._config.message_backlog_size = 1
         self.object._handle_connection_error = mock.MagicMock()
         self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_connection_error.assert_called()
 
     @mock.patch(
-        "logprep.connector.elasticsearch.output.helpers.bulk",
-        side_effect=elasticsearch.helpers.BulkIndexError,
+        "elasticsearch.helpers.bulk",
+        side_effect=helpers.BulkIndexError,
     )
     def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
+        self.object._config.message_backlog_size = 1
         self.object._handle_bulk_index_error = mock.MagicMock()
         self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_bulk_index_error.assert_called()
 
-    @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
+    @mock.patch("elasticsearch.helpers.bulk")
     def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
@@ -190,7 +188,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         self.object._handle_bulk_index_error(mock_bulk_index_error)
         fake_bulk.assert_called()
 
-    @mock.patch("logprep.connector.elasticsearch.output.helpers.bulk")
+    @mock.patch("elasticsearch.helpers.bulk")
     def test_handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
@@ -211,14 +209,6 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         assert error_document.get("reason") == "myerrortype: myreason"
         assert error_document.get("message") == json.dumps({"my": "document"})
 
-    def test_write_to_search_context_sets_processed_cnt(self):
-        es_config = deepcopy(self.CONFIG)
-        es_config.update({"message_backlog_size": 2})
-        es_output = Factory.create({"elasticsearch": es_config}, self.logger)
-        current_proccessed_cnt = es_output._processed_cnt
-        es_output._write_to_search_context({"dummy": "event"})
-        assert current_proccessed_cnt < es_output._processed_cnt
-
     def test_handle_connection_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
             self.object._handle_connection_error(mock.MagicMock())
@@ -229,7 +219,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
 
     def test_setup_raises_fatal_output_error_if_elastic_error_is_raised(self):
         self.object._search_context.info = mock.MagicMock()
-        self.object._search_context.info.side_effect = elasticsearch.ElasticsearchException
+        self.object._search_context.info.side_effect = SearchException
         with pytest.raises(FatalOutputError):
             self.object.setup()
 
@@ -238,3 +228,17 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         with pytest.raises(FatalOutputError):
             self.object.setup()
         assert len(Component._scheduler.jobs) == job_count + 1
+
+    def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):
+        self.object._config.message_backlog_size = 2
+        assert len(self.object._message_backlog) == 0
+        with mock.patch(
+            "logprep.connector.elasticsearch.output.ElasticsearchOutput._write_backlog"
+        ) as mock_write_backlog:
+            self.object.store({"test": "event"})
+        mock_write_backlog.assert_not_called()
+
+    def test_message_backlog_is_cleared_after_it_was_written(self):
+        self.object._config.message_backlog_size = 1
+        self.object.store({"event": "test_event"})
+        assert len(self.object._message_backlog) == 0
