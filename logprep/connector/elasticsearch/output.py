@@ -43,6 +43,7 @@ from attr import define, field
 from attrs import validators
 from elasticsearch import ElasticsearchException, helpers
 from opensearchpy import OpenSearchException
+from urllib3.exceptions import ConnectTimeoutError
 
 from logprep.abc.output import FatalOutputError, Output
 
@@ -187,8 +188,15 @@ class ElasticsearchOutput(Output):
         configured input
         """
         self._message_backlog.append(document)
-        if len(self._message_backlog) == self._config.message_backlog_size:
-            self._write_backlog()
+        backlog_size = len(self._message_backlog)
+        if backlog_size >= self._config.message_backlog_size:
+            self._bulk(
+                self._search_context,
+                self._message_backlog,
+                max_retries=self._config.max_retries,
+                chunk_size=backlog_size,
+            )
+            self._message_backlog.clear()
 
     def _write_backlog(self):
         if not self._message_backlog:
@@ -198,7 +206,7 @@ class ElasticsearchOutput(Output):
             self._search_context,
             self._message_backlog,
             max_retries=self._config.max_retries,
-            chunk_size=self._config.message_backlog_size,
+            chunk_size=len(self._message_backlog),
         )
         self._message_backlog.clear()
 
@@ -368,5 +376,5 @@ class ElasticsearchOutput(Output):
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
         try:
             self._search_context.info()
-        except (ElasticsearchException, OpenSearchException) as error:
+        except (ElasticsearchException, OpenSearchException, ConnectTimeoutError) as error:
             raise FatalOutputError(self, error) from error
