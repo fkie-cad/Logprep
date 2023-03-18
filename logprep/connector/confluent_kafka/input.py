@@ -34,6 +34,7 @@ from typing import Any, List, Tuple, Union
 
 from attrs import define, field, validators
 from confluent_kafka import Consumer
+import msgspec
 
 from logprep.abc.input import CriticalInputError, Input
 from logprep.util.validators import dict_with_keys_validator
@@ -212,8 +213,8 @@ class ConfluentKafkaInput(Input):
         if raw_event is None:
             return None, None
         try:
-            event_dict = json.loads(raw_event.decode("utf-8"))
-        except ValueError as error:
+            event_dict = msgspec.json.decode(raw_event)
+        except msgspec.DecodeError as error:
             raise CriticalInputError(
                 "Input record value is not a valid json string", raw_event
             ) from error
