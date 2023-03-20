@@ -210,7 +210,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         with pytest.raises(FatalOutputError):
             self.object._handle_serialization_error(mock.MagicMock())
 
-    def test_setup_raises_fatal_output_error_if_elastic_error_is_raised(self):
+    def test_setup_raises_fatal_output_error_if_opensearch_error_is_raised(self):
         self.object._search_context.info = mock.MagicMock()
         self.object._search_context.info.side_effect = SearchException
         with pytest.raises(FatalOutputError):
