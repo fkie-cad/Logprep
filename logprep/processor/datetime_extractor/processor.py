@@ -26,9 +26,8 @@ from dateutil.parser import parse
 from dateutil.tz import tzlocal
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value
 
 
 class DateTimeExtractorError(BaseException):
