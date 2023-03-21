@@ -1,16 +1,17 @@
 """This module is used to create the configuration for the runner."""
 
-from copy import deepcopy
 import re
 import sys
+from copy import deepcopy
 from logging import Logger
 from pathlib import Path
 from typing import List
 
-from ruamel.yaml.scanner import ScannerError
 from colorama import Fore
-from logprep.abc.processor import Processor
+from ruamel.yaml.scanner import ScannerError
 
+from logprep.abc.getter import Getter
+from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError
 from logprep.factory_error import (
@@ -19,7 +20,6 @@ from logprep.factory_error import (
 )
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
-from logprep.abc.getter import Getter
 from logprep.util.helper import print_fcolor
 from logprep.util.json_handling import dump_config_as_file
 
@@ -207,9 +207,8 @@ class Configuration(dict):
 
     def verify(self, logger: Logger):
         """Verify the configuration."""
-        errors = self._perform_verfification_and_get_errors(logger)
-        self._print_errors(errors)
-
+        errors = self._check_for_errors(logger)
+        self._print_and_raise_errors(errors)
         for error in errors:
             raise error
 
@@ -220,17 +219,24 @@ class Configuration(dict):
         """
         errors = []
         try:
-            self._verify_pipeline(logger, ignore_rule_errors=False)
+            self._verify_pipeline(logger)
         except InvalidConfigurationError as error:
             errors.append(error)
-        self._print_errors(errors)
+        self._print_and_raise_errors(errors)
 
-        for error in errors:
-            raise error
+    def verify_pipeline_without_processor_outputs(self, logger: Logger):
+        """Verify the configuration only for the pipeline, but ignore processor output errors.
+        This is used to check if the configuration is valid inside the auto rule tester and the
+        rule corpus tester, as the configuration does not have an output there.
+        """
+        errors = []
+        try:
+            self._verify_pipeline_without_processor_outputs(logger)
+        except InvalidConfigurationError as error:
+            errors.append(error)
+        self._print_and_raise_errors(errors)
 
-    def _perform_verfification_and_get_errors(
-        self, logger: Logger
-    ) -> List[InvalidConfigurationError]:
+    def _check_for_errors(self, logger: Logger) -> List[InvalidConfigurationError]:
         errors = []
         try:
             self._verify_environment()
@@ -332,45 +338,13 @@ class Configuration(dict):
             msg = f"Unknown option: {parameter}."
         return msg
 
-    def _verify_pipeline(self, logger: Logger, ignore_rule_errors=False):
-        if not self.get("pipeline"):
-            raise RequiredConfigurationKeyMissingError("pipeline")
-
-        if not isinstance(self["pipeline"], list):
-            error = InvalidConfigurationError(
-                '"pipeline" must be a list of processor dictionary configurations!'
-            )
-            raise InvalidConfigurationErrors([error])
-
+    def _verify_pipeline(self, logger: Logger):
+        self._verify_pipeline_key()
         errors = []
         for processor_config in self["pipeline"]:
-            processor = None
+            processor = self._verify_processor(errors, logger, processor_config)
             try:
-                processor = Factory.create(processor_config, logger)
-            except (FactoryInvalidConfigurationError, UnknownComponentTypeError) as error:
-                errors.append(
-                    InvalidProcessorConfigurationError(
-                        f"{list(processor_config.keys())[0]} - {error}"
-                    )
-                )
-            except TypeError as error:
-                msg = self._format_type_error(error)
-                errors.append(
-                    InvalidProcessorConfigurationError(
-                        f"{list(processor_config.keys())[0]} - {msg}"
-                    )
-                )
-            except InvalidRuleDefinitionError:
-                if not ignore_rule_errors:
-                    errors.append(
-                        InvalidConfigurationError(
-                            "Could not verify configuration for processor instance "
-                            f"'{list(processor_config.keys())[0]}', because it has invalid rules."
-                        )
-                    )
-            try:
-                if processor:
-                    self._verify_rules_outputs(processor)
+                self._verify_rules_outputs(processor)
             except InvalidRuleDefinitionError as error:
                 errors.append(error)
             try:
@@ -380,8 +354,47 @@ class Configuration(dict):
         if errors:
             raise InvalidConfigurationErrors(errors)
 
+    def _verify_pipeline_without_processor_outputs(self, logger: Logger):
+        self._verify_pipeline_key()
+        errors = []
+        for processor_config in self["pipeline"]:
+            self._verify_processor(errors, logger, processor_config)
+        if errors:
+            raise InvalidConfigurationErrors(errors)
+
+    def _verify_pipeline_key(self):
+        if not self.get("pipeline"):
+            raise RequiredConfigurationKeyMissingError("pipeline")
+        if not isinstance(self["pipeline"], list):
+            error = InvalidConfigurationError(
+                '"pipeline" must be a list of processor dictionary configurations!'
+            )
+            raise InvalidConfigurationErrors([error])
+
+    def _verify_processor(self, errors, logger, processor_config):
+        processor = None
+        try:
+            processor = Factory.create(processor_config, logger)
+        except (FactoryInvalidConfigurationError, UnknownComponentTypeError) as error:
+            errors.append(
+                InvalidProcessorConfigurationError(f"{list(processor_config.keys())[0]} - {error}")
+            )
+        except TypeError as error:
+            msg = self._format_type_error(error)
+            errors.append(
+                InvalidProcessorConfigurationError(f"{list(processor_config.keys())[0]} - {msg}")
+            )
+        except InvalidRuleDefinitionError:
+            errors.append(
+                InvalidConfigurationError(
+                    "Could not verify configuration for processor instance "
+                    f"'{list(processor_config.keys())[0]}', because it has invalid rules."
+                )
+            )
+        return processor
+
     def _verify_rules_outputs(self, processor: Processor):
-        if not hasattr(processor.rule_class, "outputs"):
+        if not processor or not hasattr(processor.rule_class, "outputs"):
             return
         for rule in processor.rules:
             for output in rule.outputs:
@@ -482,6 +495,8 @@ class Configuration(dict):
             )
 
     @staticmethod
-    def _print_errors(errors: List[BaseException]):
+    def _print_and_raise_errors(errors: List[BaseException]):
         for error in errors:
             print_fcolor(Fore.RED, str(error))
+        for error in errors:
+            raise error

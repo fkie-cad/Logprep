@@ -22,7 +22,8 @@ Details for configuring connectors are described in :ref:`output` and :ref:`inpu
 General information about the configuration of the pipeline can be found in :ref:`pipeline_config` .
 
 It is possible to use environment variables in all configuration and rules files in all places.
-Environment variables have to be set in uppercase. Lowercase variables are ignored. Forbidden
+Environment variables have to be set in uppercase and prefixed
+with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or :code:`CI_`. Lowercase variables are ignored. Forbidden
 variable names are: :code:`["LOGPREP_LIST"]`
 
 The following config file will be valid by setting the given environment variables:

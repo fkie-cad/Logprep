@@ -659,7 +659,7 @@ class TestConfiguration:
         config = deepcopy(self.config)
         config.update(config_dict)
         if raised_errors is not None:
-            errors = config._perform_verfification_and_get_errors(logger)
+            errors = config._check_for_errors(logger)
             collected_errors = []
             for error in errors:
                 collected_errors += error.errors
@@ -853,7 +853,7 @@ process_count: $LOGPREP_PROCESS_COUNT
 timeout: 0.1
 logger:
     level: $LOGPREP_LOG_LEVEL
-$I_DO_NOT_EXIST
+$LOGPREP_I_DO_NOT_EXIST
 $LOGPREP_PIPELINE
 $LOGPREP_INPUT
 $LOGPREP_OUTPUT
@@ -903,7 +903,7 @@ output:
         config = Configuration.create_from_yaml(str(config_path))
         with pytest.raises(
             InvalidConfigurationErrors,
-            match=r"Environment variable\(s\) used, but not set: I_DO_NOT_EXIST",
+            match=r"Environment variable\(s\) used, but not set: LOGPREP_I_DO_NOT_EXIST",
         ):
             config.verify(mock.MagicMock())
 
@@ -947,3 +947,22 @@ output:
         assert len(raised.value.errors) == 3
         for error in raised.value.errors:
             assert "output 'kafka' does not exist in logprep outputs" in error.args[0]
+
+    def test_verify_pipeline_without_processor_outputs_ignores_processor_output_errors(self):
+        config = Configuration()
+        pipeline = [
+            {
+                "pd": {
+                    "type": "pre_detector",
+                    "generic_rules": ["tests/testdata/unit/pre_detector/rules/generic"],
+                    "specific_rules": ["tests/testdata/unit/pre_detector/rules/specific"],
+                    "outputs": [{"kafka": "pre_detector_alerts"}],
+                    "alert_ip_list_path": "tests/testdata/unit/pre_detector/alert_ips.yml",
+                }
+            },
+        ]
+        config.update({"pipeline": pipeline, "output": {}})
+        try:
+            config.verify_pipeline_without_processor_outputs(logger=logger)
+        except InvalidConfigurationErrors as error:
+            assert False, f"Shouldn't raise output does not exist error: '{error}'"

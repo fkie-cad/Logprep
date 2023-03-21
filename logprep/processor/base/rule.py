@@ -227,7 +227,7 @@ class Rule:
         return all([other.filter == self._filter, other._config == self._config])
 
     def __hash__(self) -> int:  # pylint: disable=function-redefined
-        return hash(repr(self))
+        return id(self)
 
     def __repr__(self) -> str:
         if hasattr(self, "_config"):
