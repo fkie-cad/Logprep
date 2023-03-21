@@ -1,7 +1,9 @@
 ## Upcoming Changes
 
-
 ## next release
+
+
+## v6.0.0
 
 ## Breaking
 
