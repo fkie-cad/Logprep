@@ -28,3 +28,4 @@ urlextract
 uvicorn
 wheel
 deepdiff
+msgspec

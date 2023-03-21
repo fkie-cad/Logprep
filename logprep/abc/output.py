@@ -9,6 +9,7 @@ from typing import Optional
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
+from logprep.abc.input import Input
 
 
 class OutputError(BaseException):
@@ -45,7 +46,7 @@ class Output(Connector):
 
     __slots__ = {"input_connector"}
 
-    input_connector: Connector
+    input_connector: Optional[Input]
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
         super().__init__(name, configuration, logger)
