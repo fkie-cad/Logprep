@@ -129,3 +129,11 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object.input_connector = mock.MagicMock()
         self.object.store({"message": "my event message"})
         self.object.input_connector.batch_finished_callback.assert_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_kafka_config_has_precedence(self, mock_producer):
+        config = {"myconfig": "the config"}
+        self.object._config.kafka_config = config
+        self.object._producer.clear()
+        _ = self.object._producer
+        mock_producer.assert_called_with(config)

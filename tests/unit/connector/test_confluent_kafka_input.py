@@ -135,3 +135,11 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
         result = self.object._get_raw_event(0.001)
         assert result
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_kafka_config_has_precedence(self, mock_consumer):
+        config = {"myconfig": "the config"}
+        self.object._config.kafka_config = config
+        self.object._consumer.clear()
+        _ = self.object._consumer
+        mock_consumer.assert_called_with(config)
