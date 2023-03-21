@@ -947,3 +947,22 @@ output:
         assert len(raised.value.errors) == 3
         for error in raised.value.errors:
             assert "output 'kafka' does not exist in logprep outputs" in error.args[0]
+
+    def test_verify_pipeline_ignores_processor_outputs(self):
+        config = Configuration()
+        pipeline = [
+            {
+                "pd": {
+                    "type": "pre_detector",
+                    "generic_rules": ["tests/testdata/unit/pre_detector/rules/generic"],
+                    "specific_rules": ["tests/testdata/unit/pre_detector/rules/specific"],
+                    "outputs": [{"kafka": "pre_detector_alerts"}],
+                    "alert_ip_list_path": "tests/testdata/unit/pre_detector/alert_ips.yml",
+                }
+            },
+        ]
+        config.update({"pipeline": pipeline, "output": {}})
+        try:
+            config._verify_pipeline(logger=logger, ignore_processor_outputs=True)
+        except InvalidConfigurationErrors as error:
+            assert False, f"Shouldn't raise output does not exist error: '{error}'"

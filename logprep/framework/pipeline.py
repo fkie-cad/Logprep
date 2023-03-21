@@ -436,9 +436,10 @@ class Pipeline:
                     self._handle_processing_warning(processor, warning)
             except BaseException as error:  # pylint: disable=broad-except
                 msg = self._handle_fatal_processing_error(processor, error)
-                for _, output in self._output.items():
-                    if output.default:
-                        output.store_failed(msg, json.loads(event_received), event)
+                if self._output:
+                    for _, output in self._output.items():
+                        if output.default:
+                            output.store_failed(msg, json.loads(event_received), event)
                 processor.metrics.number_of_errors += 1
                 event.clear()  # 'delete' the event, i.e. no regular output
             if not event:

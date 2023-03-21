@@ -1,16 +1,17 @@
 """This module is used to create the configuration for the runner."""
 
-from copy import deepcopy
 import re
 import sys
+from copy import deepcopy
 from logging import Logger
 from pathlib import Path
 from typing import List
 
-from ruamel.yaml.scanner import ScannerError
 from colorama import Fore
-from logprep.abc.processor import Processor
+from ruamel.yaml.scanner import ScannerError
 
+from logprep.abc.getter import Getter
+from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError
 from logprep.factory_error import (
@@ -19,7 +20,6 @@ from logprep.factory_error import (
 )
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
-from logprep.abc.getter import Getter
 from logprep.util.helper import print_fcolor
 from logprep.util.json_handling import dump_config_as_file
 
@@ -205,22 +205,24 @@ class Configuration(dict):
         dump_config_as_file(str(patched_config_path), configuration)
         return str(patched_config_path)
 
-    def verify(self, logger: Logger):
+    def verify(self, logger: Logger, ignore_processor_outputs=False):
         """Verify the configuration."""
-        errors = self._perform_verfification_and_get_errors(logger)
+        errors = self._perform_verfification_and_get_errors(logger, ignore_processor_outputs)
         self._print_errors(errors)
 
         for error in errors:
             raise error
 
-    def verify_pipeline_only(self, logger: Logger):
+    def verify_pipeline_only(self, logger: Logger, ignore_processor_outputs=False):
         """Verify the configuration only for the pipeline.
 
         This is used to check rules where it is not necessary to start the whole framework.
         """
         errors = []
         try:
-            self._verify_pipeline(logger, ignore_rule_errors=False)
+            self._verify_pipeline(
+                logger, ignore_rule_errors=False, ignore_processor_outputs=ignore_processor_outputs
+            )
         except InvalidConfigurationError as error:
             errors.append(error)
         self._print_errors(errors)
@@ -229,7 +231,7 @@ class Configuration(dict):
             raise error
 
     def _perform_verfification_and_get_errors(
-        self, logger: Logger
+        self, logger: Logger, ignore_processor_outputs=False
     ) -> List[InvalidConfigurationError]:
         errors = []
         try:
@@ -253,7 +255,7 @@ class Configuration(dict):
         except InvalidConfigurationError as error:
             errors.append(error)
         try:
-            self._verify_pipeline(logger)
+            self._verify_pipeline(logger, ignore_processor_outputs=ignore_processor_outputs)
         except InvalidConfigurationError as error:
             errors.append(error)
         if self.get("metrics", {}):
@@ -332,7 +334,9 @@ class Configuration(dict):
             msg = f"Unknown option: {parameter}."
         return msg
 
-    def _verify_pipeline(self, logger: Logger, ignore_rule_errors=False):
+    def _verify_pipeline(
+        self, logger: Logger, ignore_rule_errors=False, ignore_processor_outputs=False
+    ):
         if not self.get("pipeline"):
             raise RequiredConfigurationKeyMissingError("pipeline")
 
@@ -369,12 +373,13 @@ class Configuration(dict):
                         )
                     )
             try:
-                if processor:
+                if processor and not ignore_processor_outputs:
                     self._verify_rules_outputs(processor)
             except InvalidRuleDefinitionError as error:
                 errors.append(error)
             try:
-                self._verify_processor_outputs(processor_config)
+                if not ignore_processor_outputs:
+                    self._verify_processor_outputs(processor_config)
             except InvalidProcessorConfigurationError as error:
                 errors.append(error)
         if errors:
