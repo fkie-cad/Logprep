@@ -2,6 +2,10 @@
 
 ## next release
 
+### Features
+
+* add `kafka_config` option to `confluent_kafka_input` and `confluent_kafka_output` connectors to provide a complete config to `librdkafka`
+
 
 ## v6.0.0
 
