@@ -101,6 +101,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt-get update && sudo apt-get -y pandoc
           pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
           pip install -r doc/requirements.txt
