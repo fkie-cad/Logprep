@@ -9,8 +9,6 @@ version: 2
 build:
   os: ubuntu-22.04
   apt_packages:
-    - "libhyperscan-dev"
-    - "librdkafka-dev"
     - "pandoc"
   tools:
     python: "3.9"
