@@ -10,7 +10,7 @@ from unittest import mock
 
 import pytest
 
-from logprep.abc.output import CriticalOutputError
+from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
 from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
@@ -137,3 +137,9 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object._producer.clear()
         _ = self.object._producer
         mock_producer.assert_called_with(config)
+
+    def test_setup_raises_fatal_output_error_on_invalid_config(self):
+        config = {"myconfig": "the config"}
+        self.object._config.kafka_config = config
+        with pytest.raises(FatalOutputError, match="No such configuration property"):
+            self.object.setup()

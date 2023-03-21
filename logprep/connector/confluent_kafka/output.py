@@ -33,10 +33,10 @@ from socket import getfqdn
 from typing import List, Optional
 
 from attrs import define, field, validators
-from confluent_kafka import Producer
+from confluent_kafka import Producer, KafkaException
 import msgspec
 
-from logprep.abc.output import CriticalOutputError, Output
+from logprep.abc.output import CriticalOutputError, Output, FatalOutputError
 from logprep.util.validators import dict_with_keys_validator
 
 
@@ -223,6 +223,13 @@ class ConfluentKafkaOutput(Output):
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
+
+    def setup(self):
+        super().setup()
+        try:
+            _ = self._producer
+        except (KafkaException, ValueError) as error:
+            raise FatalOutputError(error) from error
 
     def shut_down(self) -> None:
         """ensures that all messages are flushed"""

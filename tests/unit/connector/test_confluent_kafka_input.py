@@ -8,6 +8,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
+from logprep.abc.output import FatalOutputError
 
 from logprep.factory import Factory
 from logprep.abc.input import CriticalInputError
@@ -143,3 +144,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.clear()
         _ = self.object._consumer
         mock_consumer.assert_called_with(config)
+
+    def test_setup_raises_fatal_output_error_on_invalid_config(self):
+        config = {"myconfig": "the config"}
+        self.object._config.kafka_config = config
+        with pytest.raises(FatalOutputError, match="group.id must be set"):
+            self.object.setup()

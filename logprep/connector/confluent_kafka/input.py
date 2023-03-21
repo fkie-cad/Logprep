@@ -32,10 +32,11 @@ from socket import getfqdn
 from typing import Any, List, Optional, Tuple, Union
 
 from attrs import define, field, validators
-from confluent_kafka import Consumer
+from confluent_kafka import Consumer, KafkaException
 import msgspec
 
 from logprep.abc.input import CriticalInputError, Input
+from logprep.abc.output import FatalOutputError
 from logprep.util.validators import dict_with_keys_validator
 
 
@@ -281,6 +282,13 @@ class ConfluentKafkaInput(Input):
             if self._last_valid_records:
                 for last_valid_records in self._last_valid_records.values():
                     self._consumer.store_offsets(message=last_valid_records)
+
+    def setup(self):
+        super().setup()
+        try:
+            _ = self._consumer
+        except (KafkaException, ValueError) as error:
+            raise FatalOutputError(error) from error
 
     def shut_down(self):
         """Close consumer, which also commits kafka offsets."""
