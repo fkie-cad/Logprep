@@ -80,6 +80,21 @@ class ConfluentKafkaOutput(Output):
             ],
             default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
         )
+        kafka_config: Optional[dict] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        """ (Optional) A complete kafka configuration for the kafka client. It is an alternative
+        to the logprep configuration. If set, this configuration has precedence and
+        must be complete. For possible configuarion options see: 
+        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        """
 
     _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 
@@ -100,6 +115,8 @@ class ConfluentKafkaOutput(Output):
         dict
             the translated confluence settings
         """
+        if self._config.kafka_config:
+            return self._config.kafka_config
         configuration = {
             "bootstrap.servers": ",".join(self._config.bootstrapservers),
             "queue.buffering.max.messages": self._config.maximum_backlog,

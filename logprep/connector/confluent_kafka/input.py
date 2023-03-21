@@ -29,7 +29,7 @@ Example
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 from attrs import define, field, validators
 from confluent_kafka import Consumer
@@ -117,6 +117,22 @@ class ConfluentKafkaInput(Input):
         consumer to read all log messages from a partition, which can lead to a duplication of log
         messages. Currently, the deprecated value smallest is used, which should be later changed
         to earliest. The default value of librdkafka is largest."""
+
+        kafka_config: Optional[dict] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        """ (Optional) A complete kafka configuration for the kafka client. It is an alternative
+        to the logprep configuration. If set, this configuration has precedence and
+        must be complete. For possible configuarion options see: 
+        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        """
 
     current_offset: int
 
@@ -232,6 +248,8 @@ class ConfluentKafkaInput(Input):
         configuration : dict
             The confluence kafka settings
         """
+        if self._config.kafka_config:
+            return self._config.kafka_config
         configuration = {
             "bootstrap.servers": ",".join(self._config.bootstrapservers),
             "group.id": self._config.group,
