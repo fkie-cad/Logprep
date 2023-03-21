@@ -92,7 +92,7 @@ class ConfluentKafkaOutput(Output):
         )
         """ (Optional) A complete kafka configuration for the kafka client. It is an alternative
         to the logprep configuration. If set, this configuration has precedence and
-        must be complete. For possible configuarion options see: 
+        must be complete. For possible configuration options see: 
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
         """
 
