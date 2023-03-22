@@ -202,15 +202,13 @@ class RuleTree:
 
         def _retrieve_matching_rules(matches: List["Rule"], current_node: Node) -> list:
             """Recursively iterate through the rule tree to retrieve matching rules."""
-            matching_childs = [node for node in current_node.children if node.does_match(event)]
+            matching_childs = [child for child in current_node.children if child.does_match(event)]
+            if not matching_childs:
+                return (*matches, *current_node.matching_rules)
             return (
-                (
-                    *matches,
-                    *current_node.matching_rules,
-                    *reduce(_retrieve_matching_rules, (matches, *matching_childs)),
-                )
-                if matching_childs
-                else (*matches, *current_node.matching_rules)
+                *matches,
+                *current_node.matching_rules,
+                *reduce(_retrieve_matching_rules, (matches, *matching_childs)),
             )
 
         matching_rules = _retrieve_matching_rules([], self.root)
