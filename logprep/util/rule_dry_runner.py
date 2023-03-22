@@ -51,12 +51,12 @@ from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline
 from logprep.util.configuration import Configuration
+from logprep.util.getter import GetterFactory
 from logprep.util.helper import (
     color_print_line,
     recursive_compare,
     color_print_title,
 )
-from logprep.util.json_handling import parse_json, parse_jsonl
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -82,11 +82,7 @@ class DryRunner:
 
     @cached_property
     def _input_documents(self):
-        return (
-            parse_json(self._input_file_path)
-            if self._use_json
-            else parse_jsonl(self._input_file_path)
-        )
+        return GetterFactory.from_string(self._input_file_path).get_yaml()
 
     def __init__(
         self, input_file_path: str, config_path: str, full_output: bool, use_json: bool, logger
