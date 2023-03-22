@@ -1,5 +1,6 @@
 """This module contains the rule tree functionality."""
 
+from functools import partial, reduce
 from logging import Logger
 from typing import List, TYPE_CHECKING
 
@@ -198,22 +199,19 @@ class RuleTree:
         matches: List[Rule]
             Set of rules that match the given event.
         """
-        matches = []
-        matching_rules = self._retrieve_matching_rules(event, self.root, matches)
-        matching_rules = list(dict.fromkeys(matching_rules))
-        return matching_rules
 
-    def _retrieve_matching_rules(
-        self, event: dict, current_node: Node = None, matches: List["Rule"] = None
-    ) -> list:
-        """Recursively iterate through the rule tree to retrieve matching rules."""
-        for child in current_node.children:
-            if child.does_match(event):
-                current_node = child
-                if current_node.matching_rules:
-                    matches += child.matching_rules
-                self._retrieve_matching_rules(event, current_node, matches)
-        return matches
+        def _retrieve_matching_rules(matches: List["Rule"], current_node: Node) -> list:
+            """Recursively iterate through the rule tree to retrieve matching rules."""
+            matching_childs = (node for node in current_node.children if node.does_match(event))
+            return (
+                *matches,
+                *current_node.matching_rules,
+                *reduce(_retrieve_matching_rules, (matches, *matching_childs)),
+            )
+
+        matching_rules = _retrieve_matching_rules([], self.root)
+        matching_rules = list(dict.fromkeys(matching_rules))  # deduplication by preserving order
+        return matching_rules
 
     def print(self, current_node: Node = None, depth: int = 1):
         """Print rule tree to console.
