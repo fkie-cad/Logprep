@@ -160,7 +160,7 @@ class RuleCorpusTester:
             self._original_config_path, self._tmp_dir, str(merged_input_file_path)
         )
         config = Configuration.create_from_yaml(path_to_patched_config)
-        config.verify(getLogger("logprep"), ignore_processor_outputs=True)
+        config.verify_pipeline_without_processor_outputs(getLogger("logprep"))
         del config["output"]
         pipeline = Pipeline(config=config)
         return pipeline

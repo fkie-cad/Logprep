@@ -76,7 +76,7 @@ class DryRunner:
             input_file_path=self._input_file_path,
         )
         config = Configuration.create_from_yaml(patched_config_path)
-        config.verify(self._logger, ignore_processor_outputs=True)
+        config.verify_pipeline_without_processor_outputs(self._logger)
         del config["output"]
         return Pipeline(config=config)
 

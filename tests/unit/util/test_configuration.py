@@ -659,7 +659,7 @@ class TestConfiguration:
         config = deepcopy(self.config)
         config.update(config_dict)
         if raised_errors is not None:
-            errors = config._perform_verfification_and_get_errors(logger)
+            errors = config._check_for_errors(logger)
             collected_errors = []
             for error in errors:
                 collected_errors += error.errors
@@ -948,7 +948,7 @@ output:
         for error in raised.value.errors:
             assert "output 'kafka' does not exist in logprep outputs" in error.args[0]
 
-    def test_verify_pipeline_ignores_processor_outputs(self):
+    def test_verify_pipeline_without_processor_outputs_ignores_processor_output_errors(self):
         config = Configuration()
         pipeline = [
             {
@@ -963,6 +963,6 @@ output:
         ]
         config.update({"pipeline": pipeline, "output": {}})
         try:
-            config._verify_pipeline(logger=logger, ignore_processor_outputs=True)
+            config.verify_pipeline_without_processor_outputs(logger=logger)
         except InvalidConfigurationErrors as error:
             assert False, f"Shouldn't raise output does not exist error: '{error}'"
