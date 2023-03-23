@@ -72,6 +72,8 @@ class Tokenizer(ABC):
         string: str
             String to be tokenized.
 
+        Returns
+        -------
         : List[str]
             List of tokens.
         """
@@ -121,8 +123,10 @@ class TokenFilter(ABC):
         token_list : List[str]
             List of tokens which should be filtered.
 
+        Returns
+        -------
         : List[str]
-            List of remaining tokens.
+            Filtered token list.
         """
 
     @property

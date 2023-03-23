@@ -14,11 +14,11 @@ class DetectionModelError(BaseException):
     """Base exception class for all RuleModel-related errors."""
 
 
-class ModelComponentError(DetectionModelError):
-    """Raised if required model component could not be loaded or is invalid."""
+class MissingModelComponentError(DetectionModelError):
+    """Raised if required model component could not be loaded."""
 
     def __init__(self, name: str):
-        super().__init__(f"Component {name} is missing")
+        super().__init__(f"Model component {name} is missing or uses different key")
 
 
 class DetectionModel:
@@ -26,7 +26,7 @@ class DetectionModel:
     classifier trained on same data to detect malicious data samples.
     """
 
-    __slots__ = ["_clf", "_vectorizer", "_scaler"]
+    __slots__ = ("_clf", "_vectorizer", "_scaler")
 
     _clf: BaseEstimator
     _vectorizer: TfidfVectorizer
@@ -41,8 +41,8 @@ class DetectionModel:
             self._vectorizer = model["vectorizer"]
             self._vectorizer.tokenizer = CommaSeparation()
             self._scaler = model["scaler"]
-        except (KeyError, AttributeError) as err:
-            raise ModelComponentError(err.args[0]) from err
+        except KeyError as err:
+            raise MissingModelComponentError(err.args[0]) from err
 
     def detect(self, sample: str) -> float:
         """Detect malicious data sample. Return probability value that estimates how likely
@@ -70,7 +70,7 @@ class MisuseDetector(DetectionModel):
     decision threshold value to fine-tune from when samples are declared as malicious.
     """
 
-    __slots__ = ["_decision_threshold"]
+    __slots__ = "_decision_threshold"
 
     _decision_threshold: float
 

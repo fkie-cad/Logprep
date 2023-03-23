@@ -5,7 +5,7 @@ import numpy as np
 
 from sklearn.preprocessing import MinMaxScaler
 from logprep.processor.amides.detection import (
-    ModelComponentError,
+    MissingModelComponentError,
     MisuseDetector,
     RuleAttributor,
     RuleAttributorError,
@@ -37,6 +37,8 @@ class MockClassifier:
 
 
 class MockScaler:
+    """MockScaler to mock scaler for testing purposes."""
+
     def __init__(self, minimum: float, maximum: float):
         self._scaler = MinMaxScaler()
         self._scaler.fit(np.array([[minimum], [maximum]]))
@@ -61,13 +63,19 @@ class TestMisuseDetector:
     def test_init_missing_vectorizer(self, misuse_model):
         del misuse_model["vectorizer"]
 
-        with pytest.raises(ModelComponentError):
+        with pytest.raises(MissingModelComponentError):
             _ = MisuseDetector(misuse_model, decision_threshold=0.5)
 
     def test_init_missing_scaler(self, misuse_model):
         del misuse_model["scaler"]
 
-        with pytest.raises(ModelComponentError):
+        with pytest.raises(MissingModelComponentError):
+            _ = MisuseDetector(misuse_model, decision_threshold=0.5)
+
+    def test_init_missing_clf(self, misuse_model):
+        del misuse_model["clf"]
+
+        with pytest.raises(MissingModelComponentError):
             _ = MisuseDetector(misuse_model, decision_threshold=0.5)
 
     def test_detect(self, misuse_model):

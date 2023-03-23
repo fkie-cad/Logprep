@@ -12,8 +12,8 @@ def fixture_default_rule_definition():
     return {
         "filter": "winlog.event_id: 1 AND winlog.provider_name: Microsoft-Windows-Sysmon",
         "amides": {
-            "commandline_field": "process.command_line",
-            "rule_attributions_field": "rule_attributions",
+            "source_fields": ["process.command_line"],
+            "target_field": "rule_attributions",
         },
         "description": "Description for Amides",
     }
@@ -28,8 +28,8 @@ class TestAmidesRule:
                 {
                     "filter": "winlog.event_id: 1 AND winlog.provider_name: Microsoft-Windows-Sysmon",
                     "amides": {
-                        "commandline_field": "process.command_line",
-                        "rule_attributions_field": "rule_attributions",
+                        "source_fields": ["process.command_line"],
+                        "target_field": "rule_attributions",
                     },
                     "description": "Description for Amides",
                 },
@@ -40,32 +40,32 @@ class TestAmidesRule:
                 {
                     "filter": "winlog.event_id: 12",
                     "amides": {
-                        "commandline_field": "process.command_line",
-                        "rule_attributions_field": "rule_attributions",
+                        "source_fields": ["process.command_line"],
+                        "target_field": "rule_attributions",
                     },
                     "description": "Description for Amides",
                 },
                 False,
             ),
             (
-                "Should not equal due to different command line field",
+                "Should not equal due to different source fields",
                 {
                     "filter": "winlog.event_id: 1 AND winlog.provider_name: Microsoft-Windows-Sysmon",
                     "amides": {
-                        "commandline_field": "winlog.event_data.CommandLine",
-                        "rule_attributions_field": "rule_attributions",
+                        "source_fields": ["winlog.event_data.CommandLine"],
+                        "target_field": "rule_attributions",
                     },
                     "description": "Description for Amides",
                 },
                 False,
             ),
             (
-                "Should not equal because of different confidence values field",
+                "Should not equal because of different target fields",
                 {
                     "filter": "winlog.event_id: 1 AND winlog.provider_name: Microsoft-Windows-Sysmon",
                     "amides": {
-                        "commandline_field": "process.command_line",
-                        "rule_attributions_field": "rule_attrs",
+                        "source_fields": ["process.command_line"],
+                        "target_field": "rule_attrs",
                     },
                     "description": "Description for Amides",
                 },

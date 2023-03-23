@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-# pylint: disable=
 import pytest
 
 from logprep.processor.amides.normalize import CommandLineNormalizer

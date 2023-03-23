@@ -1,5 +1,5 @@
 filter: 'winlog.event_id: 1 AND winlog.provider_name: "Microsoft-Windows-Sysmon"'
 amides:
-  commandline_field: process.command_line
-  rule_attributions_field: rule_attributions
+  source_fields: [process.command_line]
+  target_field: rule_attributions
 description": Sample rule for generic AMIDES events

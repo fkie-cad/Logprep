@@ -12,15 +12,11 @@ from logprep.processor.amides.features import (
 )
 
 
-class CommandLineNormalizerError(BaseException):
-    """Base exception for all CommandLineNormalizer-related errors."""
-
-
 class CommandLineNormalizer:
     """CommandLineNormalizer normalizes given command-lines for
     classification by the misuse detector."""
 
-    __slots__ = ["_filter_dummy", "_lower", "_any_word", "_numeric_values", "_strings"]
+    __slots__ = ("_filter_dummy", "_lower", "_any_word", "_numeric_values", "_strings")
 
     _filter_dummy: Preprocessor
     _lower: Preprocessor

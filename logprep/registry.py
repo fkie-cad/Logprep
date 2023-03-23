@@ -3,7 +3,6 @@
     you have to register new processors here by import them and add to `ProcessorRegistry.mapping`
 """
 
-from logprep.processor.amides.processor import Amides
 from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
 from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
 from logprep.connector.console.output import ConsoleOutput
@@ -16,6 +15,7 @@ from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
 from logprep.connector.file.input import FileInput
 from logprep.connector.opensearch.output import OpensearchOutput
+from logprep.processor.amides.processor import Amides
 from logprep.processor.calculator.processor import Calculator
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.concatenator.processor import Concatenator
@@ -49,8 +49,8 @@ class Registry:
 
     mapping = {
         # Processors
-        "calculator": Calculator,
         "amides": Amides,
+        "calculator": Calculator,
         "clusterer": Clusterer,
         "concatenator": Concatenator,
         "datetime_extractor": DatetimeExtractor,

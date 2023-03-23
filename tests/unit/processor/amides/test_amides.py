@@ -1,9 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import hashlib
+import responses
 from copy import deepcopy
+from pathlib import Path
+from multiprocessing import current_process
 import pytest
 
-from logprep.processor.amides.processor import AmidesError
+from logprep.processor.base.exceptions import DuplicationError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -19,6 +23,7 @@ class TestAmides(BaseProcessorTestCase):
     }
 
     def test_process_event_malicious_process_command_line(self):
+        self.object.setup()
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
@@ -42,6 +47,7 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.mean_rule_attribution_time != 0.0
 
     def test_process_event_benign_process_command_line(self):
+        self.object.setup()
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
@@ -69,6 +75,7 @@ class TestAmides(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("document", no_pc_events)
     def test_process_event_no_process_creation_events(self, document):
+        self.object.setup()
         assert self.object.metrics.number_of_processed_events == 0
 
         self.object.process(document)
@@ -82,6 +89,7 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.mean_rule_attribution_time == 0.0
 
     def test_process_event_without_command_line_field(self):
+        self.object.setup()
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"event_id": 1, "provider_name": "Microsoft-Windows-Sysmon"},
@@ -99,6 +107,7 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.mean_rule_attribution_time == 0.0
 
     def test_classification_results_from_cache(self):
+        self.object.setup()
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
@@ -122,7 +131,8 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.mean_misuse_detection_time != 0.0
         assert self.object.metrics.mean_rule_attribution_time != 0.0
 
-    def test_process_event_with_confidence_values(self):
+    def test_process_event_raise_duplication_error(self):
+        self.object.setup()
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
@@ -134,5 +144,43 @@ class TestAmides(BaseProcessorTestCase):
         self.object.process(document)
         assert document.get("rule_attributions")
 
-        with pytest.raises(AmidesError):
+        with pytest.raises(DuplicationError):
             self.object.process(document)
+
+    def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
+        model_uri = "file://tests/testdata/unit/amides/model.zip"
+        model_original = Path(self.CONFIG["models_path"])
+        expected_checksum = hashlib.md5(model_original.read_bytes()).hexdigest()
+
+        (tmp_path / model_original.parent).mkdir(parents=True)
+        model_test_copy = tmp_path / model_original
+        model_test_copy.touch()
+        model_test_copy.write_bytes(model_original.read_bytes())
+
+        self.object._config.models_path = model_uri
+
+        with monkeypatch.context() as monkey_context:
+            monkey_context.chdir(tmp_path)
+            self.object.setup()
+            cached_file = Path(f"{current_process().name}-{self.object.name}.zip")
+            assert cached_file.exists()
+            cached_checksum = hashlib.md5(cached_file.read_bytes()).hexdigest()
+            assert expected_checksum == cached_checksum
+
+    @responses.activate
+    def test_setup_get_model_via_http_getter(self, tmp_path, monkeypatch):
+        model_uri = "http://model-path-target/model.zip"
+        model_original = Path(self.CONFIG["models_path"])
+        model_original_content = model_original.read_bytes()
+        expected_checksum = hashlib.md5(model_original_content).hexdigest()
+        responses.add(responses.GET, model_uri, model_original_content)
+
+        self.object._config.models_path = model_uri
+
+        with monkeypatch.context() as monkey_context:
+            monkey_context.chdir(tmp_path)
+            self.object.setup()
+            loaded_file = Path(f"{current_process().name}-{self.object.name}.zip")
+            assert loaded_file.exists()
+            loaded_checksum = hashlib.md5(loaded_file.read_bytes()).hexdigest()
+            assert expected_checksum == loaded_checksum
