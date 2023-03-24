@@ -4,7 +4,7 @@ Amides
 
 This rule enables to check if incoming documents are of a specific type
 suitable for classification by the :code:`Amides` processor. The specified
-:code:`source_field` should contain command-line strings. In case of an
+:code:`source_field` should contain command line strings. In case of an
 positive detection result, rule attributions are written into
 the :code:`target_field`.
 
@@ -37,7 +37,7 @@ class AmidesRule(FieldManagerRule):
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
-        """Config of AmidesRule to specify source fields of command-lines and
+        """Config of AmidesRule to specify source fields of command lines and
         target field of rule attribution results."""
 
         source_fields: list = field(

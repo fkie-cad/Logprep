@@ -1,4 +1,4 @@
-"""This module enables command-line normalization of incoming command-lines."""
+"""This module enables command line normalization of incoming command lines."""
 from typing import List
 from logprep.processor.amides.features import (
     Preprocessor,
@@ -13,7 +13,7 @@ from logprep.processor.amides.features import (
 
 
 class CommandLineNormalizer:
-    """CommandLineNormalizer normalizes given command-lines for
+    """CommandLineNormalizer normalizes given command lines for
     classification by the misuse detector."""
 
     __slots__ = ("_filter_dummy", "_lower", "_any_word", "_numeric_values", "_strings")
@@ -41,7 +41,7 @@ class CommandLineNormalizer:
         Parameters
         ----------
         cmdline: str
-            The command-line string to be normalized
+            The command line string to be normalized
 
         Returns
         -------
