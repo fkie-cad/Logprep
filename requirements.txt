@@ -67,6 +67,8 @@ luqum==0.12.1
     # via -r requirements.in
 maxminddb==2.2.0
     # via geoip2
+msgspec==0.13.1
+    # via -r requirements.in
 multidict==6.0.4
     # via
     #   aiohttp

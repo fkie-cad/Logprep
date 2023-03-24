@@ -148,6 +148,8 @@ mccabe==0.7.0
     # via pylint
 mdurl==0.1.2
     # via markdown-it-py
+msgspec==0.13.1
+    # via -r requirements.txt
 multidict==6.0.4
     # via
     #   -r requirements.txt
