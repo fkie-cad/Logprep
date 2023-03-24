@@ -31,6 +31,9 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
     specific_rules >> generic_rules
     """
 
+    def __init__(self, apply_rules_multiple_times=False):
+        self._apply_rules_multiple_times = apply_rules_multiple_times
+
     def process(self, event: dict, **kwargs):
         specific_tree = kwargs.get("specific_tree")
         generic_tree = kwargs.get("generic_tree")
@@ -78,6 +81,9 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
                 rule.metrics.update_mean_processing_time(processing_time)
                 processor_metrics.update_mean_processing_time_per_event(processing_time)
                 applied_rules.add(rule)
-            matching_rules = tree.get_matching_rules(event)
-            if not set(matching_rules).difference(applied_rules):
+            if self._apply_rules_multiple_times:
+                matching_rules = tree.get_matching_rules(event)
+                if not set(matching_rules).difference(applied_rules):
+                    break
+            else:
                 break
