@@ -150,7 +150,7 @@ class TestAmides(BaseProcessorTestCase):
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
         model_uri = "file://tests/testdata/unit/amides/model.zip"
         model_original = Path(self.CONFIG["models_path"])
-        expected_checksum = hashlib.md5(model_original.read_bytes()).hexdigest()
+        expected_checksum = hashlib.md5(model_original.read_bytes()).hexdigest()  # nosemgrep
 
         (tmp_path / model_original.parent).mkdir(parents=True)
         model_test_copy = tmp_path / model_original
@@ -164,7 +164,7 @@ class TestAmides(BaseProcessorTestCase):
             self.object.setup()
             cached_file = Path(f"{current_process().name}-{self.object.name}.zip")
             assert cached_file.exists()
-            cached_checksum = hashlib.md5(cached_file.read_bytes()).hexdigest()
+            cached_checksum = hashlib.md5(cached_file.read_bytes()).hexdigest()  # nosemgrep
             assert expected_checksum == cached_checksum
 
     @responses.activate
@@ -172,7 +172,7 @@ class TestAmides(BaseProcessorTestCase):
         model_uri = "http://model-path-target/model.zip"
         model_original = Path(self.CONFIG["models_path"])
         model_original_content = model_original.read_bytes()
-        expected_checksum = hashlib.md5(model_original_content).hexdigest()
+        expected_checksum = hashlib.md5(model_original_content).hexdigest()  # nosemgrep
         responses.add(responses.GET, model_uri, model_original_content)
 
         self.object._config.models_path = model_uri
@@ -182,5 +182,5 @@ class TestAmides(BaseProcessorTestCase):
             self.object.setup()
             loaded_file = Path(f"{current_process().name}-{self.object.name}.zip")
             assert loaded_file.exists()
-            loaded_checksum = hashlib.md5(loaded_file.read_bytes()).hexdigest()
+            loaded_checksum = hashlib.md5(loaded_file.read_bytes()).hexdigest()  # nosemgrep
             assert expected_checksum == loaded_checksum
