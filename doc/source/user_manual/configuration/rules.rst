@@ -8,6 +8,13 @@ Rules
 .. automodule:: logprep.processor.base.rule
 .. automodule:: logprep.filter.lucene_filter
 
+.. automodule:: logprep.processor.amides.rule
+.. autoclass:: logprep.processor.amides.rule.AmidesRule.Config
+   :noindex:
+   :members:
+   :inherited-members:
+   :no-undoc-members:
+
 .. automodule:: logprep.processor.calculator.rule
 .. autoclass:: logprep.processor.calculator.rule.CalculatorRule.Config
    :noindex:

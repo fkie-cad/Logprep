@@ -1,5 +1,12 @@
-"""This rule enables to check if incoming documents are of a specific type
-suitable for classification by amides.
+"""
+Amides
+======
+
+This rule enables to check if incoming documents are of a specific type
+suitable for classification by the :code:`Amides` processor. The specified
+:code:`source_field` should contain command-line strings. In case of an
+positive detection result, rule attributions are written into
+the :code:`target_field`.
 
 
 The following example shows a complete rule:
@@ -24,13 +31,14 @@ yaml = YAML(typ="safe", pure=True)
 
 
 class AmidesRule(FieldManagerRule):
-    """AmidesRule checks if incoming documents match given filter-expression
-    of the Amides-processor.
+    """AmidesRule checks if incoming documents contain fields suitable
+    for classification by the Amides processor.
     """
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
-        """Config of AmidesRule to specify target field of the detection results."""
+        """Config of AmidesRule to specify source fields of command-lines and
+        target field of rule attribution results."""
 
         source_fields: list = field(
             validator=[

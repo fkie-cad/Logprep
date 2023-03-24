@@ -36,7 +36,7 @@ class CommandLineNormalizer:
         (1) Removing dummy characters
         (2) Spliting string into any-word-character tokens
         (3) Removing tokens longer than 30 characters and
-            (hex-) numerical values longer than 3 characters.
+        (hex-) numerical values longer than 3 characters.
 
         Parameters
         ----------

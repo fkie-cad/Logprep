@@ -22,9 +22,8 @@ class MissingModelComponentError(DetectionModelError):
 
 
 class DetectionModel:
-    """DetectionModel combines vectorizer fitted used taining data and
-    classifier trained on same data to detect malicious data samples.
-    """
+    """DetectionModel combines vectorizer fitted used taining data and classifier
+    trained on same data to detect malicious data samples."""
 
     __slots__ = ("_clf", "_vectorizer", "_scaler")
 
@@ -48,8 +47,8 @@ class DetectionModel:
         """Detect malicious data sample. Return probability value that estimates how likely
         given sample is malicious.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         sample: str
             Sample string to evaluate.
 
@@ -82,8 +81,8 @@ class MisuseDetector(DetectionModel):
         """Detect if given sample is malicious. Returns 0 or 1 if sample's detection
         result is below or above the configured decision threshold.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         sample: str
             Sample string to evaluate.
 
