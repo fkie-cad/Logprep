@@ -34,6 +34,7 @@ from typing import List, Optional
 
 from attrs import define, field, validators
 from confluent_kafka import Producer
+import msgspec
 
 from logprep.abc.output import CriticalOutputError, Output
 from logprep.util.validators import dict_with_keys_validator
@@ -79,6 +80,8 @@ class ConfluentKafkaOutput(Output):
             ],
             default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
         )
+
+    _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 
     @cached_property
     def _client_id(self):
@@ -163,9 +166,7 @@ class ConfluentKafkaOutput(Output):
 
         """
         try:
-            self._producer.produce(
-                target, value=json.dumps(document, separators=(",", ":")).encode("utf-8")
-            )
+            self._producer.produce(target, value=self._encoder.encode(document))
             self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty

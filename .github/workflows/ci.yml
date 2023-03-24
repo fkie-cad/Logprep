@@ -68,7 +68,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y install librdkafka-dev
           pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
 
@@ -102,7 +101,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y install librdkafka-dev pandoc
+          sudo apt-get update && sudo apt-get -y install pandoc
           pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
           pip install -r doc/requirements.txt
@@ -141,7 +140,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get -y install librdkafka-dev
           pip install --upgrade pip wheel
           pip install -r requirements_dev.txt
 

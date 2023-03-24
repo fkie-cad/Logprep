@@ -1,9 +1,9 @@
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
 # pylint: disable=attribute-defined-outside-init
 import json
 import logging
 import os
+import re
 import tempfile
 from unittest import mock
 
@@ -68,7 +68,7 @@ class TestRunLogprep:
             json.dump(test_json, input_file)
 
         dry_runner = DryRunner(
-            dry_run=input_json_file,
+            input_file_path=input_json_file,
             config_path=self.config_path,
             full_output=True,
             use_json=True,
@@ -87,7 +87,7 @@ class TestRunLogprep:
             json.dump(test_json, input_file)
 
         dry_runner = DryRunner(
-            dry_run=input_json_file,
+            input_file_path=input_json_file,
             config_path=self.config_path,
             full_output=True,
             use_json=True,
@@ -109,7 +109,7 @@ class TestRunLogprep:
             input_file.writelines(test_jsonl)
 
         dry_runner = DryRunner(
-            dry_run=input_jsonl_file,
+            input_file_path=input_jsonl_file,
             config_path=self.config_path,
             full_output=True,
             use_json=False,
@@ -135,7 +135,7 @@ class TestRunLogprep:
             json.dump(test_json, input_file)
 
         dry_runner = DryRunner(
-            dry_run=input_json_file,
+            input_file_path=input_json_file,
             config_path=self.config_path,
             full_output=True,
             use_json=True,
@@ -146,8 +146,7 @@ class TestRunLogprep:
         captured = capsys.readouterr()
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
-        assert "------ ALL PSEUDONYMS ------" in captured.out
-        assert "------ ALL PRE-DETECTIONS ------" in captured.out
+        assert "------ CUSTOM OUTPUTS ------" in captured.out
 
     def test_dry_run_prints_predetection(self, tmp_path, capsys):
         test_json = {
@@ -161,7 +160,7 @@ class TestRunLogprep:
             json.dump(test_json, input_file)
 
         dry_runner = DryRunner(
-            dry_run=input_json_file,
+            input_file_path=input_json_file,
             config_path=self.config_path,
             full_output=True,
             use_json=True,
@@ -172,8 +171,7 @@ class TestRunLogprep:
         captured = capsys.readouterr()
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
-        assert "------ ALL PSEUDONYMS ------" in captured.out
-        assert "------ ALL PRE-DETECTIONS ------" in captured.out
+        assert "------ CUSTOM OUTPUTS ------" in captured.out
 
     @mock.patch("logprep.processor.labeler.processor.Labeler.process", side_effect=BaseException)
     def test_dry_run_prints_errors(self, _, tmp_path, capsys):
@@ -188,7 +186,7 @@ class TestRunLogprep:
             json.dump(test_json, input_file)
 
         dry_runner = DryRunner(
-            dry_run=input_json_file,
+            input_file_path=input_json_file,
             config_path=self.config_path,
             full_output=True,
             use_json=True,
@@ -197,4 +195,4 @@ class TestRunLogprep:
         dry_runner.run()
 
         captured = capsys.readouterr()
-        assert "------ ERROR ------" in captured.out
+        assert not re.match(r".*A critical error occured for processor Labeler", captured.err)

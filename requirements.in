@@ -2,7 +2,7 @@ arrow
 attrs
 certifi>=2022.12.07
 colorama
-confluent-kafka<1.9.0
+confluent-kafka>2
 elasticsearch>=7,<8
 fastapi
 geoip2
@@ -31,3 +31,4 @@ urlextract
 uvicorn
 wheel
 deepdiff
+msgspec
