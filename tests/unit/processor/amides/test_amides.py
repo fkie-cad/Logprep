@@ -1,10 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import hashlib
-import responses
 from copy import deepcopy
 from pathlib import Path
 from multiprocessing import current_process
+import hashlib
+import responses
 import pytest
 
 from logprep.processor.base.exceptions import DuplicationError

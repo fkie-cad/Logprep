@@ -1,4 +1,3 @@
-# pylint: disable=no-self-use
 # pylint: disable=missing-docstring
 import pytest
 import numpy as np
@@ -18,8 +17,8 @@ class MockVectorizer:
     def transform(self, sample: str) -> np.array:
         if np.array_equal(sample, np.array(["benign"])):
             return np.array([0, 0.5, 1])
-        else:
-            return np.array([0.5, 1, 0])
+
+        return np.array([0.5, 1, 0])
 
 
 class MockClassifier:

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # pylint: disable=not-an-iterable
+# pylint: disable=missing-docstring
 
 from logging import getLogger, DEBUG, basicConfig
 

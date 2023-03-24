@@ -1,5 +1,6 @@
+# pylint: disable=missing-docstring
 # pytest: disable=line-too-long
-# pytest: disable=missing-docstring
+
 import pytest
 
 from logprep.processor.amides.features import (

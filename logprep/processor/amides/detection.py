@@ -69,7 +69,7 @@ class MisuseDetector(DetectionModel):
     decision threshold value to fine-tune from when samples are declared as malicious.
     """
 
-    __slots__ = "_decision_threshold"
+    __slots__ = ("_decision_threshold",)
 
     _decision_threshold: float
 
@@ -105,7 +105,7 @@ class RuleAttributorError(BaseException):
 class RuleAttributor:
     """RuleAttributor attributes malicious samples to misuse detection rules."""
 
-    __slots__ = ["_rule_models", "_num_rule_attributions", "_attribution_threshold"]
+    __slots__ = ("_rule_models", "_num_rule_attributions", "_attribution_threshold")
 
     _rule_models: Dict[str, DetectionModel]
     _num_rule_attributions: int
