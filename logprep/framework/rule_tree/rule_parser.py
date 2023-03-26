@@ -364,7 +364,7 @@ class RuleParser:
             parsed_rule.sort(key=lambda r: RuleParser._sort(r, priority_dict))
 
     @staticmethod
-    def _sort(r: StringFilterExpression, priority_dict: dict) -> Union[dict, str]:
+    def _sort(filter_expression: FilterExpression, priority_dict: dict) -> Union[dict, str]:
         """Helper function for _sort_rule_segments.
 
         This function is used by the _sort_rule_segments() function in the sorting key.
@@ -386,28 +386,28 @@ class RuleParser:
             Comparison value to use for sorting.
 
         """
-        if isinstance(r, Always):
+        if isinstance(filter_expression, Always):
             return
-        elif isinstance(r, Not):
+        if isinstance(filter_expression, Not):
             try:
-                if isinstance(r.expression, Exists):
-                    return priority_dict[r.expression._as_dotted_string(r.expression.split_field)]
-                elif isinstance(r.expression, Not):
-                    return priority_dict[r.expression.expression.split_field[0]]
+                if isinstance(filter_expression.expression, Exists):
+                    return priority_dict[filter_expression.expression._key]
+                elif isinstance(filter_expression.expression, Not):
+                    return priority_dict[filter_expression.expression.expression.split_field[0]]
                 else:
-                    return priority_dict[r._as_dotted_string(r.expression._key)]
+                    return priority_dict[filter_expression.expression._key]
             except KeyError:
-                return RuleParser._sort(r.expression, priority_dict)
-        elif isinstance(r, Exists):
+                return RuleParser._sort(filter_expression.expression, priority_dict)
+        if isinstance(filter_expression, Exists):
             try:
-                return priority_dict[r._as_dotted_string(r.split_field)]
+                return priority_dict[filter_expression._key]
             except KeyError:
-                return r.__repr__()[1:-1]
+                return filter_expression.__repr__()[1:-1]
         else:
             try:
-                return priority_dict[r._as_dotted_string(r._key)]
+                return priority_dict[filter_expression._key]
             except KeyError:
-                return r.__repr__()
+                return filter_expression.__repr__()
 
     @staticmethod
     def _parse_and_expression(expression: FilterExpression) -> list:
@@ -473,13 +473,13 @@ class RuleParser:
                 # Iterate through all segments and handle different cases
                 for segment in temp_rule:
                     if isinstance(segment, Exists):
-                        if segment.split_field[0] in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[segment.split_field[0]])
+                        if segment._key[0] in tag_map.keys():
+                            RuleParser._add_tag(rule, tag_map[segment._key[0]])
                     elif isinstance(segment, Not):
                         expression = segment.expression
                         if isinstance(expression, Exists):
-                            if expression.split_field[0] in tag_map.keys():
-                                RuleParser._add_tag(rule, tag_map[expression.split_field[0]])
+                            if expression._key[0] in tag_map.keys():
+                                RuleParser._add_tag(rule, tag_map[expression._key[0]])
                         elif expression._key[0] in tag_map.keys():
                             RuleParser._add_tag(rule, tag_map[expression._key[0]])
                     # Always Expressions do not need tags
@@ -514,9 +514,9 @@ class RuleParser:
 
         if ":" in tag_map_value:
             key, value = tag_map_value.split(":")
-            rule.insert(0, StringFilterExpression(key.split("."), value))
+            rule.insert(0, StringFilterExpression(key, value))
         else:
-            rule.insert(0, Exists(tag_map_value.split(".")))
+            rule.insert(0, Exists(tag_map_value))
 
     @staticmethod
     def _tag_exists(segment, tag):

@@ -8,8 +8,6 @@ from string import ascii_letters, digits
 import pytest
 
 from logprep.filter.expression.filter_expression import (
-    FilterExpression,
-    KeyDoesNotExistError,
     StringFilterExpression,
     IntegerFilterExpression,
     And,
@@ -24,21 +22,6 @@ from logprep.filter.expression.filter_expression import (
     SigmaFilterExpression,
     Exists,
 )
-
-
-class TestFilterExpression:
-    def test_get_value_fails_for_missing_key(self):
-        with pytest.raises(KeyDoesNotExistError):
-            FilterExpression._get_value(["some", "key"], {})
-
-    def test_get_value_fails_empty_key(self):
-        with pytest.raises(KeyDoesNotExistError):
-            FilterExpression._get_value([], {"some": "value"})
-
-    def test_get_value_returns_expected_value(self):
-        document = {"one": {"two": "value"}, "ten": {"eleven": "another value"}}
-
-        assert FilterExpression._get_value(["one", "two"], document) == "value"
 
 
 class TestAlways:
@@ -174,8 +157,8 @@ class ValueBasedFilterExpressionTest:
 class TestStringFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
         self.expected_value = "expected value"
-        self.filter = StringFilterExpression(["key1", "key2"], self.expected_value)
-        self.filter_identical = StringFilterExpression(["key1", "key2"], self.expected_value)
+        self.filter = StringFilterExpression("key1.key2", self.expected_value)
+        self.filter_identical = StringFilterExpression("key1.key2", self.expected_value)
 
     def test_string_representation(self):
         assert str(self.filter) == f'key1.key2:"{self.expected_value}"'
@@ -184,22 +167,22 @@ class TestStringFilterExpression(ValueBasedFilterExpressionTest):
         assert not self.filter.matches({"key1": {"key2": "test"}})
 
     def test_does_not_match_if_string_representation_is_not_identical(self):
-        filter = StringFilterExpression(["key1", "key2"], "2.0")
+        filter = StringFilterExpression("key1.key2", "2.0")
         assert not filter.matches({"key1": {"key2": 2}})
 
     def test_matches_if_string_is_identical(self):
         assert self.filter.matches({"key1": {"key2": self.expected_value}})
 
     def test_matches_if_string_representation_is_identical(self):
-        filter = StringFilterExpression(["key1", "key2"], "2")
+        filter = StringFilterExpression("key1.key2", "2")
         assert filter.matches({"key1": {"key2": 2}})
 
 
 class TestIntegerFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
         self.expected_value = 42
-        self.filter = IntegerFilterExpression(["key1", "key2"], self.expected_value)
-        self.filter_identical = IntegerFilterExpression(["key1", "key2"], self.expected_value)
+        self.filter = IntegerFilterExpression("key1.key2", self.expected_value)
+        self.filter_identical = IntegerFilterExpression("key1.key2", self.expected_value)
 
     def test_string_representation(self):
         assert str(self.filter) == f"key1.key2:{self.expected_value:d}"
@@ -217,8 +200,8 @@ class TestIntegerFilterExpression(ValueBasedFilterExpressionTest):
 class TestFloatFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
         self.expected_value = 42.0
-        self.filter = FloatFilterExpression(["key1", "key2"], self.expected_value)
-        self.filter_identical = FloatFilterExpression(["key1", "key2"], self.expected_value)
+        self.filter = FloatFilterExpression("key1.key2", self.expected_value)
+        self.filter_identical = FloatFilterExpression("key1.key2", self.expected_value)
 
     def test_string_representation(self):
         assert str(self.filter) == f"key1.key2:{self.expected_value:0.1f}"
@@ -235,8 +218,8 @@ class TestFloatFilterExpression(ValueBasedFilterExpressionTest):
 
 class TestIntegerRangeFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
-        self.filter = IntegerRangeFilterExpression(["key1", "key2"], 23, 42)
-        self.filter_identical = IntegerRangeFilterExpression(["key1", "key2"], 23, 42)
+        self.filter = IntegerRangeFilterExpression("key1.key2", 23, 42)
+        self.filter_identical = IntegerRangeFilterExpression("key1.key2", 23, 42)
 
     def test_string_representation(self):
         assert str(self.filter) == "key1.key2:[23 TO 42]"
@@ -257,8 +240,8 @@ class TestIntegerRangeFilterExpression(ValueBasedFilterExpressionTest):
 
 class TestFloatRangeFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
-        self.filter = FloatRangeFilterExpression(["key1", "key2"], 23.0, 42.0)
-        self.filter_identical = FloatRangeFilterExpression(["key1", "key2"], 23.0, 42.0)
+        self.filter = FloatRangeFilterExpression("key1.key2", 23.0, 42.0)
+        self.filter_identical = FloatRangeFilterExpression("key1.key2", 23.0, 42.0)
 
     def test_string_representation(self):
         assert str(self.filter) == "key1.key2:[23.0 TO 42.0]"
@@ -277,8 +260,8 @@ class TestFloatRangeFilterExpression(ValueBasedFilterExpressionTest):
 class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
         self.regex = "start.*end"
-        self.filter = RegExFilterExpression(["key1", "key2"], self.regex)
-        self.filter_identical = RegExFilterExpression(["key1", "key2"], self.regex)
+        self.filter = RegExFilterExpression("key1.key2", self.regex)
+        self.filter_identical = RegExFilterExpression("key1.key2", self.regex)
 
     def test_string_representation(self):
         assert str(self.filter) == "key1.key2:r/^start.*end$/"
@@ -287,14 +270,14 @@ class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
         assert not self.filter.matches({"not": {"the": {"key": "to match"}}})
 
     def test_empty_regex_matches_nothing(self):
-        filter = RegExFilterExpression(["key1", "key2"], "")
+        filter = RegExFilterExpression("key1.key2", "")
         for length in range(1, 20):
             assert not filter.matches(
                 {"key1": {"key2": "".join(sample(digits + ascii_letters, length))}}
             )
 
     def test_empty_regex_matches_empty_content(self):
-        filter = RegExFilterExpression(["key1", "key2"], "")
+        filter = RegExFilterExpression("key1.key2", "")
         assert filter.matches({"key1": {"key2": ""}})
 
     def test_regex_matches_anything_at_wildcard(self):
@@ -334,29 +317,29 @@ class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
 
 class TestExistsFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
-        self.split_field = ["key1", "key2"]
-        self.filter = Exists(["key1", "key2"])
-        self.filter_identical = Exists(["key1", "key2"])
+        self.split_field = "key1.key2"
+        self.filter = Exists("key1.key2")
+        self.filter_identical = Exists("key1.key2")
 
     def test_string_representation(self):
         assert str(self.filter) == '"key1.key2"'
 
     def test_matches_any_value(self):
-        filter = Exists(["key1", "key2"])
+        filter = Exists("key1.key2")
         assert filter.matches({"key1": {"key2": ""}})
         assert filter.matches({"key1": {"key2": "foo"}})
         assert filter.matches({"key1": {"key2": "bar"}})
 
     def test_does_not_match_if_value_matches_key(self):
-        filter = Exists(["key1", "key2"])
+        filter = Exists("key1.key2")
         assert filter.matches({"key1": "key2"}) is False
 
 
 class TestWildcardFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
         self.value = "start*end"
-        self.filter = WildcardStringFilterExpression(["key1", "key2"], self.value)
-        self.filter_identical = WildcardStringFilterExpression(["key1", "key2"], self.value)
+        self.filter = WildcardStringFilterExpression("key1.key2", self.value)
+        self.filter_identical = WildcardStringFilterExpression("key1.key2", self.value)
 
     def test_string_representation(self):
         assert str(self.filter) == 'key1.key2:"start*end"'
@@ -365,14 +348,14 @@ class TestWildcardFilterExpression(ValueBasedFilterExpressionTest):
         assert not self.filter.matches({"not": {"the": {"key": "to match"}}})
 
     def test_empty_value_matches_nothing(self):
-        filter = WildcardStringFilterExpression(["key1", "key2"], "")
+        filter = WildcardStringFilterExpression("key1.key2", "")
         for length in range(1, 20):
             assert not filter.matches(
                 {"key1": {"key2": "".join(sample(digits + ascii_letters, length))}}
             )
 
     def test_empty_value_matches_empty_content(self):
-        filter = WildcardStringFilterExpression(["key1", "key2"], "")
+        filter = WildcardStringFilterExpression("key1.key2", "")
         assert filter.matches({"key1": {"key2": ""}})
 
     def test_matches_case_sensitive(self):
@@ -391,8 +374,8 @@ class TestWildcardFilterExpression(ValueBasedFilterExpressionTest):
 
     def test_matches_anything_at_questionmark_wildcard(self):
         self.value = "start?end"
-        self.filter = WildcardStringFilterExpression(["key1", "key2"], self.value)
-        self.filter_identical = WildcardStringFilterExpression(["key1", "key2"], self.value)
+        self.filter = WildcardStringFilterExpression("key1.key2", self.value)
+        self.filter_identical = WildcardStringFilterExpression("key1.key2", self.value)
 
         assert self.filter.matches({"key1": {"key2": "startend"}})
         for _ in range(0, 20):
@@ -412,8 +395,8 @@ class TestWildcardFilterExpression(ValueBasedFilterExpressionTest):
 class TestSigmaFilterExpression(ValueBasedFilterExpressionTest):
     def setup_method(self, _):
         self.value = "start*end"
-        self.filter = SigmaFilterExpression(["key1", "key2"], self.value)
-        self.filter_identical = SigmaFilterExpression(["key1", "key2"], self.value)
+        self.filter = SigmaFilterExpression("key1.key2", self.value)
+        self.filter_identical = SigmaFilterExpression("key1.key2", self.value)
 
     def test_string_representation(self):
         assert str(self.filter) == 'key1.key2:"start*end"'
@@ -422,14 +405,14 @@ class TestSigmaFilterExpression(ValueBasedFilterExpressionTest):
         assert not self.filter.matches({"not": {"the": {"key": "to match"}}})
 
     def test_empty_value_matches_nothing(self):
-        filter = SigmaFilterExpression(["key1", "key2"], "")
+        filter = SigmaFilterExpression("key1.key2", "")
         for length in range(1, 20):
             assert not filter.matches(
                 {"key1": {"key2": "".join(sample(digits + ascii_letters, length))}}
             )
 
     def test_empty_value_matches_empty_content(self):
-        filter = SigmaFilterExpression(["key1", "key2"], "")
+        filter = SigmaFilterExpression("key1.key2", "")
         assert filter.matches({"key1": {"key2": ""}})
 
     def test_matches_case_insensitive(self):
@@ -448,8 +431,8 @@ class TestSigmaFilterExpression(ValueBasedFilterExpressionTest):
 
     def test_matches_anything_at_questionmark_wildcard(self):
         self.value = "start?end"
-        self.filter = SigmaFilterExpression(["key1", "key2"], self.value)
-        self.filter_identical = SigmaFilterExpression(["key1", "key2"], self.value)
+        self.filter = SigmaFilterExpression("key1.key2", self.value)
+        self.filter_identical = SigmaFilterExpression("key1.key2", self.value)
 
         assert self.filter.matches({"key1": {"key2": "startend"}})
         for _ in range(0, 20):

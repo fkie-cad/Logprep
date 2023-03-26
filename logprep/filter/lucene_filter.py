@@ -138,7 +138,7 @@ class LuceneFilter:
             tree = parser.parse(query_string)
             transformer = LuceneTransformer(tree, special_fields)
         except (ParseSyntaxError, IllegalCharacterError) as error:
-            raise LuceneFilterError(error)
+            raise LuceneFilterError(error) from error
 
         return transformer.build_filter()
 
@@ -168,13 +168,11 @@ class LuceneTransformer:
     def __init__(self, tree: luqum.tree, special_fields: dict = None):
         self._tree = tree
 
-        self._special_fields = dict()
+        self._special_fields = {}
 
-        special_fields = special_fields if special_fields else dict()
-        for key in self._special_fields_map.keys():
-            self._special_fields[key] = (
-                special_fields.get(key) if special_fields.get(key) else list()
-            )
+        special_fields = special_fields if special_fields else {}
+        for key in self._special_fields_map:
+            self._special_fields[key] = special_fields.get(key) if special_fields.get(key) else []
 
         self._last_search_field = None
 
@@ -195,9 +193,7 @@ class LuceneTransformer:
         if isinstance(tree, AndOperation):
             return And(*self._collect_children(tree))
         if isinstance(tree, Not):
-            return NotExpression(
-                *self._collect_children(tree)
-            )  # pylint: disable=no-value-for-parameter
+            return NotExpression(self._collect_children(tree))
         if isinstance(tree, Group):
             return self._parse_tree(tree.children[0])
         if isinstance(tree, SearchField):
@@ -218,7 +214,7 @@ class LuceneTransformer:
                 return self._create_field_group_expression(tree)
             else:
                 return self._create_value_expression(tree)
-        raise LuceneFilterError('The expression "{}" is invalid!'.format(str(tree)))
+        raise LuceneFilterError(f'The expression "{tree}" is invalid!')
 
     def _create_field_group_expression(self, tree: luqum.tree) -> FilterExpression:
         """Creates filter expression that is resulting from a field group.
@@ -234,7 +230,7 @@ class LuceneTransformer:
             Parsed filter expression.
 
         """
-        key = self._last_search_field.split(".")
+        key = self._last_search_field
         value = self._strip_quote_from_string(tree.value)
         value = self._remove_lucene_escaping(value)
         return self._get_filter_expression(key, value)
@@ -248,7 +244,6 @@ class LuceneTransformer:
     def _create_field(self, tree: luqum.tree) -> Optional[FilterExpression]:
         if isinstance(tree.expr, (Phrase, Word)):
             key = tree.name.replace("\\", "")
-            key = key.split(".")
             if tree.expr.value == "null":
                 return Null(key)
 
@@ -258,14 +253,13 @@ class LuceneTransformer:
         return None
 
     def _get_filter_expression(
-        self, key: List[str], value
+        self, key: str, value
     ) -> Union[RegExFilterExpression, StringFilterExpression]:
-        key_and_modifier = key[-1].split("|")
-        if len(key_and_modifier) == 2:
-            if key_and_modifier[-1] == "re":
-                return RegExFilterExpression(key[:-1] + key_and_modifier[:-1], value)
+        key, _, modifier = key.partition("|")
+        if modifier == "re":
+            return RegExFilterExpression(key, value)
 
-        dotted_field = ".".join(key)
+        dotted_field = key
         if self._special_fields.items():
             for sf_key, sf_value in self._special_fields.items():
                 if sf_value is True or dotted_field in sf_value:
@@ -300,8 +294,8 @@ class LuceneTransformer:
         string = "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
         backslashes = 0
-        for x in range(len(string)):
-            chara = string[len(string) - 1 - x]
+        for index in range(len(string)):
+            chara = string[len(string) - 1 - index]
             if chara == "\\":
                 backslashes += 1
             else:

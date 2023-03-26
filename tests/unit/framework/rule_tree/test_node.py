@@ -12,7 +12,7 @@ class TestNode:
         assert node.children == []
 
     def test_does_match_returns_true_as_expected(self):
-        expression = StringFilterExpression(["foo"], "bar")
+        expression = StringFilterExpression("foo", "bar")
         node = Node(expression)
 
         event = {"foo": "bar"}
@@ -20,7 +20,7 @@ class TestNode:
         assert node.does_match(event)
 
     def test_does_match_returns_false_as_expected(self):
-        expression = StringFilterExpression(["foo"], "bar")
+        expression = StringFilterExpression("foo", "bar")
         node = Node(expression)
 
         event = {"bar": "foo"}
@@ -28,7 +28,7 @@ class TestNode:
         assert not node.does_match(event)
 
     def test_add_child(self):
-        expression_end = StringFilterExpression(["foo"], "bar")
+        expression_end = StringFilterExpression("foo", "bar")
 
         node_start = Node(None)
         node_end = Node(expression_end)

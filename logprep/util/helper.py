@@ -22,6 +22,7 @@ def color_print_line(
 
 
 def color_print_title(background: Union[str, AnsiBack], message: str):
+    """prints colored title"""
     message = f"------ {message} ------"
     color_print_line(background, Fore.BLACK, message)
 
@@ -108,10 +109,19 @@ def _get_slice_arg(slice_item):
     return int(slice_item) if slice_item else None
 
 
-def _get_item(items, item):
+class KeyDoesNotExistError(Exception):
+    """Raise if key does not exist in document."""
+
+
+strict_error_pattern = re.compile("doesn't apply to a 'str' object")
+
+
+def _get_item(items, item, strict=False):
     try:
         return dict.__getitem__(items, item)
-    except TypeError:
+    except TypeError as error:
+        if strict and re.search(strict_error_pattern, error.args[0]):
+            raise KeyDoesNotExistError from error
         if ":" in item:
             slice_args = map(_get_slice_arg, item.split(":"))
             item = slice(*slice_args)
@@ -120,7 +130,9 @@ def _get_item(items, item):
         return list.__getitem__(items, item)
 
 
-def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
+def get_dotted_field_value(
+    event: dict, dotted_field: str, strict: bool = False
+) -> Optional[Union[dict, list, str]]:
     """
     Returns the value of a requested dotted_field by iterating over the event dictionary until the
     field was found. In case the field could not be found None is returned.
@@ -140,8 +152,10 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
 
     fields = [event, *dotted_field.split(".")]
     try:
-        return reduce(_get_item, fields)
-    except KeyError:
+        return reduce(partial(_get_item, strict=strict), fields)
+    except KeyError as error:
+        if strict:
+            raise KeyDoesNotExistError from error
         return None
     except ValueError:
         return None

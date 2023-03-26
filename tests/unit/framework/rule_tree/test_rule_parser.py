@@ -1,8 +1,6 @@
-import pytest
-
-pytest.importorskip("logprep.processor.pre_detector")
-
-from logprep.filter.expression.filter_expression import And, Or, StringFilterExpression, Not, Exists
+# pylint: disable=missing-docstring
+# pylint: disable=protected-access
+from logprep.filter.expression.filter_expression import And, Exists, Not, Or, StringFilterExpression
 from logprep.framework.rule_tree.rule_parser import RuleParser as RP
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
@@ -31,8 +29,9 @@ class TestRuleParser:
             }
         )
         parsed_rule = RP.parse_rule(rule, {}, {})
-        assert parsed_rule == [[Exists(["foo"]), StringFilterExpression(["foo"], "bar")]]
+        assert parsed_rule == [[Exists("foo"), StringFilterExpression("foo", "bar")]]
 
+    def test_parse_rule_1(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "foo: bar AND bar: foo",
@@ -48,13 +47,14 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Exists(["bar"]),
-                StringFilterExpression(["bar"], "foo"),
-                Exists(["foo"]),
-                StringFilterExpression(["foo"], "bar"),
+                Exists("bar"),
+                StringFilterExpression("bar", "foo"),
+                Exists("foo"),
+                StringFilterExpression("foo", "bar"),
             ]
         ]
 
+    def test_parse_rule_2(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "foo: bar OR bar: foo",
@@ -69,10 +69,11 @@ class TestRuleParser:
         )
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
-            [Exists(["foo"]), StringFilterExpression(["foo"], "bar")],
-            [Exists(["bar"]), StringFilterExpression(["bar"], "foo")],
+            [Exists("foo"), StringFilterExpression("foo", "bar")],
+            [Exists("bar"), StringFilterExpression("bar", "foo")],
         ]
 
+    def test_parse_rule_3(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "winlog: 123 AND test: (Good OR Okay OR Bad) OR foo: bar",
@@ -88,26 +89,27 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Exists(["test"]),
-                StringFilterExpression(["test"], "Good"),
-                Exists(["winlog"]),
-                StringFilterExpression(["winlog"], "123"),
+                Exists("test"),
+                StringFilterExpression("test", "Good"),
+                Exists("winlog"),
+                StringFilterExpression("winlog", "123"),
             ],
             [
-                Exists(["test"]),
-                StringFilterExpression(["test"], "Okay"),
-                Exists(["winlog"]),
-                StringFilterExpression(["winlog"], "123"),
+                Exists("test"),
+                StringFilterExpression("test", "Okay"),
+                Exists("winlog"),
+                StringFilterExpression("winlog", "123"),
             ],
             [
-                Exists(["test"]),
-                StringFilterExpression(["test"], "Bad"),
-                Exists(["winlog"]),
-                StringFilterExpression(["winlog"], "123"),
+                Exists("test"),
+                StringFilterExpression("test", "Bad"),
+                Exists("winlog"),
+                StringFilterExpression("winlog", "123"),
             ],
-            [Exists(["foo"]), StringFilterExpression(["foo"], "bar")],
+            [Exists("foo"), StringFilterExpression("foo", "bar")],
         ]
 
+    def test_parse_rule_4(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "(EventID: 1 AND ABC AND foo: bar)",
@@ -123,14 +125,15 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Exists(["ABC"]),
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "1"),
-                Exists(["foo"]),
-                StringFilterExpression(["foo"], "bar"),
+                Exists("ABC"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "1"),
+                Exists("foo"),
+                StringFilterExpression("foo", "bar"),
             ]
         ]
 
+    def test_parse_rule_5(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "(EventID: 17 AND PipeName: \\PSHost*) AND NOT (Image: *\\powershell.exe)",
@@ -146,14 +149,15 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "17"),
-                Not(StringFilterExpression(["Image"], "*\\powershell.exe")),
-                Exists(["PipeName"]),
-                StringFilterExpression(["PipeName"], "\\PSHost*"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "17"),
+                Not(StringFilterExpression("Image", "*\\powershell.exe")),
+                Exists("PipeName"),
+                StringFilterExpression("PipeName", "\\PSHost*"),
             ]
         ]
 
+    def test_parse_rule_6(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "EventID: (17 OR 18) AND PipeName: (atctl OR userpipe OR iehelper)",
@@ -169,43 +173,44 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "17"),
-                Exists(["PipeName"]),
-                StringFilterExpression(["PipeName"], "atctl"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "17"),
+                Exists("PipeName"),
+                StringFilterExpression("PipeName", "atctl"),
             ],
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "17"),
-                Exists(["PipeName"]),
-                StringFilterExpression(["PipeName"], "userpipe"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "17"),
+                Exists("PipeName"),
+                StringFilterExpression("PipeName", "userpipe"),
             ],
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "17"),
-                Exists(["PipeName"]),
-                StringFilterExpression(["PipeName"], "iehelper"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "17"),
+                Exists("PipeName"),
+                StringFilterExpression("PipeName", "iehelper"),
             ],
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "18"),
-                Exists(["PipeName"]),
-                StringFilterExpression(["PipeName"], "atctl"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "18"),
+                Exists("PipeName"),
+                StringFilterExpression("PipeName", "atctl"),
             ],
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "18"),
-                Exists(["PipeName"]),
-                StringFilterExpression(["PipeName"], "userpipe"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "18"),
+                Exists("PipeName"),
+                StringFilterExpression("PipeName", "userpipe"),
             ],
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "18"),
-                Exists(["PipeName"]),
-                StringFilterExpression(["PipeName"], "iehelper"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "18"),
+                Exists("PipeName"),
+                StringFilterExpression("PipeName", "iehelper"),
             ],
         ]
 
+    def test_parse_rule_7(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "EventID: 8 AND "
@@ -223,34 +228,35 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "8"),
-                Exists(["SourceImage"]),
-                StringFilterExpression(["SourceImage"], "*System32cscript.exe"),
-                Not(Exists(["StartModule"])),
-                Exists(["TargetImage"]),
-                StringFilterExpression(["TargetImage"], "*SysWOW64\\*"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "8"),
+                Exists("SourceImage"),
+                StringFilterExpression("SourceImage", "*System32cscript.exe"),
+                Not(Exists("StartModule")),
+                Exists("TargetImage"),
+                StringFilterExpression("TargetImage", "*SysWOW64\\*"),
             ],
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "8"),
-                Exists(["SourceImage"]),
-                StringFilterExpression(["SourceImage"], "*System32wscript.exe"),
-                Not(Exists(["StartModule"])),
-                Exists(["TargetImage"]),
-                StringFilterExpression(["TargetImage"], "*SysWOW64\\*"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "8"),
+                Exists("SourceImage"),
+                StringFilterExpression("SourceImage", "*System32wscript.exe"),
+                Not(Exists("StartModule")),
+                Exists("TargetImage"),
+                StringFilterExpression("TargetImage", "*SysWOW64\\*"),
             ],
             [
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "8"),
-                Exists(["SourceImage"]),
-                StringFilterExpression(["SourceImage"], "*System32mshta.exe"),
-                Not(Exists(["StartModule"])),
-                Exists(["TargetImage"]),
-                StringFilterExpression(["TargetImage"], "*SysWOW64\\*"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "8"),
+                Exists("SourceImage"),
+                StringFilterExpression("SourceImage", "*System32mshta.exe"),
+                Not(Exists("StartModule")),
+                Exists("TargetImage"),
+                StringFilterExpression("TargetImage", "*SysWOW64\\*"),
             ],
         ]
 
+    def test_parse_rule_8(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "(EventID: 12 AND TargetObject: *cmmgr32.exe*) "
@@ -270,28 +276,29 @@ class TestRuleParser:
         )
         assert parsed_rule == [
             [
-                Exists(["TAG"]),
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "12"),
-                Exists(["TargetObject"]),
-                StringFilterExpression(["TargetObject"], "*cmmgr32.exe*"),
+                Exists("TAG"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "12"),
+                Exists("TargetObject"),
+                StringFilterExpression("TargetObject", "*cmmgr32.exe*"),
             ],
             [
-                Exists(["TAG"]),
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "13"),
-                Exists(["TargetObject"]),
-                StringFilterExpression(["TargetObject"], "*cmmgr32.exe*"),
+                Exists("TAG"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "13"),
+                Exists("TargetObject"),
+                StringFilterExpression("TargetObject", "*cmmgr32.exe*"),
             ],
             [
-                StringFilterExpression(["Key", "subkey"], "Value"),
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "10"),
-                Exists(["CallTrace"]),
-                StringFilterExpression(["CallTrace"], "*cmlua.dll*"),
+                StringFilterExpression("Key.subkey", "Value"),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "10"),
+                Exists("CallTrace"),
+                StringFilterExpression("CallTrace", "*cmlua.dll*"),
             ],
         ]
 
+    def test_parse_rule_9(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "bar: foo AND NOT foo: bar",
@@ -307,12 +314,13 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Exists(["bar"]),
-                StringFilterExpression(["bar"], "foo"),
-                Not(StringFilterExpression(["foo"], "bar")),
+                Exists("bar"),
+                StringFilterExpression("bar", "foo"),
+                Not(StringFilterExpression("foo", "bar")),
             ]
         ]
 
+    def test_parse_rule_10(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "NOT bar",
@@ -327,8 +335,9 @@ class TestRuleParser:
         )
         tag_map = {"bar": "tag"}
         parsed_rule = RP.parse_rule(rule, {}, tag_map)
-        assert parsed_rule == [[Exists(["tag"]), Not(Exists(["bar"]))]]
+        assert parsed_rule == [[Exists("tag"), Not(Exists("bar"))]]
 
+    def test_parse_rule_11(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "winlog.event_id: 7036 AND NOT Something",
@@ -344,12 +353,13 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Not(Exists(["Something"])),
-                Exists(["winlog", "event_id"]),
-                StringFilterExpression(["winlog", "event_id"], "7036"),
+                Not(Exists("Something")),
+                Exists("winlog.event_id"),
+                StringFilterExpression("winlog.event_id", "7036"),
             ]
         ]
 
+    def test_parse_rule_12(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "NOT (foo: bar AND (test: ok OR msg: (123 OR 456)))",
@@ -364,14 +374,15 @@ class TestRuleParser:
         )
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
-            [Not(StringFilterExpression(["foo"], "bar"))],
+            [Not(StringFilterExpression("foo", "bar"))],
             [
-                Not(StringFilterExpression(["msg"], "123")),
-                Not(StringFilterExpression(["msg"], "456")),
-                Not(StringFilterExpression(["test"], "ok")),
+                Not(StringFilterExpression("msg", "123")),
+                Not(StringFilterExpression("msg", "456")),
+                Not(StringFilterExpression("test", "ok")),
             ],
         ]
 
+    def test_parse_rule_13(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "winlog.channel: Security AND "
@@ -394,6 +405,7 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule
 
+    def test_parse_rule_14(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "process.parent: (foo OR bar) AND process.executable: cmd.exe AND process.command_line: (perl OR python)",
@@ -409,39 +421,40 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Exists(["process", "command_line"]),
-                StringFilterExpression(["process", "command_line"], "perl"),
-                Exists(["process", "executable"]),
-                StringFilterExpression(["process", "executable"], "cmd.exe"),
-                Exists(["process", "parent"]),
-                StringFilterExpression(["process", "parent"], "foo"),
+                Exists("process.command_line"),
+                StringFilterExpression("process.command_line", "perl"),
+                Exists("process.executable"),
+                StringFilterExpression("process.executable", "cmd.exe"),
+                Exists("process.parent"),
+                StringFilterExpression("process.parent", "foo"),
             ],
             [
-                Exists(["process", "command_line"]),
-                StringFilterExpression(["process", "command_line"], "python"),
-                Exists(["process", "executable"]),
-                StringFilterExpression(["process", "executable"], "cmd.exe"),
-                Exists(["process", "parent"]),
-                StringFilterExpression(["process", "parent"], "foo"),
+                Exists("process.command_line"),
+                StringFilterExpression("process.command_line", "python"),
+                Exists("process.executable"),
+                StringFilterExpression("process.executable", "cmd.exe"),
+                Exists("process.parent"),
+                StringFilterExpression("process.parent", "foo"),
             ],
             [
-                Exists(["process", "command_line"]),
-                StringFilterExpression(["process", "command_line"], "perl"),
-                Exists(["process", "executable"]),
-                StringFilterExpression(["process", "executable"], "cmd.exe"),
-                Exists(["process", "parent"]),
-                StringFilterExpression(["process", "parent"], "bar"),
+                Exists("process.command_line"),
+                StringFilterExpression("process.command_line", "perl"),
+                Exists("process.executable"),
+                StringFilterExpression("process.executable", "cmd.exe"),
+                Exists("process.parent"),
+                StringFilterExpression("process.parent", "bar"),
             ],
             [
-                Exists(["process", "command_line"]),
-                StringFilterExpression(["process", "command_line"], "python"),
-                Exists(["process", "executable"]),
-                StringFilterExpression(["process", "executable"], "cmd.exe"),
-                Exists(["process", "parent"]),
-                StringFilterExpression(["process", "parent"], "bar"),
+                Exists("process.command_line"),
+                StringFilterExpression("process.command_line", "python"),
+                Exists("process.executable"),
+                StringFilterExpression("process.executable", "cmd.exe"),
+                Exists("process.parent"),
+                StringFilterExpression("process.parent", "bar"),
             ],
         ]
 
+    def test_parse_rule_15(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "EventID: 15 AND NOT (Imphash: 000 OR NOT AImphash)",
@@ -457,10 +470,10 @@ class TestRuleParser:
         parsed_rule = RP.parse_rule(rule, {}, {})
         assert parsed_rule == [
             [
-                Not(Not(Exists(["AImphash"]))),
-                Exists(["EventID"]),
-                StringFilterExpression(["EventID"], "15"),
-                Not(StringFilterExpression(["Imphash"], "000")),
+                Not(Not(Exists("AImphash"))),
+                Exists("EventID"),
+                StringFilterExpression("EventID", "15"),
+                Not(StringFilterExpression("Imphash", "000")),
             ]
         ]
 
@@ -639,9 +652,9 @@ class TestRuleParser:
 
         RP._add_special_tags(rule_list, tag_map)
         assert rule_list == [
-            [Exists(["TAG2"]), Exists(["TAG1"]), str1, str4, str2],
-            [Exists(["TAG2"]), str2, str3],
-            [Exists(["TAG2"]), str2],
+            [Exists("TAG2"), Exists("TAG1"), str1, str4, str2],
+            [Exists("TAG2"), str2, str3],
+            [Exists("TAG2"), str2],
             [str4, str3],
         ]
 
