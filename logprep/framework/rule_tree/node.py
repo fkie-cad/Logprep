@@ -1,13 +1,20 @@
 """This module implements the tree node functionality for the tree model."""
 
-from typing import Optional, List
+from typing import Optional
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.expression.filter_expression import KeyDoesNotExistError
+from logprep.processor.base.rule import Rule
 
 
 class Node:
     """Tree node for rule tree model."""
+
+    _expression: FilterExpression
+
+    _children: dict["Node", None]
+
+    matching_rules: list[Rule]
 
     def __init__(self, expression: FilterExpression):
         """Node initialization function.
@@ -22,7 +29,7 @@ class Node:
 
         """
         self._expression = expression
-        self._children = []
+        self._children = {}
         self.matching_rules = []
 
     def does_match(self, event: dict):
@@ -61,7 +68,7 @@ class Node:
             Child node to add to the node.
 
         """
-        self._children.append(node)
+        self._children.update({node: None})
 
     def has_child_with_expression(self, expression: FilterExpression) -> Optional["Node"]:
         """Check if node has child with given expression.
@@ -110,5 +117,5 @@ class Node:
         return self._expression
 
     @property
-    def children(self) -> List["Node"]:
+    def children(self) -> dict["Node", None]:
         return self._children

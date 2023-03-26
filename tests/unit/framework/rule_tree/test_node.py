@@ -9,7 +9,7 @@ class TestNode:
 
         assert isinstance(node.expression, StringFilterExpression)
         assert node.expression == expression
-        assert node.children == []
+        assert node.children == {}
 
     def test_does_match_returns_true_as_expected(self):
         expression = StringFilterExpression("foo", "bar")
@@ -35,8 +35,8 @@ class TestNode:
 
         node_start.add_child(node_end)
 
-        assert node_start.children == [node_end]
-        assert node_start.children[0].expression == expression_end
+        assert node_start.children == {node_end: None}
+        assert node_start.children.popitem()[0].expression == expression_end
 
     def test_has_child_with_expression(self):
         expression_end = StringFilterExpression("foo", "bar")
