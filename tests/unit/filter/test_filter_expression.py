@@ -332,7 +332,11 @@ class TestExistsFilterExpression(ValueBasedFilterExpressionTest):
 
     def test_does_not_match_if_value_matches_key(self):
         filter = Exists("key1.key2")
-        assert filter.matches({"key1": "key2"}) is False
+        assert not filter.matches({"key1": "key2"})
+
+    def test_does_not_match_if_key_is_empty(self):
+        filter = Exists("")
+        assert not filter.matches({})
 
 
 class TestWildcardFilterExpression(ValueBasedFilterExpressionTest):

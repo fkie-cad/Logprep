@@ -62,10 +62,6 @@ class FilterExpression(ABC):
             return False
         return True
 
-    @staticmethod
-    def _as_dotted_string(key_list: List[str]) -> str:
-        return ".".join([str(i) for i in key_list])
-
 
 class Always(FilterExpression):
     """Filter expression that can be set to match always or never."""
@@ -144,13 +140,10 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
 
     def does_match(self, document: dict) -> bool:
         value = get_dotted_field_value(document, self._key, strict=True)
-
-        if isinstance(value, list):
-            return self._expected_value in value
         return str(value) == self._expected_value
 
     def __repr__(self) -> str:
-        return f'{self._key}:"{str(self._expected_value)}"'
+        return f'{self._key}:"{self._expected_value}"'
 
 
 class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
@@ -180,10 +173,6 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
 
     def does_match(self, document: dict) -> bool:
         value = get_dotted_field_value(document, self._key, strict=True)
-
-        if isinstance(value, list):
-            return any(filter(self._matcher.match, (str(val) for val in value)))
-
         match_result = self._matcher.match(str(value))
 
         return match_result is not None
@@ -289,8 +278,6 @@ class RegExFilterExpression(FilterExpression):
     def does_match(self, document: dict) -> bool:
         value = get_dotted_field_value(document, self._key, strict=True)
 
-        if isinstance(value, list):
-            return any(filter(self._matcher.match, value))
         return self._matcher.match(str(value)) is not None
 
 
@@ -304,9 +291,6 @@ class Exists(FilterExpression):
         return f'"{self._key}"'
 
     def does_match(self, document: dict) -> bool:
-        if not self._key:
-            return False
-
         try:
             _ = get_dotted_field_value(document, self._key, strict=True)
         except KeyDoesNotExistError:
