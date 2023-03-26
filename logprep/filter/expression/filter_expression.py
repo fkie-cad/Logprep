@@ -140,6 +140,8 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
 
     def does_match(self, document: dict) -> bool:
         value = get_dotted_field_value(document, self._key, strict=True)
+        if isinstance(value, list):
+            return any(str(item) == self._expected_value for item in value)
         return str(value) == self._expected_value
 
     def __repr__(self) -> str:
@@ -173,6 +175,8 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
 
     def does_match(self, document: dict) -> bool:
         value = get_dotted_field_value(document, self._key, strict=True)
+        if isinstance(value, list):
+            return any(self._matcher.match(str(item)) for item in value)
         match_result = self._matcher.match(str(value))
 
         return match_result is not None
@@ -277,7 +281,8 @@ class RegExFilterExpression(FilterExpression):
 
     def does_match(self, document: dict) -> bool:
         value = get_dotted_field_value(document, self._key, strict=True)
-
+        if isinstance(value, list):
+            return any(self._matcher.match(str(item)) for item in value)
         return self._matcher.match(str(value)) is not None
 
 
