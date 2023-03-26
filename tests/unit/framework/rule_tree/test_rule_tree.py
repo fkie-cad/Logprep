@@ -32,9 +32,9 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.root.children[0].expression == Exists(["winlog"])
+        assert rule_tree.root.children[0].expression == Exists("winlog")
         assert rule_tree.root.children[0].children[0].expression == StringFilterExpression(
-            ["winlog"], "123"
+            "winlog", "123"
         )
         assert rule_tree.root.children[0].children[0].matching_rules == [rule]
 
@@ -52,10 +52,10 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.root.children[0].children[0].children[0].expression == Exists(["xfoo"])
+        assert rule_tree.root.children[0].children[0].children[0].expression == Exists("xfoo")
         assert rule_tree.root.children[0].children[0].children[0].children[
             0
-        ].expression == StringFilterExpression(["xfoo"], "bar")
+        ].expression == StringFilterExpression("xfoo", "bar")
         assert rule_tree.root.children[0].children[0].children[0].children[0].matching_rules == [
             rule
         ]

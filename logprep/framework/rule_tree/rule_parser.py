@@ -393,7 +393,7 @@ class RuleParser:
                 if isinstance(filter_expression.expression, Exists):
                     return priority_dict[filter_expression.expression._key]
                 elif isinstance(filter_expression.expression, Not):
-                    return priority_dict[filter_expression.expression.expression.split_field[0]]
+                    return priority_dict[filter_expression.expression.expression._key]
                 else:
                     return priority_dict[filter_expression.expression._key]
             except KeyError:
@@ -473,21 +473,21 @@ class RuleParser:
                 # Iterate through all segments and handle different cases
                 for segment in temp_rule:
                     if isinstance(segment, Exists):
-                        if segment._key[0] in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[segment._key[0]])
+                        if segment._key in tag_map.keys():
+                            RuleParser._add_tag(rule, tag_map[segment._key])
                     elif isinstance(segment, Not):
                         expression = segment.expression
                         if isinstance(expression, Exists):
-                            if expression._key[0] in tag_map.keys():
-                                RuleParser._add_tag(rule, tag_map[expression._key[0]])
-                        elif expression._key[0] in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[expression._key[0]])
+                            if expression._key in tag_map.keys():
+                                RuleParser._add_tag(rule, tag_map[expression._key])
+                        elif expression._key in tag_map.keys():
+                            RuleParser._add_tag(rule, tag_map[expression._key])
                     # Always Expressions do not need tags
                     elif isinstance(segment, Always):
                         continue
                     else:
-                        if segment._key[0] in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[segment._key[0]])
+                        if segment._key in tag_map.keys():
+                            RuleParser._add_tag(rule, tag_map[segment._key])
 
     @staticmethod
     def _add_tag(rule, tag_map_value: str):

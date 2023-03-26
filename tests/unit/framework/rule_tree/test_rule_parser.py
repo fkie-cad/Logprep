@@ -4,14 +4,14 @@ from logprep.filter.expression.filter_expression import And, Exists, Not, Or, St
 from logprep.framework.rule_tree.rule_parser import RuleParser as RP
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
-str1 = StringFilterExpression(["key1"], "value1")
-str2 = StringFilterExpression(["key2"], "value2")
-str3 = StringFilterExpression(["key3"], "value3")
-str4 = StringFilterExpression(["key4"], "value4")
-str5 = StringFilterExpression(["key5", "subkey5"], "value5")
+str1 = StringFilterExpression("key1", "value1")
+str2 = StringFilterExpression("key2", "value2")
+str3 = StringFilterExpression("key3", "value3")
+str4 = StringFilterExpression("key4", "value4")
+str5 = StringFilterExpression("key5.subkey5", "value5")
 
-ex1 = Exists(["ABC.def"])
-ex2 = Exists(["xyz"])
+ex1 = Exists("ABC.def")
+ex2 = Exists("xyz")
 
 
 class TestRuleParser:
@@ -610,6 +610,7 @@ class TestRuleParser:
 
         assert rule_list == [[str1, str2, str3, str4]]
 
+    def test_sort_rule_segments1(self):
         rule_list = [[str1, str4, str3, str2]]
         priority_dict = {"key2": "1"}
 
@@ -617,17 +618,20 @@ class TestRuleParser:
 
         assert rule_list == [[str2, str1, str3, str4]]
 
+    def test_sort_rule_segments2(self):
         rule_list = [[str1, str3, ex1, str2, ex2]]
         RP._sort_rule_segments(rule_list, {})
 
         assert rule_list == [[ex1, str1, str2, str3, ex2]]
 
+    def test_sort_rule_segments3(self):
         rule_list = [[str1, str3, ex1, str2, ex2]]
         priority_dict = {"xyz": "1"}
         RP._sort_rule_segments(rule_list, priority_dict)
 
         assert rule_list == [[ex2, ex1, str1, str2, str3]]
 
+    def test_sort_rule_segments4(self):
         rule_list = [[str2, Not(str1)]]
         priority_dict = {"key1": "1"}
         RP._sort_rule_segments(rule_list, priority_dict)
@@ -639,14 +643,16 @@ class TestRuleParser:
         tag_map = {"key2": "TAG"}
 
         RP._add_special_tags(rule_list, tag_map)
-        assert rule_list == [[Exists(["TAG"]), str1, str2]]
+        assert rule_list == [[Exists("TAG"), str1, str2]]
 
+    def test_add_special_tags1(self):
         rule_list = [[str1, str2], [str1, str3]]
         tag_map = {"key2": "TAG2", "key3": "TAG3"}
 
         RP._add_special_tags(rule_list, tag_map)
-        assert rule_list == [[Exists(["TAG2"]), str1, str2], [Exists(["TAG3"]), str1, str3]]
+        assert rule_list == [[Exists("TAG2"), str1, str2], [Exists("TAG3"), str1, str3]]
 
+    def test_add_special_tags2(self):
         rule_list = [[str1, str4, str2], [str2, str3], [str2], [str4, str3]]
         tag_map = {"key1": "TAG1", "key2": "TAG2"}
 
@@ -658,44 +664,49 @@ class TestRuleParser:
             [str4, str3],
         ]
 
+    def test_add_special_tags3(self):
         rule_list = [[str1, str3], [str2, str4]]
         tag_map = {"key1": "TAG1", "key2": "TAG2.SUBTAG2"}
 
         RP._add_special_tags(rule_list, tag_map)
         assert rule_list == [
-            [Exists(["TAG1"]), str1, str3],
-            [Exists(["TAG2", "SUBTAG2"]), str2, str4],
+            [Exists("TAG1"), str1, str3],
+            [Exists("TAG2.SUBTAG2"), str2, str4],
         ]
 
+    def test_add_special_tags4(self):
         rule_list = [[str1, str3], [str2, str4]]
         tag_map = {"key1": "TAG1:Value1", "key2": "TAG2.SUBTAG2"}
 
         RP._add_special_tags(rule_list, tag_map)
         assert rule_list == [
-            [StringFilterExpression(["TAG1"], "Value1"), str1, str3],
-            [Exists(["TAG2", "SUBTAG2"]), str2, str4],
+            [StringFilterExpression("TAG1", "Value1"), str1, str3],
+            [Exists("TAG2.SUBTAG2"), str2, str4],
         ]
 
+    def test_add_special_tags5(self):
         rule_list = [[str1, str3], [str2, str4]]
         tag_map = {"key1": "TAG1.SUBTAG1:Value1", "key2": "TAG2.SUBTAG2"}
 
         RP._add_special_tags(rule_list, tag_map)
         assert rule_list == [
-            [StringFilterExpression(["TAG1", "SUBTAG1"], "Value1"), str1, str3],
-            [Exists(["TAG2", "SUBTAG2"]), str2, str4],
+            [StringFilterExpression("TAG1.SUBTAG1", "Value1"), str1, str3],
+            [Exists("TAG2.SUBTAG2"), str2, str4],
         ]
 
+    def test_add_special_tags6(self):
         rule_list = [[str1, ex2]]
         tag_map = {"xyz": "TAG:VALUE"}
 
         RP._add_special_tags(rule_list, tag_map)
-        assert rule_list == [[StringFilterExpression(["TAG"], "VALUE"), str1, ex2]]
+        assert rule_list == [[StringFilterExpression("TAG", "VALUE"), str1, ex2]]
 
+    def test_add_special_tags7(self):
         rule_list = [[Not(str1)]]
         tag_map = {"key1": "TAG"}
 
         RP._add_special_tags(rule_list, tag_map)
-        assert rule_list == [[Exists(["TAG"]), Not(str1)]]
+        assert rule_list == [[Exists("TAG"), Not(str1)]]
 
     def test_add_exists_filter(self):
         rule_list = [[str1, str2, str3, str4]]
@@ -703,33 +714,36 @@ class TestRuleParser:
 
         assert rule_list == [
             [
-                Exists(["key1"]),
+                Exists("key1"),
                 str1,
-                Exists(["key2"]),
+                Exists("key2"),
                 str2,
-                Exists(["key3"]),
+                Exists("key3"),
                 str3,
-                Exists(["key4"]),
+                Exists("key4"),
                 str4,
             ]
         ]
 
+    def test_add_exists_filter1(self):
         rule_list = [[str1, str3, str5]]
         RP._add_exists_filter(rule_list)
 
         assert rule_list == [
-            [Exists(["key1"]), str1, Exists(["key3"]), str3, Exists(["key5", "subkey5"]), str5]
+            [Exists("key1"), str1, Exists("key3"), str3, Exists("key5.subkey5"), str5]
         ]
 
+    def test_add_exists_filter2(self):
         rule_list = [[str1], [str2], [str3]]
         RP._add_exists_filter(rule_list)
 
         assert rule_list == [
-            [Exists(["key1"]), str1],
-            [Exists(["key2"]), str2],
-            [Exists(["key3"]), str3],
+            [Exists("key1"), str1],
+            [Exists("key2"), str2],
+            [Exists("key3"), str3],
         ]
 
+    def test_add_exists_filter3(self):
         rule_list = [[Not(str1)]]
         RP._add_exists_filter(rule_list)
 

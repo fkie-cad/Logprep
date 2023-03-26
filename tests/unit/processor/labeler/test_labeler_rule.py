@@ -48,7 +48,7 @@ class TestRule:
             "labeler": {"label": {"reporter": ["windows"]}},
         }
         rule = LabelerRule._create_from_dict(rule_definition)
-        assert rule._filter == StringFilterExpression(["applyrule"], "yes")
+        assert rule._filter == StringFilterExpression("applyrule", "yes")
         assert rule._config.label == simple_rule_dict["labeler"]["label"]
 
     def test_create_from_dict_fails_if_document_does_not_contain_filter_and_label(self):

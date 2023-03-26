@@ -193,7 +193,7 @@ class LuceneTransformer:
         if isinstance(tree, AndOperation):
             return And(*self._collect_children(tree))
         if isinstance(tree, Not):
-            return NotExpression(self._collect_children(tree))
+            return NotExpression(*self._collect_children(tree))
         if isinstance(tree, Group):
             return self._parse_tree(tree.children[0])
         if isinstance(tree, SearchField):
@@ -236,10 +236,7 @@ class LuceneTransformer:
         return self._get_filter_expression(key, value)
 
     def _collect_children(self, tree: luqum.tree) -> List[FilterExpression]:
-        expressions = []
-        for child in tree.children:
-            expressions.append(self._parse_tree(child))
-        return expressions
+        return [self._parse_tree(child) for child in tree.children]
 
     def _create_field(self, tree: luqum.tree) -> Optional[FilterExpression]:
         if isinstance(tree.expr, (Phrase, Word)):
@@ -269,11 +266,9 @@ class LuceneTransformer:
     @staticmethod
     def _create_value_expression(word: luqum.tree) -> Union[Exists, Always]:
         value = word.value.replace("\\", "")
-        value = value.split(".")
-        if value == ["*"]:
+        if value == "*":
             return Always(True)
-        else:
-            return Exists(value)
+        return Exists(value)
 
     @staticmethod
     def _strip_quote_from_string(string: str) -> str:
