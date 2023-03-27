@@ -28,9 +28,6 @@ class FilterExpression(ABC):
             Returns if document matches or not.
 
         """
-        if not isinstance(document, dict):
-            return False
-
         try:
             return self.does_match(document)
         except KeyDoesNotExistError:
