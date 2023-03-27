@@ -105,7 +105,7 @@ class And(CompoundFilterExpression):
         return f'AND({", ".join([str(i) for i in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
-        return all((expression.matches(document) for expression in self.expressions))
+        return all(expression.matches(document) for expression in self.expressions)
 
 
 class Or(CompoundFilterExpression):
@@ -115,7 +115,7 @@ class Or(CompoundFilterExpression):
         return f'OR({", ".join([str(i) for i in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
-        return any((expression.matches(document) for expression in self.expressions))
+        return any(expression.matches(document) for expression in self.expressions)
 
 
 class KeyValueBasedFilterExpression(FilterExpression):
