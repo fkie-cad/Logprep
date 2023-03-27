@@ -1,7 +1,8 @@
 # pylint: disable=import-outside-toplevel
-"""module for processor registry
-    it is used to check if a processor is known to the system.
-    you have to register new processors here by import them and add to `ProcessorRegistry.mapping`
+"""module for component registry
+    it is used to check if a component is known to the system.
+    You have to register new components here by adding their import path and the corresponding class
+    to the mappings 'processors' or 'connectors'.
 """
 
 
@@ -71,12 +72,12 @@ class Registry:
 
     @classmethod
     def get_class(cls, component_type):
-        """return the processor class for a given type
+        """return the component class for a given type
 
         Parameters
         ----------
         component_type : str
-            the processor type
+            the component type
 
         Returns
         -------
