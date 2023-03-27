@@ -1,36 +1,28 @@
 """This module implements the tree node functionality for the tree model."""
 
 from typing import Optional
+from attrs import define, field
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.expression.filter_expression import KeyDoesNotExistError
 from logprep.processor.base.rule import Rule
 
 
+@define(slots=True)
 class Node:
     """Tree node for rule tree model."""
 
-    _expression: FilterExpression
+    expression: FilterExpression = field(hash=True)
 
-    _children: dict["Node", None]
+    children: dict["Node", None] = field(factory=dict, eq=False, repr=False)
 
-    matching_rules: list[Rule]
+    matching_rules: list[Rule] = field(factory=list, eq=False, repr=False)
 
-    def __init__(self, expression: FilterExpression):
-        """Node initialization function.
+    def __hash__(self) -> int:
+        return id(self.expression)
 
-        Initializes a new node with a given expression and empty lists of children and matching
-        rules.
-
-        Parameters
-        ----------
-        expression: FilterExpression
-            Filter expression to be used by the new node.
-
-        """
-        self._expression = expression
-        self._children = {}
-        self.matching_rules = []
+    def __eq__(self, node: "Node") -> bool:
+        return self.expression == node.expression
 
     def does_match(self, event: dict):
         """Check if node matches given event.
@@ -52,7 +44,7 @@ class Node:
 
         """
         try:
-            return self._expression.does_match(event)
+            return self.expression.does_match(event)
         except KeyDoesNotExistError:
             return False
 
@@ -68,7 +60,7 @@ class Node:
             Child node to add to the node.
 
         """
-        self._children.update({node: None})
+        self.children |= {node: None}
 
     def has_child_with_expression(self, expression: FilterExpression) -> Optional["Node"]:
         """Check if node has child with given expression.
@@ -106,16 +98,8 @@ class Node:
             Child node with given expression, if such node exists.
 
         """
-        for child in self._children:
+        for child in self.children:
             if child.expression == expression:
                 return child
 
         return None
-
-    @property
-    def expression(self) -> FilterExpression:
-        return self._expression
-
-    @property
-    def children(self) -> dict["Node", None]:
-        return self._children

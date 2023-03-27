@@ -158,25 +158,6 @@ class RuleTree:
 
         return current_node
 
-    def get_rule_id(self, rule: "Rule") -> int:
-        """Returns ID of given rule.
-
-        This function returns the ID of a given rule. It is used by the processors to get the ID of
-        a matching rule in the tree when generating processing stats.
-
-        Parameters
-        ----------
-        rule: Rule
-            Rule to get ID from.
-
-        Returns
-        -------
-        rule_id: int
-            The rule's ID.
-
-        """
-        return self._rule_mapping[rule]
-
     def get_matching_rules(self, event: dict) -> List["Rule"]:
         """Get all rules in the tree that match given event.
 

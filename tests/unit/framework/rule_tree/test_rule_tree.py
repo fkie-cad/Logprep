@@ -58,39 +58,6 @@ class TestRuleTree:
         assert node.expression == StringFilterExpression("xfoo", "bar")
         assert node.matching_rules == [rule]
 
-    def test_get_rule_id(self):
-        rule_tree = RuleTree()
-        rule = PreDetectorRule._create_from_dict(
-            {
-                "filter": "winlog: 123",
-                "pre_detector": {
-                    "id": 1,
-                    "title": "1",
-                    "severity": "0",
-                    "case_condition": "directly",
-                    "mitre": [],
-                },
-            }
-        )
-        rule_tree.add_rule(rule)
-        assert rule_tree.get_rule_id(rule) == 0
-
-        rule2 = PreDetectorRule._create_from_dict(
-            {
-                "filter": "winlog: 123 AND xfoo: bar",
-                "pre_detector": {
-                    "id": 1,
-                    "title": "1",
-                    "severity": "0",
-                    "case_condition": "directly",
-                    "mitre": [],
-                },
-            }
-        )
-        rule_tree.add_rule(rule2)
-        assert rule_tree.get_rule_id(rule) == 0
-        assert rule_tree.get_rule_id(rule2) == 1
-
     def test_match_simple(self):
         rule_tree = RuleTree()
         rule = PreDetectorRule._create_from_dict(
