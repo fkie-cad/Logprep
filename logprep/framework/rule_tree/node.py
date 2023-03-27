@@ -4,7 +4,7 @@ from typing import Optional
 from attrs import define, field
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.filter.expression.filter_expression import KeyDoesNotExistError
+from logprep.util.helper import KeyDoesNotExistError
 from logprep.processor.base.rule import Rule
 
 
@@ -12,7 +12,7 @@ from logprep.processor.base.rule import Rule
 class Node:
     """Tree node for rule tree model."""
 
-    expression: FilterExpression = field(hash=True)
+    expression: FilterExpression
 
     children: dict["Node", None] = field(factory=dict, eq=False, repr=False)
 
@@ -22,7 +22,7 @@ class Node:
         return id(self.expression)
 
     def __eq__(self, node: "Node") -> bool:
-        return self.expression == node.expression
+        return self is node
 
     def does_match(self, event: dict):
         """Check if node matches given event.
