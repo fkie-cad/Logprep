@@ -178,22 +178,21 @@ class RuleTree:
 
         Returns
         -------
-        matches: List[Rule]
+        matches: Dict[Rule, None]
             Set of rules that match the given event.
         """
 
-        def _retrieve_matching_rules(matches: dict["Rule", None], current_node: Node) -> list:
+        def _retrieve_matching_rules(matches: dict["Rule", None], current_node: Node) -> dict:
             """Recursively iterate through the rule tree to retrieve matching rules."""
-            matching_childs = tuple(
+            if matching_childs := (
                 child for child in current_node.children if child.does_match(event)
-            )
-            if not matching_childs:
-                return ChainMap(current_node.matching_rules, matches)
-            return ChainMap(
-                reduce(_retrieve_matching_rules, (matches, *matching_childs)),
-                current_node.matching_rules,
-                matches,
-            )
+            ):
+                return {
+                    **matches,
+                    **current_node.matching_rules,
+                    **reduce(_retrieve_matching_rules, (matches, *matching_childs)),
+                }
+            return matches
 
         return _retrieve_matching_rules({}, self.root)
 
