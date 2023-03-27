@@ -148,6 +148,12 @@ Metrics Overview
    :private-members:
    :inherited-members:
 
+.. autoclass:: logprep.processor.amides.processor.Amides.ProcessorMetrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
 .. autoclass:: logprep.processor.domain_resolver.processor.DomainResolver.DomainResolverMetrics
    :members:
    :undoc-members:

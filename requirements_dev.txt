@@ -128,6 +128,10 @@ isort==5.12.0
     #   pylint
 jinja2==3.1.2
     # via -r requirements_dev.in
+joblib==1.2.0
+    # via
+    #   -r requirements.txt
+    #   scikit-learn
 jsonref==1.1.0
     # via -r requirements.txt
 jsonschema==4.17.3
@@ -160,7 +164,10 @@ mypy-extensions==1.0.0
 mysql-connector-python==8.0.32
     # via -r requirements.txt
 numpy==1.24.2
-    # via -r requirements.txt
+    # via
+    #   -r requirements.txt
+    #   scikit-learn
+    #   scipy
 opensearch-py==2.2.0
     # via -r requirements.txt
 ordered-set==4.1.0
@@ -262,6 +269,12 @@ ruamel-yaml-clib==0.2.7
     #   ruamel-yaml
 schedule==1.1.0
     # via -r requirements.txt
+scikit-learn==1.2.2
+    # via -r requirements.txt
+scipy==1.10.1
+    # via
+    #   -r requirements.txt
+    #   scikit-learn
 semgrep==1.15.0
     # via -r requirements_dev.in
 six==1.16.0
@@ -280,6 +293,10 @@ starlette==0.26.1
     # via
     #   -r requirements.txt
     #   fastapi
+threadpoolctl==3.0.0
+    # via
+    #   -r requirements.txt
+    #   scikit-learn
 tldextract==3.4.0
     # via -r requirements.txt
 tomli==2.0.1
