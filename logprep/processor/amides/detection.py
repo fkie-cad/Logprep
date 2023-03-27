@@ -61,7 +61,7 @@ class DetectionModel:
         df_value = self._clf.decision_function(feature_vector)
         scaled_df_value = self._scaler.transform(df_value.reshape(-1, 1)).flatten()[0]
 
-        return scaled_df_value
+        return scaled_df_value.item()
 
 
 class MisuseDetector(DetectionModel):
