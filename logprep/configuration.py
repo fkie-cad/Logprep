@@ -1,11 +1,11 @@
 """module for component configuration """
 from typing import TYPE_CHECKING, Any, Mapping
 
-from logprep.registry import Registry
 from logprep.factory_error import (
     NoTypeSpecifiedError,
     UnknownComponentTypeError,
 )
+from logprep.registry import Registry
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc.component import Component

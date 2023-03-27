@@ -4,6 +4,7 @@ from typing import Optional
 
 import pytest
 from attr import define, field, validators
+
 from logprep.abc.processor import Processor
 from logprep.configuration import Configuration
 from logprep.factory_error import (
@@ -30,7 +31,7 @@ original_registry_mapping = deepcopy(Registry.mapping)
 
 class TestConfiguration:
     def setup_method(self):
-        Registry.mapping = {"mock_processor": MockProcessor}
+        Registry.mapping = {"mock_processor": ("tests.unit.test_configuration", "MockProcessor")}
 
     def teardown_method(self):
         Registry.mapping = original_registry_mapping

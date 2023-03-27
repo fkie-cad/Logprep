@@ -1,93 +1,73 @@
+# pylint: disable=import-outside-toplevel
 """module for processor registry
     it is used to check if a processor is known to the system.
     you have to register new processors here by import them and add to `ProcessorRegistry.mapping`
 """
 
-from logprep.connector.confluent_kafka.input import ConfluentKafkaInput
-from logprep.connector.confluent_kafka.output import ConfluentKafkaOutput
-from logprep.connector.console.output import ConsoleOutput
-from logprep.connector.dummy.input import DummyInput
-from logprep.connector.dummy.output import DummyOutput
-from logprep.connector.elasticsearch.output import ElasticsearchOutput
-from logprep.connector.http.input import HttpConnector
-from logprep.connector.json.input import JsonInput
-from logprep.connector.jsonl.input import JsonlInput
-from logprep.connector.jsonl.output import JsonlOutput
-from logprep.connector.file.input import FileInput
-from logprep.connector.opensearch.output import OpensearchOutput
-from logprep.processor.calculator.processor import Calculator
-from logprep.processor.clusterer.processor import Clusterer
-from logprep.processor.concatenator.processor import Concatenator
-from logprep.processor.datetime_extractor.processor import DatetimeExtractor
-from logprep.processor.deleter.processor import Deleter
-from logprep.processor.dissector.processor import Dissector
-from logprep.processor.domain_label_extractor.processor import DomainLabelExtractor
-from logprep.processor.domain_resolver.processor import DomainResolver
-from logprep.processor.dropper.processor import Dropper
-from logprep.processor.field_manager.processor import FieldManager
-from logprep.processor.generic_adder.processor import GenericAdder
-from logprep.processor.generic_resolver.processor import GenericResolver
-from logprep.processor.geoip_enricher.processor import GeoipEnricher
-from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
-from logprep.processor.key_checker.processor import KeyChecker
-from logprep.processor.ip_informer.processor import IpInformer
-from logprep.processor.labeler.processor import Labeler
-from logprep.processor.list_comparison.processor import ListComparison
-from logprep.processor.normalizer.processor import Normalizer
-from logprep.processor.pre_detector.processor import PreDetector
-from logprep.processor.pseudonymizer.processor import Pseudonymizer
-from logprep.processor.requester.processor import Requester
-from logprep.processor.selective_extractor.processor import SelectiveExtractor
-from logprep.processor.string_splitter.processor import StringSplitter
-from logprep.processor.template_replacer.processor import TemplateReplacer
-from logprep.processor.timestamp_differ.processor import TimestampDiffer
-
 
 class Registry:
     """Component Registry"""
 
-    mapping = {
-        # Processors
-        "calculator": Calculator,
-        "clusterer": Clusterer,
-        "concatenator": Concatenator,
-        "datetime_extractor": DatetimeExtractor,
-        "deleter": Deleter,
-        "dissector": Dissector,
-        "domain_label_extractor": DomainLabelExtractor,
-        "domain_resolver": DomainResolver,
-        "dropper": Dropper,
-        "field_manager": FieldManager,
-        "generic_adder": GenericAdder,
-        "generic_resolver": GenericResolver,
-        "geoip_enricher": GeoipEnricher,
-        "hyperscan_resolver": HyperscanResolver,
-        "ip_informer": IpInformer,
-        "key_checker": KeyChecker,
-        "labeler": Labeler,
-        "list_comparison": ListComparison,
-        "normalizer": Normalizer,
-        "pre_detector": PreDetector,
-        "pseudonymizer": Pseudonymizer,
-        "requester": Requester,
-        "selective_extractor": SelectiveExtractor,
-        "string_splitter": StringSplitter,
-        "template_replacer": TemplateReplacer,
-        "timestamp_differ": TimestampDiffer,
-        # Connectors
-        "json_input": JsonInput,
-        "jsonl_input": JsonlInput,
-        "file_input": FileInput,
-        "dummy_input": DummyInput,
-        "dummy_output": DummyOutput,
-        "confluentkafka_input": ConfluentKafkaInput,
-        "confluentkafka_output": ConfluentKafkaOutput,
-        "console_output": ConsoleOutput,
-        "elasticsearch_output": ElasticsearchOutput,
-        "jsonl_output": JsonlOutput,
-        "opensearch_output": OpensearchOutput,
-        "http_input": HttpConnector,
+    processors = {
+        "calculator": ("logprep.processor.calculator.processor", "Calculator"),
+        "clusterer": ("logprep.processor.clusterer.processor", "Clusterer"),
+        "concatenator": ("logprep.processor.concatenator.processor", "Concatenator"),
+        "datetime_extractor": (
+            "logprep.processor.datetime_extractor.processor",
+            "DatetimeExtractor",
+        ),
+        "deleter": ("logprep.processor.deleter.processor", "Deleter"),
+        "dissector": ("logprep.processor.dissector.processor", "Dissector"),
+        "domain_label_extractor": (
+            "logprep.processor.domain_label_extractor.processor",
+            "DomainLabelExtractor",
+        ),
+        "domain_resolver": ("logprep.processor.domain_resolver.processor", "DomainResolver"),
+        "dropper": ("logprep.processor.dropper.processor", "Dropper"),
+        "field_manager": ("logprep.processor.field_manager.processor", "FieldManager"),
+        "generic_adder": ("logprep.processor.generic_adder.processor", "GenericAdder"),
+        "generic_resolver": ("logprep.processor.generic_resolver.processor", "GenericResolver"),
+        "geoip_enricher": ("logprep.processor.geoip_enricher.processor", "GeoipEnricher"),
+        "hyperscan_resolver": (
+            "logprep.processor.hyperscan_resolver.processor",
+            "HyperscanResolver",
+        ),
+        "ip_informer": ("logprep.processor.ip_informer.processor", "IpInformer"),
+        "key_checker": ("logprep.processor.key_checker.processor", "KeyChecker"),
+        "labeler": ("logprep.processor.labeler.processor", "Labeler"),
+        "list_comparison": ("logprep.processor.list_comparison.processor", "ListComparison"),
+        "normalizer": ("logprep.processor.normalizer.processor", "Normalizer"),
+        "pre_detector": ("logprep.processor.pre_detector.processor", "PreDetector"),
+        "pseudonymizer": ("logprep.processor.pseudonymizer.processor", "Pseudonymizer"),
+        "requester": ("logprep.processor.requester.processor", "Requester"),
+        "selective_extractor": (
+            "logprep.processor.selective_extractor.processor",
+            "SelectiveExtractor",
+        ),
+        "string_splitter": ("logprep.processor.string_splitter.processor", "StringSplitter"),
+        "template_replacer": ("logprep.processor.template_replacer.processor", "TemplateReplacer"),
+        "timestamp_differ": ("logprep.processor.timestamp_differ.processor", "TimestampDiffer"),
     }
+
+    connectors = {
+        "json_input": ("logprep.connector.json.input", "JsonInput"),
+        "jsonl_input": ("logprep.connector.jsonl.input", "JsonlInput"),
+        "file_input": ("logprep.connector.file.input", "FileInput"),
+        "dummy_input": ("logprep.connector.dummy.input", "DummyInput"),
+        "dummy_output": ("logprep.connector.dummy.output", "DummyOutput"),
+        "confluentkafka_input": ("logprep.connector.confluent_kafka.input", "ConfluentKafkaInput"),
+        "confluentkafka_output": (
+            "logprep.connector.confluent_kafka.output",
+            "ConfluentKafkaOutput",
+        ),
+        "console_output": ("logprep.connector.console.output", "ConsoleOutput"),
+        "elasticsearch_output": ("logprep.connector.elasticsearch.output", "ElasticsearchOutput"),
+        "jsonl_output": ("logprep.connector.jsonl.output", "JsonlOutput"),
+        "opensearch_output": ("logprep.connector.opensearch.output", "OpensearchOutput"),
+        "http_input": ("logprep.connector.http.input", "HttpConnector"),
+    }
+
+    mapping = processors | connectors
 
     @classmethod
     def get_class(cls, component_type):
@@ -95,7 +75,7 @@ class Registry:
 
         Parameters
         ----------
-        processor_type : str
+        component_type : str
             the processor type
 
         Returns
@@ -103,4 +83,6 @@ class Registry:
         _type_
             _description_
         """
-        return cls.mapping.get(component_type)
+        module_class_tuple = cls.mapping.get(component_type)
+        component_module = __import__(module_class_tuple[0], fromlist=[module_class_tuple[1]])
+        return getattr(component_module, module_class_tuple[1])

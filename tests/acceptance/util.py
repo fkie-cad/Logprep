@@ -289,11 +289,7 @@ def stop_logprep(proc=None):
 
 
 def get_full_pipeline(exclude=None):
-    processors = [
-        processor_name
-        for processor_name, value in Registry.mapping.items()
-        if issubclass(value, Processor)
-    ]
+    processors = Registry.processors.keys()
     if exclude:
         processors = filter(lambda x: x not in exclude, processors)
     processor_test_modules = []
