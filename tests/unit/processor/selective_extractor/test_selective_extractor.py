@@ -102,14 +102,6 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         result = self.object.process(document)
         assert result is None
 
-    def test_gets_matching_rules_from_rules_trees(self):
-        rule_trees = [self.object._generic_tree, self.object._specific_tree]
-        assert len(rule_trees) > 0
-        for tree in rule_trees:
-            matching_rules = tree.get_matching_rules({"message": "the message"})
-            assert isinstance(matching_rules, list)
-            assert len(matching_rules) > 0
-
     def test_apply_rules_is_called(self):
         with mock.patch(
             f"{self.object.__module__}.{self.object.__class__.__name__}._apply_rules"

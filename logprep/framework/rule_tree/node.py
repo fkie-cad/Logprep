@@ -16,7 +16,7 @@ class Node:
 
     children: dict["Node", None] = field(factory=dict, eq=False, repr=False)
 
-    matching_rules: list[Rule] = field(factory=list, eq=False, repr=False)
+    matching_rules: dict[Rule] = field(factory=dict, eq=False, repr=False)
 
     def __hash__(self) -> int:
         return id(self.expression)

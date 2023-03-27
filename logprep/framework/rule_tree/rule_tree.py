@@ -119,7 +119,7 @@ class RuleTree:
         for parsed_rule in parsed_rule_list:
             end_node = self._add_parsed_rule(parsed_rule)
             if rule not in end_node.matching_rules:
-                end_node.matching_rules.append(rule)
+                end_node.matching_rules |= {rule: None}
 
         self._rule_mapping[rule] = self.metrics.number_of_rules - 1
         self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member
@@ -181,19 +181,20 @@ class RuleTree:
             Set of rules that match the given event.
         """
 
-        def _retrieve_matching_rules(matches: List["Rule"], current_node: Node) -> list:
+        def _retrieve_matching_rules(matches: dict["Rule", None], current_node: Node) -> list:
             """Recursively iterate through the rule tree to retrieve matching rules."""
-            matching_childs = [child for child in current_node.children if child.does_match(event)]
+            matching_childs = {
+                child: None for child in current_node.children if child.does_match(event)
+            }
             if not matching_childs:
-                return (*matches, *current_node.matching_rules)
-            return (
-                *matches,
-                *current_node.matching_rules,
-                *reduce(_retrieve_matching_rules, (matches, *matching_childs)),
-            )
+                return {**matches, **current_node.matching_rules}
+            return {
+                **matches,
+                **current_node.matching_rules,
+                **reduce(_retrieve_matching_rules, (matches, *matching_childs)),
+            }
 
-        matching_rules = _retrieve_matching_rules([], self.root)
-        return list(dict.fromkeys(matching_rules))  # deduplication by preserving order
+        return _retrieve_matching_rules({}, self.root)
 
     def print(self, current_node: Node = None, depth: int = 1):
         """Print rule tree to console.
