@@ -466,28 +466,25 @@ class RuleParser:
 
         """
 
-        if tag_map:
-            for rule in parsed_rules:
-                temp_rule = rule.copy()
+        if not tag_map:
+            return
 
-                # Iterate through all segments and handle different cases
-                for segment in temp_rule:
-                    if isinstance(segment, Exists):
-                        if segment._key in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[segment._key])
-                    elif isinstance(segment, Not):
-                        expression = segment.expression
-                        if isinstance(expression, Exists):
-                            if expression._key in tag_map.keys():
-                                RuleParser._add_tag(rule, tag_map[expression._key])
-                        elif expression._key in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[expression._key])
-                    # Always Expressions do not need tags
-                    elif isinstance(segment, Always):
-                        continue
-                    else:
-                        if segment._key in tag_map.keys():
-                            RuleParser._add_tag(rule, tag_map[segment._key])
+        for rule in parsed_rules:
+            temp_rule = rule.copy()
+
+            for segment in temp_rule:
+                if isinstance(segment, Exists):
+                    if segment._key in tag_map.keys():
+                        RuleParser._add_tag(rule, tag_map[segment._key])
+                elif isinstance(segment, Not):
+                    expression = segment.expression
+                    if expression._key in tag_map.keys():
+                        RuleParser._add_tag(rule, tag_map[expression._key])
+                elif isinstance(segment, Always):
+                    continue
+                else:
+                    if segment._key in tag_map.keys():
+                        RuleParser._add_tag(rule, tag_map[segment._key])
 
     @staticmethod
     def _add_tag(rule, tag_map_value: str):
