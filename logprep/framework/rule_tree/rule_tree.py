@@ -1,5 +1,6 @@
 """This module contains the rule tree functionality."""
 
+from collections import ChainMap
 from functools import reduce
 from logging import Logger
 from typing import List, TYPE_CHECKING
@@ -183,16 +184,16 @@ class RuleTree:
 
         def _retrieve_matching_rules(matches: dict["Rule", None], current_node: Node) -> list:
             """Recursively iterate through the rule tree to retrieve matching rules."""
-            matching_childs = {
-                child: None for child in current_node.children if child.does_match(event)
-            }
+            matching_childs = tuple(
+                child for child in current_node.children if child.does_match(event)
+            )
             if not matching_childs:
-                return {**matches, **current_node.matching_rules}
-            return {
-                **matches,
-                **current_node.matching_rules,
-                **reduce(_retrieve_matching_rules, (matches, *matching_childs)),
-            }
+                return ChainMap(current_node.matching_rules, matches)
+            return ChainMap(
+                reduce(_retrieve_matching_rules, (matches, *matching_childs)),
+                current_node.matching_rules,
+                matches,
+            )
 
         return _retrieve_matching_rules({}, self.root)
 
