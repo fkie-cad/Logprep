@@ -53,7 +53,7 @@ class TestSpecificGenericProcessStrategy:
             "type": "dissector",
             "specific_rules": [],
             "generic_rules": [],
-            "apply_rules_multiple_times": True,
+            "apply_multiple_times": True,
         }
         processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
         rule_one_dict = {
