@@ -2,6 +2,15 @@
 
 ## next release
 
+### Features
+
+* Add `amides` processor to extends conventional rule matching by applying machine learning components
+* Add feature to all rule filters to match against specific elements in lists
+
+### Improvements
+
+* refactor `FilterExpressions`, `RuleTree`, `RuleParser`
+* use `get_dotted_field` function in `FilterExpressions`
 
 ## v6.0.0
 
