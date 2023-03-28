@@ -217,7 +217,7 @@ class GenericAdder(Processor):
            A matching generic adder rule.
         Raises
         ------
-        DuplicationError
+        FieldExsistsWarning
             Raises if an addition would overwrite an existing field or value.
         """
         conflicting_fields = []

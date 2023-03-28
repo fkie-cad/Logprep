@@ -1,13 +1,14 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-from copy import deepcopy
-from pathlib import Path
-from multiprocessing import current_process
 import hashlib
-import responses
-import pytest
+from copy import deepcopy
+from multiprocessing import current_process
+from pathlib import Path
 
-from logprep.processor.base.exceptions import DuplicationError
+import pytest
+import responses
+
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -144,7 +145,7 @@ class TestAmides(BaseProcessorTestCase):
         self.object.process(document)
         assert document.get("rule_attributions")
 
-        with pytest.raises(DuplicationError):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
 
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
