@@ -22,12 +22,17 @@ Example
 """
 import json
 import re
+
 import requests
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.requester.rule import RequesterRule
-from logprep.util.helper import add_field_to, get_dotted_field_value, get_source_fields_dict
+from logprep.util.helper import (
+    add_field_to,
+    get_dotted_field_value,
+    get_source_fields_dict,
+)
 
 TEMPLATE_KWARGS = ("url", "json", "data", "params")
 
@@ -72,7 +77,7 @@ class Requester(Processor):
                 if not successful:
                     conflicting_fields.append(rule.target_field)
         if conflicting_fields:
-            raise DuplicationError(self.name, [rule.target_field])
+            raise FieldExsistsWarning(self, rule, event, [rule.target_field])
 
     def _request(self, event, rule, kwargs):
         try:

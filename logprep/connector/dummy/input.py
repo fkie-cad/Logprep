@@ -19,7 +19,9 @@ Example
         documents: [{"document":"one"}, "Exception", {"document":"two"}]
 """
 from typing import List, Union
+
 from attrs import define
+
 from logprep.abc.input import Input, SourceDisconnectedError
 
 
@@ -40,7 +42,7 @@ class DummyInput(Input):
     def _get_event(self, timeout: float) -> tuple:
         """Retriev next document from configuration and raise error if found"""
         if not self._documents:
-            raise SourceDisconnectedError
+            raise SourceDisconnectedError(self, "no documents left")
 
         document = self._documents.pop(0)
 

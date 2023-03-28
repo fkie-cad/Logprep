@@ -22,7 +22,7 @@ from functools import reduce
 import arrow
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 from logprep.util.helper import add_field_to, get_source_fields_dict
 
@@ -56,7 +56,7 @@ class TimestampDiffer(Processor):
             overwrite_output_field=rule.overwrite_target,
         )
         if not add_successful:
-            raise DuplicationError(self.name, [rule.target_field])
+            raise FieldExsistsWarning(self, rule, event, [rule.target_field])
 
     @staticmethod
     def _create_timestamp_object(timestamp_str, timestamp_format):

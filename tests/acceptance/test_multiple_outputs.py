@@ -7,7 +7,6 @@ import pytest
 from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import start_logprep, stop_logprep, wait_for_output
 
-
 CHECK_INTERVAL = 0.1
 
 
@@ -120,7 +119,7 @@ def test_full_pipeline_run_with_two_outputs(tmp_path, config):
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Lost or failed to establish connection to JsonlInput")
+    wait_for_output(proc, "no documents left")
     stop_logprep(proc)
     assert output_path1.read_text(), "output is not empty"
     assert (

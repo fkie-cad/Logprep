@@ -32,6 +32,7 @@ from typing import Optional
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
@@ -128,7 +129,7 @@ class TemplateReplacer(Processor):
     def _apply_rules(self, event, rule):
         replacement = self._get_replacement_value(event)
         if replacement is not None:
-            self._perform_replacement(event, replacement)
+            self._perform_replacement(event, replacement, rule)
 
     def _get_replacement_value(self, event: dict) -> Optional[str]:
         replacement = self._mapping
@@ -143,19 +144,14 @@ class TemplateReplacer(Processor):
                 return None
         return replacement
 
-    def _perform_replacement(self, event: dict, replacement: str):
-        _event = event
+    def _perform_replacement(self, event: dict, replacement: str, rule: TemplateReplacerRule):
         for subfield in self._target_field_split[:-1]:
-            event_sub = _event.get(subfield)
+            event_sub = event.get(subfield)
             if isinstance(event_sub, dict):
-                _event = event_sub
+                event = event_sub
             elif event_sub is None:
-                _event[subfield] = {}
-                _event = _event[subfield]
+                event[subfield] = {}
+                event = event[subfield]
             else:
-                raise TemplateReplacerError(
-                    self.name,
-                    f"Parent field '{subfield}' of target field '{self._target_field}' "
-                    f"exists and is not a dict!",
-                )
-        _event[self._target_field_split[-1]] = replacement
+                raise FieldExsistsWarning(self, event, rule, [subfield])
+        event[self._target_field_split[-1]] = replacement

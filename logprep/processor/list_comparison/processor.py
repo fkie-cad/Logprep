@@ -24,7 +24,7 @@ from logging import Logger
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.list_comparison.rule import ListComparisonRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
@@ -82,7 +82,7 @@ class ListComparison(Processor):
             output_field = f"{ rule.target_field }.{ comparison_key }"
             field_possible = add_field_to(event, output_field, comparison_result, True)
             if not field_possible:
-                raise DuplicationError(self.name, [output_field])
+                raise FieldExsistsWarning(self, rule, event, [output_field])
 
     def _list_comparison(self, rule: ListComparisonRule, event: dict):
         """

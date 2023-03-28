@@ -17,12 +17,12 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
-from functools import partial
 import ipaddress
+from functools import partial
 from itertools import chain
 from typing import Iterable
-from logprep.processor.base.exceptions import ProcessingWarning
 
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.ip_informer.rule import IpInformerRule, get_ip_property_names
 from logprep.util.helper import get_dotted_field_value
@@ -44,7 +44,7 @@ class IpInformer(FieldManager):
         if results:
             self._write_target_field(event, rule, results)
         for msg, error in self._processing_warnings:
-            raise ProcessingWarning(msg) from error
+            raise ProcessingWarning(self, msg, rule, event) from error
 
     def _get_results(self, ip_address_list: Iterable, rule: IpInformerRule) -> dict:
         results = [(ip, self._ip_properties(ip, rule)) for ip in ip_address_list]

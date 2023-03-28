@@ -4,11 +4,12 @@
 import hashlib
 from multiprocessing import current_process
 from pathlib import Path
+
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -253,12 +254,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
 
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-            r"written, because one or more subfields existed and could not be extended: "
-            r"url.subdomain\)",
-        ):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
 
     def test_domain_extraction_overwrites_target_field(self):
