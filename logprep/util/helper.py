@@ -2,7 +2,7 @@
 import re
 from functools import partial, reduce
 from os import remove
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
@@ -109,19 +109,10 @@ def _get_slice_arg(slice_item):
     return int(slice_item) if slice_item else None
 
 
-class KeyDoesNotExistError(Exception):
-    """Raise if key does not exist in document."""
-
-
-strict_error_pattern = re.compile("string indices must be integers")
-
-
-def _get_item(items, item, strict=False):
+def _get_item(items, item):
     try:
-        return items[item]
-    except TypeError as error:
-        if strict and re.search(strict_error_pattern, error.args[0]):
-            raise KeyDoesNotExistError from error
+        return dict.__getitem__(items, item)
+    except TypeError:
         if ":" in item:
             slice_args = map(_get_slice_arg, item.split(":"))
             item = slice(*slice_args)
@@ -130,28 +121,11 @@ def _get_item(items, item, strict=False):
         return list.__getitem__(items, item)
 
 
-def split_dotted_field(dotted_field: str) -> list:
-    return dotted_field.split(".")
+def get_field_by_list(event: dict, keys: list):
+    return reduce(_get_item, (event, *keys))
 
 
-def get_field_by_list(event: dict, keys: list, strict=False):
-    try:
-        return reduce(partial(_get_item, strict=strict), (event, *keys))
-    except KeyError as error:
-        if strict:
-            raise KeyDoesNotExistError from error
-        return None
-    except ValueError:
-        return None
-    except TypeError:
-        return None
-    except IndexError:
-        return None
-
-
-def get_dotted_field_value(
-    event: dict, dotted_field: str, strict: bool = False
-) -> Optional[Union[dict, list, str]]:
+def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Any]:
     """
     Returns the value of a requested dotted_field by iterating over the event dictionary until the
     field was found. In case the field could not be found None is returned.
@@ -168,7 +142,16 @@ def get_dotted_field_value(
     dict_: dict, list, str
         The value of the requested dotted field.
     """
-    return get_field_by_list(event, dotted_field.split("."), strict)
+    try:
+        return get_field_by_list(event, dotted_field.split("."))
+    except KeyError:
+        return None
+    except ValueError:
+        return None
+    except TypeError:
+        return None
+    except IndexError:
+        return None
 
 
 def pop_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
