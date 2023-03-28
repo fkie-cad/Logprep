@@ -187,7 +187,7 @@ class RuleTree:
                     matches |= _retrieve_matching_rules(matches, child)
             return matches | current_node.matching_rules
 
-        return (rule for rule in _retrieve_matching_rules({}, self.root))
+        return (rule for rule in _retrieve_matching_rules({}, self.root)) if event else ()
 
     def print(self, current_node: Node = None, depth: int = 1):
         """Print rule tree to console.
