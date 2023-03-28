@@ -8,19 +8,19 @@ from string import ascii_letters, digits
 import pytest
 
 from logprep.filter.expression.filter_expression import (
-    StringFilterExpression,
-    IntegerFilterExpression,
-    And,
-    Or,
-    Not,
-    RegExFilterExpression,
-    IntegerRangeFilterExpression,
-    FloatRangeFilterExpression,
-    FloatFilterExpression,
     Always,
-    WildcardStringFilterExpression,
-    SigmaFilterExpression,
+    And,
     Exists,
+    FloatFilterExpression,
+    FloatRangeFilterExpression,
+    IntegerFilterExpression,
+    IntegerRangeFilterExpression,
+    Not,
+    Or,
+    RegExFilterExpression,
+    SigmaFilterExpression,
+    StringFilterExpression,
+    WildcardStringFilterExpression,
 )
 
 

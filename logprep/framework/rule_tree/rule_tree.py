@@ -120,7 +120,7 @@ class RuleTree:
         for parsed_rule in parsed_rule_list:
             end_node = self._add_parsed_rule(parsed_rule)
             if rule not in end_node.matching_rules:
-                end_node.matching_rules |= {rule: None}
+                end_node.matching_rules += (rule,)
 
         self._rule_mapping[rule] = self.metrics.number_of_rules - 1
         self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member

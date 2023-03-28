@@ -10,19 +10,24 @@ from logprep.processor.base.rule import Rule
 class Node:
     """Tree node for rule tree model."""
 
-    expression: FilterExpression
+    expression: FilterExpression = field()
 
-    children: dict["Node", None] = field(factory=dict, eq=False, repr=False)
+    children: list["Node", None] = field(factory=list, eq=False, repr=False)
 
-    matching_rules: dict[Rule] = field(factory=dict, eq=False, repr=False)
+    matching_rules: list[Rule] = field(factory=list, eq=False, repr=False)
+
+    child_expressions: set[FilterExpression] = field(factory=set, eq=False, repr=False)
+
+    def __attrs_post_init__(self):
+        if isinstance(self.expression, list):
+            self.expression = self.expression[0]
+            for expression in self.expression:
+                self.add_child(Node(expression))
 
     def __hash__(self) -> int:
-        return id(self.expression)
+        return hash(repr(self))
 
-    def __eq__(self, node: "Node") -> bool:
-        return self is node
-
-    def add_child(self, node: "Node"):
+    def add_child(self, node: "Node") -> bool:
         """Add child to node.
 
         This function adds a given child node to the node by appending it to the list of the node's
@@ -34,8 +39,22 @@ class Node:
             Child node to add to the node.
 
         """
-        self.children |= {node: None}
+        if self == node:
+            self.matching_rules += node.matching_rules
+            self.child_expressions |= node.child_expressions
+            return True
+        if not self.children:
+            self.children.append(node)
+            self.child_expressions |= {node.expression}
+        for child in self.children:  # pylint: disable=not-an-iterable
+            success = child.add_child(node)
+            if success:
+                self.child_expressions |= {node.expression}
+                return True
+        return False
 
-    @property
-    def child_expressions(self):
-        return {child.expression: None for child in self.children}
+    def add_rule(self, rule_filters: list, rule: Rule) -> None:
+        for parsed_rule in rule_filters:
+            end_node = self._add_parsed_rule(parsed_rule)
+            if rule not in end_node.matching_rules:
+                end_node.matching_rules += (rule,)

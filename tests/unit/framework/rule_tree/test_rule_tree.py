@@ -32,12 +32,11 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        node = rule_tree.root.children.popitem()[0]
-        assert node.expression == Exists("winlog")
-        node = node.children.popitem()[0]
-        assert node.expression == StringFilterExpression("winlog", "123")
-        assert rule in node.matching_rules
-        assert len(node.matching_rules) == 1
+        assert rule_tree.root.children[0].expression == Exists("winlog")
+        assert rule_tree.root.children[0].children[0].expression == StringFilterExpression(
+            "winlog", "123"
+        )
+        assert rule_tree.root.children[0].children[0].matching_rules == [rule]
 
         rule = PreDetectorRule._create_from_dict(
             {
@@ -53,12 +52,13 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        node = rule_tree.root.children.popitem()[0].children.popitem()[0].children.popitem()[0]
-        assert node.expression == Exists("xfoo")
-        node = node.children.popitem()[0]
-        assert node.expression == StringFilterExpression("xfoo", "bar")
-        assert rule in node.matching_rules
-        assert len(node.matching_rules) == 1
+        assert rule_tree.root.children[0].children[0].children[0].expression == Exists("xfoo")
+        assert rule_tree.root.children[0].children[0].children[0].children[
+            0
+        ].expression == StringFilterExpression("xfoo", "bar")
+        assert rule_tree.root.children[0].children[0].children[0].children[0].matching_rules == [
+            rule
+        ]
 
     def test_match_simple(self):
         rule_tree = RuleTree()

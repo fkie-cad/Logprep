@@ -72,7 +72,7 @@ class FilterExpression(ABC):
         return True
 
     def __hash__(self) -> int:
-        return super().__hash__()
+        return hash(repr(self))
 
 
 class Always(FilterExpression):
