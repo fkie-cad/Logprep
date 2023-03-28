@@ -103,6 +103,7 @@ class BaseProcessorTestCase(ABC):
         while len(self.patchers) > 0:
             patcher = self.patchers.pop()
             patcher.stop()
+        self.object.shut_down()
 
     def test_is_a_processor_implementation(self):
         assert isinstance(self.object, Processor)
@@ -348,3 +349,8 @@ class BaseProcessorTestCase(ABC):
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
         with pytest.raises(requests.HTTPError):
             Factory.create({"test instance": config}, self.logger)
+
+    def test_shut_down_calls_super_shut_down(self):
+        with mock.patch("logprep.abc.processor.Processor.shut_down") as mock_shutdown:
+            self.object.shut_down()
+            mock_shutdown.assert_called()

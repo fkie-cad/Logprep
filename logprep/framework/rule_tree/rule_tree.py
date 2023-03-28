@@ -4,6 +4,7 @@ from collections import ChainMap
 from functools import reduce
 from logging import Logger
 from typing import List, TYPE_CHECKING
+from multiprocessing.pool import ThreadPool
 
 import numpy as np
 from attr import define, Factory
@@ -184,17 +185,15 @@ class RuleTree:
 
         def _retrieve_matching_rules(matches: dict["Rule", None], current_node: Node) -> dict:
             """Recursively iterate through the rule tree to retrieve matching rules."""
-            if matching_childs := (
-                child for child in current_node.children if child.does_match(event)
-            ):
-                return {
-                    **matches,
-                    **current_node.matching_rules,
-                    **reduce(_retrieve_matching_rules, (matches, *matching_childs)),
-                }
-            return matches
+            matching_childs = (
+                child for child in current_node.children if child.expression.matches(event)
+            )
+            return reduce(
+                _retrieve_matching_rules, (matches | current_node.matching_rules, *matching_childs)
+            )
 
-        return _retrieve_matching_rules({}, self.root)
+        matching_childs = (child for child in self.root.children if child.expression.matches(event))
+        return reduce(_retrieve_matching_rules, ({}, *matching_childs))
 
     def print(self, current_node: Node = None, depth: int = 1):
         """Print rule tree to console.

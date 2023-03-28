@@ -24,30 +24,6 @@ class Node:
     def __eq__(self, node: "Node") -> bool:
         return self is node
 
-    def does_match(self, event: dict):
-        """Check if node matches given event.
-
-        This function checks if the node's filter expression matches a given event dict.
-
-        If the filter expression's key to be checked does not exist in the given event,
-        the KeyDoesNotExistError is caught and False is returned.
-
-        Parameters
-        ----------
-        event: dict
-            Event dictionary to be checked.
-
-        Returns
-        -------
-        matches: bool
-            Decision if the given event matches the node's filter expression.
-
-        """
-        try:
-            return self.expression.does_match(event)
-        except KeyDoesNotExistError:
-            return False
-
     def add_child(self, node: "Node"):
         """Add child to node.
 

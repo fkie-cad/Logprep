@@ -295,3 +295,6 @@ class Processor(Component):
         )
         if not add_successful:
             raise DuplicationError(self.name, [rule.target_field])
+
+    def shut_down(self):
+        super().shut_down()

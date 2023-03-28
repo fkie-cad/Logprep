@@ -564,3 +564,20 @@ class TestRuleTree:
     def test_rule_tree_metrics_mean_processing_time_returns_zero_if_no_times_available(self):
         rule_tree = RuleTree()
         assert rule_tree.metrics.mean_processing_time == 0.0
+
+    def test_no_rules_for_empty_documents(self):
+        rule_tree = RuleTree()
+        rule = PreDetectorRule._create_from_dict(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        rule_tree.add_rule(rule)
+        assert not rule_tree.get_matching_rules({})

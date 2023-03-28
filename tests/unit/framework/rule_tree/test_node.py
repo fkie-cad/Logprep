@@ -17,7 +17,7 @@ class TestNode:
 
         event = {"foo": "bar"}
 
-        assert node.does_match(event)
+        assert node.expression.matches(event)
 
     def test_does_match_returns_false_as_expected(self):
         expression = StringFilterExpression("foo", "bar")
@@ -25,7 +25,7 @@ class TestNode:
 
         event = {"bar": "foo"}
 
-        assert not node.does_match(event)
+        assert not node.expression.matches(event)
 
     def test_add_child(self):
         expression_end = StringFilterExpression("foo", "bar")

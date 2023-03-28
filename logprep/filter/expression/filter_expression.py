@@ -29,7 +29,7 @@ class FilterExpression(ABC):
 
         """
         try:
-            return self.does_match(document)
+            return self.does_match(document) if document else False
         except KeyDoesNotExistError:
             return False
 

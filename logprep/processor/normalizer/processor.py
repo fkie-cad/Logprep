@@ -380,5 +380,6 @@ class Normalizer(Processor):
         Stop processing of this processor and finish outstanding actions.
         Optional: Called when stopping the pipeline
         """
+        super().shut_down()
         if self._count_grok_pattern_matches:
             self._write_grok_matches()
