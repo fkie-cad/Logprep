@@ -1,6 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 import re
-from functools import partial, reduce
+from functools import lru_cache, partial, reduce
 from os import remove
 from typing import Optional, Union
 
@@ -113,12 +113,12 @@ class KeyDoesNotExistError(Exception):
     """Raise if key does not exist in document."""
 
 
-strict_error_pattern = re.compile("doesn't apply to a 'str' object")
+strict_error_pattern = re.compile("string indices must be integers")
 
 
 def _get_item(items, item, strict=False):
     try:
-        return dict.__getitem__(items, item)
+        return items[item]
     except TypeError as error:
         if strict and re.search(strict_error_pattern, error.args[0]):
             raise KeyDoesNotExistError from error
