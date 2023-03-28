@@ -103,6 +103,7 @@ class TestMetricExposer:
         metrics = self.exposer._aggregate_metrics()
         expected_metrics = {
             "logprep_number_of_rules;type:tree": 0,
+            "logprep_size;type:tree": 0,
             "logprep_number_of_matches;type:tree": 3,
             "logprep_mean_processing_time;type:tree": 1.5,
         }

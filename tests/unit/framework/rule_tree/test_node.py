@@ -37,24 +37,3 @@ class TestNode:
 
         assert node_start.children == {node_end: None}
         assert node_start.children.popitem()[0].expression == expression_end
-
-    def test_has_child_with_expression(self):
-        expression_end = StringFilterExpression("foo", "bar")
-
-        node_start = Node(None)
-        node_end = Node(expression_end)
-
-        node_start.add_child(node_end)
-
-        assert node_start.has_child_with_expression(StringFilterExpression("foo", "bar"))
-        assert not node_start.has_child_with_expression(StringFilterExpression("foooo", "baaar"))
-
-    def test_get_child_with_expression(self):
-        expression_end = StringFilterExpression("foo", "bar")
-
-        node_start = Node(None)
-        node_end = Node(expression_end)
-
-        node_start.add_child(node_end)
-
-        assert node_start.get_child_with_expression(expression_end) == node_end

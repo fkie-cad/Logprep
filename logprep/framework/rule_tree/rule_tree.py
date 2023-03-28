@@ -1,10 +1,8 @@
 """This module contains the rule tree functionality."""
 
-from collections import ChainMap
 from functools import reduce
 from logging import Logger
 from typing import List, TYPE_CHECKING
-from multiprocessing.pool import ThreadPool
 
 import numpy as np
 from attr import define, Factory
@@ -29,6 +27,9 @@ class RuleTree:
         """Number of rules configured in the current rule tree"""
         rules: List["Rule.RuleMetrics"] = Factory(list)
         """List of rule metrics"""
+
+        size: int = 0
+        """Number of Nodes in the rule tree"""
 
         # pylint: disable=not-an-iterable
         # pylint: disable=protected-access
@@ -70,10 +71,7 @@ class RuleTree:
             metric_labels = {"component": "rule_tree"}
         self.metrics = self.RuleTreeMetrics(labels=metric_labels)
 
-        if root:
-            self._root = root
-        else:
-            self._root = Node("root")
+        self.root = root if root else Node("root")
 
     def _setup(self):
         """Basic setup of rule tree.
@@ -151,12 +149,12 @@ class RuleTree:
         current_node = self.root
 
         for expression in parsed_rule:
-            if current_node.has_child_with_expression(expression):
-                current_node = current_node.get_child_with_expression(expression)
+            if expression in current_node.child_expressions:
                 continue
             new_node = Node(expression)
             current_node.add_child(new_node)
             current_node = new_node
+            self.metrics.size += 1
 
         return current_node
 
@@ -213,7 +211,7 @@ class RuleTree:
 
         """
         if not current_node:
-            current_node = self._root
+            current_node = self.root
 
         for child in current_node.children:
             print(
@@ -226,46 +224,10 @@ class RuleTree:
 
             self.print(child, depth + 1)
 
-    def get_size(self, current_node: Node = None) -> int:
-        """Get size of tree.
-
-        Count all nodes in the rule tree by recursively iterating through it and return the result.
-
-        Parameters
-        ----------
-        current_node: Node
-            Tree node that is currently looked at in the recursive counting process.
-
-        Returns
-        -------
-        size: int
-            Size of the rule tree, i.e. the number of nodes in it.
-
-        """
-        if not current_node:
-            current_node = self._root
-
-        size = 0
-        size += len(current_node.children)
-
-        for child in current_node.children:
-            size += self.get_size(child)
-
-        return size
-
-    def _get_rules_as_list(self) -> List["Rule"]:
-        """get all rules
-        Returns
-        -------
-        rules: List[Rule]
-        """
-
+    @property
+    def rules(self):  # pylint: disable=missing-docstring
         return list(self._rule_mapping)
 
     @property
-    def rules(self):  # pylint: disable=missing-docstring
-        return self._get_rules_as_list()
-
-    @property
-    def root(self) -> Node:  # pylint: disable=missing-docstring
-        return self._root
+    def size(self) -> int:
+        return self.metrics.size

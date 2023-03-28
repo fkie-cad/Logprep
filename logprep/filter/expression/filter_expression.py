@@ -1,9 +1,10 @@
 """This module contains all filter expressions used for matching rules."""
 
-from typing import List, Any
 import re
-from itertools import chain, zip_longest
 from abc import ABC, abstractmethod
+from itertools import chain, zip_longest
+from typing import Any, List
+
 from logprep.util.helper import KeyDoesNotExistError, get_dotted_field_value
 
 
@@ -58,6 +59,9 @@ class FilterExpression(ABC):
         if not self.__dict__ == other.__dict__:
             return False
         return True
+
+    def __hash__(self) -> int:
+        return super().__hash__()
 
 
 class Always(FilterExpression):

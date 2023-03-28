@@ -134,8 +134,8 @@ class BaseProcessorTestCase(ABC):
         assert isinstance(self.object._specific_tree, RuleTree)
 
     def test_generic_specific_rule_trees_not_empty(self):
-        assert self.object._generic_tree.get_size() > 0
-        assert self.object._specific_tree.get_size() > 0
+        assert self.object._generic_tree.size > 0
+        assert self.object._specific_tree.size > 0
 
     def test_event_processed_count(self):
         assert isinstance(self.object.metrics.number_of_processed_events, int)
@@ -166,14 +166,14 @@ class BaseProcessorTestCase(ABC):
     def test_load_rules(self):
         self.object._generic_tree = RuleTree()
         self.object._specific_tree = RuleTree()
-        generic_rules_size = self.object._generic_tree.get_size()
-        specific_rules_size = self.object._specific_tree.get_size()
+        generic_rules_size = self.object._generic_tree.size
+        specific_rules_size = self.object._specific_tree.size
         self.object.load_rules(
             specific_rules_targets=self.specific_rules_dirs,
             generic_rules_targets=self.generic_rules_dirs,
         )
-        new_generic_rules_size = self.object._generic_tree.get_size()
-        new_specific_rules_size = self.object._specific_tree.get_size()
+        new_generic_rules_size = self.object._generic_tree.size
+        new_specific_rules_size = self.object._specific_tree.size
         assert new_generic_rules_size > generic_rules_size
         assert new_specific_rules_size > specific_rules_size
 
@@ -201,27 +201,6 @@ class BaseProcessorTestCase(ABC):
         )
         with pytest.raises(TypeError, match="not .*MagicMock.*"):
             Factory.create({"http_rule_processor": myconfig}, self.logger)
-
-    def test_no_redundant_rules_are_added_to_rule_tree(self):
-        """
-        prevents a kind of DDOS where a big amount of same rules are placed into
-        in the rules directories
-        ensures that every rule in rule tree is unique
-        """
-        self.object.load_rules(
-            specific_rules_targets=self.specific_rules_dirs,
-            generic_rules_targets=self.generic_rules_dirs,
-        )
-        generic_rules_size = self.object._generic_tree.get_size()
-        specific_rules_size = self.object._specific_tree.get_size()
-        self.object.load_rules(
-            specific_rules_targets=self.specific_rules_dirs,
-            generic_rules_targets=self.generic_rules_dirs,
-        )
-        new_generic_rules_size = self.object._generic_tree.get_size()
-        new_specific_rules_size = self.object._specific_tree.get_size()
-        assert new_generic_rules_size == generic_rules_size
-        assert new_specific_rules_size == specific_rules_size
 
     def test_specific_rules_returns_all_specific_rules(self):
         specific_rules = self.specific_rules

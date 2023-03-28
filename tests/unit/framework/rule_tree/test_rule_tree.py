@@ -383,53 +383,6 @@ class TestRuleTree:
             rule: None,
         }
 
-    def test_get_size(self):
-        rule_tree = RuleTree()
-        rule = PreDetectorRule._create_from_dict(
-            {
-                "filter": "winlog: 123",
-                "pre_detector": {
-                    "id": 1,
-                    "title": "1",
-                    "severity": "0",
-                    "case_condition": "directly",
-                    "mitre": [],
-                },
-            }
-        )
-        rule_tree.add_rule(rule)
-        assert rule_tree.get_size() == 2
-
-        rule = PreDetectorRule._create_from_dict(
-            {
-                "filter": "winlog: 123 AND xfoo: bar",
-                "pre_detector": {
-                    "id": 1,
-                    "title": "1",
-                    "severity": "0",
-                    "case_condition": "directly",
-                    "mitre": [],
-                },
-            }
-        )
-        rule_tree.add_rule(rule)
-        assert rule_tree.get_size() == 4
-
-        rule = PreDetectorRule._create_from_dict(
-            {
-                "filter": "winlog: 123 AND xfoo: foo",
-                "pre_detector": {
-                    "id": 1,
-                    "title": "1",
-                    "severity": "0",
-                    "case_condition": "directly",
-                    "mitre": [],
-                },
-            }
-        )
-        rule_tree.add_rule(rule)
-        assert rule_tree.get_size() == 5
-
     def test_get_rules_as_list(self):
         rule_tree = RuleTree()
         rules = [
@@ -471,7 +424,7 @@ class TestRuleTree:
             ),
         ]
         _ = [rule_tree.add_rule(rule) for rule in rules]
-        rules_from_rule_tree = rule_tree._get_rules_as_list()
+        rules_from_rule_tree = rule_tree.rules
         assert len(rules_from_rule_tree) == 3
         for rule in rules:
             assert rule in rules_from_rule_tree
@@ -581,3 +534,22 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
         assert not rule_tree.get_matching_rules({})
+
+    def test_adding_rule_twice_does_not_change_size(self):
+        rule_tree = RuleTree()
+        rule = PreDetectorRule._create_from_dict(
+            {
+                "filter": "*",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        rule_tree.add_rule(rule)
+        assert rule_tree.size == 1
+        rule_tree.add_rule(rule)
+        assert rule_tree.size == 1

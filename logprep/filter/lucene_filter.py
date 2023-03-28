@@ -80,26 +80,22 @@ require additional options.
     - ip_address
 """
 
-from typing import List, Union, Optional
 import re
 from itertools import chain, zip_longest
+from typing import List, Optional, Union
 
 import luqum
-from luqum.parser import parser, ParseSyntaxError, IllegalCharacterError
-from luqum.tree import OrOperation, AndOperation, Group, FieldGroup, SearchField, Phrase, Word, Not
+from luqum.parser import IllegalCharacterError, ParseSyntaxError, parser
+from luqum.tree import AndOperation, FieldGroup, Group, Not, OrOperation, Phrase, SearchField, Word
 
+from logprep.filter.expression.filter_expression import Always, And, Exists, FilterExpression
+from logprep.filter.expression.filter_expression import Not as NotExpression
 from logprep.filter.expression.filter_expression import (
-    Or,
-    And,
-    StringFilterExpression,
-    WildcardStringFilterExpression,
-    SigmaFilterExpression,
-    RegExFilterExpression,
-    Not as NotExpression,
-    Exists,
     Null,
-    Always,
-    FilterExpression,
+    Or,
+    RegExFilterExpression,
+    SigmaFilterExpression,
+    StringFilterExpression,
 )
 
 

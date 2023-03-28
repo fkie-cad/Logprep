@@ -217,11 +217,13 @@ class TestMetricFileTarget:
                             "rule_tree": {
                                 "generic": {
                                     "logprep_number_of_rules": 0.0,
+                                    "logprep_size": 0.0,
                                     "logprep_number_of_matches": 5.0,
                                     "logprep_mean_processing_time": 0.0,
                                 },
                                 "specific": {
                                     "logprep_number_of_rules": 0.0,
+                                    "logprep_size": 0.0,
                                     "logprep_number_of_matches": 0.0,
                                     "logprep_mean_processing_time": 0.0,
                                 },
@@ -235,11 +237,13 @@ class TestMetricFileTarget:
                             "rule_tree": {
                                 "generic": {
                                     "logprep_number_of_rules": 0.0,
+                                    "logprep_size": 0.0,
                                     "logprep_number_of_matches": 0.0,
                                     "logprep_mean_processing_time": 0.0,
                                 },
                                 "specific": {
                                     "logprep_number_of_rules": 0.0,
+                                    "logprep_size": 0.0,
                                     "logprep_number_of_matches": 0.0,
                                     "logprep_mean_processing_time": 0.0,
                                 },
@@ -285,6 +289,7 @@ class TestMetricFileTarget:
         exposed_json = self.target._convert_metrics_to_pretty_json(stripped_metrics)
         expected_json = {
             "logprep_number_of_rules": 0.0,
+            "logprep_size": 0.0,
             "logprep_number_of_matches": 0.0,
             "logprep_mean_processing_time": 0.0,
         }
@@ -387,13 +392,31 @@ class TestPrometheusMetricTarget:
         self.target.expose(pipeline_metrics.expose())
         mock_labels.assert_has_calls(
             [
-                mock.call(pipeline="pipeline-01", processor="generic_adder"),
+                mock.call(pipeline="pipeline-01", connector="input"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", connector="input"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", connector="input"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", connector="input"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", connector="output"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", connector="output"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", connector="output"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", connector="output"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", processor="generic_adder"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="generic"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="generic"),
                 mock.call().set(0.0),
@@ -407,6 +430,8 @@ class TestPrometheusMetricTarget:
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="specific"),
                 mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="specific"),
+                mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer"),
@@ -420,6 +445,10 @@ class TestPrometheusMetricTarget:
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
+                mock.call().set(0.0),
+                mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="specific"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="specific"),
                 mock.call().set(0.0),
@@ -485,6 +514,7 @@ class TestPrometheusMetricTarget:
             rules=[rule_metrics_one],
         )
         specific_rule_tree_metrics.number_of_rules = 3
+        specific_rule_tree_metrics.size = 2
         exposed_metrics = specific_rule_tree_metrics.expose()
         stripped_metrics = dict(
             (MetricExposer._strip_key(key, label_name="foo"), value)
@@ -494,6 +524,7 @@ class TestPrometheusMetricTarget:
         mock_labels.assert_has_calls(
             [
                 mock.call(3.0),
+                mock.call(2.0),
                 mock.call(3.0),
                 mock.call(0.0),
                 mock.call(10),
