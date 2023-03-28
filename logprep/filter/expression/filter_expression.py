@@ -3,6 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
+import sys
 from typing import Any, List
 
 from logprep.util.helper import KeyDoesNotExistError, get_dotted_field_value
@@ -126,8 +127,18 @@ class KeyValueBasedFilterExpression(FilterExpression):
     """Base class of filter expressions that match a certain value on a given key."""
 
     def __init__(self, key: str, expected_value: Any):
+        self._intern_segments(key)
         self._key = key
         self._expected_value = expected_value
+
+    def _intern_segments(self, dotted_field: str) -> None:
+        """intern strings to improve dict access
+        see: https://docs.python.org/3/library/sys.html#sys.intern
+        """
+        self._interned_strings = {}
+        for segment in dotted_field.split("."):
+            if segment not in self._interned_strings:
+                self._interned_strings[segment] = sys.intern(segment)
 
     def __repr__(self) -> str:
         return f"{self._key}:{str(self._expected_value)}"

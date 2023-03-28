@@ -1,11 +1,11 @@
 """This module contains helper functions that are shared by different modules."""
 import re
-from functools import lru_cache, partial, reduce
+from functools import partial, reduce
 from os import remove
 from typing import Optional, Union
 
-from colorama import Fore, Back
-from colorama.ansi import AnsiFore, AnsiBack
+from colorama import Back, Fore
+from colorama.ansi import AnsiBack, AnsiFore
 
 
 def color_print_line(
@@ -149,7 +149,6 @@ def get_dotted_field_value(
     dict_: dict, list, str
         The value of the requested dotted field.
     """
-
     fields = [event, *dotted_field.split(".")]
     try:
         return reduce(partial(_get_item, strict=strict), fields)
