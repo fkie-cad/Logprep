@@ -1,9 +1,9 @@
 """This module contains all filter expressions used for matching rules."""
 
 import re
+import sys
 from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
-import sys
 from typing import Any, List
 
 
@@ -320,10 +320,23 @@ class Exists(FilterExpression):
         return f'"{self.dotted_field}"'
 
     def does_match(self, document: dict) -> bool:
-        try:
-            _ = self._get_value(self.key, document)
-        except (KeyError, TypeError):
+        if not self.key:
             return False
+
+        try:
+            current = document
+            for sub_field in self.key:
+                if (
+                    sub_field not in current.keys()
+                ):  # .keys() is important as it is used to "check" for dict
+                    return False
+                current = current[sub_field]
+            # Don't check for dict instance, instead just "try" for better performance
+        except AttributeError as error:
+            if "has no attribute 'keys'" not in error.args[0]:
+                raise error
+            return False
+
         return True
 
 

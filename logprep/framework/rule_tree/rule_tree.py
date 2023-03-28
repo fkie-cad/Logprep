@@ -3,10 +3,10 @@
 from collections import ChainMap
 from functools import reduce
 from logging import Logger
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import numpy as np
-from attr import define, Factory
+from attr import Factory, define
 
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
@@ -177,18 +177,17 @@ class RuleTree:
         matches: List[Rule]
             Set of rules that match the given event.
         """
-        return self._retrieve_matching_rules(event, {}, self.root).keys()
 
-    def _retrieve_matching_rules(
-        self, event: dict, matches: dict["Rule", None], current_node: Node
-    ) -> dict:
-        """Recursively iterate through the rule tree to retrieve matching rules."""
-        if matching_childs := (
-            child for child in current_node.children if child.expression.matches(event)
-        ):
-            for child in matching_childs:
-                matches |= self._retrieve_matching_rules(event, matches, child)
-        return matches | current_node.matching_rules
+        def _retrieve_matching_rules(matches: dict["Rule", None], current_node: Node) -> dict:
+            """Recursively iterate through the rule tree to retrieve matching rules."""
+            if matching_childs := (
+                child for child in current_node.children if child.expression.matches(event)
+            ):
+                for child in matching_childs:
+                    matches |= _retrieve_matching_rules(matches, child)
+            return matches | current_node.matching_rules
+
+        return (rule for rule in _retrieve_matching_rules({}, self.root))
 
     def print(self, current_node: Node = None, depth: int = 1):
         """Print rule tree to console.
