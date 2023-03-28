@@ -6,11 +6,21 @@ from itertools import chain, zip_longest
 import sys
 from typing import Any, List
 
-from logprep.util.helper import get_field_by_list
-
 
 class FilterExpression(ABC):
     """Base class for all filter expression used for matching rules."""
+
+    @staticmethod
+    def _get_value(key: List[str], document: dict) -> Any:
+        if not key:
+            raise KeyError
+
+        current = document
+        for item in key:
+            if item not in current:
+                raise KeyError
+            current = current[item]
+        return current
 
     def matches(self, document: dict) -> bool:
         """Receives a document and returns True if it is matched by the expression.
@@ -152,7 +162,7 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for a string."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self.key)
+        value = self._get_value(self.key, document)
         if isinstance(value, list):
             return any(str(item) == self._expected_value for item in value)
         return str(value) == self._expected_value
@@ -187,7 +197,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         return f"^{regex}$"
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self.key)
+        value = self._get_value(self.key, document)
         if isinstance(value, list):
             return any(self._matcher.match(str(item)) for item in value)
         match_result = self._matcher.match(str(value))
@@ -221,7 +231,7 @@ class IntegerFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for an integer."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self.key)
+        value = self._get_value(self.key, document)
 
         return value == self._expected_value
 
@@ -230,7 +240,7 @@ class FloatFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for a float."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self.key)
+        value = self._get_value(self.key, document)
 
         return value == self._expected_value
 
@@ -254,7 +264,7 @@ class IntegerRangeFilterExpression(RangeBasedFilterExpression):
     """Range based filter expression that matches for integers."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self.key)
+        value = self._get_value(self.key, document)
 
         return self._lower_bound <= value <= self._upper_bound
 
@@ -263,7 +273,7 @@ class FloatRangeFilterExpression(RangeBasedFilterExpression):
     """Range based filter expression that matches for floats."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self.key)
+        value = self._get_value(self.key, document)
 
         return self._lower_bound <= value <= self._upper_bound
 
@@ -293,7 +303,7 @@ class RegExFilterExpression(KeyValueBasedFilterExpression):
         return rf"{flag}^{pattern}{end_token}"
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self.key)
+        value = self._get_value(self.key, document)
         if isinstance(value, list):
             return any(self._matcher.match(str(item)) for item in value)
         return self._matcher.match(str(value)) is not None
@@ -311,8 +321,8 @@ class Exists(FilterExpression):
 
     def does_match(self, document: dict) -> bool:
         try:
-            _ = get_field_by_list(document, self.key)
-        except KeyError:
+            _ = self._get_value(self.key, document)
+        except (KeyError, TypeError):
             return False
         return True
 
@@ -328,5 +338,5 @@ class Null(FilterExpression):
         return f"{self.key}:{None}"
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self.key)
+        value = self._get_value(self.key, document)
         return value is None

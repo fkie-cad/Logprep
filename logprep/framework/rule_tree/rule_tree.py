@@ -179,20 +179,18 @@ class RuleTree:
         """
         if not event:
             return {}
-        matching_rules = self._retrieve_matching_rules(event, {}, self.root)
-        return matching_rules
+        return self._retrieve_matching_rules(event, {}, self.root)
 
     def _retrieve_matching_rules(
         self, event: dict, matches: dict["Rule", None], current_node: Node
     ) -> dict:
         """Recursively iterate through the rule tree to retrieve matching rules."""
-        matches |= current_node.matching_rules
         if matching_childs := (
             child for child in current_node.children if child.expression.matches(event)
         ):
             for child in matching_childs:
                 matches |= self._retrieve_matching_rules(event, matches, child)
-        return matches
+        return matches | current_node.matching_rules
 
     def print(self, current_node: Node = None, depth: int = 1):
         """Print rule tree to console.
