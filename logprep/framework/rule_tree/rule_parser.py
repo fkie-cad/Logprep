@@ -391,21 +391,21 @@ class RuleParser:
         if isinstance(filter_expression, Not):
             try:
                 if isinstance(filter_expression.expression, Exists):
-                    return priority_dict[filter_expression.expression._key]
+                    return priority_dict[filter_expression.expression.dotted_field]
                 elif isinstance(filter_expression.expression, Not):
-                    return priority_dict[filter_expression.expression.expression._key]
+                    return priority_dict[filter_expression.expression.expression.dotted_field]
                 else:
-                    return priority_dict[filter_expression.expression._key]
+                    return priority_dict[filter_expression.expression.dotted_field]
             except KeyError:
                 return RuleParser._sort(filter_expression.expression, priority_dict)
         if isinstance(filter_expression, Exists):
             try:
-                return priority_dict[filter_expression._key]
+                return priority_dict[filter_expression.dotted_field]
             except KeyError:
                 return filter_expression.__repr__()[1:-1]
         else:
             try:
-                return priority_dict[filter_expression._key]
+                return priority_dict[filter_expression.dotted_field]
             except KeyError:
                 return filter_expression.__repr__()
 
@@ -474,17 +474,17 @@ class RuleParser:
 
             for segment in temp_rule:
                 if isinstance(segment, Exists):
-                    if segment._key in tag_map.keys():
-                        RuleParser._add_tag(rule, tag_map[segment._key])
+                    if segment.dotted_field in tag_map.keys():
+                        RuleParser._add_tag(rule, tag_map[segment.dotted_field])
                 elif isinstance(segment, Not):
                     expression = segment.expression
-                    if expression._key in tag_map.keys():
-                        RuleParser._add_tag(rule, tag_map[expression._key])
+                    if expression.dotted_field in tag_map.keys():
+                        RuleParser._add_tag(rule, tag_map[expression.dotted_field])
                 elif isinstance(segment, Always):
                     continue
                 else:
-                    if segment._key in tag_map.keys():
-                        RuleParser._add_tag(rule, tag_map[segment._key])
+                    if segment.dotted_field in tag_map.keys():
+                        RuleParser._add_tag(rule, tag_map[segment.dotted_field])
 
     @staticmethod
     def _add_tag(rule, tag_map_value: str):
@@ -570,7 +570,7 @@ class RuleParser:
                     and not isinstance(segment, Not)
                     and not isinstance(segment, Always)
                 ):
-                    exists_filter = Exists(segment._key)
+                    exists_filter = Exists(segment.dotted_field)
 
                     # Skip if Exists()-filter already exists in Rule. No need to add it twice
                     if exists_filter in parsed_rule:

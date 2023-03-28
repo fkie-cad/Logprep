@@ -127,8 +127,8 @@ class KeyValueBasedFilterExpression(FilterExpression):
     """Base class of filter expressions that match a certain value on a given key."""
 
     def __init__(self, dotted_field: str, expected_value: Any):
-        self._key = dotted_field.split(".")
-        self._dotted_field = dotted_field
+        self.key = dotted_field.split(".")
+        self.dotted_field = dotted_field
         self._intern_segments(dotted_field)
         self._expected_value = expected_value
 
@@ -142,7 +142,7 @@ class KeyValueBasedFilterExpression(FilterExpression):
                 self._interned_strings[segment] = sys.intern(segment)
 
     def __repr__(self) -> str:
-        return f"{self._dotted_field}:{str(self._expected_value)}"
+        return f"{self.dotted_field}:{str(self._expected_value)}"
 
     def does_match(self, document):
         raise NotImplementedError
@@ -152,13 +152,13 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for a string."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self._key, strict=True)
+        value = get_field_by_list(document, self.key, strict=True)
         if isinstance(value, list):
             return any(str(item) == self._expected_value for item in value)
         return str(value) == self._expected_value
 
     def __repr__(self) -> str:
-        return f'{self._dotted_field}:"{self._expected_value}"'
+        return f'{self.dotted_field}:"{self._expected_value}"'
 
 
 class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
@@ -187,7 +187,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         return f"^{regex}$"
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self._key, strict=True)
+        value = get_field_by_list(document, self.key, strict=True)
         if isinstance(value, list):
             return any(self._matcher.match(str(item)) for item in value)
         match_result = self._matcher.match(str(value))
@@ -208,7 +208,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         return "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
     def __repr__(self) -> str:
-        return f'{self._dotted_field}:"{self._expected_value}"'
+        return f'{self.dotted_field}:"{self._expected_value}"'
 
 
 class SigmaFilterExpression(WildcardStringFilterExpression):
@@ -221,7 +221,7 @@ class IntegerFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for an integer."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self._key, strict=True)
+        value = get_field_by_list(document, self.key, strict=True)
 
         return value == self._expected_value
 
@@ -230,7 +230,7 @@ class FloatFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for a float."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self._key, strict=True)
+        value = get_field_by_list(document, self.key, strict=True)
 
         return value == self._expected_value
 
@@ -244,7 +244,7 @@ class RangeBasedFilterExpression(KeyValueBasedFilterExpression):
         self._upper_bound = upper_bound
 
     def __repr__(self) -> str:
-        return f"{self._dotted_field}:[{self._lower_bound} TO {self._upper_bound}]"
+        return f"{self.dotted_field}:[{self._lower_bound} TO {self._upper_bound}]"
 
     def does_match(self, document: dict):
         raise NotImplementedError
@@ -254,7 +254,7 @@ class IntegerRangeFilterExpression(RangeBasedFilterExpression):
     """Range based filter expression that matches for integers."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self._key, strict=True)
+        value = get_field_by_list(document, self.key, strict=True)
 
         return self._lower_bound <= value <= self._upper_bound
 
@@ -263,7 +263,7 @@ class FloatRangeFilterExpression(RangeBasedFilterExpression):
     """Range based filter expression that matches for floats."""
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self._key, strict=True)
+        value = get_field_by_list(document, self.key, strict=True)
 
         return self._lower_bound <= value <= self._upper_bound
 
@@ -277,7 +277,7 @@ class RegExFilterExpression(KeyValueBasedFilterExpression):
         self._matcher = re.compile(self._regex)
 
     def __repr__(self) -> str:
-        return f"{self._dotted_field}:r/{self._regex}/"
+        return f"{self.dotted_field}:r/{self._regex}/"
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
@@ -293,7 +293,7 @@ class RegExFilterExpression(KeyValueBasedFilterExpression):
         return rf"{flag}^{pattern}{end_token}"
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self._key, strict=True)
+        value = get_field_by_list(document, self.key, strict=True)
         if isinstance(value, list):
             return any(self._matcher.match(str(item)) for item in value)
         return self._matcher.match(str(value)) is not None
@@ -304,14 +304,14 @@ class Exists(FilterExpression):
 
     def __init__(self, dotted_field: str):
         self.dotted_field = dotted_field
-        self._key = dotted_field.split(".")
+        self.key = dotted_field.split(".")
 
     def __repr__(self) -> str:
         return f'"{self.dotted_field}"'
 
     def does_match(self, document: dict) -> bool:
         try:
-            _ = get_field_by_list(document, self._key, strict=True)
+            _ = get_field_by_list(document, self.key, strict=True)
         except KeyDoesNotExistError:
             return False
         return True
@@ -322,11 +322,11 @@ class Null(FilterExpression):
 
     def __init__(self, dotted_field: str):
         self.dotted_field = dotted_field
-        self._key = dotted_field.split(".")
+        self.key = dotted_field.split(".")
 
     def __repr__(self) -> str:
-        return f"{self._key}:{None}"
+        return f"{self.key}:{None}"
 
     def does_match(self, document: dict) -> bool:
-        value = get_field_by_list(document, self._key, strict=True)
+        value = get_field_by_list(document, self.key, strict=True)
         return value is None
