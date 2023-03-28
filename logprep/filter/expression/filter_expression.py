@@ -267,11 +267,11 @@ class FloatRangeFilterExpression(RangeBasedFilterExpression):
         return self._lower_bound <= value <= self._upper_bound
 
 
-class RegExFilterExpression(FilterExpression):
+class RegExFilterExpression(KeyValueBasedFilterExpression):
     """Filter expression that matches a value using regex."""
 
     def __init__(self, key: str, regex: str):
-        self._key = key
+        super().__init__(key, regex)
         self._regex = self._normalize_regex(regex)
         self._matcher = re.compile(self._regex)
 

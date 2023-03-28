@@ -311,7 +311,7 @@ class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
         ],
     )
     def test_regex_normalizes_regex(self, filter_expression, expected_expression):
-        _filter = RegExFilterExpression(["key1", "key2"], filter_expression)
+        _filter = RegExFilterExpression("key1.key2", filter_expression)
         assert _filter._regex == expected_expression
 
 
