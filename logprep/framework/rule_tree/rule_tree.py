@@ -1,5 +1,6 @@
 """This module contains the rule tree functionality."""
 
+from collections import ChainMap
 from functools import reduce
 from logging import Logger
 from typing import List, TYPE_CHECKING
@@ -160,40 +161,38 @@ class RuleTree:
 
     def get_matching_rules(self, event: dict) -> List["Rule"]:
         """Get all rules in the tree that match given event.
-
         This function gets all rules that were added to the rule tree that match a given event.
-
         When this function is called for the first time during the recursive matching process,
         the current node is assigned the tree root and the matching rules are initiated with an
         empty list. Subsequently, all children nodes of the current node are checked if they match
         the event. If a child node matches, all children of this child node are checked recursively.
         Also, if the matching child node has a matching rule, the matching rule is added to the
         matches.
-
         Parameters
         ----------
         event: dict
             Event dictionary that is used to check rules.
-
         Returns
         -------
-        matches: Dict[Rule, None]
+        matches: List[Rule]
             Set of rules that match the given event.
         """
         if not event:
             return {}
+        matching_rules = self._retrieve_matching_rules(event, {}, self.root)
+        return matching_rules
 
-        def _retrieve_matching_rules(matches: dict["Rule", None], current_node: Node) -> dict:
-            """Recursively iterate through the rule tree to retrieve matching rules."""
-            matching_childs = (
-                child for child in current_node.children if child.expression.matches(event)
-            )
-            return reduce(
-                _retrieve_matching_rules, (matches | current_node.matching_rules, *matching_childs)
-            )
-
-        matching_childs = (child for child in self.root.children if child.expression.matches(event))
-        return reduce(_retrieve_matching_rules, ({}, *matching_childs))
+    def _retrieve_matching_rules(
+        self, event: dict, matches: dict["Rule", None], current_node: Node
+    ) -> dict:
+        """Recursively iterate through the rule tree to retrieve matching rules."""
+        matches |= current_node.matching_rules
+        if matching_childs := (
+            child for child in current_node.children if child.expression.matches(event)
+        ):
+            for child in matching_childs:
+                matches |= self._retrieve_matching_rules(event, matches, child)
+        return matches
 
     def print(self, current_node: Node = None, depth: int = 1):
         """Print rule tree to console.
