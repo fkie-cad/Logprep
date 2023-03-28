@@ -26,7 +26,7 @@ from logprep.filter.expression.filter_expression import (
 
 class TestAlways:
     def setup_class(self):
-        self.documents = [{}, {"key": "value"}, {"integer": 42}]
+        self.documents = [{"key": "value"}, {"integer": 42}]
 
     def test_string_representation(self):
         assert str(Always(True)) == "TRUE"
@@ -59,11 +59,11 @@ class TestNot:
 
     def test_a_true_becomes_false(self):
         not_filter = Not(Always(True))
-        assert not not_filter.matches({})
+        assert not not_filter.matches({"test": "message"})
 
     def test_a_false_becomes_true(self):
         not_filter = Not(Always(False))
-        assert not_filter.matches({})
+        assert not_filter.matches({"test": "message"})
 
 
 class TestAnd:
@@ -78,20 +78,20 @@ class TestAnd:
 
     def test_a_single_false_is_false(self):
         and_filter = And(Always(False))
-        assert not and_filter.matches({})
+        assert not and_filter.matches({"test": "message"})
 
     def test_a_single_true_is_true(self):
         and_filter = And(Always(True))
-        assert and_filter.matches({})
+        assert and_filter.matches({"test": "message"})
 
     def test_matches_two_bit_truth_table(self):
         for left in [True, False]:
             for right in [True, False]:
                 and_filter = And(Always(left), Always(right))
                 if left and right:
-                    assert and_filter.matches({})
+                    assert and_filter.matches({"test": "message"})
                 else:
-                    assert not and_filter.matches({})
+                    assert not and_filter.matches({"test": "message"})
 
     def test_matches_three_bit_truth_table(self):
         for left in [True, False]:
@@ -99,9 +99,9 @@ class TestAnd:
                 for right in [True, False]:
                     and_filter = And(Always(left), Always(center), Always(right))
                     if left and center and right:
-                        assert and_filter.matches({})
+                        assert and_filter.matches({"test": "message"})
                     else:
-                        assert not and_filter.matches({})
+                        assert not and_filter.matches({"test": "message"})
 
 
 class TestOr:
@@ -116,20 +116,20 @@ class TestOr:
 
     def test_a_single_false_is_false(self):
         or_filter = Or(Always(False))
-        assert not or_filter.matches({})
+        assert not or_filter.matches({"test": "message"})
 
     def test_a_single_true_is_true(self):
         or_filter = Or(Always(True))
-        assert or_filter.matches({})
+        assert or_filter.matches({"test": "message"})
 
     def test_matches_two_bit_truth_table(self):
         for left in [True, False]:
             for right in [True, False]:
                 or_filter = Or(Always(left), Always(right))
                 if (not left) and (not right):
-                    assert not or_filter.matches({})
+                    assert not or_filter.matches({"test": "message"})
                 else:
-                    assert or_filter.matches({})
+                    assert or_filter.matches({"test": "message"})
 
     def test_matches_three_bit_truth_table(self):
         for left in [True, False]:
@@ -137,9 +137,9 @@ class TestOr:
                 for right in [True, False]:
                     or_filter = Or(Always(left), Always(center), Always(right))
                     if (not left) and (not center) and (not right):
-                        assert not or_filter.matches({})
+                        assert not or_filter.matches({"test": "message"})
                     else:
-                        assert or_filter.matches({})
+                        assert or_filter.matches({"test": "message"})
 
 
 class ValueBasedFilterExpressionTest:

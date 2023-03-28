@@ -182,6 +182,8 @@ class RuleTree:
         matches: Dict[Rule, None]
             Set of rules that match the given event.
         """
+        if not event:
+            return {}
 
         def _retrieve_matching_rules(matches: dict["Rule", None], current_node: Node) -> dict:
             """Recursively iterate through the rule tree to retrieve matching rules."""

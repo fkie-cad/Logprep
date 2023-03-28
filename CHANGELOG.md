@@ -11,6 +11,7 @@
 
 * refactor `FilterExpressions`, `RuleTree`, `RuleParser`
 * use `get_dotted_field` function in `FilterExpressions`
+* change behavior of `RuleTree` that it won't return rules for empty documents
 
 ## v6.0.0
 
