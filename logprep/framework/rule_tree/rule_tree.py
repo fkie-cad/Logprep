@@ -177,9 +177,7 @@ class RuleTree:
         matches: List[Rule]
             Set of rules that match the given event.
         """
-        if not event:
-            return {}
-        return self._retrieve_matching_rules(event, {}, self.root)
+        return self._retrieve_matching_rules(event, {}, self.root).keys()
 
     def _retrieve_matching_rules(
         self, event: dict, matches: dict["Rule", None], current_node: Node
