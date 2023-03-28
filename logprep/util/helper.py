@@ -130,6 +130,25 @@ def _get_item(items, item, strict=False):
         return list.__getitem__(items, item)
 
 
+def split_dotted_field(dotted_field: str) -> list:
+    return dotted_field.split(".")
+
+
+def get_field_by_list(event: dict, keys: list, strict=False):
+    try:
+        return reduce(partial(_get_item, strict=strict), (event, *keys))
+    except KeyError as error:
+        if strict:
+            raise KeyDoesNotExistError from error
+        return None
+    except ValueError:
+        return None
+    except TypeError:
+        return None
+    except IndexError:
+        return None
+
+
 def get_dotted_field_value(
     event: dict, dotted_field: str, strict: bool = False
 ) -> Optional[Union[dict, list, str]]:
@@ -149,19 +168,7 @@ def get_dotted_field_value(
     dict_: dict, list, str
         The value of the requested dotted field.
     """
-    fields = [event, *dotted_field.split(".")]
-    try:
-        return reduce(partial(_get_item, strict=strict), fields)
-    except KeyError as error:
-        if strict:
-            raise KeyDoesNotExistError from error
-        return None
-    except ValueError:
-        return None
-    except TypeError:
-        return None
-    except IndexError:
-        return None
+    return get_field_by_list(event, dotted_field.split("."), strict)
 
 
 def pop_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
