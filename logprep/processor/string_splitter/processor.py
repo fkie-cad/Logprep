@@ -19,10 +19,10 @@ Example
             - tests/testdata/rules/generic/
 """
 
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.string_splitter.rule import StringSplitterRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
 
 
 class StringSplitter(FieldManager):
@@ -36,7 +36,7 @@ class StringSplitter(FieldManager):
         source_field_content = get_dotted_field_value(event, source_field)
         if not isinstance(source_field_content, str):
             raise ProcessingWarning(
-                f"{ self.describe() }: source_field '{source_field}' is not a string"
+                self, f"source_field '{source_field}' is not a string", rule, event
             )
         result = source_field_content.split(rule.delimeter)
         successful = add_field_to(
@@ -47,4 +47,4 @@ class StringSplitter(FieldManager):
             overwrite_output_field=rule.overwrite_target,
         )
         if not successful:
-            raise DuplicationError(self.describe(), target_field)
+            raise FieldExsistsWarning(self, rule, event, [target_field])

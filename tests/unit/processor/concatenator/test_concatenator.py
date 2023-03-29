@@ -2,7 +2,7 @@
 # pylint: disable=protected-access
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -163,12 +163,7 @@ class TestConcatenator(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-            r"written, because one or more subfields existed and could not be extended: "
-            r"target_field\)",
-        ):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"

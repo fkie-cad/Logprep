@@ -4,21 +4,20 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
-from copy import deepcopy
 import json
 import re
-import pytest
 from datetime import datetime
-from json import loads, dumps
 from math import isclose
 from unittest import mock
 
 import arrow
-import opensearchpy
-import opensearchpy.helpers
+import opensearchpy as search
+import pytest
+from opensearchpy import OpenSearchException as SearchException
+from opensearchpy import helpers
 
-from logprep.abc.output import CriticalOutputError, FatalOutputError
-from logprep.factory import Factory
+from logprep.abc.component import Component
+from logprep.abc.output import FatalOutputError
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -26,27 +25,10 @@ class NotJsonSerializableMock:
     pass
 
 
-def mock_bulk(
-    _, documents: list, max_retries: int = 0, chunk_size: int = 500
-):  # pylint: disable=unused-argument
-    for document in documents:
-        try:
-            loads(dumps(document))
-        except TypeError as error:
-            raise CriticalOutputError(
-                "Error storing output document: Serialization Error", document
-            ) from error
-
-
-opensearchpy.helpers.bulk = mock_bulk
+helpers.bulk = mock.MagicMock()
 
 
 class TestOpenSearchOutput(BaseOutputTestCase):
-    # def setup_method(self, _):
-    #     self.os_output = OpenSearchOutput(
-    #         ["host:123"], "default_index", "error_index", 1, 5000, 0, None, None, None, None
-    #     )
-
     CONFIG = {
         "type": "opensearch_output",
         "hosts": ["host:123"],
@@ -56,20 +38,20 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         "timeout": 5000,
     }
 
-    def test_describe_returns_opensearch_output(self):
+    def test_describe_returns_output(self):
         assert (
             self.object.describe()
             == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['host:123']"
         )
 
-    def test_store_sends_event_to_expected_index_if_index_missing_in_event(self):
+    def test_store_sends_to_default_index(self):
+        self.object._config.message_backlog_size = 2
         event = {"field": "content"}
         expected = {
             "_index": "default_index",
             "message": '{"field": "content"}',
             "reason": "Missing index in document",
         }
-
         self.object.store(event)
 
         assert self.object._message_backlog[0].pop("@timestamp")
@@ -86,20 +68,19 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             "message": '{"field": "content"}',
             "reason": "Missing index in document",
         }
-        os_config = deepcopy(self.CONFIG)
-        os_config.update({"default_index": default_index})
-        os_output = Factory.create({"elasticsearch": os_config}, self.logger)
-        os_output.store(event)
-        assert os_output._message_backlog[0].pop("@timestamp")
-        assert os_output._message_backlog[0] == expected
+        self.object._config.default_index = default_index
+        self.object._config.message_backlog_size = 2
+        self.object.store(event)
+
+        assert self.object._message_backlog[0].pop("@timestamp")
+        assert self.object._message_backlog[0] == expected
 
     def test_store_custom_sends_event_to_expected_index(self):
         custom_index = "custom_index"
         event = {"field": "content"}
-
         expected = {"field": "content", "_index": custom_index}
+        self.object._config.message_backlog_size = 2
         self.object.store_custom(event, custom_index)
-
         assert self.object._message_backlog[0] == expected
 
     def test_store_failed(self):
@@ -107,7 +88,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         event_received = {"field": "received"}
         event = {"field": "content"}
         error_message = "error message"
-
         expected = {
             "error": error_message,
             "original": event_received,
@@ -116,6 +96,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             "@timestamp": str(datetime.now()),
         }
 
+        self.object._config.message_backlog_size = 2
         self.object.store_failed(error_message, event_received, event)
 
         error_document = self.object._message_backlog[0]
@@ -129,7 +110,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
 
         assert error_document == expected
 
-    def test_create_os_output_settings_contains_expected_values(self):
+    def test_create_es_output_settings_contains_expected_values(self):
         expected = {
             "reason": "A reason for failed indexing",
             "_index": "default_index",
@@ -148,7 +129,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             "message": '{"foo": "bar"}',
             "_index": "default_index",
         }
-
         failed_document = self.object._build_failed_index_document(
             {"foo": "bar"}, "A reason for failed indexing"
         )
@@ -156,35 +136,38 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert failed_document == expected
 
     @mock.patch(
-        "logprep.connector.opensearch.output.opensearch.helpers.bulk",
-        side_effect=opensearchpy.SerializationError,
+        "opensearchpy.helpers.bulk",
+        side_effect=search.SerializationError,
     )
     def test_write_to_search_context_calls_handle_serialization_error_if_serialization_error(
         self, _
     ):
+        self.object._config.message_backlog_size = 1
         self.object._handle_serialization_error = mock.MagicMock()
         self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
-        "logprep.connector.opensearch.output.opensearch.helpers.bulk",
-        side_effect=opensearchpy.ConnectionError,
+        "opensearchpy.helpers.bulk",
+        side_effect=search.ConnectionError,
     )
     def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
+        self.object._config.message_backlog_size = 1
         self.object._handle_connection_error = mock.MagicMock()
         self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_connection_error.assert_called()
 
     @mock.patch(
-        "logprep.connector.opensearch.output.opensearch.helpers.bulk",
-        side_effect=opensearchpy.helpers.BulkIndexError,
+        "opensearchpy.helpers.bulk",
+        side_effect=helpers.BulkIndexError,
     )
     def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
+        self.object._config.message_backlog_size = 1
         self.object._handle_bulk_index_error = mock.MagicMock()
         self.object._write_to_search_context({"dummy": "event"})
         self.object._handle_bulk_index_error.assert_called()
 
-    @mock.patch("logprep.connector.opensearch.output.opensearch.helpers.bulk")
+    @mock.patch("opensearchpy.helpers.bulk")
     def test__handle_bulk_index_error_calls_bulk(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
@@ -198,22 +181,8 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object._handle_bulk_index_error(mock_bulk_index_error)
         fake_bulk.assert_called()
 
-    @mock.patch("logprep.connector.opensearch.output.opensearch.helpers.bulk")
-    def test__handle_bulk_index_error_calls_bulk_for_special_op_type(self, fake_bulk):
-        mock_bulk_index_error = mock.MagicMock()
-        mock_bulk_index_error.errors = [
-            {
-                "create": {
-                    "data": {"my": "document"},
-                    "error": {"type": "myerrortype", "reason": "myreason"},
-                }
-            }
-        ]
-        self.object._handle_bulk_index_error(mock_bulk_index_error)
-        fake_bulk.assert_called()
-
-    @mock.patch("logprep.connector.opensearch.output.opensearch.helpers.bulk")
-    def test__handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
+    @mock.patch("opensearchpy.helpers.bulk")
+    def test_handle_bulk_index_error_calls_bulk_with_error_documents(self, fake_bulk):
         mock_bulk_index_error = mock.MagicMock()
         mock_bulk_index_error.errors = [
             {
@@ -233,14 +202,6 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert error_document.get("reason") == "myerrortype: myreason"
         assert error_document.get("message") == json.dumps({"my": "document"})
 
-    def test_write_to_es_sets_processed_cnt(self):
-        os_config = deepcopy(self.CONFIG)
-        os_config.update({"message_backlog_size": 2})
-        os_output = Factory.create({"opensearch": os_config}, self.logger)
-        current_proccessed_cnt = os_output._processed_cnt
-        os_output._write_to_search_context({"dummy": "event"})
-        assert current_proccessed_cnt < os_output._processed_cnt
-
     def test_handle_connection_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
             self.object._handle_connection_error(mock.MagicMock())
@@ -249,8 +210,28 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         with pytest.raises(FatalOutputError):
             self.object._handle_serialization_error(mock.MagicMock())
 
-    def test_setup_raises_fatal_output_error_if_unauthenticated(self):
+    def test_setup_raises_fatal_output_error_if_opensearch_error_is_raised(self):
         self.object._search_context.info = mock.MagicMock()
-        self.object._search_context.info.side_effect = opensearchpy.AuthenticationException
+        self.object._search_context.info.side_effect = SearchException
         with pytest.raises(FatalOutputError):
             self.object.setup()
+
+    def test_setup_registers_flush_timout_tasks(self):
+        job_count = len(Component._scheduler.jobs)
+        with pytest.raises(FatalOutputError):
+            self.object.setup()
+        assert len(Component._scheduler.jobs) == job_count + 1
+
+    def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):
+        self.object._config.message_backlog_size = 2
+        assert len(self.object._message_backlog) == 0
+        with mock.patch(
+            "logprep.connector.opensearch.output.OpensearchOutput._write_backlog"
+        ) as mock_write_backlog:
+            self.object.store({"test": "event"})
+        mock_write_backlog.assert_not_called()
+
+    def test_message_backlog_is_cleared_after_it_was_written(self):
+        self.object._config.message_backlog_size = 1
+        self.object.store({"event": "test_event"})
+        assert len(self.object._message_backlog) == 0

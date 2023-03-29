@@ -4,21 +4,25 @@ from abc import abstractmethod
 from logging import DEBUG, Logger
 from multiprocessing import current_process
 from pathlib import Path
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import Metric, calculate_new_average
-from logprep.processor.base.exceptions import DuplicationError, ProcessingWarning
+from logprep.processor.base.exceptions import (
+    FieldExsistsWarning,
+    ProcessingCriticalError,
+    ProcessingWarning,
+)
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util import getter
 from logprep.util.helper import (
-    add_field_to,
-    pop_dotted_field_value,
-    get_dotted_field_value,
     add_and_overwrite,
+    add_field_to,
+    get_dotted_field_value,
+    pop_dotted_field_value,
 )
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
@@ -201,6 +205,8 @@ class Processor(Component):
             self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
+        except BaseException as error:
+            raise ProcessingCriticalError(self, str(error), event) from error
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:
@@ -271,8 +277,7 @@ class Processor(Component):
                 return False
         return True
 
-    @staticmethod
-    def _handle_warning_error(event, rule, error):
+    def _handle_warning_error(self, event, rule, error):
         tags = get_dotted_field_value(event, "tags")
         if tags is None:
             add_and_overwrite(event, "tags", sorted(list({*rule.failure_tags})))
@@ -280,7 +285,7 @@ class Processor(Component):
             add_and_overwrite(event, "tags", sorted(list({*tags, *rule.failure_tags})))
         if isinstance(error, ProcessingWarning):
             raise error
-        raise ProcessingWarning(str(error)) from error
+        raise ProcessingWarning(self, str(error), rule, event) from error
 
     def _check_for_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
@@ -299,4 +304,4 @@ class Processor(Component):
             overwrite_output_field=rule.overwrite_target,
         )
         if not add_successful:
-            raise DuplicationError(self.name, [rule.target_field])
+            raise FieldExsistsWarning(self, rule, event, [rule.target_field])

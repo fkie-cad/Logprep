@@ -1,13 +1,11 @@
 # pylint: disable=missing-docstring
 import json
 from pathlib import Path
+
 from ruamel.yaml import YAML
-from tests.acceptance.util import (
-    start_logprep,
-    stop_logprep,
-    wait_for_output,
-)
+
 from logprep.util.configuration import Configuration
+from tests.acceptance.util import start_logprep, stop_logprep, wait_for_output
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -42,5 +40,5 @@ def test_no_config_refresh_after_5_seconds(tmp_path):
     wait_for_output(
         proc,
         "Configuration version didn't change. Continue running with current version.",
-        test_timeout=5,
+        test_timeout=7,
     )

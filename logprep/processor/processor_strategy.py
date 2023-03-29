@@ -7,8 +7,7 @@ this could be the order of specific or generic rules
 from abc import ABC, abstractmethod
 from functools import reduce
 from time import time
-from typing import Callable, TYPE_CHECKING
-
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc.processor import Processor

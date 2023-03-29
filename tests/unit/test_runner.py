@@ -11,7 +11,7 @@ from os.path import join, split
 from unittest import mock
 
 from pytest import raises
-from requests.exceptions import SSLError, HTTPError
+from requests.exceptions import HTTPError, SSLError
 
 from logprep.processor.labeler.labeling_schema import LabelingSchemaError
 from logprep.runner import (

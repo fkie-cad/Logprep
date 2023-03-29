@@ -27,21 +27,21 @@ Example
             timer: 0.1
 """
 import json
+import os
 import re
+import time
 from logging import Logger
 from typing import Optional
-import time
-import os
-from filelock import FileLock
 
 from attr import define, field, validators
+from filelock import FileLock
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.factory_error import InvalidConfigurationError
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.factory_error import InvalidConfigurationError
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class GenericAdderError(BaseException):
@@ -243,7 +243,7 @@ class GenericAdder(Processor):
                 conflicting_fields.append(dotted_field)
 
         if conflicting_fields:
-            raise DuplicationError(self.name, conflicting_fields)
+            raise FieldExsistsWarning(self, rule, event, conflicting_fields)
 
     def _try_adding_from_db(self, event: dict, items_to_add: list, rule: GenericAdderRule):
         """Get the sub part of the value from the event using a regex pattern"""

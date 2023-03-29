@@ -1,8 +1,11 @@
-""" abstract module for connectors"""
+""" abstract module for components"""
 from abc import ABC
 from logging import Logger
+from typing import Callable
 
 from attr import define, field, validators
+from schedule import Scheduler
+
 from logprep.util.helper import camel_to_snake
 
 
@@ -20,6 +23,8 @@ class Component(ABC):
     __slots__ = ["name", "_logger", "_config", "__dict__"]
 
     name: str
+    _scheduler = Scheduler()
+
     _logger: Logger
     _config: Config
 
@@ -57,3 +62,36 @@ class Component(ABC):
         Optional: Called when stopping the pipeline
 
         """
+
+    def _schedule_task(
+        self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None
+    ) -> None:
+        """Schedule a task to run periodicly during pipeline run.
+        The task is run in :code:`pipeline.py` in the :code:`process_pipeline` method.
+
+        Parameters
+        ----------
+
+        task: Callable
+            a callable to run
+
+        args: tuple, optional
+            the arguments for the Callable
+
+        kwargs: dict, optional
+            the keyword arguments for the Callable
+
+        seconds: int
+            the time interval in seconds
+
+        """
+        if task in map(lambda job: job.job_func.func, self._scheduler.jobs):
+            return
+        args = () if args is None else args
+        kwargs = {} if kwargs is None else kwargs
+        self._scheduler.every(seconds).seconds.do(task, *args, **kwargs)
+
+    @classmethod
+    def run_pending_tasks(cls) -> None:
+        """Starts all pending tasks. This is called in :code:`pipeline.py`"""
+        cls._scheduler.run_pending()

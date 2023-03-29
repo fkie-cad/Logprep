@@ -173,7 +173,7 @@ class ConfluentKafkaOutput(Output):
             self._producer.flush(timeout=self._config.flush_timeout)
         except BaseException as error:
             raise CriticalOutputError(
-                f"Error storing output document: ({error})", document
+                self, f"Error storing output document -> {error}", document
             ) from error
 
     def store_failed(

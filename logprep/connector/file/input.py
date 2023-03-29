@@ -20,14 +20,15 @@ Example
         watch_file: True
 """
 import queue
-import zlib
 import threading
-from typing import Callable, TextIO
+import zlib
 from logging import Logger
+from typing import Callable, TextIO
+
 from attrs import define, field, validators
+
+from logprep.abc.input import FatalInputError, Input
 from logprep.util.validators import file_validator
-from logprep.abc.input import Input
-from logprep.abc.input import FatalInputError
 
 
 def threadsafe_wrapper(func: Callable):
@@ -49,9 +50,11 @@ def runtime_file_exceptions(func: Callable):
         try:
             func_wrapper = func(*args, **kwargs)
         except FileNotFoundError:
-            return FatalInputError("File that was used in config doesn't exist anymore.")
+            return FatalInputError(args[0], "File that was used in config doesn't exist anymore.")
         except PermissionError:
-            return FatalInputError("The Permissions changed of the File that was used in config.")
+            return FatalInputError(
+                args[0], "The Permissions changed of the File that was used in config."
+            )
         return func_wrapper
 
     return func_wrapper
@@ -324,7 +327,7 @@ class FileInput(Input):
         Initiation"""
         if not hasattr(self, "pipeline_index"):
             raise FatalInputError(
-                "Necessary instance attribute `pipeline_index` could not be found."
+                self, "Necessary instance attribute `pipeline_index` could not be found."
             )
         if self.pipeline_index == 1:
             initial_file_pointer: int = self._get_initial_file_offset(self._config.logfile_path)

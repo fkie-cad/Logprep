@@ -13,12 +13,13 @@ from functools import cached_property
 from logging import INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 from time import time
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import attrs
 import numpy as np
 
 from logprep._version import get_versions
+from logprep.abc.component import Component
 from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
@@ -27,12 +28,17 @@ from logprep.abc.input import (
     SourceDisconnectedError,
     WarningInputError,
 )
-from logprep.abc.output import CriticalOutputError, FatalOutputError, WarningOutputError, Output
+from logprep.abc.output import (
+    CriticalOutputError,
+    FatalOutputError,
+    Output,
+    WarningOutputError,
+)
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.metrics.metric import Metric, calculate_new_average, MetricTargets
+from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
-from logprep.processor.base.exceptions import ProcessingWarning, ProcessingWarningCollection
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.time_measurement import TimeMeasurement
@@ -107,6 +113,31 @@ class SharedCounter:
                         self._logger.info(msg)
                     self._val.value = 0
                     self._timer.value = time() + self._period
+
+
+def _handle_pipeline_error(func):
+    def _inner(self: "Pipeline") -> Any:
+        try:
+            return func(self)
+        except SourceDisconnectedError as error:
+            self.logger.warning(str(error))
+            self.stop()
+        except (WarningOutputError, WarningInputError) as error:
+            self.logger.warning(str(error))
+        except CriticalOutputError as error:
+            self.logger.error(str(error))
+        except (FatalOutputError, FatalInputError) as error:
+            self.logger.error(str(error))
+            self.stop()
+        except CriticalInputError as error:
+            if raw_input := error.raw_input:
+                for _, output in self._output.items():  # pylint: disable=protected-access
+                    if output.default:
+                        output.store_failed(str(self), raw_input, {})
+            self.logger.error(str(error))
+        return None
+
+    return _inner
 
 
 class Pipeline:
@@ -228,7 +259,7 @@ class Pipeline:
             self._metric_targets,
             self._shared_dict,
             self._lock,
-            self._logger,
+            self.logger,
         )
 
     @cached_property
@@ -244,11 +275,9 @@ class Pipeline:
 
     @cached_property
     def _pipeline(self) -> tuple:
-        self._logger.debug(f"Building '{self._process_name}'")
-        pipeline = tuple(
-            (self._create_processor(entry) for entry in self._logprep_config.get("pipeline"))
-        )
-        self._logger.debug(f"Finished building pipeline ({self._process_name})")
+        self.logger.debug(f"Building '{self._process_name}'")
+        pipeline = [self._create_processor(entry) for entry in self._logprep_config.get("pipeline")]
+        self.logger.debug(f"Finished building pipeline ({self._process_name})")
         return pipeline
 
     @cached_property
@@ -261,7 +290,7 @@ class Pipeline:
         for output_name in output_names:
             output_configs[output_name]["metric_labels"] = self._metric_labels
             output_config = output_configs.get(output_name)
-            outputs |= {output_name: Factory.create({output_name: output_config}, self._logger)}
+            outputs |= {output_name: Factory.create({output_name: output_config}, self.logger)}
         return outputs
 
     @cached_property
@@ -274,10 +303,11 @@ class Pipeline:
         input_connector_config[connector_name].update(
             {"version_information": self._event_version_information}
         )
-        return Factory.create(input_connector_config, self._logger)
+        return Factory.create(input_connector_config, self.logger)
 
     @cached_property
-    def _logger(self) -> Logger:
+    def logger(self) -> Logger:
+        """the pipeline logger"""
         if self._log_handler is None:
             return Logger("Pipeline")
         if self._log_handler.level == NOTSET:
@@ -289,37 +319,34 @@ class Pipeline:
 
         return logger
 
+    @_handle_pipeline_error
     def _setup(self):
-        self._logger.debug(f"Creating connectors ({self._process_name})")
+        self.logger.debug(f"Creating connectors ({self._process_name})")
         for _, output in self._output.items():
             output.input_connector = self._input
-        self._logger.debug(
+        self.logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{[output.describe() for _, output in self._output.items()]}' ({self._process_name})"
         )
         self._input.pipeline_index = self.pipeline_index
         self._input.setup()
         for _, output in self._output.items():
-            try:
-                output.setup()
-            except FatalOutputError as error:
-                self._logger.error(f"Output {output.describe()} failed: {error}")
-                output.metrics.number_of_errors += 1
-                self.stop()
+            output.setup()
+
         if hasattr(self._input, "server"):
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
             self._used_server_ports.update({self._input.server.config.port: self._process_name})
-        self._logger.debug(f"Finished creating connectors ({self._process_name})")
+        self.logger.debug(f"Finished creating connectors ({self._process_name})")
 
     def _create_processor(self, entry: dict) -> "Processor":
         processor_name = list(entry.keys())[0]
         entry[processor_name]["metric_labels"] = self._metric_labels
-        processor = Factory.create(entry, self._logger)
+        processor = Factory.create(entry, self.logger)
         processor.setup()
         if self.metrics:
             self.metrics.pipeline.append(processor.metrics)
-        self._logger.debug(f"Created '{processor}' processor ({self._process_name})")
+        self.logger.debug(f"Created '{processor}' processor ({self._process_name})")
         return processor
 
     def run(self) -> None:
@@ -331,7 +358,7 @@ class Pipeline:
             with warnings.catch_warnings():
                 warnings.simplefilter("default")
                 self._setup()
-        self._logger.debug(f"Start iterating ({self._process_name})")
+        self.logger.debug(f"Start iterating ({self._process_name})")
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
                 while self._iterate():
@@ -348,10 +375,12 @@ class Pipeline:
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
 
+    @_handle_pipeline_error
     def process_pipeline(self) -> Tuple[dict, list]:
         """Retrieve next event, process event with full pipeline and store or return results"""
         assert self._input, "Run process_pipeline only with an valid input connector"
         self._metrics_exposer.expose(self.metrics)
+        Component.run_pending_tasks()
         event = self._get_event()
         extra_outputs = []
         if event:
@@ -363,63 +392,24 @@ class Pipeline:
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
             if output.default:
-                try:
-                    output.store(event)
-                    self._logger.debug(f"Stored output in {output_name}")
-                except WarningOutputError as error:
-                    self._logger.warning(
-                        f"An error occurred for output {output.describe()}: {error}"
-                    )
-                    output.metrics.number_of_warnings += 1
-                except CriticalOutputError as error:
-                    msg = f"A critical error occurred for output " f"{output.describe()}: {error}"
-                    self._logger.error(msg)
-                    if error.raw_input:
-                        output.store_failed(msg, error.raw_input, {})
-                    output.metrics.number_of_errors += 1
-                except FatalOutputError as error:
-                    self._logger.error(f"Output {output.describe()} failed: {error}")
-                    output.metrics.number_of_errors += 1
-                    self.stop()
+                output.store(event)
+                self.logger.debug(f"Stored output in {output_name}")
 
     def _get_event(self) -> dict:
+        event, non_critical_error_msg = self._input.get_next(self._logprep_config.get("timeout"))
+        if non_critical_error_msg and self._output:
+            for _, output in self._output.items():
+                if output.default:
+                    output.store_failed(non_critical_error_msg, event, None)
         try:
-            event, non_critical_error_msg = self._input.get_next(
-                self._logprep_config.get("timeout")
-            )
-            if non_critical_error_msg and self._output:
-                for _, output in self._output.items():
-                    if output.default:
-                        output.store_failed(non_critical_error_msg, event, None)
-            try:
-                self.metrics.kafka_offset = self._input.current_offset
-            except AttributeError:
-                pass
-            return event
-        except SourceDisconnectedError:
-            self._logger.warning(
-                f"Lost or failed to establish connection to {self._input.describe()}"
-            )
-            self.stop()
-        except FatalInputError as error:
-            self._logger.error(f"Input {self._input.describe()} failed: {error}")
-            self._input.metrics.number_of_errors += 1
-            self.stop()
-        except WarningInputError as error:
-            self._logger.warning(f"An error occurred for input {self._input.describe()}: {error}")
-            self._input.metrics.number_of_warnings += 1
-        except CriticalInputError as error:
-            msg = f"A critical error occurred for input {self._input.describe()}: {error}"
-            self._logger.error(msg)
-            if error.raw_input:
-                for _, output in self._output.items():
-                    if output.default:
-                        output.store_failed(msg, error.raw_input, {})
-            self._input.metrics.number_of_errors += 1
-        return {}
+            self.metrics.kafka_offset = self._input.current_offset
+        except AttributeError:
+            pass
+        return event
 
     @TimeMeasurement.measure_time("pipeline")
     def process_event(self, event: dict):
+        """process all processors for one event"""
         event_received = json.dumps(event, separators=(",", ":"))
         extra_outputs = []
         for processor in self._pipeline:
@@ -430,20 +420,13 @@ class Pipeline:
                 if extra_data:
                     extra_outputs.append(extra_data)
             except ProcessingWarning as error:
-                self._handle_processing_warning(processor, error)
-            except ProcessingWarningCollection as error:
-                for warning in error.processing_warnings:
-                    self._handle_processing_warning(processor, warning)
-            except BaseException as error:  # pylint: disable=broad-except
-                msg = self._handle_fatal_processing_error(processor, error)
-                if self._output:
-                    for _, output in self._output.items():
-                        if output.default:
-                            output.store_failed(msg, json.loads(event_received), event)
-                processor.metrics.number_of_errors += 1
-                event.clear()  # 'delete' the event, i.e. no regular output
+                self.logger.warning(str(error))
+            except ProcessingCriticalError as error:
+                self.logger.error(str(error))
+                for _, output in self._output.items():
+                    if output.default:
+                        output.store_failed(str(error), json.loads(event_received), event)
             if not event:
-                self._logger.debug(f"Event deleted by processor {processor}")
                 break
         if self._processing_counter:
             self._processing_counter.increment()
@@ -452,26 +435,8 @@ class Pipeline:
             self.metrics.number_of_processed_events += 1
         return extra_outputs
 
-    def _handle_fatal_processing_error(self, processor: Processor, error: Exception) -> str:
-        original_error_msg = type(error).__name__
-        if str(error):
-            original_error_msg += f": {error}"
-        msg = (
-            f"A critical error occurred for processor {processor.describe()} when "
-            f"processing an event, processing was aborted: ({original_error_msg})"
-        )
-        self._logger.error(msg)
-        return msg
-
-    def _handle_processing_warning(self, processor: Processor, error: Exception) -> None:
-        self._logger.warning(
-            f"A non-fatal error occurred for processor {processor.describe()} "
-            f"when processing an event: {error}"
-        )
-        processor.metrics.number_of_warnings += 1
-
     def _store_extra_data(self, extra_data: List[tuple]) -> None:
-        self._logger.debug("Storing extra data")
+        self.logger.debug("Storing extra data")
         if isinstance(extra_data, tuple):
             documents, outputs = extra_data
             for document in documents:

@@ -1,7 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-from copy import deepcopy
 import hashlib
+from copy import deepcopy
 from multiprocessing import current_process
 from os.path import exists
 from pathlib import Path
@@ -10,8 +10,8 @@ from unittest import mock
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -222,13 +222,7 @@ sth.ac.at
     def test_duplication_error(self, _):
         document = {"client": "google.de"}
 
-        # Due to duplication error logprep raises an ProcessingWarning
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-            r"written, because one or more subfields existed and could not be extended: "
-            r"resolved_ip\)",
-        ):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
