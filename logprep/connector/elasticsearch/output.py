@@ -27,7 +27,7 @@ Example
         max_retries:
         user:
         secret:
-        cert: /path/to/cert.crt
+        ca_cert: /path/to/cert.crt
 """
 
 import json
@@ -38,10 +38,12 @@ from logging import Logger
 from typing import List, Optional
 
 import arrow
-import elasticsearch
+import elasticsearch as search
 from attr import define, field
 from attrs import validators
-from elasticsearch import helpers, ElasticsearchException
+from elasticsearch import ElasticsearchException, helpers
+from opensearchpy import OpenSearchException
+from urllib3.exceptions import ConnectTimeoutError
 
 from logprep.abc.output import FatalOutputError, Output
 
@@ -70,34 +72,28 @@ class ElasticsearchOutput(Output):
         error_index: str = field(validator=validators.instance_of(str))
         """Index to write documents to that could not be processed."""
         message_backlog_size: int = field(validator=validators.instance_of(int))
-        """Amount of documents to store before sending them to Elasticsearch."""
+        """Amount of documents to store before sending them."""
         timeout: int = field(validator=validators.instance_of(int), default=500)
-        """Timeout for Elasticsearch connection (default is 500ms)"""
+        """(Optional) Timeout for the connection (default is 500ms)."""
         max_retries: int = field(validator=validators.instance_of(int), default=0)
-        """Maximum number of retries for documents rejected with code 429 (default is 0).
+        """(Optional) Maximum number of retries for documents rejected with code 429 (default is 0).
         Increases backoff time by 2 seconds per try, but never exceeds 600 seconds."""
         user: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """The user used for authentication (optional)."""
+        """(Optional) User used for authentication."""
         secret: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """The secret used for authentication (optional)."""
+        """(Optional) Secret used for authentication."""
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
-        """The path to a SSL ca certificate to verify the ssl context (optional)"""
+        """(Optional) Path to a SSL ca certificate to verify the ssl context."""
+        flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
+        """(Optional) Timout after :code:`message_backlog` is flushed if :code:`message_backlog_size` is not reached."""
 
-    __slots__ = ["_message_backlog", "_processed_cnt", "_index_cache"]
+    __slots__ = ["_message_backlog"]
 
     _message_backlog: List
 
-    _processed_cnt: int
-
-    _index_cache: dict
-
     def __init__(self, name: str, configuration: "ElasticsearchOutput.Config", logger: Logger):
         super().__init__(name, configuration, logger)
-        self._message_backlog = [
-            {"_index": self._config.default_index}
-        ] * self._config.message_backlog_size
-        self._processed_cnt = 0
-        self._index_cache = {}
+        self._message_backlog = []
 
     @cached_property
     def ssl_context(self) -> ssl.SSLContext:
@@ -141,7 +137,7 @@ class ElasticsearchOutput(Output):
         )
 
     @cached_property
-    def _search_context(self) -> elasticsearch.Elasticsearch:
+    def _search_context(self) -> search.Elasticsearch:
         """Returns a elasticsearch context
 
         Returns
@@ -149,7 +145,7 @@ class ElasticsearchOutput(Output):
         elasticsearch.Elasticsearch
             the eleasticsearch context
         """
-        return elasticsearch.Elasticsearch(
+        return search.Elasticsearch(
             self._config.hosts,
             scheme=self.schema,
             http_auth=self.http_auth,
@@ -191,27 +187,21 @@ class ElasticsearchOutput(Output):
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
-        self._message_backlog[self._processed_cnt] = document
-        currently_processed_cnt = self._processed_cnt + 1
-        if currently_processed_cnt == self._config.message_backlog_size:
-            try:
-                helpers.bulk(
-                    self._search_context,
-                    self._message_backlog,
-                    max_retries=self._config.max_retries,
-                    chunk_size=self._config.message_backlog_size,
-                )
-            except elasticsearch.SerializationError as error:
-                self._handle_serialization_error(error)
-            except elasticsearch.ConnectionError as error:
-                self._handle_connection_error(error)
-            except helpers.BulkIndexError as error:
-                self._handle_bulk_index_error(error)
-            self._processed_cnt = 0
-            if self.input_connector:
-                self.input_connector.batch_finished_callback()
-        else:
-            self._processed_cnt = currently_processed_cnt
+        self._message_backlog.append(document)
+        if len(self._message_backlog) >= self._config.message_backlog_size:
+            self._write_backlog()
+
+    def _write_backlog(self):
+        if not self._message_backlog:
+            return
+
+        self._bulk(
+            self._search_context,
+            self._message_backlog,
+            max_retries=self._config.max_retries,
+            chunk_size=len(self._message_backlog),
+        )
+        self._message_backlog.clear()
 
     def _handle_bulk_index_error(self, error: helpers.BulkIndexError):
         """Handle bulk indexing error for elasticsearch bulk indexing.
@@ -236,9 +226,21 @@ class ElasticsearchOutput(Output):
             error_document = self._build_failed_index_document(data, reason)
             self._add_dates(error_document)
             error_documents.append(error_document)
-        helpers.bulk(self._search_context, error_documents)
+        self._bulk(self._search_context, error_documents)
 
-    def _handle_connection_error(self, error: elasticsearch.ConnectionError):
+    def _bulk(self, *args, **kwargs):
+        try:
+            helpers.bulk(*args, **kwargs)
+        except search.SerializationError as error:
+            self._handle_serialization_error(error)
+        except search.ConnectionError as error:
+            self._handle_connection_error(error)
+        except helpers.BulkIndexError as error:
+            self._handle_bulk_index_error(error)
+        if self.input_connector:
+            self.input_connector.batch_finished_callback()
+
+    def _handle_connection_error(self, error: search.ConnectionError):
         """Handle connection error for elasticsearch bulk indexing.
 
         No documents will be sent if there is no connection to begin with.
@@ -256,9 +258,9 @@ class ElasticsearchOutput(Output):
             This causes a pipeline rebuild and gives an appropriate error log message.
 
         """
-        raise FatalOutputError(error.error)
+        raise FatalOutputError(self, error.error)
 
-    def _handle_serialization_error(self, error: elasticsearch.SerializationError):
+    def _handle_serialization_error(self, error: search.SerializationError):
         """Handle serialization error for elasticsearch bulk indexing.
 
         If at least one document in a chunk can't be serialized, no events will be sent.
@@ -276,7 +278,7 @@ class ElasticsearchOutput(Output):
             This causes a pipeline rebuild and gives an appropriate error log message.
 
         """
-        raise FatalOutputError(f"{error.args[1]} in document {error.args[0]}")
+        raise FatalOutputError(self, f"{error.args[1]} in document {error.args[0]}")
 
     def store(self, document: dict) -> bool:
         """Store a document in the index.
@@ -363,7 +365,9 @@ class ElasticsearchOutput(Output):
 
     def setup(self):
         super().setup()
+        flush_timeout = self._config.flush_timeout
+        self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
         try:
             self._search_context.info()
-        except ElasticsearchException as error:
-            raise FatalOutputError(error) from error
+        except (ElasticsearchException, OpenSearchException, ConnectTimeoutError) as error:
+            raise FatalOutputError(self, error) from error

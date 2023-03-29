@@ -3,9 +3,7 @@
 import json
 import logging
 import os
-import re
 import tempfile
-from unittest import mock
 
 from logprep.util.rule_dry_runner import DryRunner
 
@@ -172,27 +170,3 @@ class TestRunLogprep:
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
         assert "------ CUSTOM OUTPUTS ------" in captured.out
-
-    @mock.patch("logprep.processor.labeler.processor.Labeler.process", side_effect=BaseException)
-    def test_dry_run_prints_errors(self, _, tmp_path, capsys):
-        test_json = {
-            "winlog": {
-                "event_id": 123,
-                "event_data": {"ServiceName": "VERY BAD"},
-            }
-        }
-        input_json_file = os.path.join(tmp_path, "test_input.json")
-        with open(input_json_file, "w", encoding="utf8") as input_file:
-            json.dump(test_json, input_file)
-
-        dry_runner = DryRunner(
-            input_file_path=input_json_file,
-            config_path=self.config_path,
-            full_output=True,
-            use_json=True,
-            logger=logging.getLogger("test-logger"),
-        )
-        dry_runner.run()
-
-        captured = capsys.readouterr()
-        assert not re.match(r".*A critical error occured for processor Labeler", captured.err)

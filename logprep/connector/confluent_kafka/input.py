@@ -203,7 +203,7 @@ class ConfluentKafkaInput(Input):
         record_error = self._record.error()
         if record_error:
             raise CriticalInputError(
-                f"A confluent-kafka record contains an error code: ({record_error})", None
+                self, "A confluent-kafka record contains an error code", record_error
             )
         return self._record.value()
 
@@ -234,10 +234,12 @@ class ConfluentKafkaInput(Input):
             event_dict = self._decoder.decode(raw_event)
         except msgspec.DecodeError as error:
             raise CriticalInputError(
-                "Input record value is not a valid json string", raw_event
+                self, "Input record value is not a valid json string", raw_event
             ) from error
         if not isinstance(event_dict, dict):
-            raise CriticalInputError("Input record value could not be parsed as dict", event_dict)
+            raise CriticalInputError(
+                self, "Input record value could not be parsed as dict", event_dict
+            )
         return event_dict, raw_event
 
     @cached_property

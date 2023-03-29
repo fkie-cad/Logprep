@@ -10,10 +10,12 @@ from unittest import mock
 import pytest
 from logprep.abc.output import FatalOutputError
 
-from logprep.factory import Factory
 from logprep.abc.input import CriticalInputError
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
-from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
+from tests.unit.connector.test_confluent_kafka_common import (
+    CommonConfluentKafkaTestCase,
+)
 
 
 class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
@@ -66,8 +68,12 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         with pytest.raises(
             CriticalInputError,
-            match=r"A confluent-kafka record contains an error code: "
-            r"\(An arbitrary confluent-kafka error\)",
+            match=(
+                r"CriticalInputError in ConfluentKafkaInput \(Test Instance Name\) - "
+                r"Kafka Input: testserver:9092: "
+                r"A confluent-kafka record contains an error code -> "
+                r"An arbitrary confluent-kafka error"
+            ),
         ):
             _, _ = self.object.get_next(1)
 

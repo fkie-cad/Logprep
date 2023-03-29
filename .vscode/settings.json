@@ -3,9 +3,13 @@
     "python.testing.unittestEnabled": false,
     "python.linting.enabled": true,
     "python.formatting.provider": "black",
+    "python.analysis.importFormat": "absolute",
     "editor.formatOnSave": true,
     "python.linting.pylintEnabled": true,
     "python.linting.lintOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true
+    },
     "autoDocstring.docstringFormat": "numpy",
     "files.exclude": {
         "**/.git": true,

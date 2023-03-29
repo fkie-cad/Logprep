@@ -26,24 +26,23 @@ Example
         debug_cache: false
 """
 import datetime
-from pathlib import Path
 import socket
 from functools import cached_property
 from logging import Logger
 from multiprocessing import context, current_process
 from multiprocessing.pool import ThreadPool
+from pathlib import Path
 from typing import Optional
 
 from attr import define, field, validators
 from tldextract import TLDExtract
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 
@@ -155,8 +154,6 @@ class DomainResolver(Processor):
 
     def _apply_rules(self, event, rule):
         source_field = rule.source_fields[0]
-        target_field = rule.target_field
-        overwrite_target = rule.overwrite_target
         domain_or_url_str = get_dotted_field_value(event, source_field)
         if not domain_or_url_str:
             return
@@ -174,25 +171,16 @@ class DomainResolver(Processor):
             else:
                 resolved_ip = self._domain_ip_map.get(hash_string)
                 self.metrics.resolved_cached += 1
-            self._add_resolve_infos_to_event(
-                event, rule, target_field, resolved_ip, overwrite_target
-            )
+            self._add_resolve_infos_to_event(event, rule, resolved_ip)
             if self._config.debug_cache:
                 self._store_debug_infos(event, requires_storing)
         else:
             resolved_ip = self._resolve_ip(domain)
-            self._add_resolve_infos_to_event(
-                event, rule, target_field, resolved_ip, overwrite_target
-            )
+            self._add_resolve_infos_to_event(event, rule, resolved_ip)
 
-    def _add_resolve_infos_to_event(self, event, _, output_field, resolved_ip, overwrite_target):
+    def _add_resolve_infos_to_event(self, event, rule, resolved_ip):
         if resolved_ip:
-            adding_was_successful = add_field_to(
-                event, output_field, resolved_ip, overwrite_output_field=overwrite_target
-            )
-
-            if not adding_was_successful:
-                raise DuplicationError(self.name, [output_field])
+            self._write_target_field(event, rule, resolved_ip)
 
     def _resolve_ip(self, domain, hash_string=None):
         try:

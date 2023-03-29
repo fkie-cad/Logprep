@@ -5,9 +5,9 @@ processor strategies are used to implement in one point how rules are processed 
 this could be the order of specific or generic rules
 """
 from abc import ABC, abstractmethod
+from functools import reduce
 from time import time
-from typing import Callable, TYPE_CHECKING
-
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc.processor import Processor
@@ -30,6 +30,9 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
     Strategy to process rules in rule trees in the following order:
     specific_rules >> generic_rules
     """
+
+    def __init__(self, apply_multiple_times=False):
+        self._apply_multiple_times = apply_multiple_times
 
     def process(self, event: dict, **kwargs):
         specific_tree = kwargs.get("specific_tree")
@@ -68,16 +71,21 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
         processor_metrics: "Processor.ProcessorMetrics",
     ):
         applied_rules = set()
-        matching_rules = tree.get_matching_rules(event)
-        while True:
-            for rule in matching_rules:
-                begin = time()
-                callback(event, rule)
-                processing_time = time() - begin
-                rule.metrics._number_of_matches += 1
-                rule.metrics.update_mean_processing_time(processing_time)
-                processor_metrics.update_mean_processing_time_per_event(processing_time)
-                applied_rules.add(rule)
+
+        def _process_rule(event, rule):
+            begin = time()
+            callback(event, rule)
+            processing_time = time() - begin
+            rule.metrics._number_of_matches += 1
+            rule.metrics.update_mean_processing_time(processing_time)
+            processor_metrics.update_mean_processing_time_per_event(processing_time)
+            applied_rules.add(rule)
+            return event
+
+        if self._apply_multiple_times:
             matching_rules = tree.get_matching_rules(event)
-            if not set(matching_rules).difference(applied_rules):
-                break
+            while matching_rules:
+                reduce(_process_rule, (event, *matching_rules))
+                matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
+        else:
+            reduce(_process_rule, (event, *tree.get_matching_rules(event)))

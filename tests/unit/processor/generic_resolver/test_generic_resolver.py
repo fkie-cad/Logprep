@@ -6,8 +6,8 @@ from collections import OrderedDict
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.generic_resolver.processor import GenericResolver, GenericResolverError
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.processor.generic_resolver.processor import GenericResolver
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -294,7 +294,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to_resolve": "ab"}
 
         with pytest.raises(
-            GenericResolverError,
+            ProcessingCriticalError,
             match=r"GenericResolver \(Test Instance Name\)\: Mapping group is missing in mapping "
             r"file pattern!",
         ):
@@ -313,7 +313,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         document = {"to": {"resolve": "something HELLO1"}}
 
         with pytest.raises(
-            GenericResolverError,
+            ProcessingCriticalError,
             match=r"GenericResolver \(Test Instance Name\)\: Additions file \'foo\' not found!",
         ):
             self.object.process(document)

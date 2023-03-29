@@ -46,17 +46,13 @@ from copy import deepcopy
 from difflib import ndiff
 from functools import cached_property
 
-from colorama import Fore, Back
+from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import (
-    color_print_line,
-    recursive_compare,
-    color_print_title,
-)
+from logprep.util.helper import color_print_line, color_print_title, recursive_compare
 
 yaml = YAML(typ="safe", pure=True)
 

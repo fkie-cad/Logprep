@@ -4,7 +4,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -248,11 +248,7 @@ class TestListComparison(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         self.object.setup()
-        match = (
-            r"ProcessingWarning: \(Test Instance Name - The following fields could not be written, "
-            r"because one or more subfields existed and could not be extended: user\.in_list\)"
-        )
-        with pytest.raises(ProcessingWarning, match=match):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
 
         assert document == expected
