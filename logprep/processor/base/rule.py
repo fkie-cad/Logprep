@@ -224,7 +224,7 @@ class Rule:
         self._config = config
 
     def __eq__(self, other: "Rule") -> bool:
-        return all(other.filter == self._filter, other._config == self._config)
+        return all((other.filter == self._filter, other._config == self._config))
 
     def __hash__(self) -> int:  # pylint: disable=function-redefined
         return id(self)
