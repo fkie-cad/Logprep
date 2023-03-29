@@ -31,9 +31,9 @@ from logging import Logger
 from socket import getfqdn
 from typing import Any, List, Optional, Tuple, Union
 
+import msgspec
 from attrs import define, field, validators
 from confluent_kafka import Consumer, KafkaException
-import msgspec
 
 from logprep.abc.input import CriticalInputError, Input
 from logprep.abc.output import FatalOutputError
@@ -290,7 +290,7 @@ class ConfluentKafkaInput(Input):
         try:
             _ = self._consumer
         except (KafkaException, ValueError) as error:
-            raise FatalOutputError(error) from error
+            raise FatalOutputError(self, str(error)) from error
 
     def shut_down(self):
         """Close consumer, which also commits kafka offsets."""

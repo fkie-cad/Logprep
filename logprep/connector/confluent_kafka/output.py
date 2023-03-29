@@ -32,11 +32,11 @@ from functools import cached_property, partial
 from socket import getfqdn
 from typing import List, Optional
 
-from attrs import define, field, validators
-from confluent_kafka import Producer, KafkaException
 import msgspec
+from attrs import define, field, validators
+from confluent_kafka import KafkaException, Producer
 
-from logprep.abc.output import CriticalOutputError, Output, FatalOutputError
+from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.util.validators import dict_with_keys_validator
 
 
@@ -229,7 +229,7 @@ class ConfluentKafkaOutput(Output):
         try:
             _ = self._producer
         except (KafkaException, ValueError) as error:
-            raise FatalOutputError(error) from error
+            raise FatalOutputError(self, str(error)) from error
 
     def shut_down(self) -> None:
         """ensures that all messages are flushed"""
