@@ -37,6 +37,11 @@ class Node:
             return 1
         return sum((1, *(child.size for child in self.children)))  # pylint: disable=not-an-iterable
 
+    @property
+    def is_root(self) -> bool:
+        """returns True if self is root"""
+        return self.expression == "root"
+
     @classmethod
     def from_rule(
         cls, rule: Rule, tree_config: Optional[dict] = None, tag_map: Optional[dict] = None
@@ -84,6 +89,11 @@ class Node:
             Child node to add to the node.
 
         """
+        if self.is_root:
+            for child in self.children:  # pylint: disable=not-an-iterable
+                if node.expression in child.child_expressions:
+                    child.add_child(node)
+                    self.child_expressions |= {node.expression, *node.child_expressions}
         if self == node:
             for rule in node.matching_rules:
                 if rule not in node.matching_rules:
