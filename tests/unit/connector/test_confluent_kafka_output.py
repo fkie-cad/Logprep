@@ -6,6 +6,7 @@
 # pylint: disable=no-self-use
 
 import json
+from copy import deepcopy
 from unittest import mock
 
 import pytest
@@ -145,12 +146,13 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object.input_connector.batch_finished_callback.assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_kafka_config_has_precedence(self, mock_producer):
-        config = {"myconfig": "the config"}
+    def test_logprep_config_has_precedence(self, mock_producer):
+        kafka_config = deepcopy(self.object._confluent_settings)
+        config = {"bootstrap.servers": "bootstrap1, myprivatebootstrap"}
         self.object._config.kafka_config = config
         self.object._producer.clear()
         _ = self.object._producer
-        mock_producer.assert_called_with(config)
+        mock_producer.assert_called_with(kafka_config)
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
         config = {"myconfig": "the config"}

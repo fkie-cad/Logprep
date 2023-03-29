@@ -85,14 +85,13 @@ class ConfluentKafkaOutput(Output):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of((str, dict)),
                 ),
             ],
             factory=dict,
         )
-        """ (Optional) A complete kafka configuration for the kafka client. It is an alternative
-        to the logprep configuration. If set, this configuration has precedence and
-        must be complete. For possible configuration options see: 
+        """ (Optional) Additional kafka configuration for the kafka client. 
+        This is for advanced usage only. For possible configuration options see: 
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
         """
 
@@ -115,8 +114,6 @@ class ConfluentKafkaOutput(Output):
         dict
             the translated confluence settings
         """
-        if self._config.kafka_config:
-            return self._config.kafka_config
         configuration = {
             "bootstrap.servers": ",".join(self._config.bootstrapservers),
             "queue.buffering.max.messages": self._config.maximum_backlog,
@@ -135,7 +132,7 @@ class ConfluentKafkaOutput(Output):
                     "ssl.key.password": self._config.ssl["password"],
                 }
             )
-        return configuration
+        return self._config.kafka_config | configuration
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
