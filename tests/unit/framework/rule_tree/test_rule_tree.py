@@ -1,6 +1,6 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
+# pylint: disable=unsubscriptable-object
 # pylint: disable=line-too-long
 
 from logprep.filter.expression.filter_expression import Exists, StringFilterExpression
@@ -13,8 +13,8 @@ class TestRuleTree:
     def test_init(self):
         rule_tree = RuleTree()
 
-        assert isinstance(rule_tree.root, Node)
-        assert rule_tree.root.expression == "root"
+        assert isinstance(rule_tree, Node)
+        assert rule_tree.expression == "root"
 
     def test_add_rule(self):
         rule_tree = RuleTree()
@@ -32,11 +32,11 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.root.children[0].expression == Exists("winlog")
-        assert rule_tree.root.children[0].children[0].expression == StringFilterExpression(
+        assert rule_tree.children[0].expression == Exists("winlog")
+        assert rule_tree.children[0].children[0].expression == StringFilterExpression(
             "winlog", "123"
         )
-        assert rule_tree.root.children[0].children[0].matching_rules == [rule]
+        assert rule_tree.children[0].children[0].matching_rules == [rule]
 
         rule = PreDetectorRule._create_from_dict(
             {
@@ -52,13 +52,11 @@ class TestRuleTree:
         )
         rule_tree.add_rule(rule)
 
-        assert rule_tree.root.children[0].children[0].children[0].expression == Exists("xfoo")
-        assert rule_tree.root.children[0].children[0].children[0].children[
+        assert rule_tree.children[0].children[0].children[0].expression == Exists("xfoo")
+        assert rule_tree.children[0].children[0].children[0].children[
             0
         ].expression == StringFilterExpression("xfoo", "bar")
-        assert rule_tree.root.children[0].children[0].children[0].children[0].matching_rules == [
-            rule
-        ]
+        assert rule_tree.children[0].children[0].children[0].children[0].matching_rules == [rule]
 
     def test_match_simple(self):
         rule_tree = RuleTree()
