@@ -59,6 +59,11 @@ class Processor(Component):
         )
         """Path to a JSON file with a valid rule tree configuration.
         For string format see :ref:`getters`"""
+        apply_multiple_times: Optional[bool] = field(
+            default=False, validator=[validators.optional(validators.instance_of(bool))]
+        )
+        """Set if the processor should be applied multiple times. This enables further processing
+        of an output with the same processor."""
 
     @define(kw_only=True)
     class ProcessorMetrics(Metric):
@@ -107,11 +112,11 @@ class Processor(Component):
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
-
-    _strategy = SpecificGenericProcessStrategy()
+    _strategy = None
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
         super().__init__(name, configuration, logger)
+        self._strategy = SpecificGenericProcessStrategy(self._config.apply_multiple_times)
         self.metric_labels, specific_tree_labels, generic_tree_labels = self._create_metric_labels()
         self._specific_tree = RuleTree(
             config_path=self._config.tree_config, metric_labels=specific_tree_labels
