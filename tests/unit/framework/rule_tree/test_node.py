@@ -1,8 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-from logprep.filter.expression.filter_expression import StringFilterExpression
+# pylint: disable=unsubscriptable-object
+from logprep.filter.expression.filter_expression import Exists, StringFilterExpression
 from logprep.framework.rule_tree.node import Node
-from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
 
@@ -43,6 +43,7 @@ class TestNode:
         assert node_start.children[0].expression == expression_end
         node_start.add_child(node_end)
         assert node_start.children == [node_end]
+        assert node_end.expression in node_start.child_expressions
         assert not node_end.children
 
     def test_expression_in_child_expressions(self):
@@ -60,7 +61,7 @@ class TestNode:
         root.add_child(Node(StringFilterExpression("foo", "bar")))
         root.add_child(Node(StringFilterExpression("foo", "bla")))
 
-    def test_add_rule(self):
+    def test_from_rule_returns_node(self):
         rule = PreDetectorRule._create_from_dict(
             {
                 "filter": "winlog: 123",
@@ -73,6 +74,84 @@ class TestNode:
                 },
             }
         )
-        parsed_rule_filter_list = RuleParser.parse_rule(rule, {}, {})
-        node = Node(parsed_rule_filter_list)
-        node.add_rule(parsed_rule_filter_list, rule)
+        node = Node.from_rule(rule)
+        assert isinstance(node, Node)
+        assert node.size == 2
+        assert node.expression == Exists("winlog")
+        assert node.children[0].size == 1
+        assert node.children[0].expression == StringFilterExpression("winlog", "123")
+
+    def test_adding_child_with_rule_to_node_results_in_one_additional_node(self):
+        rule = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 123",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        root_node = Node.from_rule(rule)
+        rule = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 456",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        node = Node.from_rule(rule)
+        assert root_node.add_child(node)
+        assert root_node.size == 3
+
+    def test_adding_child_with_rule_to_node_results_not_in_one_additional_node(self):
+        rule = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 123",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        root_node = Node.from_rule(rule)
+        rule = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 456",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "1",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        node = Node.from_rule(rule)
+        assert root_node.add_child(node)
+        assert root_node.size == 3
+        rule = PreDetectorRule._create_from_dict(
+            {
+                "filter": "winlog: 456",
+                "pre_detector": {
+                    "id": 1,
+                    "title": "other title",
+                    "severity": "0",
+                    "case_condition": "directly",
+                    "mitre": [],
+                },
+            }
+        )
+        node = Node.from_rule(rule)
+        assert root_node.add_child(node)
+        assert root_node.size == 3
