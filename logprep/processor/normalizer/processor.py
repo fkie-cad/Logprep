@@ -42,18 +42,15 @@ from filelock import FileLock
 from pytz import timezone
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from logprep.processor.normalizer.rule import NormalizerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import directory_validator
 
 
-class NormalizerError(BaseException):
+class NormalizerError(ProcessingWarning):
     """Base class for Normalizer related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"Normalizer ({name}): {message}")
 
 
 class Normalizer(Processor):
@@ -194,18 +191,18 @@ class Normalizer(Processor):
     def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
         fields = dotted_field.split(".")
         missing_fields = json.loads(json.dumps(fields))
-        for _field in fields:
-            if isinstance(event, dict) and _field in event:
-                event = event[_field]
+        for event_field in fields:
+            if isinstance(event, dict) and event_field in event:
+                event = event[event_field]
                 missing_fields.pop(0)
             else:
                 break
         if not isinstance(event, dict):
             self._conflicting_fields.append(dotted_field)
             return
-        for _field in missing_fields[:-1]:
-            event[_field] = {}
-            event = event[_field]
+        for event_field in missing_fields[:-1]:
+            event[event_field] = {}
+            event = event[event_field]
         event[missing_fields[-1]] = value
 
         if self._html_replace_fields and dotted_field in self._html_replace_fields:
@@ -226,7 +223,6 @@ class Normalizer(Processor):
         super().process(event)
         if self._count_grok_pattern_matches:
             self._write_grok_matches()
-        self._raise_warning_if_fields_already_existed()
 
     def _apply_rules(self, event, rule):
         """Normalizes Windows Event Logs.
@@ -243,6 +239,7 @@ class Normalizer(Processor):
         self._apply_timestamp_normalization(event, rule)
         for source_field, target_field in rule.substitutions.items():
             self._apply_field_copy(event, source_field, target_field)
+        self._raise_warning_if_fields_already_existed(rule, event)
 
     def _apply_grok(self, event: dict, rule: NormalizerRule):
         """
@@ -309,12 +306,14 @@ class Normalizer(Processor):
                 continue
 
             timestamp_normalization = normalization.get("timestamp")
-            timestamp = self._transform_timestamp(source_timestamp, timestamp_normalization)
+            timestamp = self._transform_timestamp(
+                source_timestamp, timestamp_normalization, rule, event
+            )
             timestamp = self._convert_timezone(timestamp, timestamp_normalization)
             iso_timestamp = timestamp.isoformat().replace("+00:00", "Z")
             self._write_normalized_timestamp(event, iso_timestamp, timestamp_normalization)
 
-    def _transform_timestamp(self, source_timestamp, timestamp_normalization):
+    def _transform_timestamp(self, source_timestamp, timestamp_normalization, rule, event):
         source_timezone = timestamp_normalization["source_timezone"]
         timestamp = None
         format_parsed = False
@@ -344,7 +343,7 @@ class Normalizer(Processor):
                 f"Could not parse source timestamp "
                 f"{source_timestamp}' with formats '{source_formats}'"
             )
-            raise NormalizerError(self.name, error_message)
+            raise NormalizerError(self, error_message, rule, event)
         return timestamp
 
     def _convert_timezone(self, timestamp, timestamp_normalization):
@@ -371,9 +370,9 @@ class Normalizer(Processor):
             source_value = get_dotted_field_value(event, source_field)
             self._try_add_field(event, target_field, source_value)
 
-    def _raise_warning_if_fields_already_existed(self):
+    def _raise_warning_if_fields_already_existed(self, rule, event):
         if self._conflicting_fields:
-            raise DuplicationError(self.name, self._conflicting_fields)
+            raise FieldExsistsWarning(self, rule, event, self._conflicting_fields)
 
     def shut_down(self):
         """

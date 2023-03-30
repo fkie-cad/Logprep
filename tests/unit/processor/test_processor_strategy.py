@@ -49,7 +49,12 @@ class TestSpecificGenericProcessStrategy:
         assert call_order == [mock_process_specific, mock_process_generic]
 
     def test_apply_processor_multiple_times_until_no_new_rule_matches(self):
-        config = {"type": "dissector", "specific_rules": [], "generic_rules": []}
+        config = {
+            "type": "dissector",
+            "specific_rules": [],
+            "generic_rules": [],
+            "apply_multiple_times": True,
+        }
         processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
         rule_one_dict = {
             "filter": "message",
@@ -68,6 +73,38 @@ class TestSpecificGenericProcessStrategy:
             "message": "time [proto col] url",
             "proto": "proto",
             "col": "col",
+            "protocol": "proto col",
+            "time": "time",
+            "url": "url",
+        }
+        processor._strategy.process(
+            event,
+            generic_tree=processor._generic_tree,
+            specific_tree=processor._specific_tree,
+            callback=processor._apply_rules_wrapper,
+            processor_stats=mock.Mock(),
+            processor_metrics=mock.MagicMock(),
+        )
+        assert expected_event == event
+
+    def test_apply_processor_multiple_times_not_enabled(self):
+        config = {"type": "dissector", "specific_rules": [], "generic_rules": []}
+        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
+        rule_one_dict = {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "%{time} [%{protocol}] %{url}"}},
+        }
+        rule_two_dict = {
+            "filter": "protocol",
+            "dissector": {"mapping": {"protocol": "%{proto} %{col}"}},
+        }
+        rule_one = DissectorRule._create_from_dict(rule_one_dict)
+        rule_two = DissectorRule._create_from_dict(rule_two_dict)
+        processor._specific_tree.add_rule(rule_one)
+        processor._specific_tree.add_rule(rule_two)
+        event = {"message": "time [proto col] url"}
+        expected_event = {
+            "message": "time [proto col] url",
             "protocol": "proto col",
             "time": "time",
             "url": "url",

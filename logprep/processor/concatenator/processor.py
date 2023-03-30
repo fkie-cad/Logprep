@@ -20,9 +20,8 @@ Example
             - tests/testdata/rules/generic/
 """
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import DuplicationError
 from logprep.processor.concatenator.rule import ConcatenatorRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import get_dotted_field_value
 
 
 class ConcatenatorError(BaseException):
@@ -59,8 +58,4 @@ class Concatenator(Processor):
         source_field_values = [field for field in source_field_values if field is not None]
         target_value = f"{rule.separator}".join(source_field_values)
 
-        adding_was_successful = add_field_to(
-            event, rule.target_field, target_value, overwrite_output_field=rule.overwrite_target
-        )
-        if not adding_was_successful:
-            raise DuplicationError(self.name, [rule.target_field])
+        self._write_target_field(event, rule, target_value)

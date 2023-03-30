@@ -21,9 +21,10 @@ from os import makedirs, path
 
 from logprep.abc.processor import Processor
 from logprep.registry import Registry
+from logprep.runner import Runner
 from logprep.util.decorators import timeout
-from logprep.util.helper import recursive_compare
-from logprep.util.rule_dry_runner import get_patched_runner, get_runner_outputs
+from logprep.util.helper import recursive_compare, remove_file_if_exists
+from logprep.util.json_handling import parse_jsonl
 from tests.unit.processor.base import BaseProcessorTestCase
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
@@ -112,6 +113,72 @@ def store_latest_test_output(target_output_identifier, output_of_test):
             latest_output.write(json.dumps(test_output_line) + "\n")
 
 
+def get_runner_outputs(patched_runner) -> list:
+    # pylint: disable=protected-access
+    """
+    Extracts the outputs of a patched logprep runner.
+
+    Parameters
+    ----------
+    patched_runner : Runner
+        The patched logprep runner
+
+    Returns
+    -------
+    parsed_outputs : list
+        A list of logprep outputs containing events, extra outputs like pre-detections or pseudonyms
+        and errors
+    """
+    parsed_outputs = [None, None, None]
+    output_config = list(patched_runner._configuration.get("output").values())[0]
+    output_paths = [
+        output_path for key, output_path in output_config.items() if "output_file" in key
+    ]
+
+    for output_path in output_paths:
+        remove_file_if_exists(output_path)
+
+    patched_runner.start()
+
+    for index, output_path in enumerate(output_paths):
+        parsed_outputs[index] = parse_jsonl(output_path)
+        remove_file_if_exists(output_path)
+
+    return parsed_outputs
+
+
+def get_patched_runner(config_path, logger):
+    """
+    Creates a patched runner that bypasses check to obtain non singleton instance and the runner
+    won't continue iterating on an empty pipeline.
+
+    Parameters
+    ----------
+    config_path : str
+        The logprep configuration that should be used for the patched runner
+    logger : Logger
+        The application logger the runner should use
+
+    Returns
+    -------
+    runner : Runner
+        The patched logprep runner
+    """
+    runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
+    runner.set_logger(logger)
+    runner.load_configuration(config_path)
+
+    # patch runner to stop on empty pipeline
+    def keep_iterating():
+        """generator that stops on first iteration"""
+        return  # nosemgrep
+        yield
+
+    runner._keep_iterating = keep_iterating  # pylint: disable=protected-access
+
+    return runner
+
+
 def get_test_output(config_path):
     patched_runner = get_patched_runner(config_path, logger)
     return get_runner_outputs(patched_runner=patched_runner)
@@ -195,11 +262,11 @@ def wait_for_output(proc, expected_output, test_timeout=10):
     @timeout(test_timeout)
     def wait_for_output_inner(proc, expected_output):
         output = proc.stdout.readline()
-        while expected_output not in output.decode("utf8"):
+        while not re.search(expected_output, output.decode("utf8")):
             output = proc.stdout.readline()
-            time.sleep(0.1)  # nosemgrep
 
     wait_for_output_inner(proc, expected_output)
+    time.sleep(0.1)  # nosemgrep
 
 
 def stop_logprep(proc=None):

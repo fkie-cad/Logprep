@@ -2,13 +2,13 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
-import pytest
-
 from datetime import datetime
-from dateutil.tz import tzlocal, tzutc
-from dateutil.parser import parse
 
-from logprep.processor.base.exceptions import ProcessingWarning
+import pytest
+from dateutil.parser import parse
+from dateutil.tz import tzlocal, tzutc
+
+from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -209,12 +209,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule)
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-            r"written, because one or more subfields existed and could not be extended: "
-            r"@timestamp\)",
-        ):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
 
     @staticmethod

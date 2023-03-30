@@ -808,18 +808,19 @@ In the following example :code:`@timestamp: 2000 12 31 - 22:59:59` would be norm
           destination_timezone: 'Europe/Berlin'
     description: 'Test-rule with matching auto-test'
 
-If Grok and a timestamp normalization is being used in the same rule, then Grok is being applied
-first, so that a time normalization can be performed on the Grok results.
+If Grok and a timestamp normalization is being used in the same rule,
+then Grok is being applied first, so that a time normalization can be performed
+on the Grok results.
 """
 # pylint: enable=anomalous-backslash-in-string
 
 import re
-from typing import Union, Dict, List
+from typing import Dict, List, Union
 
 from pygrok import Grok
 
 from logprep.filter.expression.filter_expression import FilterExpression
-from logprep.processor.base.rule import Rule, InvalidRuleDefinitionError
+from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
 
 GROK_DELIMITER = "__________________"
 
@@ -900,6 +901,7 @@ class NormalizerRule(Rule):
     additional_grok_patterns = None
     extract_field_pattern = re.compile(r"%{(\w+):([\w\[\]]+)(?::\w+)?}")
     sub_fields_pattern = re.compile(r"(\[(\w+)\])")
+    failure_tags = ["_normalizer_failure"]
 
     # pylint: disable=super-init-not-called
     # TODO: this is not refactored, because this processor should be dissected

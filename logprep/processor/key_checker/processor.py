@@ -20,11 +20,11 @@ Example
 """
 
 from typing import Iterable
+
 from logprep.abc.processor import Processor
 from logprep.processor.base.rule import Rule
 from logprep.processor.key_checker.rule import KeyCheckerRule
-from logprep.util.helper import add_field_to, get_dotted_field_value
-from logprep.processor.base.exceptions import DuplicationError
+from logprep.util.helper import get_dotted_field_value
 
 
 class KeyChecker(Processor):
@@ -51,13 +51,4 @@ class KeyChecker(Processor):
         else:
             output_value = not_existing_fields
 
-        add_successful = add_field_to(
-            event,
-            rule.target_field,
-            sorted(output_value),
-            extends_lists=False,
-            overwrite_output_field=rule.overwrite_target,
-        )
-
-        if not add_successful:
-            raise DuplicationError(self.name, [rule.target_field])
+        self._write_target_field(event, rule, sorted(output_value))
