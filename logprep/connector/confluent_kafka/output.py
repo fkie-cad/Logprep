@@ -32,11 +32,11 @@ from functools import cached_property, partial
 from socket import getfqdn
 from typing import List, Optional
 
-from attrs import define, field, validators
-from confluent_kafka import Producer
 import msgspec
+from attrs import define, field, validators
+from confluent_kafka import KafkaException, Producer
 
-from logprep.abc.output import CriticalOutputError, Output
+from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 from logprep.util.validators import dict_with_keys_validator
 
 
@@ -80,6 +80,20 @@ class ConfluentKafkaOutput(Output):
             ],
             default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
         )
+        kafka_config: Optional[dict] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of((str, dict)),
+                ),
+            ],
+            factory=dict,
+        )
+        """ (Optional) Additional kafka configuration for the kafka client. 
+        This is for advanced usage only. For possible configuration options see: 
+        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        """
 
     _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 
@@ -118,7 +132,7 @@ class ConfluentKafkaOutput(Output):
                     "ssl.key.password": self._config.ssl["password"],
                 }
             )
-        return configuration
+        return self._config.kafka_config | configuration
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
@@ -206,6 +220,13 @@ class ConfluentKafkaOutput(Output):
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
+
+    def setup(self):
+        super().setup()
+        try:
+            _ = self._producer
+        except (KafkaException, ValueError) as error:
+            raise FatalOutputError(self, str(error)) from error
 
     def shut_down(self) -> None:
         """ensures that all messages are flushed"""

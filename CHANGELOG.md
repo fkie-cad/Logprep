@@ -2,6 +2,17 @@
 
 ## next release
 
+### Features
+
+* Add `amides` processor to extends conventional rule matching by applying machine learning components
+* `Normalizer` writes failure tags if nomalization fails
+* Add `flush_timeout` to `opensearch` and `elasticsearch` outputs to ensure message delivery within a configurable period
+* add `kafka_config` option to `confluent_kafka_input` and `confluent_kafka_output` connectors to provide additional config options to `librdkafka`
+
+### Improvements
+* Harmonize error messages and handling for processors and connectors
+* Add ability to schedule periodic tasks to all components
+
 
 ## v6.0.0
 
@@ -20,8 +31,6 @@
 * Add support for multiple output connectors
 * Apply processors multiple times until no new rule matches anymore. This enables applying rules on 
 results of previous rules.
-* `Normalizer` writes failure tags if nomalization fails
-* Add `flush_timeout` to `opensearch` and `elasticsearch` outputs to ensure message delivery within a configurable period
 
 ### Improvements
 
@@ -30,8 +39,6 @@ results of previous rules.
 * Rename metric names to clarify their meanings (`logprep_pipeline_number_of_warnings` to
 `logprep_pipeline_sum_of_processor_warnings` and `logprep_pipeline_number_of_errors` to
 `logprep_pipeline_sum_of_processor_errors`)
-* Harmonize error messages and handling for processors and connectors
-* Add ability to schedule periodic tasks to all components
 
 ### Bugfix
 
