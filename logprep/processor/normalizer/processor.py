@@ -126,11 +126,11 @@ class Normalizer(Processor):
 
         NormalizerRule.additional_grok_patterns = configuration.grok_patterns
 
-        self._regex_mapping = GetterFactory.from_string(self._regex_mapping).get_impure_yaml()
+        self._regex_mapping = GetterFactory.from_string(self._regex_mapping).get_yaml()
 
         if self._html_replace_fields:
             getter = GetterFactory.from_string(self._html_replace_fields)
-            self._html_replace_fields = getter.get_impure_yaml()
+            self._html_replace_fields = getter.get_yaml()
         super().__init__(name=name, configuration=configuration, logger=logger)
 
     # pylint: enable=arguments-differ

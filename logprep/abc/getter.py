@@ -10,9 +10,7 @@ from typing import Dict, List, Union
 from attrs import define, field, validators
 from ruamel.yaml import YAML
 
-pure_yaml = YAML(typ="safe", pure=True)
-impure_yaml = YAML(typ="safe", pure=False)
-base_yaml = YAML(typ="base", pure=False)
+yaml = YAML(typ="safe", pure=True)
 
 BLOCKLIST_VARIABLE_NAMES = [
     "",
@@ -80,28 +78,7 @@ class Getter(ABC):
         return (item for item in {*used_named_env_vars, *used_braced_env_vars} if item)
 
     def get_yaml(self) -> Union[Dict, List]:
-        """gets and parses the raw content to yaml using only Python modules.
-
-        Is slower but, has always expected behaviour.
-        """
-        return self._get_yaml_with_loader(pure_yaml)
-
-    def get_impure_yaml(self) -> Union[Dict, List]:
-        """gets and parses the raw content to yaml using non-Python modules if faster.
-
-        Is faster, but may have different behaviour.
-        """
-        return self._get_yaml_with_loader(impure_yaml)
-
-    def get_basic_yaml(self) -> Union[Dict, List]:
-        """gets and parses the raw content to yaml into basic Python objects like lists and dicts.
-
-        Has limited functionality, but is very fast.
-        """
-        return self._get_yaml_with_loader(base_yaml)
-
-    def _get_yaml_with_loader(self, yaml: YAML) -> Union[Dict, List]:
-        """gets and parses the raw content to yaml with the given YAML object."""
+        """gets and parses the raw content to yaml"""
         raw = self.get()
         parsed_yaml = list(yaml.load_all(raw))
         if not parsed_yaml:
