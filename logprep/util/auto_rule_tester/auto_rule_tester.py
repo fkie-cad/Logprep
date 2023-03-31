@@ -62,12 +62,11 @@ from io import StringIO
 from logging import getLogger
 from os import path, walk
 from pprint import pprint
-from typing import TYPE_CHECKING, Tuple, TextIO
+from typing import TYPE_CHECKING, TextIO, Tuple
 
 import regex as re
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
-from typing.io import TextIO
 
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
