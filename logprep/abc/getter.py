@@ -12,6 +12,7 @@ from ruamel.yaml import YAML
 
 pure_yaml = YAML(typ="safe", pure=True)
 impure_yaml = YAML(typ="safe", pure=False)
+base_yaml = YAML(typ="base", pure=False)
 
 BLOCKLIST_VARIABLE_NAMES = [
     "",
@@ -91,6 +92,13 @@ class Getter(ABC):
         Is faster, but may have different behaviour.
         """
         return self._get_yaml_with_loader(impure_yaml)
+
+    def get_basic_yaml(self) -> Union[Dict, List]:
+        """gets and parses the raw content to yaml into basic Python objects like lists and dicts.
+
+        Has limited functionality, but is very fast.
+        """
+        return self._get_yaml_with_loader(base_yaml)
 
     def _get_yaml_with_loader(self, yaml: YAML) -> Union[Dict, List]:
         """gets and parses the raw content to yaml with the given YAML object."""

@@ -268,6 +268,34 @@ second_dict:
                 ],
             ),
             (
+                "get_basic_yaml",
+                b"""---
+first_dict:  #foo
+    key:
+        - valid_list_element
+        - valid_list_element
+                """,
+                {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+            ),
+            (
+                "get_basic_yaml",
+                b"""---
+first_dict:  #foo
+    key:
+        - valid_list_element
+        - valid_list_element
+---
+second_dict:
+    key:
+        - valid_list_element
+        - valid_list_element
+                """,
+                [
+                    {"first_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                    {"second_dict": {"key": ["valid_list_element", "valid_list_element"]}},
+                ],
+            ),
+            (
                 "get_json",
                 b"""{
                     "first_dict": {
