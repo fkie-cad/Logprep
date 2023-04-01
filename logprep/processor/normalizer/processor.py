@@ -45,7 +45,11 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from logprep.processor.normalizer.rule import NormalizerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import (
+    add_field_to,
+    get_dotted_field_list,
+    get_dotted_field_value,
+)
 from logprep.util.validators import directory_validator
 
 
@@ -189,7 +193,7 @@ class Normalizer(Processor):
         return target, value
 
     def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
-        fields = dotted_field.split(".")
+        fields = get_dotted_field_list(dotted_field)
         missing_fields = json.loads(json.dumps(fields))
         for event_field in fields:
             if isinstance(event, dict) and event_field in event:
