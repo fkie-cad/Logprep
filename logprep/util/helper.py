@@ -1,6 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 import re
-from functools import cache, partial, reduce
+from functools import lru_cache, partial, reduce
 from os import remove
 from typing import Optional, Union
 
@@ -148,7 +148,7 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         return None
 
 
-@cache
+@lru_cache(maxsize=None)
 def get_dotted_field_list(dotted_field: str) -> list[str]:
     """make lookup of dotted field in the dotted_field_lookup_table and ensures
     it is added if not found. Additionally the string will be interned for faster

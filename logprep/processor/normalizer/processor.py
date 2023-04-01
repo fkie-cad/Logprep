@@ -219,7 +219,7 @@ class Normalizer(Processor):
 
     @staticmethod
     def _replace_field(event: dict, dotted_field: str, value: str):
-        fields = dotted_field.split(".")
+        fields = get_dotted_field_list(dotted_field)
         reduce(lambda dict_, key: dict_[key], fields[:-1], event)[fields[-1]] = value
 
     def process(self, event: dict):

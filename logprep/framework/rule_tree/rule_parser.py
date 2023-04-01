@@ -8,15 +8,16 @@ behavior, allowing a simpler construction of the rule tree.
 from typing import Union
 
 from logprep.filter.expression.filter_expression import (
-    Or,
-    CompoundFilterExpression,
-    Not,
-    And,
-    Exists,
-    StringFilterExpression,
-    FilterExpression,
     Always,
+    And,
+    CompoundFilterExpression,
+    Exists,
+    FilterExpression,
+    Not,
+    Or,
+    StringFilterExpression,
 )
+from logprep.util.helper import get_dotted_field_list
 
 
 class RuleParserException(Exception):
@@ -514,7 +515,7 @@ class RuleParser:
 
         if ":" in tag_map_value:
             key, value = tag_map_value.split(":")
-            rule.insert(0, StringFilterExpression(key.split("."), value))
+            rule.insert(0, StringFilterExpression(get_dotted_field_list(key), value))
         else:
             rule.insert(0, Exists(tag_map_value.split(".")))
 

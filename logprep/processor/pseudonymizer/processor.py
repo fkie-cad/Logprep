@@ -45,6 +45,7 @@ from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
+from logprep.util.helper import get_dotted_field_list
 from logprep.util.validators import list_of_urls_validator
 
 
@@ -227,7 +228,7 @@ class Pseudonymizer(Processor):
 
     @staticmethod
     def _innermost_field(dotted_field: str, event: dict) -> Tuple[Union[dict, Any], str]:
-        keys = dotted_field.split(".")
+        keys = get_dotted_field_list(dotted_field)
         for i in range(len(keys) - 1):
             event = event[keys[i]]
         return event, keys[-1]
