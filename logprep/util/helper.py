@@ -75,8 +75,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     assert not (
         extends_lists and overwrite_output_field
     ), "An output field can't be overwritten and extended at the same time"
-    fields = get_dotted_field_list(output_field)
-    output_field_path = [event, *fields]
+    output_field_path = [event, *get_dotted_field_list(output_field)]
     target_key = output_field_path.pop()
 
     if overwrite_output_field:
@@ -137,9 +136,8 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
     dict_: dict, list, str
         The value of the requested dotted field.
     """
-    fields = get_dotted_field_list(dotted_field)
     try:
-        return reduce(_get_item, (event, *fields))
+        return reduce(_get_item, (event, *get_dotted_field_list(dotted_field)))
     except KeyError:
         return None
     except ValueError:
