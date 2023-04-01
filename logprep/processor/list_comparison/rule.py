@@ -37,7 +37,6 @@ target field :code:`List_comparison.example`.
 """
 import os.path
 from string import Template
-import warnings
 from typing import List, Optional
 
 from attrs import define, field, validators
@@ -45,7 +44,6 @@ from attrs import define, field, validators
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class ListComparisonRule(FieldManagerRule):
