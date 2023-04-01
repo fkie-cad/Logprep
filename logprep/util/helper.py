@@ -1,14 +1,11 @@
 """This module contains helper functions that are shared by different modules."""
 import re
-import sys
-from functools import partial, reduce
+from functools import cache, partial, reduce
 from os import remove
 from typing import Optional, Union
 
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
-
-dotted_field_loopup_table = {}
 
 
 def color_print_line(
@@ -153,6 +150,7 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         return None
 
 
+@cache
 def get_dotted_field_list(dotted_field: str) -> list[str]:
     """make lookup of dotted field in the dotted_field_lookup_table and ensures
     it is added if not found. Additionally the string will be interned for faster
@@ -168,12 +166,7 @@ def get_dotted_field_list(dotted_field: str) -> list[str]:
     list[str]
         a list with keys for dictionary iteration
     """
-    try:
-        return dotted_field_loopup_table[dotted_field]
-    except KeyError:
-        split_field_list = dotted_field.split(".")
-        dotted_field_loopup_table[sys.intern(dotted_field)] = split_field_list
-    return split_field_list
+    return dotted_field.split(".")
 
 
 def pop_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:
