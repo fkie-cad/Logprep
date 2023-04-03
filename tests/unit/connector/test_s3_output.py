@@ -4,6 +4,7 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
+import re
 from copy import deepcopy
 import pytest
 from datetime import datetime
@@ -42,7 +43,9 @@ class TestS3Output(BaseOutputTestCase):
     }
 
     def test_describe_returns_s3_output(self):
-        assert self.object.describe() == "S3Output (Test Instance Name) - S3 Output: http://host:123"
+        assert (
+            self.object.describe() == "S3Output (Test Instance Name) - S3 Output: http://host:123"
+        )
 
     def test_store_sends_with_default_prefix(self):
         event = {"field": "content"}
@@ -155,12 +158,14 @@ class TestS3Output(BaseOutputTestCase):
         ],
     )
     def test_write_document_batch_calls_handles_errors(self, error, message):
+        self.object._logger.warning = mock.MagicMock()
         with mock.patch(
             "logprep.connector.s3.output.S3Output._write_to_s3",
             side_effect=error,
         ):
-            with pytest.raises(WarningOutputError, match=message):
-                self.object._write_document_batch({"dummy": "event"}, "dummy_identifier")
+            self.object._write_document_batch({"dummy": "event"}, "dummy_identifier")
+        args, _ = self.object._logger.warning.call_args
+        assert re.search(message, args[0])
 
     def test_write_to_s3_resource_sets_current_backlog_count_and_below_max_backlog(self):
         s3_config = deepcopy(self.CONFIG)

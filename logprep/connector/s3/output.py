@@ -4,6 +4,9 @@ S3Output
 
 This section contains the connection settings for the AWS s3 output connector.
 
+This connector is non-blocking and may skip sending data if previous data has not finished sending.
+It doesn't crash if a connection couldn't be established, but sends a warning.
+
 The desired bucket is defined by the :code:`bucket` configuration parameter.
 The prefix is defined by the value in the field :code:`prefix_field` in the document.
 
@@ -31,7 +34,9 @@ Example
         region_name:
 
 """
+import threading
 from collections import defaultdict
+from copy import deepcopy
 from uuid import uuid4
 import json
 import re
@@ -53,7 +58,7 @@ from attr import define, field
 from attrs import validators
 
 from logprep.util.helper import get_dotted_field_value
-from logprep.abc.output import Output, WarningOutputError
+from logprep.abc.output import Output
 
 
 class S3Output(Output):
@@ -115,8 +120,9 @@ class S3Output(Output):
         super().__init__(name, configuration, logger)
         self._message_backlog = defaultdict(list)
         self._current_backlog_count = 0
-
         self._setup_s3_resource()
+        self._writing_thread = None
+        self._bucket_exists = False
 
     def _setup_s3_resource(self):
         session = boto3.Session(
@@ -135,12 +141,15 @@ class S3Output(Output):
             config=config,
         )
 
-    @cached_property
+    @property
     def s3_resource(self):
-        try:
-            self._s3_resource.create_bucket(Bucket=self._config.bucket)
-        except (ClientError, BotoCoreError) as error:
-            raise WarningOutputError(str(error)) from error
+        if self._bucket_exists is False:
+            try:
+                self._s3_resource.create_bucket(Bucket=self._config.bucket)
+            except (ClientError, BotoCoreError) as error:
+                self._logger.warning(f"{self.describe()}: {error}")
+            else:
+                self._bucket_exists = True
         return self._s3_resource
 
     @cached_property
@@ -176,13 +185,18 @@ class S3Output(Output):
 
         backlog_count = self._current_backlog_count + 1
         if backlog_count == self._config.message_backlog_size:
-            self.write_document_batches()
-            return True
+            if self._writing_thread is None or not self._writing_thread.is_alive():
+                message_backlog = deepcopy(self._message_backlog)
+                self._writing_thread = threading.Thread(
+                    target=self.write_document_batches, args=(message_backlog,)
+                )
+                self._writing_thread.start()
+                return True
         self._current_backlog_count = backlog_count
         return False
 
-    def write_document_batches(self):
-        for prefix_mb, document_batch in self._message_backlog.items():
+    def write_document_batches(self, message_backlog):
+        for prefix_mb, document_batch in message_backlog.items():
             self._write_document_batch(document_batch, f"{prefix_mb}/{uuid4()}-{time()}")
         self._message_backlog.clear()
         self._current_backlog_count = 0
@@ -190,14 +204,15 @@ class S3Output(Output):
     def _write_document_batch(self, document_batch: dict, identifier: str):
         try:
             self._write_to_s3(document_batch, identifier)
-        except EndpointConnectionError as error:
-            raise WarningOutputError("Could not connect to the endpoint URL") from error
-        except ConnectionClosedError as error:
-            raise WarningOutputError(
-                "Connection was closed before we received a valid response from endpoint URL"
-            ) from error
+        except EndpointConnectionError:
+            self._logger.warning(f"{self.describe()}: Could not connect to the endpoint URL")
+        except ConnectionClosedError:
+            self._logger.warning(
+                f"{self.describe()}: "
+                f"Connection was closed before we received a valid response from endpoint URL"
+            )
         except (BotoCoreError, ClientError) as error:
-            raise WarningOutputError(str(error)) from error
+            self._logger.warning(f"{self.describe()}: {error}")
 
     def _write_to_s3(self, document_batch: dict, identifier: str):
         if self.s3_resource:
