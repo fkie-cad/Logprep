@@ -81,7 +81,7 @@ Examples for dissection and datatype conversion:
 import re
 from typing import Callable, List, Tuple
 
-from attrs import Factory, define, field, validators
+from attrs import define, field, validators
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
@@ -108,6 +108,8 @@ SECTION_MATCH = (
     rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{POSITION}{DATATYPE}{END}(?P<delimeter>.*)"
 )
 
+MAPPING_VALIDATION_REGEX = re.compile(rf"^({DELIMETER})?({DISSECT}{DELIMETER})+({DISSECT})?$")
+
 
 def _do_nothing(*_):
     return
@@ -131,20 +133,18 @@ class DissectorRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for Dissector"""
 
-        source_fields: list = field(factory=list)
-        target_field: str = field(default="")
+        source_fields: list = field(factory=list, init=False)
+        target_field: str = field(default="", init=False)
 
         mapping: dict = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.matches_re(
-                        rf"^({DELIMETER})?({DISSECT}{DELIMETER})+({DISSECT})?$"
-                    ),
+                    value_validator=validators.matches_re(MAPPING_VALIDATION_REGEX),
                 ),
             ],
-            default=Factory(dict),
+            factory=dict,
         )
         """A mapping from source fields to a dissect pattern [optional].
         Dotted field notation is possible in key and in the dissect pattern.
@@ -157,7 +157,7 @@ class DissectorRule(FieldManagerRule):
                     value_validator=validators.in_(["float", "int", "bool", "string"]),
                 ),
             ],
-            default=Factory(dict),
+            factory=dict,
         )
         """A mapping from source field and desired datatype [optional].
         The datatypes could be :code:`float`, :code:`int`, :code:`bool`, :code:`string`

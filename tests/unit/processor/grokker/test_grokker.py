@@ -1,20 +1,22 @@
 # pylint: disable=missing-docstring
 import pytest
+
 from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
-
 test_cases = [  # testcase, rule, event, expected
-
+    (
+        "matches simple grok pattern",
+        {"filter": "message", "grokker": {"mapping": {"message": "this is the {USER}"}}},
+        {"message": "this is the MyUser586"},
+        {"message": "this is the MyUser586", "USER": "MyUser586"},
+    )
 ]
 
-failure_test_cases = [  # testcase, rule, event, expected
- 
-]  
+failure_test_cases = []  # testcase, rule, event, expected
 
 
 class TestGrokker(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "grokker",
         "specific_rules": [],
