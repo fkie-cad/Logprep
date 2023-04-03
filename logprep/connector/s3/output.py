@@ -114,15 +114,22 @@ class S3Output(Output):
 
     _current_backlog_count: int
 
+    _writing_thread: Optional[threading.Thread]
+
+    _bucket_exists: bool
+
+    _s3_resource: Optional["boto3.resources.factory.s3.ServiceResource"]
+
     _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 
     def __init__(self, name: str, configuration: "S3Output.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self._message_backlog = defaultdict(list)
         self._current_backlog_count = 0
-        self._setup_s3_resource()
         self._writing_thread = None
         self._bucket_exists = False
+        self._s3_resource = None
+        self._setup_s3_resource()
 
     def _setup_s3_resource(self):
         session = boto3.Session(
@@ -143,6 +150,7 @@ class S3Output(Output):
 
     @property
     def s3_resource(self):
+        """Create bucket and return s3 resource"""
         if self._bucket_exists is False:
             try:
                 self._s3_resource.create_bucket(Bucket=self._config.bucket)
