@@ -5,6 +5,8 @@
 # pylint: disable=attribute-defined-outside-init
 import re
 from copy import deepcopy
+from time import sleep
+
 import pytest
 from datetime import datetime
 from math import isclose
@@ -187,22 +189,26 @@ class TestS3Output(BaseOutputTestCase):
         # Backlog not full
         for idx in range(message_backlog_size - 1):
             s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+            sleep(0.1)
             assert s3_output._current_backlog_count == idx + 1
         s3_output._write_document_batch.assert_not_called()
 
         # Backlog full then cleared
         s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+        sleep(0.1)
         s3_output._write_document_batch.assert_called_once()
         assert s3_output._current_backlog_count == 0
 
         # Backlog not full
         for idx in range(message_backlog_size - 1):
             s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+            sleep(0.1)
             assert s3_output._current_backlog_count == idx + 1
         s3_output._write_document_batch.assert_called_once()
 
         # Backlog full then cleared
         s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+        sleep(0.1)
         assert s3_output._write_document_batch.call_count == 2
         assert s3_output._current_backlog_count == 0
 
