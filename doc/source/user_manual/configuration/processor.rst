@@ -4,6 +4,13 @@
 Processors
 ==========
 
+.. automodule:: logprep.processor.amides.processor
+.. autoclass:: logprep.processor.amides.processor.Amides.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.calculator.processor
 .. autoclass:: logprep.processor.calculator.processor.Calculator.Config
    :members:

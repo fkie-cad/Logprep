@@ -23,24 +23,19 @@ Example
 
 import errno
 from logging import Logger
-from os import path, makedirs
-from typing import Tuple, Any, Dict
+from os import makedirs, path
+from typing import Any, Dict, Tuple
+
 from attr import define, field
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import SkipImportError, DuplicationError
-from logprep.util.validators import directory_validator
+from logprep.processor.base.exceptions import FieldExsistsWarning, SkipImportError
 from logprep.util.helper import get_dotted_field_value
+from logprep.util.validators import directory_validator
 
 # pylint: disable=no-name-in-module
 try:
-    from hyperscan import (
-        Database,
-        HS_FLAG_SINGLEMATCH,
-        HS_FLAG_CASELESS,
-        loadb,
-        dumpb,
-    )
+    from hyperscan import HS_FLAG_CASELESS, HS_FLAG_SINGLEMATCH, Database, dumpb, loadb
 except ModuleNotFoundError as error:  # pragma: no cover
     raise SkipImportError("hyperscan_resolver") from error
 
@@ -137,7 +132,7 @@ class HyperscanResolver(Processor):
                     if has_conflict:
                         conflicting_fields.append(split_dotted_keys[idx])
         if conflicting_fields:
-            raise DuplicationError(self.name, conflicting_fields)
+            raise FieldExsistsWarning(self, rule, event, conflicting_fields)
 
     @staticmethod
     def _try_adding_value_to_existing_field(

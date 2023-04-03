@@ -40,6 +40,17 @@ pipeline:
       tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
       alert_ip_list_path: quickstart/exampledata/rules/pre_detector/alert_ips.yml
 
+  - amides:
+      type: amides
+      specific_rules:
+        - quickstart/exampledata/rules/amides/specific
+      generic_rules:
+        - quickstart/exampledata/rules/amides/generic
+      models_path: quickstart/exampledata/models/model.zip
+      num_rule_attributions: 10
+      max_cache_entries: 1000000
+      decision_threshold: 0.32
+
   - pseudonymizer:
       type: pseudonymizer
       pubkey_analyst: quickstart/exampledata/rules/pseudonymizer/example_analyst_pub.pem

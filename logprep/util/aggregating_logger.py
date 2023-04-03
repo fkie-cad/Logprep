@@ -49,10 +49,11 @@ class AggregatingLogger:
 
         """
         cls.logger_disabled = logger_disabled
-        cls.logger_config = config.get("logger", dict())
+        cls.logger_config = config.get("logger", {})
 
         cls.level_str = cls.logger_config.get("level", "INFO")
-
+        if cls.level_str is None:
+            cls.level_str = "INFO"
         cls.log_level = name_to_level.get(cls.level_str.upper(), INFO)
         basicConfig(
             level=cls.log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
@@ -84,7 +85,7 @@ class AggregatingLogger:
             logger.handlers = []
             logger.addHandler(SysLogHandler(address="/dev/log"))
 
-        if cls.level_str.upper() not in name_to_level.keys():
+        if cls.level_str.upper() not in name_to_level:
             logger.info(f"Invalid log level '{cls.level_str.upper()}', defaulting to 'INFO'")
         else:
             logger.setLevel(cls.log_level)

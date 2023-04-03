@@ -131,7 +131,7 @@ This slicing is based on the native
 
 import json
 from os.path import basename, splitext
-from typing import List, Set, Optional, Dict
+from typing import Dict, List, Optional, Set
 
 from attrs import define, field, validators
 from ruamel.yaml import YAML
@@ -227,11 +227,11 @@ class Rule:
         return all([other.filter == self._filter, other._config == self._config])
 
     def __hash__(self) -> int:  # pylint: disable=function-redefined
-        return hash(repr(self))
+        return id(self)
 
     def __repr__(self) -> str:
         if hasattr(self, "_config"):
-            return f"filter={self.filter}, {self._config}"
+            return f"filename={self.file_name}, filter={self.filter}, {self._config}"
         return super().__repr__()
 
     # pylint: disable=C0111

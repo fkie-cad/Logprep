@@ -1,7 +1,20 @@
 ## Upcoming Changes
 
-
 ## next release
+
+### Features
+
+* Add `amides` processor to extends conventional rule matching by applying machine learning components
+* `Normalizer` writes failure tags if nomalization fails
+* Add `flush_timeout` to `opensearch` and `elasticsearch` outputs to ensure message delivery within a configurable period
+* add `kafka_config` option to `confluent_kafka_input` and `confluent_kafka_output` connectors to provide additional config options to `librdkafka`
+
+### Improvements
+* Harmonize error messages and handling for processors and connectors
+* Add ability to schedule periodic tasks to all components
+
+
+## v6.0.0
 
 ## Breaking
 
@@ -32,6 +45,7 @@ results of previous rules.
 * Fixes a bug that breaks templating config and rule files with environment variables if one or more variables are not set in environment
 * Fixes a bug for `opensearch_output` and `elasticsearch_output` not handling authentication issues
 * Fix metric `logprep_pipeline_number_of_processed_events` to actually count the processed events per pipeline
+* Fix a bug for enrichment with environment variables. Variables must have one of the following prefixes now: `LOGPREP_`, `CI_`, `GITHUB_` or `PYTEST_`
 
 ### Improvements
 

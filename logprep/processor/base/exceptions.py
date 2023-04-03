@@ -1,8 +1,12 @@
 """This module contains exceptions for rules."""
 
-from typing import Any, List
+from typing import TYPE_CHECKING, Any, List
 
 from logprep.factory_error import FactoryError
+
+if TYPE_CHECKING:
+    from logprep.abc.processor import Processor
+    from logprep.processor.base.rule import Rule
 
 
 class RuleError(BaseException):
@@ -45,35 +49,47 @@ class SkipImportError(FactoryError):
             super().__init__("Processor can't be imported")
 
 
-class ProcessingError(BaseException):
+class ProcessingError(Exception):
     """Base class for exceptions related to processing events."""
 
-    def __init__(self, name: str, message: str):
-        super().__init__(f"{name}: ({message})")
+    def __init__(self, processor: "Processor", message: str):
+        super().__init__(f"{self.__class__.__name__} in {processor.describe()}: {message}")
 
 
-class ProcessingWarning(ProcessingError):
-    """An minor error occurred - log the error but continue processing the event."""
+class ProcessingCriticalError(ProcessingError):
+    """A critical error occurred - stop processing of this event"""
 
-    def __init__(self, message: str):
-        super().__init__("ProcessingWarning", message)
-
-
-class ProcessingWarningCollection(ProcessingError):
-    """A collection of ProcessingWarnings."""
-
-    def __init__(self, name: str, message: str, processing_warnings):
-        super().__init__(name, message)
-        self.processing_warnings = processing_warnings
+    def __init__(self, processor: "Processor", message: str, event: dict):
+        event.clear()
+        processor.metrics.number_of_errors += 1
+        super().__init__(processor, f"{message} -> event was deleted")
 
 
-class DuplicationError(ProcessingWarning):
-    """Raise if field already exists."""
+class ProcessingWarning(Warning):
+    """A minor error occurred - log the error, but continue processing the event."""
 
-    def __init__(self, name: str, skipped_fields: List[str]):
+    def __init__(self, processor: "Processor", message: str, rule: "Rule", event: dict):
+        processor.metrics.number_of_warnings += 1
+        message = f"""{message}
+Rule: {rule},
+Event: {event}
+        """
+        super().__init__(f"{self.__class__.__name__} in {processor.describe()}: {message}")
+
+
+class FieldExsistsWarning(ProcessingWarning):
+    """Raised if field already exists."""
+
+    def __init__(
+        self,
+        processor: "Processor",
+        rule: "Rule",
+        event: dict,
+        skipped_fields: List[str],
+    ):
         message = (
-            f"{name} - The following fields could not be written, because "
+            "The following fields could not be written, because "
             "one or more subfields existed and could not be extended: "
+            f"{''.join(skipped_fields)}"
         )
-        message += " ".join(skipped_fields)
-        super().__init__(message)
+        super().__init__(processor, message, rule, event)

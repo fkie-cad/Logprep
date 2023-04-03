@@ -11,14 +11,15 @@ from copy import deepcopy
 
 import arrow
 import pytest
-from logprep.processor.base.exceptions import ProcessingWarning
+
+from logprep.factory import Factory
+from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from logprep.processor.normalizer.processor import NormalizerError
 from logprep.processor.normalizer.rule import (
     InvalidGrokDefinition,
     InvalidNormalizationDefinition,
     NormalizerRule,
 )
-from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -70,12 +71,7 @@ class TestNormalizer(BaseProcessorTestCase):
             },
             "test_normalized": {"something": "I already exist but I am different!"},
         }
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-            r"written, because one or more subfields existed and could not be extended: "
-            r"test_normalized\.something\)",
-        ):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(document)
 
         assert document["test_normalized"]["something"] == "I already exist but I am different!"
@@ -643,12 +639,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-            r"written, because one or more subfields existed and could not be extended: "
-            r"winlog\)",
-        ):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(event)
 
     def test_incorrect_grok_identifier_definition(self):
@@ -982,6 +973,7 @@ class TestNormalizer(BaseProcessorTestCase):
         }
 
         expected = copy.deepcopy(event)
+        expected.update({"tags": ["_normalizer_failure"]})
 
         rule = {
             "filter": "winlog.event_id: 123456789",
@@ -1054,6 +1046,7 @@ class TestNormalizer(BaseProcessorTestCase):
         }
 
         expected = copy.deepcopy(event)
+        expected.update({"tags": ["_normalizer_failure"]})
 
         rule = {
             "filter": "winlog.event_id: 123456789",
@@ -1071,12 +1064,7 @@ class TestNormalizer(BaseProcessorTestCase):
         }
 
         self._load_specific_rule(rule)
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"ProcessingWarning: \(Test Instance Name - The following fields could not be "
-            r"written, because one or more subfields existed and could not be extended: "
-            r"@timestamp\)",
-        ):
+        with pytest.raises(FieldExsistsWarning):
             self.object.process(event)
 
         assert event == expected

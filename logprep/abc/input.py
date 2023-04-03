@@ -9,7 +9,7 @@ import zlib
 from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import arrow
 from attrs import define, field, validators
@@ -23,25 +23,41 @@ from logprep.util.validators import dict_structure_validator
 class InputError(BaseException):
     """Base class for Input related exceptions."""
 
+    def __init__(self, input_connector: "Input", message: str) -> None:
+        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
+
 
 class CriticalInputError(InputError):
     """A significant error occurred - log and don't process the event."""
 
-    def __init__(self, message, raw_input):
+    def __init__(self, input_connector: "Input", message, raw_input):
         self.raw_input = raw_input
-        super().__init__(message)
+        input_connector.metrics.number_of_errors += 1
+        super().__init__(input_connector, f"{message} -> {raw_input}")
 
 
 class FatalInputError(InputError):
     """Must not be catched."""
 
+    def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_errors += 1
+        super().__init__(input_connector, message)
+
 
 class WarningInputError(InputError):
     """May be catched but must be displayed to the user/logged."""
 
+    def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_warnings += 1
+        super().__init__(input_connector, message)
+
 
 class SourceDisconnectedError(WarningInputError):
     """Lost (or failed to establish) contact with the source."""
+
+    def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_errors += 1
+        super().__init__(input_connector, message)
 
 
 class InfoInputError(InputError):
@@ -250,7 +266,7 @@ class Input(Connector):
         if event is None:
             return None, None
         if event is not None and not isinstance(event, dict):
-            raise CriticalInputError("not a dict", event)
+            raise CriticalInputError(self, "not a dict", event)
         if self._add_hmac:
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)
         if self._add_version_info:

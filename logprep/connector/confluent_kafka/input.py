@@ -26,16 +26,17 @@ Example
         session_timeout: 6000
         offset_reset_policy: smallest
 """
-import json
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
+import msgspec
 from attrs import define, field, validators
-from confluent_kafka import Consumer
+from confluent_kafka import Consumer, KafkaException
 
 from logprep.abc.input import CriticalInputError, Input
+from logprep.abc.output import FatalOutputError
 from logprep.util.validators import dict_with_keys_validator
 
 
@@ -118,11 +119,28 @@ class ConfluentKafkaInput(Input):
         messages. Currently, the deprecated value smallest is used, which should be later changed
         to earliest. The default value of librdkafka is largest."""
 
+        kafka_config: Optional[dict] = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of((str, dict)),
+                ),
+            ],
+            factory=dict,
+        )
+        """ (Optional) Additional kafka configuration for the kafka client. 
+        This is for advanced usage only. For possible configuration options see: 
+        <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        """
+
     current_offset: int
 
     _record: Any
 
     _last_valid_records: dict
+
+    _decoder: msgspec.json.Decoder = msgspec.json.Decoder()
 
     __slots__ = [
         "current_offset",
@@ -184,7 +202,7 @@ class ConfluentKafkaInput(Input):
         record_error = self._record.error()
         if record_error:
             raise CriticalInputError(
-                f"A confluent-kafka record contains an error code: ({record_error})", None
+                self, "A confluent-kafka record contains an error code", record_error
             )
         return self._record.value()
 
@@ -212,13 +230,15 @@ class ConfluentKafkaInput(Input):
         if raw_event is None:
             return None, None
         try:
-            event_dict = json.loads(raw_event.decode("utf-8"))
-        except ValueError as error:
+            event_dict = self._decoder.decode(raw_event)
+        except msgspec.DecodeError as error:
             raise CriticalInputError(
-                "Input record value is not a valid json string", raw_event
+                self, "Input record value is not a valid json string", raw_event
             ) from error
         if not isinstance(event_dict, dict):
-            raise CriticalInputError("Input record value could not be parsed as dict", event_dict)
+            raise CriticalInputError(
+                self, "Input record value could not be parsed as dict", event_dict
+            )
         return event_dict, raw_event
 
     @cached_property
@@ -249,7 +269,7 @@ class ConfluentKafkaInput(Input):
                     "ssl.key.password": self._config.ssl["password"],
                 }
             )
-        return configuration
+        return self._config.kafka_config | configuration
 
     def batch_finished_callback(self):
         """Store offsets for each kafka partition.
@@ -261,6 +281,13 @@ class ConfluentKafkaInput(Input):
             if self._last_valid_records:
                 for last_valid_records in self._last_valid_records.values():
                     self._consumer.store_offsets(message=last_valid_records)
+
+    def setup(self):
+        super().setup()
+        try:
+            _ = self._consumer
+        except (KafkaException, ValueError) as error:
+            raise FatalOutputError(self, str(error)) from error
 
     def shut_down(self):
         """Close consumer, which also commits kafka offsets."""

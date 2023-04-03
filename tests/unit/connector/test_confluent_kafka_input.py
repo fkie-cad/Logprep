@@ -9,10 +9,13 @@ from unittest import mock
 
 import pytest
 
-from logprep.factory import Factory
 from logprep.abc.input import CriticalInputError
+from logprep.abc.output import FatalOutputError
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
-from tests.unit.connector.test_confluent_kafka_common import CommonConfluentKafkaTestCase
+from tests.unit.connector.test_confluent_kafka_common import (
+    CommonConfluentKafkaTestCase,
+)
 
 
 class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
@@ -65,8 +68,12 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         with pytest.raises(
             CriticalInputError,
-            match=r"A confluent-kafka record contains an error code: "
-            r"\(An arbitrary confluent-kafka error\)",
+            match=(
+                r"CriticalInputError in ConfluentKafkaInput \(Test Instance Name\) - "
+                r"Kafka Input: testserver:9092: "
+                r"A confluent-kafka record contains an error code -> "
+                r"An arbitrary confluent-kafka error"
+            ),
         ):
             _, _ = self.object.get_next(1)
 
@@ -135,3 +142,18 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_record.value.return_value = '{"element":"in list"}'.encode("utf8")
         result = self.object._get_raw_event(0.001)
         assert result
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_logprep_config_has_precedence(self, mock_consumer):
+        kafka_config = deepcopy(self.object._confluent_settings)
+        config = {"bootstrap.servers": "bootstrap1, myprivatebootstrap"}
+        self.object._config.kafka_config = config
+        self.object._consumer.clear()
+        _ = self.object._consumer
+        mock_consumer.assert_called_with(kafka_config)
+
+    def test_setup_raises_fatal_output_error_on_invalid_config(self):
+        config = {"myconfig": "the config"}
+        self.object._config.kafka_config = config
+        with pytest.raises(FatalOutputError, match="No such configuration property"):
+            self.object.setup()

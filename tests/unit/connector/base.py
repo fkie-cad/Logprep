@@ -3,10 +3,8 @@
 import base64
 import json
 import zlib
-from abc import ABC
 from copy import deepcopy
 from logging import getLogger
-from typing import Iterable
 from unittest import mock
 
 import arrow
@@ -15,11 +13,11 @@ from logprep.abc.connector import Connector
 from logprep.abc.input import Input
 from logprep.abc.output import Output
 from logprep.factory import Factory
-from logprep.util.helper import camel_to_snake
 from logprep.util.time_measurement import TimeMeasurement
+from tests.unit.component.base import BaseComponentTestCase
 
 
-class BaseConnectorTestCase(ABC):
+class BaseConnectorTestCase(BaseComponentTestCase):
     CONFIG: dict = {}
     object: Connector = None
     logger = getLogger()
@@ -30,17 +28,6 @@ class BaseConnectorTestCase(ABC):
 
     def test_is_a_connector_implementation(self):
         assert isinstance(self.object, Connector)
-
-    def test_uses_python_slots(self):
-        assert isinstance(self.object.__slots__, Iterable)
-
-    def test_describe(self):
-        describe_string = self.object.describe()
-        expected_base_description = f"{self.object.__class__.__name__} (Test Instance Name)"
-        assert describe_string.startswith(expected_base_description)
-
-    def test_snake_type(self):
-        assert str(self.object) == camel_to_snake(self.object.__class__.__name__)
 
 
 class BaseInputTestCase(BaseConnectorTestCase):
