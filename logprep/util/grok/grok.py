@@ -22,14 +22,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-try:
-    import regex as re
-except ImportError as e:
-    # If you import re, grok_match can't handle regular expression containing atomic group(?>)
-    import re
-
 import codecs
 import os
+import re
 
 import pkg_resources
 
