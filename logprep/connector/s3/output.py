@@ -188,14 +188,14 @@ class S3Output(Output):
             if self._writing_thread is None or not self._writing_thread.is_alive():
                 message_backlog = deepcopy(self._message_backlog)
                 self._writing_thread = threading.Thread(
-                    target=self.write_document_batches, args=(message_backlog,)
+                    target=self._write_document_batches, args=(message_backlog,)
                 )
                 self._writing_thread.start()
                 return True
         self._current_backlog_count = backlog_count
         return False
 
-    def write_document_batches(self, message_backlog):
+    def _write_document_batches(self, message_backlog):
         for prefix_mb, document_batch in message_backlog.items():
             self._write_document_batch(document_batch, f"{prefix_mb}/{uuid4()}-{time()}")
         self._message_backlog.clear()

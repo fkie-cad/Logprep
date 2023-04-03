@@ -3,7 +3,6 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=no-self-use
 import re
 from copy import deepcopy
 import pytest
@@ -21,7 +20,6 @@ from botocore.exceptions import (
 import arrow
 
 from logprep.factory import Factory
-from logprep.abc.output import WarningOutputError
 from tests.unit.connector.base import BaseOutputTestCase
 
 
