@@ -9,11 +9,11 @@ from logprep.connector.console.output import ConsoleOutput
 from logprep.connector.dummy.input import DummyInput
 from logprep.connector.dummy.output import DummyOutput
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
+from logprep.connector.file.input import FileInput
 from logprep.connector.http.input import HttpConnector
 from logprep.connector.json.input import JsonInput
 from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
-from logprep.connector.file.input import FileInput
 from logprep.connector.opensearch.output import OpensearchOutput
 from logprep.connector.s3.output import S3Output
 from logprep.processor.amides.processor import Amides
@@ -30,9 +30,10 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.generic_adder.processor import GenericAdder
 from logprep.processor.generic_resolver.processor import GenericResolver
 from logprep.processor.geoip_enricher.processor import GeoipEnricher
+from logprep.processor.grokker.processor import Grokker
 from logprep.processor.hyperscan_resolver.processor import HyperscanResolver
-from logprep.processor.key_checker.processor import KeyChecker
 from logprep.processor.ip_informer.processor import IpInformer
+from logprep.processor.key_checker.processor import KeyChecker
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.list_comparison.processor import ListComparison
 from logprep.processor.normalizer.processor import Normalizer
@@ -64,6 +65,7 @@ class Registry:
         "generic_adder": GenericAdder,
         "generic_resolver": GenericResolver,
         "geoip_enricher": GeoipEnricher,
+        "grokker": Grokker,
         "hyperscan_resolver": HyperscanResolver,
         "ip_informer": IpInformer,
         "key_checker": KeyChecker,
