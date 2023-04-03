@@ -7,10 +7,19 @@ from tests.unit.processor.base import BaseProcessorTestCase
 test_cases = [  # testcase, rule, event, expected
     (
         "matches simple grok pattern",
-        {"filter": "message", "grokker": {"mapping": {"message": "this is the {USER}"}}},
+        {"filter": "message", "grokker": {"mapping": {"message": "this is the %{USER:userfield}"}}},
         {"message": "this is the MyUser586"},
-        {"message": "this is the MyUser586", "USER": "MyUser586"},
-    )
+        {"message": "this is the MyUser586", "userfield": "MyUser586"},
+    ),
+    (
+        "matches simple grok pattern",
+        {
+            "filter": "message",
+            "grokker": {"mapping": {"message": "this is the %{USER:user.subfield}"}},
+        },
+        {"message": "this is the MyUser586"},
+        {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected

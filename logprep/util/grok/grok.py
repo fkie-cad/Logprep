@@ -12,7 +12,7 @@ import os
 
 import pkg_resources
 
-DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/legacy")]
+DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs-v1")]
 
 
 class Grok(object):

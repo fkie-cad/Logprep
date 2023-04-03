@@ -95,8 +95,8 @@ class TestGrokkerRule:
                     "filter": "message",
                     "grokker": {"mapping": {"message": "%{NUMBER:[birthday][year]:int}"}},
                 },
-                ValueError,
-                "must match regex",
+                None,
+                None,
             ),
             (
                 {
@@ -148,6 +148,63 @@ class TestGrokkerRule:
                 None,
                 None,
             ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {
+                            "message": "this is a %{USER} some behind %{JAVASTACKTRACEPART}"
+                        },
+                        "pattern_version": "legacy",
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {
+                            "message": "this is a %{USER} some behind %{JAVASTACKTRACEPART}"
+                        },
+                        "pattern_version": "ecs",
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {
+                            "message": "this is a %{USER} some behind %{JAVASTACKTRACEPART}"
+                        },
+                        "pattern_version": "nonsense",
+                    },
+                },
+                ValueError,
+                r"'pattern_version' must be in \('ecs', 'legacy'\)",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {"message": "this is a %{USER:[user][username]}"},
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {"mapping": {"message": "%{NUMBER:[birthday.year]:int}"}},
+                },
+                ValueError,
+                "must match regex",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
@@ -159,7 +216,6 @@ class TestGrokkerRule:
             assert hasattr(rule_instance, "_config")
             for key, value in rule.get("grokker").items():
                 assert hasattr(rule_instance._config, key)
-                assert value == getattr(rule_instance._config, key)
 
     @pytest.mark.parametrize(
         ["testcase", "rule1", "rule2", "equality"],
@@ -220,3 +276,48 @@ class TestGrokkerRule:
         rule1 = GrokkerRule._create_from_dict(rule1)
         rule2 = GrokkerRule._create_from_dict(rule2)
         assert (rule1 == rule2) == equality, testcase
+
+    @pytest.mark.parametrize(
+        "rule, expected_mapping",
+        [
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {"message": "this is a %{USER:[user][username]}"},
+                    },
+                },
+                {"message": "this is a %{USER:[user][username]}"},
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {"message": "this is a %{USER:user.username}"},
+                    },
+                },
+                {"message": "this is a %{USER:[user][username]}"},
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {"message": "this is a %{USER:user.username.firstname}"},
+                    },
+                },
+                {"message": "this is a %{USER:[user][username][firstname]}"},
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {"message": "this is a %{USER:user}"},
+                    },
+                },
+                {"message": "this is a %{USER:[user]}"},
+            ),
+        ],
+    )
+    def test_ensure_dotted_field_notation_in_mapping(self, rule, expected_mapping):
+        rule = GrokkerRule._create_from_dict(rule)
+        assert rule._config.mapping == expected_mapping
