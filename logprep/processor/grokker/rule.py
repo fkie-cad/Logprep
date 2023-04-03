@@ -49,7 +49,7 @@ from attrs import define, field, validators
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.util.grok.grok import Grok
 
-GROK = r"%\{([A-Z0-9_]*)(:.*)?\}"
+GROK = r"%\{([A-Z0-9_]*)(:[^\{\}\[\]:]*]*)?(:int|float)?\}"
 NOT_GROK = rf"(?!{GROK}).*"
 MAPPING_VALIDATION_REGEX = re.compile(rf"^(({NOT_GROK})?{GROK}({NOT_GROK})?)*$")
 
