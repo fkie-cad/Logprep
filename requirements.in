@@ -29,3 +29,4 @@ uvicorn
 wheel
 deepdiff
 msgspec
+boto3
