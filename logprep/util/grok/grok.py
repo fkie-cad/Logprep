@@ -27,22 +27,31 @@ import os
 import re
 
 import pkg_resources
+from attrs import define, field, validators
 
 DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs-v1")]
 
 
-class Grok(object):
-    def __init__(self, pattern, custom_patterns_dir=None, custom_patterns={}, fullmatch=True):
-        self.pattern = pattern
-        self.custom_patterns_dir = custom_patterns_dir
+@define(slots=True)
+class Grok:
+    """Grok object"""
+
+    pattern: str = field(validator=validators.instance_of(str))
+    custom_patterns_dir: str = field(default="")
+    custom_patterns: dict = field(factory=dict)
+    fullmatch: bool = field(default=True)
+    predefined_patterns: dict = field(init=False, factory=dict)
+    type_mapper: dict = field(init=False, factory=dict)
+    regex_obj = field(init=False, default=None)
+
+    def __attrs_post_init__(self):
         self.predefined_patterns = _reload_patterns(DEFAULT_PATTERNS_DIRS)
-        self.fullmatch = fullmatch
 
         custom_pats = {}
-        if custom_patterns_dir is not None:
-            custom_pats = _reload_patterns([custom_patterns_dir])
+        if self.custom_patterns_dir:
+            custom_pats = _reload_patterns([self.custom_patterns_dir])
 
-        for pat_name, regex_str in custom_patterns.items():
+        for pat_name, regex_str in self.custom_patterns.items():
             custom_pats[pat_name] = Pattern(pat_name, regex_str)
 
         if len(custom_pats) > 0:

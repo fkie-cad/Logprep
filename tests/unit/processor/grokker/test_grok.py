@@ -1,3 +1,4 @@
+from logprep.processor.normalizer.rule import GrokWrapper
 from logprep.util.grok.grok import Grok
 
 
@@ -230,7 +231,4 @@ def test_matches_with_deep_field():
     pat = "%{WORD:[field1][field2]}"
     grok = Grok(pat)
     m = grok.match(text)
-    assert m["field1"]["field2"] == "github", "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    assert m["field1"]["field2"] == "github", f"grok match failed: {text}, {pat}"
