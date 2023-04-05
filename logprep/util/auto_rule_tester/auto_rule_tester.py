@@ -52,6 +52,7 @@ Auto-testing does also perform a verification of the pipeline section of the Log
 
 import hashlib
 import json
+import re
 import sys
 import tempfile
 import traceback
@@ -64,7 +65,6 @@ from os import path, walk
 from pprint import pprint
 from typing import TYPE_CHECKING, TextIO, Tuple
 
-import regex as re
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
 
