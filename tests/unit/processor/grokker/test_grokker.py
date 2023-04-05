@@ -28,8 +28,8 @@ failure_test_cases = []  # testcase, rule, event, expected
 class TestGrokker(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "grokker",
-        "specific_rules": [],
-        "generic_rules": [],
+        "specific_rules": ["tests/testdata/unit/grokker/specific_rules"],
+        "generic_rules": ["tests/testdata/unit/grokker/generic_rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
