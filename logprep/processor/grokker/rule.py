@@ -49,7 +49,7 @@ from attrs import define, field, validators
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.util.grok.grok import Grok
 
-LOGSTASH_NOTATION = r"(\[[^\[\]\{\}\.]*\])*"
+LOGSTASH_NOTATION = r"(([^\[\]\{\}\.]*)?(\[[^\[\]\{\}\.]*\])*)"
 DOTTED_FIELD_NOTATION = r"([^\[\]\{\}]*)*"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:int|float)?" + "\}"
 NOT_GROK = rf"(?!{GROK}).*"
@@ -60,8 +60,10 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
     def _replace_pattern(pattern):
         fields = re.findall(r"%\{[A-Z0-9_]*:([^\[\]]*)\}", pattern)
         for dotted_field in fields:
-            replacement = "".join(f"[{element}]" for element in dotted_field.split("."))
-            pattern = re.sub(re.escape(dotted_field), replacement, pattern)
+            splitted_field = dotted_field.split(".")
+            if len(splitted_field) > 1:
+                replacement = "".join(f"[{element}]" for element in splitted_field)
+                pattern = re.sub(re.escape(dotted_field), replacement, pattern)
         return pattern
 
     return {dotted_field: _replace_pattern(pattern) for dotted_field, pattern in mapping.items()}

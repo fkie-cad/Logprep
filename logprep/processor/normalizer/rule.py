@@ -817,10 +817,9 @@ on the Grok results.
 import re
 from typing import Dict, List, Union
 
-from pygrok import Grok
-
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.base.rule import InvalidRuleDefinitionError, Rule
+from logprep.util.grok.grok import Grok
 
 GROK_DELIMITER = "__________________"
 

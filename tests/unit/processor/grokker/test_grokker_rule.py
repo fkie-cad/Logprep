@@ -314,7 +314,7 @@ class TestGrokkerRule:
                         "mapping": {"message": "this is a %{USER:user}"},
                     },
                 },
-                {"message": "this is a %{USER:[user]}"},
+                {"message": "this is a %{USER:user}"},
             ),
         ],
     )
