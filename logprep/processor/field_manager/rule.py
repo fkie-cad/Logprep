@@ -80,7 +80,9 @@ Examples for field_manager:
 
 """
 from attrs import define, field, validators
+
 from logprep.processor.base.rule import Rule
+from logprep.util.helper import get_dotted_field_value
 
 FIELD_PATTERN = r"\$\{([+&?]?[^${}]*)\}"
 
@@ -112,6 +114,12 @@ class FieldManagerRule(Rule):
         If the target field does not exist, a new field will be added with the
         source field value as list. Defaults to :code:`False`.
         """
+
+        def __attrs_post_init__(self):
+            # ensures no split operations during processing
+            for dotted_field in self.source_fields:  # pylint: disable=not-an-iterable
+                get_dotted_field_value({}, dotted_field)
+            get_dotted_field_value({}, self.target_field)
 
     # pylint: disable=missing-function-docstring
     @property

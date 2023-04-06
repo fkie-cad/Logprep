@@ -95,6 +95,7 @@ It is possible to mix both extraction sources. They will be merged to one list w
 """
 
 from typing import List
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import InvalidRuleDefinitionError
@@ -159,6 +160,7 @@ class SelectiveExtractorRule(FieldManagerRule):
         extend_target_list: bool = field(default=False, init=False)
 
         def __attrs_post_init__(self):
+            super().__attrs_post_init__()
             if not self.extract_from_file:
                 return
             try:

@@ -86,9 +86,9 @@ The calc expression is not whitespace sensitive.
 """
 import re
 
-from attrs import field, define, validators
+from attrs import define, field, validators
 
-from logprep.processor.field_manager.rule import FieldManagerRule, FIELD_PATTERN
+from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
 
 
 class CalculatorRule(FieldManagerRule):
@@ -113,6 +113,7 @@ class CalculatorRule(FieldManagerRule):
 
         def __attrs_post_init__(self):
             self.source_fields = re.findall(FIELD_PATTERN, self.calc)
+            super().__attrs_post_init__()
 
     @property
     def calc(self):
