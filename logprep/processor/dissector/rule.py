@@ -81,11 +81,11 @@ Examples for dissection and datatype conversion:
 import re
 from typing import Callable, List, Tuple
 
-from attrs import define, validators, field, Factory
+from attrs import Factory, define, field, validators
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import append, add_and_overwrite
+from logprep.util.helper import add_and_overwrite, append
 
 START = r"%\{"
 END = r"\}"
@@ -165,6 +165,7 @@ class DissectorRule(FieldManagerRule):
 
         def __attrs_post_init__(self):
             self.source_fields = list(self.mapping.keys())  # pylint: disable=no-member
+            super().__attrs_post_init__()
 
     _actions_mapping: dict = {
         None: add_and_overwrite,

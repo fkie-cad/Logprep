@@ -21,10 +21,9 @@ In the following example the URL from the field :code:`url` will be extracted an
         source_fields: [url]
       description: '...'
 """
-import warnings
 from attrs import define, field, fields
+
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class DomainResolverRule(FieldManagerRule):

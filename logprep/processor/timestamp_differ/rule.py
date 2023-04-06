@@ -45,7 +45,7 @@ import re
 from attr import field
 from attrs import define, validators
 
-from logprep.processor.field_manager.rule import FieldManagerRule, FIELD_PATTERN
+from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
 
 
 class TimestampDifferRule(FieldManagerRule):
@@ -90,6 +90,7 @@ class TimestampDifferRule(FieldManagerRule):
             source_fields, source_field_formats = list(map(list, zip(*field_format_tuple)))
             self.source_fields = source_fields
             self.source_field_formats = source_field_formats
+            super().__attrs_post_init__()
 
     # pylint: disable=missing-function-docstring
     @property
