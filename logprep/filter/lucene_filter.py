@@ -150,7 +150,7 @@ class LuceneFilter:
         except IllegalCharacterError as error:
             msg = (
                 f"{error} in '{escaped_string}'"
-                + " - Ensure that the expression is escaped correctly!"
+                + " - expression not escaped correctly"
             )
             raise LuceneFilterError(msg) from error
 
