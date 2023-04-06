@@ -7,7 +7,7 @@ This section contains the connection settings for the AWS s3 output connector.
 This connector is non-blocking and may skip sending data if previous data has not finished sending.
 It doesn't crash if a connection couldn't be established, but sends a warning.
 
-The desired bucket is defined by the :code:`bucket` configuration parameter.
+The target bucket is defined by the :code:`bucket` configuration parameter.
 The prefix is defined by the value in the field :code:`prefix_field` in the document.
 
 Example
@@ -23,6 +23,7 @@ Example
         error_prefix: some_prefix
         prefix_field: dotted.field
         default_prefix: some_prefix
+        base_prefix:
         message_backlog_size: 100000
         connect_timeout:
         max_retries:
@@ -78,6 +79,8 @@ class S3Output(Output):
         """Field with value to use as prefix for the document."""
         default_prefix: str = field(validator=validators.instance_of(str))
         """Default prefix if no prefix found in the document."""
+        base_prefix: Optional[str] = field(validator=validators.instance_of(str), default="")
+        """base_prefix prefix (optional)."""
         message_backlog_size: int = field(validator=validators.instance_of(int), default=500)
         """Backlog size to collect messages before sending a batch (default is 500)"""
         connect_timeout: float = field(validator=validators.instance_of(float), default=0.5)
@@ -116,18 +119,18 @@ class S3Output(Output):
 
     _writing_thread: Optional[threading.Thread]
 
-    _bucket_exists: bool
-
     _s3_resource: Optional["boto3.resources.factory.s3.ServiceResource"]
 
     _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
+
+    _base_prefix: str
 
     def __init__(self, name: str, configuration: "S3Output.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self._message_backlog = defaultdict(list)
         self._current_backlog_count = 0
         self._writing_thread = None
-        self._bucket_exists = False
+        self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
         self._s3_resource = None
         self._setup_s3_resource()
 
@@ -150,14 +153,7 @@ class S3Output(Output):
 
     @property
     def s3_resource(self):
-        """Create bucket and return s3 resource"""
-        if self._bucket_exists is False:
-            try:
-                self._s3_resource.create_bucket(Bucket=self._config.bucket)
-            except (ClientError, BotoCoreError) as error:
-                self._logger.warning(f"{self.describe()}: {error}")
-            else:
-                self._bucket_exists = True
+        """Return s3 resource"""
         return self._s3_resource
 
     @cached_property
@@ -189,6 +185,7 @@ class S3Output(Output):
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
+        prefix = f"{self._base_prefix}{prefix}"
         self._message_backlog[prefix].append(document)
 
         backlog_count = self._current_backlog_count + 1
@@ -204,8 +201,9 @@ class S3Output(Output):
         return False
 
     def _write_document_batches(self, message_backlog):
+        self._logger.info(f"Writing {self._current_backlog_count + 1} documents to s3")
         for prefix_mb, document_batch in message_backlog.items():
-            self._write_document_batch(document_batch, f"{prefix_mb}/{uuid4()}-{time()}")
+            self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
         self._message_backlog.clear()
         self._current_backlog_count = 0
 
@@ -223,9 +221,9 @@ class S3Output(Output):
             self._logger.warning(f"{self.describe()}: {error}")
 
     def _write_to_s3(self, document_batch: dict, identifier: str):
-        if self.s3_resource:
-            s3_obj = self.s3_resource.Object(self._config.bucket, identifier)
-            s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
+        self._logger.debug(f'Writing "{identifier}" to s3 bucket "{self._config.bucket}"')
+        s3_obj = self.s3_resource.Object(self._config.bucket, identifier)
+        s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
 
     def store(self, document: dict):
         """Store a document into s3 bucket.

@@ -47,10 +47,16 @@ class TestS3Output(BaseOutputTestCase):
             self.object.describe() == "S3Output (Test Instance Name) - S3 Output: http://host:123"
         )
 
-    def test_store_sends_with_default_prefix(self):
+    base_prefix_tests_cases = ["", "test"]
+
+    @pytest.mark.parametrize("base_prefix", base_prefix_tests_cases)
+    def test_store_sends_with_default_prefix(self, base_prefix):
         event = {"field": "content"}
+        default_prefix = (
+            f"{base_prefix}/foo_default_prefix" if base_prefix else "foo_default_prefix"
+        )
         expected = {
-            "foo_default_prefix": [
+            default_prefix: [
                 {
                     "message": '{"field": "content"}',
                     "reason": "Prefix field 'foo_prefix_field' empty or missing in document",
@@ -58,20 +64,23 @@ class TestS3Output(BaseOutputTestCase):
             ]
         }
         s3_config = deepcopy(self.CONFIG)
-        s3_config.update({"message_backlog_size": 2})
+        s3_config.update({"message_backlog_size": 2, "base_prefix": base_prefix})
         s3_output = Factory.create({"s3": s3_config}, self.logger)
 
         s3_output.store(event)
 
-        assert "foo_default_prefix" in s3_output._message_backlog
-        assert len(s3_output._message_backlog["foo_default_prefix"]) == 1
-        assert "@timestamp" in s3_output._message_backlog["foo_default_prefix"][0]
-        assert s3_output._message_backlog["foo_default_prefix"][0].pop("@timestamp")
+        assert default_prefix in s3_output._message_backlog
+        assert len(s3_output._message_backlog[default_prefix]) == 1
+        assert "@timestamp" in s3_output._message_backlog[default_prefix][0]
+        assert s3_output._message_backlog[default_prefix][0].pop("@timestamp")
         assert s3_output._message_backlog == expected
 
-    def test_store_sends_event_to_with_expected_prefix_if_prefix_missing_in_event(self):
+    @pytest.mark.parametrize("base_prefix", base_prefix_tests_cases)
+    def test_store_sends_event_to_with_expected_prefix_if_prefix_missing_in_event(
+        self, base_prefix
+    ):
         event = {"field": "content"}
-        default_prefix = "default_prefix"
+        default_prefix = f"{base_prefix}/default_prefix" if base_prefix else "default_prefix"
         expected = {
             "message": '{"field": "content"}',
             "reason": "Prefix field 'foo_prefix_field' empty or missing in document",
@@ -85,8 +94,9 @@ class TestS3Output(BaseOutputTestCase):
         assert s3_output._message_backlog[default_prefix][0].pop("@timestamp")
         assert s3_output._message_backlog[default_prefix][0] == expected
 
-    def test_store_custom_writes_event_with_expected_prefix(self):
-        custom_prefix = "custom_prefix"
+    @pytest.mark.parametrize("base_prefix", base_prefix_tests_cases)
+    def test_store_custom_writes_event_with_expected_prefix(self, base_prefix):
+        custom_prefix = f"{base_prefix}/custom_prefix" if base_prefix else "custom_prefix"
         event = {"field": "content"}
         expected = {"field": "content"}
 
@@ -97,8 +107,9 @@ class TestS3Output(BaseOutputTestCase):
         s3_output.store_custom(event, custom_prefix)
         assert s3_output._message_backlog[custom_prefix][0] == expected
 
-    def test_store_failed(self):
-        error_prefix = "error_prefix"
+    @pytest.mark.parametrize("base_prefix", base_prefix_tests_cases)
+    def test_store_failed(self, base_prefix):
+        error_prefix = f"{base_prefix}/error_prefix" if base_prefix else "error_prefix"
         event_received = {"field": "received"}
         event = {"field": "content"}
         error_message = "error message"
