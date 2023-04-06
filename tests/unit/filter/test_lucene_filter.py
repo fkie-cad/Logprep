@@ -427,7 +427,7 @@ class TestLueceneFilter:
             "One not escaped quotation",
             '"',
             "Illegal character '\"' at position 7 in 'foo: \"\"\"' - "
-            + "Ensure that the expression is escaped correctly!",
+            + "expression not escaped correctly",
         ),
         ("Two not escaped quotation", '""', 'The expression "foo: """"" is invalid!'),
         (
