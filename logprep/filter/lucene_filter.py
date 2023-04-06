@@ -142,16 +142,10 @@ class LuceneFilter:
             tree = parser.parse(escaped_string)
             transformer = LuceneTransformer(tree, special_fields)
         except ParseSyntaxError as error:
-            msg = (
-                f"{error} Expression: '{escaped_string}'"
-                + " - expression not escaped correctly."
-            )
+            msg = f"{error} Expression: '{escaped_string}'" + " - expression not escaped correctly."
             raise LuceneFilterError(msg) from error
         except IllegalCharacterError as error:
-            msg = (
-                f"{error} in '{escaped_string}'"
-                + " - expression not escaped correctly"
-            )
+            msg = f"{error} in '{escaped_string}'" + " - expression not escaped correctly"
             raise LuceneFilterError(msg) from error
 
         return transformer.build_filter()
