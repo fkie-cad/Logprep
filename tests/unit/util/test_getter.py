@@ -198,7 +198,7 @@ class TestFileGetter:
 
     def test_get_returns_content(self):
         file_getter = GetterFactory.from_string("/my/file")
-        with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")) as mock_open:
+        with mock.patch("pathlib.Path.open", mock.mock_open(read_data=b"my content")) as _:
             content = file_getter.get()
             assert content == "my content"
 
