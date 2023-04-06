@@ -144,7 +144,7 @@ class LuceneFilter:
         except ParseSyntaxError as error:
             msg = (
                 f"{error} Expression: '{escaped_string}'"
-                + " - Ensure that the expression is escaped correctly!"
+                + " - expression not escaped correctly."
             )
             raise LuceneFilterError(msg) from error
         except IllegalCharacterError as error:
