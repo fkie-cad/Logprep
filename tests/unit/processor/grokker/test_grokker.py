@@ -12,10 +12,19 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "this is the MyUser586", "userfield": "MyUser586"},
     ),
     (
-        "matches simple grok pattern",
+        "matches simple grok pattern with dotted field target",
         {
             "filter": "message",
             "grokker": {"mapping": {"message": "this is the %{USER:user.subfield}"}},
+        },
+        {"message": "this is the MyUser586"},
+        {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
+    ),
+    (
+        "matches simple grok pattern with logstash field target",
+        {
+            "filter": "message",
+            "grokker": {"mapping": {"message": "this is the %{USER:[user][subfield]}"}},
         },
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
