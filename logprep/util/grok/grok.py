@@ -53,8 +53,9 @@ class Grok:
     custom_patterns_dir: str = field(default="")
     custom_patterns: dict = field(factory=dict)
     fullmatch: bool = field(default=True)
-    predefined_patterns: dict = field(init=False, factory=dict)
+    predefined_patterns: dict = field(init=False, factory=dict, repr=False)
     type_mapper: dict = field(init=False, factory=dict)
+    field_mapper: dict = field(init=False, factory=dict)
     regex_obj = field(init=False, default=None)
 
     def __attrs_post_init__(self):
@@ -99,10 +100,7 @@ class Grok:
                         matches[key] = float(match)
                 except (TypeError, KeyError):
                     pass
-        result = {}
-        for key, match in matches.items():
-            add_field_to(result, key.replace("__", "."), match, False, True)
-        return result
+        return matches
 
     def set_search_pattern(self, pattern=None):
         """sets the search pattern"""
@@ -117,6 +115,12 @@ class Grok:
             return fields
         return re.sub(Grok.field_pattern, r"\g<1>__", fields).strip("__")
 
+    @staticmethod
+    def _to_dotted_field(fields: str) -> str:
+        if not "__" in fields:
+            return fields
+        return fields.replace("__", ".")
+
     def _get_regex(self, match: re.Match) -> str:
         name = match.group(1)
         fields = match.group(3)
@@ -125,10 +129,10 @@ class Grok:
         type_str = match.group(8)
         if type_str is not None:
             self.type_mapper |= {fields: type_str}
-        return (
-            rf"(?P<{self._to_dundered_field(fields)}>"
-            rf"{self.predefined_patterns.get(name).regex_str})"
-        )
+        dundered_fields = self._to_dundered_field(fields)
+        dotted_fields = self._to_dotted_field(dundered_fields)
+        self.field_mapper |= {dundered_fields: dotted_fields}
+        return rf"(?P<{dundered_fields}>" rf"{self.predefined_patterns.get(name).regex_str})"
 
     def _load_search_pattern(self):
         py_regex_pattern = self.pattern

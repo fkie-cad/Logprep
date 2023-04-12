@@ -48,6 +48,7 @@ from attrs import define, field, validators
 
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.util.grok.grok import GROK, Grok
+from logprep.util.helper import get_dotted_field_list
 
 DOTTED_FIELD_NOTATION = r"([^\[\]\{\}]*)*"
 NOT_GROK = rf"(?!{GROK}).*"
@@ -119,6 +120,12 @@ class GrokkerRule(DissectorRule):
             dotted_field: Grok(pattern, custom_patterns=self._config.patterns)
             for dotted_field, pattern in self._config.mapping.items()
         }
+
+        # to ensure no string splitting is done during processing for target fields:
+        for _, grok in self.actions.items():
+            target_fields = grok.field_mapper.values()
+            for target_field in target_fields:
+                get_dotted_field_list(target_field)
 
     def _set_convert_actions(self):
         pass
