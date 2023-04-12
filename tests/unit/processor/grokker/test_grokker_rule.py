@@ -214,7 +214,7 @@ class TestGrokkerRule:
         else:
             rule_instance = GrokkerRule._create_from_dict(rule)
             assert hasattr(rule_instance, "_config")
-            for key, value in rule.get("grokker").items():
+            for key, _ in rule.get("grokker").items():
                 assert hasattr(rule_instance._config, key)
 
     @pytest.mark.parametrize(

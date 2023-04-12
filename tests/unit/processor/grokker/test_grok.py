@@ -1,4 +1,4 @@
-from logprep.processor.normalizer.rule import GrokWrapper
+# pylint: disable=missing-docstring
 from logprep.util.grok.grok import Grok
 
 
@@ -6,68 +6,56 @@ def test_one_pat():
     text = "1024"
     pat = "%{INT:test_int}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m["test_int"] == "1024", f"grok match failed: {text}, {pat}"
+    match = grok.match(text)
+    assert match["test_int"] == "1024", f"grok match failed: {text}, {pat}"
 
 
 def test_one_pat_1():
     text = "1024"
     pat = "%{NUMBER:test_num}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m["test_num"] == "1024", f"grok match failed: {text}, {pat}"
+    match = grok.match(text)
+    assert match["test_num"] == "1024", f"grok match failed: {text}, {pat}"
 
 
 def test_one_pat_2():
     text = "garyelephant "
     pat = "%{WORD:name} "
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m["name"] == text.strip(), f"grok match failed: {text}, {pat}"
+    match = grok.match(text)
+    assert match["name"] == text.strip(), f"grok match failed: {text}, {pat}"
 
 
 def test_one_pat_3():
     text = "192.168.1.1"
     pat = "%{IP:ip}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m["ip"] == text.strip(), "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match["ip"] == text.strip(), f"grok match failed:{text}, {pat}"
 
 
 def test_one_pat_4():
     text = "github.com"
     pat = "%{HOSTNAME:website}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m["website"] == text.strip(), "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match["website"] == text.strip(), f"grok match failed:{text}, {pat}"
 
 
 def test_one_pat_5():
     text = "1989-11-04 05:33:02+0800"
     pat = "%{TIMESTAMP_ISO8601:ts}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m["ts"] == text.strip(), "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match["ts"] == text.strip(), f"grok match failed:{text}, {pat}"
 
 
 def test_one_pat_6():
     text = "github"
     pat = "%{WORD}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m == {}, "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match == {}, f"grok match failed:{text}, {pat}"
     # you get nothing because variable name is not set, compare "%{WORD}" and "%{WORD:variable_name}"
 
 
@@ -75,11 +63,8 @@ def test_one_pat_7():
     text = "github"
     pat = "%{NUMBER:test_num}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m is None, "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match is None, f"grok match failed:{text}, {pat}"
     # not match
 
 
@@ -87,44 +72,32 @@ def test_one_pat_8():
     text = "1989"
     pat = "%{NUMBER:birthyear:int}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m == {"birthyear": 1989}, "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match == {"birthyear": 1989}, f"grok match failed:{text}, {pat}"
 
 
 def test_multiple_pats():
     text = 'gary 25 "never quit"'
     pat = "%{WORD:name} %{INT:age} %{QUOTEDSTRING:motto}"
     grok = Grok(pat)
-    m = grok.match(text)
+    match = grok.match(text)
     assert (
-        m["name"] == "gary" and m["age"] == "25" and m["motto"] == '"never quit"'
-    ), "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+        match["name"] == "gary" and match["age"] == "25" and match["motto"] == '"never quit"'
+    ), f"grok match failed:{text}, {pat}"
 
     # variable names are not set
     text = 'gary 25 "never quit"'
     pat = "%{WORD} %{INT} %{QUOTEDSTRING}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m == {}, "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match == {}, f"grok match failed:{text}, {pat}"
 
     # "male" is not INT
     text = 'gary male "never quit"'
     pat = "%{WORD:name} %{INT:age} %{QUOTEDSTRING:motto}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m is None, "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match is None, f"grok match failed:{text}, {pat}"
 
     # nginx log
     text = (
@@ -139,42 +112,41 @@ def test_multiple_pats():
         + " %{QS:client}"
     )
     grok = Grok(pat)
-    m = grok.match(text)
+    match = grok.match(text)
     assert (
-        m["host"] == "edge.v.iask.com.edge.sinastorage.com"
-        and m["client_ip"] == "14.18.243.65"
-        and m["delay"] == "6.032"
-        and m["time_stamp"] == "21/Jul/2014:16:00:02 +0800"
-        and m["verb"] == "GET"
-        and m["uri_path"] == "/edge.v.iask.com/125880034.hlv"
-        and m["http_ver"] == "1.0"
-        and m["http_status"] == "200"
-        and m["bytes"] == "70528990"
-        and m["client"]
+        match["host"] == "edge.v.iask.com.edge.sinastorage.com"
+        and match["client_ip"] == "14.18.243.65"
+        and match["delay"] == "6.032"
+        and match["time_stamp"] == "21/Jul/2014:16:00:02 +0800"
+        and match["verb"] == "GET"
+        and match["uri_path"] == "/edge.v.iask.com/125880034.hlv"
+        and match["http_ver"] == "1.0"
+        and match["http_status"] == "200"
+        and match["bytes"] == "70528990"
+        and match["client"]
         == '"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko)'
         + ' Chrome/36.0.1985.125 Safari/537.36"'
-    ), "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    ), f"grok match failed:{text}, {pat}"
 
     text = "1989/02/23"
     pat = "%{NUMBER:birthyear:int}/%{NUMBER:birthmonth:int}/%{NUMBER:birthday:int}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m == {"birthyear": 1989, "birthmonth": 2, "birthday": 23}, "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match == {
+        "birthyear": 1989,
+        "birthmonth": 2,
+        "birthday": 23,
+    }, f"grok match failed:{text}, {pat}"
 
     text = "load average: 1.88, 1.73, 1.49"
     pat = "load average: %{NUMBER:load_1:float}, %{NUMBER:load_2:float}, %{NUMBER:load_3:float}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m == {"load_1": 1.88, "load_2": 1.73, "load_3": 1.49}, "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match == {
+        "load_1": 1.88,
+        "load_2": 1.73,
+        "load_3": 1.49,
+    }, f"grok match failed:{text}, {pat}"
 
 
 def test_custom_pats():
@@ -182,16 +154,13 @@ def test_custom_pats():
     text = 'Beijing-1104,gary 25 "never quit"'
     pat = "%{ID:user_id},%{WORD:name} %{INT:age} %{QUOTEDSTRING:motto}"
     grok = Grok(pat, custom_patterns=custom_pats)
-    m = grok.match(text)
+    match = grok.match(text)
     assert (
-        m["user_id"] == "Beijing-1104"
-        and m["name"] == "gary"
-        and m["age"] == "25"
-        and m["motto"] == '"never quit"'
-    ), "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+        match["user_id"] == "Beijing-1104"
+        and match["name"] == "gary"
+        and match["age"] == "25"
+        and match["motto"] == '"never quit"'
+    ), f"grok match failed:{text}, {pat}"
 
 
 def test_custom_pat_files():
@@ -200,42 +169,33 @@ def test_custom_pat_files():
     # pattern "ID" is defined in ./test_patterns/pats
     pat = "%{ID:user_id},%{WORD:name} %{INT:age} %{QUOTEDSTRING:motto}"
     grok = Grok(pat, custom_patterns_dir=pats_dir)
-    m = grok.match(text)
+    match = grok.match(text)
     assert (
-        m["user_id"] == "Beijing-1104"
-        and m["name"] == "gary"
-        and m["age"] == "25"
-        and m["motto"] == '"never quit"'
-    ), "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+        match["user_id"] == "Beijing-1104"
+        and match["name"] == "gary"
+        and match["age"] == "25"
+        and match["motto"] == '"never quit"'
+    ), f"grok match failed:{text}, {pat}"
 
 
 def test_hotloading_pats():
     text = "github"
     pat = "%{WORD:test_word}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m["test_word"] == "github", "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match["test_word"] == "github", f"grok match failed:{text}, {pat}"
     # matches
 
     text = "1989"
     pat = "%{NUMBER:birthyear:int}"
     grok.set_search_pattern(pat)
-    m = grok.match(text)
-    assert m == {"birthyear": 1989}, "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    match = grok.match(text)
+    assert match == {"birthyear": 1989}, f"grok match failed:{text}, {pat}"
 
 
 def test_matches_with_deep_field():
     text = "github"
     pat = "%{WORD:[field1][field2]:int}"
     grok = Grok(pat)
-    m = grok.match(text)
-    assert m["field1"]["field2"] == "github", f"grok match failed: {text}, {pat}"
+    match = grok.match(text)
+    assert match["field1"]["field2"] == "github", f"grok match failed: {text}, {pat}"

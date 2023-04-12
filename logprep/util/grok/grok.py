@@ -134,10 +134,6 @@ class Grok:
         self.regex_obj = re.compile(py_regex_pattern)
 
 
-def _wrap_pattern_name(pat_name):
-    return "%{" + pat_name + "}"
-
-
 def _reload_patterns(patterns_dirs):
     """ """
     patterns_dirs = [Path(directory) for directory in patterns_dirs]
