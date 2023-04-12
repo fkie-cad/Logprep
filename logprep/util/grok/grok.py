@@ -22,8 +22,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import codecs
-import os
 import re
 from pathlib import Path
 
@@ -35,12 +33,15 @@ from logprep.util.helper import add_field_to
 DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs-v1")]
 
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
-GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + "\}"
+GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
 
 
 @define(slots=True)
 class Grok:
     """Grok object"""
+
+    field_pattern = re.compile(r"\[(.*?)\]")
+    grok_pattern = re.compile(GROK)
 
     pattern: str = field(validator=validators.instance_of(str))
     custom_patterns_dir: str = field(default="")
@@ -57,7 +58,7 @@ class Grok:
         if self.custom_patterns_dir:
             custom_pats = _reload_patterns([self.custom_patterns_dir])
 
-        for pat_name, regex_str in self.custom_patterns.items():
+        for pat_name, regex_str in self.custom_patterns.items():  # pylint: disable=no-member
             custom_pats[pat_name] = Pattern(pat_name, regex_str)
 
         if len(custom_pats) > 0:
@@ -105,7 +106,7 @@ class Grok:
     def _to_dundered_field(fields: str) -> str:
         if not "[" in fields:
             return fields
-        return re.sub(r"\[(.*?)\]", r"\g<1>__", fields).strip("__")
+        return re.sub(Grok.field_pattern, r"\g<1>__", fields).strip("__")
 
     def _get_regex(self, match: re.Match) -> str:
         name = match.group(1)
@@ -122,9 +123,9 @@ class Grok:
 
     def _load_search_pattern(self):
         py_regex_pattern = self.pattern
-        while re.search(GROK, py_regex_pattern):
+        while re.search(Grok.grok_pattern, py_regex_pattern):
             py_regex_pattern = re.sub(
-                GROK,
+                Grok.grok_pattern,
                 self._get_regex,
                 py_regex_pattern,
                 count=1,

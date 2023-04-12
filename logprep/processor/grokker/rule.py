@@ -47,19 +47,19 @@ import re
 from attrs import define, field, validators
 
 from logprep.processor.dissector.rule import DissectorRule
-from logprep.util.grok.grok import Grok
+from logprep.util.grok.grok import GROK, Grok
 
-LOGSTASH_NOTATION = r"(([^\[\]\{\}\.]*)?(\[[^\[\]\{\}\.]*\])*)"
 DOTTED_FIELD_NOTATION = r"([^\[\]\{\}]*)*"
-GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:int|float)?" + "\}"
 NOT_GROK = rf"(?!{GROK}).*"
 MAPPING_VALIDATION_REGEX = re.compile(rf"^(({NOT_GROK})?{GROK}({NOT_GROK})?)*$")
+
+FIELD_PATTERN = re.compile(r"%\{[A-Z0-9_]*?:([^\[\]]*?)(:.*)?\}")
 
 
 def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
     def _replace_pattern(pattern):
-        fields = re.findall(r"%\{[A-Z0-9_]*:([^\[\]]*)\}", pattern)
-        for dotted_field in fields:
+        fields = re.findall(FIELD_PATTERN, pattern)
+        for dotted_field, _ in fields:
             splitted_field = dotted_field.split(".")
             if len(splitted_field) > 1:
                 replacement = "".join(f"[{element}]" for element in splitted_field)
@@ -94,7 +94,7 @@ class GrokkerRule(DissectorRule):
         Dotted field notation is possible in key and in the grok pattern.
         Additionally logstash field notation is possible in grok pattern.
         """
-        pattern_version: str = field(validator=validators.in_(("ecs", "legacy")), default="legacy")
+        pattern_version: str = field(validator=validators.in_(("ecs", "legacy")), default="ecs")
         """(Optional) version for grok patterns
         - :code:`ecs`(default) -> use ecs complient output fields\n
         - :code:`legacy` -> use logstash legacy output fields
