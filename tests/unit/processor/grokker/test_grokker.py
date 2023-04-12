@@ -29,6 +29,18 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
     ),
+    (
+        "matches custom patterns",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {"message": "this is the %{CUSTOM_PATTERN:user.subfield}"},
+                "patterns": {"CUSTOM_PATTERN": r"[^\s]*"},
+            },
+        },
+        {"message": "this is the MyUser586"},
+        {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected

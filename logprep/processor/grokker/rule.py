@@ -99,10 +99,25 @@ class GrokkerRule(DissectorRule):
         - :code:`ecs`(default) -> use ecs complient output fields\n
         - :code:`legacy` -> use logstash legacy output fields
         """
+        patterns: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            factory=dict,
+        )
+        """(Optional) additional grok patterns as mapping. E.g. :code:`CUSTOM_PATTERN: [^\s]*`
+        if you want to use special target fields, you are able to use them an usual in the
+        mapping sections. Here you only have to declare the matching regex without named groups.
+        """
 
     def _set_mapping_actions(self):
         self.actions = {
-            dotted_field: Grok(pattern) for dotted_field, pattern in self._config.mapping.items()
+            dotted_field: Grok(pattern, custom_patterns=self._config.patterns)
+            for dotted_field, pattern in self._config.mapping.items()
         }
 
     def _set_convert_actions(self):
