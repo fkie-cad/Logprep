@@ -23,12 +23,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import re
+import sys
 from pathlib import Path
 
 import pkg_resources
 from attrs import define, field, validators
 
 from logprep.util.helper import add_field_to
+
+if sys.version_info.minor < 11:
+    # because needed possessive quantifiers and atomic grouping
+    # added to re module in python 3.11
+    import regex as re  # pylint: disable=shadowed-import
 
 DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs-v1")]
 
