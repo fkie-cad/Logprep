@@ -12,6 +12,8 @@ def test_one_pat():
         pat,
     )
 
+
+def test_one_pat_1():
     text = "1024"
     pat = "%{NUMBER:test_num}"
     grok = Grok(pat)
@@ -21,6 +23,8 @@ def test_one_pat():
         pat,
     )
 
+
+def test_one_pat_2():
     text = "garyelephant "
     pat = "%{WORD:name} "
     grok = Grok(pat)
@@ -30,6 +34,8 @@ def test_one_pat():
         pat,
     )
 
+
+def test_one_pat_3():
     text = "192.168.1.1"
     pat = "%{IP:ip}"
     grok = Grok(pat)
@@ -39,6 +45,8 @@ def test_one_pat():
         pat,
     )
 
+
+def test_one_pat_4():
     text = "github.com"
     pat = "%{HOSTNAME:website}"
     grok = Grok(pat)
@@ -48,6 +56,8 @@ def test_one_pat():
         pat,
     )
 
+
+def test_one_pat_5():
     text = "1989-11-04 05:33:02+0800"
     pat = "%{TIMESTAMP_ISO8601:ts}"
     grok = Grok(pat)
@@ -57,6 +67,8 @@ def test_one_pat():
         pat,
     )
 
+
+def test_one_pat_6():
     text = "github"
     pat = "%{WORD}"
     grok = Grok(pat)
@@ -67,6 +79,8 @@ def test_one_pat():
     )
     # you get nothing because variable name is not set, compare "%{WORD}" and "%{WORD:variable_name}"
 
+
+def test_one_pat_7():
     text = "github"
     pat = "%{NUMBER:test_num}"
     grok = Grok(pat)
@@ -77,6 +91,8 @@ def test_one_pat():
     )
     # not match
 
+
+def test_one_pat_8():
     text = "1989"
     pat = "%{NUMBER:birthyear:int}"
     grok = Grok(pat)

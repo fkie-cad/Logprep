@@ -72,7 +72,7 @@ class Grok:
         else:
             match_obj = self.regex_obj.search(text)
 
-        if match_obj == None:
+        if match_obj is None:
             return None
         matches = match_obj.groupdict()
         for key, match in matches.items():
@@ -157,13 +157,10 @@ def _load_patterns_from_file(file):
     return patterns
 
 
-class Pattern(object):
-    """ """
+@define(slots=True)
+class Pattern:
+    """Pattern implementation"""
 
-    def __init__(self, pattern_name, regex_str, sub_patterns={}):
-        self.pattern_name = pattern_name
-        self.regex_str = regex_str
-        self.sub_patterns = sub_patterns  # sub_pattern name list
-
-    def __str__(self):
-        return "<Pattern:%s,  %s,  %s>" % (self.pattern_name, self.regex_str, self.sub_patterns)
+    pattern_name: str = field(validator=validators.instance_of(str))
+    regex_str: str = field(validator=validators.instance_of(str))
+    sub_patterns: dict = field(factory=dict)
