@@ -56,7 +56,8 @@ def test_one_pat_6():
     grok = Grok(pat)
     match = grok.match(text)
     assert match == {}, f"grok match failed:{text}, {pat}"
-    # you get nothing because variable name is not set, compare "%{WORD}" and "%{WORD:variable_name}"
+    # you get nothing because variable name is not set,
+    # compare "%{WORD}" and "%{WORD:variable_name}"
 
 
 def test_one_pat_7():
@@ -107,9 +108,9 @@ def test_multiple_pats():
         + ' Chrome/36.0.1985.125 Safari/537.36"'
     )
     pat = (
-        "%{HOSTNAME:host} %{IP:client_ip} %{NUMBER:delay}s - \[%{DATA:time_stamp}\]"
-        + ' "%{WORD:verb} %{URIPATHPARAM:uri_path} HTTP/%{NUMBER:http_ver}" %{INT:http_status} %{INT:bytes} %{QS}'
-        + " %{QS:client}"
+        r"%{HOSTNAME:host} %{IP:client_ip} %{NUMBER:delay}s - \[%{DATA:time_stamp}\]"
+        r' "%{WORD:verb} %{URIPATHPARAM:uri_path} HTTP/%{NUMBER:http_ver}" '
+        r"%{INT:http_status} %{INT:bytes} %{QS} %{QS:client}"
     )
     grok = Grok(pat)
     match = grok.match(text)

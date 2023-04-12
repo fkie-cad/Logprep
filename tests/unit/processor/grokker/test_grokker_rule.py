@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.grokker.rule import GrokkerRule
 
 
@@ -139,9 +138,11 @@ class TestGrokkerRule:
                     "filter": "message",
                     "grokker": {
                         "mapping": {
-                            "message": "%{HOSTNAME:host} %{IP:client_ip} %{NUMBER:delay}s - \[%{DATA:time_stamp}\]"
-                            ' "%{WORD:verb} %{URIPATHPARAM:uri_path} HTTP/%{NUMBER:http_ver}" %{INT:http_status} %{INT:bytes} %{QS}'
-                            " %{QS:client}"
+                            "message": r"%{HOSTNAME:host} %{IP:client_ip} %{NUMBER:delay}s "
+                            r"- \[%{DATA:time_stamp}\]"
+                            r' "%{WORD:verb} %{URIPATHPARAM:uri_path} '
+                            r'HTTP/%{NUMBER:http_ver}" %{INT:http_status} %{INT:bytes} %{QS}'
+                            r" %{QS:client}"
                         }
                     },
                 },

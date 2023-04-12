@@ -67,9 +67,11 @@ class Grok:
         self._load_search_pattern()
 
     def match(self, text):
-        """If text is matched with pattern, return variable names specified(%{pattern:variable name})
-        in pattern and their corresponding values.If not matched, return None.
-        custom patterns can be passed in by custom_patterns(pattern name, pattern regular expression pair)
+        """If text is matched with pattern, return variable names
+        specified(%{pattern:variable name}) in pattern and their
+        corresponding values.If not matched, return None.
+        custom patterns can be passed in by
+        custom_patterns(pattern name, pattern regular expression pair)
         or custom_patterns_dir.
         """
 
@@ -97,6 +99,7 @@ class Grok:
         return result
 
     def set_search_pattern(self, pattern=None):
+        """sets the search pattern"""
         if not isinstance(pattern, str):
             raise ValueError("Please supply a valid pattern")
         self.pattern = pattern
