@@ -25,6 +25,7 @@ SOFTWARE.
 import codecs
 import os
 import re
+from pathlib import Path
 
 import pkg_resources
 from attrs import define, field, validators
@@ -141,20 +142,11 @@ def _reload_patterns(patterns_dirs):
 
 
 def _load_patterns_from_file(file):
-    """ """
-    patterns = {}
-    with codecs.open(file, "r", encoding="utf-8") as f:
-        for l in f:
-            l = l.strip()
-            if l == "" or l.startswith("#"):
-                continue
-
-            sep = l.find(" ")
-            pat_name = l[:sep]
-            regex_str = l[sep:].strip()
-            pat = Pattern(pat_name, regex_str)
-            patterns[pat.pattern_name] = pat
-    return patterns
+    patterns = Path(file).read_text(encoding="utf-8").splitlines()
+    patterns = [
+        line.strip().partition(" ") for line in patterns if not (line.startswith("#") or line == "")
+    ]
+    return {name: Pattern(name, regex.strip()) for name, _, regex in patterns}
 
 
 @define(slots=True)
