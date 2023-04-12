@@ -7,10 +7,7 @@ def test_one_pat():
     pat = "%{INT:test_int}"
     grok = Grok(pat)
     m = grok.match(text)
-    assert m["test_int"] == "1024", "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    assert m["test_int"] == "1024", f"grok match failed: {text}, {pat}"
 
 
 def test_one_pat_1():
@@ -18,10 +15,7 @@ def test_one_pat_1():
     pat = "%{NUMBER:test_num}"
     grok = Grok(pat)
     m = grok.match(text)
-    assert m["test_num"] == "1024", "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    assert m["test_num"] == "1024", f"grok match failed: {text}, {pat}"
 
 
 def test_one_pat_2():
@@ -29,10 +23,7 @@ def test_one_pat_2():
     pat = "%{WORD:name} "
     grok = Grok(pat)
     m = grok.match(text)
-    assert m["name"] == text.strip(), "grok match failed:%s, %s" % (
-        text,
-        pat,
-    )
+    assert m["name"] == text.strip(), f"grok match failed: {text}, {pat}"
 
 
 def test_one_pat_3():
@@ -244,7 +235,7 @@ def test_hotloading_pats():
 
 def test_matches_with_deep_field():
     text = "github"
-    pat = "%{WORD:[field1][field2]}"
+    pat = "%{WORD:[field1][field2]:int}"
     grok = Grok(pat)
     m = grok.match(text)
     assert m["field1"]["field2"] == "github", f"grok match failed: {text}, {pat}"

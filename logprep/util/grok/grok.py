@@ -30,7 +30,12 @@ from pathlib import Path
 import pkg_resources
 from attrs import define, field, validators
 
+from logprep.util.helper import add_field_to
+
 DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs-v1")]
+
+LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
+GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + "\}"
 
 
 @define(slots=True)
@@ -76,52 +81,54 @@ class Grok:
         if match_obj is None:
             return None
         matches = match_obj.groupdict()
+        if self.type_mapper:
+            for key, match in matches.items():
+                try:
+                    if self.type_mapper[key] == "int":
+                        matches[key] = int(match)
+                    if self.type_mapper[key] == "float":
+                        matches[key] = float(match)
+                except (TypeError, KeyError):
+                    pass
+        result = {}
         for key, match in matches.items():
-            try:
-                if self.type_mapper[key] == "int":
-                    matches[key] = int(match)
-                if self.type_mapper[key] == "float":
-                    matches[key] = float(match)
-            except (TypeError, KeyError) as e:
-                pass
-        return matches
+            add_field_to(result, key.replace("__", "."), match, False, True)
+        return result
 
     def set_search_pattern(self, pattern=None):
-        if type(pattern) is not str:
+        if not isinstance(pattern, str):
             raise ValueError("Please supply a valid pattern")
         self.pattern = pattern
         self._load_search_pattern()
 
+    @staticmethod
+    def _to_dundered_field(fields: str) -> str:
+        if not "[" in fields:
+            return fields
+        return re.sub(r"\[(.*?)\]", r"\g<1>__", fields).strip("__")
+
+    def _get_regex(self, match: re.Match) -> str:
+        name = match.group(1)
+        fields = match.group(3)
+        if fields is None:
+            return self.predefined_patterns.get(name).regex_str
+        type_str = match.group(8)
+        if type_str is not None:
+            self.type_mapper |= {fields: type_str}
+        return (
+            rf"(?P<{self._to_dundered_field(fields)}>"
+            rf"{self.predefined_patterns.get(name).regex_str})"
+        )
+
     def _load_search_pattern(self):
-        self.type_mapper = {}
         py_regex_pattern = self.pattern
-        while True:
-            # Finding all types specified in the groks
-            m = re.findall(r"%{(\w+):(\w+):(\w+)}", py_regex_pattern)
-            for n in m:
-                self.type_mapper[n[1]] = n[2]
-            # replace %{pattern_name:custom_name} (or %{pattern_name:custom_name:type}
-            # with regex and regex group name
-
+        while re.search(GROK, py_regex_pattern):
             py_regex_pattern = re.sub(
-                r"%{(\w+):(\w+)(?::\w+)?}",
-                lambda m: "(?P<"
-                + m.group(2)
-                + ">"
-                + self.predefined_patterns[m.group(1)].regex_str
-                + ")",
+                GROK,
+                self._get_regex,
                 py_regex_pattern,
+                count=1,
             )
-
-            # replace %{pattern_name} with regex
-            py_regex_pattern = re.sub(
-                r"%{(\w+)}",
-                lambda m: "(" + self.predefined_patterns[m.group(1)].regex_str + ")",
-                py_regex_pattern,
-            )
-
-            if re.search("%{\w+(:\w+)?}", py_regex_pattern) is None:
-                break
 
         self.regex_obj = re.compile(py_regex_pattern)
 
