@@ -132,12 +132,12 @@ def _wrap_pattern_name(pat_name):
 
 def _reload_patterns(patterns_dirs):
     """ """
+    patterns_dirs = [Path(directory) for directory in patterns_dirs]
     all_patterns = {}
-    for dir in patterns_dirs:
-        for f in os.listdir(dir):
-            patterns = _load_patterns_from_file(os.path.join(dir, f))
-            all_patterns.update(patterns)
-
+    for directory in patterns_dirs:
+        pattern_files = [file for file in directory.iterdir() if file.is_file()]
+        for pattern_file in pattern_files:
+            all_patterns |= _load_patterns_from_file(pattern_file)
     return all_patterns
 
 
@@ -146,7 +146,7 @@ def _load_patterns_from_file(file):
     patterns = [
         line.strip().partition(" ") for line in patterns if not (line.startswith("#") or line == "")
     ]
-    return {name: Pattern(name, regex.strip()) for name, _, regex in patterns}
+    return {name: Pattern(name, regex_str.strip()) for name, _, regex_str in patterns}
 
 
 @define(slots=True)
