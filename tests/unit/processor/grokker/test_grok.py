@@ -196,7 +196,15 @@ def test_hotloading_pats():
 
 def test_matches_with_deep_field():
     text = "github"
-    pat = "%{WORD:[field1][field2]:int}"
+    pat = "%{WORD:[field1][field2]}"
     grok = Grok(pat)
     match = grok.match(text)
     assert match["field1__field2"] == "github", f"grok match failed: {text}, {pat}"
+
+
+def test_matches_with_deep_field_and_conversion():
+    text = "123"
+    pat = "%{NUMBER:[field1][field2]:int}"
+    grok = Grok(pat)
+    match = grok.match(text)
+    assert match["field1__field2"] == 123, f"grok match failed: {text}, {pat}"
