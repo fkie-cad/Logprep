@@ -150,6 +150,61 @@ test_cases = [  # testcase, rule, event, expected
             "port_2": 1234,
         },
     ),
+    (
+        "grok list match none",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "winlog.event_data.normalize me!": [
+                        "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
+                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                    ]
+                }
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234"},
+            },
+        },
+    ),
+    (
+        "normalization from nested grok",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "winlog.event_data.normalize me!": r"%{IP:[parent][some_ip]} \w+ %{NUMBER:[parent][port]:int} %[ts]+ %{NUMBER:test:int}"
+                },
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 555 1234 %ttss 11"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 555 1234 %ttss 11"},
+            },
+            "test": 11,
+            "parent": {"some_ip": "123.123.123.123", "port": 1234},
+        },
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected

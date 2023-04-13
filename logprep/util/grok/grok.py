@@ -127,10 +127,10 @@ class Grok:
         if fields is None:
             return self.predefined_patterns.get(name).regex_str
         type_str = match.group(8)
-        if type_str is not None:
-            self.type_mapper |= {fields: type_str}
         dundered_fields = self._to_dundered_field(fields)
         dotted_fields = self._to_dotted_field(dundered_fields)
+        if type_str is not None:
+            self.type_mapper |= {dundered_fields: type_str}
         self.field_mapper |= {dundered_fields: dotted_fields}
         return rf"(?P<{dundered_fields}>" rf"{self.predefined_patterns.get(name).regex_str})"
 
