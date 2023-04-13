@@ -19,7 +19,7 @@ Example
 """
 from attrs import define, field, validators
 
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.dissector.processor import Dissector
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -49,4 +49,4 @@ class Grokker(Dissector):
                 if not success:
                     conflicting_fields.append(dotted_field)
         if conflicting_fields:
-            raise FieldExsistsWarning(self, rule, event, conflicting_fields)
+            raise FieldExistsWarning(self, rule, event, conflicting_fields)
