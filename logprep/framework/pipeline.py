@@ -382,6 +382,7 @@ class Pipeline:
     @_handle_pipeline_error
     def process_pipeline(self) -> Tuple[dict, list]:
         """Retrieve next event, process event with full pipeline and store or return results"""
+        assert self._input, "Run process_pipeline only with an valid input connector"
         self._metrics_exposer.expose(self.metrics)
         Component.run_pending_tasks()
         extra_outputs = []
