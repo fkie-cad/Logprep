@@ -19,7 +19,7 @@ Example
 """
 from attrs import define, field, validators
 
-from logprep.processor.base.exceptions import FieldExistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.processor.dissector.processor import Dissector
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -41,11 +41,13 @@ class Grokker(Dissector):
 
     def _apply_rules(self, event: dict, rule: GrokkerRule):
         conflicting_fields = []
+        matches = []
         for dotted_field, grok in rule.actions.items():
             field_value = get_dotted_field_value(event, dotted_field)
             result = grok.match(field_value)
             if result is None:
                 continue
+            matches.append(True)
             for dundered_fields, value in result.items():
                 if value is None:
                     continue
@@ -57,6 +59,8 @@ class Grokker(Dissector):
                     conflicting_fields.append(dotted_field)
         if conflicting_fields:
             raise FieldExistsWarning(self, rule, event, conflicting_fields)
+        if not matches:
+            raise ProcessingWarning(self, "no grok pattern matched", rule, event)
 
     def setup(self):
         """Loads the action mapping. Has to be called before processing"""

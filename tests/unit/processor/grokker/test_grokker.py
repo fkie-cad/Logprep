@@ -67,29 +67,6 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "normalize from grok match only exact",
-        {
-            "filter": "winlog.event_id: 123456789",
-            "grokker": {
-                "mapping": {"winlog.event_data.normalize me!": "%{IP:some_ip} %{NUMBER:port:int}"},
-            },
-        },
-        {
-            "winlog": {
-                "api": "wineventlog",
-                "event_id": 123456789,
-                "event_data": {"normalize me!": "foo 123.123.123.123 1234 bar"},
-            }
-        },
-        {
-            "winlog": {
-                "api": "wineventlog",
-                "event_id": 123456789,
-                "event_data": {"normalize me!": "foo 123.123.123.123 1234 bar"},
-            },
-        },
-    ),
-    (
         "grok list match first matching after skippng non matching",
         {
             "filter": "winlog.event_id: 123456789",
@@ -151,34 +128,6 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "grok list match none",
-        {
-            "filter": "winlog.event_id: 123456789",
-            "grokker": {
-                "mapping": {
-                    "winlog.event_data.normalize me!": [
-                        "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
-                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
-                    ]
-                }
-            },
-        },
-        {
-            "winlog": {
-                "api": "wineventlog",
-                "event_id": 123456789,
-                "event_data": {"normalize me!": "123.123.123.123 1234"},
-            }
-        },
-        {
-            "winlog": {
-                "api": "wineventlog",
-                "event_id": 123456789,
-                "event_data": {"normalize me!": "123.123.123.123 1234"},
-            },
-        },
-    ),
-    (
         "normalization from nested grok",
         {
             "filter": "winlog.event_id: 123456789",
@@ -231,7 +180,48 @@ test_cases = [  # testcase, rule, event, expected
     ),
 ]
 
-failure_test_cases = []  # testcase, rule, event, expected
+failure_test_cases = [
+    (
+        "writes failure tag if no grok patterns matches",
+        {
+            "filter": "grok_me",
+            "grokker": {
+                "mapping": {
+                    "grok_me": [
+                        "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
+                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                    ]
+                }
+            },
+        },
+        {"grok_me": "123.123.123.123 1234"},
+        {"grok_me": "123.123.123.123 1234", "tags": ["_grokker_failure"]},
+    ),
+    (
+        "normalize from grok match only exact",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {"winlog.event_data.normalize me!": "%{IP:some_ip} %{NUMBER:port:int}"},
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "foo 123.123.123.123 1234 bar"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "foo 123.123.123.123 1234 bar"},
+            },
+            "tags": ["_grokker_failure"],
+        },
+    ),
+]  # testcase, rule, event, expected
 
 
 class TestGrokker(BaseProcessorTestCase):
@@ -252,6 +242,7 @@ class TestGrokker(BaseProcessorTestCase):
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
     def test_testcases_failure_handling(self, testcase, rule, event, expected):
         self._load_specific_rule(rule)
+        self.object.setup()
         with pytest.raises(ProcessingWarning):
             self.object.process(event)
         assert event == expected, testcase

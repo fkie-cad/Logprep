@@ -122,15 +122,18 @@ class Grok:
     def _get_regex(self, match: re.Match) -> str:
         name = match.group(1)
         fields = match.group(3)
+        pattern = self.predefined_patterns.get(name)
+        if pattern is None:
+            raise ValueError(f"grok pattern '{name}' not found")
         if fields is None:
-            return self.predefined_patterns.get(name).regex_str
+            return pattern.regex_str
         type_str = match.group(8)
         dundered_fields = self._to_dundered_field(fields)
         dotted_fields = self._to_dotted_field(dundered_fields)
         if type_str is not None:
             self.type_mapper |= {dundered_fields: type_str}
         self.field_mapper |= {dundered_fields: dotted_fields}
-        return rf"(?P<{dundered_fields}>" rf"{self.predefined_patterns.get(name).regex_str})"
+        return rf"(?P<{dundered_fields}>" rf"{pattern.regex_str})"
 
     def _load_search_pattern(self):
         py_regex_pattern = self.pattern

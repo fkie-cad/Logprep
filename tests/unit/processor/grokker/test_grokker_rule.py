@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 import pytest
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.grokker.rule import GrokkerRule
 
 
@@ -38,8 +39,8 @@ class TestGrokkerRule:
                     "filter": "message",
                     "grokker": {"mapping": {"message": "%{USER}"}},
                 },
-                None,
-                None,
+                InvalidRuleDefinitionError,
+                "no target fields defined",
             ),
             (
                 {
@@ -108,7 +109,7 @@ class TestGrokkerRule:
             (
                 {
                     "filter": "message",
-                    "grokker": {"mapping": {"message": "this is a %{USER}"}},
+                    "grokker": {"mapping": {"message": "this is a %{USER:field1}"}},
                 },
                 None,
                 None,
@@ -116,7 +117,9 @@ class TestGrokkerRule:
             (
                 {
                     "filter": "message",
-                    "grokker": {"mapping": {"message": "this is a %{USER} some behind"}},
+                    "grokker": {
+                        "mapping": {"message": "this is a %{USER:field.field1} some behind"}
+                    },
                 },
                 None,
                 None,
@@ -206,14 +209,24 @@ class TestGrokkerRule:
                 ValueError,
                 "must match regex",
             ),
+            (
+                {
+                    "filter": "grok_me",
+                    "grokker": {"mapping": {"grok_me": "%{GROK_PATTERN_DOES_NOT_EXISTS}"}},
+                },
+                ValueError,
+                "grok pattern 'GROK_PATTERN_DOES_NOT_EXISTS' not found",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
         if error:
             with pytest.raises(error, match=message):
-                GrokkerRule._create_from_dict(rule)
+                rule = GrokkerRule._create_from_dict(rule)
+                rule.set_mapping_actions()
         else:
             rule_instance = GrokkerRule._create_from_dict(rule)
+            rule_instance.set_mapping_actions()
             assert hasattr(rule_instance, "_config")
             for key, _ in rule.get("grokker").items():
                 assert hasattr(rule_instance._config, key)

@@ -1,4 +1,4 @@
 filter: user
 grokker:
   mapping:
-    message: "%{USER}"
+    message: "%{USER:user}"

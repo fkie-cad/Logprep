@@ -1,4 +1,4 @@
 filter: message
 grokker:
   mapping:
-    message: "%{USER}"
+    message: "user %{USER:user} logged in"

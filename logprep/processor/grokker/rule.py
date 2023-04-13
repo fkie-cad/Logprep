@@ -47,6 +47,7 @@ from typing import Optional
 
 from attrs import define, field, validators
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.util.grok.grok import GROK, Grok
 from logprep.util.helper import get_dotted_field_list
@@ -134,7 +135,6 @@ class GrokkerRule(DissectorRule):
     def set_mapping_actions(self, custom_patterns_dir: str = None) -> None:
         """sets the mapping actions"""
         custom_patterns_dir = "" if custom_patterns_dir is None else custom_patterns_dir
-
         self.actions = {
             dotted_field: Grok(
                 pattern,
@@ -146,6 +146,8 @@ class GrokkerRule(DissectorRule):
 
         # to ensure no string splitting is done during processing for target fields:
         for _, grok in self.actions.items():
-            target_fields = grok.field_mapper.values()
+            target_fields = list(grok.field_mapper.values())
+            if not target_fields:
+                raise InvalidRuleDefinitionError("no target fields defined")
             for target_field in target_fields:
                 get_dotted_field_list(target_field)
