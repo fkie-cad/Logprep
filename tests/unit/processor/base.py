@@ -96,6 +96,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         self.object = Factory.create(configuration=config, logger=self.logger)
         self.specific_rules = self.set_rules(self.specific_rules_dirs)
         self.generic_rules = self.set_rules(self.generic_rules_dirs)
+        self.object.setup()
 
     def teardown_method(self) -> None:
         """teardown for all methods"""

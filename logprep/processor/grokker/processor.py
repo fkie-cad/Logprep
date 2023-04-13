@@ -59,6 +59,7 @@ class Grokker(Dissector):
             raise FieldExistsWarning(self, rule, event, conflicting_fields)
 
     def setup(self):
+        """Loads the action mapping. Has to be called before processing"""
         super().setup()
         if self._config.custom_patterns_dir:
             for rule in self.rules:
