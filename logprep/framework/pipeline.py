@@ -237,8 +237,8 @@ class Pipeline:
         self._used_server_ports = used_server_ports
         self._metric_targets = metric_targets
         self.pipeline_index = pipeline_index
-        self._encoder = msgspec.json.Encoder()
-        self._decoder = msgspec.json.Decoder()
+        self._encoder = msgspec.msgpack.Encoder()
+        self._decoder = msgspec.msgpack.Decoder()
 
     @cached_property
     def _process_name(self) -> str:
@@ -417,10 +417,9 @@ class Pipeline:
         extra_outputs = []
         for processor in self._pipeline:
             try:
-                extra_data = processor.process(event)
-                if extra_data and self._output:
-                    self._store_extra_data(extra_data)
-                if extra_data:
+                if extra_data := processor.process(event):
+                    if self._output:
+                        self._store_extra_data(extra_data)
                     extra_outputs.append(extra_data)
             except ProcessingWarning as error:
                 self.logger.warning(str(error))
