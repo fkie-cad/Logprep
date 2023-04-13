@@ -59,6 +59,8 @@ FIELD_PATTERN = re.compile(r"%\{[A-Z0-9_]*?:([^\[\]]*?)(:.*)?\}")
 
 def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
     def _replace_pattern(pattern):
+        if isinstance(pattern, list):
+            pattern = "|".join(pattern)
         fields = re.findall(FIELD_PATTERN, pattern)
         for dotted_field, _ in fields:
             splitted_field = dotted_field.split(".")
@@ -82,6 +84,10 @@ class GrokkerRule(DissectorRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
                     value_validator=validators.matches_re(MAPPING_VALIDATION_REGEX),
                 ),
                 validators.deep_iterable(
@@ -94,6 +100,9 @@ class GrokkerRule(DissectorRule):
         """A mapping from source fields to a grok pattern.
         Dotted field notation is possible in key and in the grok pattern.
         Additionally logstash field notation is possible in grok pattern.
+        The value can be a list of search patterns or a single search pattern.
+        Lists of search pattern will be joined by :code:`|` and only the first matching
+        will return values.
         """
         pattern_version: str = field(validator=validators.in_(("ecs", "legacy")), default="ecs")
         """(Optional) version for grok patterns

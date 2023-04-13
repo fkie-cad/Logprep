@@ -42,6 +42,8 @@ class Grokker(Dissector):
             if result is None:
                 continue
             for dundered_fields, value in result.items():
+                if value is None:
+                    continue
                 dotted_field = grok.field_mapper.get(dundered_fields)
                 success = add_field_to(
                     event, dotted_field, value, rule.extend_target_list, rule.overwrite_target

@@ -41,6 +41,115 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "user": {"subfield": "MyUser586"}},
     ),
+    (
+        "normalize from grok",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {"winlog.event_data.normalize me!": "%{IP:some_ip} %{NUMBER:port:int}"},
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234"},
+            },
+            "some_ip": "123.123.123.123",
+            "port": 1234,
+        },
+    ),
+    (
+        "normalize from grok match only exact",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {"winlog.event_data.normalize me!": "%{IP:some_ip} %{NUMBER:port:int}"},
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "foo 123.123.123.123 1234 bar"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "foo 123.123.123.123 1234 bar"},
+            },
+        },
+    ),
+    (
+        "grok list match first matching after skippng non matching",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "winlog.event_data.normalize me!": [
+                        "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
+                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                    ]
+                }
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234 bar"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234 bar"},
+            },
+            "some_ip_2": "123.123.123.123",
+            "port_2": 1234,
+        },
+    ),
+    (
+        "grok list match first matching after skippng non matching and does not match twice",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "winlog.event_data.normalize me!": [
+                        "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
+                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                        "%{IP:some_ip_3} %{NUMBER:port_3:int} bar",
+                    ]
+                }
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234 bar"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234 bar"},
+            },
+            "some_ip_2": "123.123.123.123",
+            "port_2": 1234,
+        },
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected
