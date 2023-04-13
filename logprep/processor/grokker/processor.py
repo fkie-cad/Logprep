@@ -34,6 +34,11 @@ class Grokker(Dissector):
     class Config(Dissector.Config):
         """Config of Grokker"""
 
+        custom_patterns_dir: str = field(default="", validator=validators.instance_of(str))
+        """(Optional) A list of dirs to load patterns from. All files in all dirs will be loaded
+        recursively. 
+        """
+
     def _apply_rules(self, event: dict, rule: GrokkerRule):
         conflicting_fields = []
         for dotted_field, grok in rule.actions.items():
@@ -52,3 +57,9 @@ class Grokker(Dissector):
                     conflicting_fields.append(dotted_field)
         if conflicting_fields:
             raise FieldExistsWarning(self, rule, event, conflicting_fields)
+
+    def setup(self):
+        super().setup()
+        if self._config.custom_patterns_dir:
+            for rule in self.rules:
+                rule.set_mapping_actions(self._config.custom_patterns_dir)

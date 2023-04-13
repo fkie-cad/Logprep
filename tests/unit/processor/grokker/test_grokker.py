@@ -205,6 +205,30 @@ test_cases = [  # testcase, rule, event, expected
             "parent": {"some_ip": "123.123.123.123", "port": 1234},
         },
     ),
+    (
+        "loads custom patterns",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {"winlog.event_data.normalize me!": "%{CUSTOM_PATTERN_TEST:normalized}"}
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "Test"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "Test"},
+            },
+            "normalized": "Test",
+        },
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected
@@ -215,11 +239,13 @@ class TestGrokker(BaseProcessorTestCase):
         "type": "grokker",
         "specific_rules": ["tests/testdata/unit/grokker/specific_rules"],
         "generic_rules": ["tests/testdata/unit/grokker/generic_rules"],
+        "custom_patterns_dir": "tests/testdata/unit/normalizer/additional_grok_patterns",
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):
         self._load_specific_rule(rule)
+        self.object.setup()
         self.object.process(event)
         assert event == expected, testcase
 

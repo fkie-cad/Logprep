@@ -43,6 +43,7 @@ Examples for grokker:
 """
 
 import re
+from typing import Optional
 
 from attrs import define, field, validators
 
@@ -101,7 +102,7 @@ class GrokkerRule(DissectorRule):
         Dotted field notation is possible in key and in the grok pattern.
         Additionally logstash field notation is possible in grok pattern.
         The value can be a list of search patterns or a single search pattern.
-        Lists of search pattern will be joined by :code:`|` and only the first matching
+        Lists of search pattern will be joined by :code:`|` and only the first matching pattern
         will return values.
         """
         pattern_version: str = field(validator=validators.in_(("ecs", "legacy")), default="ecs")
@@ -125,8 +126,21 @@ class GrokkerRule(DissectorRule):
         """
 
     def _set_mapping_actions(self):
+        pass
+
+    def _set_convert_actions(self):
+        pass
+
+    def set_mapping_actions(self, custom_patterns_dir: str = None) -> None:
+        """sets the mapping actions"""
+        custom_patterns_dir = "" if custom_patterns_dir is None else custom_patterns_dir
+
         self.actions = {
-            dotted_field: Grok(pattern, custom_patterns=self._config.patterns)
+            dotted_field: Grok(
+                pattern,
+                custom_patterns=self._config.patterns,
+                custom_patterns_dir=custom_patterns_dir,
+            )
             for dotted_field, pattern in self._config.mapping.items()
         }
 
@@ -135,6 +149,3 @@ class GrokkerRule(DissectorRule):
             target_fields = grok.field_mapper.values()
             for target_field in target_fields:
                 get_dotted_field_list(target_field)
-
-    def _set_convert_actions(self):
-        pass
