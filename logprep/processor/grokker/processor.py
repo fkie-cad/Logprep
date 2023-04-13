@@ -19,19 +19,19 @@ Example
 """
 from attrs import define, field, validators
 
+from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
-from logprep.processor.dissector.processor import Dissector
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class Grokker(Dissector):
+class Grokker(Processor):
     """A processor that ..."""
 
     rule_class = GrokkerRule
 
     @define(kw_only=True)
-    class Config(Dissector.Config):
+    class Config(Processor.Config):
         """Config of Grokker"""
 
         custom_patterns_dir: str = field(default="", validator=validators.instance_of(str))
@@ -59,8 +59,8 @@ class Grokker(Dissector):
                     conflicting_fields.append(dotted_field)
         if conflicting_fields:
             raise FieldExistsWarning(self, rule, event, conflicting_fields)
-        if not matches:
-            raise ProcessingWarning(self, "no grok pattern matched", rule, event)
+        # if not matches:
+        #     raise ProcessingWarning(self, "no grok pattern matched", rule, event)
 
     def setup(self):
         """Loads the action mapping. Has to be called before processing"""

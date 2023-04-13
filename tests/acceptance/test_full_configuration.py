@@ -8,12 +8,12 @@ import requests
 
 from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import (
-    get_full_pipeline,
+    HTTPServerForTesting,
+    convert_to_http_config,
     get_default_logprep_config,
+    get_full_pipeline,
     start_logprep,
     stop_logprep,
-    convert_to_http_config,
-    HTTPServerForTesting,
 )
 
 
