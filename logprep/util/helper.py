@@ -137,14 +137,10 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         The value of the requested dotted field.
     """
     try:
-        return reduce(_get_item, (event, *get_dotted_field_list(dotted_field)))
-    except KeyError:
-        return None
-    except ValueError:
-        return None
-    except TypeError:
-        return None
-    except IndexError:
+        for field in get_dotted_field_list(dotted_field):
+            event = _get_item(event, field)
+        return event
+    except (KeyError, ValueError, TypeError, IndexError):
         return None
 
 
