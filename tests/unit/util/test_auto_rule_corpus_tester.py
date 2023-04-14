@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=too-many-arguments
 import json
 import os
 from json import JSONDecodeError
@@ -321,12 +322,13 @@ class TestAutoRuleTester:
         else:
             corpus_tester.run()
         console_output, console_error = capsys.readouterr()
+        assert console_error == ""
         for expected_print in expected_prints:
             assert expected_print in console_output, test_case
         mock_exit.assert_called_with(exit_code)
 
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.parse_json")
-    def test_run_logs_json_decoding_error(self, mock_parse_json, tmp_path, corpus_tester, capsys):
+    def test_run_logs_json_decoding_error(self, mock_parse_json, tmp_path, corpus_tester):
         test_data = {"input": {}, "expected_output": {}, "expected_extra_output": []}
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         mock_parse_json.side_effect = JSONDecodeError("Some Error", "in doc", 0)
@@ -359,6 +361,7 @@ class TestAutoRuleTester:
         os.remove(tmp_path / "test_data" / "rule_auto_corpus_test_out.json")
         corpus_tester.run()
         console_output, console_error = capsys.readouterr()
+        assert console_error == ""
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(0)
@@ -417,6 +420,7 @@ class TestAutoRuleTester:
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         corpus_tester.run()
         console_output, console_error = capsys.readouterr()
+        assert console_error == ""
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(0)
