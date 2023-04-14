@@ -13,6 +13,10 @@
 * Harmonize error messages and handling for processors and connectors
 * Add ability to schedule periodic tasks to all components
 
+### Bugfix
+
+* Fix processing of generic rules after there was an error inside the specific rules
+
 
 ## v6.0.0
 
