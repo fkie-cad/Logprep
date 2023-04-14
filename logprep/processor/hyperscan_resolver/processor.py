@@ -29,7 +29,7 @@ from typing import Any, Dict, Tuple
 from attr import define, field
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExsistsWarning, SkipImportError
+from logprep.processor.base.exceptions import FieldExistsWarning, SkipImportError
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.validators import directory_validator
 
@@ -132,7 +132,7 @@ class HyperscanResolver(Processor):
                     if has_conflict:
                         conflicting_fields.append(split_dotted_keys[idx])
         if conflicting_fields:
-            raise FieldExsistsWarning(self, rule, event, conflicting_fields)
+            raise FieldExistsWarning(self, rule, event, conflicting_fields)
 
     @staticmethod
     def _try_adding_value_to_existing_field(

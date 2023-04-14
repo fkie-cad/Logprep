@@ -8,7 +8,7 @@ from logging import getLogger
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.processor.base.rule import Rule
 
 
@@ -41,8 +41,8 @@ Event: {'message': 'test_event'}
 
 
 class TestFieldExsitsWarning(TestProcessingWarning):
-    exception = FieldExsistsWarning
-    error_message = """FieldExsistsWarning in Dissector (my_dissector): The following fields could not be written, because one or more subfields existed and could not be extended: my_field
+    exception = FieldExistsWarning
+    error_message = """FieldExistsWarning in Dissector (my_dissector): The following fields could not be written, because one or more subfields existed and could not be extended: my_field
 Rule: filename=None, filter="message", Rule.Config(description='', regex_fields=[], tests=[], tag_on_failure=[\'_rule_failure\']),
 Event: {'message': 'test_event'}
 """

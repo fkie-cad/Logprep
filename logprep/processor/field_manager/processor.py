@@ -23,7 +23,7 @@ Example
 from typing import Any, List, Tuple
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import add_and_overwrite, add_field_to, get_dotted_field_value
 
@@ -56,7 +56,7 @@ class FieldManager(Processor):
             field_values = field_values.pop()
         successful = add_field_to(event, target_field, field_values, False, False)
         if not successful:
-            raise FieldExsistsWarning(self, rule, event, [target_field])
+            raise FieldExistsWarning(self, rule, event, [target_field])
 
     def _overwrite_target_with_source_field_values(self, event, target_field, field_values):
         if len(field_values) == 1:

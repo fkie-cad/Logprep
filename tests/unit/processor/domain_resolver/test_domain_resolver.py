@@ -11,7 +11,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 REL_TLD_LIST_PATH = "tests/testdata/external/public_suffix_list.dat"
@@ -222,7 +222,7 @@ sth.ac.at
     def test_duplication_error(self, _):
         document = {"client": "google.de"}
 
-        with pytest.raises(FieldExsistsWarning):
+        with pytest.raises(FieldExistsWarning):
             self.object.process(document)
 
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")

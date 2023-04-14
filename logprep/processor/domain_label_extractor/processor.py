@@ -36,7 +36,7 @@ from attr import define, field, validators
 from tldextract import TLDExtract
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.domain_label_extractor.rule import DomainLabelExtractorRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -128,7 +128,7 @@ class DomainLabelExtractor(Processor):
                 )
 
                 if not add_successful:
-                    raise FieldExsistsWarning(self, rule, event, [output_field])
+                    raise FieldExistsWarning(self, rule, event, [output_field])
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
             event[self._config.tagging_field_name] = tagging_field

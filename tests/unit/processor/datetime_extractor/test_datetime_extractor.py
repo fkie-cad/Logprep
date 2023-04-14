@@ -8,7 +8,7 @@ import pytest
 from dateutil.parser import parse
 from dateutil.tz import tzlocal, tzutc
 
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -209,7 +209,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule)
-        with pytest.raises(FieldExsistsWarning):
+        with pytest.raises(FieldExistsWarning):
             self.object.process(document)
 
     @staticmethod

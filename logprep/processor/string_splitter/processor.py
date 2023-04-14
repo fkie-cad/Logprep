@@ -19,7 +19,7 @@ Example
             - tests/testdata/rules/generic/
 """
 
-from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.string_splitter.rule import StringSplitterRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -47,4 +47,4 @@ class StringSplitter(FieldManager):
             overwrite_output_field=rule.overwrite_target,
         )
         if not successful:
-            raise FieldExsistsWarning(self, rule, event, [target_field])
+            raise FieldExistsWarning(self, rule, event, [target_field])

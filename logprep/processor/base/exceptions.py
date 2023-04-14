@@ -77,7 +77,7 @@ Event: {event}
         super().__init__(f"{self.__class__.__name__} in {processor.describe()}: {message}")
 
 
-class FieldExsistsWarning(ProcessingWarning):
+class FieldExistsWarning(ProcessingWarning):
     """Raised if field already exists."""
 
     def __init__(
