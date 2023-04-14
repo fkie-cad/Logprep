@@ -19,16 +19,19 @@ def fixture_auto_rule_corpus_tester():
     return corpus_tester
 
 
+def write_test_case_data_tmp_files(test_data_dir, test_case_name, test_data):
+    input_data_path = test_data_dir / f"{test_case_name}_in.json"
+    input_data_path.write_text(json.dumps(test_data.get("input")))
+    expected_output_data_path = test_data_dir / f"{test_case_name}_out.json"
+    expected_output_data_path.write_text(json.dumps(test_data.get("expected_output")))
+    expected_extra_output_data_path = test_data_dir / f"{test_case_name}_out_extra.json"
+    expected_extra_output_data_path.write_text(json.dumps(test_data.get("expected_extra_output")))
+
+
 def prepare_corpus_tester(corpus_tester, tmp_path, test_data):
-    case_name = "rule_auto_corpus_test"
     test_data_dir = tmp_path / "test_data"
     os.makedirs(test_data_dir, exist_ok=True)
-    input_data_path = test_data_dir / f"{case_name}_in.json"
-    input_data_path.write_text(json.dumps(test_data.get("input")))
-    expected_output_data_path = test_data_dir / f"{case_name}_out.json"
-    expected_output_data_path.write_text(json.dumps(test_data.get("expected_output")))
-    expected_extra_output_data_path = test_data_dir / f"{case_name}_out_extra.json"
-    expected_extra_output_data_path.write_text(json.dumps(test_data.get("expected_extra_output")))
+    write_test_case_data_tmp_files(test_data_dir, "rule_auto_corpus_test", test_data)
     corpus_tester._input_test_data_path = test_data_dir
     corpus_tester._tmp_dir = tmp_path
 
@@ -414,6 +417,47 @@ class TestAutoRuleTester:
         prepare_corpus_tester(corpus_tester, tmp_path, test_data)
         corpus_tester.run()
         console_output, console_error = capsys.readouterr()
+        for expected_print in expected_prints:
+            assert expected_print in console_output
+        mock_exit.assert_called_with(0)
+
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
+    def test_corpus_tests_dont_share_cache_between_runs_by_resetting_processors(
+        self, mock_exit, tmp_path, capsys
+    ):
+        test_case_data = {
+            "input": {
+                "winlog": {"event_id": "2222", "event_data": {"IpAddress": "1.2.3.4"}},
+            },
+            "expected_output": {
+                "winlog": {"event_id": "2222", "event_data": {"IpAddress": "<IGNORE_VALUE>"}},
+            },
+            "expected_extra_output": [
+                {
+                    "({'kafka_output': 'pseudonyms'},)": {
+                        "origin": "<IGNORE_VALUE>",
+                        "pseudonym": "<IGNORE_VALUE>",
+                    }
+                },
+            ],
+        }
+        test_data_dir = tmp_path / "test_data"
+        os.makedirs(test_data_dir, exist_ok=True)
+        # run one test case two times to trigger the pseudonymizer cache.
+        # Without reinitializing the processors the second test wouldn't create an extra output, as
+        # the cache realizes it as an existing pseudonym already.
+        write_test_case_data_tmp_files(test_data_dir, "test_case_one", test_case_data)
+        write_test_case_data_tmp_files(test_data_dir, "test_case_two", test_case_data)
+        config_path = "tests/testdata/config/config.yml"
+        corpus_tester = RuleCorpusTester(config_path, test_data_dir)
+        corpus_tester.run()
+        console_output, console_error = capsys.readouterr()
+        assert console_error == ""
+        expected_prints = [
+            "PASSED",
+            "Total test cases: 2",
+            "Success rate: 100.00%",
+        ]
         for expected_print in expected_prints:
             assert expected_print in console_output
         mock_exit.assert_called_with(0)
