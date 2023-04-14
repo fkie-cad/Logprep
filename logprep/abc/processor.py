@@ -284,8 +284,9 @@ class Processor(Component):
         else:
             add_and_overwrite(event, "tags", sorted(list({*tags, *rule.failure_tags})))
         if isinstance(error, ProcessingWarning):
-            raise error
-        raise ProcessingWarning(self, str(error), rule, event) from error
+            self._logger.warning(str(error))
+        else:
+            self._logger.warning(str(ProcessingWarning(self, str(error), rule, event)))
 
     def _check_for_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
