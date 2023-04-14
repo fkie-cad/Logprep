@@ -1,6 +1,8 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import hashlib
+import logging
+import re
 from copy import deepcopy
 from multiprocessing import current_process
 from pathlib import Path
@@ -8,7 +10,6 @@ from pathlib import Path
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -132,7 +133,7 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.mean_misuse_detection_time != 0.0
         assert self.object.metrics.mean_rule_attribution_time != 0.0
 
-    def test_process_event_raise_duplication_error(self):
+    def test_process_event_raise_duplication_error(self, caplog):
         self.object.setup()
         assert self.object.metrics.number_of_processed_events == 0
         document = {
@@ -144,9 +145,9 @@ class TestAmides(BaseProcessorTestCase):
         }
         self.object.process(document)
         assert document.get("rule_attributions")
-
-        with pytest.raises(FieldExistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):
         model_uri = "file://tests/testdata/unit/amides/model.zip"

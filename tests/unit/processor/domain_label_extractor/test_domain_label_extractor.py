@@ -2,14 +2,15 @@
 # pylint: disable=missing-docstring
 
 import hashlib
+import logging
+import re
 from multiprocessing import current_process
 from pathlib import Path
 
-import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -251,11 +252,12 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected_output
 
-    def test_domain_extraction_with_existing_output_field(self):
+    def test_domain_extraction_with_existing_output_field(self, caplog):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
 
-        with pytest.raises(FieldExistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
     def test_domain_extraction_overwrites_target_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
@@ -320,7 +322,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    def test_raises_duplication_error_if_target_field_exits(self):
+    def test_raises_duplication_error_if_target_field_exits(self, caplog):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
         expected = {
             "tags": ["_domain_label_extractor_failure"],
@@ -341,8 +343,9 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule_dict)
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
         assert document == expected
 
     @responses.activate

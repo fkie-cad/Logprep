@@ -288,13 +288,15 @@ class Processor(Component):
         else:
             self._logger.warning(str(ProcessingWarning(self, str(error), rule, event)))
 
-    def _check_for_missing_values(self, event, rule, source_field_dict):
+    def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
             dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
         )
         if missing_fields:
             error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)
+            return True
+        return False
 
     def _write_target_field(self, event: dict, rule: "Rule", result: any) -> None:
         add_successful = add_field_to(

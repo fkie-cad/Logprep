@@ -1,7 +1,9 @@
 # pylint: disable=missing-docstring
+import logging
+import re
+
 import pytest
 
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -336,14 +338,15 @@ class TestFieldManager(BaseProcessorTestCase):
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, caplog):
         self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+        assert re.match(".*ProcessingWarning.*", caplog.text)
         assert event == expected, testcase
 
     def test_process_raises_duplication_error_if_target_field_exists_and_should_not_be_overwritten(
-        self,
+        self, caplog
     ):
         rule = {
             "filter": "field.a",
@@ -356,15 +359,14 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        with pytest.raises(FieldExistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
         assert document.get("tags") == ["_field_manager_failure"]
 
-    def test_process_raises_processing_warning_with_missing_fields(
-        self,
-    ):
+    def test_process_raises_processing_warning_with_missing_fields(self, caplog):
         rule = {
             "filter": "field.a",
             "field_manager": {
@@ -374,7 +376,8 @@ class TestFieldManager(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}}
-        with pytest.raises(
-            ProcessingWarning, match=r"missing source_fields: \['does.not.exists'\]"
-        ):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(
+            r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]", caplog.text
+        )

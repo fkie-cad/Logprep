@@ -2,6 +2,8 @@
 # pylint: disable=no-member
 # pylint: disable=protected-access
 import hashlib
+import logging
+import re
 from multiprocessing import current_process
 from pathlib import Path
 from unittest import mock
@@ -10,7 +12,6 @@ import pytest
 import responses
 from geoip2.errors import AddressNotFoundError
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -126,16 +127,13 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         assert geoip["properties"].get("country") == "MyCountry"
         assert geoip["properties"].get("accuracy_radius") == 1337
 
-    def test_enrich_an_event_geoip_with_existing_differing_geoip(self):
+    def test_enrich_an_event_geoip_with_existing_differing_geoip(self, caplog):
         assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "8.8.8.8"}, "geoip": {"type": "Feature"}}
 
-        with pytest.raises(
-            ProcessingWarning,
-            match=r"The following fields could not be written, because one or more subfields "
-            r"existed and could not be extended: geoip.type",
-        ):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*geoip.type", caplog.text)
 
     def test_configured_dotted_output_field(self):
         assert self.object.metrics.number_of_processed_events == 0

@@ -1,11 +1,12 @@
 # pylint: disable=missing-docstring
+import logging
+import re
 
 import pytest
 import responses
 from requests import ConnectTimeout, HTTPError
 from responses import matchers
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [
@@ -271,6 +272,7 @@ failure_test_cases = [
             "content_type": "text/plain",
             "status": 404,
         },
+        ".*ProcessingWarning.*"
     ),
     (
         "timout error",
@@ -287,6 +289,7 @@ failure_test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        ".*ProcessingWarning.*"
     ),
     (
         "does not overwrite if not permitted",
@@ -307,6 +310,7 @@ failure_test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
+        ".*FieldExistsWarning.*"
     ),
     (
         "errors on missing fields",
@@ -317,8 +321,9 @@ failure_test_cases = [
         {"message": "the message"},
         {"message": "the message", "tags": ["_requester_failure"]},
         {},
+        ".*ProcessingWarning.*"
     ),
-]  # testcase, rule, event, expected, mock
+]  # testcase, rule, event, expected, mock, error_message
 
 
 class TestRequester(BaseProcessorTestCase):
@@ -337,15 +342,16 @@ class TestRequester(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @responses.activate
-    @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs", failure_test_cases)
+    @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs, error_message", failure_test_cases)
     def test_requester_testcases_failure_handling(
-        self, testcase, rule, event, expected, response_kwargs
+        self, testcase, rule, event, expected, response_kwargs, error_message, caplog
     ):
         if response_kwargs:
             responses.add(responses.Response(**response_kwargs))
         self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+        assert re.match(error_message, caplog.text)
         assert event == expected, testcase
 
     @responses.activate

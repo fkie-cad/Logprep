@@ -2,11 +2,13 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
+import logging
+import re
 from collections import OrderedDict
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.processor.generic_resolver.processor import GenericResolver
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -389,7 +391,7 @@ class TestGenericResolver(BaseProcessorTestCase):
         assert document == expected
 
     def test_resolve_dotted_src_and_dest_field_and_conflict_match(
-        self,
+        self, caplog
     ):
         rule = {
             "filter": "to.resolve",
@@ -409,8 +411,9 @@ class TestGenericResolver(BaseProcessorTestCase):
             "to": {"resolve": "something HELLO1"},
             "re": {"solved": "I already exist!"},
         }
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
         assert document == expected
 
