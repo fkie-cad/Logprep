@@ -272,7 +272,7 @@ failure_test_cases = [
             "content_type": "text/plain",
             "status": 404,
         },
-        ".*ProcessingWarning.*"
+        ".*ProcessingWarning.*",
     ),
     (
         "timout error",
@@ -289,7 +289,7 @@ failure_test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
-        ".*ProcessingWarning.*"
+        ".*ProcessingWarning.*",
     ),
     (
         "does not overwrite if not permitted",
@@ -310,7 +310,7 @@ failure_test_cases = [
             "content_type": "text/plain",
             "status": 200,
         },
-        ".*FieldExistsWarning.*"
+        ".*FieldExistsWarning.*",
     ),
     (
         "errors on missing fields",
@@ -321,7 +321,7 @@ failure_test_cases = [
         {"message": "the message"},
         {"message": "the message", "tags": ["_requester_failure"]},
         {},
-        ".*ProcessingWarning.*"
+        ".*ProcessingWarning.*",
     ),
 ]  # testcase, rule, event, expected, mock, error_message
 
@@ -342,7 +342,9 @@ class TestRequester(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @responses.activate
-    @pytest.mark.parametrize("testcase, rule, event, expected, response_kwargs, error_message", failure_test_cases)
+    @pytest.mark.parametrize(
+        "testcase, rule, event, expected, response_kwargs, error_message", failure_test_cases
+    )
     def test_requester_testcases_failure_handling(
         self, testcase, rule, event, expected, response_kwargs, error_message, caplog
     ):

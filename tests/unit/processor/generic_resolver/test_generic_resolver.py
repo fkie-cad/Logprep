@@ -390,9 +390,7 @@ class TestGenericResolver(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_src_and_dest_field_and_conflict_match(
-        self, caplog
-    ):
+    def test_resolve_dotted_src_and_dest_field_and_conflict_match(self, caplog):
         rule = {
             "filter": "to.resolve",
             "generic_resolver": {

@@ -303,11 +303,13 @@ class TestCalculator(BaseProcessorTestCase):
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, caplog, testcase, rule, event, expected, error_message):
+    def test_testcases_failure_handling(
+        self, caplog, testcase, rule, event, expected, error_message
+    ):
         self._load_specific_rule(rule)
         with caplog.at_level(logging.WARNING):
             self.object.process(event)
-            assert re.match(fr".*{error_message}", caplog.text)
+            assert re.match(rf".*{error_message}", caplog.text)
         assert event == expected, testcase
 
     @pytest.mark.parametrize(

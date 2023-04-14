@@ -1036,9 +1036,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert event == expected
 
-    def test_normalization_from_timestamp_with_collision_without_allow_override_fails(
-        self, caplog
-    ):
+    def test_normalization_from_timestamp_with_collision_without_allow_override_fails(self, caplog):
         event = {
             "@timestamp": "2200-02-01T16:19:22Z",
             "winlog": {

@@ -397,7 +397,7 @@ class TestGenericAdder(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         with caplog.at_level(logging.WARNING):
             self.object.process(event)
-        assert re.match(fr".*FieldExistsWarning.*{error_message}", caplog.text)
+        assert re.match(rf".*FieldExistsWarning.*{error_message}", caplog.text)
         assert event == expected, testcase
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):

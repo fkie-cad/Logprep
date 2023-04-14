@@ -40,7 +40,7 @@ failure_test_cases = [
         },
         {"message": ["this", "is", "the", "message"]},
         {"message": ["this", "is", "the", "message"], "tags": ["_string_splitter_failure"]},
-        ".*ProcessingWarning.*"
+        ".*ProcessingWarning.*",
     ),
     (
         "splits without delimeter on whitespace",
@@ -50,7 +50,7 @@ failure_test_cases = [
         },
         {"message": "this is the message"},
         {"message": "this is the message", "tags": ["_string_splitter_failure"]},
-        ".*FieldExistsWarning.*"
+        ".*FieldExistsWarning.*",
     ),
 ]  # testcase, rule, event, expected, error_message
 
@@ -69,7 +69,9 @@ class TestStringSplitter(BaseProcessorTestCase):
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message, caplog):
+    def test_testcases_failure_handling(
+        self, testcase, rule, event, expected, error_message, caplog
+    ):
         self._load_specific_rule(rule)
         with caplog.at_level(logging.WARNING):
             self.object.process(event)
