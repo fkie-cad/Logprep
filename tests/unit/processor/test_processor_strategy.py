@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import re
 from logging import getLogger
 from unittest import mock
 from unittest.mock import call
@@ -8,6 +9,7 @@ import pytest
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
+from logprep.framework.pipeline import Pipeline
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
@@ -143,3 +145,44 @@ class TestSpecificGenericProcessStrategy:
         assert (
             mock_callback.mock_calls == expected_call_order
         ), f"Wrong call order in test {execution_number}"
+
+    def test_strategy_processes_generic_rules_after_processor_error_in_specific_rules(self, capsys):
+        config = {
+            "pipeline": [
+                {"adder": {"type": "generic_adder", "specific_rules": [], "generic_rules": []}}
+            ]
+        }
+        specific_rule_one_dict = {
+            "filter": "val",
+            "generic_adder": {"add": {"first": "value", "second": "value"}},
+        }
+        specific_rule_two_dict = {
+            "filter": "val",
+            "generic_adder": {"add": {"third": "value", "fourth": "value"}},
+        }
+        generic_rule_dict = {
+            "filter": "val",
+            "generic_adder": {"add": {"fifth": "value", "sixth": "value"}},
+        }
+        specific_rule_one = GenericAdderRule._create_from_dict(specific_rule_one_dict)
+        specific_rule_two = GenericAdderRule._create_from_dict(specific_rule_two_dict)
+        generic_rule = GenericAdderRule._create_from_dict(generic_rule_dict)
+        event = {"val": "content", "first": "exists already"}
+        expected_event = {
+            "val": "content",
+            "first": "exists already",
+            "second": "value",
+            "third": "value",
+            "fourth": "value",
+            "fifth": "value",
+            "sixth": "value",
+            "tags": ["_generic_adder_failure"],
+        }
+        pipeline = Pipeline(config=config)
+        pipeline._pipeline[0]._generic_tree.add_rule(generic_rule)
+        pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_two)
+        pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_one)
+        pipeline.process_event(event)
+        captured = capsys.readouterr()
+        assert re.match("FieldExistsWarning in GenericAdder.*first", captured.err)
+        assert event == expected_event
