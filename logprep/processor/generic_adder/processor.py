@@ -38,7 +38,7 @@ from filelock import FileLock
 
 from logprep.abc.processor import Processor
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.generic_adder.mysql_connector import MySQLConnector
 from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -217,7 +217,7 @@ class GenericAdder(Processor):
            A matching generic adder rule.
         Raises
         ------
-        FieldExsistsWarning
+        FieldExistsWarning
             Raises if an addition would overwrite an existing field or value.
         """
         conflicting_fields = []
@@ -243,7 +243,7 @@ class GenericAdder(Processor):
                 conflicting_fields.append(dotted_field)
 
         if conflicting_fields:
-            raise FieldExsistsWarning(self, rule, event, conflicting_fields)
+            raise FieldExistsWarning(self, rule, event, conflicting_fields)
 
     def _try_adding_from_db(self, event: dict, items_to_add: list, rule: GenericAdderRule):
         """Get the sub part of the value from the event using a regex pattern"""

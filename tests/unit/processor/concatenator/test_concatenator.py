@@ -2,7 +2,7 @@
 # pylint: disable=protected-access
 import pytest
 
-from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -163,7 +163,7 @@ class TestConcatenator(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        with pytest.raises(FieldExsistsWarning):
+        with pytest.raises(FieldExistsWarning):
             self.object.process(document)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"

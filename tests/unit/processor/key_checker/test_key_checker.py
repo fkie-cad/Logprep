@@ -3,7 +3,7 @@
 # pylint: disable=import-error
 import pytest
 
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -271,5 +271,5 @@ class TestKeyChecker(BaseProcessorTestCase):
             "randomkey2": "randomvalue2",
             "missing_fields": ["i.exists.already"],
         }
-        with pytest.raises(FieldExsistsWarning):
+        with pytest.raises(FieldExistsWarning):
             self.object.process(document)

@@ -12,7 +12,7 @@ from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.processor.base.exceptions import (
-    FieldExsistsWarning,
+    FieldExistsWarning,
     ProcessingCriticalError,
     ProcessingWarning,
 )
@@ -304,4 +304,4 @@ class Processor(Component):
             overwrite_output_field=rule.overwrite_target,
         )
         if not add_successful:
-            raise FieldExsistsWarning(self, rule, event, [rule.target_field])
+            raise FieldExistsWarning(self, rule, event, [rule.target_field])

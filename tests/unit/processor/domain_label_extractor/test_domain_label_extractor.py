@@ -9,7 +9,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -254,7 +254,7 @@ class TestDomainLabelExtractor(BaseProcessorTestCase):
     def test_domain_extraction_with_existing_output_field(self):
         document = {"url": {"domain": "test.domain.de", "subdomain": "exists already"}}
 
-        with pytest.raises(FieldExsistsWarning):
+        with pytest.raises(FieldExistsWarning):
             self.object.process(document)
 
     def test_domain_extraction_overwrites_target_field(self):

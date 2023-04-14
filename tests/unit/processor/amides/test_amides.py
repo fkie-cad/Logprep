@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import responses
 
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -145,7 +145,7 @@ class TestAmides(BaseProcessorTestCase):
         self.object.process(document)
         assert document.get("rule_attributions")
 
-        with pytest.raises(FieldExsistsWarning):
+        with pytest.raises(FieldExistsWarning):
             self.object.process(document)
 
     def test_setup_get_model_via_file_getter(self, tmp_path, monkeypatch):

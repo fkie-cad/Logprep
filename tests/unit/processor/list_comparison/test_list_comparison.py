@@ -4,7 +4,7 @@ import pytest
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -248,7 +248,7 @@ class TestListComparison(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         self.object.setup()
-        with pytest.raises(FieldExsistsWarning):
+        with pytest.raises(FieldExistsWarning):
             self.object.process(document)
 
         assert document == expected
