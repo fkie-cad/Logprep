@@ -216,3 +216,11 @@ def test_matches_with_special_characters_in_match_group():
     grok = Grok(pat)
     match = grok.match(text)
     assert match["@number"] == 123, f"grok match failed: {text}, {pat}"
+
+
+def test_matches_with_plain_oniguruma_syntax():
+    text = "123"
+    pat = "(?<number>.*)"
+    grok = Grok(pat)
+    match = grok.match(text)
+    assert match["number"] == "123", f"grok match failed: {text}, {pat}"

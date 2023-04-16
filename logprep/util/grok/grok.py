@@ -39,6 +39,7 @@ DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs
 
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
+ONIGURUMA = r"\(\?\<(.*)\>(.*)\)"
 
 
 @define(slots=True)
@@ -47,6 +48,7 @@ class Grok:
 
     field_pattern = re.compile(r"\[(.*?)\]")
     grok_pattern = re.compile(GROK)
+    oniguruma = re.compile(ONIGURUMA)
 
     pattern: str = field(validator=validators.instance_of(str))
     custom_patterns_dir: str = field(default="")
@@ -120,7 +122,7 @@ class Grok:
             return fields
         return fields.replace("__", ".")
 
-    def _get_regex(self, match: re.Match) -> str:
+    def _resolve_grok(self, match: re.Match) -> str:
         name = match.group(1)
         fields = match.group(3)
         pattern = self.predefined_patterns.get(name)
@@ -137,12 +139,28 @@ class Grok:
         self.field_mapper |= {fields_hash: dotted_fields}
         return rf"(?P<{fields_hash}>" rf"{pattern.regex_str})"
 
+    def _resolve_oniguruma(self, match: re.Match) -> str:
+        fields = match.group(1)
+        pattern = match.group(2)
+        dundered_fields = self._to_dundered_field(fields)
+        dotted_fields = self._to_dotted_field(dundered_fields)
+        fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
+        self.field_mapper |= {fields_hash: dotted_fields}
+        return rf"(?P<{fields_hash}>" rf"{pattern})"
+
     def _load_search_pattern(self):
         py_regex_pattern = self.pattern
+        while re.search(Grok.oniguruma, py_regex_pattern):
+            py_regex_pattern = re.sub(
+                Grok.oniguruma,
+                self._resolve_oniguruma,
+                py_regex_pattern,
+                count=1,
+            )
         while re.search(Grok.grok_pattern, py_regex_pattern):
             py_regex_pattern = re.sub(
                 Grok.grok_pattern,
-                self._get_regex,
+                self._resolve_grok,
                 py_regex_pattern,
                 count=1,
             )
