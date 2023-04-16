@@ -198,6 +198,30 @@ test_cases = [  # testcase, rule, event, expected
             "logMessage": "This is a sample log",
         },
     ),
+    (
+        "example log message",
+        {
+            "filter": "message",
+            "grokker": {"mapping": {"message": "%{COMBINEDAPACHELOG}"}},
+        },
+        {
+            "message": '127.0.0.1 - - [11/Dec/2013:00:01:45 -0800] "GET /xampp/status.php HTTP/1.1" 200 3891 "http://cadenza/xampp/navi.php" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:25.0) Gecko/20100101 Firefox/25.0"'
+        },
+        {
+            "message": '127.0.0.1 - - [11/Dec/2013:00:01:45 -0800] "GET /xampp/status.php HTTP/1.1" 200 3891 "http://cadenza/xampp/navi.php" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:25.0) Gecko/20100101 Firefox/25.0"',
+            "source": {"address": "127.0.0.1"},
+            "timestamp": "11/Dec/2013:00:01:45 -0800",
+            "http": {
+                "request": {"method": "GET", "referrer": "http://cadenza/xampp/navi.php"},
+                "version": "1.1",
+                "response": {"status_code": 200, "body": {"bytes": 3891}},
+            },
+            "url": {"original": "/xampp/status.php"},
+            "user_agent": {
+                "original": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:25.0) Gecko/20100101 Firefox/25.0"
+            },
+        },
+    ),
 ]
 
 failure_test_cases = [

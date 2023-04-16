@@ -131,7 +131,7 @@ class Grok:
         type_str = match.group(8)
         dundered_fields = self._to_dundered_field(fields)
         dotted_fields = self._to_dotted_field(dundered_fields)
-        fields_hash = f"md5{md5(fields.encode()).hexdigest()}"
+        fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
         if type_str is not None:
             self.type_mapper |= {fields_hash: type_str}
         self.field_mapper |= {fields_hash: dotted_fields}
