@@ -80,7 +80,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
 
     if overwrite_output_field:
         target_field = reduce(_add_and_overwrite_key, output_field_path)
-        target_field.update({target_key: content})
+        target_field |= {target_key: content}
         return True
 
     try:
@@ -90,13 +90,13 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
 
     target_field_value = target_field.get(target_key)
     if target_field_value is None:
-        target_field.update({target_key: content})
+        target_field |= {target_key: content}
         return True
     if extends_lists:
         if not isinstance(target_field_value, list):
             return False
         if isinstance(content, list):
-            target_field.update({target_key: [*target_field_value, *content]})
+            target_field |= {target_key: [*target_field_value, *content]}
         else:
             target_field_value.append(content)
         return True
