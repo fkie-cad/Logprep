@@ -4,7 +4,6 @@ import re
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -179,6 +178,24 @@ test_cases = [  # testcase, rule, event, expected
                 "event_data": {"normalize me!": "Test"},
             },
             "normalized": "Test",
+        },
+    ),
+    (
+        "example log message",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {
+                    "message": "%{TIMESTAMP_ISO8601:@timestamp} %{LOGLEVEL:logLevel} %{GREEDYDATA:logMessage}"
+                }
+            },
+        },
+        {"message": "2020-07-16T19:20:30.45+01:00 DEBUG This is a sample log"},
+        {
+            "message": "2020-07-16T19:20:30.45+01:00 DEBUG This is a sample log",
+            "@timestamp": "2020-07-16T19:20:30.45+01:00",
+            "logLevel": "DEBUG",
+            "logMessage": "This is a sample log",
         },
     ),
 ]

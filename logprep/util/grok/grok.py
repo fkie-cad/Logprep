@@ -24,6 +24,7 @@ SOFTWARE.
 """
 import re
 import sys
+from hashlib import md5
 from pathlib import Path
 
 import pkg_resources
@@ -98,7 +99,7 @@ class Grok:
                         matches[key] = float(match)
                 except (TypeError, KeyError):
                     pass
-        return matches
+        return {self.field_mapper[field_hash]: value for field_hash, value in matches.items()}
 
     def set_search_pattern(self, pattern=None):
         """sets the search pattern"""
@@ -130,10 +131,11 @@ class Grok:
         type_str = match.group(8)
         dundered_fields = self._to_dundered_field(fields)
         dotted_fields = self._to_dotted_field(dundered_fields)
+        fields_hash = f"md5{md5(fields.encode()).hexdigest()}"
         if type_str is not None:
-            self.type_mapper |= {dundered_fields: type_str}
-        self.field_mapper |= {dundered_fields: dotted_fields}
-        return rf"(?P<{dundered_fields}>" rf"{pattern.regex_str})"
+            self.type_mapper |= {fields_hash: type_str}
+        self.field_mapper |= {fields_hash: dotted_fields}
+        return rf"(?P<{fields_hash}>" rf"{pattern.regex_str})"
 
     def _load_search_pattern(self):
         py_regex_pattern = self.pattern

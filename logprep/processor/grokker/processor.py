@@ -48,10 +48,9 @@ class Grokker(Processor):
             if result is None:
                 continue
             matches.append(True)
-            for dundered_fields, value in result.items():
+            for dotted_field, value in result.items():
                 if value is None:
                     continue
-                dotted_field = grok.field_mapper.get(dundered_fields)
                 success = add_field_to(
                     event, dotted_field, value, rule.extend_target_list, rule.overwrite_target
                 )
