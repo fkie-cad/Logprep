@@ -224,3 +224,12 @@ def test_matches_with_plain_oniguruma_syntax():
     grok = Grok(pat)
     match = grok.match(text)
     assert match["number"] == "123", f"grok match failed: {text}, {pat}"
+
+
+def test_matches_with_mixed_oniguruma_and_grok_syntax():
+    text = "123 456"
+    pat = r"(?<number1>\d{3}) %{NUMBER:number2}"
+    grok = Grok(pat)
+    match = grok.match(text)
+    assert match["number1"] == "123", f"grok match failed: {text}, {pat}"
+    assert match["number2"] == "456", f"grok match failed: {text}, {pat}"
