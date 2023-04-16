@@ -39,9 +39,9 @@ class SpecificGenericProcessStrategy(ProcessStrategy):
         generic_tree = kwargs.get("generic_tree")
         callback = kwargs.get("callback")
         processor_metrics = kwargs.get("processor_metrics")
+        processor_metrics.number_of_processed_events += 1
         self._process_specific(event, specific_tree, callback, processor_metrics)
         self._process_generic(event, generic_tree, callback, processor_metrics)
-        processor_metrics.number_of_processed_events += 1
 
     def _process_specific(
         self,
