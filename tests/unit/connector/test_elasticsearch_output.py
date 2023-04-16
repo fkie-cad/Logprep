@@ -4,7 +4,6 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
-import json
 import re
 from datetime import datetime
 from math import isclose
@@ -43,7 +42,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         event = {"field": "content"}
         expected = {
             "_index": "default_index",
-            "message": '{"field": "content"}',
+            "message": b'{"field":"content"}',
             "reason": "Missing index in document",
         }
         self.object.store(event)
@@ -59,7 +58,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         expected_index = re.sub(r"%{YYYY-MM-DD}", formatted_date, default_index)
         expected = {
             "_index": expected_index,
-            "message": '{"field": "content"}',
+            "message": b'{"field":"content"}',
             "reason": "Missing index in document",
         }
         self.object._config.default_index = default_index
@@ -120,7 +119,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
     def test_build_failed_index_document(self):
         expected = {
             "reason": "A reason for failed indexing",
-            "message": '{"foo": "bar"}',
+            "message": b'{"foo":"bar"}',
             "_index": "default_index",
         }
         failed_document = self.object._build_failed_index_document(
@@ -194,7 +193,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         assert "_index" in error_document
         assert "message" in error_document
         assert error_document.get("reason") == "myerrortype: myreason"
-        assert error_document.get("message") == json.dumps({"my": "document"})
+        assert error_document.get("message") == b'{"my":"document"}'
 
     def test_handle_connection_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):

@@ -30,7 +30,6 @@ Example
         ca_cert: /path/to/cert.crt
 """
 
-import json
 import re
 import ssl
 from functools import cached_property
@@ -307,7 +306,7 @@ class ElasticsearchOutput(Output):
             "_index": self._config.default_index,
         }
         try:
-            document["message"] = json.dumps(message_document)
+            document["message"] = self._encoder.encode(message_document)
         except TypeError:
             document["message"] = str(message_document)
         return document

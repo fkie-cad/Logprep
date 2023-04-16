@@ -104,11 +104,11 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert processed_event.get("Hmac")
         calculated_hmac = processed_event.get("Hmac").get("hmac")
         assert (
-            calculated_hmac == "142454394037b655ec0663867172738319dbdbe669dedb7ccf8a69875f9fcd08"
+            calculated_hmac == "8b2d75efcba66476e5551d44065128bacff2f090db5b08d7a0201c33e3f651f5"
         ), f"Wrong hmac: '{calculated_hmac}'"
         calculated_compression = processed_event.get("Hmac").get("compressed_base64")
         assert (
-            calculated_compression == "eJyrVspNLS5OTE9VslJQKkktLlGA8WsBg/YJhQ=="
+            calculated_compression == "eJyrVspNLS5OTE9VslIqSS0uUYBxawF+Fwll"
         ), f"Wrong compression: {calculated_compression}"
 
     def test_get_next_with_hmac_of_raw_message(self):
