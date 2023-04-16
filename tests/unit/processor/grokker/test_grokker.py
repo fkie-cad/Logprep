@@ -199,7 +199,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "example log message",
+        "example for ecs conform output",
         {
             "filter": "message",
             "grokker": {"mapping": {"message": "%{COMBINEDAPACHELOG}"}},
