@@ -1,4 +1,7 @@
 # pylint: disable=missing-docstring
+import logging
+import re
+
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
@@ -196,6 +199,7 @@ failure_test_cases = [
         },
         {"grok_me": "123.123.123.123 1234"},
         {"grok_me": "123.123.123.123 1234", "tags": ["_grokker_failure"]},
+        "no grok pattern matched",
     ),
     (
         "normalize from grok match only exact",
@@ -220,6 +224,7 @@ failure_test_cases = [
             },
             "tags": ["_grokker_failure"],
         },
+        "no grok pattern matched",
     ),
 ]  # testcase, rule, event, expected
 
@@ -239,10 +244,13 @@ class TestGrokker(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected, testcase
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
+    def test_testcases_failure_handling(
+        self, caplog, testcase, rule, event, expected, error_message
+    ):
         self._load_specific_rule(rule)
         self.object.setup()
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+            assert re.match(rf".*{error_message}", caplog.text)
         assert event == expected, testcase
