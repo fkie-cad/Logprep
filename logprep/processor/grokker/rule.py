@@ -105,11 +105,6 @@ class GrokkerRule(DissectorRule):
         Lists of search pattern will be joined by :code:`|` and only the first matching pattern
         will return values.
         """
-        pattern_version: str = field(validator=validators.in_(("ecs", "legacy")), default="ecs")
-        """(Optional) version for grok patterns
-        - :code:`ecs`(default) -> use ecs complient output fields\n
-        - :code:`legacy` -> use logstash legacy output fields
-        """
         patterns: dict = field(
             validator=[
                 validators.instance_of(dict),

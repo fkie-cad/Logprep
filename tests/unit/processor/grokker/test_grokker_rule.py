@@ -156,45 +156,6 @@ class TestGrokkerRule:
                 {
                     "filter": "message",
                     "grokker": {
-                        "mapping": {
-                            "message": "this is a %{USER} some behind %{JAVASTACKTRACEPART}"
-                        },
-                        "pattern_version": "legacy",
-                    },
-                },
-                None,
-                None,
-            ),
-            (
-                {
-                    "filter": "message",
-                    "grokker": {
-                        "mapping": {
-                            "message": "this is a %{USER} some behind %{JAVASTACKTRACEPART}"
-                        },
-                        "pattern_version": "ecs",
-                    },
-                },
-                None,
-                None,
-            ),
-            (
-                {
-                    "filter": "message",
-                    "grokker": {
-                        "mapping": {
-                            "message": "this is a %{USER} some behind %{JAVASTACKTRACEPART}"
-                        },
-                        "pattern_version": "nonsense",
-                    },
-                },
-                ValueError,
-                r"'pattern_version' must be in \('ecs', 'legacy'\)",
-            ),
-            (
-                {
-                    "filter": "message",
-                    "grokker": {
                         "mapping": {"message": "this is a %{USER:[user][username]}"},
                     },
                 },
