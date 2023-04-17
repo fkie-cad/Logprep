@@ -217,6 +217,40 @@ class TestGrokkerRule:
                 ValueError,
                 "grok pattern 'GROK_PATTERN_DOES_NOT_EXISTS' not found",
             ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {"mapping": {"message": "(?<user>.*)"}},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {"mapping": {"message": "(?<user>.*) %{USER:user2}"}},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {"message": "%{USER:user2} some text within (?<user>.*)"}
+                    },
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {"mapping": {"message": "(?P<groupname>)"}},
+                },
+                ValueError,
+                "must match regex",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):

@@ -222,6 +222,15 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
     ),
+    (
+        "matches simple oniguruma pattern",
+        {
+            "filter": "message",
+            "grokker": {"mapping": {"message": "this is the (?<userfield>[A-Za-z0-9]+)"}},
+        },
+        {"message": "this is the MyUser586"},
+        {"message": "this is the MyUser586", "userfield": "MyUser586"},
+    ),
 ]
 
 failure_test_cases = [

@@ -43,18 +43,17 @@ Examples for grokker:
 """
 
 import re
-from typing import Optional
 
 from attrs import define, field, validators
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.dissector.rule import DissectorRule
-from logprep.util.grok.grok import GROK, Grok
+from logprep.util.grok.grok import GROK, ONIGURUMA, Grok
 from logprep.util.helper import get_dotted_field_list
 
 DOTTED_FIELD_NOTATION = r"([^\[\]\{\}]*)*"
-NOT_GROK = rf"(?!{GROK}).*"
-MAPPING_VALIDATION_REGEX = re.compile(rf"^(({NOT_GROK})?{GROK}({NOT_GROK})?)*$")
+NOT_GROK = rf"(?!({GROK})|({ONIGURUMA})).*"
+MAPPING_VALIDATION_REGEX = re.compile(rf"^(({NOT_GROK})?(({GROK})|({ONIGURUMA}))({NOT_GROK})?)*$")
 
 FIELD_PATTERN = re.compile(r"%\{[A-Z0-9_]*?:([^\[\]]*?)(:.*)?\}")
 
