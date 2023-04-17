@@ -3,23 +3,22 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
+import logging
 import re
 from copy import deepcopy
-from time import sleep
-
-import pytest
 from datetime import datetime
 from math import isclose
+from time import sleep
 from unittest import mock
 
+import arrow
+import pytest
 from botocore.exceptions import (
     EndpointConnectionError,
     ConnectionClosedError,
     ClientError,
     BotoCoreError,
 )
-
-import arrow
 
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseOutputTestCase
@@ -152,31 +151,30 @@ class TestS3Output(BaseOutputTestCase):
         [
             (
                 EndpointConnectionError(endpoint_url="foo"),
-                r"Could not connect to the endpoint URL$",
+                r".*Could not connect to the endpoint URL.*",
             ),
             (
                 ConnectionClosedError(endpoint_url="foo"),
-                r"Connection was closed before we received a valid response from endpoint URL$",
+                r".*Connection was closed before we received a valid response from endpoint URL.*",
             ),
             (
                 ClientError(error_response={"foo": "bar"}, operation_name="foo"),
-                r"An error occurred \(\w+\) when calling the foo operation: \w+$",
+                r".*An error occurred \(\w+\) when calling the foo operation: \w+.*",
             ),
             (
                 BotoCoreError(),
-                r"An unspecified error occurred",
+                r".*An unspecified error occurred.*",
             ),
         ],
     )
-    def test_write_document_batch_calls_handles_errors(self, error, message):
-        self.object._logger.warning = mock.MagicMock()
-        with mock.patch(
-            "logprep.connector.s3.output.S3Output._write_to_s3",
-            side_effect=error,
-        ):
-            self.object._write_document_batch({"dummy": "event"}, "dummy_identifier")
-        args, _ = self.object._logger.warning.call_args
-        assert re.search(message, args[0])
+    def test_write_document_batch_calls_handles_errors(self, caplog, error, message):
+        with caplog.at_level(logging.WARNING):
+            with mock.patch(
+                "logprep.connector.s3.output.S3Output._write_to_s3",
+                side_effect=error,
+            ):
+                self.object._write_document_batch({"dummy": "event"}, "dummy_identifier")
+            assert re.match(message, caplog.text)
 
     def test_write_to_s3_resource_sets_current_backlog_count_and_below_max_backlog(self):
         s3_config = deepcopy(self.CONFIG)
