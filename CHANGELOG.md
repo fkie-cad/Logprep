@@ -18,6 +18,7 @@
 
 * Fix resetting processor caches in the `auto_rule_corpus_tester` by initializing all processors
 between test cases.
+* Fix processing of generic rules after there was an error inside the specific rules.
 
 ## v6.0.0
 

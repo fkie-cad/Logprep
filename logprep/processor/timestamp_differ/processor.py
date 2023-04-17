@@ -35,7 +35,9 @@ class TimestampDiffer(Processor):
     def _apply_rules(self, event, rule):
         source_field_formats = rule.source_field_formats
         source_field_dict = get_source_fields_dict(event, rule)
-        self._check_for_missing_values(event, rule, source_field_dict)
+        if self._has_missing_values(event, rule, source_field_dict):
+            return
+        diff = None
         try:
             timestamp_objects = map(
                 self._create_timestamp_object, source_field_dict.values(), source_field_formats
@@ -47,16 +49,17 @@ class TimestampDiffer(Processor):
             ]
             self._handle_warning_error(event, rule, error)
 
-        diff = self._apply_output_format(diff, rule)
-        add_successful = add_field_to(
-            event,
-            output_field=rule.target_field,
-            content=diff,
-            extends_lists=rule.extend_target_list,
-            overwrite_output_field=rule.overwrite_target,
-        )
-        if not add_successful:
-            raise FieldExistsWarning(self, rule, event, [rule.target_field])
+        if diff is not None:
+            diff = self._apply_output_format(diff, rule)
+            add_successful = add_field_to(
+                event,
+                output_field=rule.target_field,
+                content=diff,
+                extends_lists=rule.extend_target_list,
+                overwrite_output_field=rule.overwrite_target,
+            )
+            if not add_successful:
+                raise FieldExistsWarning(self, rule, event, [rule.target_field])
 
     @staticmethod
     def _create_timestamp_object(timestamp_str, timestamp_format):

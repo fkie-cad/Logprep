@@ -45,10 +45,12 @@ class Requester(Processor):
 
     def _apply_rules(self, event, rule):
         source_field_dict = get_source_fields_dict(event, rule)
-        self._check_for_missing_values(event, rule, source_field_dict)
+        if self._has_missing_values(event, rule, source_field_dict):
+            return
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
         response = self._request(event, rule, kwargs)
-        self._handle_response(event, rule, response)
+        if response is not None:
+            self._handle_response(event, rule, response)
 
     def _handle_response(self, event, rule, response):
         conflicting_fields = []
@@ -83,11 +85,12 @@ class Requester(Processor):
         try:
             response = requests.request(**kwargs)
             response.raise_for_status()
+            return response
         except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
         except requests.exceptions.ConnectTimeout as error:
             self._handle_warning_error(event, rule, error)
-        return response
+        return None
 
     @staticmethod
     def _get_result(response):

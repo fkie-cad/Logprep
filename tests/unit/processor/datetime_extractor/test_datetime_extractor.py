@@ -2,13 +2,13 @@
 # pylint: disable=missing-module-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
+import logging
+import re
 from datetime import datetime
 
-import pytest
 from dateutil.parser import parse
 from dateutil.tz import tzlocal, tzutc
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -197,7 +197,7 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
         }
         assert document == expected
 
-    def test_existing_target_raises_if_not_overwrite_target(self):
+    def test_existing_target_raises_if_not_overwrite_target(self, caplog):
         document = {"@timestamp": "2019-07-30T14:37:42.861+00:00", "winlog": {"event_id": 123}}
         rule = {
             "filter": "@timestamp",
@@ -209,8 +209,9 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
             "description": "",
         }
         self._load_specific_rule(rule)
-        with pytest.raises(FieldExistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
     @staticmethod
     def _parse_local_tz(tz_local_name):

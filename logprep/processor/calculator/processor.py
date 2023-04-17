@@ -26,8 +26,8 @@ from pyparsing import ParseException
 from logprep.abc.processor import Processor
 from logprep.processor.calculator.fourFn import BNF
 from logprep.processor.calculator.rule import CalculatorRule
-from logprep.util.helper import get_source_fields_dict
 from logprep.util.decorators import timeout
+from logprep.util.helper import get_source_fields_dict
 
 
 class Calculator(Processor):
@@ -37,13 +37,14 @@ class Calculator(Processor):
 
     def _apply_rules(self, event, rule):
         source_field_dict = get_source_fields_dict(event, rule)
-        self._check_for_missing_values(event, rule, source_field_dict)
-        expression = self._template(rule.calc, source_field_dict)
-        try:
-            result = self._calculate(event, rule, expression)
-        except TimeoutError as error:
-            self._handle_warning_error(event, rule, error)
-        self._write_target_field(event, rule, result)
+        if not self._has_missing_values(event, rule, source_field_dict):
+            expression = self._template(rule.calc, source_field_dict)
+            try:
+                result = self._calculate(event, rule, expression)
+                if result is not None:
+                    self._write_target_field(event, rule, result)
+            except TimeoutError as error:
+                self._handle_warning_error(event, rule, error)
 
     @cached_property
     def bnf(self) -> BNF:
@@ -69,7 +70,7 @@ class Calculator(Processor):
         def calculate(event, rule, expression):
             try:
                 _ = self.bnf.parseString(expression, parseAll=True)
-                result = self.bnf.evaluate_stack()
+                return self.bnf.evaluate_stack()
             except ParseException as error:
                 error.msg = f"({self.name}): expression '{error.line}' could not be parsed"
                 self._handle_warning_error(event, rule, error)
@@ -79,6 +80,6 @@ class Calculator(Processor):
                     + f"{error.args[0]}"
                 ]
                 self._handle_warning_error(event, rule, error)
-            return result
+            return None
 
         return calculate(event, rule, expression)

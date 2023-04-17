@@ -1,7 +1,9 @@
 # pylint: disable=missing-docstring
+import logging
+import re
+
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -583,8 +585,9 @@ class TestDissector(BaseProcessorTestCase):
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    def test_testcases_failure_handling(self, caplog, testcase, rule, event, expected):
         self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+        assert re.match(".*ProcessingWarning.*", caplog.text)
         assert event == expected, testcase

@@ -1,9 +1,10 @@
 # pylint: disable=missing-docstring
+import logging
 import math
+import re
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.calculator.fourFn import BNF
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -177,7 +178,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        r"expression 'not parsable \+ 4 \* 2' could not be parsed",
+        r"ProcessingWarning.*expression 'not parsable \+ 4 \* 2' could not be parsed",
     ),
     (
         "Tags failure if target_field exist",
@@ -196,7 +197,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "result": "exists",
             "tags": ["_calculator_failure"],
         },
-        "one or more subfields existed and could not be extended: result",
+        "FieldExistsWarning.*one or more subfields existed and could not be extended: result",
     ),
     (
         "Tags failure if source_field missing",
@@ -213,7 +214,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        r"no value for fields: \['field1'\]",
+        r"ProcessingWarning.*no value for fields: \['field1'\]",
     ),
     (
         "Tags failure if source_field is empty",
@@ -231,7 +232,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        r"no value for fields: \['field1'\]",
+        r"ProcessingWarning.*no value for fields: \['field1'\]",
     ),
     (
         "Tags failure try to escape",
@@ -249,7 +250,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field3": 2,
             "tags": ["_calculator_failure"],
         },
-        r"could not be parsed",
+        r"ProcessingWarning.*could not be parsed",
     ),
     (
         "division by zero",
@@ -267,7 +268,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field2": 4.5,
             "tags": ["_calculator_failure"],
         },
-        r"'3/0' => '3/0' results in division by zero",
+        r"ProcessingWarning.*'3/0' => '3/0' results in division by zero",
     ),
     (
         "raises timout",
@@ -283,7 +284,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "message": "This is a message",
             "tags": ["_calculator_failure"],
         },
-        r"Timer expired",
+        r"ProcessingWarning.*Timer expired",
     ),
 ]
 
@@ -302,10 +303,13 @@ class TestCalculator(BaseProcessorTestCase):
         assert event == expected
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
+    def test_testcases_failure_handling(
+        self, caplog, testcase, rule, event, expected, error_message
+    ):
         self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning, match=error_message):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+            assert re.match(rf".*{error_message}", caplog.text)
         assert event == expected, testcase
 
     @pytest.mark.parametrize(

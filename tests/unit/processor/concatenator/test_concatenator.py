@@ -1,8 +1,10 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import logging
+import re
+
 import pytest
 
-from logprep.processor.base.exceptions import FieldExistsWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -149,7 +151,7 @@ class TestConcatenator(BaseProcessorTestCase):
         assert document == expected_output, test_case
 
     def test_process_raises_duplication_error_if_target_field_exists_and_should_not_be_overwritten(
-        self,
+        self, caplog
     ):
         rule = {
             "filter": "field.a",
@@ -163,8 +165,9 @@ class TestConcatenator(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule)
         document = {"field": {"a": "first", "b": "second"}, "target_field": "has already content"}
-        with pytest.raises(FieldExistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
         assert "target_field" in document
         assert document.get("target_field") == "has already content"
         assert document.get("tags") == ["_concatenator_failure"]

@@ -1,8 +1,10 @@
 # pylint: disable=missing-docstring
-import pytest
-from logprep.processor.base.exceptions import ProcessingWarning
-from tests.unit.processor.base import BaseProcessorTestCase
+import logging
+import re
 
+import pytest
+
+from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [
     (
@@ -38,6 +40,7 @@ failure_test_cases = [
         },
         {"message": ["this", "is", "the", "message"]},
         {"message": ["this", "is", "the", "message"], "tags": ["_string_splitter_failure"]},
+        ".*ProcessingWarning.*",
     ),
     (
         "splits without delimeter on whitespace",
@@ -47,8 +50,9 @@ failure_test_cases = [
         },
         {"message": "this is the message"},
         {"message": "this is the message", "tags": ["_string_splitter_failure"]},
+        ".*FieldExistsWarning.*",
     ),
-]  # testcase, rule, event, expected
+]  # testcase, rule, event, expected, error_message
 
 
 class TestStringSplitter(BaseProcessorTestCase):
@@ -64,9 +68,12 @@ class TestStringSplitter(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
+    def test_testcases_failure_handling(
+        self, testcase, rule, event, expected, error_message, caplog
+    ):
         self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+        assert re.match(error_message, caplog.text)
         assert event == expected, testcase

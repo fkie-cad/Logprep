@@ -1,8 +1,9 @@
 # pylint: disable=missing-docstring
+import logging
+import re
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -359,7 +360,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "tags": ["_timestamp_differ_failure"],
         },
-        r"Could not match input 'non-timestamp' to any of the following formats",
+        r".*ProcessingWarning.*Could not match input 'non-timestamp' to any of the following formats",
     ),
     (
         "diff between two timestamps with partial timestamp format match",
@@ -376,7 +377,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "tags": ["_timestamp_differ_failure"],
         },
-        "Failed to match 'YYYY-MM-DD HH:mm:ss' when parsing",
+        ".*ProcessingWarning.*Failed to match 'YYYY-MM-DD HH:mm:ss' when parsing",
     ),
     (
         "diff between two timestamps with one empty field",
@@ -393,7 +394,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": ""},
             "tags": ["_timestamp_differ_failure"],
         },
-        r"no value for fields: \['subfield.field2'\]",
+        r".*ProcessingWarning.*no value for fields: \['subfield.field2'\]",
     ),
     (
         "diff between two timestamps with one non existing field",
@@ -409,7 +410,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "field1": "2022-12-05",
             "tags": ["_timestamp_differ_failure"],
         },
-        r"no value for fields: \['subfield.field2'\]",
+        r".*ProcessingWarning.*no value for fields: \['subfield.field2'\]",
     ),
     (
         "diff between two timestamps with non existing fields",
@@ -425,7 +426,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "some_field": "some value",
             "tags": ["_timestamp_differ_failure"],
         },
-        r"no value for fields: \['subfield.field2', 'field1'\]",
+        r".*ProcessingWarning.*no value for fields: \['subfield.field2', 'field1'\]",
     ),
     (
         "diff between two timestamps with already existing output field",
@@ -443,7 +444,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "time_diff": "1278",
             "tags": ["_timestamp_differ_failure"],
         },
-        "The following fields could not be written, because one or more subfields existed and could not be extended: time_diff",
+        ".*FieldExistsWarning.*The following fields could not be written, because one or more subfields existed and could not be extended: time_diff",
     ),
 ]
 
@@ -462,8 +463,11 @@ class TestTimestampDiffer(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, error_message):
+    def test_testcases_failure_handling(
+        self, testcase, rule, event, expected, error_message, caplog
+    ):
         self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning, match=error_message):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+        assert re.match(error_message, caplog.text)
         assert event == expected, testcase

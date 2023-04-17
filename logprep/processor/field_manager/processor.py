@@ -37,7 +37,8 @@ class FieldManager(Processor):
         source_fields = rule.source_fields
         target_field = rule.target_field
         field_values = self._get_field_values(event, rule)
-        self._check_for_missing_fields(event, rule, source_fields, field_values)
+        if self._has_missing_fields(event, rule, source_fields, field_values):
+            return
         extend_target_list = rule.extend_target_list
         overwrite_target = rule.overwrite_target
         args = (event, target_field, field_values)
@@ -76,10 +77,12 @@ class FieldManager(Processor):
         target_field_value = self._get_deduplicated_sorted_flatten_list(lists, other)
         add_and_overwrite(event, target_field, target_field_value)
 
-    def _check_for_missing_fields(self, event, rule, source_fields, field_values):
+    def _has_missing_fields(self, event, rule, source_fields, field_values):
         if None in field_values:
             error = self._get_missing_fields_error(source_fields, field_values)
             self._handle_warning_error(event, rule, error)
+            return True
+        return False
 
     def _get_field_values(self, event, rule):
         return [get_dotted_field_value(event, source_field) for source_field in rule.source_fields]

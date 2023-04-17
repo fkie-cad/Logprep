@@ -5,7 +5,9 @@
 import calendar
 import copy
 import json
+import logging
 import os
+import re
 import tempfile
 from copy import deepcopy
 
@@ -13,8 +15,7 @@ import arrow
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
-from logprep.processor.normalizer.processor import NormalizerError
+from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.normalizer.rule import (
     InvalidGrokDefinition,
     InvalidNormalizationDefinition,
@@ -62,7 +63,7 @@ class TestNormalizer(BaseProcessorTestCase):
             == "Existing and normalized have the same value"
         )
 
-    def test_process_normalized_field_already_exists_with_different_content(self):
+    def test_process_normalized_field_already_exists_with_different_content(self, caplog):
         document = {
             "winlog": {
                 "api": "wineventlog",
@@ -71,8 +72,9 @@ class TestNormalizer(BaseProcessorTestCase):
             },
             "test_normalized": {"something": "I already exist but I am different!"},
         }
-        with pytest.raises(FieldExistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
         assert document["test_normalized"]["something"] == "I already exist but I am different!"
 
@@ -621,7 +623,7 @@ class TestNormalizer(BaseProcessorTestCase):
             "winlog>event_data>normalize me!": "123.123.123.123 1234"
         }
 
-    def test_normalization_from_grok_onto_existing(self):
+    def test_normalization_from_grok_onto_existing(self, caplog):
         event = {
             "winlog": {
                 "api": "wineventlog",
@@ -639,8 +641,9 @@ class TestNormalizer(BaseProcessorTestCase):
 
         self._load_specific_rule(rule)
 
-        with pytest.raises(FieldExistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
     def test_incorrect_grok_identifier_definition(self):
         rule = {
@@ -963,7 +966,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert event == expected
 
-    def test_normalization_from_timestamp_with_non_matching_patterns(self):
+    def test_normalization_from_timestamp_with_non_matching_patterns(self, caplog):
         event = {
             "winlog": {
                 "api": "wineventlog",
@@ -990,9 +993,9 @@ class TestNormalizer(BaseProcessorTestCase):
         }
 
         self._load_specific_rule(rule)
-        with pytest.raises(NormalizerError):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
-
+        assert re.match(".*NormalizerError.*", caplog.text)
         assert event == expected
 
     def test_normalization_from_timestamp_with_collision(self):
@@ -1033,9 +1036,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert event == expected
 
-    def test_normalization_from_timestamp_with_collision_without_allow_override_fails(
-        self,
-    ):
+    def test_normalization_from_timestamp_with_collision_without_allow_override_fails(self, caplog):
         event = {
             "@timestamp": "2200-02-01T16:19:22Z",
             "winlog": {
@@ -1064,9 +1065,9 @@ class TestNormalizer(BaseProcessorTestCase):
         }
 
         self._load_specific_rule(rule)
-        with pytest.raises(FieldExistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
-
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
         assert event == expected
 
     def test_normalization_with_replace_html_entity(self):
