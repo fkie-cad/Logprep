@@ -15,6 +15,7 @@ from logprep.connector.jsonl.input import JsonlInput
 from logprep.connector.jsonl.output import JsonlOutput
 from logprep.connector.file.input import FileInput
 from logprep.connector.opensearch.output import OpensearchOutput
+from logprep.connector.s3.output import S3Output
 from logprep.processor.amides.processor import Amides
 from logprep.processor.calculator.processor import Calculator
 from logprep.processor.clusterer.processor import Clusterer
@@ -89,6 +90,7 @@ class Registry:
         "jsonl_output": JsonlOutput,
         "opensearch_output": OpensearchOutput,
         "http_input": HttpConnector,
+        "s3_output": S3Output,
     }
 
     @classmethod

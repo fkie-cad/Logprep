@@ -44,3 +44,10 @@ We recommed to only use one default output and define other outputs only for sto
    :undoc-members:
    :inherited-members:
    :noindex:
+
+.. automodule:: logprep.connector.s3.output
+.. autoclass:: logprep.connector.s3.output.S3Output.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
