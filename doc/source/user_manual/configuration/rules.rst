@@ -96,6 +96,13 @@ Rules
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.grokker.rule
+.. autoclass:: logprep.processor.grokker.rule.GrokkerRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.hyperscan_resolver.rule
 .. autoclass:: logprep.processor.hyperscan_resolver.rule.HyperscanResolverRule.Config
    :members:

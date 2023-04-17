@@ -72,7 +72,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "grok list match first matching after skippng non matching",
+        "grok list match first matching after skipping non matching",
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
@@ -102,7 +102,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "grok list match first matching after skippng non matching and does not match twice",
+        "grok list match first matching after skipping non matching and does not match twice",
         {
             "filter": "winlog.event_id: 123456789",
             "grokker": {

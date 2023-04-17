@@ -2,7 +2,11 @@
 Grokker
 ============
 
-The `grokker` processor ...
+The `grokker` processor dissects a message on a basis of grok patterns. This processor is based
+of the ideas of the logstash grok filter plugin.
+(see: https://www.elastic.co/guide/en/logstash/current/plugins-filters-grok.html)
+
+The default builtin grok patterns shipped with logprep are the same than in logstash.
 
 
 Example
@@ -10,12 +14,13 @@ Example
 ..  code-block:: yaml
     :linenos:
 
-    - samplename:
+    - my_grokker:
         type: grokker
         specific_rules:
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+        custom_patterns_dir: "http://the.patterns.us/patterns.zip"
 """
 import re
 from pathlib import Path
@@ -31,7 +36,7 @@ from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
 class Grokker(Processor):
-    """A processor that ..."""
+    """A processor that dissects a message by grok patterns"""
 
     rule_class = GrokkerRule
 
@@ -42,8 +47,9 @@ class Grokker(Processor):
         """Config of Grokker"""
 
         custom_patterns_dir: str = field(default="", validator=validators.instance_of(str))
-        """(Optional) A directory to load patterns from. All files in all subdirectories will be loaded
-        recursively. 
+        """(Optional) A directory or URI to load patterns from. All files in all subdirectories
+        will be loaded recursively. If an uri is given, the target file has to be a zip file with a
+        directory structure in it.
         """
 
     def _apply_rules(self, event: dict, rule: GrokkerRule):

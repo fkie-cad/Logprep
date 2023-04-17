@@ -2,7 +2,9 @@
 Grokker
 ============
 
-The `grokker` processor ...
+The `grokker` processor dissects a message on a basis of grok patterns. This processor is based
+of the ideas of the logstash grok filter plugin.
+(see: https://www.elastic.co/guide/en/logstash/current/plugins-filters-grok.html)
 
 A speaking example:
 
@@ -12,20 +14,26 @@ A speaking example:
 
     filter: message
     grokker:
-        ...
-    description: '...'
+        mapping:
+            message: "%{TIMESTAMP_ISO8601:@timestamp} %{LOGLEVEL:logLevel} %{GREEDYDATA:logMessage}"
+    description: 'an example log message'
 
 ..  code-block:: json
     :linenos:
     :caption: Incoming event
 
-    <INCOMMING_EVENT>
+    {"message": "2020-07-16T19:20:30.45+01:00 DEBUG This is a sample log"}
 
 ..  code-block:: json
     :linenos:
     :caption: Processed event
 
-    <PROCESSED_EVENT>
+    {
+        "message": "2020-07-16T19:20:30.45+01:00 DEBUG This is a sample log",
+        "@timestamp": "2020-07-16T19:20:30.45+01:00",
+        "logLevel": "DEBUG",
+        "logMessage": "This is a sample log"
+    }
 
 
 .. autoclass:: logprep.processor.grokker.rule.GrokkerRule.Config
@@ -104,6 +112,9 @@ class GrokkerRule(DissectorRule):
         The value can be a list of search patterns or a single search pattern.
         Lists of search pattern will be joined by :code:`|` and only the first matching pattern
         will return values.
+        It is possible to use `oniguruma` regex pattern with or without grok patterns in the
+        patterns part.
+        Logstashs ecs conform grok patterns are used to resolve the here used grok patterns.
         """
         patterns: dict = field(
             validator=[
