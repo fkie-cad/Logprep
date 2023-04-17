@@ -42,10 +42,14 @@ from filelock import FileLock
 from pytz import timezone
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
+from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.processor.normalizer.rule import NormalizerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.helper import (
+    add_field_to,
+    get_dotted_field_list,
+    get_dotted_field_value,
+)
 from logprep.util.validators import directory_validator
 
 
@@ -189,7 +193,7 @@ class Normalizer(Processor):
         return target, value
 
     def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
-        fields = dotted_field.split(".")
+        fields = get_dotted_field_list(dotted_field)
         missing_fields = json.loads(json.dumps(fields))
         for event_field in fields:
             if isinstance(event, dict) and event_field in event:
@@ -215,7 +219,7 @@ class Normalizer(Processor):
 
     @staticmethod
     def _replace_field(event: dict, dotted_field: str, value: str):
-        fields = dotted_field.split(".")
+        fields = get_dotted_field_list(dotted_field)
         reduce(lambda dict_, key: dict_[key], fields[:-1], event)[fields[-1]] = value
 
     def process(self, event: dict):
@@ -372,7 +376,7 @@ class Normalizer(Processor):
 
     def _raise_warning_if_fields_already_existed(self, rule, event):
         if self._conflicting_fields:
-            raise FieldExsistsWarning(self, rule, event, self._conflicting_fields)
+            raise FieldExistsWarning(self, rule, event, self._conflicting_fields)
 
     def shut_down(self):
         """

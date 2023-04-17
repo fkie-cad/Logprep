@@ -78,9 +78,6 @@ if TYPE_CHECKING:
     from logprep.abc.processor import Processor
 
 
-logger = getLogger()
-logger.disabled = True
-
 yaml = YAML(typ="safe", pure=True)
 
 
@@ -180,6 +177,9 @@ class AutoRuleTester:
         self._custom_tests = []
         self._missing_custom_tests = []
 
+        self._logger = getLogger()
+        self._logger.disabled = True
+
     def run(self):
         """Perform auto-tests."""
         rules_dirs = self._get_rule_dirs_by_processor_name()
@@ -245,7 +245,7 @@ class AutoRuleTester:
         processors_without_custom_test = OrderedDict()
         for processor_in_pipeline in self._config_yml["pipeline"]:
             name, processor_cfg = next(iter(processor_in_pipeline.items()))
-            processor = self._get_processor_instance(name, processor_cfg, logger)
+            processor = self._get_processor_instance(name, processor_cfg, self._logger)
             if processor.has_custom_tests:
                 processors_with_custom_test[processor] = name
             else:
@@ -256,7 +256,7 @@ class AutoRuleTester:
         processor_uses_own_tests = {}
         for processor_in_pipeline in self._config_yml["pipeline"]:
             name, processor_cfg = next(iter(processor_in_pipeline.items()))
-            processor = self._get_processor_instance(name, processor_cfg, logger)
+            processor = self._get_processor_instance(name, processor_cfg, self._logger)
             processor_uses_own_tests[processor_cfg["type"]] = processor.has_custom_tests
         return processor_uses_own_tests
 

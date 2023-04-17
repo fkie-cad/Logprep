@@ -43,11 +43,11 @@ the fields :code:`keep_me` and :code:`keep_me.keep_me_too` are kept.
 """
 
 from typing import List
-import warnings
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule
-from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
+from logprep.util.helper import get_dotted_field_value
 
 
 class DropperRule(Rule):
@@ -61,6 +61,11 @@ class DropperRule(Rule):
         """List of fields to drop"""
         drop_full: bool = field(validator=validators.instance_of(bool), default=True)
         """Drop recursive? defaults to [True]"""
+
+        def __attrs_post_init__(self):
+            # to ensure no split operations during processing
+            for dotted_field in self.drop:  # pylint: disable=not-an-iterable
+                get_dotted_field_value({}, dotted_field)
 
     @property
     def fields_to_drop(self) -> List[str]:

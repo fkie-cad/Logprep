@@ -77,7 +77,7 @@ Event: {event}
         super().__init__(f"{self.__class__.__name__} in {processor.describe()}: {message}")
 
 
-class FieldExsistsWarning(ProcessingWarning):
+class FieldExistsWarning(ProcessingWarning):
     """Raised if field already exists."""
 
     def __init__(
@@ -90,6 +90,6 @@ class FieldExsistsWarning(ProcessingWarning):
         message = (
             "The following fields could not be written, because "
             "one or more subfields existed and could not be extended: "
-            f"{''.join(skipped_fields)}"
+            f"{', '.join(skipped_fields)}"
         )
         super().__init__(processor, message, rule, event)

@@ -3,7 +3,9 @@
 # pylint: disable=unused-argument
 # pylint: disable=too-many-arguments
 import json
+import logging
 import os
+import re
 import tempfile
 import time
 from copy import deepcopy
@@ -15,7 +17,6 @@ from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.base.exceptions import (
     InvalidRuleDefinitionError,
-    ProcessingWarning,
 )
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -391,11 +392,12 @@ class TestGenericAdder(BaseProcessorTestCase):
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
     def test_generic_adder_testcases_failure_handling(
-        self, testcase, rule, event, expected, error_message
+        self, testcase, rule, event, expected, error_message, caplog
     ):
         self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning, match=error_message):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+        assert re.match(rf".*FieldExistsWarning.*{error_message}", caplog.text)
         assert event == expected, testcase
 
     def test_add_generic_fields_from_file_missing_and_existing_with_all_required(self):
@@ -582,7 +584,7 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         assert document_1 == expected
         assert document_2 == expected
 
-    def test_sql_database_raises_exception_on_duplicate(self):
+    def test_sql_database_raises_exception_on_duplicate(self, caplog):
         expected = {
             "add_from_sql_db_table": "Test",
             "source": "TEST_0.test.123",
@@ -592,8 +594,9 @@ class TestGenericAdderProcessorSQLWithoutAddedTarget(BaseTestGenericAdderSQLTest
         document = {"add_from_sql_db_table": "Test", "source": "TEST_0.test.123"}
 
         self.object.process(document)
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
         assert document == expected
 

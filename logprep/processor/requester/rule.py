@@ -65,7 +65,7 @@ import re
 import requests
 from attrs import define, field, validators
 
-from logprep.processor.field_manager.rule import FieldManagerRule, FIELD_PATTERN
+from logprep.processor.field_manager.rule import FIELD_PATTERN, FieldManagerRule
 
 parameter_keys = inspect.signature(requests.Request).parameters.keys()
 REQUEST_CONFIG_KEYS = [
@@ -177,6 +177,7 @@ class RequesterRule(FieldManagerRule):
             data_fields = re.findall(FIELD_PATTERN, self.data)
             params_fields = re.findall(FIELD_PATTERN, json.dumps(self.params))
             self.source_fields = list({*url_fields, *json_fields, *data_fields, *params_fields})
+            super().__attrs_post_init__()
 
     # pylint: disable=missing-docstring
     @property

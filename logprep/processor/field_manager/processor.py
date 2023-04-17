@@ -23,7 +23,7 @@ Example
 from typing import Any, List, Tuple
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.rule import FieldManagerRule
 from logprep.util.helper import add_and_overwrite, add_field_to, get_dotted_field_value
 
@@ -37,7 +37,8 @@ class FieldManager(Processor):
         source_fields = rule.source_fields
         target_field = rule.target_field
         field_values = self._get_field_values(event, rule)
-        self._check_for_missing_fields(event, rule, source_fields, field_values)
+        if self._has_missing_fields(event, rule, source_fields, field_values):
+            return
         extend_target_list = rule.extend_target_list
         overwrite_target = rule.overwrite_target
         args = (event, target_field, field_values)
@@ -56,7 +57,7 @@ class FieldManager(Processor):
             field_values = field_values.pop()
         successful = add_field_to(event, target_field, field_values, False, False)
         if not successful:
-            raise FieldExsistsWarning(self, rule, event, [target_field])
+            raise FieldExistsWarning(self, rule, event, [target_field])
 
     def _overwrite_target_with_source_field_values(self, event, target_field, field_values):
         if len(field_values) == 1:
@@ -76,10 +77,12 @@ class FieldManager(Processor):
         target_field_value = self._get_deduplicated_sorted_flatten_list(lists, other)
         add_and_overwrite(event, target_field, target_field_value)
 
-    def _check_for_missing_fields(self, event, rule, source_fields, field_values):
+    def _has_missing_fields(self, event, rule, source_fields, field_values):
         if None in field_values:
             error = self._get_missing_fields_error(source_fields, field_values)
             self._handle_warning_error(event, rule, error)
+            return True
+        return False
 
     def _get_field_values(self, event, rule):
         return [get_dotted_field_value(event, source_field) for source_field in rule.source_fields]

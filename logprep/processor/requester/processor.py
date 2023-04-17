@@ -26,7 +26,7 @@ import re
 import requests
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.requester.rule import RequesterRule
 from logprep.util.helper import (
     add_field_to,
@@ -45,10 +45,12 @@ class Requester(Processor):
 
     def _apply_rules(self, event, rule):
         source_field_dict = get_source_fields_dict(event, rule)
-        self._check_for_missing_values(event, rule, source_field_dict)
+        if self._has_missing_values(event, rule, source_field_dict):
+            return
         kwargs = self._template_kwargs(rule.kwargs, source_field_dict)
         response = self._request(event, rule, kwargs)
-        self._handle_response(event, rule, response)
+        if response is not None:
+            self._handle_response(event, rule, response)
 
     def _handle_response(self, event, rule, response):
         conflicting_fields = []
@@ -77,17 +79,18 @@ class Requester(Processor):
                 if not successful:
                     conflicting_fields.append(rule.target_field)
         if conflicting_fields:
-            raise FieldExsistsWarning(self, rule, event, [rule.target_field])
+            raise FieldExistsWarning(self, rule, event, [rule.target_field])
 
     def _request(self, event, rule, kwargs):
         try:
             response = requests.request(**kwargs)
             response.raise_for_status()
+            return response
         except requests.exceptions.HTTPError as error:
             self._handle_warning_error(event, rule, error)
         except requests.exceptions.ConnectTimeout as error:
             self._handle_warning_error(event, rule, error)
-        return response
+        return None
 
     @staticmethod
     def _get_result(response):

@@ -2,11 +2,9 @@
 # pylint: disable=protected-access
 
 import json
-from abc import ABC
 from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
-from typing import Iterable
 from unittest import mock
 
 import pytest

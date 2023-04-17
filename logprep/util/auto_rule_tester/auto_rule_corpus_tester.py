@@ -187,6 +187,7 @@ class RuleCorpusTester:
         """
         print(Style.BRIGHT + "# Test Cases Summary:" + Style.RESET_ALL)
         for test_case_id, test_case in self._test_cases.items():
+            _ = [processor.setup() for processor in self._pipeline._pipeline]
             parsed_event, extra_outputs = self._pipeline.process_pipeline()
             extra_outputs = self._align_extra_output_formats(extra_outputs)
             test_case.generated_output = parsed_event

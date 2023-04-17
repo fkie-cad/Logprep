@@ -179,8 +179,8 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
 
     flags = 0
 
-    wc = re.compile(r".*?((?:\\)*\*).*?")
-    wq = re.compile(r".*?((?:\\)*\?).*?")
+    wc = re.compile(r"((?:\\)*\*)")
+    wq = re.compile(r"((?:\\)*\?)")
 
     def __init__(self, key: List[str], expected_value: Any):
         super().__init__(key, expected_value)
@@ -286,6 +286,9 @@ class FloatRangeFilterExpression(RangeBasedFilterExpression):
 class RegExFilterExpression(FilterExpression):
     """Filter expression that matches a value using regex."""
 
+    match_escaping_pattern = re.compile(r".*?(?P<escaping>\\*)\$$")
+    match_parts_pattern = re.compile(r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>.*)")
+
     def __init__(self, key: List[str], regex: str):
         self._key = key
         self._regex = self._normalize_regex(regex)
@@ -296,12 +299,12 @@ class RegExFilterExpression(FilterExpression):
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
-        match = re.match(r".*?(?P<escaping>\\*)\$$", regex)
+        match = RegExFilterExpression.match_escaping_pattern.match(regex)
         if match and len(match.group("escaping")) % 2 == 0:
             end_token = ""
         else:
             end_token = "$"
-        match = re.match(r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>.*)", regex)
+        match = RegExFilterExpression.match_parts_pattern.match(regex)
         flag, _, pattern = match.groups()
         flag = "" if flag is None else flag
         pattern = "" if pattern is None else pattern

@@ -1,10 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import pytest
+import logging
+import re
+
 import responses
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExsistsWarning, ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -141,7 +142,7 @@ class TestListComparison(BaseProcessorTestCase):
             len(document.get("dotted", {}).get("preexistent_output_field", {}).get("in_list")) == 1
         )
 
-    def test_target_field_exists_and_cant_be_extended(self):
+    def test_target_field_exists_and_cant_be_extended(self, caplog):
         assert self.object.metrics.number_of_processed_events == 0
         document = {"dot_channel": "test", "user": "Franz", "dotted": "dotted_Franz"}
         expected = {
@@ -162,11 +163,12 @@ class TestListComparison(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         self.object.setup()
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
         assert document == expected
 
-    def test_intermediate_output_field_is_wrong_type(self):
+    def test_intermediate_output_field_is_wrong_type(self, caplog):
         assert self.object.metrics.number_of_processed_events == 0
         document = {
             "dot_channel": "test",
@@ -191,8 +193,9 @@ class TestListComparison(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         self.object.setup()
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
         assert document == expected
 
     def test_check_in_dotted_subfield(self):
@@ -233,7 +236,7 @@ class TestListComparison(BaseProcessorTestCase):
         self.object.process(document)
         assert document == expected
 
-    def test_overwrite_target_field(self):
+    def test_overwrite_target_field(self, caplog):
         document = {"user": "Franz"}
         expected = {"user": "Franz", "tags": ["_list_comparison_failure"]}
         rule_dict = {
@@ -248,9 +251,9 @@ class TestListComparison(BaseProcessorTestCase):
         }
         self._load_specific_rule(rule_dict)
         self.object.setup()
-        with pytest.raises(FieldExsistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
-
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
         assert document == expected
 
     @responses.activate

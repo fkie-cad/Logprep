@@ -48,7 +48,7 @@ the IPs from the list is also available in the specified fields.
     ip_fields:
     - some_ip_field
 """
-
+from functools import cached_property
 from typing import Union, Optional
 from attrs import define, field, validators, asdict
 
@@ -95,7 +95,7 @@ class PreDetectorRule(Rule):
         )
 
     # pylint: disable=C0111
-    @property
+    @cached_property
     def detection_data(self) -> dict:
         detection_data = asdict(self._config)
         if self._config.link is None:

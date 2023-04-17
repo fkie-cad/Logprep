@@ -2,12 +2,14 @@
 # pylint: disable=missing-docstring
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
+import logging
+import re
 from collections import OrderedDict
 from copy import deepcopy
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.processor.base.exceptions import ProcessingCriticalError
 
 pytest.importorskip("hyperscan")
 
@@ -21,7 +23,6 @@ pytest.importorskip("logprep.processor.hyperscan_resolver")
 
 from logprep.processor.hyperscan_resolver.processor import (
     HyperscanResolver,
-    HyperscanResolverError,
 )
 
 
@@ -342,7 +343,7 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
 
         assert document == expected
 
-    def test_resolve_dotted_and_dest_field_with_conflict_match(self):
+    def test_resolve_dotted_and_dest_field_with_conflict_match(self, caplog):
         rule = {
             "filter": "to.resolve",
             "hyperscan_resolver": {
@@ -360,8 +361,9 @@ class TestHyperscanResolverProcessor(BaseProcessorTestCase):
             "tags": ["_hyperscan_resolver_failure"],
         }
 
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
         assert document == expected
 

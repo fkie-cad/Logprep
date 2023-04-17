@@ -1,9 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
-import pytest
-from logprep.processor.base.exceptions import ProcessingWarning
-from tests.unit.processor.base import BaseProcessorTestCase
+import logging
+import re
 
+import pytest
+
+from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [
     (
@@ -379,8 +381,9 @@ class TestIpInformer(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected):
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, caplog):
         self._load_specific_rule(rule)
-        with pytest.raises(ProcessingWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(event)
+        assert re.match(".*ProcessingWarning.*", caplog.text)
         assert event == expected, testcase

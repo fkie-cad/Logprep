@@ -32,7 +32,7 @@ import datetime
 import re
 from functools import cached_property
 from logging import Logger
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union, Pattern
 from urllib.parse import parse_qs
 
 from attr import define, field, validators
@@ -45,6 +45,7 @@ from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
+from logprep.util.helper import get_dotted_field_list
 from logprep.util.validators import list_of_urls_validator
 
 
@@ -90,7 +91,7 @@ class Pseudonymizer(Processor):
         """A salt that is used for hashing."""
         regex_mapping: str = field(validator=validators.instance_of(str))
         """
-        Path to a file (for string format see :ref:`getters`) with a regex mapping for 
+        Path to a file (for string format see :ref:`getters`) with a regex mapping for
         pseudonymization, i.e.:
 
         * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
@@ -141,6 +142,8 @@ class Pseudonymizer(Processor):
 
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
+
+    URL_SPLIT_PATTERN = re.compile("(://)")
 
     rule_class = PseudonymizerRule
 
@@ -227,13 +230,13 @@ class Pseudonymizer(Processor):
 
     @staticmethod
     def _innermost_field(dotted_field: str, event: dict) -> Tuple[Union[dict, Any], str]:
-        keys = dotted_field.split(".")
+        keys = get_dotted_field_list(dotted_field)
         for i in range(len(keys) - 1):
             event = event[keys[i]]
         return event, keys[-1]
 
     def _pseudonymize_field(
-        self, pattern: str, field_: Union[str, List[str]]
+        self, pattern: Pattern, field_: Union[str, List[str]]
     ) -> Tuple[Union[str, List[str]], Optional[list], bool]:
         new_pseudonyms = []
 
@@ -254,7 +257,7 @@ class Pseudonymizer(Processor):
                     new_field.append(field_[idx])
         else:
             new_field = str(field_)
-            matches = re.match(pattern, new_field)
+            matches = pattern.match(new_field)
 
             # No matches, no change
             if matches is None:
@@ -284,7 +287,7 @@ class Pseudonymizer(Processor):
         for url_string in self._url_extractor.gen_urls(field_):
             url_parts = self._parse_url_parts(self._tld_extractor, url_string)
             pseudonym_map = self._get_pseudonym_map(pseudonyms, url_parts)
-            url_split = re.split("(://)", url_string)
+            url_split = self.URL_SPLIT_PATTERN.split(url_string)
 
             replacements = self._get_parts_to_replace_in_correct_order(pseudonym_map)
 
@@ -387,11 +390,11 @@ class Pseudonymizer(Processor):
         for rule in self._specific_rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
-                    rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
+                    rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
         for rule in self._generic_rules:
             for dotted_field, regex_keyword in rule.pseudonyms.items():
                 if regex_keyword in self._regex_mapping:
-                    rule.pseudonyms[dotted_field] = self._regex_mapping[regex_keyword]
+                    rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
 
     def _wrap_hash(self, hash_string: str) -> str:
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX

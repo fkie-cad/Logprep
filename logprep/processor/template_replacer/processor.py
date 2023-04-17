@@ -32,10 +32,10 @@ from typing import Optional
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExsistsWarning
+from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.template_replacer.rule import TemplateReplacerRule
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import get_dotted_field_value
+from logprep.util.helper import get_dotted_field_list, get_dotted_field_value
 
 
 class TemplateReplacerError(BaseException):
@@ -86,7 +86,7 @@ class TemplateReplacer(Processor):
         pattern = configuration.pattern
         template_path = configuration.template
         self._target_field = pattern["target_field"]
-        self._target_field_split = self._target_field.split(".")
+        self._target_field_split = get_dotted_field_list(self._target_field)
         self._fields = pattern["fields"]
         delimiter = pattern["delimiter"]
         allow_delimiter_field = pattern["allowed_delimiter_field"]
@@ -153,5 +153,5 @@ class TemplateReplacer(Processor):
                 event[subfield] = {}
                 event = event[subfield]
             else:
-                raise FieldExsistsWarning(self, event, rule, [subfield])
+                raise FieldExistsWarning(self, event, rule, [subfield])
         event[self._target_field_split[-1]] = replacement

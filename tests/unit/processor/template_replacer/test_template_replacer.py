@@ -1,10 +1,11 @@
 # pylint: disable=missing-module-docstring
+import logging
+import re
 from copy import deepcopy
 
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import FieldExsistsWarning
 from logprep.processor.template_replacer.processor import TemplateReplacerError
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -144,7 +145,7 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         assert document["dotted"].get("message")
         assert document["dotted"]["message"] == "Test %1 Test %2"
 
-    def test_replace_incompatible_existing_dotted_message_parent_via_template(self):
+    def test_replace_incompatible_existing_dotted_message_parent_via_template(self, caplog):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
         self.object = Factory.create({"test instance": config}, self.logger)
@@ -154,8 +155,9 @@ class TestTemplateReplacer(BaseProcessorTestCase):
             "dotted": "foo",
         }
 
-        with pytest.raises(FieldExsistsWarning):
+        with caplog.at_level(logging.WARNING):
             self.object.process(document)
+        assert re.match(".*FieldExistsWarning.*", caplog.text)
 
     def test_replace_fails_with_invalid_template(self):
         config = deepcopy(self.CONFIG)

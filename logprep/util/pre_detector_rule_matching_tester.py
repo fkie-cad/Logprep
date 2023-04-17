@@ -12,14 +12,12 @@ from typing import Any, List, Tuple
 import regex as re
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
+
+from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.pre_detector.processor import PreDetector
 from logprep.processor.pre_detector.rule import PreDetectorRule
-from logprep.factory import Factory
 from logprep.util.helper import print_fcolor
-
-logger = logging.getLogger()
-logger.disabled = True
 
 yaml = YAML(typ="safe", pure=True)
 
@@ -134,7 +132,8 @@ class RuleMatchingTester:
             "tree_config": "",
             "pre_detector_topic": "",
         }
-
+        logger = logging.getLogger()
+        logger.disabled = True
         processor = Factory.create(processor_cfg, logger)
         return processor
 

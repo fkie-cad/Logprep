@@ -10,9 +10,15 @@
 * add `kafka_config` option to `confluent_kafka_input` and `confluent_kafka_output` connectors to provide additional config options to `librdkafka`
 
 ### Improvements
+
 * Harmonize error messages and handling for processors and connectors
 * Add ability to schedule periodic tasks to all components
 
+### Bugfix
+
+* Fix resetting processor caches in the `auto_rule_corpus_tester` by initializing all processors
+between test cases.
+* Fix processing of generic rules after there was an error inside the specific rules.
 
 ## v6.0.0
 

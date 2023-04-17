@@ -1,11 +1,11 @@
 """This module contains helper functions that are shared by different modules."""
 import re
-from functools import partial, reduce
+from functools import lru_cache, partial, reduce
 from os import remove
 from typing import Optional, Union
 
-from colorama import Fore, Back
-from colorama.ansi import AnsiFore, AnsiBack
+from colorama import Back, Fore
+from colorama.ansi import AnsiBack, AnsiFore
 
 
 def color_print_line(
@@ -75,8 +75,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
     assert not (
         extends_lists and overwrite_output_field
     ), "An output field can't be overwritten and extended at the same time"
-
-    output_field_path = [event, *output_field.split(".")]
+    output_field_path = [event, *get_dotted_field_list(output_field)]
     target_key = output_field_path.pop()
 
     if overwrite_output_field:
@@ -137,10 +136,8 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
     dict_: dict, list, str
         The value of the requested dotted field.
     """
-
-    fields = [event, *dotted_field.split(".")]
     try:
-        return reduce(_get_item, fields)
+        return reduce(_get_item, (event, *get_dotted_field_list(dotted_field)))
     except KeyError:
         return None
     except ValueError:
@@ -149,6 +146,25 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         return None
     except IndexError:
         return None
+
+
+@lru_cache(maxsize=None)
+def get_dotted_field_list(dotted_field: str) -> list[str]:
+    """make lookup of dotted field in the dotted_field_lookup_table and ensures
+    it is added if not found. Additionally the string will be interned for faster
+    followup lookups.
+
+    Parameters
+    ----------
+    dotted_field : str
+        the dotted field input
+
+    Returns
+    -------
+    list[str]
+        a list with keys for dictionary iteration
+    """
+    return dotted_field.split(".")
 
 
 def pop_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dict, list, str]]:

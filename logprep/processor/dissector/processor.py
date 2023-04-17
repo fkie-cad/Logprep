@@ -56,7 +56,7 @@ class Dissector(Processor):
                         f"dissector: mapping field '{source_field}' does not exist"
                     )
                     self._handle_warning_error(event, rule, error)
-            if delimeter is not None:
+            if delimeter is not None and loop_content is not None:
                 content, _, loop_content = loop_content.partition(delimeter)
             else:
                 content = loop_content
