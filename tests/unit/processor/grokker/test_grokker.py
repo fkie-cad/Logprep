@@ -2,10 +2,12 @@
 # pylint: disable=protected-access
 import logging
 import re
+from copy import deepcopy
 from unittest import mock
 
 import pytest
 
+from logprep.factory import Factory
 from logprep.util.getter import GetterFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -160,30 +162,6 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "loads custom patterns",
-        {
-            "filter": "winlog.event_id: 123456789",
-            "grokker": {
-                "mapping": {"winlog.event_data.normalize me!": "%{CUSTOM_PATTERN_TEST:normalized}"}
-            },
-        },
-        {
-            "winlog": {
-                "api": "wineventlog",
-                "event_id": 123456789,
-                "event_data": {"normalize me!": "Test"},
-            }
-        },
-        {
-            "winlog": {
-                "api": "wineventlog",
-                "event_id": 123456789,
-                "event_data": {"normalize me!": "Test"},
-            },
-            "normalized": "Test",
-        },
-    ),
-    (
         "example log message",
         {
             "filter": "message",
@@ -287,7 +265,6 @@ class TestGrokker(BaseProcessorTestCase):
         "type": "grokker",
         "specific_rules": ["tests/testdata/unit/grokker/specific_rules"],
         "generic_rules": ["tests/testdata/unit/grokker/generic_rules"],
-        "custom_patterns_dir": "tests/testdata/unit/normalizer/additional_grok_patterns",
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
@@ -326,5 +303,43 @@ class TestGrokker(BaseProcessorTestCase):
                 "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
             )
             self.object.setup()
+        self.object.process(event)
+        assert event == expected
+
+    def test_loads_patterns_without_custom_patterns_dir(self):
+        config = deepcopy(self.CONFIG)
+        config |= {
+            "custom_patterns_dir": "",
+        }
+        grokker = Factory.create({"grokker": config}, self.logger)
+        assert len(grokker.rules) > 0
+
+    def test_loads_custom_patterns(self):
+        rule = {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {"winlog.event_data.normalize me!": "%{CUSTOM_PATTERN_TEST:normalized}"}
+            },
+        }
+        event = {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "Test"},
+            }
+        }
+        expected = {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "Test"},
+            },
+            "normalized": "Test",
+        }
+        self.object._config.custom_patterns_dir = (
+            "tests/testdata/unit/normalizer/additional_grok_patterns"
+        )
+        self._load_specific_rule(rule)
+        self.object.setup()
         self.object.process(event)
         assert event == expected

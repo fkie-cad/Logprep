@@ -1,6 +1,6 @@
 """
 Grokker
-============
+=======
 
 The `grokker` processor dissects a message on a basis of grok patterns. This processor is based
 of the ideas of the logstash grok filter plugin.
@@ -82,7 +82,7 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
 
 
 class GrokkerRule(DissectorRule):
-    """..."""
+    """grokker rule"""
 
     @define(kw_only=True)
     class Config(DissectorRule.Config):
@@ -131,8 +131,10 @@ class GrokkerRule(DissectorRule):
         mapping sections. Here you only have to declare the matching regex without named groups.
         """
 
+    actions: dict[str, Grok]
+
     def _set_mapping_actions(self):
-        pass
+        self.actions = {}
 
     def _set_convert_actions(self):
         pass

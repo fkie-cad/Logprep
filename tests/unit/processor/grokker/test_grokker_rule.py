@@ -10,7 +10,7 @@ class TestGrokkerRule:
     def test_create_from_dict_returns_grokker_rule(self):
         rule = {
             "filter": "message",
-            "grokker": {"mapping": {"message": "Username: %{USER}"}},
+            "grokker": {"mapping": {"message": "Username: %{USER:user}"}},
         }
         rule_dict = GrokkerRule._create_from_dict(rule)
         assert isinstance(rule_dict, GrokkerRule)

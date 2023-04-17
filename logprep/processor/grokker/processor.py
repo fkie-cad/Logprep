@@ -77,21 +77,26 @@ class Grokker(Processor):
     def setup(self):
         """Loads the action mapping. Has to be called before processing"""
         super().setup()
-        if custom_patterns_dir := self._config.custom_patterns_dir:
-            if re.search(r"http:\/\/.*?\.zip", custom_patterns_dir):
-                patterns_tmp_path = Path("/tmp/grok_patterns")
-                if not patterns_tmp_path.exists():
-                    self._logger.debug("start grok pattern download...")
-                    archive = Path(f"{patterns_tmp_path}.zip")
-                    archive.touch()
-                    archive.write_bytes(GetterFactory.from_string(custom_patterns_dir).get_raw())
-                    self._logger.debug("finished grok pattern download.")
-                    with ZipFile(str(archive), mode="r") as zip_file:
-                        zip_file.extractall(patterns_tmp_path)
-                self._load_patterns(patterns_tmp_path)
-            else:
-                self._load_patterns(custom_patterns_dir)
-
-    def _load_patterns(self, custom_patterns_dir):
+        custom_patterns_dir = self._config.custom_patterns_dir
+        if re.search(r"http:\/\/.*?\.zip", custom_patterns_dir):
+            patterns_tmp_path = Path("/tmp/grok_patterns")
+            self._download_zip_file(source_file=custom_patterns_dir, target_dir=patterns_tmp_path)
+            for rule in self.rules:
+                rule.set_mapping_actions(patterns_tmp_path)
+            return
+        if custom_patterns_dir:
+            for rule in self.rules:
+                rule.set_mapping_actions(custom_patterns_dir)
+            return
         for rule in self.rules:
-            rule.set_mapping_actions(custom_patterns_dir)
+            rule.set_mapping_actions()
+
+    def _download_zip_file(self, source_file: str, target_dir: Path):
+        if not target_dir.exists():
+            self._logger.debug("start grok pattern download...")
+            archive = Path(f"{target_dir}.zip")
+            archive.touch()
+            archive.write_bytes(GetterFactory.from_string(source_file).get_raw())
+            self._logger.debug("finished grok pattern download.")
+            with ZipFile(str(archive), mode="r") as zip_file:
+                zip_file.extractall(target_dir)
