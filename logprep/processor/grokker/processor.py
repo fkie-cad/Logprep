@@ -17,11 +17,16 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
+import re
+from pathlib import Path
+from zipfile import ZipFile
+
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning
 from logprep.processor.grokker.rule import GrokkerRule
+from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
@@ -30,12 +35,14 @@ class Grokker(Processor):
 
     rule_class = GrokkerRule
 
+    _config: "Grokker.Config"
+
     @define(kw_only=True)
     class Config(Processor.Config):
         """Config of Grokker"""
 
         custom_patterns_dir: str = field(default="", validator=validators.instance_of(str))
-        """(Optional) A list of dirs to load patterns from. All files in all dirs will be loaded
+        """(Optional) A directory to load patterns from. All files in all subdirectories will be loaded
         recursively. 
         """
 
@@ -64,6 +71,21 @@ class Grokker(Processor):
     def setup(self):
         """Loads the action mapping. Has to be called before processing"""
         super().setup()
-        if self._config.custom_patterns_dir:
-            for rule in self.rules:
-                rule.set_mapping_actions(self._config.custom_patterns_dir)
+        if custom_patterns_dir := self._config.custom_patterns_dir:
+            if re.search(r"http:\/\/.*?\.zip", custom_patterns_dir):
+                patterns_tmp_path = Path("/tmp/grok_patterns")
+                if not patterns_tmp_path.exists():
+                    self._logger.debug("start grok pattern download...")
+                    archive = Path(f"{patterns_tmp_path}.zip")
+                    archive.touch()
+                    archive.write_bytes(GetterFactory.from_string(custom_patterns_dir).get_raw())
+                    self._logger.debug("finished grok pattern download.")
+                    with ZipFile(str(archive), mode="r") as zip_file:
+                        zip_file.extractall(patterns_tmp_path)
+                self._load_patterns(patterns_tmp_path)
+            else:
+                self._load_patterns(custom_patterns_dir)
+
+    def _load_patterns(self, custom_patterns_dir):
+        for rule in self.rules:
+            rule.set_mapping_actions(custom_patterns_dir)

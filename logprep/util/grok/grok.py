@@ -25,6 +25,7 @@ SOFTWARE.
 import re
 import sys
 from hashlib import md5
+from itertools import chain
 from pathlib import Path
 
 import pkg_resources
@@ -171,6 +172,8 @@ class Grok:
 def _reload_patterns(patterns_dirs):
     """ """
     patterns_dirs = [Path(directory) for directory in patterns_dirs]
+    patterns_dirs += chain(*[list(directory.rglob("**/*")) for directory in patterns_dirs])
+    patterns_dirs = [directory for directory in patterns_dirs if directory.is_dir()]
     all_patterns = {}
     for directory in patterns_dirs:
         pattern_files = [file for file in directory.iterdir() if file.is_file()]

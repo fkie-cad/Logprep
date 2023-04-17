@@ -1,9 +1,12 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
 import logging
 import re
+from unittest import mock
 
 import pytest
 
+from logprep.util.getter import GetterFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -304,3 +307,24 @@ class TestGrokker(BaseProcessorTestCase):
             self.object.process(event)
             assert re.match(rf".*{error_message}", caplog.text)
         assert event == expected, testcase
+
+    def test_load_custom_patterns_from_http_as_zip_file(self):
+        rule = {
+            "filter": "message",
+            "grokker": {"mapping": {"message": "this is %{ID:userfield}"}},
+        }
+
+        event = {"message": "this is user-456"}
+        expected = {"message": "this is user-456", "userfield": "user-456"}
+        self._load_specific_rule(rule)
+        archive_data = GetterFactory.from_string(
+            "tests/testdata/unit/grokker/patterns.zip"
+        ).get_raw()
+        with mock.patch("logprep.util.getter.HttpGetter.get_raw") as mock_getter:
+            mock_getter.return_value = archive_data
+            self.object._config.custom_patterns_dir = (
+                "http://localhost:8000/tests/testdata/unit/grokker/patterns.zip"
+            )
+            self.object.setup()
+        self.object.process(event)
+        assert event == expected
