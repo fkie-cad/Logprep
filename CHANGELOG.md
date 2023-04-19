@@ -13,13 +13,14 @@
 
 * Harmonize error messages and handling for processors and connectors
 * Add ability to schedule periodic tasks to all components
-* Improve performance of pipeline processing by switching form builtin `json` to `msgspec` in pipeline and kafka connectors
+* Improve performance of pipeline processing by switching form builtin `json` to `msgspec` in pipeline and kafka connectors 
 
 ### Bugfix
 
 * Fix resetting processor caches in the `auto_rule_corpus_tester` by initializing all processors
 between test cases.
 * Fix processing of generic rules after there was an error inside the specific rules.
+* Remove coordinate fields from results of the geoip enricher if one of them has `None` values
 
 ## v6.0.0
 

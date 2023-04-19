@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-member
 # pylint: disable=protected-access
+# pylint: disable=too-many-statements
 import hashlib
 import logging
 import re
@@ -12,6 +13,7 @@ import pytest
 import responses
 from geoip2.errors import AddressNotFoundError
 
+from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -57,6 +59,25 @@ class ReaderMock(mock.MagicMock):
             city.subdivisions.most_specific = mock.MagicMock()
             city.subdivisions.most_specific.name = None
             return city
+        if any(ip in ip_list for ip in ["55.55.55.51", "55.55.55.52", "55.55.55.53"]):
+            city = City()
+            city.location.accuracy_radius = 1337
+            city.location.time_zone = None
+            city.continent.name = None
+            city.continent.code = None
+            city.country.name = None
+            city.country.iso_code = None
+            city.city.name = None
+            city.postal.code = None
+            city.subdivisions.most_specific = mock.MagicMock()
+            city.subdivisions.most_specific.name = None
+            city.location.longitude = None
+            city.location.latitude = None
+            if "55.55.55.52" in ip_list:
+                city.location.latitude = 1.1
+            if "55.55.55.53" in ip_list:
+                city.location.longitude = 2.2
+            return city
         return mock.MagicMock()
 
 
@@ -85,6 +106,8 @@ class TestGeoipEnricher(BaseProcessorTestCase):
 
         self.object.process(document)
 
+        assert document.get("geoip")
+
     def test_geoip_data_added_not_exists(self):
         assert self.object.metrics.number_of_processed_events == 0
         document = {"client": {"ip": "127.0.0.1"}}
@@ -92,6 +115,24 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         self.object.process(document)
 
         assert document.get("geoip") is None
+
+    def test_no_geoip_data_added_if_source_field_is_none(self):
+        assert self.object.metrics.number_of_processed_events == 0
+        document = {"client": {"ip": None}}
+
+        self.object.process(document)
+
+        assert document.get("geoip") is None
+
+    def test_source_field_is_none_raises_processing_warning(self):
+        assert self.object.metrics.number_of_processed_events == 0
+        document = {"client": {"ip": None}}
+
+        with pytest.raises(
+            ProcessingWarning,
+            match=re.escape("Value of IP field 'client.ip' is 'None'"),
+        ):
+            self.object._apply_rules(document, self.object.rules[0])
 
     def test_nothing_to_enrich(self):
         assert self.object.metrics.number_of_processed_events == 0
@@ -282,7 +323,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         with pytest.raises(ValueError, match=r"\'customize_target_subfields\' must be in"):
             self._load_specific_rule(rule_dict)
 
-    def test_geoip_db_returns_only_limited_data(self):
+    def test_geoip_db_returns_only_limited_data_without_missing_coordinates(self):
         document = {"client": {"ip": "13.21.21.37"}}
         rule_dict = {
             "filter": "client",
@@ -297,6 +338,30 @@ class TestGeoipEnricher(BaseProcessorTestCase):
             "client": {"ip": "13.21.21.37"},
             "geoip": {
                 "geometry": {"coordinates": [1.1, 2.2], "type": "Point"},
+                "properties": {"accuracy_radius": 1337},
+                "type": "Feature",
+            },
+        }
+        assert document == expected_event
+
+    @pytest.mark.parametrize(
+        "source_ip",
+        ["55.55.55.51", "55.55.55.52", "55.55.55.53"],
+    )
+    def test_geoip_db_returns_only_limited_data_with_missing_coordinates(self, source_ip):
+        document = {"client": {"ip": source_ip}}
+        rule_dict = {
+            "filter": "client",
+            "geoip_enricher": {
+                "source_fields": ["client.ip"],
+            },
+            "description": "",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(document)
+        expected_event = {
+            "client": {"ip": source_ip},
+            "geoip": {
                 "properties": {"accuracy_radius": 1337},
                 "type": "Feature",
             },

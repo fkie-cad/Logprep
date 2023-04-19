@@ -19,18 +19,14 @@ In the following example the IP in :code:`client.ip` will be enriched with geoip
       source_fields: [client.ip]
     description: '...'
 """
-
-import warnings
-
 from attr import Factory
 from attrs import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import add_and_overwrite, pop_dotted_field_value
 
 GEOIP_DATA_STUBS = {
     "type": "Feature",
-    "geometry.type": "Point",
+    "geometry.type": None,
     "geometry.coordinates": None,
     "properties.accuracy_radius": None,
     "properties.continent": None,
