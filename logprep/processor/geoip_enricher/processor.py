@@ -70,13 +70,14 @@ class GeoipEnricher(Processor):
         try:
             ip_addr = str(ip_address(ip_string))
             ip_data = self._city_db.city(ip_addr)
+
+            if ip_string is None:
+                return {}
+
             geoip_data = GEOIP_DATA_STUBS.copy()
+
             geoip_data.update(
                 {
-                    "geometry.coordinates": [
-                        ip_data.location.longitude,
-                        ip_data.location.latitude,
-                    ],
                     "properties.accuracy_radius": ip_data.location.accuracy_radius,
                     "properties.continent": ip_data.continent.name,
                     "properties.continent_code": ip_data.continent.code,
@@ -88,6 +89,20 @@ class GeoipEnricher(Processor):
                     "properties.subdivision": ip_data.subdivisions.most_specific.name,
                 }
             )
+
+            if ip_data.location.longitude and ip_data.location.latitude:
+                geoip_data.update(
+                    {
+                        "geometry.type": "Point",
+                        "geometry.coordinates": [
+                            ip_data.location.longitude,
+                            ip_data.location.latitude,
+                        ],
+                    }
+                )
+
+            geoip_data = {key: value for key, value in geoip_data.items() if value is not None}
+
             return geoip_data
         except (ValueError, AddressNotFoundError):
             return {}
