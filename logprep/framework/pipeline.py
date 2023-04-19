@@ -5,7 +5,6 @@ They can be multi-processed.
 
 """
 # pylint: disable=logging-fstring-interpolation
-import json
 import queue
 import warnings
 from ctypes import c_bool, c_double, c_ulonglong
@@ -16,6 +15,7 @@ from time import time
 from typing import Any, List, Tuple
 
 import attrs
+import msgspec
 import numpy as np
 
 from logprep._version import get_versions
@@ -227,6 +227,7 @@ class Pipeline:
         if log_handler and not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
         self._logprep_config = config
+        self._timeout = config.get("timeout")
         self._log_handler = log_handler
         self._continue_iterating = Value(c_bool)
 
@@ -236,6 +237,8 @@ class Pipeline:
         self._used_server_ports = used_server_ports
         self._metric_targets = metric_targets
         self.pipeline_index = pipeline_index
+        self._encoder = msgspec.msgpack.Encoder()
+        self._decoder = msgspec.msgpack.Decoder()
 
     @cached_property
     def _process_name(self) -> str:
@@ -338,6 +341,7 @@ class Pipeline:
                 self._input.server.config.port += 1
             self._used_server_ports.update({self._input.server.config.port: self._process_name})
         self.logger.debug(f"Finished creating connectors ({self._process_name})")
+        _ = self._pipeline
 
     def _create_processor(self, entry: dict) -> "Processor":
         processor_name = list(entry.keys())[0]
@@ -381,9 +385,8 @@ class Pipeline:
         assert self._input, "Run process_pipeline only with an valid input connector"
         self._metrics_exposer.expose(self.metrics)
         Component.run_pending_tasks()
-        event = self._get_event()
         extra_outputs = []
-        if event:
+        if event := self._get_event():
             extra_outputs = self.process_event(event)
         if event and self._output:
             self._store_event(event)
@@ -396,7 +399,7 @@ class Pipeline:
                 self.logger.debug(f"Stored output in {output_name}")
 
     def _get_event(self) -> dict:
-        event, non_critical_error_msg = self._input.get_next(self._logprep_config.get("timeout"))
+        event, non_critical_error_msg = self._input.get_next(self._timeout)
         if non_critical_error_msg and self._output:
             for _, output in self._output.items():
                 if output.default:
@@ -410,14 +413,13 @@ class Pipeline:
     @TimeMeasurement.measure_time("pipeline")
     def process_event(self, event: dict):
         """process all processors for one event"""
-        event_received = json.dumps(event, separators=(",", ":"))
+        event_received = self._encoder.encode(event)
         extra_outputs = []
         for processor in self._pipeline:
             try:
-                extra_data = processor.process(event)
-                if extra_data and self._output:
-                    self._store_extra_data(extra_data)
-                if extra_data:
+                if extra_data := processor.process(event):
+                    if self._output:
+                        self._store_extra_data(extra_data)
                     extra_outputs.append(extra_data)
             except ProcessingWarning as error:
                 self.logger.warning(str(error))
@@ -425,7 +427,7 @@ class Pipeline:
                 self.logger.error(str(error))
                 for _, output in self._output.items():
                     if output.default:
-                        output.store_failed(str(error), json.loads(event_received), event)
+                        output.store_failed(str(error), self._decoder.decode(event_received), event)
             if not event:
                 break
         if self._processing_counter:

@@ -80,7 +80,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
 
     if overwrite_output_field:
         target_field = reduce(_add_and_overwrite_key, output_field_path)
-        target_field.update({target_key: content})
+        target_field |= {target_key: content}
         return True
 
     try:
@@ -90,13 +90,13 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
 
     target_field_value = target_field.get(target_key)
     if target_field_value is None:
-        target_field.update({target_key: content})
+        target_field |= {target_key: content}
         return True
     if extends_lists:
         if not isinstance(target_field_value, list):
             return False
         if isinstance(content, list):
-            target_field.update({target_key: [*target_field_value, *content]})
+            target_field |= {target_key: [*target_field_value, *content]}
         else:
             target_field_value.append(content)
         return True
@@ -137,14 +137,10 @@ def get_dotted_field_value(event: dict, dotted_field: str) -> Optional[Union[dic
         The value of the requested dotted field.
     """
     try:
-        return reduce(_get_item, (event, *get_dotted_field_list(dotted_field)))
-    except KeyError:
-        return None
-    except ValueError:
-        return None
-    except TypeError:
-        return None
-    except IndexError:
+        for field in get_dotted_field_list(dotted_field):
+            event = _get_item(event, field)
+        return event
+    except (KeyError, ValueError, TypeError, IndexError):
         return None
 
 

@@ -36,6 +36,7 @@ from time import time
 from typing import List, Optional, Tuple, Union
 
 import arrow
+import msgspec
 from attr import define, field, validators
 from dateutil import parser
 from filelock import FileLock
@@ -110,6 +111,8 @@ class Normalizer(Processor):
     _conflicting_fields: list
 
     rule_class = NormalizerRule
+    _encoder = msgspec.json.Encoder()
+    _decoder = msgspec.json.Decoder()
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         self._event = None
@@ -164,7 +167,7 @@ class Normalizer(Processor):
             json_dict = {}
             if os.path.isfile(file_path):
                 with open(file_path, "r", encoding="utf8") as grok_json_file:
-                    json_dict = json.load(grok_json_file)
+                    json_dict = self._decoder.decode(grok_json_file.read())
 
             for key, value in self._grok_pattern_matches.items():
                 json_dict[key] = json_dict.get(key, 0) + value
@@ -194,7 +197,7 @@ class Normalizer(Processor):
 
     def _add_field(self, event: dict, dotted_field: str, value: Union[str, int]):
         fields = get_dotted_field_list(dotted_field)
-        missing_fields = json.loads(json.dumps(fields))
+        missing_fields = self._decoder.decode(self._encoder.encode(fields))
         for event_field in fields:
             if isinstance(event, dict) and event_field in event:
                 event = event[event_field]

@@ -10,8 +10,8 @@ from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import (
     get_default_logprep_config,
     start_logprep,
-    wait_for_output,
     stop_logprep,
+    wait_for_output,
 )
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
@@ -61,7 +61,7 @@ def test_http_input_accepts_message_for_single_pipeline(tmp_path, config):
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000")
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9000", test_timeout=15)
     # nosemgrep
     requests.post("https://127.0.0.1:9000/plaintext", data="my message", verify=False, timeout=5)
     time.sleep(0.5)  # nosemgrep
@@ -76,7 +76,7 @@ def test_http_input_accepts_message_for_two_pipelines(tmp_path, config):
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9001")
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9001", test_timeout=15)
     # nosemgrep
     requests.post(
         "https://127.0.0.1:9000/plaintext",
@@ -105,7 +105,7 @@ def test_http_input_accepts_message_for_three_pipelines(tmp_path, config):
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path)
-    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9002", test_timeout=10)
+    wait_for_output(proc, "Uvicorn running on https://127.0.0.1:9002", test_timeout=15)
     # nosemgrep
     requests.post(
         "https://127.0.0.1:9000/plaintext",

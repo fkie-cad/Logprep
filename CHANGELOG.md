@@ -13,6 +13,7 @@
 
 * Harmonize error messages and handling for processors and connectors
 * Add ability to schedule periodic tasks to all components
+* Improve performance of pipeline processing by switching form builtin `json` to `msgspec` in pipeline and kafka connectors
 
 ### Bugfix
 
