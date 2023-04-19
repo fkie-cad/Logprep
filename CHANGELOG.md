@@ -14,6 +14,7 @@
 * Harmonize error messages and handling for processors and connectors
 * Add ability to schedule periodic tasks to all components
 * Improve performance of pipeline processing by switching form builtin `json` to `msgspec` in pipeline and kafka connectors
+* Remove fields with `None` values from results of the geoip enricher to ensure the same data type for those fields across different events 
 
 ### Bugfix
 
