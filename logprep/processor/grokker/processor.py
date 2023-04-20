@@ -78,7 +78,7 @@ class Grokker(Processor):
         """Loads the action mapping. Has to be called before processing"""
         super().setup()
         custom_patterns_dir = self._config.custom_patterns_dir
-        if re.search(r"http:\/\/.*?\.zip", custom_patterns_dir):
+        if re.search(r"http(s)?:\/\/.*?\.zip", custom_patterns_dir):
             patterns_tmp_path = Path("/tmp/grok_patterns")
             self._download_zip_file(source_file=custom_patterns_dir, target_dir=patterns_tmp_path)
             for rule in self.rules:
