@@ -41,6 +41,7 @@ DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
 ONIGURUMA = r"\(\?\<(.*)\>(.*)\)"
+INT_FLOAT = {"int": int, "float": float}
 
 
 @define(slots=True)
@@ -95,13 +96,9 @@ class Grok:
         matches = match_obj.groupdict()
         if self.type_mapper:
             for key, match in matches.items():
-                try:
-                    if self.type_mapper[key] == "int":
-                        matches[key] = int(match)
-                    if self.type_mapper[key] == "float":
-                        matches[key] = float(match)
-                except (TypeError, KeyError):
-                    pass
+                type_ = INT_FLOAT.get(self.type_mapper.get(key))
+                if type_ is not None and match is not None:
+                    matches[key] = type_(match)
         return {self.field_mapper[field_hash]: value for field_hash, value in matches.items()}
 
     def set_search_pattern(self, pattern=None):
