@@ -410,7 +410,7 @@ Otherwise, Opensearch is not properly started.
 The environment can either be started with a Logprep container or without one.
 To start it without Logprep, the command `docker-compose up -d` can be executed from within 
 the quickstart directory.
-It starts and connects Kafka, ZooKeeper, Logstash, Opensearch and Kibana.
+It starts and connects Kafka, ZooKeeper, Logstash, Opensearch and Opensearch Dashboards.
 Logprep can be then started from the host once the quickstart environment is running and 
 fully loaded.
 The Logprep configuration file `quickstart/exampledata/config/pipeline.yml` can be used to 
@@ -420,9 +420,9 @@ command `docker-compose --profile logprep up -d` can be executed.
 
 ### Interacting with the Quickstart Environment
 
-It is now possible to write JSON events into Kafka and read the processed events in Kibana.
+It is now possible to write JSON events into Kafka and read the processed events in Opensearch Dashboards.
 
-Once everything has started, Kibana can be accessed by a web-browser with the 
+Once everything has started, Opensearch Dashboards can be accessed by a web-browser with the 
 address `127.0.0.1:5601`.
 Kafka can be accessed with the console producer and consumer from Kafka with the 
 address `127.0.0.1:9092` or from within the docker container `Kafka`.
@@ -444,7 +444,7 @@ executing the following command:
 `(docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/test_input.jsonl`
 
 Once the events have been processed for the first time, the new indices *processed*, *sre* 
-and *pseudonyms* should be available in Kibana.
+and *pseudonyms* should be available in Opensearch Dashboards.
 
 The environment can be stopped via `docker-compose down`.
 
