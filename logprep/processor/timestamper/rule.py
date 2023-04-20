@@ -49,10 +49,17 @@ from logprep.processor.field_manager.rule import FieldManagerRule
 
 
 class TimestamperRule(Rule):
-    """..."""
+    """Timestamper Rule"""
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
         """Config for TimestamperRule"""
 
-        ...
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.min_len(1),
+                validators.max_len(1),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ]
+        )

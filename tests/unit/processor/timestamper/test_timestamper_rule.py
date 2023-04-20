@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
+
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.timestamper.rule import TimestamperRule
 
@@ -17,7 +18,25 @@ class TestTimestamperRule:
     @pytest.mark.parametrize(
         ["rule", "error", "message"],
         [
-            # add your tests here
+            (
+                {
+                    "filter": "message",
+                    "timestamper": {"source_fields": ["message"], "target_field": "@timestamp"},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "timestamper": {
+                        "source_fields": ["message", "timestamp"],
+                        "target_field": "@timestamp",
+                    },
+                },
+                ValueError,
+                r"Length of 'source_fields' must be <= 1",
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
@@ -30,14 +49,3 @@ class TestTimestamperRule:
             for key, value in rule.get("timestamper").items():
                 assert hasattr(rule_instance._config, key)
                 assert value == getattr(rule_instance._config, key)
-
-    @pytest.mark.parametrize(
-        ["testcase", "rule1", "rule2", "equality"],
-        [
-            # add your tests here
-        ],
-    )
-    def test_equality(self, testcase, rule1, rule2, equality):
-        rule1 = TimestamperRule._create_from_dict(rule1)
-        rule2 = TimestamperRule._create_from_dict(rule2)
-        assert (rule1 == rule2) == equality, testcase

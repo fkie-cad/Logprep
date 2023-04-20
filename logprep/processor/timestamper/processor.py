@@ -24,14 +24,13 @@ from logprep.processor.timestamper.rule import TimestamperRule
 
 
 class Timestamper(FieldManager):
-    """A processor that ..."""
+    """A processor that extracts and parses timestamps"""
 
     rule_class = TimestamperRule
 
     @define(kw_only=True)
     class Config(FieldManager.Config):
-        """ Config of ..."""
-        ...
+        """Config of Timestamper"""
 
     def _apply_rules(self, event, rule):
         pass
