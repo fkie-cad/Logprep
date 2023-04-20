@@ -59,7 +59,6 @@ from logprep.processor.dissector.rule import DissectorRule
 from logprep.util.grok.grok import GROK, ONIGURUMA, Grok
 from logprep.util.helper import get_dotted_field_list
 
-DOTTED_FIELD_NOTATION = r"([^\[\]\{\}]*)*"
 NOT_GROK = rf"(?!({GROK})|({ONIGURUMA})).*"
 MAPPING_VALIDATION_REGEX = re.compile(rf"^(({NOT_GROK})?(({GROK})|({ONIGURUMA}))({NOT_GROK})?)*$")
 
