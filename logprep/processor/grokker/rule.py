@@ -66,6 +66,9 @@ FIELD_PATTERN = re.compile(r"%\{[A-Z0-9_]*?:([^\[\]]*?)(:.*)?\}")
 
 
 def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
+    if not mapping:
+        return mapping
+
     def _replace_pattern(pattern):
         if isinstance(pattern, list):
             pattern = "|".join(pattern)
