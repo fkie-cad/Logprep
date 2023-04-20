@@ -1,6 +1,7 @@
 arrow
 attrs
 certifi>=2022.12.07
+ciso8601
 colorama
 confluent-kafka>2
 elasticsearch>=7,<8
