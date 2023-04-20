@@ -30,6 +30,7 @@ Example
         ca_cert: /path/to/cert.crt
 """
 
+import json
 import re
 import ssl
 from functools import cached_property
@@ -42,7 +43,7 @@ from attr import define, field
 from attrs import validators
 from elasticsearch import ElasticsearchException, helpers
 from opensearchpy import OpenSearchException
-from urllib3.exceptions import ConnectTimeoutError
+from urllib3.exceptions import TimeoutError
 
 from logprep.abc.output import FatalOutputError, Output
 
@@ -306,7 +307,7 @@ class ElasticsearchOutput(Output):
             "_index": self._config.default_index,
         }
         try:
-            document["message"] = self._encoder.encode(message_document)
+            document["message"] = json.dumps(message_document)
         except TypeError:
             document["message"] = str(message_document)
         return document
@@ -368,5 +369,5 @@ class ElasticsearchOutput(Output):
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
         try:
             self._search_context.info()
-        except (ElasticsearchException, OpenSearchException, ConnectTimeoutError) as error:
+        except (ElasticsearchException, OpenSearchException, TimeoutError) as error:
             raise FatalOutputError(self, error) from error
