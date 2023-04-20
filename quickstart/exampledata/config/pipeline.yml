@@ -2,7 +2,7 @@ version: 1
 process_count: 2
 timeout: 0.1
 logger:
-  level: INFO
+  level: DEBUG
 
 pipeline:
   - labelername:
@@ -36,7 +36,7 @@ pipeline:
       generic_rules:
         - quickstart/exampledata/rules/pre_detector/generic
       outputs:
-        - kafka: sre
+        - opensearch: sre
       tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
       alert_ip_list_path: quickstart/exampledata/rules/pre_detector/alert_ips.yml
 
@@ -58,7 +58,7 @@ pipeline:
       regex_mapping: quickstart/exampledata/rules/pseudonymizer/regex_mapping.yml
       hash_salt: a_secret_tasty_ingredient
       outputs:
-        - kafka: pseudonyms
+        - opensearch: pseudonyms
       specific_rules:
         - quickstart/exampledata/rules/pseudonymizer/specific/
       generic_rules:
@@ -70,33 +70,23 @@ input:
   kafka:
     type: confluentkafka_input
     bootstrapservers:
-      - 172.21.0.5:9092
+      - 127.0.0.1:9092
     topic: consumer
     group: cgroup3
     auto_commit: true
     session_timeout: 6000
     offset_reset_policy: smallest
-    ssl:
-      cafile:
-      certfile:
-      keyfile:
-      password:
 
 output:
-  kafka:
-    type: confluentkafka_output
-    bootstrapservers:
-      - 172.21.0.5:9092
-    topic: producer
-    error_topic: producer_error
-    ack_policy: all
-    compression: none
-    maximum_backlog: 10000
-    linger_duration: 0
-    flush_timeout: 30
-    send_timeout: 2
-    ssl:
-      cafile:
-      certfile:
-      keyfile:
-      password:
+  opensearch:
+    type: opensearch_output
+    hosts:
+      - 127.0.0.1:9200
+    default_index: processed
+    error_index: errors
+    message_backlog_size: 10000
+    timeout: 10000
+    flush_timeout: 10
+    max_retries: 3
+    user: admin
+    secret: admin
