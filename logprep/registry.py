@@ -44,6 +44,7 @@ from logprep.processor.selective_extractor.processor import SelectiveExtractor
 from logprep.processor.string_splitter.processor import StringSplitter
 from logprep.processor.template_replacer.processor import TemplateReplacer
 from logprep.processor.timestamp_differ.processor import TimestampDiffer
+from logprep.processor.timestamper.processor import Timestamper
 
 
 class Registry:
@@ -79,6 +80,7 @@ class Registry:
         "string_splitter": StringSplitter,
         "template_replacer": TemplateReplacer,
         "timestamp_differ": TimestampDiffer,
+        "timestamper": Timestamper,
         # Connectors
         "json_input": JsonInput,
         "jsonl_input": JsonlInput,

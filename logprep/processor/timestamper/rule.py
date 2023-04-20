@@ -1,0 +1,56 @@
+"""
+Timestamper
+============
+
+The `timestamper` processor ...
+
+A speaking example:
+
+..  code-block:: yaml
+    :linenos:
+    :caption: Given timestamper rule
+
+    filter: message
+    timestamper:
+        ...
+    description: '...'
+
+..  code-block:: json
+    :linenos:
+    :caption: Incoming event
+
+    <INCOMMING_EVENT>
+
+..  code-block:: json
+    :linenos:
+    :caption: Processed event
+
+    <PROCESSED_EVENT>
+
+
+.. autoclass:: logprep.processor.timestamper.rule.TimestamperRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+Examples for timestamper:
+------------------------------------------------
+
+.. datatemplate:import-module:: tests.unit.processor.timestamper.test_timestamper
+   :template: testcase-renderer.tmpl
+
+"""
+
+from attrs import define, field, validators
+from logprep.processor.base.rule import Rule
+
+
+
+class TimestamperRule(Rule):
+    """..."""
+
+    @define(kw_only=True)
+    class Config(Rule.Config):
+        """Config for TimestamperRule"""
+        ...
