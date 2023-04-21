@@ -15,13 +15,13 @@ opensearch-py
 prometheus_client
 protobuf>=3.20.2
 pycryptodome
-pygrok
 pyparsing
 python-dateutil
 pytz
 scikit-learn>=1.2.0
 scipy>=1.9.2
 joblib
+pygrok
 pyyaml
 requests
 ruamel.yaml

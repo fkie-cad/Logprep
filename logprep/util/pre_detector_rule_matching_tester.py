@@ -3,13 +3,13 @@
 
 import json
 import logging
+import re
 import sys
 import tempfile
 from argparse import ArgumentParser
 from os import path, sep, walk
 from typing import Any, List, Tuple
 
-import regex as re
 from colorama import Fore
 from ruamel.yaml import YAML, YAMLError
 

@@ -102,6 +102,13 @@ Processors
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.grokker.processor
+.. autoclass:: logprep.processor.grokker.processor.Grokker.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.hyperscan_resolver.processor
 .. autoclass:: logprep.processor.hyperscan_resolver.processor.HyperscanResolver.Config
    :members:

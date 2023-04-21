@@ -341,7 +341,9 @@ class Pipeline:
                 self._input.server.config.port += 1
             self._used_server_ports.update({self._input.server.config.port: self._process_name})
         self.logger.debug(f"Finished creating connectors ({self._process_name})")
+        self.logger.info(f"Start building pipeline ({self._process_name})")
         _ = self._pipeline
+        self.logger.info(f"Finished building pipeline ({self._process_name})")
 
     def _create_processor(self, entry: dict) -> "Processor":
         processor_name = list(entry.keys())[0]

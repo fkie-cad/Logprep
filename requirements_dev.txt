@@ -19,7 +19,7 @@ anyio==3.6.2
     #   starlette
 arrow==1.2.3
     # via -r requirements.txt
-astroid==2.15.0
+astroid==2.15.2
     # via pylint
 async-timeout==4.0.2
     # via
@@ -31,9 +31,8 @@ attrs==22.2.0
     #   aiohttp
     #   glom
     #   jsonschema
-    #   pytest
     #   semgrep
-black==23.1.0
+black==23.3.0
     # via -r requirements_dev.in
 boltons==21.0.0
     # via
@@ -75,9 +74,9 @@ colorama==0.4.6
     # via
     #   -r requirements.txt
     #   semgrep
-confluent-kafka==2.0.2
+confluent-kafka==2.1.0
     # via -r requirements.txt
-coverage[toml]==7.2.2
+coverage[toml]==7.2.3
     # via pytest-cov
 deepdiff==6.3.0
     # via -r requirements.txt
@@ -93,7 +92,7 @@ face==22.0.0
     # via glom
 fastapi==0.95.0
     # via -r requirements.txt
-filelock==3.10.0
+filelock==3.11.0
     # via
     #   -r requirements.txt
     #   tldextract
@@ -112,9 +111,9 @@ h11==0.14.0
     #   -r requirements.txt
     #   httpcore
     #   uvicorn
-httpcore==0.16.3
+httpcore==0.17.0
     # via httpx
-httpx==0.23.3
+httpx==0.24.0
     # via -r requirements_dev.in
 hyperscan==0.4.0 ; sys_platform == "linux" and platform_machine == "x86_64"
     # via -r requirements.txt
@@ -122,8 +121,8 @@ idna==3.4
     # via
     #   -r requirements.txt
     #   anyio
+    #   httpx
     #   requests
-    #   rfc3986
     #   tldextract
     #   urlextract
     #   yarl
@@ -150,7 +149,7 @@ jsonschema==4.17.3
     # via semgrep
 lazy-object-proxy==1.9.0
     # via astroid
-luqum==0.12.1
+luqum==0.13.0
     # via -r requirements.txt
 markdown-it-py==2.2.0
     # via rich
@@ -164,7 +163,7 @@ mccabe==0.7.0
     # via pylint
 mdurl==0.1.2
     # via markdown-it-py
-msgspec==0.14.0
+msgspec==0.14.1
     # via -r requirements.txt
 multidict==6.0.4
     # via
@@ -186,7 +185,7 @@ ordered-set==4.1.0
     # via
     #   -r requirements.txt
     #   deepdiff
-packaging==23.0
+packaging==23.1
     # via
     #   black
     #   pytest
@@ -195,7 +194,7 @@ pathspec==0.11.1
     # via black
 peewee==3.16.0
     # via semgrep
-platformdirs==3.1.1
+platformdirs==3.2.0
     # via
     #   -r requirements.txt
     #   black
@@ -215,21 +214,21 @@ protobuf==3.20.3
     #   mysql-connector-python
 pycryptodome==3.17
     # via -r requirements.txt
-pydantic==1.10.6
+pydantic==1.10.7
     # via
     #   -r requirements.txt
     #   fastapi
-pygments==2.14.0
+pygments==2.15.0
     # via rich
 pygrok==1.0.0
     # via -r requirements.txt
-pylint==2.17.0
+pylint==2.17.2
     # via -r requirements_dev.in
 pyparsing==3.0.9
     # via -r requirements.txt
 pyrsistent==0.19.3
     # via jsonschema
-pytest==7.2.2
+pytest==7.3.0
     # via
     #   -r requirements_dev.in
     #   pytest-cov
@@ -243,13 +242,13 @@ python-dateutil==2.8.2
     #   botocore
 python-lsp-jsonrpc==1.0.0
     # via semgrep
-pytz==2022.7.1
+pytz==2023.3
     # via -r requirements.txt
 pyyaml==6.0
     # via
     #   -r requirements.txt
     #   responses
-regex==2022.10.31
+regex==2023.3.23
     # via
     #   -r requirements.txt
     #   pygrok
@@ -268,9 +267,7 @@ requests-file==1.5.1
     #   tldextract
 responses==0.23.1
     # via -r requirements_dev.in
-rfc3986[idna2008]==1.5.0
-    # via httpx
-rich==13.3.2
+rich==13.3.4
     # via semgrep
 ruamel-yaml==0.17.21
     # via
@@ -284,7 +281,7 @@ s3transfer==0.6.0
     # via
     #   -r requirements.txt
     #   boto3
-schedule==1.1.0
+schedule==1.2.0
     # via -r requirements.txt
 scikit-learn==1.2.2
     # via -r requirements.txt
@@ -292,7 +289,7 @@ scipy==1.10.1
     # via
     #   -r requirements.txt
     #   scikit-learn
-semgrep==1.15.0
+semgrep==1.17.1
     # via -r requirements_dev.in
 six==1.16.0
     # via
@@ -310,7 +307,7 @@ starlette==0.26.1
     # via
     #   -r requirements.txt
     #   fastapi
-threadpoolctl==3.0.0
+threadpoolctl==3.1.0
     # via
     #   -r requirements.txt
     #   scikit-learn
@@ -323,9 +320,9 @@ tomli==2.0.1
     #   pylint
     #   pytest
     #   semgrep
-tomlkit==0.11.6
+tomlkit==0.11.7
     # via pylint
-types-pyyaml==6.0.12.8
+types-pyyaml==6.0.12.9
     # via responses
 typing-extensions==4.5.0
     # via

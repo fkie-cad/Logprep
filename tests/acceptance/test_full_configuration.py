@@ -8,12 +8,12 @@ import requests
 
 from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import (
-    get_full_pipeline,
+    HTTPServerForTesting,
+    convert_to_http_config,
     get_default_logprep_config,
+    get_full_pipeline,
     start_logprep,
     stop_logprep,
-    convert_to_http_config,
-    HTTPServerForTesting,
 )
 
 
@@ -153,7 +153,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     config_path = str(tmp_path / "generated_config.yml")
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path, env={"PROMETHEUS_MULTIPROC_DIR": tmp_path})
-    input_file_path.write_text("test event\n", encoding="utf8")
+    input_file_path.write_text("user root logged in\n", encoding="utf8")
     while True:
         output = proc.stdout.readline().decode("utf8")
         assert "error" not in output.lower(), "error message"

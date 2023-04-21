@@ -1,10 +1,9 @@
 #!/usr/bin/python3
 """This module implements a grok pattern replacer for the auto tester."""
 
+import re
 from pprint import pprint
 from typing import Any
-
-import regex as re
 
 from logprep.util.grok_pattern_loader import GrokPatternLoader as gpl
 from logprep.util.helper import get_dotted_field_value
