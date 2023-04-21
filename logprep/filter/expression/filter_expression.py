@@ -84,7 +84,20 @@ class FilterExpression(ABC):
         return True
 
     @staticmethod
-    def _as_dotted_string(key_list: List[str]) -> str:
+    def as_dotted_string(key_list: List[str]) -> str:
+        """Converts list of keys to dotted string.
+
+        Parameters
+        ----------
+        key_list : List[str]
+            List of keys.
+
+        Returns
+        -------
+        str
+            Returns dotted string.
+
+        """
         return ".".join([str(i) for i in key_list])
 
 
@@ -150,11 +163,11 @@ class KeyValueBasedFilterExpression(FilterExpression):
     """Base class of filter expressions that match a certain value on a given key."""
 
     def __init__(self, key: List[str], expected_value: Any):
-        self._key = key
+        self.key = key
         self._expected_value = expected_value
 
     def __repr__(self) -> str:
-        return f"{self._as_dotted_string(self._key)}:{str(self._expected_value)}"
+        return f"{self.as_dotted_string(self.key)}:{str(self._expected_value)}"
 
     def does_match(self, document):
         raise NotImplementedError
@@ -164,14 +177,14 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for a string."""
 
     def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+        value = self._get_value(self.key, document)
 
         if isinstance(value, list):
             return self._expected_value in value
         return str(value) == self._expected_value
 
     def __repr__(self) -> str:
-        return f'{self._as_dotted_string(self._key)}:"{str(self._expected_value)}"'
+        return f'{self.as_dotted_string(self.key)}:"{str(self._expected_value)}"'
 
 
 class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
@@ -200,7 +213,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         return f"^{regex}$"
 
     def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+        value = self._get_value(self.key, document)
 
         if isinstance(value, list):
             return any(filter(self._matcher.match, (str(val) for val in value)))
@@ -223,7 +236,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         return "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
     def __repr__(self) -> str:
-        return f'{self._as_dotted_string(self._key)}:"{self._expected_value}"'
+        return f'{self.as_dotted_string(self.key)}:"{self._expected_value}"'
 
 
 class SigmaFilterExpression(WildcardStringFilterExpression):
@@ -236,7 +249,7 @@ class IntegerFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for an integer."""
 
     def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+        value = self._get_value(self.key, document)
 
         return value == self._expected_value
 
@@ -245,7 +258,7 @@ class FloatFilterExpression(KeyValueBasedFilterExpression):
     """Key value filter expression that matches for a float."""
 
     def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+        value = self._get_value(self.key, document)
 
         return value == self._expected_value
 
@@ -254,12 +267,12 @@ class RangeBasedFilterExpression(FilterExpression):
     """Base class of filter expressions that match for a range of values."""
 
     def __init__(self, key: List[str], lower_bound: float, upper_bound: float):
-        self._key = key
+        self.key = key
         self._lower_bound = lower_bound
         self._upper_bound = upper_bound
 
     def __repr__(self) -> str:
-        return f"{self._as_dotted_string(self._key)}:[{self._lower_bound} TO {self._upper_bound}]"
+        return f"{self.as_dotted_string(self.key)}:[{self._lower_bound} TO {self._upper_bound}]"
 
     def does_match(self, document: dict):
         raise NotImplementedError
@@ -269,7 +282,7 @@ class IntegerRangeFilterExpression(RangeBasedFilterExpression):
     """Range based filter expression that matches for integers."""
 
     def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+        value = self._get_value(self.key, document)
 
         return self._lower_bound <= value <= self._upper_bound
 
@@ -278,7 +291,7 @@ class FloatRangeFilterExpression(RangeBasedFilterExpression):
     """Range based filter expression that matches for floats."""
 
     def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+        value = self._get_value(self.key, document)
 
         return self._lower_bound <= value <= self._upper_bound
 
@@ -290,12 +303,12 @@ class RegExFilterExpression(FilterExpression):
     match_parts_pattern = re.compile(r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>.*)")
 
     def __init__(self, key: List[str], regex: str):
-        self._key = key
+        self.key = key
         self._regex = self._normalize_regex(regex)
         self._matcher = re.compile(self._regex)
 
     def __repr__(self) -> str:
-        return f"{self._as_dotted_string(self._key)}:r/{self._regex}/"
+        return f"{self.as_dotted_string(self.key)}:r/{self._regex}/"
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
@@ -311,7 +324,7 @@ class RegExFilterExpression(FilterExpression):
         return rf"{flag}^{pattern}{end_token}"
 
     def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+        value = self._get_value(self.key, document)
 
         if isinstance(value, list):
             return any(filter(self._matcher.match, value))
@@ -325,7 +338,7 @@ class Exists(FilterExpression):
         self.split_field = value
 
     def __repr__(self) -> str:
-        return f'"{self._as_dotted_string(self.split_field)}"'
+        return f'"{self.as_dotted_string(self.split_field)}"'
 
     def does_match(self, document: dict) -> bool:
         if not self.split_field:
@@ -352,11 +365,11 @@ class Null(FilterExpression):
     """Filter expression that returns true if a given field is set to null."""
 
     def __init__(self, key: List[str]):
-        self._key = key
+        self.key = key
 
     def __repr__(self) -> str:
-        return f"{self._as_dotted_string(self._key)}:{None}"
+        return f"{self.as_dotted_string(self.key)}:{None}"
 
     def does_match(self, document: dict) -> bool:
-        value = self._get_value(self._key, document)
+        value = self._get_value(self.key, document)
         return value is None
