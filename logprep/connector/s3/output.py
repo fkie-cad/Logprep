@@ -10,6 +10,11 @@ It doesn't crash if a connection couldn't be established, but sends a warning.
 The target bucket is defined by the :code:`bucket` configuration parameter.
 The prefix is defined by the value in the field :code:`prefix_field` in the document.
 
+Except for the base prefix, all prefixes can have an arrow date pattern that will be replaced with
+the current date. The pattern needs to be wrapped in  :code:`%{...}`.
+For example, :code:`prefix-%{YY:MM:DD}` would be replaced with :code:`prefix-%{23:12:06}` if the
+date was 2023-12-06.
+
 Example
 ^^^^^^^
 ..  code-block:: yaml
@@ -172,6 +177,15 @@ class S3Output(Output):
         base_description = super().describe()
         return f"{base_description} - S3 Output: {self._config.endpoint_url}"
 
+    def _add_dates(self, prefix):
+        date_format_matches = self._replace_pattern.findall(prefix)
+        if date_format_matches:
+            now = arrow.now()
+            for date_format_match in date_format_matches:
+                formatted_date = now.format(date_format_match[2:-1])
+                prefix = re.sub(date_format_match, formatted_date, prefix)
+        return prefix
+
     def _write_to_s3_resource(self, document: dict, prefix: str):
         """Writes a document into s3 bucket using given prefix.
 
@@ -185,6 +199,7 @@ class S3Output(Output):
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
+        prefix = self._add_dates(prefix)
         prefix = f"{self._base_prefix}{prefix}"
         self._message_backlog[prefix].append(document)
 

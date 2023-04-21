@@ -237,3 +237,10 @@ class TestS3Output(BaseOutputTestCase):
         s3_output.input_connector = mock.MagicMock()
         s3_output.store({"message": "my event message"})
         s3_output.input_connector.batch_finished_callback.assert_not_called()
+
+    def test_write_to_s3_resource_replaces_dates(self):
+        expected_prefix = f'base_prefix/prefix-{arrow.now().format("YY:MM:DD")}'
+        self.object._write_to_s3_resource({"foo": "bar"}, "base_prefix/prefix-%{YY:MM:DD}")
+        resulting_prefix = next(iter(self.object._message_backlog.keys()))
+
+        assert expected_prefix == resulting_prefix
