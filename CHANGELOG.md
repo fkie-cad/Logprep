@@ -4,6 +4,17 @@
 
 ### Features
 
+
+### Improvements
+
+
+### Bugfix
+
+
+## v6.1.0
+
+### Features
+
 * Add `amides` processor to extends conventional rule matching by applying machine learning components
 * `Normalizer` writes failure tags if nomalization fails
 * Add `flush_timeout` to `opensearch` and `elasticsearch` outputs to ensure message delivery within a configurable period
