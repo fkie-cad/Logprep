@@ -1,20 +1,27 @@
 # pylint: disable=missing-docstring
 import pytest
+
 from logprep.processor.base.exceptions import ProcessingWarning
 from tests.unit.processor.base import BaseProcessorTestCase
 
-
 test_cases = [  # testcase, rule, event, expected
-
+    (
+        "parses iso8601 without pattern",
+        {
+            "filter": "message",
+            "timestamper": {"source_fields": ["message"], "target_field": "@timestamp"},
+        },
+        {
+            "message": "2009-06-15 13:45:30Z",
+        },
+        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
+    )
 ]
 
-failure_test_cases = [  # testcase, rule, event, expected
- 
-]  
+failure_test_cases = []  # testcase, rule, event, expected
 
 
 class TestTimestamper(BaseProcessorTestCase):
-
     CONFIG: dict = {
         "type": "timestamper",
         "specific_rules": [],

@@ -21,6 +21,8 @@ from attrs import define, field, validators
 
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.timestamper.rule import TimestamperRule
+from logprep.util.helper import get_dotted_field_value
+from logprep.util.time import TimeParser
 
 
 class Timestamper(FieldManager):
@@ -33,4 +35,6 @@ class Timestamper(FieldManager):
         """Config of Timestamper"""
 
     def _apply_rules(self, event, rule):
-        pass
+        source_field = get_dotted_field_value(event, rule.source_fields[0])
+        parsed_datetime = TimeParser.from_string(source_field)
+        self._write_target_field(event, rule, parsed_datetime.isoformat())

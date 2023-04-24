@@ -2,8 +2,12 @@
 from datetime import datetime
 from typing import Union
 
+import arrow
 import ciso8601
-import pendulum
+
+
+class TimeParserException(Exception):
+    """exception class for time parsing"""
 
 
 class TimeParser:
@@ -25,8 +29,8 @@ class TimeParser:
         """
         try:
             return ciso8601.parse_datetime(source)  # pylint: disable=c-extension-no-member
-        except ValueError:
-            return pendulum.parse(source, strict=False)
+        except ValueError as error:
+            raise TimeParserException(str(error)) from error
 
     @classmethod
     def from_timestamp(cls, timestamp: Union[int, float]) -> datetime:
@@ -42,7 +46,7 @@ class TimeParser:
         datetime
             datetime object
         """
-        return pendulum.from_timestamp(timestamp)
+        return datetime.fromtimestamp(timestamp)
 
     @staticmethod
     def now() -> datetime:
@@ -53,8 +57,30 @@ class TimeParser:
         datetime
             current date and time as datetime
         """
-        return pendulum.now()
+        return datetime.now()
 
     @staticmethod
-    def from_format(source, format_str: str) -> datetime:
-        return pendulum.from_format(source, format_str)
+    def from_format(source: str, format_str: str) -> datetime:
+        """parse date from format
+
+        Parameters
+        ----------
+        source : str
+            the date string
+        format_str : str
+            the format string
+
+        Returns
+        -------
+        datetime
+            the datetime object
+
+        Raises
+        ------
+        TimeParserException
+            raised if something could not be parsed
+        """
+        try:
+            return arrow.get(source, format_str).datetime
+        except arrow.parser.ParserError as error:
+            raise TimeParserException(str(error)) from error

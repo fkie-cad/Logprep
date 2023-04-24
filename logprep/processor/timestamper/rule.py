@@ -44,11 +44,10 @@ Examples for timestamper:
 
 from attrs import define, field, validators
 
-from logprep.processor.base.rule import Rule
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
-class TimestamperRule(Rule):
+class TimestamperRule(FieldManagerRule):
     """Timestamper Rule"""
 
     @define(kw_only=True)
