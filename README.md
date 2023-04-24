@@ -408,15 +408,17 @@ The docker-compose file is located in the directory quickstart.
 Before running, docker-compose `sysctl -w vm.max_map_count=262144` must be executed.
 Otherwise, Opensearch is not properly started.
 The environment can either be started with a Logprep container or without one.
-To start it without Logprep, the command `docker-compose up -d` can be executed from within 
-the quickstart directory.
-It starts and connects Kafka, ZooKeeper, Logstash, Opensearch and Opensearch Dashboards.
-Logprep can be then started from the host once the quickstart environment is running and 
-fully loaded.
-The Logprep configuration file `quickstart/exampledata/config/pipeline.yml` can be used to 
-connect to the quickstart environment.
-To start the whole environment including a Logprep container, the 
-command `docker-compose --profile logprep up -d` can be executed.
+
+#### Running Test Environment without Logprep Container (default way)
+
+  * Run from within the `quickstart` directory: `docker-compose up -d` 
+    * It starts and connects Kafka, ZooKeeper, Logstash, Opensearch and Opensearch Dashboards.
+  * Run Logprep against loaded environment from main `Logprep` directory: `logprep quickstart/exampledata/config/pipeline.yml`
+
+#### Running Test Environment with Logprep Container
+
+  * Run from within the `quickstart` directory: `docker-compose --profile logprep up -d`
+    * (maybe needs change of config path in container)
 
 ### Interacting with the Quickstart Environment
 
