@@ -24,7 +24,10 @@
 
 * Harmonize error messages and handling for processors and connectors
 * Add ability to schedule periodic tasks to all components
-* Improve performance of pipeline processing by switching form builtin `json` to `msgspec` in pipeline and kafka connectors 
+* Improve performance of pipeline processing by switching form builtin `json` to `msgspec` in pipeline and kafka connectors
+* Rewrite quickstart setup:
+  * Remove logstash, replace elasticsearch by opensearch and use logprep opensearch connector to stick to reference architecture
+  * Use kafka without zookeeper and switch to bitnami container images
 
 ### Bugfix
 

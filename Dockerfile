@@ -1,6 +1,6 @@
 ARG PYTHON_VERSION=3.9
 
-FROM python:${PYTHON_VERSION}-slim as build
+FROM python:${PYTHON_VERSION}-bullseye as build
 ARG LOGPREP_VERSION=latest
 ARG http_proxy
 ARG https_proxy
@@ -8,7 +8,6 @@ ARG no_proxy
 
 ADD . /logprep
 WORKDIR /logprep
-RUN apt-get update && apt-get -y install build-essential git
 RUN python -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"

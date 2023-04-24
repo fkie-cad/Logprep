@@ -15,7 +15,7 @@
 
 Logprep allows to collect, process and forward log messages from various data sources.
 Log messages are being read and written by so-called connectors.
-Currently, connectors for Kafka, Elasticsearch, Opensearch and JSON(L) files exist.
+Currently, connectors for Kafka, Opensearch, Opensearch and JSON(L) files exist.
 Additionally, an Input Connector for HTTP Input is provided, which starts an uvicorn server and
 accepts log message via POST Requests.
 
@@ -145,8 +145,8 @@ in two rule trees.
 Connectors are responsible for reading the input and writing the result to a desired output. 
 The main connectors that are currently used and implemented are a kafka-input-connector and a
 kafka-output-connector allowing to receive messages from a kafka-topic and write messages into a
-kafka-topic. Addionally, you can use the Opensearch or Elasticsearch output connectors to ship the
-messages directly to Opensearch or Elasticsearch after processing.
+kafka-topic. Addionally, you can use the Opensearch or Opensearch output connectors to ship the
+messages directly to Opensearch or Opensearch after processing.
 
 The details regarding the connectors can be found in the
 [input connector documentation](https://logprep.readthedocs.io/en/latest/user_manual/configuration/input.html)
@@ -406,23 +406,25 @@ The docker-compose file is located in the directory quickstart.
 ### Running the Test Environment
 
 Before running, docker-compose `sysctl -w vm.max_map_count=262144` must be executed.
-Otherwise, Elasticsearch is not properly started.
+Otherwise, Opensearch is not properly started.
 The environment can either be started with a Logprep container or without one.
-To start it without Logprep, the command `docker-compose up -d` can be executed from within 
-the quickstart directory.
-It starts and connects Kafka, ZooKeeper, Logstash, Elasticsearch and Kibana.
-Logprep can be then started from the host once the quickstart environment is running and 
-fully loaded.
-The Logprep configuration file `quickstart/exampledata/config/pipeline.yml` can be used to 
-connect to the quickstart environment.
-To start the whole environment including a Logprep container, the 
-command `docker-compose --profile logprep up -d` can be executed.
+
+#### Running Test Environment without Logprep Container (default way)
+
+  * Run from within the `quickstart` directory: `docker-compose up -d` 
+    * It starts and connects Kafka, Logstash, Opensearch and Opensearch Dashboards.
+  * Run Logprep against loaded environment from main `Logprep` directory: `logprep quickstart/exampledata/config/pipeline.yml`
+
+#### Running Test Environment with Logprep Container
+
+  * Run from within the `quickstart` directory: `docker-compose --profile logprep up -d`
+    * (maybe needs change of config path in container)
 
 ### Interacting with the Quickstart Environment
 
-It is now possible to write JSON events into Kafka and read the processed events in Kibana.
+It is now possible to write JSON events into Kafka and read the processed events in Opensearch Dashboards.
 
-Once everything has started, Kibana can be accessed by a web-browser with the 
+Once everything has started, Opensearch Dashboards can be accessed by a web-browser with the 
 address `127.0.0.1:5601`.
 Kafka can be accessed with the console producer and consumer from Kafka with the 
 address `127.0.0.1:9092` or from within the docker container `Kafka`.
@@ -430,9 +432,9 @@ The table below shows which ports have been exposed on localhost for the service
 
 #### Table of Ports for Services
 
-|          | Kafka | ZooKeeper | Elasticsearch | Kibana |
-| ---      | ---   | ---       | ---           | ---    |
-| **Port** | 9092  | 2181      | 9200          | 5601   |
+|          | Kafka | Opensearch    | Dashboards |
+| ---      | ---   | ---           | ---        |
+| **Port** | 9092  | 9200          | 5601       |
 
 The example rules that are used in the docker instance of Logprep can be found 
 in `quickstart/exampledata/rules`.
@@ -444,7 +446,7 @@ executing the following command:
 `(docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/test_input.jsonl`
 
 Once the events have been processed for the first time, the new indices *processed*, *sre* 
-and *pseudonyms* should be available in Kibana.
+and *pseudonyms* should be available in Opensearch Dashboards.
 
 The environment can be stopped via `docker-compose down`.
 
