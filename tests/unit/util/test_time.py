@@ -4,10 +4,10 @@ from datetime import datetime
 import pendulum
 import pytest
 
-from logprep.util.time import parse_timestamp
+from logprep.util.time import TimeParser
 
 
-class TestParseTimestamp:
+class TestTimeParser:
     @pytest.mark.parametrize(
         "source, expected",
         [
@@ -58,8 +58,8 @@ class TestParseTimestamp:
             ),
         ],
     )
-    def test_parse_timestamp(self, source, expected):
-        timestamp = parse_timestamp(source)
+    def test_from_string(self, source, expected):
+        timestamp = TimeParser.from_string(source)
         assert isinstance(timestamp, datetime)
         for attribute, value in expected.items():
             assert getattr(timestamp, attribute) == value
