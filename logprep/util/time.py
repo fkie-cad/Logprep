@@ -82,5 +82,8 @@ class TimeParser:
         """
         try:
             return arrow.get(source, format_str).datetime
-        except arrow.parser.ParserError as error:
-            raise TimeParserException(str(error)) from error
+        except arrow.parser.ParserError:
+            try:
+                return datetime.strptime(source, format_str)
+            except ValueError as error:
+                raise TimeParserException(str(error)) from error

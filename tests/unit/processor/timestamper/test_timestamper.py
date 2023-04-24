@@ -28,15 +28,18 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
     ),
     (
-        "parses by pattern",
+        "parses by source format",
         {
             "filter": "message",
-            "timestamper": {"source_fields": ["message"], "pattern": "{}"},
+            "timestamper": {"source_fields": ["message"], "source_format": "%Y %m %d - %H:%M:%S"},
         },
         {
-            "message": "2009-06-15 13:45:30Z INFO the logline",
+            "message": "2000 12 31 - 22:59:59",
         },
-        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
+        {
+            "message": "2000 12 31 - 22:59:59",
+            "@timestamp": "2000-12-31T22:59:59+00:00",
+        },
     ),
 ]
 
@@ -46,8 +49,8 @@ failure_test_cases = []  # testcase, rule, event, expected
 class TestTimestamper(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "timestamper",
-        "specific_rules": [],
-        "generic_rules": [],
+        "specific_rules": ["tests/testdata/unit/timestamper/specific_rules"],
+        "generic_rules": ["tests/testdata/unit/timestamper/generic_rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)

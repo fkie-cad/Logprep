@@ -44,6 +44,7 @@ Examples for timestamper:
 
 from attrs import define, field, validators
 
+from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
@@ -65,3 +66,10 @@ class TimestamperRule(FieldManagerRule):
         """The field from where to get the time from as list with one element"""
         target_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """The field where to write the processed values to, defaults to :code:`@timestamp`"""
+        source_format: str = field(validator=validators.instance_of(str), default="")
+        """The source format if source_fields is not an iso8601 complient time format string"""
+
+    @property
+    def source_format(self):
+        """the arrow style source format"""
+        return self._config.source_format
