@@ -412,7 +412,7 @@ The environment can either be started with a Logprep container or without one.
 #### Running Test Environment without Logprep Container (default way)
 
   * Run from within the `quickstart` directory: `docker-compose up -d` 
-    * It starts and connects Kafka, ZooKeeper, Logstash, Opensearch and Opensearch Dashboards.
+    * It starts and connects Kafka, Logstash, Opensearch and Opensearch Dashboards.
   * Run Logprep against loaded environment from main `Logprep` directory: `logprep quickstart/exampledata/config/pipeline.yml`
 
 #### Running Test Environment with Logprep Container
@@ -432,9 +432,9 @@ The table below shows which ports have been exposed on localhost for the service
 
 #### Table of Ports for Services
 
-|          | Kafka | ZooKeeper | Opensearch    | Dashboards |
-| ---      | ---   | ---       | ---           | ---        |
-| **Port** | 9092  | 2181      | 9200          | 5601       |
+|          | Kafka | Opensearch    | Dashboards |
+| ---      | ---   | ---           | ---        |
+| **Port** | 9092  | 9200          | 5601       |
 
 The example rules that are used in the docker instance of Logprep can be found 
 in `quickstart/exampledata/rules`.
