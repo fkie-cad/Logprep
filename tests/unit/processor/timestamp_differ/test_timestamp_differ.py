@@ -360,7 +360,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "tags": ["_timestamp_differ_failure"],
         },
-        r".*ProcessingWarning.*Could not match input 'non-timestamp' to any of the following formats",
+        r".*ProcessingWarning.*Invalid character while parsing",
     ),
     (
         "diff between two timestamps with partial timestamp format match",
