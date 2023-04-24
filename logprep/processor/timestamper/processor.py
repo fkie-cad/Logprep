@@ -39,10 +39,20 @@ class Timestamper(FieldManager):
     def _apply_rules(self, event, rule):
         source_field = get_dotted_field_value(event, rule.source_fields[0])
         source_format = rule.source_format
-        if not source_format:
-            parsed_datetime = TimeParser.from_string(source_field)
+        source_timezone, target_timezone = rule.source_timezone, rule.target_timezone
+        if source_format == "ISO8601":
+            parsed_datetime = TimeParser.from_string(source_field).astimezone(source_timezone)
+        elif source_format == "UNIX":
+            parsed_datetime = (
+                int(source_field) if len(source_field) < 10 else int(source_field) / 1000
+            )
+            parsed_datetime = TimeParser.from_timestamp(parsed_datetime).astimezone(source_timezone)
         else:
             parsed_datetime = TimeParser.from_format(source_field, source_format).astimezone(
-                ZoneInfo("UTC")
+                source_timezone
             )
-        self._write_target_field(event, rule, parsed_datetime.isoformat())
+        self._write_target_field(
+            event,
+            rule,
+            parsed_datetime.astimezone(target_timezone).isoformat().replace("+00:00", "Z"),
+        )

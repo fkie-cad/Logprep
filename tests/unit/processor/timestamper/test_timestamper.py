@@ -14,7 +14,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "message": "2009-06-15 13:45:30Z",
         },
-        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
+        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30Z"},
     ),
     (
         "parses iso8601 to default target field",
@@ -25,7 +25,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "message": "2009-06-15 13:45:30Z",
         },
-        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
+        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30Z"},
     ),
     (
         "parses by datetime source format",
@@ -38,7 +38,7 @@ test_cases = [  # testcase, rule, event, expected
         },
         {
             "message": "2000 12 31 - 22:59:59",
-            "@timestamp": "2000-12-31T22:59:59+00:00",
+            "@timestamp": "2000-12-31T22:59:59Z",
         },
     ),
     (
@@ -52,7 +52,73 @@ test_cases = [  # testcase, rule, event, expected
         },
         {
             "message": "2000 12 31 - 22:59:59",
-            "@timestamp": "2000-12-31T22:59:59+00:00",
+            "@timestamp": "2000-12-31T22:59:59Z",
+        },
+    ),
+    (
+        "converts timezone information",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "YYYY MM DD - HH:mm:ss",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+            "@timestamp": "2000-12-31T23:59:59+01:00",
+        },
+    ),
+    (
+        "parses unix timestamp",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": "UNIX",
+                "source_timezone": "UTC",
+                "target_timezone": "Europe/Berlin",
+            },
+        },
+        {
+            "message": "1642160449843",
+        },
+        {
+            "message": "1642160449843",
+            "@timestamp": "2022-01-14T12:40:49.843000+01:00",
+        },
+    ),
+    (
+        "normalization from timestamp berlin to utc",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "timestamper": {
+                "source_fields": ["winlog.event_data.some_timestamp_utc"],
+                "target_field": "@timestamp",
+                "source_format": "%Y %m %d - %H:%M:%S",
+                "source_timezone": "Europe/Berlin",
+                "target_timezone": "UTC",
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"some_timestamp_utc": "1999 12 12 - 12:12:22"},
+            }
+        },
+        {
+            "@timestamp": "1999-12-12T12:12:22Z",
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"some_timestamp_utc": "1999 12 12 - 12:12:22"},
+            },
         },
     ),
 ]

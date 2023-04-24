@@ -41,10 +41,10 @@ Examples for timestamper:
    :template: testcase-renderer.tmpl
 
 """
+from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
-from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
@@ -66,10 +66,38 @@ class TimestamperRule(FieldManagerRule):
         """The field from where to get the time from as list with one element"""
         target_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """The field where to write the processed values to, defaults to :code:`@timestamp`"""
-        source_format: str = field(validator=validators.instance_of(str), default="")
-        """The source format if source_fields is not an iso8601 complient time format string"""
+        source_format: str = field(validator=validators.instance_of(str), default="ISO8601")
+        """The source format if source_fields is not an iso8601 complient time format string
+        the format string could be given in the syntax of the :code:`arrow` library 
+        (see: https://arrow.readthedocs.io/en/latest/guide.html#supported-tokens)
+        or in the format of the python builtin :code:`datetime.strptime`
+        (see: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
+        Additionally, the value :code:`ISO8601` (default)  and :code:`UNIX` can be used for
+        the source_formats field. The former can be used if the timestamp already exists
+        in the ISO8601 format, such that only a timezone conversion should be applied.
+        And the latter can be used if the timestamp is given in the UNIX Epoch Time.
+        This supports the Unix timestamps in seconds and milliseconds
+        """
+        source_timezone: ZoneInfo = field(
+            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+        )
+        """ timezone of source_fields. defaults to :code:`UTC`"""
+        target_timezone: ZoneInfo = field(
+            validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
+        )
+        """ timezone for target_field. defaults to :code:`UTC`"""
 
     @property
     def source_format(self):
-        """the arrow style source format"""
+        """returns the source format"""
         return self._config.source_format
+
+    @property
+    def target_timezone(self):
+        """returns the target timezone"""
+        return self._config.target_timezone
+
+    @property
+    def source_timezone(self):
+        """returns the source timezone"""
+        return self._config.source_timezone
