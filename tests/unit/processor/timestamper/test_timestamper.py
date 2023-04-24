@@ -28,10 +28,24 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
     ),
     (
-        "parses by source format",
+        "parses by datetime source format",
         {
             "filter": "message",
             "timestamper": {"source_fields": ["message"], "source_format": "%Y %m %d - %H:%M:%S"},
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+            "@timestamp": "2000-12-31T22:59:59+00:00",
+        },
+    ),
+    (
+        "parses by arrow source format",
+        {
+            "filter": "message",
+            "timestamper": {"source_fields": ["message"], "source_format": "YYYY MM DD - HH:mm:ss"},
         },
         {
             "message": "2000 12 31 - 22:59:59",
