@@ -23,12 +23,12 @@ Example
 """
 import contextlib
 import inspect
-import json
 import queue
 import threading
 from abc import ABC, abstractmethod
 from typing import Mapping, Tuple, Union
 
+import msgspec
 import uvicorn
 from attrs import define, field, validators
 from fastapi import FastAPI, Request
@@ -72,6 +72,8 @@ class JSONHttpEndpoint(HttpEndpoint):
 class JSONLHttpEndpoint(HttpEndpoint):
     """:code:`jsonl` endpoint to get jsonl from request"""
 
+    _decoder = msgspec.json.Decoder()
+
     async def endpoint(self, request: Request):  # pylint: disable=arguments-differ
         """jsonl endpoint method"""
         data = await request.body()
@@ -79,7 +81,7 @@ class JSONLHttpEndpoint(HttpEndpoint):
         for line in data.splitlines():
             line = line.strip()
             if line:
-                event = json.loads(line)
+                event = self._decoder.decode(line)
                 self.messages.put(event)
 
 

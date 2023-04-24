@@ -140,8 +140,6 @@ class ConfluentKafkaInput(Input):
 
     _last_valid_records: dict
 
-    _decoder: msgspec.json.Decoder = msgspec.json.Decoder()
-
     __slots__ = [
         "current_offset",
         "_record",

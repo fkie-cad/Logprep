@@ -95,8 +95,6 @@ class ConfluentKafkaOutput(Output):
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
         """
 
-    _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
-
     @cached_property
     def _client_id(self):
         return getfqdn()

@@ -3,6 +3,7 @@ from abc import ABC
 from logging import Logger
 from typing import Callable
 
+import msgspec
 from attr import define, field, validators
 from schedule import Scheduler
 
@@ -27,6 +28,8 @@ class Component(ABC):
 
     _logger: Logger
     _config: Config
+    _decoder: msgspec.json.Decoder = msgspec.json.Decoder()
+    _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 
     def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
         self._logger = logger

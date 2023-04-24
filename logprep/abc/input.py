@@ -4,7 +4,6 @@ New input endpoint types are created by implementing it.
 
 import base64
 import hashlib
-import json
 import zlib
 from abc import abstractmethod
 from functools import partial
@@ -335,7 +334,7 @@ class Input(Connector):
         non_critical_error_msg = None
 
         if raw_event is None:
-            raw_event = json.dumps(event_dict).encode("utf-8")
+            raw_event = self._encoder.encode(event_dict)
 
         if hmac_target_field_name == "<RAW_MSG>":
             received_orig_message = raw_event
