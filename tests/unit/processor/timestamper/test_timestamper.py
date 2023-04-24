@@ -15,7 +15,29 @@ test_cases = [  # testcase, rule, event, expected
             "message": "2009-06-15 13:45:30Z",
         },
         {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
-    )
+    ),
+    (
+        "parses iso8601 to default target field",
+        {
+            "filter": "message",
+            "timestamper": {"source_fields": ["message"]},
+        },
+        {
+            "message": "2009-06-15 13:45:30Z",
+        },
+        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
+    ),
+    (
+        "parses by pattern",
+        {
+            "filter": "message",
+            "timestamper": {"source_fields": ["message"], "pattern": "{}"},
+        },
+        {
+            "message": "2009-06-15 13:45:30Z INFO the logline",
+        },
+        {"message": "2009-06-15 13:45:30Z", "@timestamp": "2009-06-15T13:45:30+00:00"},
+    ),
 ]
 
 failure_test_cases = []  # testcase, rule, event, expected

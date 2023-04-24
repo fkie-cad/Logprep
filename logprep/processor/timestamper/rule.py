@@ -62,3 +62,6 @@ class TimestamperRule(FieldManagerRule):
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ]
         )
+        """The field from where to get the time from as list with one element"""
+        target_field: str = field(validator=validators.instance_of(str), default="@timestamp")
+        """The field where to write the processed values to, defaults to :code:`@timestamp`"""
