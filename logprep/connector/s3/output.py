@@ -40,31 +40,31 @@ Example
         region_name:
 
 """
+import json
+import re
 import threading
 from collections import defaultdict
 from copy import deepcopy
-from uuid import uuid4
-import json
-import re
 from functools import cached_property
 from logging import Logger
-from typing import DefaultDict, Optional
 from time import time
+from typing import DefaultDict, Optional
+from uuid import uuid4
 
-import arrow
 import boto3
 import msgspec
-from botocore.exceptions import (
-    ClientError,
-    BotoCoreError,
-    EndpointConnectionError,
-    ConnectionClosedError,
-)
 from attr import define, field
 from attrs import validators
+from botocore.exceptions import (
+    BotoCoreError,
+    ClientError,
+    ConnectionClosedError,
+    EndpointConnectionError,
+)
 
-from logprep.util.helper import get_dotted_field_value
 from logprep.abc.output import Output
+from logprep.util.helper import get_dotted_field_value
+from logprep.util.time import TimeParser
 
 
 class S3Output(Output):
@@ -265,7 +265,7 @@ class S3Output(Output):
     def _build_no_prefix_document(message_document: dict, reason: str):
         document = {
             "reason": reason,
-            "@timestamp": arrow.now().isoformat(),
+            "@timestamp": TimeParser.now().isoformat(),
         }
         try:
             document["message"] = json.dumps(message_document)
@@ -304,6 +304,6 @@ class S3Output(Output):
             "error": error_message,
             "original": document_received,
             "processed": document_processed,
-            "@timestamp": arrow.now().isoformat(),
+            "@timestamp": TimeParser.now().isoformat(),
         }
         self._write_to_s3_resource(error_document, self._config.error_prefix)

@@ -7,12 +7,11 @@ from copy import deepcopy
 from logging import getLogger
 from unittest import mock
 
-import arrow
-
 from logprep.abc.connector import Connector
 from logprep.abc.input import Input
 from logprep.abc.output import Output
 from logprep.factory import Factory
+from logprep.util.time import TimeParser
 from logprep.util.time_measurement import TimeMeasurement
 from tests.unit.component.base import BaseComponentTestCase
 
@@ -373,7 +372,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         )
         assert target_field in result
         assert isinstance(result[target_field], str)
-        assert (arrow.now() - arrow.get(result[target_field])).total_seconds() > 0
+        assert (TimeParser.now() - TimeParser.from_string(result[target_field])).total_seconds() > 0
 
     def test_pipeline_preprocessing_does_not_add_log_arrival_time_if_target_field_exists_already(
         self,

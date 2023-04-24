@@ -10,11 +10,11 @@ from functools import partial
 from hmac import HMAC
 from typing import Optional, Tuple
 
-import arrow
 from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
 from logprep.util.helper import add_field_to, get_dotted_field_value
+from logprep.util.time import TimeParser
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import dict_structure_validator
 
@@ -281,7 +281,7 @@ class Input(Connector):
         """Can be called by output connectors after processing a batch of one or more records."""
 
     def _add_arrival_time_information_to_event(self, event: dict):
-        now = arrow.now()
+        now = TimeParser.now()
         target_field = self._config.preprocessing.get("log_arrival_time_target_field")
         add_field_to(event, target_field, now.isoformat())
 
@@ -296,7 +296,7 @@ class Input(Connector):
         log_arrival_time = get_dotted_field_value(event, log_arrival_time_target_field)
         if time_reference:
             delta_time_sec = (
-                arrow.get(log_arrival_time) - arrow.get(time_reference)
+                TimeParser.from_string(log_arrival_time) - TimeParser.from_string(time_reference)
             ).total_seconds()
             add_field_to(event, target_field, delta_time_sec)
 

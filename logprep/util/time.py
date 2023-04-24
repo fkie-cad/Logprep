@@ -43,3 +43,18 @@ class TimeParser:
             datetime object
         """
         return pendulum.from_timestamp(timestamp)
+
+    @staticmethod
+    def now() -> datetime:
+        """returns the current time
+
+        Returns
+        -------
+        datetime
+            current date and time as datetime
+        """
+        return pendulum.now()
+
+    @staticmethod
+    def from_format(source, format_str: str) -> datetime:
+        return pendulum.from_format(source, format_str)

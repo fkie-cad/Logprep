@@ -11,7 +11,6 @@ import re
 import tempfile
 from copy import deepcopy
 
-import arrow
 import pytest
 
 from logprep.factory import Factory
@@ -21,6 +20,7 @@ from logprep.processor.normalizer.rule import (
     InvalidNormalizationDefinition,
     NormalizerRule,
 )
+from logprep.util.time import TimeParser
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
@@ -1137,7 +1137,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
         assert len(match_cnt_files) == 1
 
-        now = arrow.now()
+        now = TimeParser.now()
         date = now.date()
         match_file_name = match_cnt_files[0]
 

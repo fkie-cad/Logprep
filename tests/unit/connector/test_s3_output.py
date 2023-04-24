@@ -11,16 +11,16 @@ from math import isclose
 from time import sleep
 from unittest import mock
 
-import arrow
 import pytest
 from botocore.exceptions import (
-    EndpointConnectionError,
-    ConnectionClosedError,
-    ClientError,
     BotoCoreError,
+    ClientError,
+    ConnectionClosedError,
+    EndpointConnectionError,
 )
 
 from logprep.factory import Factory
+from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -128,8 +128,8 @@ class TestS3Output(BaseOutputTestCase):
         error_document = s3_output._message_backlog[error_prefix][0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
-        error_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
-        expected_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
+        error_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
+        expected_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
         assert isclose(error_time, expected_time)
         del error_document["@timestamp"]
         del expected["@timestamp"]

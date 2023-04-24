@@ -10,7 +10,6 @@ from datetime import datetime
 from math import isclose
 from unittest import mock
 
-import arrow
 import elasticsearch as search
 import pytest
 from elasticsearch import ElasticsearchException as SearchException
@@ -18,6 +17,7 @@ from elasticsearch import helpers
 
 from logprep.abc.component import Component
 from logprep.abc.output import FatalOutputError
+from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -55,7 +55,7 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         default_index = "default_index-%{YYYY-MM-DD}"
         event = {"field": "content"}
 
-        formatted_date = arrow.now().format("YYYY-MM-DD")
+        formatted_date = TimeParser.now().format("YYYY-MM-DD")
         expected_index = re.sub(r"%{YYYY-MM-DD}", formatted_date, default_index)
         expected = {
             "_index": expected_index,
@@ -96,8 +96,8 @@ class TestElasticsearchOutput(BaseOutputTestCase):
         error_document = self.object._message_backlog[0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
-        error_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
-        expected_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
+        error_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
+        expected_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
         assert isclose(error_time, expected_time)
         del error_document["@timestamp"]
         del expected["@timestamp"]

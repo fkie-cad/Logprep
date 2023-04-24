@@ -37,7 +37,6 @@ from functools import cached_property
 from logging import Logger
 from typing import List, Optional
 
-import arrow
 import elasticsearch as search
 from attr import define, field
 from attrs import validators
@@ -46,6 +45,7 @@ from opensearchpy import OpenSearchException
 from urllib3.exceptions import TimeoutError
 
 from logprep.abc.output import FatalOutputError, Output
+from logprep.util.time import TimeParser
 
 
 class ElasticsearchOutput(Output):
@@ -303,7 +303,7 @@ class ElasticsearchOutput(Output):
     def _build_failed_index_document(self, message_document: dict, reason: str):
         document = {
             "reason": reason,
-            "@timestamp": arrow.now().isoformat(),
+            "@timestamp": TimeParser.now().isoformat(),
             "_index": self._config.default_index,
         }
         try:
@@ -349,7 +349,7 @@ class ElasticsearchOutput(Output):
             "error": error_message,
             "original": document_received,
             "processed": document_processed,
-            "@timestamp": arrow.now().isoformat(),
+            "@timestamp": TimeParser.now().isoformat(),
             "_index": self._config.error_index,
         }
         self._add_dates(error_document)
@@ -358,7 +358,7 @@ class ElasticsearchOutput(Output):
     def _add_dates(self, document):
         date_format_matches = self._replace_pattern.findall(document["_index"])
         if date_format_matches:
-            now = arrow.now()
+            now = TimeParser.now()
             for date_format_match in date_format_matches:
                 formatted_date = now.format(date_format_match[2:-1])
                 document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])
