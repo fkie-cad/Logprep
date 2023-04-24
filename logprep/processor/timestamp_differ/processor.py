@@ -25,6 +25,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 from logprep.util.helper import add_field_to, get_source_fields_dict
+from logprep.util.time import TimeParser
 
 
 class TimestampDiffer(Processor):
@@ -64,8 +65,8 @@ class TimestampDiffer(Processor):
     @staticmethod
     def _create_timestamp_object(timestamp_str, timestamp_format):
         if timestamp_format is None:
-            return arrow.get(timestamp_str)
-        return arrow.get(timestamp_str, timestamp_format)
+            return TimeParser.from_string(timestamp_str)
+        return TimeParser.from_format(timestamp_str, timestamp_format)
 
     @staticmethod
     def _apply_output_format(diff, rule):

@@ -77,3 +77,19 @@ class TestTimeParser:
 
     def test_now_returns_datetime(self):
         assert isinstance(TimeParser.now(), datetime)
+
+    @pytest.mark.parametrize(
+        "source, format_str, expected",
+        [
+            (
+                "Wed Dec 4 1:14:31 PM 2022",
+                "ddd MMM D H:mm:ss A YYYY",
+                {"year": 2022, "month": 12, "day": 4, "hour": 13, "minute": 14, "second": 31},
+            )
+        ],
+    )
+    def test_from_format_returns(self, source, format_str, expected):
+        timestamp = TimeParser.from_format(source, format_str)
+        assert isinstance(timestamp, datetime)
+        for attribute, value in expected.items():
+            assert getattr(timestamp, attribute) == value
