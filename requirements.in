@@ -13,7 +13,6 @@ luqum
 mysql-connector-python
 numpy>=1.24.1
 opensearch-py
-pendulum
 prometheus_client
 protobuf>=3.20.2
 pycryptodome
