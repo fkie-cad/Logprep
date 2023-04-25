@@ -67,9 +67,11 @@ class TimestampDifferRule(FieldManagerRule):
         """Specifies the timestamp subtraction and their respective timestamp formats. The fields
         and the timestamp format can be specified in the form of:
         :code:`${dotted.field.path:timestamp-format}`. If no timestamp format is given, e.g.
-        :code:`${dotted.field.path}`, then the default parsing mechanism of the python library
-        arrow will be used. For more information see the
-        `Arrow documentation <https://arrow.readthedocs.io/en/latest/guide.html#creation>`_."""
+        :code:`${dotted.field.path}`, the string will be assumed as an iso8601 compliant string and
+        parsed. For more information on the format syntax see 
+        `datetime strftime/strptime <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes>`_."""
+        source_fields: list = field(factory=list)
+        source_field_formats: list = field(factory=list)
         output_format: str = field(
             default="seconds",
             validator=[
