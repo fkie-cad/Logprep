@@ -180,9 +180,9 @@ class S3Output(Output):
     def _add_dates(self, prefix):
         date_format_matches = self._replace_pattern.findall(prefix)
         if date_format_matches:
-            now = arrow.now()
+            now = TimeParser.now()
             for date_format_match in date_format_matches:
-                formatted_date = now.format(date_format_match[2:-1])
+                formatted_date = now.strftime(date_format_match[2:-1])
                 prefix = re.sub(date_format_match, formatted_date, prefix)
         return prefix
 

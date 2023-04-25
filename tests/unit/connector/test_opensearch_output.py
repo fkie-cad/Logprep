@@ -58,11 +58,11 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert self.object._message_backlog[0] == expected
 
     def test_store_sends_event_to_expected_index_with_date_pattern_if_index_missing_in_event(self):
-        default_index = "default_index-%{YYYY-MM-DD}"
+        default_index = "default_index-%{%y-%m-%d}"
         event = {"field": "content"}
 
-        formatted_date = TimeParser.now().format("YYYY-MM-DD")
-        expected_index = re.sub(r"%{YYYY-MM-DD}", formatted_date, default_index)
+        formatted_date = TimeParser.now().strftime("%y-%m-%d")
+        expected_index = re.sub(r"%{%y-%m-%d}", formatted_date, default_index)
         expected = {
             "_index": expected_index,
             "message": '{"field": "content"}',
