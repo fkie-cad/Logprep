@@ -2,7 +2,7 @@
 Timestamper
 ============
 
-The `timestamper` processor ...
+The `timestamper` processor normalizes timestamps to *iso8601* compliant output format.
 
 A speaking example:
 
@@ -10,22 +10,39 @@ A speaking example:
     :linenos:
     :caption: Given timestamper rule
 
-    filter: message
-    timestamper:
-        ...
-    description: '...'
+    filter: "winlog.event_id: 123456789"
+    timestamper: 
+        source_fields: ["winlog.event_data.some_timestamp_utc"]
+        target_field: "@timestamp"
+        source_format: UNIX
+        source_timezone: UTC
+        target_timezone: Europe/Berlin
+    description: example timestamper rule
 
 ..  code-block:: json
     :linenos:
     :caption: Incoming event
 
-    <INCOMMING_EVENT>
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"some_timestamp_utc": "1642160449"},
+            }
+        }
 
 ..  code-block:: json
     :linenos:
     :caption: Processed event
 
-    <PROCESSED_EVENT>
+        {
+            "@timestamp": "2022-01-14T12:40:49+01:00",
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"some_timestamp_utc": "1642160449"},
+            },
+        }
 
 
 .. autoclass:: logprep.processor.timestamper.rule.TimestamperRule.Config
@@ -67,14 +84,14 @@ class TimestamperRule(FieldManagerRule):
         target_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """The field where to write the processed values to, defaults to :code:`@timestamp`"""
         source_format: str = field(validator=validators.instance_of(str), default="ISO8601")
-        """The source format if source_fields is not an iso8601 complient time format string
+        """The source format if source_fields is not an iso8601 compliant time format string
         the format must be given in the syntax of the python builtin :code:`datetime.strptime`
         (see: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
         Additionally, the value :code:`ISO8601` (default)  and :code:`UNIX` can be used for
         the source_formats field. The former can be used if the timestamp already exists
         in the ISO8601 format, such that only a timezone conversion should be applied.
         And the latter can be used if the timestamp is given in the UNIX Epoch Time.
-        This supports the Unix timestamps in seconds and milliseconds
+        This supports the Unix timestamps in seconds and milliseconds.
         """
         source_timezone: ZoneInfo = field(
             validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"

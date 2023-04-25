@@ -4,7 +4,6 @@ import re
 
 import pytest
 
-from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from tests.unit.processor.base import BaseProcessorTestCase
 

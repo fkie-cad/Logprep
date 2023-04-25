@@ -2,7 +2,7 @@
 Timestamper
 ============
 
-The `timestamper` processor ...
+The `timestamper` processor normalizes timestamps to *iso8601* compliant output format.
 
 
 Example
@@ -10,15 +10,13 @@ Example
 ..  code-block:: yaml
     :linenos:
 
-    - samplename:
+    - myteimestamper:
         type: timestamper
         specific_rules:
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
 """
-
-from attrs import define
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager

@@ -193,6 +193,13 @@ Processors
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.timestamper.processor
+.. autoclass:: logprep.processor.timestamper.processor.Timestamper.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.timestamp_differ.processor
 .. autoclass:: logprep.processor.timestamp_differ.processor.TimestampDiffer.Config
    :members:
