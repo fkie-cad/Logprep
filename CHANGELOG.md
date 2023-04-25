@@ -3,9 +3,12 @@
 ## next release
 
 ### Features
-
+* add `timestamper` processor to extract timestamp functionality from normalizer
 
 ### Improvements
+* removed `arrow` dependency and depending features for performance reasons
+  * switched to `datetime.strftime` syntax in `timestamp_differ`, `s3_output`, `elasticsearch_output` and `opensearch_output`
+* encapsulate time related functionality in `logprep.util.time.TimeParser`
 
 
 ### Bugfix
@@ -16,6 +19,7 @@
 ### Features
 
 * Add `amides` processor to extends conventional rule matching by applying machine learning components
+* Add `grokker` processor to extract grok functionality from normalizer
 * `Normalizer` writes failure tags if nomalization fails
 * Add `flush_timeout` to `opensearch` and `elasticsearch` outputs to ensure message delivery within a configurable period
 * add `kafka_config` option to `confluent_kafka_input` and `confluent_kafka_output` connectors to provide additional config options to `librdkafka`

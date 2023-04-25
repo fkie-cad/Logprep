@@ -17,9 +17,8 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
-from zoneinfo import ZoneInfo
 
-from attrs import define, field, validators
+from attrs import define
 
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
@@ -32,10 +31,6 @@ class Timestamper(FieldManager):
     """A processor that extracts and parses timestamps"""
 
     rule_class = TimestamperRule
-
-    @define(kw_only=True)
-    class Config(FieldManager.Config):
-        """Config of Timestamper"""
 
     def _apply_rules(self, event, rule):
         source_field = self._get_source_field(event, rule)
