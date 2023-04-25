@@ -9,6 +9,7 @@ from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
 from typing import Optional, Tuple
+from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
@@ -296,7 +297,8 @@ class Input(Connector):
         log_arrival_time = get_dotted_field_value(event, log_arrival_time_target_field)
         if time_reference:
             delta_time_sec = (
-                TimeParser.from_string(log_arrival_time) - TimeParser.from_string(time_reference)
+                TimeParser.from_string(log_arrival_time).astimezone(ZoneInfo("UTC"))
+                - TimeParser.from_string(time_reference).astimezone(ZoneInfo("UTC"))
             ).total_seconds()
             add_field_to(event, target_field, delta_time_sec)
 
