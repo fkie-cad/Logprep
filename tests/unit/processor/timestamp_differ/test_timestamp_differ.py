@@ -377,7 +377,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "tags": ["_timestamp_differ_failure"],
         },
-        ".*ProcessingWarning.*Failed to match 'YYYY-MM-DD HH:mm:ss' when parsing",
+        ".*ProcessingWarning.*does not match",
     ),
     (
         "diff between two timestamps with one empty field",
