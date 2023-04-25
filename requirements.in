@@ -1,7 +1,6 @@
-arrow
 attrs
 certifi>=2022.12.07
-ciso8601
+ciso8601 # fastest iso8601 datetime parser. can be removed after dropping support for python < 3.11
 colorama
 confluent-kafka>2
 elasticsearch>=7,<8
@@ -18,7 +17,7 @@ protobuf>=3.20.2
 pycryptodome
 pyparsing
 python-dateutil
-pytz
+pytz # can be removed with normalizer code
 scikit-learn>=1.2.0
 scipy>=1.9.2
 joblib
