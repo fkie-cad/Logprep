@@ -14,4 +14,5 @@ Processor Case Examples
    notebooks/processor_examples/key_checker.ipynb
    notebooks/processor_examples/requester.ipynb
    notebooks/processor_examples/string_splitter.ipynb
-   notebooks/processor_examples/timestamp_differ.ipynb   
+   notebooks/processor_examples/timestamper.ipynb
+   notebooks/processor_examples/timestamp_differ.ipynb
