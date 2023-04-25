@@ -5,6 +5,7 @@ import re
 import pytest
 
 from logprep.processor.base.exceptions import ProcessingWarning
+from logprep.processor.field_manager.processor import FieldManager
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -45,26 +46,12 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "parses by arrow source format",
-        {
-            "filter": "message",
-            "timestamper": {"source_fields": ["message"], "source_format": "YYYY MM DD - HH:mm:ss"},
-        },
-        {
-            "message": "2000 12 31 - 22:59:59",
-        },
-        {
-            "message": "2000 12 31 - 22:59:59",
-            "@timestamp": "2000-12-31T22:59:59Z",
-        },
-    ),
-    (
         "converts timezone information",
         {
             "filter": "message",
             "timestamper": {
                 "source_fields": ["message"],
-                "source_format": "YYYY MM DD - HH:mm:ss",
+                "source_format": "%Y %m %d - %H:%M:%S",
                 "source_timezone": "UTC",
                 "target_timezone": "Europe/Berlin",
             },
@@ -256,6 +243,10 @@ class TestTimestamper(BaseProcessorTestCase):
         "specific_rules": ["tests/testdata/unit/timestamper/specific_rules"],
         "generic_rules": ["tests/testdata/unit/timestamper/generic_rules"],
     }
+
+    def test_is_field_manager_implementation(self):
+        assert isinstance(self.object, FieldManager)
+        assert issubclass(self.object.rule_class, FieldManager.rule_class)
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)
     def test_testcases(self, testcase, rule, event, expected):

@@ -7,7 +7,7 @@ TimestampDiffer
 The `timestamp_differ` processor allows to calculate the time difference between two timestamps.
 The timestamp format can be specified per timestamp. Following patterns can be used to define the
 timestamp format:
-`Timestamp tokens <https://arrow.readthedocs.io/en/latest/guide.html#supported-tokens>`_.
+`Timestamp tokens <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes>`_.
 
 A speaking example:
 
@@ -17,7 +17,7 @@ A speaking example:
 
     filter: 'ingest AND processed'
     timestamp_differ:
-      diff: ${processed:YYYY-MM-DD HH:mm:ss} - ${ingest:YYYY-MM-DD HH:mm:ss}
+      diff: ${processed:%Y-%m-%d %H:%M:%S} - ${ingest:%Y-%m-%d %H:%M:%S}
       target_field: processing_time
       output_format: seconds
     description: '...'

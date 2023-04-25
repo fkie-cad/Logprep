@@ -15,7 +15,7 @@ from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
 from logprep.util.helper import add_field_to, get_dotted_field_value
-from logprep.util.time import TimeParser
+from logprep.util.time import UTC, TimeParser
 from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import dict_structure_validator
 
@@ -297,8 +297,8 @@ class Input(Connector):
         log_arrival_time = get_dotted_field_value(event, log_arrival_time_target_field)
         if time_reference:
             delta_time_sec = (
-                TimeParser.from_string(log_arrival_time).astimezone(ZoneInfo("UTC"))
-                - TimeParser.from_string(time_reference).astimezone(ZoneInfo("UTC"))
+                TimeParser.from_string(log_arrival_time).astimezone(UTC)
+                - TimeParser.from_string(time_reference).astimezone(UTC)
             ).total_seconds()
             add_field_to(event, target_field, delta_time_sec)
 

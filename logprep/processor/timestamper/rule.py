@@ -68,9 +68,7 @@ class TimestamperRule(FieldManagerRule):
         """The field where to write the processed values to, defaults to :code:`@timestamp`"""
         source_format: str = field(validator=validators.instance_of(str), default="ISO8601")
         """The source format if source_fields is not an iso8601 complient time format string
-        the format string could be given in the syntax of the :code:`arrow` library 
-        (see: https://arrow.readthedocs.io/en/latest/guide.html#supported-tokens)
-        or in the format of the python builtin :code:`datetime.strptime`
+        the format must be given in the syntax of the python builtin :code:`datetime.strptime`
         (see: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
         Additionally, the value :code:`ISO8601` (default)  and :code:`UNIX` can be used for
         the source_formats field. The former can be used if the timestamp already exists

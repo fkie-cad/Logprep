@@ -1,9 +1,11 @@
 """logprep time helpers module"""
 from datetime import datetime
 from typing import Union
+from zoneinfo import ZoneInfo
 
-import arrow
 import ciso8601
+
+UTC = ZoneInfo("UTC")
 
 
 class TimeParserException(Exception):
@@ -81,9 +83,6 @@ class TimeParser:
             raised if something could not be parsed
         """
         try:
-            return arrow.get(source, format_str).datetime
-        except arrow.parser.ParserError:
-            try:
-                return datetime.strptime(source, format_str)
-            except ValueError as error:
-                raise TimeParserException(str(error)) from error
+            return datetime.strptime(source, format_str)
+        except ValueError as error:
+            raise TimeParserException(str(error)) from error

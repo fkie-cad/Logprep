@@ -25,7 +25,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 from logprep.util.helper import add_field_to, get_source_fields_dict
-from logprep.util.time import TimeParser, TimeParserException
+from logprep.util.time import UTC, TimeParser, TimeParserException
 
 
 class TimestampDiffer(Processor):
@@ -65,10 +65,10 @@ class TimestampDiffer(Processor):
     @staticmethod
     def _create_timestamp_object(source: Union[str, int], format_str: str) -> datetime:
         if isinstance(source, int):
-            return TimeParser.from_timestamp(source)
+            return TimeParser.from_timestamp(source).astimezone(UTC)
         if format_str is None:
-            return TimeParser.from_string(source)
-        return TimeParser.from_format(source, format_str)
+            return TimeParser.from_string(source).astimezone(UTC)
+        return TimeParser.from_format(source, format_str).astimezone(UTC)
 
     @staticmethod
     def _apply_output_format(diff, rule):
