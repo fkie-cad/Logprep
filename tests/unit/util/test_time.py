@@ -46,7 +46,7 @@ class TestTimeParser:
         [
             (
                 "Wed Dec 4 1:14:31 PM 2022",
-                "ddd MMM D h:m:s A YYYY",
+                "%a %b %d %I:%M:%S %p %Y",
                 {"year": 2022, "month": 12, "day": 4, "hour": 13, "minute": 14, "second": 31},
             )
         ],
