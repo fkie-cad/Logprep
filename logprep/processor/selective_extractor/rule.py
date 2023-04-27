@@ -153,11 +153,11 @@ class SelectiveExtractorRule(FieldManagerRule):
         """The path or url to a file with a flat list of fields to extract.
         For string format see :ref:`getters`."""
 
-        target_field: str = field(default="", init=False)
+        target_field: str = field(default="", init=False, repr=False, eq=False)
 
-        overwrite_target: bool = field(default=False, init=False)
+        overwrite_target: bool = field(default=False, init=False, repr=False, eq=False)
 
-        extend_target_list: bool = field(default=False, init=False)
+        extend_target_list: bool = field(default=False, init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):
             super().__attrs_post_init__()

@@ -133,8 +133,8 @@ class DissectorRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for Dissector"""
 
-        source_fields: list = field(factory=list, init=False)
-        target_field: str = field(default="", init=False)
+        source_fields: list = field(factory=list, init=False, repr=False, eq=False)
+        target_field: str = field(default="", init=False, repr=False, eq=False)
 
         mapping: dict = field(
             validator=[

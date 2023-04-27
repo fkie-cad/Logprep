@@ -55,6 +55,9 @@ class TimestampDifferRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for TimestampDiffer"""
 
+        source_fields: list = field(factory=list, init=False, repr=False, eq=False)
+        source_field_formats: list = field(factory=list, init=False, repr=False, eq=False)
+
         diff: str = field(
             validator=[
                 validators.instance_of(str),
@@ -67,8 +70,6 @@ class TimestampDifferRule(FieldManagerRule):
         :code:`${dotted.field.path}`, then the default parsing mechanism of the python library
         arrow will be used. For more information see the
         `Arrow documentation <https://arrow.readthedocs.io/en/latest/guide.html#creation>`_."""
-        source_fields: list = field(factory=list)
-        source_field_formats: list = field(factory=list)
         output_format: str = field(
             default="seconds",
             validator=[
