@@ -13,12 +13,10 @@ The example below deletes the log message if the message field equals "foo".
         delete: true
     description: '...'
 """
-import warnings
 
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule
-from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class DeleterRule(Rule):
@@ -30,6 +28,7 @@ class DeleterRule(Rule):
 
         delete: bool = field(validator=validators.instance_of(bool))
         """Delete or not"""
+        target_field = field(init=False, repr=False, eq=False)
 
     @property
     def delete_event(self) -> bool:

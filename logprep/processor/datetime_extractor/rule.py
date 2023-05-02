@@ -21,9 +21,7 @@ In the following example the timestamp will be extracted from
       target_field: 'split_@timestamp'
     description: '...'
 """
-import warnings
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import pop_dotted_field_value, add_and_overwrite
 
 
 class DatetimeExtractorRule(FieldManagerRule):
