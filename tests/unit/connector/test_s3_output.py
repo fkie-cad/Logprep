@@ -11,16 +11,16 @@ from math import isclose
 from time import sleep
 from unittest import mock
 
-import arrow
 import pytest
 from botocore.exceptions import (
-    EndpointConnectionError,
-    ConnectionClosedError,
-    ClientError,
     BotoCoreError,
+    ClientError,
+    ConnectionClosedError,
+    EndpointConnectionError,
 )
 
 from logprep.factory import Factory
+from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -128,8 +128,8 @@ class TestS3Output(BaseOutputTestCase):
         error_document = s3_output._message_backlog[error_prefix][0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
-        error_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
-        expected_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
+        error_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
+        expected_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
         assert isclose(error_time, expected_time)
         del error_document["@timestamp"]
         del expected["@timestamp"]
@@ -239,8 +239,8 @@ class TestS3Output(BaseOutputTestCase):
         s3_output.input_connector.batch_finished_callback.assert_not_called()
 
     def test_write_to_s3_resource_replaces_dates(self):
-        expected_prefix = f'base_prefix/prefix-{arrow.now().format("YY:MM:DD")}'
-        self.object._write_to_s3_resource({"foo": "bar"}, "base_prefix/prefix-%{YY:MM:DD}")
+        expected_prefix = f'base_prefix/prefix-{TimeParser.now().strftime("%y:%m:%d")}'
+        self.object._write_to_s3_resource({"foo": "bar"}, "base_prefix/prefix-%{%y:%m:%d}")
         resulting_prefix = next(iter(self.object._message_backlog.keys()))
 
         assert expected_prefix == resulting_prefix

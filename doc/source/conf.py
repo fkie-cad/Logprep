@@ -21,7 +21,6 @@ sys.path.insert(0, os.path.abspath("../.."))
 
 from logprep._version import get_versions
 
-
 # -- Handlers ----------------------------------------------------------------
 
 
@@ -69,6 +68,7 @@ extensions.append("sphinx.ext.todo")
 todo_include_todos = True
 
 nbsphinx_requirejs_path = ""
+nbsphinx_execute = "never"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

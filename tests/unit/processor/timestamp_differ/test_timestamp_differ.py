@@ -12,7 +12,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${field2} - ${field1}",
                 "target_field": "time_diff",
             },
         },
@@ -24,7 +24,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${field2} - ${field1}",
                 "target_field": "time_diff",
             },
         },
@@ -40,7 +40,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss ZZ} - ${field1:YYYY-MM-DD}",
+                "diff": "${field2:%Y-%m-%d %H:%M:%S %z} - ${field1:%Y-%m-%d}",
                 "target_field": "time_diff",
             },
         },
@@ -52,7 +52,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:dddd, DD. MMMM YYYY HH:mmA} - ${field1:YYYY-MM-DD}",
+                "diff": "${field2:%A, %d. %B %Y %I:%M%p} - ${field1:%Y-%m-%d}",
                 "target_field": "time_diff",
             },
         },
@@ -68,7 +68,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:ddd MMM D H:mm:ss A YYYY} - ${field1:YYYY-MM-DD}",
+                "diff": "${field2:%a %b %d %I:%M:%S %p %Y} - ${field1:%Y-%m-%d}",
                 "target_field": "time_diff",
             },
         },
@@ -76,27 +76,11 @@ test_cases = [  # testcase, rule, event, expected
         {"field2": "Wed Dec 4 1:14:31 PM 2022", "field1": "2022-12-03", "time_diff": "134071.0"},
     ),
     (
-        "Time difference between two timestamps with timezone name",
-        {
-            "filter": "field1 AND field2",
-            "timestamp_differ": {
-                "diff": "${field2:ddd MMM D H:mm:ss A YYYY ZZZ} - ${field1:YYYY-MM-DD}",
-                "target_field": "time_diff",
-            },
-        },
-        {"field2": "Wed Dec 4 1:14:31 PM 2022 Europe/Warsaw", "field1": "2022-12-03"},
-        {
-            "field2": "Wed Dec 4 1:14:31 PM 2022 Europe/Warsaw",
-            "field1": "2022-12-03",
-            "time_diff": "130471.0",
-        },
-    ),
-    (
         "Time difference between two timestamps with milliseconds output",
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
                 "output_format": "milliseconds",
             },
@@ -113,7 +97,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
                 "output_format": "nanoseconds",
             },
@@ -130,7 +114,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
             },
         },
@@ -146,7 +130,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
-                "diff": "${subfield.field2} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
             },
         },
@@ -162,7 +146,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
-                "diff": "${subfield.field2} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
                 "delete_source_fields": True,
             },
@@ -177,7 +161,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
-                "diff": "${subfield.field2} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
                 "overwrite_target": True,
             },
@@ -198,7 +182,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
-                "diff": "${subfield.field2} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
                 "extend_target_list": True,
             },
@@ -297,7 +281,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
                 "output_format": "seconds",
                 "show_unit": True,
@@ -311,7 +295,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
                 "output_format": "milliseconds",
                 "show_unit": True,
@@ -329,7 +313,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
                 "output_format": "nanoseconds",
                 "show_unit": True,
@@ -360,14 +344,14 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "tags": ["_timestamp_differ_failure"],
         },
-        r".*ProcessingWarning.*Could not match input 'non-timestamp' to any of the following formats",
+        r".*ProcessingWarning.*Invalid character while parsing",
     ),
     (
         "diff between two timestamps with partial timestamp format match",
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
             },
         },
@@ -377,14 +361,14 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
             "subfield": {"field2": "2022-12-05 12:00:00"},
             "tags": ["_timestamp_differ_failure"],
         },
-        ".*ProcessingWarning.*Failed to match 'YYYY-MM-DD HH:mm:ss' when parsing",
+        ".*ProcessingWarning.*does not match",
     ),
     (
         "diff between two timestamps with one empty field",
         {
             "filter": "field1 AND subfield.field2",
             "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
             },
         },
@@ -401,7 +385,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {
             "filter": "field1",
             "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
             },
         },
@@ -417,7 +401,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {
             "filter": "some_field",
             "timestamp_differ": {
-                "diff": "${subfield.field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${subfield.field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
             },
         },
@@ -433,7 +417,7 @@ failure_test_cases = [  # testcase, rule, event, expected, error_message
         {
             "filter": "field1 AND field2",
             "timestamp_differ": {
-                "diff": "${field2:YYYY-MM-DD HH:mm:ss} - ${field1:YYYY-MM-DD HH:mm:ss}",
+                "diff": "${field2:%Y-%m-%d %H:%M:%S} - ${field1:%Y-%m-%d %H:%M:%S}",
                 "target_field": "time_diff",
             },
         },

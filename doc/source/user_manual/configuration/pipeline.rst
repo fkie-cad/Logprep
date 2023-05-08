@@ -15,5 +15,5 @@ Example
 
 .. literalinclude:: /../../quickstart/exampledata/config/pipeline.yml
    :language: yaml
-   :start-after:   level: INFO
+   :start-after:   level: DEBUG
    :end-before: input:

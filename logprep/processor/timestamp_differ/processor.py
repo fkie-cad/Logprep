@@ -17,14 +17,15 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
+from datetime import datetime
 from functools import reduce
-
-import arrow
+from typing import Union
 
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 from logprep.util.helper import add_field_to, get_source_fields_dict
+from logprep.util.time import UTC, TimeParser, TimeParserException
 
 
 class TimestampDiffer(Processor):
@@ -43,7 +44,7 @@ class TimestampDiffer(Processor):
                 self._create_timestamp_object, source_field_dict.values(), source_field_formats
             )
             diff = reduce(lambda a, b: a - b, timestamp_objects)
-        except arrow.parser.ParserError as error:
+        except TimeParserException as error:
             error.args = [
                 f"{error.args[0]} Corresponding source fields and values are: {source_field_dict}."
             ]
@@ -62,10 +63,12 @@ class TimestampDiffer(Processor):
                 raise FieldExistsWarning(self, rule, event, [rule.target_field])
 
     @staticmethod
-    def _create_timestamp_object(timestamp_str, timestamp_format):
-        if timestamp_format is None:
-            return arrow.get(timestamp_str)
-        return arrow.get(timestamp_str, timestamp_format)
+    def _create_timestamp_object(source: Union[str, int], format_str: str) -> datetime:
+        if isinstance(source, int):
+            return TimeParser.from_timestamp(source).astimezone(UTC)
+        if format_str is None:
+            return TimeParser.from_string(source).astimezone(UTC)
+        return TimeParser.from_format(source, format_str).astimezone(UTC)
 
     @staticmethod
     def _apply_output_format(diff, rule):

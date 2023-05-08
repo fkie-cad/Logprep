@@ -182,6 +182,13 @@ Rules
    :inherited-members:
    :noindex:
 
+.. automodule:: logprep.processor.timestamper.rule
+.. autoclass:: logprep.processor.timestamper.rule.TimestamperRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
 .. automodule:: logprep.processor.timestamp_differ.rule
 .. autoclass:: logprep.processor.timestamp_differ.rule.TimestampDifferRule.Config
    :members:

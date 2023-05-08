@@ -10,7 +10,6 @@ from datetime import datetime
 from math import isclose
 from unittest import mock
 
-import arrow
 import opensearchpy as search
 import pytest
 from opensearchpy import OpenSearchException as SearchException
@@ -18,6 +17,7 @@ from opensearchpy import helpers
 
 from logprep.abc.component import Component
 from logprep.abc.output import FatalOutputError
+from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
 
 
@@ -58,11 +58,11 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert self.object._message_backlog[0] == expected
 
     def test_store_sends_event_to_expected_index_with_date_pattern_if_index_missing_in_event(self):
-        default_index = "default_index-%{YYYY-MM-DD}"
+        default_index = "default_index-%{%y-%m-%d}"
         event = {"field": "content"}
 
-        formatted_date = arrow.now().format("YYYY-MM-DD")
-        expected_index = re.sub(r"%{YYYY-MM-DD}", formatted_date, default_index)
+        formatted_date = TimeParser.now().strftime("%y-%m-%d")
+        expected_index = re.sub(r"%{%y-%m-%d}", formatted_date, default_index)
         expected = {
             "_index": expected_index,
             "message": '{"field": "content"}',
@@ -102,8 +102,8 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         error_document = self.object._message_backlog[0]
         # timestamp is compared to be approximately the same,
         # since it is variable and then removed to compare the rest
-        error_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
-        expected_time = datetime.timestamp(arrow.get(error_document["@timestamp"]).datetime)
+        error_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
+        expected_time = datetime.timestamp(TimeParser.from_string(error_document["@timestamp"]))
         assert isclose(error_time, expected_time)
         del error_document["@timestamp"]
         del expected["@timestamp"]

@@ -35,7 +35,6 @@ from pathlib import Path
 from time import time
 from typing import List, Optional, Tuple, Union
 
-import arrow
 import msgspec
 from attr import define, field, validators
 from dateutil import parser
@@ -51,6 +50,7 @@ from logprep.util.helper import (
     get_dotted_field_list,
     get_dotted_field_value,
 )
+from logprep.util.time import TimeParser
 from logprep.util.validators import directory_validator
 
 
@@ -157,7 +157,7 @@ class Normalizer(Processor):
             return
         self._grok_cnt_timer = now
 
-        current_date = arrow.now().date()
+        current_date = TimeParser.now().date()
         weekday = calendar.day_name[current_date.weekday()].lower()
 
         file_name = f"{current_date}_{weekday}.json"
