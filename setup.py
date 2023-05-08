@@ -34,6 +34,7 @@ setup(
         "Documentation": "https://logprep.readthedocs.io/en/latest/",
     },
     packages=find_packages(),
+    include_package_data=True,
     install_requires=["setuptools"] + requirements,
     python_requires=">=3.9",
     entry_points={
