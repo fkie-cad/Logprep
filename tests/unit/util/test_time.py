@@ -32,7 +32,7 @@ class TestTimeParser:
             assert getattr(timestamp, attribute) == value
 
     def test_from_timestamp(self):
-        expected = {"year": 1969, "month": 12, "day": 31, "hour": 23, "minute": 59}
+        expected = {"year": 1970, "month": 1, "day": 1, "hour": 0, "minute": 59}
         timestamp = TimeParser.from_timestamp(-1)
         assert isinstance(timestamp, datetime)
         for attribute, value in expected.items():

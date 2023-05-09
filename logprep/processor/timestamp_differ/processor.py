@@ -25,7 +25,7 @@ from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.timestamp_differ.rule import TimestampDifferRule
 from logprep.util.helper import add_field_to, get_source_fields_dict
-from logprep.util.time import UTC, TimeParser, TimeParserException
+from logprep.util.time import TimeParser, TimeParserException, UTC
 
 
 class TimestampDiffer(Processor):

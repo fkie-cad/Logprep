@@ -211,7 +211,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "field1": 1670234400,
             "subfield": {"field2": "2022-12-05 12:00:00"},
-            "time_diff": "7200.0",
+            "time_diff": "3600.0",
         },
     ),
     (

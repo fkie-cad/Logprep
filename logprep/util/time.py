@@ -4,8 +4,10 @@ from typing import Union
 from zoneinfo import ZoneInfo
 
 import ciso8601
+from dateutil.tz import tzlocal
 
 UTC = ZoneInfo("UTC")
+local_timezone = tzlocal()
 
 
 class TimeParserException(Exception):
@@ -30,7 +32,10 @@ class TimeParser:
             datetime object
         """
         try:
-            return ciso8601.parse_datetime(source)  # pylint: disable=c-extension-no-member
+            time_object = ciso8601.parse_datetime(source)  # pylint: disable=c-extension-no-member
+            if time_object.tzinfo is None:
+                time_object = time_object.replace(tzinfo=UTC)
+            return time_object
         except ValueError as error:
             raise TimeParserException(str(error)) from error
 
@@ -48,7 +53,10 @@ class TimeParser:
         datetime
             datetime object
         """
-        return datetime.fromtimestamp(timestamp)
+        time_object = datetime.fromtimestamp(timestamp)
+        if time_object.tzinfo is None:
+            time_object = time_object.replace(tzinfo=UTC)
+        return time_object
 
     @staticmethod
     def now() -> datetime:
@@ -59,7 +67,10 @@ class TimeParser:
         datetime
             current date and time as datetime
         """
-        return datetime.now()
+        time_object = datetime.now()
+        if time_object.tzinfo is None:
+            time_object = time_object.replace(tzinfo=UTC)
+        return time_object
 
     @staticmethod
     def from_format(source: str, format_str: str) -> datetime:
@@ -83,6 +94,9 @@ class TimeParser:
             raised if something could not be parsed
         """
         try:
-            return datetime.strptime(source, format_str)
+            time_object = datetime.strptime(source, format_str)
+            if time_object.tzinfo is None:
+                time_object = time_object.replace(tzinfo=UTC)
+            return time_object
         except ValueError as error:
             raise TimeParserException(str(error)) from error
