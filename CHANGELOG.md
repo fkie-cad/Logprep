@@ -12,6 +12,7 @@
 
 
 ### Bugfix
+* Fix missing default grok patterns in packaged logprep version
 
 
 ## v6.1.0
