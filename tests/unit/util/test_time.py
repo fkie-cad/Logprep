@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
+# pylint: disable=protected-access
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -56,3 +58,9 @@ class TestTimeParser:
         assert isinstance(timestamp, datetime)
         for attribute, value in expected.items():
             assert getattr(timestamp, attribute) == value
+
+    def test_set_utc_if_timezone_is_missing_sets_timezone(self):
+        time_object = datetime.now()
+        assert time_object.tzinfo is None
+        time_object = TimeParser._set_utc_if_timezone_is_missing(time_object)
+        assert time_object.tzinfo is ZoneInfo("UTC")

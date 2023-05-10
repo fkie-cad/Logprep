@@ -30,7 +30,9 @@ class TimeParser:
             datetime object
         """
         try:
-            return ciso8601.parse_datetime(source)  # pylint: disable=c-extension-no-member
+            time_object = ciso8601.parse_datetime(source)  # pylint: disable=c-extension-no-member
+            time_object = cls._set_utc_if_timezone_is_missing(time_object)
+            return time_object
         except ValueError as error:
             raise TimeParserException(str(error)) from error
 
@@ -48,10 +50,12 @@ class TimeParser:
         datetime
             datetime object
         """
-        return datetime.fromtimestamp(timestamp)
+        time_object = datetime.utcfromtimestamp(timestamp)
+        time_object = cls._set_utc_if_timezone_is_missing(time_object)
+        return time_object
 
-    @staticmethod
-    def now() -> datetime:
+    @classmethod
+    def now(cls) -> datetime:
         """returns the current time
 
         Returns
@@ -59,10 +63,12 @@ class TimeParser:
         datetime
             current date and time as datetime
         """
-        return datetime.now()
+        time_object = datetime.now()
+        time_object = cls._set_utc_if_timezone_is_missing(time_object)
+        return time_object
 
-    @staticmethod
-    def from_format(source: str, format_str: str) -> datetime:
+    @classmethod
+    def from_format(cls, source: str, format_str: str) -> datetime:
         """parse date from format
 
         Parameters
@@ -83,6 +89,14 @@ class TimeParser:
             raised if something could not be parsed
         """
         try:
-            return datetime.strptime(source, format_str)
+            time_object = datetime.strptime(source, format_str)
+            time_object = cls._set_utc_if_timezone_is_missing(time_object)
+            return time_object
         except ValueError as error:
             raise TimeParserException(str(error)) from error
+
+    @classmethod
+    def _set_utc_if_timezone_is_missing(cls, time_object):
+        if time_object.tzinfo is None:
+            time_object = time_object.replace(tzinfo=UTC)
+        return time_object
