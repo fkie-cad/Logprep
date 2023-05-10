@@ -33,7 +33,7 @@ from typing import Any, List, Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
-from confluent_kafka import Consumer, KafkaException
+from confluent_kafka import Consumer, KafkaException, TopicPartition
 
 from logprep.abc.input import CriticalInputError, Input
 from logprep.abc.output import FatalOutputError
@@ -280,8 +280,14 @@ class ConfluentKafkaInput(Input):
                 for last_valid_records in self._last_valid_records.values():
                     try:
                         self._consumer.store_offsets(message=last_valid_records)
-                    except KafkaException as error:
-                        self._consumer.subscribe([self._config.topic])
+                    except KafkaException:
+                        topic = self._consumer.list_topics(topic=self._config.topic)
+                        partition_keys = list(topic.topics[self._config.topic].partitions.keys())
+                        partitions = [
+                            TopicPartition(self._config.topic, partition)
+                            for partition in partition_keys
+                        ]
+                        self._consumer.assign(partitions)
                         self._consumer.store_offsets(message=last_valid_records)
 
     def setup(self):
