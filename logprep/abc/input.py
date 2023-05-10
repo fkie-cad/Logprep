@@ -9,7 +9,6 @@ from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
 from typing import Optional, Tuple
-from zoneinfo import ZoneInfo
 
 from attrs import define, field, validators
 
