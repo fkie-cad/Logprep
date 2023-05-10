@@ -216,6 +216,32 @@ test_cases = [  # testcase, rule, event, expected
 
 failure_test_cases = [
     (
+        "only field does not exist",
+        {"filter": "message", "grokker": {"mapping": {"unknown": "this is the %{USER:userfield}"}}},
+        {"message": "this is the MyUser586"},
+        {"message": "this is the MyUser586", "tags": ["_grokker_failure"]},
+        "missing source_field: 'unknown'",
+    ),
+    (
+        "only one field does not exist",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {
+                    "message": "this is the %{USER:userfield}",
+                    "unknown": "this is the %{USER:userfield}",
+                }
+            },
+        },
+        {"message": "this is the MyUser586"},
+        {
+            "message": "this is the MyUser586",
+            "userfield": "MyUser586",
+            "tags": ["_grokker_failure"],
+        },
+        "missing source_field: 'unknown'",
+    ),
+    (
         "writes failure tag if no grok patterns matches",
         {
             "filter": "grok_me",

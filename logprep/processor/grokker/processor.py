@@ -57,6 +57,10 @@ class Grokker(Processor):
         matches = []
         for dotted_field, grok in rule.actions.items():
             field_value = get_dotted_field_value(event, dotted_field)
+            if field_value is None:
+                error = BaseException(f"{self.name}: missing source_field: '{dotted_field}'")
+                self._handle_warning_error(event=event, rule=rule, error=error)
+                continue
             result = grok.match(field_value)
             if result is None:
                 continue
