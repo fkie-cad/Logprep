@@ -5,6 +5,8 @@
 ### Improvements
 ### Bugfix
 
+* Fix error handling of missing source fields in grokker
+
 ## v6.2.0
 
 ### Features
