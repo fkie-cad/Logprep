@@ -278,7 +278,11 @@ class ConfluentKafkaInput(Input):
         if not self._config.enable_auto_offset_store:
             if self._last_valid_records:
                 for last_valid_records in self._last_valid_records.values():
-                    self._consumer.store_offsets(message=last_valid_records)
+                    try:
+                        self._consumer.store_offsets(message=last_valid_records)
+                    except KafkaException as error:
+                        self._consumer.subscribe([self._config.topic])
+                        self._consumer.store_offsets(message=last_valid_records)
 
     def setup(self):
         super().setup()
