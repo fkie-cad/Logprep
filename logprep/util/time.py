@@ -4,10 +4,8 @@ from typing import Union
 from zoneinfo import ZoneInfo
 
 import ciso8601
-from dateutil.tz import tzlocal
 
 UTC = ZoneInfo("UTC")
-local_timezone = tzlocal()
 
 
 class TimeParserException(Exception):
@@ -33,8 +31,7 @@ class TimeParser:
         """
         try:
             time_object = ciso8601.parse_datetime(source)  # pylint: disable=c-extension-no-member
-            if time_object.tzinfo is None:
-                time_object = time_object.replace(tzinfo=UTC)
+            time_object = cls._set_utc_if_timezone_is_missing(time_object)
             return time_object
         except ValueError as error:
             raise TimeParserException(str(error)) from error
@@ -54,12 +51,11 @@ class TimeParser:
             datetime object
         """
         time_object = datetime.fromtimestamp(timestamp)
-        if time_object.tzinfo is None:
-            time_object = time_object.replace(tzinfo=UTC)
+        time_object = cls._set_utc_if_timezone_is_missing(time_object)
         return time_object
 
-    @staticmethod
-    def now() -> datetime:
+    @classmethod
+    def now(cls) -> datetime:
         """returns the current time
 
         Returns
@@ -68,12 +64,11 @@ class TimeParser:
             current date and time as datetime
         """
         time_object = datetime.now()
-        if time_object.tzinfo is None:
-            time_object = time_object.replace(tzinfo=UTC)
+        time_object = cls._set_utc_if_timezone_is_missing(time_object)
         return time_object
 
-    @staticmethod
-    def from_format(source: str, format_str: str) -> datetime:
+    @classmethod
+    def from_format(cls, source: str, format_str: str) -> datetime:
         """parse date from format
 
         Parameters
@@ -95,8 +90,13 @@ class TimeParser:
         """
         try:
             time_object = datetime.strptime(source, format_str)
-            if time_object.tzinfo is None:
-                time_object = time_object.replace(tzinfo=UTC)
+            time_object = cls._set_utc_if_timezone_is_missing(time_object)
             return time_object
         except ValueError as error:
             raise TimeParserException(str(error)) from error
+
+    @classmethod
+    def _set_utc_if_timezone_is_missing(cls, time_object):
+        if time_object.tzinfo is None:
+            time_object = time_object.replace(tzinfo=UTC)
+        return time_object
