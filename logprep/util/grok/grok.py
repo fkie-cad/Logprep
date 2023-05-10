@@ -85,7 +85,6 @@ class Grok:
         or custom_patterns_dir.
         """
 
-        match_obj = None
         if self.fullmatch:
             match_obj = self.regex_obj.fullmatch(text)
         else:
