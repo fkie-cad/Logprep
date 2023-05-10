@@ -79,7 +79,7 @@ test_cases = [  # testcase, rule, event, expected
         },
         {
             "message": "1642160449843",
-            "@timestamp": "2022-01-14T13:40:49.843000+01:00",
+            "@timestamp": "2022-01-14T12:40:49.843000+01:00",
         },
     ),
     (
@@ -158,7 +158,7 @@ test_cases = [  # testcase, rule, event, expected
             }
         },
         {
-            "@timestamp": "2022-01-14T13:40:49.843000+01:00",
+            "@timestamp": "2022-01-14T12:40:49.843000+01:00",
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
@@ -186,7 +186,7 @@ test_cases = [  # testcase, rule, event, expected
             }
         },
         {
-            "@timestamp": "2022-01-14T13:40:49+01:00",
+            "@timestamp": "2022-01-14T12:40:49+01:00",
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,

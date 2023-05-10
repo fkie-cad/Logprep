@@ -50,7 +50,7 @@ class TimeParser:
         datetime
             datetime object
         """
-        time_object = datetime.fromtimestamp(timestamp)
+        time_object = datetime.utcfromtimestamp(timestamp)
         time_object = cls._set_utc_if_timezone_is_missing(time_object)
         return time_object
 
