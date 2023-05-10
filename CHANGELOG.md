@@ -1,6 +1,11 @@
 ## Upcoming Changes
 
 ## next release
+### Features
+### Improvements
+### Bugfix
+
+## v6.2.0
 
 ### Features
 * add `timestamper` processor to extract timestamp functionality from normalizer
