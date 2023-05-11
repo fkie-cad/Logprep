@@ -3,6 +3,10 @@
 ## next release
 ### Features
 ### Improvements
+
+* Extend the `FieldManager` such that it can move/copy multiple source fields into multiple targets
+inside one rule.
+
 ### Bugfix
 
 * Fix error handling of missing source fields in grokker
