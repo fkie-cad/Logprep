@@ -282,6 +282,93 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
     ),
+    (
+        "copies multiple fields to multiple target fields",
+        {
+            "filter": "field",
+            "field_manager": {
+                "source_fields": ["field.one", "field.two", "field.three"],
+                "target_fields": ["one", "two", "three"],
+            },
+        },
+        {"field": {"one": 1, "two": 2, "three": 3}},
+        {"field": {"one": 1, "two": 2, "three": 3}, "one": 1, "two": 2, "three": 3},
+    ),
+    (
+        "copies multiple fields to multiple target fields, while overwriting existing fields",
+        {
+            "filter": "field",
+            "field_manager": {
+                "source_fields": ["field.one", "field.two", "field.three"],
+                "target_fields": ["one", "two", "three"],
+                "overwrite_target": True,
+            },
+        },
+        {"field": {"one": 1, "two": 2, "three": 3}, "three": "exists already"},
+        {"field": {"one": 1, "two": 2, "three": 3}, "one": 1, "two": 2, "three": 3},
+    ),
+    (
+        "copies multiple fields to multiple target fields, while one list will be extended",
+        {
+            "filter": "field",
+            "field_manager": {
+                "source_fields": ["field.one", "field.two", "field.three"],
+                "target_fields": ["one", "two", "three"],
+                "extend_target_list": True,
+            },
+        },
+        {"field": {"one": 1, "two": 2, "three": 3}, "three": ["exists already"]},
+        {
+            "field": {"one": 1, "two": 2, "three": 3},
+            "one": 1,
+            "two": 2,
+            "three": ["exists already", 3],
+        },
+    ),
+    (
+        "copies multiple fields to multiple target fields, while one list will be extended with existing list",
+        {
+            "filter": "field",
+            "field_manager": {
+                "source_fields": ["field.one", "field.two", "field.three"],
+                "target_fields": ["one", "two", "three"],
+                "extend_target_list": True,
+            },
+        },
+        {"field": {"one": 1, "two": 2, "three": [3, 3]}, "three": ["exists already"]},
+        {
+            "field": {"one": 1, "two": 2, "three": [3, 3]},
+            "one": 1,
+            "two": 2,
+            "three": ["exists already", 3, 3],
+        },
+    ),
+    (
+        "copies multiple fields to multiple target fields, while one target list will be overwritten with existing list",
+        {
+            "filter": "field",
+            "field_manager": {
+                "source_fields": ["field.one", "field.two", "field.three"],
+                "target_fields": ["one", "two", "three"],
+                "overwrite_target": True,
+            },
+        },
+        {"field": {"one": 1, "two": 2, "three": [3, 3]}, "three": ["exists already"]},
+        {"field": {"one": 1, "two": 2, "three": [3, 3]}, "one": 1, "two": 2, "three": [3, 3]},
+    ),
+    (
+        "moves multiple fields to multiple target fields",
+        {
+            "filter": "field",
+            "field_manager": {
+                "source_fields": ["field.one", "field.two", "field.three"],
+                "target_fields": ["one", "two", "three"],
+                "delete_source_fields": True,
+            },
+        },
+        {"field": {"one": 1, "two": 2, "three": 3}},
+        {"one": 1, "two": 2, "three": 3},
+    ),
 ]
 
 failure_test_cases = [
@@ -296,6 +383,7 @@ failure_test_cases = [
         },
         {"message": "This is a message"},
         {"message": "This is a message", "tags": ["_field_manager_failure"]},
+        ".*ProcessingWarning.*",
     ),
     (
         "single source field not found and preexisting tags",
@@ -308,6 +396,7 @@ failure_test_cases = [
         },
         {"message": "This is a message", "tags": ["preexisting"]},
         {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
+        ".*ProcessingWarning.*",
     ),
     (
         "single source field not found and preexisting tags with deduplication",
@@ -320,8 +409,28 @@ failure_test_cases = [
         },
         {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
         {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
+        ".*ProcessingWarning.*",
     ),
-]  # testcase, rule, event, expected
+    (
+        "copies multiple fields to multiple target fields, while one target exists already",
+        {
+            "filter": "field",
+            "field_manager": {
+                "source_fields": ["field.one", "field.two", "field.three"],
+                "target_fields": ["one", "two", "three"],
+            },
+        },
+        {"field": {"one": 1, "two": 2, "three": 3}, "three": "exists"},
+        {
+            "field": {"one": 1, "two": 2, "three": 3},
+            "one": 1,
+            "two": 2,
+            "three": "exists",
+            "tags": ["_field_manager_failure"],
+        },
+        ".*FieldExistsWarning.*",
+    ),
+]  # testcase, rule, event, expected, error
 
 
 class TestFieldManager(BaseProcessorTestCase):
@@ -337,12 +446,12 @@ class TestFieldManager(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, testcase, rule, event, expected, caplog):
+    @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
+    def test_testcases_failure_handling(self, testcase, rule, event, expected, error, caplog):
         self._load_specific_rule(rule)
         with caplog.at_level(logging.WARNING):
             self.object.process(event)
-        assert re.match(".*ProcessingWarning.*", caplog.text)
+        assert re.match(error, caplog.text)
         assert event == expected, testcase
 
     def test_process_raises_duplication_error_if_target_field_exists_and_should_not_be_overwritten(

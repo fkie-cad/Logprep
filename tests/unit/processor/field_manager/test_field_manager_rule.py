@@ -1,6 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 import pytest
+
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.field_manager.rule import FieldManagerRule
 
@@ -44,10 +45,10 @@ class TestFieldManagerRule:
             (
                 {
                     "filter": "message",
-                    "field_manager": {"source_fields": ["message"], "target_fields": ["new_field"]},
+                    "field_manager": {"source_fields": ["message"], "unknown": ["new_field"]},
                 },
                 TypeError,
-                "unexpected keyword argument 'target_fields'",
+                "unexpected keyword argument 'unknown'",
             ),
             (
                 {
@@ -72,6 +73,17 @@ class TestFieldManagerRule:
                 },
                 TypeError,
                 "got an unexpected keyword argument 'delte_source_field'",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "field_manager": {
+                        "source_fields": ["field.one", "field.two"],
+                        "target_fields": ["one"],
+                    },
+                },
+                ValueError,
+                "Source fields and target fields should have the same length",
             ),
         ],
     )

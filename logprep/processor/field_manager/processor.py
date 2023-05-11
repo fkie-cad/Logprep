@@ -20,6 +20,7 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 """
+import itertools
 from typing import Any, List, Tuple
 
 from logprep.abc.processor import Processor
@@ -36,12 +37,41 @@ class FieldManager(Processor):
     def _apply_rules(self, event, rule):
         source_fields = rule.source_fields
         target_field = rule.target_field
+        target_fields = rule.target_fields
         field_values = self._get_field_values(event, rule)
         if self._has_missing_fields(event, rule, source_fields, field_values):
             return
         extend_target_list = rule.extend_target_list
         overwrite_target = rule.overwrite_target
         args = (event, target_field, field_values)
+        if target_field == "" and len(target_fields) > 0:
+            self._write_to_multiple_targets(
+                event, extend_target_list, field_values, overwrite_target, rule, target_fields
+            )
+        else:
+            self._write_to_single_target(args, extend_target_list, overwrite_target, rule)
+
+    def _write_to_multiple_targets(
+        self, event, extend_target_list, field_values, overwrite_target, rule, target_fields
+    ):
+        results = list(
+            map(
+                add_field_to,
+                itertools.repeat(event, len(target_fields)),
+                target_fields,
+                field_values,
+                itertools.repeat(extend_target_list, len(target_fields)),
+                itertools.repeat(overwrite_target, len(target_fields)),
+            )
+        )
+        if not all(results):
+            unsuccessful_indices = [i for i, x in enumerate(results) if not x]
+            unsuccessful_targets = [
+                x for i, x in enumerate(target_fields) if i in unsuccessful_indices
+            ]
+            raise FieldExistsWarning(self, rule, event, unsuccessful_targets)
+
+    def _write_to_single_target(self, args, extend_target_list, overwrite_target, rule):
         if extend_target_list and overwrite_target:
             self._overwrite_with_list_from_source_field_values(*args)
         if extend_target_list and not overwrite_target:

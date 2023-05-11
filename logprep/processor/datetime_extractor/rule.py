@@ -21,8 +21,15 @@ In the following example the timestamp will be extracted from
       target_field: 'split_@timestamp'
     description: '...'
 """
+from attr import define, field, validators
+
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
 class DatetimeExtractorRule(FieldManagerRule):
     """Check if documents match a filter."""
+
+    @define(kw_only=True)
+    class Config(FieldManagerRule.Config):
+        target_field: str = field(validator=validators.instance_of(str))
+        """The field where to write the processed values to. """
