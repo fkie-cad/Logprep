@@ -112,7 +112,7 @@ test_cases = [  # testcase, rule, event, expected
                     "winlog.event_data.normalize me!": [
                         "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
                         "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
-                        "%{IP:some_ip_3} %{NUMBER:port_3:int} bar",
+                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
                     ]
                 }
             },
@@ -132,6 +132,36 @@ test_cases = [  # testcase, rule, event, expected
             },
             "some_ip_2": "123.123.123.123",
             "port_2": 1234,
+        },
+    ),
+    (
+        "grok list match first matching after skipping non matching with same target fields",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "winlog.event_data.normalize me!": [
+                        "%{IP:some_ip} %{NUMBER:port:int} foo",
+                        "%{IP:some_ip} %{NUMBER:port:int} bar",
+                    ]
+                }
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234 bar"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234 bar"},
+            },
+            "some_ip": "123.123.123.123",
+            "port": 1234,
         },
     ),
     (

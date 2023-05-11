@@ -69,9 +69,7 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
     if not mapping:
         return mapping
 
-    def _replace_pattern(pattern):
-        if isinstance(pattern, list):
-            pattern = "|".join(pattern)
+    def _transform(pattern):
         fields = re.findall(FIELD_PATTERN, pattern)
         for dotted_field, _ in fields:
             splitted_field = dotted_field.split(".")
@@ -80,7 +78,15 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
                 pattern = re.sub(re.escape(dotted_field), replacement, pattern)
         return pattern
 
-    return {dotted_field: _replace_pattern(pattern) for dotted_field, pattern in mapping.items()}
+    def _replace_pattern(pattern):
+        if isinstance(pattern, list):
+            pattern = list(map(_transform, pattern))
+        else:
+            pattern = _transform(pattern)
+        return pattern
+
+    foo = {dotted_field: _replace_pattern(pattern) for dotted_field, pattern in mapping.items()}
+    return foo
 
 
 class GrokkerRule(DissectorRule):
@@ -95,12 +101,12 @@ class GrokkerRule(DissectorRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of((str, list)),
                 ),
-                validators.deep_mapping(
-                    key_validator=validators.instance_of(str),
-                    value_validator=validators.matches_re(MAPPING_VALIDATION_REGEX),
-                ),
+                # validators.deep_mapping(
+                #     key_validator=validators.instance_of(str),
+                #     value_validator=validators.matches_re(MAPPING_VALIDATION_REGEX),
+                # ),
                 validators.deep_iterable(
                     member_validator=validators.instance_of(str),
                     iterable_validator=validators.min_len(1),
