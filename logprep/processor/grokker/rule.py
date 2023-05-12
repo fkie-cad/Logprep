@@ -82,11 +82,10 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
         if isinstance(pattern, list):
             pattern = list(map(_transform, pattern))
         else:
-            pattern = _transform(pattern)
+            pattern = [_transform(pattern)]
         return pattern
 
-    foo = {dotted_field: _replace_pattern(pattern) for dotted_field, pattern in mapping.items()}
-    return foo
+    return {dotted_field: _replace_pattern(pattern) for dotted_field, pattern in mapping.items()}
 
 
 class GrokkerRule(DissectorRule):
@@ -101,12 +100,11 @@ class GrokkerRule(DissectorRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of((str, list)),
+                    value_validator=validators.deep_iterable(
+                        member_validator=validators.matches_re(MAPPING_VALIDATION_REGEX),
+                        iterable_validator=validators.instance_of(list),
+                    ),
                 ),
-                # validators.deep_mapping(
-                #     key_validator=validators.instance_of(str),
-                #     value_validator=validators.matches_re(MAPPING_VALIDATION_REGEX),
-                # ),
                 validators.deep_iterable(
                     member_validator=validators.instance_of(str),
                     iterable_validator=validators.min_len(1),
