@@ -69,7 +69,7 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
     if not mapping:
         return mapping
 
-    def _transform(pattern):
+    def _transform(pattern):  # nosemgrep
         fields = re.findall(FIELD_PATTERN, pattern)
         for dotted_field, _ in fields:
             splitted_field = dotted_field.split(".")
