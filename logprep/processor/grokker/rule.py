@@ -116,8 +116,8 @@ class GrokkerRule(DissectorRule):
         Dotted field notation is possible in key and in the grok pattern.
         Additionally logstash field notation is possible in grok pattern.
         The value can be a list of search patterns or a single search pattern.
-        Lists of search pattern will be joined by :code:`|` and only the first matching pattern
-        will return values.
+        Lists of search pattern will be checked in the order of the list until the first matching
+        pattern.
         It is possible to use `oniguruma` regex pattern with or without grok patterns in the
         patterns part.
         Logstashs ecs conform grok patterns are used to resolve the here used grok patterns.
@@ -132,7 +132,7 @@ class GrokkerRule(DissectorRule):
             ],
             factory=dict,
         )
-        """(Optional) additional grok patterns as mapping. E.g. :code:`CUSTOM_PATTERN: [^\s]*`
+        r"""(Optional) additional grok patterns as mapping. E.g. :code:`CUSTOM_PATTERN: [^\s]*`
         if you want to use special target fields, you are able to use them an usual in the
         mapping sections. Here you only have to declare the matching regex without named groups.
         """
