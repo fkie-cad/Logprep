@@ -96,7 +96,11 @@ class Grok:
             matches = list(map(self._map_types, matches))
         # deduplicate matches
         matches = [dict(tup) for tup in {tuple(match.items()) for match in matches}]
-        return {self.field_mapper[field_hash]: value for match in matches for field_hash, value in match.items() }
+        return {
+            self.field_mapper[field_hash]: value
+            for match in matches
+            for field_hash, value in match.items()
+        }
 
     def _map_types(self, matches):
         for key, match in matches.items():
