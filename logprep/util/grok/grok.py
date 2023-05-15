@@ -86,12 +86,12 @@ class Grok:
         """
 
         if self.fullmatch:
-            match_obj = list(map(lambda x: x.fullmatch(text), self.regex_obj))
+            match_obj = [regex_pattern.fullmatch(text) for regex_pattern in self.regex_obj]
         else:
-            match_obj = list(map(lambda x: x.search(text), self.regex_obj))
+            match_obj = [regex_pattern.search(text) for regex_pattern in self.regex_obj]
 
-        match_obj = list(filter(lambda x: x is not None, match_obj))
-        matches = list(map(lambda x: x.groupdict(), match_obj))
+        match_obj = [match for match in match_obj if match is not None]
+        matches = [match.groupdict() for match in match_obj]
         if self.type_mapper:
             matches = list(map(self._map_types, matches))
         # deduplicate matches
