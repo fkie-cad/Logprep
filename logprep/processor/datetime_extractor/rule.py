@@ -31,5 +31,12 @@ class DatetimeExtractorRule(FieldManagerRule):
 
     @define(kw_only=True)
     class Config(FieldManagerRule.Config):
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ],
+        )
+        """The fields from where to get the values which should be processed."""
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to. """

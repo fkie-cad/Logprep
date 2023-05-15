@@ -50,9 +50,22 @@ will result in the following output
     }
 
 """
+from attr import field, validators, define
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
 class DomainLabelExtractorRule(FieldManagerRule):
     """Check if documents match a filter."""
+
+    @define(kw_only=True)
+    class Config(FieldManagerRule.Config):
+        """Config for DomainLabelExtractorRule"""
+
+        source_fields: list = field(
+            validator=[
+                validators.instance_of(list),
+                validators.deep_iterable(member_validator=validators.instance_of(str)),
+            ],
+        )
+        """The fields from where to get the values which should be processed."""
