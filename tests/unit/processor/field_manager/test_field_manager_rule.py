@@ -78,12 +78,11 @@ class TestFieldManagerRule:
                 {
                     "filter": "message",
                     "field_manager": {
-                        "source_fields": ["field.one", "field.two"],
-                        "target_fields": ["one"],
+                        "mapping": {"field.one": "one", "field.two": "two"},
                     },
                 },
-                ValueError,
-                "Source fields and target fields should have the same length",
+                None,
+                None,
             ),
         ],
     )

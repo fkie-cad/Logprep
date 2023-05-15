@@ -287,8 +287,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field",
             "field_manager": {
-                "source_fields": ["field.one", "field.two", "field.three"],
-                "target_fields": ["one", "two", "three"],
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
             },
         },
         {"field": {"one": 1, "two": 2, "three": 3}},
@@ -299,8 +298,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field",
             "field_manager": {
-                "source_fields": ["field.one", "field.two", "field.three"],
-                "target_fields": ["one", "two", "three"],
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
                 "overwrite_target": True,
             },
         },
@@ -312,8 +310,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field",
             "field_manager": {
-                "source_fields": ["field.one", "field.two", "field.three"],
-                "target_fields": ["one", "two", "three"],
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
                 "extend_target_list": True,
             },
         },
@@ -330,8 +327,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field",
             "field_manager": {
-                "source_fields": ["field.one", "field.two", "field.three"],
-                "target_fields": ["one", "two", "three"],
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
                 "extend_target_list": True,
             },
         },
@@ -348,8 +344,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "field",
             "field_manager": {
-                "source_fields": ["field.one", "field.two", "field.three"],
-                "target_fields": ["one", "two", "three"],
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
                 "overwrite_target": True,
             },
         },
@@ -357,17 +352,55 @@ test_cases = [  # testcase, rule, event, expected
         {"field": {"one": 1, "two": 2, "three": [3, 3]}, "one": 1, "two": 2, "three": [3, 3]},
     ),
     (
+        "copies multiple fields to multiple target fields, while one source field is missing",
+        {
+            "filter": "field",
+            "field_manager": {
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
+            },
+        },
+        {
+            "field": {"one": 1, "three": 3},
+        },
+        {
+            "field": {"one": 1, "three": 3},
+            "one": 1,
+            "three": 3,
+            "tags": ["_field_manager_missing_field_warning"],
+        },
+    ),
+    (
         "moves multiple fields to multiple target fields",
         {
             "filter": "field",
             "field_manager": {
-                "source_fields": ["field.one", "field.two", "field.three"],
-                "target_fields": ["one", "two", "three"],
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
                 "delete_source_fields": True,
             },
         },
         {"field": {"one": 1, "two": 2, "three": 3}},
         {"one": 1, "two": 2, "three": 3},
+    ),
+    (
+        "Combine fields to list and copy fields at the same time",
+        {
+            "filter": "field",
+            "field_manager": {
+                "source_fields": ["source.one", "source.two"],
+                "target_field": "merged",
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
+                "extend_target_list": True,
+            },
+        },
+        {"field": {"one": 1, "two": 2, "three": 3}, "source": {"one": ["a"], "two": ["b"]}},
+        {
+            "field": {"one": 1, "two": 2, "three": 3},
+            "source": {"one": ["a"], "two": ["b"]},
+            "one": 1,
+            "two": 2,
+            "three": 3,
+            "merged": ["a", "b"],
+        },
     ),
 ]
 
@@ -382,7 +415,7 @@ failure_test_cases = [
             },
         },
         {"message": "This is a message"},
-        {"message": "This is a message", "tags": ["_field_manager_failure"]},
+        {"message": "This is a message", "tags": ["_field_manager_missing_field_warning"]},
         ".*ProcessingWarning.*",
     ),
     (
@@ -395,7 +428,10 @@ failure_test_cases = [
             },
         },
         {"message": "This is a message", "tags": ["preexisting"]},
-        {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
+        {
+            "message": "This is a message",
+            "tags": ["_field_manager_missing_field_warning", "preexisting"],
+        },
         ".*ProcessingWarning.*",
     ),
     (
@@ -407,8 +443,14 @@ failure_test_cases = [
                 "target_field": "new_field",
             },
         },
-        {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
-        {"message": "This is a message", "tags": ["_field_manager_failure", "preexisting"]},
+        {
+            "message": "This is a message",
+            "tags": ["_field_manager_missing_field_warning", "preexisting"],
+        },
+        {
+            "message": "This is a message",
+            "tags": ["_field_manager_missing_field_warning", "preexisting"],
+        },
         ".*ProcessingWarning.*",
     ),
     (
@@ -416,8 +458,7 @@ failure_test_cases = [
         {
             "filter": "field",
             "field_manager": {
-                "source_fields": ["field.one", "field.two", "field.three"],
-                "target_fields": ["one", "two", "three"],
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
             },
         },
         {"field": {"one": 1, "two": 2, "three": 3}, "three": "exists"},

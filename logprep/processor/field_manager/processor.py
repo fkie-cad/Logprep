@@ -26,7 +26,12 @@ from typing import Any, List, Tuple
 from logprep.abc.processor import Processor
 from logprep.processor.base.exceptions import FieldExistsWarning
 from logprep.processor.field_manager.rule import FieldManagerRule
-from logprep.util.helper import add_and_overwrite, add_field_to, get_dotted_field_value
+from logprep.util.helper import (
+    add_and_overwrite,
+    add_field_to,
+    get_dotted_field_value,
+    pop_dotted_field_value,
+)
 
 
 class FieldManager(Processor):
@@ -35,27 +40,42 @@ class FieldManager(Processor):
     rule_class = FieldManagerRule
 
     def _apply_rules(self, event, rule):
-        source_fields = rule.source_fields
-        target_field = rule.target_field
-        target_fields = rule.target_fields
-        field_values = self._get_field_values(event, rule)
-        if self._has_missing_fields(event, rule, source_fields, field_values):
-            return
-        extend_target_list = rule.extend_target_list
-        overwrite_target = rule.overwrite_target
-        args = (event, target_field, field_values)
-        if target_field == "" and len(target_fields) > 0:
-            self._write_to_multiple_targets(
-                event, extend_target_list, field_values, overwrite_target, rule, target_fields
-            )
-        else:
-            self._write_to_single_target(args, extend_target_list, overwrite_target, rule)
+        rule_args = (
+            rule.source_fields,
+            rule.target_field,
+            rule.mapping,
+            rule.extend_target_list,
+            rule.overwrite_target,
+        )
+        if rule.mapping:
+            self._apply_mapping(event, rule, rule_args)
+        if rule.source_fields and rule.target_field:
+            self._apply_single_target_processing(event, rule, rule_args)
 
-    def _write_to_multiple_targets(
-        self, event, extend_target_list, field_values, overwrite_target, rule, target_fields
-    ):
-        results = list(
-            map(
+    def _apply_single_target_processing(self, event, rule, rule_args):
+        source_fields, target_field, _, extend_target_list, overwrite_target = rule_args
+        source_field_values = self._get_field_values(event, rule.source_fields)
+        self._handle_missing_fields(event, rule, source_fields, source_field_values)
+        source_field_values = list(filter(lambda x: x is not None, source_field_values))
+        if not source_field_values:
+            return
+        args = (event, target_field, source_field_values)
+        self._write_to_single_target(args, extend_target_list, overwrite_target, rule)
+
+    def _apply_mapping(self, event, rule, rule_args):
+        source_fields, _, mapping, _, _ = rule_args
+        source_fields, targets = list(zip(*mapping.items()))
+        source_field_values = self._get_field_values(event, mapping.keys())
+        self._handle_missing_fields(event, rule, source_fields, source_field_values)
+        source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
+        self._write_to_multiple_targets(event, targets, source_field_values, rule, rule_args)
+        if rule.delete_source_fields:
+            for dotted_field in source_fields:
+                pop_dotted_field_value(event, dotted_field)
+
+    def _write_to_multiple_targets(self, event, target_fields, field_values, rule, rule_args):
+        _, _, _, extend_target_list, overwrite_target = rule_args
+        results = map(
                 add_field_to,
                 itertools.repeat(event, len(target_fields)),
                 target_fields,
@@ -63,7 +83,6 @@ class FieldManager(Processor):
                 itertools.repeat(extend_target_list, len(target_fields)),
                 itertools.repeat(overwrite_target, len(target_fields)),
             )
-        )
         if not all(results):
             unsuccessful_indices = [i for i, x in enumerate(results) if not x]
             unsuccessful_targets = [
@@ -107,15 +126,18 @@ class FieldManager(Processor):
         target_field_value = self._get_deduplicated_sorted_flatten_list(lists, other)
         add_and_overwrite(event, target_field, target_field_value)
 
-    def _has_missing_fields(self, event, rule, source_fields, field_values):
+    def _handle_missing_fields(self, event, rule, source_fields, field_values):
         if None in field_values:
             error = self._get_missing_fields_error(source_fields, field_values)
-            self._handle_warning_error(event, rule, error)
+            self._handle_warning_error(
+                event, rule, error, failure_tags=["_field_manager_missing_field_warning"]
+            )
             return True
         return False
 
-    def _get_field_values(self, event, rule):
-        return [get_dotted_field_value(event, source_field) for source_field in rule.source_fields]
+    @staticmethod
+    def _get_field_values(event, source):
+        return [get_dotted_field_value(event, source_field) for source_field in source]
 
     def _get_missing_fields_error(self, source_fields, field_values):
         missing_fields = [key for key, value in zip(source_fields, field_values) if value is None]
@@ -131,3 +153,14 @@ class FieldManager(Processor):
     @staticmethod
     def _get_deduplicated_sorted_flatten_list(lists: List[List], not_lists: List[Any]) -> List:
         return sorted(list({*sum(lists, []), *not_lists}))
+
+    @staticmethod
+    def _filter_missing_fields(source_field_values, targets):
+        if None in source_field_values:
+            mapping = [
+                (value, targets[i])
+                for i, value in enumerate(source_field_values)
+                if value is not None
+            ]
+            return list(zip(*mapping))
+        return source_field_values, targets
