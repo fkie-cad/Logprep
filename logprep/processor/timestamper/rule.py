@@ -101,6 +101,7 @@ class TimestamperRule(FieldManagerRule):
             validator=[validators.instance_of(ZoneInfo)], converter=ZoneInfo, default="UTC"
         )
         """ timezone for target_field. defaults to :code:`UTC`"""
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
     @property
     def source_format(self):

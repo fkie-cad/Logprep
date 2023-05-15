@@ -60,6 +60,7 @@ class ConcatenatorRule(FieldManagerRule):
         """The source fields that should be concatenated, can contain dotted field paths."""
         separator: str = field(validator=validators.instance_of(str))
         """The character(s) that should be used between the combined source field values."""
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
     @property
     def separator(self) -> str:  # pylint: disable=missing-docstring

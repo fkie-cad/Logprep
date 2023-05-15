@@ -55,9 +55,6 @@ class TimestampDifferRule(FieldManagerRule):
     class Config(FieldManagerRule.Config):
         """Config for TimestampDiffer"""
 
-        source_fields: list = field(factory=list, init=False, repr=False, eq=False)
-        source_field_formats: list = field(factory=list, init=False, repr=False, eq=False)
-
         diff: str = field(
             validator=[
                 validators.instance_of(str),
@@ -85,6 +82,7 @@ class TimestampDifferRule(FieldManagerRule):
         show_unit: bool = field(default=False)
         """(Optional) Specifies whether the unit (s, ms, ns) should be part of the output.
         Defaults to :code:`False`."""
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):
             field_format_str = re.findall(FIELD_PATTERN, self.diff)

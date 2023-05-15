@@ -64,3 +64,4 @@ class KeyCheckerRule(FieldManagerRule):
         """List of fields to check for."""
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to. """
+        mapping: dict = field(default="", init=False, repr=False, eq=False)

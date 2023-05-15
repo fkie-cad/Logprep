@@ -64,6 +64,7 @@ class ListComparisonRule(FieldManagerRule):
         You can also pass a template with keys from environment,
         e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
         will be filled by this processor. """
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)

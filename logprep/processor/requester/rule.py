@@ -170,6 +170,7 @@ class RequesterRule(FieldManagerRule):
         to be used on the request"""
         cert: str = field(validator=validators.instance_of(str), default="")
         """(Optional) SSL client certificate as path to ssl client cert file (.pem)."""
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):
             url_fields = re.findall(FIELD_PATTERN, self.url)

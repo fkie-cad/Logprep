@@ -38,3 +38,4 @@ class DomainResolverRule(FieldManagerRule):
             default="resolved_ip",
         )
         """The field where to write the processor output to. Defaults to :code:`resovled_ip`"""
+        mapping: dict = field(default="", init=False, repr=False, eq=False)

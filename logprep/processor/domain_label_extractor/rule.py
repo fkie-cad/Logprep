@@ -69,3 +69,4 @@ class DomainLabelExtractorRule(FieldManagerRule):
             ],
         )
         """The fields from where to get the values which should be processed."""
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
