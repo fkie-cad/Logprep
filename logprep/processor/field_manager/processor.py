@@ -76,13 +76,13 @@ class FieldManager(Processor):
     def _write_to_multiple_targets(self, event, target_fields, field_values, rule, rule_args):
         _, _, _, extend_target_list, overwrite_target = rule_args
         results = map(
-                add_field_to,
-                itertools.repeat(event, len(target_fields)),
-                target_fields,
-                field_values,
-                itertools.repeat(extend_target_list, len(target_fields)),
-                itertools.repeat(overwrite_target, len(target_fields)),
-            )
+            add_field_to,
+            itertools.repeat(event, len(target_fields)),
+            target_fields,
+            field_values,
+            itertools.repeat(extend_target_list, len(target_fields)),
+            itertools.repeat(overwrite_target, len(target_fields)),
+        )
         if not all(results):
             unsuccessful_indices = [i for i, x in enumerate(results) if not x]
             unsuccessful_targets = [
