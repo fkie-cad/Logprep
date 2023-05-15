@@ -277,12 +277,14 @@ class Processor(Component):
                 return False
         return True
 
-    def _handle_warning_error(self, event, rule, error):
+    def _handle_warning_error(self, event, rule, error, failure_tags=None):
         tags = get_dotted_field_value(event, "tags")
+        if failure_tags is None:
+            failure_tags = rule.failure_tags
         if tags is None:
-            add_and_overwrite(event, "tags", sorted(list({*rule.failure_tags})))
+            add_and_overwrite(event, "tags", sorted(list({*failure_tags})))
         else:
-            add_and_overwrite(event, "tags", sorted(list({*tags, *rule.failure_tags})))
+            add_and_overwrite(event, "tags", sorted(list({*tags, *failure_tags})))
         if isinstance(error, ProcessingWarning):
             self._logger.warning(str(error))
         else:
