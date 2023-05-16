@@ -332,9 +332,9 @@ class TestDissectorRule:
         }
         dissector_rule = DissectorRule._create_from_dict(rule)
         assert dissector_rule.actions
-        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", 0)
-        assert dissector_rule.actions[1] == ("field1", " ", "field3", add_and_overwrite, "", 0)
-        assert dissector_rule.actions[2] == ("field1", None, "field4", add_and_overwrite, "", 0)
+        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
+        assert dissector_rule.actions[1] == ("field1", " ", "field3", add_and_overwrite, "", None, 0)
+        assert dissector_rule.actions[2] == ("field1", None, "field4", add_and_overwrite, "", None, 0)
 
     def test_converts_mappings_with_append_operator_to_append_field_to_action(self):
         rule = {
@@ -346,9 +346,9 @@ class TestDissectorRule:
         }
         dissector_rule = DissectorRule._create_from_dict(rule)
         assert dissector_rule.actions
-        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", 0)
-        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "", 0)
-        assert dissector_rule.actions[2] == ("field1", None, "field4", add_and_overwrite, "", 0)
+        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "",  None, 0)
+        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "",  None, 0)
+        assert dissector_rule.actions[2] == ("field1", None, "field4", add_and_overwrite, "",  None, 0)
 
     def test_converts_mappings_with_append_operator_and_order_modifier(self):
         rule = {
@@ -360,9 +360,9 @@ class TestDissectorRule:
         }
         dissector_rule = DissectorRule._create_from_dict(rule)
         assert dissector_rule.actions
-        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", 0)
-        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "", 1)
-        assert dissector_rule.actions[2] == ("field1", None, "field4", append, "", 3)
+        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "",  None,0)
+        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "",  None,1)
+        assert dissector_rule.actions[2] == ("field1", None, "field4", append, "",  None,3)
 
     def test_adds_convert_actions(self):
         rule = {"filter": "message", "dissector": {"convert_datatype": {"field1": "int"}}}
@@ -401,9 +401,9 @@ class TestDissectorRule:
         }
         dissector_rule = DissectorRule._create_from_dict(rule)
         assert dissector_rule.actions
-        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", 0)
-        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, " ", 1)
-        assert dissector_rule.actions[2] == ("field1", None, "field4", append, ",", 3)
+        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
+        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, " ", None, 1)
+        assert dissector_rule.actions[2] == ("field1", None, "field4", append, ",", None, 3)
 
     def test_parses_defined_multichar_separator(self):
         rule = {
@@ -415,9 +415,9 @@ class TestDissectorRule:
         }
         dissector_rule = DissectorRule._create_from_dict(rule)
         assert dissector_rule.actions
-        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", 0)
-        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "separator", 1)
-        assert dissector_rule.actions[2] == ("field1", None, "field4", append, ",", 3)
+        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
+        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "separator", None, 1)
+        assert dissector_rule.actions[2] == ("field1", None, "field4", append, ",", None, 3)
 
     def test_parses_defined_special_chars_separator(self):
         rule = {
@@ -429,9 +429,9 @@ class TestDissectorRule:
         }
         dissector_rule = DissectorRule._create_from_dict(rule)
         assert dissector_rule.actions
-        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", 0)
-        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "(", 1)
-        assert dissector_rule.actions[2] == ("field1", None, "field4", append, ")", 3)
+        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
+        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "(", None, 1)
+        assert dissector_rule.actions[2] == ("field1", None, "field4", append, ")", None, 3)
 
     def test_parses_defined_very_special_chars_separator(self):
         rule = {
@@ -443,9 +443,9 @@ class TestDissectorRule:
         }
         dissector_rule = DissectorRule._create_from_dict(rule)
         assert dissector_rule.actions
-        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", 0)
-        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "#", 1)
-        assert dissector_rule.actions[2] == ("field1", None, "field4", append, "}", 3)
+        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
+        assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "#", None, 1)
+        assert dissector_rule.actions[2] == ("field1", None, "field4", append, "}", None, 3)
 
     def test_parses_datatype_conversion_from_dissect_pattern(self):
         rule = {

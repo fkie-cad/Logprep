@@ -395,14 +395,14 @@ test_cases = [  # testcase, rule, event, expected
         "handles special chars in captured content and target field names",
         {
             "filter": "message",
-            "dissector": {"mapping": {"message": "%{~field1} %{fie ld2} %{-fie}ld3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{~field1} %{fie ld2} %{$fie}ld3} %{+field4}"}},
         },
         {"message": "&This is\2 a mess}age /1"},
         {
             "message": "&This is\2 a mess}age /1",
             "~field1": "&This",
             "fie ld2": "is\2",
-            "-fie}ld3": "a",
+            "$fie}ld3": "a",
             "field4": "mess}age /1",
         },
     ),
@@ -493,6 +493,19 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "this is 42 message and this is 0"},
         {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
+    ),
+    (
+        "Strip char after dissecting",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "[%{time-( )}] - %{ip}"
+                }
+            },
+        },
+        {"message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1"},
+        {"message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
     ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected

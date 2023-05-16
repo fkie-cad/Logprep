@@ -53,7 +53,7 @@ append to a preexisting target field value, as string or list, you have to use
 the :code:`+` operator. If you want to use a prefix before the appended string use this notation
 :code:`+( )`. In this example a whitespace would be added before the extracted string is added.
 If you want to use the symbols :code:`(` or :code:`)` as your separator, you have to escape with
-:code:`\` (e.g. :code:`+(\()`)
+:code:`\\\` (e.g. :code:`+(\\\()`).
 
 It is possible to capture the target field name from the source field value with the notation
 :code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern
@@ -98,17 +98,18 @@ VALID_POSITION = r"(\/\d*)"
 VALID_DATATYPE = r"(\|(int|float|str|bool))"
 POSITION_OR_DATATYPE = rf"({VALID_POSITION}|{VALID_DATATYPE})"
 DISSECT = rf"{START}{VALID_ACTION}?{VALID_TARGET_FIELD}{POSITION_OR_DATATYPE}?{END}"
-DELIMETER = r"([^%]+)"
+DELIMITER = r"([^%]+)"
 ACTION = r"(?P<action>[+])?"
+STRIP_CHAR = r"(-\((?P<strip>.)\))?"
 SEPERATOR = r"(\((?P<separator>.+)\))?"
-TARGET_FIELD = r"(?P<target_field>[^\/\|]*)"
+TARGET_FIELD = r"(?P<target_field>[^\/\|-]*)"
 POSITION = r"(\/(?P<position>\d*))?"
 DATATYPE = r"(\|(?P<datatype>int|float|bool))?"
 SECTION_MATCH = (
-    rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{POSITION}{DATATYPE}{END}(?P<delimeter>.*)"
+    rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{POSITION}{DATATYPE}{STRIP_CHAR}{END}(?P<delimiter>.*)"
 )
 
-MAPPING_VALIDATION_REGEX = re.compile(rf"^({DELIMETER})?({DISSECT}{DELIMETER})+({DISSECT})?$")
+MAPPING_VALIDATION_REGEX = re.compile(rf"^({DELIMITER})?({DISSECT}{DELIMITER})+({DISSECT})?$")
 
 
 def _do_nothing(*_):
@@ -176,8 +177,9 @@ class DissectorRule(FieldManagerRule):
 
     _config: "DissectorRule.Config"
 
-    actions: List[Tuple[str, str, str, Callable, int]]
-    """list tuple format (<source_field>, <separator>, <target_field>, <function>), <position> """
+    actions: List[Tuple[str, str, str, Callable, str, str, int]]
+    """list tuple format (source_field, delimiter, target_field, action, separator, strip_char,
+    position)"""
 
     convert_actions: List[Tuple[str, Callable]]
     """list tuple format <target_field>, <converter callable>"""
@@ -206,16 +208,17 @@ class DissectorRule(FieldManagerRule):
                 separator = separator.replace("\\)", ")")
                 action_key = section_match.group("action")
                 target_field = section_match.group("target_field")
+                strip_char = section_match.group("strip")
                 datatype = section_match.group("datatype")
                 position = section_match.group("position")
                 if datatype is not None:
                     self._config.convert_datatype.update({target_field: datatype})
-                delimeter = section_match.group("delimeter")
-                delimeter = None if delimeter == "" else delimeter
+                delimiter = section_match.group("delimiter")
+                delimiter = None if delimiter == "" else delimiter
                 position = int(position) if position is not None else 0
                 action = self._actions_mapping.get(action_key) if target_field else _do_nothing
                 self.actions.append(
-                    (source_field, delimeter, target_field, action, separator, position)
+                    (source_field, delimiter, target_field, action, separator, strip_char, position)
                 )
 
     def _set_convert_actions(self):

@@ -2,6 +2,10 @@
 
 ## next release
 ### Features
+
+* Extend dissector such that it can trim characters around dissected field with `%{field-( )}`
+notation.
+ 
 ### Improvements
 ### Bugfix
 
