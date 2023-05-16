@@ -60,6 +60,13 @@ It is possible to capture the target field name from the source field value with
 this can be referred to with the notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`).
 References can be combined with the append operator.
 
+Furthermore, it is possible to remove unwanted padding characters around a dissected pattern.
+If for example you have a field like :code:`"[2022-11-04 10:00:00 AM     ] - 127.0.0.1"` and you
+want to extract the timestamp and the ip, you can use the dissect-pattern
+:code:`[%{time-( )}] - %{ip}` to remove the unwanted spaces after the 'AM'. The sequence
+:code:`-( )` specifies that the space char should be removed. Between the brackets you can specify
+any character.
+
 Optional convert datatype can be provided after the key using :code:`|` as separator
 to convert the value from string to :code:`int`, :code:`float` or :code:`bool`.
 The conversion to :code:`bool` is interpreted by meaning.
