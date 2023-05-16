@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=anomalous-backslash-in-string
+# pylint: disable=line-too-long
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError

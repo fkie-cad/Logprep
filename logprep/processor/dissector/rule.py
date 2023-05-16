@@ -118,9 +118,7 @@ SEPERATOR = r"(\((?P<separator>\\\)|[^)]+)\))?"
 TARGET_FIELD = r"(?P<target_field>[^\/\|-]*)"
 POSITION = r"(\/(?P<position>\d*))?"
 DATATYPE = r"(\|(?P<datatype>int|float|bool))?"
-SECTION_MATCH = (
-    rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{STRIP_CHAR}{POSITION}{DATATYPE}{END}(?P<delimiter>.*)"
-)
+SECTION_MATCH = rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{STRIP_CHAR}{POSITION}{DATATYPE}{END}(?P<delimiter>.*)"
 
 MAPPING_VALIDATION_REGEX = re.compile(rf"^({DELIMITER})?({DISSECT}{DELIMITER})+({DISSECT})?$")
 

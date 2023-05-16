@@ -47,7 +47,15 @@ class Dissector(Processor):
         current_field = None
         target_field_mapping = {}
         for rule_action in rule.actions:
-            source_field, delimiter, target_field, rule_action, separator, strip_char, position = rule_action
+            (
+                source_field,
+                delimiter,
+                target_field,
+                rule_action,
+                separator,
+                strip_char,
+                position,
+            ) = rule_action
             if current_field != source_field:
                 current_field = source_field
                 loop_content = get_dotted_field_value(event, current_field)

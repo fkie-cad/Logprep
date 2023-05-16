@@ -498,79 +498,81 @@ test_cases = [  # testcase, rule, event, expected
         "Strip char after dissecting",
         {
             "filter": "message",
-            "dissector": {
-                "mapping": {
-                    "message": "[%{time-( )}] - %{ip}"
-                }
-            },
+            "dissector": {"mapping": {"message": "[%{time-( )}] - %{ip}"}},
         },
         {"message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1"},
-        {"message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
     ),
     (
         "Strip special char after dissecting",
         {
             "filter": "message",
-            "dissector": {
-                "mapping": {
-                    "message": "[%{time-(#)}] - %{ip}"
-                }
-            },
+            "dissector": {"mapping": {"message": "[%{time-(#)}] - %{ip}"}},
         },
         {"message": "[2022-11-04 10:00:00 AM####] - 127.0.0.1"},
-        {"message": "[2022-11-04 10:00:00 AM####] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM####] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
     ),
     (
         "Strip another special char after dissecting",
         {
             "filter": "message",
-            "dissector": {
-                "mapping": {
-                    "message": "[%{time-(?)}] - %{ip}"
-                }
-            },
+            "dissector": {"mapping": {"message": "[%{time-(?)}] - %{ip}"}},
         },
         {"message": "[2022-11-04 10:00:00 AM?????] - 127.0.0.1"},
-        {"message": "[2022-11-04 10:00:00 AM?????] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM?????] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
     ),
     (
         "Strip char on both sides",
         {
             "filter": "message",
-            "dissector": {
-                "mapping": {
-                    "message": "[%{time-(*)}] - %{ip}"
-                }
-            },
+            "dissector": {"mapping": {"message": "[%{time-(*)}] - %{ip}"}},
         },
         {"message": "[***2022-11-04 10:00:00 AM***] - 127.0.0.1"},
-        {"message": "[***2022-11-04 10:00:00 AM***] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+        {
+            "message": "[***2022-11-04 10:00:00 AM***] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
     ),
     (
         "Strip char while appending",
         {
             "filter": "message",
-            "dissector": {
-                "mapping": {
-                    "message": "[%{time} %{+( )time} %{+( )time-(*)}] - %{ip}"
-                }
-            },
+            "dissector": {"mapping": {"message": "[%{time} %{+( )time} %{+( )time-(*)}] - %{ip}"}},
         },
         {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1"},
-        {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
     ),
     (
         "Strip char while changing position",
         {
             "filter": "message",
             "dissector": {
-                "mapping": {
-                    "message": "[%{time/1} %{+( )time/3} %{+( )time-(*)/2}] - %{ip}"
-                }
+                "mapping": {"message": "[%{time/1} %{+( )time/3} %{+( )time-(*)/2}] - %{ip}"}
             },
         },
         {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1"},
-        {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1", "time": "2022-11-04 AM 10:00:00", "ip": "127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1",
+            "time": "2022-11-04 AM 10:00:00",
+            "ip": "127.0.0.1",
+        },
     ),
     (
         "Strip char in indirect field notation",
@@ -586,7 +588,9 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "message",
             "dissector": {
-                "mapping": {"message": "this is %{field1-(#)|int} message and this is %{field2-(#)|bool}"}
+                "mapping": {
+                    "message": "this is %{field1-(#)|int} message and this is %{field2-(#)|bool}"
+                }
             },
         },
         {"message": "this is 42#### message and this is 0##"},
