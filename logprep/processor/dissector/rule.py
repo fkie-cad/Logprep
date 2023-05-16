@@ -44,33 +44,39 @@ Given a dissect pattern of :code:`%{field1} %{field2}` the source field value wi
 everything before the first whitespace which would be written into the field `field1` and everything
 after the first whitespace which would be written into the field `field2`.
 
-The string surrounded by :code:`%{` and :code:`}` is the desired target field. This can be declared
+The string between :code:`%{` and :code:`}` is the desired target field. This can be declared
 in dotted field notation (e.g. :code:`%{target.subfield1.subfield2}`). Every subfield between the
 first and the last subfield will be created if necessary.
 
-By default the target field will always be overwritten with the captured value. If you want to
+By default, the target field will always be overwritten with the captured value. If you want to
 append to a preexisting target field value, as string or list, you have to use
 the :code:`+` operator. If you want to use a prefix before the appended string use this notation
 :code:`+( )`. In this example a whitespace would be added before the extracted string is added.
 If you want to use the symbols :code:`(` or :code:`)` as your separator, you have to escape with
 :code:`\\\` (e.g. :code:`+(\\\()`).
 
-It is possible to capture the target field name from the source field value with the notation
+If you want to remove unwanted padding characters around a dissected pattern you have to use the
+:code:`-(<char>)` notation, while :code:`<char>` can be any character similar to the :code:`+( )`
+notation. If for example you have a field like
+:code:`"[2022-11-04 10:00:00 AM     ] - 127.0.0.1"` and you want to extract the timestamp and the
+ip, you can use the dissect-pattern :code:`[%{time-( )}] - %{ip}` to remove the unwanted spaces
+after the 'AM'. This works independent of the number of spaces.
+
+It is also possible to capture the target field name from the source field value with the notation
 :code:`%{?<your name for the reference>}` (e.g. :code:`%{?key1}`). In the same dissection pattern
 this can be referred to with the notation :code:`%{&<the reference>}` (e.g. :code:`%{&key1}`).
-References can be combined with the append operator.
+References can be combined with the append operator. For examples see below.
 
-Furthermore, it is possible to remove unwanted padding characters around a dissected pattern.
-If for example you have a field like :code:`"[2022-11-04 10:00:00 AM     ] - 127.0.0.1"` and you
-want to extract the timestamp and the ip, you can use the dissect-pattern
-:code:`[%{time-( )}] - %{ip}` to remove the unwanted spaces after the 'AM'. The sequence
-:code:`-( )` specifies that the space char should be removed. Between the brackets you can specify
-any character.
-
-Optional convert datatype can be provided after the key using :code:`|` as separator
+Additionally an optional convert datatype can be provided after the key using :code:`|` as separator
 to convert the value from string to :code:`int`, :code:`float` or :code:`bool`.
 The conversion to :code:`bool` is interpreted by meaning.
-(e.g. :code:`yes` is translated to :code:`True`)
+(e.g. :code:`yes` is translated to :code:`True`). When removing padding characters at the same time
+then the conversion has to come after the padding character (e.g. :code:`%{field2-(#)|bool}`).
+
+If you want to reorder parts of a dissection you can give the order by adding :code:`/<position>` to
+the dissect pattern. A valid example would be: :code:`%{time/1} %{+time/3} %{+time/2}`. When
+removing padding characters at the same time then the position has to come after the padding
+character (e.g. :code:`%{time-(*)/2}`).
 
 .. autoclass:: logprep.processor.dissector.rule.DissectorRule.Config
    :members:
@@ -113,7 +119,7 @@ TARGET_FIELD = r"(?P<target_field>[^\/\|-]*)"
 POSITION = r"(\/(?P<position>\d*))?"
 DATATYPE = r"(\|(?P<datatype>int|float|bool))?"
 SECTION_MATCH = (
-    rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{POSITION}{DATATYPE}{STRIP_CHAR}{END}(?P<delimiter>.*)"
+    rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{STRIP_CHAR}{POSITION}{DATATYPE}{END}(?P<delimiter>.*)"
 )
 
 MAPPING_VALIDATION_REGEX = re.compile(rf"^({DELIMITER})?({DISSECT}{DELIMITER})+({DISSECT})?$")

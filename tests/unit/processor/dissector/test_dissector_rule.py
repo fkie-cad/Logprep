@@ -447,6 +447,20 @@ class TestDissectorRule:
         assert dissector_rule.actions[1] == ("field1", " ", "field3", append, "#", None, 1)
         assert dissector_rule.actions[2] == ("field1", None, "field4", append, "}", None, 3)
 
+    def test_parses_strip_char(self):
+        rule = {
+            "filter": "message",
+            "dissector": {
+                "mapping": {"field1": "%{field2}:%{field3} %{field4-( )}"},
+                "tag_on_failure": ["_failed"],
+            },
+        }
+        dissector_rule = DissectorRule._create_from_dict(rule)
+        assert dissector_rule.actions
+        assert dissector_rule.actions[0] == ("field1", ":", "field2", add_and_overwrite, "", None, 0)
+        assert dissector_rule.actions[1] == ("field1", " ", "field3", add_and_overwrite, "", None, 0)
+        assert dissector_rule.actions[2] == ("field1", None, "field4", add_and_overwrite, "", " ", 0)
+
     def test_parses_datatype_conversion_from_dissect_pattern(self):
         rule = {
             "filter": "message",

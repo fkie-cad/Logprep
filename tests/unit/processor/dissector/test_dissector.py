@@ -559,6 +559,39 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1"},
         {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
     ),
+    (
+        "Strip char while changing position",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "[%{time/1} %{+( )time/3} %{+( )time-(*)/2}] - %{ip}"
+                }
+            },
+        },
+        {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1"},
+        {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1", "time": "2022-11-04 AM 10:00:00", "ip": "127.0.0.1"},
+    ),
+    (
+        "Strip char in indirect field notation",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "%{?key} %{&key-(#)} %{} %{+( )&key-(#)}"}},
+        },
+        {"message": "This is## the message####"},
+        {"message": "This is## the message####", "This": "is message"},
+    ),
+    (
+        "Strip char while inferring datatype",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {"message": "this is %{field1-(#)|int} message and this is %{field2-(#)|bool}"}
+            },
+        },
+        {"message": "this is 42#### message and this is 0##"},
+        {"message": "this is 42#### message and this is 0##", "field1": 42, "field2": False},
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (
