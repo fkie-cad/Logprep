@@ -478,7 +478,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "Dissection with delimeter ending",
+        "Dissection with delimiter ending",
         {"filter": "message", "dissector": {"mapping": {"message": "this is %{target}."}}},
         {"message": "this is the message."},
         {"message": "this is the message.", "target": "the message"},
@@ -506,6 +506,58 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1"},
         {"message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+    ),
+    (
+        "Strip special char after dissecting",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "[%{time-(#)}] - %{ip}"
+                }
+            },
+        },
+        {"message": "[2022-11-04 10:00:00 AM####] - 127.0.0.1"},
+        {"message": "[2022-11-04 10:00:00 AM####] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+    ),
+    (
+        "Strip another special char after dissecting",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "[%{time-(?)}] - %{ip}"
+                }
+            },
+        },
+        {"message": "[2022-11-04 10:00:00 AM?????] - 127.0.0.1"},
+        {"message": "[2022-11-04 10:00:00 AM?????] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+    ),
+    (
+        "Strip char on both sides",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "[%{time-(*)}] - %{ip}"
+                }
+            },
+        },
+        {"message": "[***2022-11-04 10:00:00 AM***] - 127.0.0.1"},
+        {"message": "[***2022-11-04 10:00:00 AM***] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
+    ),
+    (
+        "Strip char while appending",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "[%{time} %{+( )time} %{+( )time-(*)}] - %{ip}"
+                }
+            },
+        },
+        {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1"},
+        {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1", "time": "2022-11-04 10:00:00 AM", "ip": "127.0.0.1"},
     ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
