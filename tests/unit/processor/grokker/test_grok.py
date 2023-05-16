@@ -39,7 +39,7 @@ def test_one_pat_4():
     pat = "%{HOSTNAME:website}"
     grok = Grok(pat)
     match = grok.match(text)
-    assert match["website"] == text.strip(), f"grok match failed:{text}, {pat}"
+    assert match["website"] == text.strip(), f"grok match failed: {text}, {pat}"
 
 
 def test_one_pat_5():
@@ -47,7 +47,7 @@ def test_one_pat_5():
     pat = "%{TIMESTAMP_ISO8601:ts}"
     grok = Grok(pat)
     match = grok.match(text)
-    assert match["ts"] == text.strip(), f"grok match failed:{text}, {pat}"
+    assert match["ts"] == text.strip(), f"grok match failed: {text}, {pat}"
 
 
 def test_one_pat_6():
@@ -55,7 +55,7 @@ def test_one_pat_6():
     pat = "%{WORD}"
     grok = Grok(pat)
     match = grok.match(text)
-    assert match == {}, f"grok match failed:{text}, {pat}"
+    assert match == {}, f"grok match failed: {text}, {pat}"
     # you get nothing because variable name is not set,
     # compare "%{WORD}" and "%{WORD:variable_name}"
 
@@ -65,7 +65,7 @@ def test_one_pat_7():
     pat = "%{NUMBER:test_num}"
     grok = Grok(pat)
     match = grok.match(text)
-    assert match is None, f"grok match failed:{text}, {pat}"
+    assert match == {}, f"grok match failed: {text}, {pat}"
     # not match
 
 
@@ -98,7 +98,7 @@ def test_multiple_pats():
     pat = "%{WORD:name} %{INT:age} %{QUOTEDSTRING:motto}"
     grok = Grok(pat)
     match = grok.match(text)
-    assert match is None, f"grok match failed:{text}, {pat}"
+    assert match == {}, f"grok match failed:{text}, {pat}"
 
     # nginx log
     text = (

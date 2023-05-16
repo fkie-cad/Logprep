@@ -296,7 +296,7 @@ class TestGrokkerRule:
                         "mapping": {"message": "this is a %{USER:[user][username]}"},
                     },
                 },
-                {"message": "this is a %{USER:[user][username]}"},
+                {"message": ["this is a %{USER:[user][username]}"]},
             ),
             (
                 {
@@ -305,7 +305,7 @@ class TestGrokkerRule:
                         "mapping": {"message": "this is a %{USER:user.username}"},
                     },
                 },
-                {"message": "this is a %{USER:[user][username]}"},
+                {"message": ["this is a %{USER:[user][username]}"]},
             ),
             (
                 {
@@ -314,7 +314,7 @@ class TestGrokkerRule:
                         "mapping": {"message": "this is a %{USER:user.username.firstname}"},
                     },
                 },
-                {"message": "this is a %{USER:[user][username][firstname]}"},
+                {"message": ["this is a %{USER:[user][username][firstname]}"]},
             ),
             (
                 {
@@ -323,7 +323,7 @@ class TestGrokkerRule:
                         "mapping": {"message": "this is a %{USER:user}"},
                     },
                 },
-                {"message": "this is a %{USER:user}"},
+                {"message": ["this is a %{USER:user}"]},
             ),
         ],
     )

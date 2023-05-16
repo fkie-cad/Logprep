@@ -62,7 +62,7 @@ class Grokker(Processor):
                 self._handle_warning_error(event=event, rule=rule, error=error)
                 continue
             result = grok.match(field_value)
-            if result is None:
+            if result is None or result == {}:
                 continue
             matches.append(True)
             for dotted_field, value in result.items():

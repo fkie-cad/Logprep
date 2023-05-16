@@ -6,6 +6,7 @@
 ### Bugfix
 
 * Fix error handling of missing source fields in grokker
+* Fix using same output fields in list of grok pattern in grokker
 
 ## v6.2.0
 

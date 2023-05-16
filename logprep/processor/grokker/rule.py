@@ -69,15 +69,20 @@ def _dotted_field_to_logstash_converter(mapping: dict) -> dict:
     if not mapping:
         return mapping
 
-    def _replace_pattern(pattern):
-        if isinstance(pattern, list):
-            pattern = "|".join(pattern)
+    def _transform(pattern):  # nosemgrep
         fields = re.findall(FIELD_PATTERN, pattern)
         for dotted_field, _ in fields:
             splitted_field = dotted_field.split(".")
             if len(splitted_field) > 1:
                 replacement = "".join(f"[{element}]" for element in splitted_field)
                 pattern = re.sub(re.escape(dotted_field), replacement, pattern)
+        return pattern
+
+    def _replace_pattern(pattern):
+        if isinstance(pattern, list):
+            pattern = list(map(_transform, pattern))
+        else:
+            pattern = [_transform(pattern)]
         return pattern
 
     return {dotted_field: _replace_pattern(pattern) for dotted_field, pattern in mapping.items()}
@@ -95,11 +100,10 @@ class GrokkerRule(DissectorRule):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(str),
-                ),
-                validators.deep_mapping(
-                    key_validator=validators.instance_of(str),
-                    value_validator=validators.matches_re(MAPPING_VALIDATION_REGEX),
+                    value_validator=validators.deep_iterable(
+                        member_validator=validators.matches_re(MAPPING_VALIDATION_REGEX),
+                        iterable_validator=validators.instance_of(list),
+                    ),
                 ),
                 validators.deep_iterable(
                     member_validator=validators.instance_of(str),
@@ -112,8 +116,8 @@ class GrokkerRule(DissectorRule):
         Dotted field notation is possible in key and in the grok pattern.
         Additionally logstash field notation is possible in grok pattern.
         The value can be a list of search patterns or a single search pattern.
-        Lists of search pattern will be joined by :code:`|` and only the first matching pattern
-        will return values.
+        Lists of search pattern will be checked in the order of the list until the first matching
+        pattern.
         It is possible to use `oniguruma` regex pattern with or without grok patterns in the
         patterns part.
         Logstashs ecs conform grok patterns are used to resolve the here used grok patterns.
@@ -128,7 +132,7 @@ class GrokkerRule(DissectorRule):
             ],
             factory=dict,
         )
-        """(Optional) additional grok patterns as mapping. E.g. :code:`CUSTOM_PATTERN: [^\s]*`
+        r"""(Optional) additional grok patterns as mapping. E.g. :code:`CUSTOM_PATTERN: [^\s]*`
         if you want to use special target fields, you are able to use them an usual in the
         mapping sections. Here you only have to declare the matching regex without named groups.
         """

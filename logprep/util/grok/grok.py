@@ -52,7 +52,7 @@ class Grok:
     grok_pattern = re.compile(GROK)
     oniguruma = re.compile(ONIGURUMA)
 
-    pattern: str = field(validator=validators.instance_of(str))
+    pattern: str = field(validator=validators.instance_of((str, list)))
     custom_patterns_dir: str = field(default="")
     custom_patterns: dict = field(factory=dict)
     fullmatch: bool = field(default=True)
@@ -79,26 +79,35 @@ class Grok:
     def match(self, text):
         """If text is matched with pattern, return variable names
         specified(%{pattern:variable name}) in pattern and their
-        corresponding values.If not matched, return None.
+        corresponding values. If not matched, return None.
         custom patterns can be passed in by
         custom_patterns(pattern name, pattern regular expression pair)
         or custom_patterns_dir.
         """
 
         if self.fullmatch:
-            match_obj = self.regex_obj.fullmatch(text)
+            match_obj = [regex_pattern.fullmatch(text) for regex_pattern in self.regex_obj]
         else:
-            match_obj = self.regex_obj.search(text)
+            match_obj = [regex_pattern.search(text) for regex_pattern in self.regex_obj]
 
-        if match_obj is None:
-            return None
-        matches = match_obj.groupdict()
+        match_obj = [match for match in match_obj if match is not None]
+        matches = [match.groupdict() for match in match_obj]
         if self.type_mapper:
-            for key, match in matches.items():
-                type_ = INT_FLOAT.get(self.type_mapper.get(key))
-                if type_ is not None and match is not None:
-                    matches[key] = type_(match)
-        return {self.field_mapper[field_hash]: value for field_hash, value in matches.items()}
+            matches = list(map(self._map_types, matches))
+        # deduplicate matches
+        matches = [dict(tup) for tup in {tuple(match.items()) for match in matches}]
+        return {
+            self.field_mapper[field_hash]: value
+            for match in matches
+            for field_hash, value in match.items()
+        }
+
+    def _map_types(self, matches):
+        for key, match in matches.items():
+            type_ = INT_FLOAT.get(self.type_mapper.get(key))
+            if type_ is not None and match is not None:
+                matches[key] = type_(match)
+        return matches
 
     def set_search_pattern(self, pattern=None):
         """sets the search pattern"""
@@ -147,6 +156,12 @@ class Grok:
 
     def _load_search_pattern(self):
         py_regex_pattern = self.pattern
+        if isinstance(py_regex_pattern, list):
+            self.regex_obj = list(map(self._compile_pattern, py_regex_pattern))
+        else:
+            self.regex_obj = [self._compile_pattern(py_regex_pattern)]
+
+    def _compile_pattern(self, py_regex_pattern):
         while re.search(Grok.oniguruma, py_regex_pattern):
             py_regex_pattern = re.sub(
                 Grok.oniguruma,
@@ -161,8 +176,7 @@ class Grok:
                 py_regex_pattern,
                 count=1,
             )
-
-        self.regex_obj = re.compile(py_regex_pattern)
+        return re.compile(py_regex_pattern)
 
 
 def _reload_patterns(patterns_dirs):
