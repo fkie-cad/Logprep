@@ -1,11 +1,11 @@
 """
 GenericResolver
----------------
+===============
 
 The `generic_resolver` resolves log event values using regex lists.
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -15,6 +15,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.generic_resolver.processor.GenericResolver.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.generic_resolver.rule
 """
 import re
 from logging import Logger

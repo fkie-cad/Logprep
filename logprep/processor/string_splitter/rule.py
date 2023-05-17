@@ -1,9 +1,6 @@
 """
-StringSplitter
-==============
-
-The `string_splitter` processor splits string by whitespace (default) or a given delimeter and
-writes the resulting list to a target field.
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 A speaking example:
 
@@ -45,6 +42,7 @@ Examples for string_splitter:
 """
 
 from attrs import define, field, validators
+
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 

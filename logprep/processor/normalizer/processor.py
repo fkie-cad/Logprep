@@ -1,10 +1,11 @@
 """
 Normalizer
-----------
+==========
+
 The Normalizer copies specific values to configurable fields.
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 
 ..  code-block:: yaml
     :linenos:
@@ -21,6 +22,14 @@ Example
             count_directory_path: "path/to/directory"
             write_period: 0.1
             lock_file_path: "path/to/lock/file"
+
+.. autoclass:: logprep.processor.normalizer.processor.Normalizer.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.normalizer.rule
 
 """
 import calendar

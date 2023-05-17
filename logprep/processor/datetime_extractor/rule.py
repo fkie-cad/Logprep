@@ -1,6 +1,6 @@
 """
-Datetime Extractor
-==================
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The datetime extractor requires the additional field :code:`datetime_extractor`.
 The additional fields :code:`datetime_extractor.source_fields` and
@@ -20,6 +20,12 @@ In the following example the timestamp will be extracted from
       source_fields: ['@timestamp']
       target_field: 'split_@timestamp'
     description: '...'
+
+.. autoclass:: logprep.processor.datetime_extractor.rule.DatetimeExtractorRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 from logprep.processor.field_manager.rule import FieldManagerRule
 

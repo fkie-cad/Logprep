@@ -1,12 +1,11 @@
 """
 DomainResolver
---------------
+==============
 
 The `domain_resolver` is a processor that can resolve domains inside a defined field.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -24,6 +23,14 @@ Example
         hash_salt: secure_salt
         cache_enabled: true
         debug_cache: false
+
+.. autoclass:: logprep.processor.domain_resolver.processor.DomainResolver.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.domain_resolver.rule
 """
 import datetime
 import socket

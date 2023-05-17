@@ -1,14 +1,13 @@
 """
 Concatenator
-------------
+============
 
 The `concatenator` processor allows to concat a list of source fields into one new target field. The
 concat separator and the target field can be specified. Furthermore, it is possible to directly
 delete all given source fields, or to overwrite the specified target field.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -18,6 +17,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.concatenator.processor.Concatenator.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.concatenator.rule
 """
 from logprep.abc.processor import Processor
 from logprep.processor.concatenator.rule import ConcatenatorRule

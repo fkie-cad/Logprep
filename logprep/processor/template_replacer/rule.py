@@ -1,5 +1,6 @@
-"""Template Replacer
-====================
+"""
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The template replacer requires the additional field :code:`template_replacer`.
 No additional configuration parameters are required for the rules.
@@ -17,6 +18,11 @@ is replaced for all log messages that have :code:`winlog.provider_name` and
     template_replacer: {}
     description: ''
 
+.. autoclass:: logprep.processor.template_replacer.rule.TemplateReplacerRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 
 from logprep.processor.base.rule import Rule

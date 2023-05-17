@@ -1,8 +1,6 @@
 """
-.. _requester_rule:
-
-Requester
-=========
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The Requester is configured by the keyword :code:`requester`.
 It can be used to trigger external systems via web request or enrich eventdata by external
@@ -57,6 +55,12 @@ A speaking example for event enrichment via external api:
              }
         }
     }
+
+.. autoclass:: logprep.processor.requester.rule.RequesterRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 import inspect
 import json

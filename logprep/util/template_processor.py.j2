@@ -4,9 +4,8 @@
 
 The `{{ processor.name }}` processor ...
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -16,6 +15,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.{{ processor.name }}.processor.{{ processor.class_name }}.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.{{ processor.name }}.processor.{{ processor.class_name }}.rule
 """
 from attrs import define, field, validators
 

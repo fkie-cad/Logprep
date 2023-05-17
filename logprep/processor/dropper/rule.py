@@ -1,6 +1,6 @@
 """
-Dropper
-=======
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 Which fields are removed is defined in the additional field :code:`drop`.
 It contains a list of fields in dot notation.
@@ -40,6 +40,12 @@ the fields :code:`keep_me` and :code:`keep_me.keep_me_too` are kept.
             "keep_me_too": "something"
         }
     }]
+
+.. autoclass:: logprep.processor.dropper.rule.DropperRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 
 from typing import List

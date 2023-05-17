@@ -1,6 +1,6 @@
 """
 DomainLabelExtractor
---------------------
+====================
 
 The `domain_label_extractor` is a processor that splits a domain into it's corresponding labels
 like :code:`registered_domain`, :code:`top_level_domain` and :code:`subdomain`. If instead an IP
@@ -11,9 +11,8 @@ configured rule, such that it is possible to distinguish between different domai
 event. For example for the target field :code:`url.domain` following tags could be added:
 :code:`invalid_domain_in_url_domain` and :code:`ip_in_url_domain`
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -25,6 +24,14 @@ Example
             - tests/testdata/rules/generic/
         tld_lists: /path/to/list/file
         tagging_field_name: resolved
+
+.. autoclass:: logprep.processor.domain_label_extractor.processor.DomainLabelExtractor.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.domain_label_extractor.rule
 """
 import ipaddress
 from functools import cached_property

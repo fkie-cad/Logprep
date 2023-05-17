@@ -1,13 +1,12 @@
 """
 DatetimeExtractor
------------------
+=================
 
 The `datetime_extractor` is a processor that can extract timestamps from a field and
 split it into its parts.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -17,6 +16,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.datetime_extractor.processor.DatetimeExtractor.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.datetime_extractor.rule
 """
 
 from datetime import datetime

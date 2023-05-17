@@ -1,13 +1,12 @@
 """
 Pseudonymizer
--------------
+=============
 
 The `pseudonymizer` is a processor that pseudonymizes certain fields of log messages to ensure
 privacy regulations can be adhered to.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -27,6 +26,14 @@ Example
         max_caching_days: 1
         tld_lists:
             -/path/to/tld_list.dat
+
+.. autoclass:: logprep.processor.pseudonymizer.processor.Pseudonymizer.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.pseudonymizer.rule
 """
 import datetime
 import re

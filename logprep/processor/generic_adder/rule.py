@@ -1,7 +1,7 @@
 # pylint: disable=anomalous-backslash-in-string
 """
-Generic Adder
-=============
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The generic adder requires the additional field :code:`generic_adder`.
 The field :code:`generic_adder.add` can be defined.
@@ -84,6 +84,12 @@ It is also possible to use a table from a MySQL database to add fields to an eve
         pattern: '([a-zA-Z0-9]+)_\S+'
         destination_field_prefix: nested.dict
     description: '...'
+
+.. autoclass:: logprep.processor.generic_adder.rule.GenericAdderRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 # pylint: enable=anomalous-backslash-in-string
 

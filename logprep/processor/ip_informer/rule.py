@@ -1,8 +1,6 @@
 """
-IpInformer
-============
-
-The `ip_informer` processor is a processor to enrich events with ip information.
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 A speaking example:
 
@@ -46,6 +44,11 @@ A speaking example:
         }
     }
 
+.. autoclass:: logprep.processor.ip_informer.rule.IpInformerRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 
 Examples for ip_informer:
 ------------------------------------------------
@@ -57,6 +60,7 @@ Examples for ip_informer:
 from ipaddress import IPv4Address, IPv6Address
 
 from attrs import define, field, validators
+
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 

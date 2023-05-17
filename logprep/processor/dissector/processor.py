@@ -5,11 +5,10 @@ Dissector
 The `dissector` is a processor that tokenizes incoming strings using defined patterns.
 The behavior is based of the logstash dissect filter plugin and has the same advantage that
 for the event processing no regular expressions are used.
-Additionally it can be used to convert datatypes of given fields.
+Additionally, it can be used to convert datatypes of given fields.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -19,6 +18,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.dissector.processor.Dissector.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.dissector.rule
 """
 from typing import Callable, List, Tuple
 

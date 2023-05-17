@@ -1,6 +1,6 @@
 """
-Key Checker
-===========
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The `key_checker` processor needs a list with at least one element in it.
 The Rule contains this list and it also contains a custom field where the processor
@@ -37,6 +37,11 @@ can store all missing keys.
         "missing_fields": "key1","key2"
     }
 
+.. autoclass:: logprep.processor.key_checker.rule.KeyCheckerRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 
 from attrs import define, field, validators

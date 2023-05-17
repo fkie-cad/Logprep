@@ -1,6 +1,6 @@
 """
-PreDetector
-===========
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The predetector requires the additional field :code:`pre_detector`.
 
@@ -47,9 +47,16 @@ the IPs from the list is also available in the specified fields.
     description: Some malicous event.
     ip_fields:
     - some_ip_field
+
+.. autoclass:: logprep.processor.pre_detector.rule.PreDetectorRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 from functools import cached_property
 from typing import Union, Optional
+
 from attrs import define, field, validators, asdict
 
 from logprep.processor.base.rule import Rule

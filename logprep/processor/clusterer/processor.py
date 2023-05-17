@@ -1,6 +1,6 @@
 """
 Clusterer
----------
+=========
 
 The log clustering is mainly developed for Syslogs, unstructured and semi-structured logs.
 The clusterer calculates a log signature based on the message field.
@@ -18,9 +18,8 @@ Logs are only clustered if at least one of the following criteria is fulfilled:
     Criteria 2: { "message": "A sample message", "clusterable": true, ... }
     Criteria 3: { "message": "A sample message", "syslog": { "facility": <number> }, "event": { "severity": <string> }, ... }
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -31,6 +30,14 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
         output_field_name: target_field
+
+.. autoclass:: logprep.processor.clusterer.processor.Clusterer.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.clusterer.rule
 """
 
 from logging import Logger

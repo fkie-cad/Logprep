@@ -1,12 +1,12 @@
 """
 GenericAdder
-------------
+============
 The `generic_adder` is a processor that adds new fields and values to documents based on a list.
 The list can reside inside a rule, inside a file or retrieved from an sql database.
 
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -25,6 +25,14 @@ Example
             target_column: example_column
             add_target_column: True
             timer: 0.1
+
+.. autoclass:: logprep.processor.generic_adder.processor.GenericAdder.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.generic_adder.rule
 """
 import json
 import os

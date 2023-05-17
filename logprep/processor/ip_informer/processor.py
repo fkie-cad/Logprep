@@ -1,12 +1,11 @@
 """
 IpInformer
-============
+==========
 
 The `ip_informer` processor enriches an event with ip information.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -16,6 +15,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.ip_informer.processor.IpInformer.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.ip_informer.rule
 """
 import ipaddress
 from functools import partial

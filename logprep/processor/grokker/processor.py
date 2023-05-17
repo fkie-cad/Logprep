@@ -1,6 +1,6 @@
 """
 Grokker
-============
+=======
 
 The `grokker` processor dissects a message on a basis of grok patterns. This processor is based
 of the ideas of the logstash grok filter plugin.
@@ -9,8 +9,8 @@ of the ideas of the logstash grok filter plugin.
 The default builtin grok patterns shipped with logprep are the same than in logstash.
 
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -21,6 +21,14 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
         custom_patterns_dir: "http://the.patterns.us/patterns.zip"
+
+.. autoclass:: logprep.processor.grokker.processor.Grokker.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.grokker.rule
 """
 import re
 from pathlib import Path

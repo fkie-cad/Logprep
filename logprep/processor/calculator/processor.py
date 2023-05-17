@@ -3,10 +3,9 @@ Calculator
 ==========
 
 The Calculator can be used to calculate with or without field values.
-For further information for the rule language see: :ref:`calculator_rule`
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -17,6 +16,13 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 
+.. autoclass:: logprep.processor.calculator.processor.Calculator.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.calculator.rule
 """
 import re
 from functools import cached_property

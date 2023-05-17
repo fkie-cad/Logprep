@@ -1,10 +1,6 @@
 """
-FieldManager
-============
-
-The `field_manager` processor copies or moves field from multiple source fields to one target field.
-Additionaly it can be used to merge lists or simple values from source fields to
-one target field list.
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 A speaking example:
 

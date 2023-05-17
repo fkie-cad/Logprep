@@ -1,10 +1,6 @@
 """
-Concatenator
-============
-
-The concatenator processor allows to concat a list of source fields into one new target field. The
-separator and the target field can be specified. Furthermore, it is possible to directly delete
-all given source fields, or to overwrite the specified target field.
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 A speaking example:
 
@@ -37,6 +33,12 @@ A speaking example:
     {
         "timetsamp": "01.01.1007 13:07"
     }
+
+.. autoclass:: logprep.processor.concatenator.rule.ConcatenatorRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 
 from attrs import define, field, fields, validators

@@ -5,10 +5,8 @@ Requester
 A processor to invoke http requests. Can be used to enrich events from an external api or
 to trigger external systems by and with event field values.
 
-For further information for the rule language see: :ref:`requester_rule`.
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -19,6 +17,13 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 
+.. autoclass:: logprep.processor.requester.processor.Requester.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.requester.rule
 """
 import json
 import re

@@ -1,13 +1,13 @@
 """
 PreDetector
------------
+===========
 
 The `pre_detector` is a processor that creates alerts for matching events. It adds MITRE ATT&CK
 data to the alerts.
 
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -20,6 +20,14 @@ Example
         outputs:
             - kafka: sre_topic
         alert_ip_list_path: /tmp/ip_list.yml
+
+.. autoclass:: logprep.processor.pre_detector.processor.PreDetector.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.pre_detector.rule
 """
 from functools import cached_property
 from logging import DEBUG, Logger

@@ -1,6 +1,7 @@
 """
 Labeler
--------
+=======
+
 Labeling-Schema and validating Rules
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -13,8 +14,8 @@ The validation of schemata and rules can be started separately by executing:
 Where :code:`$LABELING_SCHEMA` is the path to a labeling schema file and :code:`$RULES` is the path
 to a directory with rule files.
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 
 ..  code-block:: yaml
     :linenos:
@@ -28,6 +29,13 @@ Example
         specific_rules:
             - tests/testdata/labeler_rules/rules/
 
+.. autoclass:: logprep.processor.labeler.processor.Labeler.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.labeler.rule
 """
 
 from logging import Logger

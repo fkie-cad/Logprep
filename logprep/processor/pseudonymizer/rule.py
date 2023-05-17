@@ -1,6 +1,6 @@
 """
-Pseudonymizer
-=============
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The pseudonymizer requires the additional field :code:`pseudonymizer.pseudonyms`.
 It contains key value pairs that define what will be pseudonymized.
@@ -37,6 +37,11 @@ in a capture group and therefore pseudonymizes it completely.
       "RE_IP4_COLON_PORT": "([\\d.]+):\\d+"
     }
 
+.. autoclass:: logprep.processor.pseudonymizer.rule.PseudonymizerRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 
 from typing import List

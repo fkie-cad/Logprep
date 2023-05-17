@@ -1,13 +1,12 @@
 """
-Amides
-======
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 This rule enables to check if incoming documents are of a specific type
 suitable for classification by the :code:`Amides` processor. The specified
 :code:`source_field` should contain command line strings. In case of an
 positive detection result, rule attributions are written into
 the :code:`target_field`.
-
 
 The following example shows a complete rule:
 
@@ -21,10 +20,15 @@ The following example shows a complete rule:
         target_field: "rule_attributions"
     description: Sample rule for AMIDES processor.
 
+.. autoclass:: logprep.processor.amides.rule.AmidesRule.Config
+   :noindex:
+   :members:
+   :inherited-members:
+   :no-undoc-members:
 """
+from attrs import define, field, validators
 from ruamel.yaml import YAML
 
-from attrs import define, field, validators
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 yaml = YAML(typ="safe", pure=True)

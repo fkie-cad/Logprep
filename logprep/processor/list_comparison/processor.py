@@ -1,13 +1,13 @@
 """
 ListComparison
---------------
+==============
 
 The `list_comparison` processor allows to compare values of source fields against lists provided
 as files.
 
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -18,6 +18,14 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
         list_search_base_path: /path/to/list/dir
+
+.. autoclass:: logprep.processor.list_comparison.processor.ListComparison.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.list_comparison.rule
 """
 from logging import Logger
 
