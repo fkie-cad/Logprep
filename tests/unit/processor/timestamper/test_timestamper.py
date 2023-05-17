@@ -272,11 +272,8 @@ failure_test_cases = [
         {
             "message": "2000 12 31 - 22:59:59",
         },
-        {
-            "message": "2000 12 31 - 22:59:59",
-            "tags": ["_timestamper_failure"]
-        },
-        r"Could not parse timestamp"
+        {"message": "2000 12 31 - 22:59:59", "tags": ["_timestamper_failure"]},
+        r"Could not parse timestamp",
     ),
     (
         "raises if source field is none",

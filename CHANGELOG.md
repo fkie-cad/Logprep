@@ -5,7 +5,7 @@
 
 * Extend dissector such that it can trim characters around dissected field with `%{field-( )}`
 notation.
-* Extend timestamper such  that it can take multiple source_formats. First format that matches
+* Extend timestamper such that it can take multiple source_formats. First format that matches
 will be used, all following formats will be ignored
  
 ### Improvements
