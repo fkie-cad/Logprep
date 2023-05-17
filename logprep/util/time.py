@@ -1,5 +1,5 @@
 """logprep time helpers module"""
-from datetime import datetime
+from datetime import datetime, tzinfo
 from typing import Union
 from zoneinfo import ZoneInfo
 
@@ -100,3 +100,35 @@ class TimeParser:
         if time_object.tzinfo is None:
             time_object = time_object.replace(tzinfo=UTC)
         return time_object
+
+    @classmethod
+    def parse_datetime(
+        cls, timestamp: str, source_format: str, source_timezone: [str, tzinfo]
+    ) -> datetime:
+        """
+        Parses a timestamp based on different formats, besides a format string 'ISO8601' and
+        'UNIX' are allowed formats.
+
+        Parameters
+        ----------
+        timestamp : str
+            The timestamp string that should be parsed
+        source_format : str
+            The format which should be used to parse the timestamp string. Besides a format string
+            'ISO8601' and 'UNIX' are allowed formats.
+        source_timezone : str
+
+
+        Returns
+        -------
+        datetime
+            The parsed timestamp as datetime object.
+        """
+        if source_format == "ISO8601":
+            parsed_datetime = cls.from_string(timestamp).astimezone(source_timezone)
+        elif source_format == "UNIX":
+            parsed_datetime = int(timestamp) if len(timestamp) <= 10 else int(timestamp) / 1000
+            parsed_datetime = cls.from_timestamp(parsed_datetime).astimezone(source_timezone)
+        else:
+            parsed_datetime = cls.from_format(timestamp, source_format).astimezone(source_timezone)
+        return parsed_datetime

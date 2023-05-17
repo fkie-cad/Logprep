@@ -37,16 +37,15 @@ import html
 import json
 import os
 import re
-from datetime import datetime
 from functools import reduce
 from logging import Logger
 from pathlib import Path
 from time import time
 from typing import List, Optional, Tuple, Union
+from zoneinfo import ZoneInfo
 
 import msgspec
 from attr import define, field, validators
-from dateutil import parser
 from filelock import FileLock
 from pytz import timezone
 
@@ -59,7 +58,7 @@ from logprep.util.helper import (
     get_dotted_field_list,
     get_dotted_field_value,
 )
-from logprep.util.time import TimeParser
+from logprep.util.time import TimeParser, TimeParserException
 from logprep.util.validators import directory_validator
 
 
@@ -336,23 +335,13 @@ class Normalizer(Processor):
         source_formats = timestamp_normalization["source_formats"]
         for source_format in source_formats:
             try:
-                if source_format == "ISO8601":
-                    timestamp = parser.isoparse(source_timestamp)
-                elif source_format == "UNIX":
-                    new_stamp = int(source_timestamp)
-                    if len(source_timestamp) > 10:
-                        timestamp = datetime.fromtimestamp(
-                            new_stamp / 1000, timezone(source_timezone)
-                        )
-                    else:
-                        timestamp = datetime.fromtimestamp(new_stamp, timezone(source_timezone))
-                else:
-                    timestamp = datetime.strptime(source_timestamp, source_format)
-                    if timestamp.year == 1900:
-                        timestamp = timestamp.replace(year=datetime.now().year)
-                format_parsed = True
-                break
-            except ValueError:
+                timestamp = TimeParser.parse_datetime(
+                    source_timestamp, source_format, ZoneInfo(source_timezone)
+                )
+                if timestamp is not None:
+                    format_parsed = True
+                    break
+            except TimeParserException:
                 pass
         if not format_parsed:
             error_message = (

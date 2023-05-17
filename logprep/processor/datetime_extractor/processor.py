@@ -27,14 +27,11 @@ Processor Configuration
 """
 
 from datetime import datetime
-from logging import Logger
-
-from dateutil.parser import parse
-from dateutil.tz import tzlocal
 
 from logprep.abc.processor import Processor
 from logprep.processor.datetime_extractor.rule import DatetimeExtractorRule
 from logprep.util.helper import get_dotted_field_value
+from logprep.util.time import TimeParser
 
 
 class DateTimeExtractorError(BaseException):
@@ -47,16 +44,9 @@ class DateTimeExtractorError(BaseException):
 class DatetimeExtractor(Processor):
     """Split timestamps into fields containing their parts."""
 
-    __slots__ = ["_local_timezone", "_local_timezone_name"]
-
     _local_timezone_name: str
 
     rule_class = DatetimeExtractorRule
-
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
-        self._local_timezone = tzlocal()
-        self._local_timezone_name = self._get_timezone_name(self._local_timezone)
 
     @staticmethod
     def _get_timezone_name(local_timezone):
@@ -73,7 +63,12 @@ class DatetimeExtractor(Processor):
         if destination_field and self._field_exists(event, datetime_field):
             datetime_value = get_dotted_field_value(event, datetime_field)
 
-            parsed_timestamp = parse(datetime_value).astimezone(self._local_timezone)
+            parsed_timestamp = TimeParser.from_string(datetime_value)
+
+            if parsed_timestamp.tzname() == "UTC":
+                timezone = "UTC"
+            else:
+                timezone = str(parsed_timestamp.tzinfo)
 
             split_timestamp = {
                 "year": parsed_timestamp.year,
@@ -84,7 +79,7 @@ class DatetimeExtractor(Processor):
                 "second": parsed_timestamp.second,
                 "microsecond": parsed_timestamp.microsecond,
                 "weekday": parsed_timestamp.strftime("%A"),
-                "timezone": self._local_timezone_name,
+                "timezone": timezone,
             }
 
             if split_timestamp:
