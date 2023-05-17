@@ -395,14 +395,14 @@ test_cases = [  # testcase, rule, event, expected
         "handles special chars in captured content and target field names",
         {
             "filter": "message",
-            "dissector": {"mapping": {"message": "%{~field1} %{fie ld2} %{-fie}ld3} %{+field4}"}},
+            "dissector": {"mapping": {"message": "%{~field1} %{fie ld2} %{$fie}ld3} %{+field4}"}},
         },
         {"message": "&This is\2 a mess}age /1"},
         {
             "message": "&This is\2 a mess}age /1",
             "~field1": "&This",
             "fie ld2": "is\2",
-            "-fie}ld3": "a",
+            "$fie}ld3": "a",
             "field4": "mess}age /1",
         },
     ),
@@ -478,7 +478,7 @@ test_cases = [  # testcase, rule, event, expected
         },
     ),
     (
-        "Dissection with delimeter ending",
+        "Dissection with delimiter ending",
         {"filter": "message", "dissector": {"mapping": {"message": "this is %{target}."}}},
         {"message": "this is the message."},
         {"message": "this is the message.", "target": "the message"},
@@ -493,6 +493,108 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "this is 42 message and this is 0"},
         {"message": "this is 42 message and this is 0", "field1": 42, "field2": False},
+    ),
+    (
+        "Strip char after dissecting",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "[%{time-( )}] - %{ip}"}},
+        },
+        {"message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM     ] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
+    ),
+    (
+        "Strip special char after dissecting",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "[%{time-(#)}] - %{ip}"}},
+        },
+        {"message": "[2022-11-04 10:00:00 AM####] - 127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM####] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
+    ),
+    (
+        "Strip another special char after dissecting",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "[%{time-(?)}] - %{ip}"}},
+        },
+        {"message": "[2022-11-04 10:00:00 AM?????] - 127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM?????] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
+    ),
+    (
+        "Strip char on both sides",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "[%{time-(*)}] - %{ip}"}},
+        },
+        {"message": "[***2022-11-04 10:00:00 AM***] - 127.0.0.1"},
+        {
+            "message": "[***2022-11-04 10:00:00 AM***] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
+    ),
+    (
+        "Strip char while appending",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "[%{time} %{+( )time} %{+( )time-(*)}] - %{ip}"}},
+        },
+        {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1",
+            "time": "2022-11-04 10:00:00 AM",
+            "ip": "127.0.0.1",
+        },
+    ),
+    (
+        "Strip char while changing position",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {"message": "[%{time/1} %{+( )time/3} %{+( )time-(*)/2}] - %{ip}"}
+            },
+        },
+        {"message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1"},
+        {
+            "message": "[2022-11-04 10:00:00 AM***] - 127.0.0.1",
+            "time": "2022-11-04 AM 10:00:00",
+            "ip": "127.0.0.1",
+        },
+    ),
+    (
+        "Strip char in indirect field notation",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "%{?key} %{&key-(#)} %{} %{+( )&key-(#)}"}},
+        },
+        {"message": "This is## the message####"},
+        {"message": "This is## the message####", "This": "is message"},
+    ),
+    (
+        "Strip char while inferring datatype",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "this is %{field1-(#)|int} message and this is %{field2-(#)|bool}"
+                }
+            },
+        },
+        {"message": "this is 42#### message and this is 0##"},
+        {"message": "this is 42#### message and this is 0##", "field1": 42, "field2": False},
     ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
