@@ -1,10 +1,11 @@
 """
 GeoipEnricher
--------------
+=============
+
 Processor to enrich log messages with geolocalization information
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -15,6 +16,14 @@ Example
         generic_rules:
             - tests/testdata/geoip_enricher/rules/
         db_path: /path/to/GeoLite2-City.mmdb
+
+.. autoclass:: logprep.processor.geoip_enricher.processor.GeoipEnricher.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.geoip_enricher.rule
 """
 from functools import cached_property
 from ipaddress import ip_address

@@ -1,11 +1,8 @@
 """
-Hyperscan Resolver
-==================
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The hyperscan resolver requires the additional field :code:`hyperscan_resolver`.
-It works similarly to the generic resolver, but utilized hyperscan to process resolve lists.
-
-For further information see: :ref:`generic-resolver-rule`
 
 The hyperscan resolver uses the
 `Python Hyperscan library <https://python-hyperscan.readthedocs.io/en/latest/>`_
@@ -15,6 +12,11 @@ specified in the :code:`pipeline.yml`.
 The field :code:`store_db_persistent` can be used to configure
 if a database compiled from a rule's :code:`resolve_list` should be stored persistently.
 
+.. autoclass:: logprep.processor.hyperscan_resolver.rule.HyperscanResolverRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 import re
 from typing import Tuple

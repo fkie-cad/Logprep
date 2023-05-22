@@ -1,6 +1,6 @@
 """
-Clusterer
-=========
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 Rules of the clusterer are evaluated in alphanumerical order.
 Some rules do only make sense if they are performed in a sequence with other rules.
@@ -91,10 +91,18 @@ In the following rule example the word `baz` is surrounded by extraction tags.
     description: '...'
     tests:
       raw:    'foo bar baz'
-      result: 'foo <+>bar</+> baz'"""
+      result: 'foo <+>bar</+> baz'
+
+.. autoclass:: logprep.processor.clusterer.rule.ClustererRule.Config
+   :noindex:
+   :members:
+   :inherited-members:
+   :no-undoc-members:
+"""
 
 import re
 from typing import Pattern
+
 from attrs import define, field, validators
 
 from logprep.processor.base.rule import Rule

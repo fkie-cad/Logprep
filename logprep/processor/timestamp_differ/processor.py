@@ -3,10 +3,9 @@ TimestampDiffer
 ===============
 
 The `timestamp_differ` can calculate the time difference between two timestamps.
-For further information for the rule language see: :ref:`timestamp_differ_rule`.
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -16,6 +15,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.timestamp_differ.processor.TimestampDiffer.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.timestamp_differ.rule
 """
 from datetime import datetime
 from functools import reduce

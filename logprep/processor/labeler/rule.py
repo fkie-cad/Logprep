@@ -1,6 +1,6 @@
 """
-Labeler
-=======
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The labeler requires the additional field :code:`label`.
 The keys under :code:`label` define the categories under which a label should be added.
@@ -20,6 +20,11 @@ to the labels of the category :code:`action`:
             - execute
     description: '...'
 
+.. autoclass:: logprep.processor.labeler.rule.LabelerRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 from attrs import define, field, validators
 

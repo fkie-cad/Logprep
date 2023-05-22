@@ -1,12 +1,11 @@
 """
 Deleter
--------
+=======
 
 The `deleter` is a processor that removes an entire event from further pipeline processing.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -16,6 +15,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.deleter.processor.Deleter.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.deleter.rule
 """
 
 from logprep.abc.processor import Processor

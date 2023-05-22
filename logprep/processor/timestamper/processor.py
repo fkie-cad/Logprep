@@ -1,12 +1,11 @@
 """
 Timestamper
-============
+===========
 
 The `timestamper` processor normalizes timestamps to *iso8601* compliant output format.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -16,6 +15,15 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+
+.. autoclass:: logprep.processor.timestamper.processor.Timestamper.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.timestamper.rule
 """
 
 from logprep.processor.base.exceptions import ProcessingWarning

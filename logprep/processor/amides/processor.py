@@ -55,8 +55,8 @@ and scaler. Dictionaries are then pickled and compressed (.zip). The URI or path
 file is given by the :code:`models_path` configuration parameter. An example of a configuration of the 
 :code:`Amides` processor is given below:
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -69,30 +69,36 @@ Example
         max_cache_entries: 10000
         decision_threshold: 0.0
         num_rule_attributions: 10
-        
-        
-        
+
 To keep track of the components performance, the :code:`Amides` processor tracks several processor metrics.
 This includes the mean misuse detection time, the mean rule attribution time, and several cache-related
 metrics like the number of hits and misses and the current cache load.
+
+.. autoclass:: logprep.processor.amides.processor.Amides.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.amides.rule
 """
-from time import time
+from functools import lru_cache, cached_property
 from multiprocessing import current_process
+from pathlib import Path
+from time import time
 from typing import List, Tuple
 from zipfile import ZipFile
-from pathlib import Path
-from functools import lru_cache, cached_property
-import joblib
 
+import joblib
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
 from logprep.metrics.metric import calculate_new_average
-from logprep.processor.amides.rule import AmidesRule
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
-from logprep.util.helper import get_dotted_field_value
+from logprep.processor.amides.rule import AmidesRule
 from logprep.util.getter import GetterFactory
+from logprep.util.helper import get_dotted_field_value
 
 
 class Amides(Processor):

@@ -1,13 +1,12 @@
 """
 Dropper
--------
+=======
 
 The `dropper` is a processor that removes fields from log messages. Which fields are deleted is
 determined within each rule.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -17,6 +16,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.dropper.processor.Dropper.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.dropper.rule
 """
 
 from functools import partial

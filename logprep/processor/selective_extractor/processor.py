@@ -1,6 +1,6 @@
 """
 SelectiveExtractor
-------------------
+==================
 
 The `selective_extractor` is a processor that allows to write field values of a given log message to
 a different Kafka topic. The output topic is configured via the pipeline yml, while the fields to
@@ -8,9 +8,8 @@ be extracted are specified by means of a list which is also specified in the pip
 as a file path. This processor is applied to all messages, because of that it does not need further
 rules to specify it's behavior.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -20,13 +19,20 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.selective_extractor.processor.SelectiveExtractor.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.selective_extractor.rule
 """
 
 from logging import Logger
 from typing import List, Tuple
 
 from logprep.processor.field_manager.processor import FieldManager
-
 from logprep.processor.selective_extractor.rule import SelectiveExtractorRule
 from logprep.util.helper import add_field_to, get_source_fields_dict
 

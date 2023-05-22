@@ -13,6 +13,6 @@ Configuration
    output
    pipeline
    processor
-   metrics
    rules
    getter
+   metrics

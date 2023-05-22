@@ -8,8 +8,8 @@ Additionally, it can be used to merge multiple source field values into one targ
 In this process, source field lists will be merged.
 
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -19,6 +19,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.field_manager.processor.FieldManager.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.field_manager.rule
 """
 import itertools
 from typing import Any, List, Tuple

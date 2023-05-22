@@ -1,10 +1,7 @@
 """
-.. _timestamp_differ_rule:
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
-TimestampDiffer
-===============
-
-The `timestamp_differ` processor allows to calculate the time difference between two timestamps.
 The timestamp format can be specified per timestamp. Following patterns can be used to define the
 timestamp format:
 `Timestamp tokens <https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes>`_.
@@ -33,6 +30,12 @@ A speaking example:
     :caption: Processed event
 
     {"ingest": "2022-12-06 10:00:00", "processed": "2022-12-06 10:00:05", "processing_time": "5.0"}
+
+.. autoclass:: logprep.processor.timestamper.rule.TimestamperRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 
 Examples for timestamp_differ:
 ------------------------------

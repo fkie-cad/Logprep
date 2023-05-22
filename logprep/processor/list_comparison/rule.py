@@ -1,6 +1,6 @@
 """
-List Comparison
-===============
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The list comparison enricher requires the additional field :code:`list_comparison`.
 The mandatory keys under :code:`list_comparison` are :code:`source_fields`
@@ -34,6 +34,11 @@ target field :code:`List_comparison.example`.
 
     Currently it is not possible to check in more than one source_field per rule
 
+.. autoclass:: logprep.processor.list_comparison.rule.ListComparisonRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 import os.path
 from string import Template

@@ -1,13 +1,12 @@
 """
 TemplateReplacer
-----------------
+================
 
 The `template_replacer` is a processor that can replace parts of a text field to anonymize those
 parts. The replacement is based on a template file.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -25,6 +24,14 @@ Example
                 - field.name.b
             allowed_delimiter_field: field.name.b
             target_field: target.field
+
+.. autoclass:: logprep.processor.template_replacer.processor.TemplateReplacer.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.template_replacer.rule
 """
 from logging import Logger
 from typing import Optional

@@ -1,8 +1,6 @@
 """
-.. _generic-resolver-rule:
-
-Generic Resolver
-================
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The generic resolver requires the additional field :code:`generic_resolver`.
 It works similarly to the hyperscan resolver, which utilizes hyperscan to process resolve lists.
@@ -67,6 +65,11 @@ if the value in :code:`to_resolve` begins with number, ends with numbers and con
     foo: resolved foo
     bar: resolved bar
 
+.. autoclass:: logprep.processor.generic_resolver.rule.GenericResolverRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 from attrs import define, field, validators
 

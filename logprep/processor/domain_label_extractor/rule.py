@@ -1,6 +1,6 @@
 """
-Domain Label Extractor
-======================
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The domain label extractor requires the additional field :code:`domain_label_extractor`.
 The mandatory keys under :code:`domain_label_extractor` are :code:`source_fields`
@@ -49,6 +49,11 @@ will result in the following output
         }
     }
 
+.. autoclass:: logprep.processor.domain_label_extractor.rule.DomainLabelExtractorRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 from attr import field, validators, define
 

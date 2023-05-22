@@ -1,10 +1,6 @@
 """
-Grokker
-=======
-
-The `grokker` processor dissects a message on a basis of grok patterns. This processor is based
-of the ideas of the logstash grok filter plugin.
-(see: https://www.elastic.co/guide/en/logstash/current/plugins-filters-grok.html)
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 A speaking example:
 

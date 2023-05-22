@@ -1,8 +1,6 @@
 """
-Timestamper
-============
-
-The `timestamper` processor normalizes timestamps to *iso8601* compliant output format.
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 A speaking example:
 

@@ -1,9 +1,6 @@
 """
-Dissector
-=========
-
-The dissector processor tokenizes values from fields into new fields or appends the value to
-existing fields. Additionally it can be used to convert datatypes of field values.
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 A speaking example:
 

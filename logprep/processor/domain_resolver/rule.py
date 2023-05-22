@@ -1,6 +1,6 @@
 """
-Domain Resolver
-===============
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The domain resolver requires the additional field :code:`domain_resolver`.
 The additional field :code:`domain_resolver.source_fields` must be defined as list with one element.
@@ -20,6 +20,12 @@ In the following example the URL from the field :code:`url` will be extracted an
       domain_resolver:
         source_fields: [url]
       description: '...'
+
+.. autoclass:: logprep.processor.domain_resolver.rule.DomainResolverRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 from attrs import define, field, fields
 

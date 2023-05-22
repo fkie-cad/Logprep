@@ -1,10 +1,6 @@
 """
-.. _calculator_rule:
-
-Calculator
-==========
-
-The Calculator processor allows to calculate with and without field values.
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 A speaking example:
 
@@ -30,6 +26,12 @@ A speaking example:
     :caption: Processed event
 
     {"duration": 10000.0}
+
+.. autoclass:: logprep.processor.calculator.rule.CalculatorRule.Config
+   :noindex:
+   :members:
+   :inherited-members:
+   :no-undoc-members:
 
 Following a list with example calculation expressions, where all factors and the operators can be
 retrieved from a field with the schema :code:`${your.dotted.field}`:

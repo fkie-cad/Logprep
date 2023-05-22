@@ -1,14 +1,16 @@
 """
 HyperscanResolver
------------------
+=================
 
 The `hyperscan_resolver` is a processor that can resolve fields by using a map of resolve patterns
-and resolve values. The map can be defined within rules or within a file. It uses pythion hyperscan
+and resolve values. The map can be defined within rules or within a file. It uses python hyperscan
 to speedup the pattern matching.
+It works similarly to the generic resolver, but utilized hyperscan to process resolve lists.
 
+For further information see: `GenericResolver`_.
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -19,6 +21,14 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
         hyperscan_db_path: tmp/path/scan.db
+
+.. autoclass:: logprep.processor.hyperscan_resolver.processor.HyperscanResolver.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.hyperscan_resolver.rule
 """
 
 import errno

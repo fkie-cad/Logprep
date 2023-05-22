@@ -1,6 +1,6 @@
 """
-Geoip Enricher
-==============
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The geoip enricher requires the additional field :code:`geoip`.
 The default output_field can be overridden using the optional parameter
@@ -18,6 +18,12 @@ In the following example the IP in :code:`client.ip` will be enriched with geoip
     geoip:
       source_fields: [client.ip]
     description: '...'
+
+.. autoclass:: logprep.processor.geoip_enricher.rule.GeoipEnricherRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 from attr import Factory
 from attrs import define, field, validators

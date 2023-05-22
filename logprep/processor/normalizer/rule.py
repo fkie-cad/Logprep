@@ -1,7 +1,7 @@
 # pylint: disable=anomalous-backslash-in-string
 """
-Normalizer
-==========
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The normalizer requires the additional field :code:`normalize`.
 It contains key-value pairs that define if and how fields gets normalized.

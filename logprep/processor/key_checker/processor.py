@@ -1,12 +1,12 @@
 """
 KeyChecker
-------------
+==========
 
 The `key_checker` processor checks if all field names in a provided list are
 given in the processed event.
 
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -17,6 +17,13 @@ Example
         generic_rules:
             - tests/testdata/rules/generic/
 
+.. autoclass:: logprep.processor.key_checker.processor.KeyChecker.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.key_checker.rule
 """
 
 from typing import Iterable

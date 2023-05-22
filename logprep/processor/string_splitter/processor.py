@@ -2,12 +2,11 @@
 StringSplitter
 ==============
 
-The `string_splitter` processor splits string by whitespace (default) or a given delimeter and
+The `string_splitter` processor splits string by whitespace (default) or a given delimiter and
 writes the resulting list to a target field.
 
-
-Example
-^^^^^^^
+Processor Configuration
+^^^^^^^^^^^^^^^^^^^^^^^
 ..  code-block:: yaml
     :linenos:
 
@@ -17,6 +16,14 @@ Example
             - tests/testdata/rules/specific/
         generic_rules:
             - tests/testdata/rules/generic/
+
+.. autoclass:: logprep.processor.string_splitter.processor.StringSplitter.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
+
+.. automodule:: logprep.processor.string_splitter.rule
 """
 
 from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning

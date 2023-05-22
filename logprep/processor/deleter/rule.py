@@ -1,7 +1,7 @@
 """
-Deleter
-=======
-The deleter processor deletes the entire log message if the filter produces a match.
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
+
 The example below deletes the log message if the message field equals "foo".
 
 ..  code-block:: yaml
@@ -12,6 +12,12 @@ The example below deletes the log message if the message field equals "foo".
     deleter:
         delete: true
     description: '...'
+
+.. autoclass:: logprep.processor.deleter.rule.DeleterRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 
 from attrs import define, field, validators

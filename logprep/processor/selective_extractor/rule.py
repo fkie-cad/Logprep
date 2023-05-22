@@ -1,6 +1,6 @@
 """
-Selective Extractor
-===================
+Rule Configuration
+^^^^^^^^^^^^^^^^^^
 
 The selective extractor requires the additional field :code:`selective_extractor`.
 It contains a list of field names that should be extracted (:code:`source_fields`)
@@ -92,6 +92,11 @@ It is possible to mix both extraction sources. They will be merged to one list w
     field2
     field3
 
+.. autoclass:: logprep.processor.selective_extractor.rule.SelectiveExtractorRule.Config
+   :members:
+   :undoc-members:
+   :inherited-members:
+   :noindex:
 """
 
 from typing import List
