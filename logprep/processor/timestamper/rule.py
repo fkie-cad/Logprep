@@ -83,12 +83,19 @@ class TimestamperRule(FieldManagerRule):
         """The field from where to get the time from as list with one element"""
         target_field: str = field(validator=validators.instance_of(str), default="@timestamp")
         """The field where to write the processed values to, defaults to :code:`@timestamp`"""
-        source_format: str = field(validator=validators.instance_of(str), default="ISO8601")
-        """The source format if source_fields is not an iso8601 compliant time format string
+        source_format: list = field(
+            validator=validators.deep_iterable(
+                member_validator=validators.instance_of(str),
+                iterable_validator=validators.instance_of(list),
+            ),
+            default=["ISO8601"],
+            converter=lambda x: x if isinstance(x, list) else [x],
+        )
+        """A list of possible source formats if source_fields is not an iso8601 compliant time format string
         the format must be given in the syntax of the python builtin :code:`datetime.strptime`
         (see: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
-        Additionally, the value :code:`ISO8601` (default)  and :code:`UNIX` can be used for
-        the source_formats field. The former can be used if the timestamp already exists
+        Additionally, the value :code:`ISO8601` (default)  and :code:`UNIX` can be used in the list
+        of the source_formats field. The former can be used if the timestamp already exists
         in the ISO8601 format, such that only a timezone conversion should be applied.
         And the latter can be used if the timestamp is given in the UNIX Epoch Time.
         This supports the Unix timestamps in seconds and milliseconds.

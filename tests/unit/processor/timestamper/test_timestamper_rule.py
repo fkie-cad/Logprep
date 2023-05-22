@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 import pytest
 
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.timestamper.rule import TimestamperRule
 
 
@@ -22,6 +21,18 @@ class TestTimestamperRule:
                 {
                     "filter": "message",
                     "timestamper": {"source_fields": ["message"], "target_field": "@timestamp"},
+                },
+                None,
+                None,
+            ),
+            (
+                {
+                    "filter": "message",
+                    "timestamper": {
+                        "source_fields": ["message"],
+                        "target_field": "@timestamp",
+                        "source_format": ["UNIX"],
+                    },
                 },
                 None,
                 None,

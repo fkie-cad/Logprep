@@ -32,17 +32,23 @@ class Timestamper(FieldManager):
 
     def _apply_rules(self, event, rule):
         source_field = self._get_source_field(event, rule)
-        source_timezone, target_timezone, source_format = (
+        source_timezone, target_timezone, source_formats = (
             rule.source_timezone,
             rule.target_timezone,
             rule.source_format,
         )
-        try:
-            parsed_datetime = self._parse_datetime(source_field, source_format, source_timezone)
-        except TimeParserException as error:
-            raise ProcessingWarning(self, str(error), rule, event) from error
-        result = parsed_datetime.astimezone(target_timezone).isoformat().replace("+00:00", "Z")
-        self._write_target_field(event, rule, result)
+        parsed_successfully = False
+        for source_format in source_formats:
+            try:
+                parsed_datetime = self._parse_datetime(source_field, source_format, source_timezone)
+            except TimeParserException:
+                continue
+            result = parsed_datetime.astimezone(target_timezone).isoformat().replace("+00:00", "Z")
+            self._write_target_field(event, rule, result)
+            parsed_successfully = True
+            break
+        if not parsed_successfully:
+            raise ProcessingWarning(self, str("Could not parse timestamp"), rule, event)
 
     def _get_source_field(self, event, rule):
         source_field = rule.source_fields[0]

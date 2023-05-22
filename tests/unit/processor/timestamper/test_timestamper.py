@@ -194,6 +194,40 @@ test_cases = [  # testcase, rule, event, expected
             },
         },
     ),
+    (
+        "attempt parsing with multiple patterns, second one successful",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": ["%Y %m %d", "%Y %m %d - %H:%M:%S"],
+            },
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+            "@timestamp": "2000-12-31T22:59:59Z",
+        },
+    ),
+    (
+        "attempt parsing with multiple patterns, both successful but stopping after first",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": ["%Y %m %d - %H:%M:%S", "%Y %m %d - %H:%M:%S"],
+            },
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+            "@timestamp": "2000-12-31T22:59:59Z",
+        },
+    ),
 ]
 
 failure_test_cases = [
@@ -204,7 +238,7 @@ failure_test_cases = [
             "timestamper": {
                 "source_fields": ["winlog.event_data.some_timestamp_utc"],
                 "target_field": "@timestamp",
-                "source_format": "a%Y %m",
+                "source_format": ["a%Y %m"],
                 "source_timezone": "UTC",
                 "target_timezone": "Europe/Berlin",
             },
@@ -224,7 +258,22 @@ failure_test_cases = [
             },
             "tags": ["_timestamper_failure"],
         },
-        r"does not match format",
+        r"Could not parse timestamp",
+    ),
+    (
+        "attempt parsing with multiple patterns, none is successful",
+        {
+            "filter": "message",
+            "timestamper": {
+                "source_fields": ["message"],
+                "source_format": ["%Y %m %d", "%H:%M:%S"],
+            },
+        },
+        {
+            "message": "2000 12 31 - 22:59:59",
+        },
+        {"message": "2000 12 31 - 22:59:59", "tags": ["_timestamper_failure"]},
+        r"Could not parse timestamp",
     ),
     (
         "raises if source field is none",
