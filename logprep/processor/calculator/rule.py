@@ -110,6 +110,7 @@ class CalculatorRule(FieldManagerRule):
         """
         timeout: int = field(validator=validators.instance_of(int), converter=int, default=1)
         """The maximum time in seconds for the calculation. Defaults to :code:`1`"""
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):
             self.source_fields = re.findall(FIELD_PATTERN, self.calc)

@@ -98,12 +98,27 @@ class FieldManagerRule(Rule):
             validator=[
                 validators.instance_of(list),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
-                validators.min_len(1),
-            ]
+            ],
+            default=[],
         )
-        """The fields from where to get the values which should be processed"""
-        target_field: str = field(validator=validators.instance_of(str))
-        """The field where to write the processed values to"""
+        """The fields from where to get the values which should be processed, requires
+        :code:`target_field`."""
+        target_field: str = field(validator=validators.instance_of(str), default="")
+        """The field where to write the processed values to. Can be used to move/copy single values,
+        merge multiple values to one list or extend a list. Requires :code:`source_field`."""
+        mapping: dict = field(
+            validator=[
+                validators.instance_of(dict),
+                validators.deep_mapping(
+                    key_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of(str),
+                ),
+            ],
+            default={},
+        )
+        """A key-value mapping from source fields to target fields. Can be used to copy/move
+        multiple fields at once. If you want to move fields set :code:`delete_source_fields` to
+        true. Works independent of :code:`source_fields` and :code:`target_field`."""
         delete_source_fields: bool = field(validator=validators.instance_of(bool), default=False)
         """Whether to delete all the source fields or not. Defaults to :code:`False`"""
         overwrite_target: bool = field(validator=validators.instance_of(bool), default=False)
@@ -137,6 +152,10 @@ class FieldManagerRule(Rule):
     @property
     def target_field(self):
         return self._config.target_field
+
+    @property
+    def mapping(self):
+        return self._config.mapping
 
     @property
     def overwrite_target(self):

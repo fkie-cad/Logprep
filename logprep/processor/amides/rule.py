@@ -22,9 +22,9 @@ The following example shows a complete rule:
     description: Sample rule for AMIDES processor.
 
 """
+from attrs import define, field, validators
 from ruamel.yaml import YAML
 
-from attrs import define, field, validators
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 yaml = YAML(typ="safe", pure=True)
@@ -51,3 +51,4 @@ class AmidesRule(FieldManagerRule):
         target_field: str = field(
             validator=validators.instance_of(str), default="rule_attributions"
         )
+        mapping: dict = field(default="", init=False, repr=False, eq=False)

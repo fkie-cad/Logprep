@@ -128,7 +128,6 @@ class SelectiveExtractorRule(FieldManagerRule):
             converter=sorted,
         )
         """List of fields in dotted field notation"""
-
         outputs: tuple[dict[str, str]] = field(
             validator=[
                 validators.deep_iterable(
@@ -148,16 +147,13 @@ class SelectiveExtractorRule(FieldManagerRule):
         )
         """list of output mappings in form of :code:`output_name:topic`.
         Only one mapping is allowed per list element"""
-
         extract_from_file: str = field(validator=validators.instance_of(str), default="", eq=False)
         """The path or url to a file with a flat list of fields to extract.
         For string format see :ref:`getters`."""
-
         target_field: str = field(default="", init=False, repr=False, eq=False)
-
         overwrite_target: bool = field(default=False, init=False, repr=False, eq=False)
-
         extend_target_list: bool = field(default=False, init=False, repr=False, eq=False)
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):
             super().__attrs_post_init__()

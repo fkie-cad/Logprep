@@ -85,6 +85,7 @@ class GeoipEnricherRule(FieldManagerRule):
                 geometry.coordinates: client.geo.coordinates
             description: '...'
         """
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
     @property
     def customize_target_subfields(self) -> dict:  # pylint: disable=missing-function-docstring

@@ -57,6 +57,7 @@ Examples for ip_informer:
 from ipaddress import IPv4Address, IPv6Address
 
 from attrs import define, field, validators
+
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
@@ -103,6 +104,7 @@ class IpInformerRule(FieldManagerRule):
         (e.g. toredo which is only given for IPv4Addresses),
         the property will be extracted with the value :code:`False`.
         """
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
     @property
     def properties(self):

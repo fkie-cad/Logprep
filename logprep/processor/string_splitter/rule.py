@@ -45,6 +45,7 @@ Examples for string_splitter:
 """
 
 from attrs import define, field, validators
+
 from logprep.processor.field_manager.rule import FieldManagerRule
 
 
@@ -57,6 +58,7 @@ class StringSplitterRule(FieldManagerRule):
 
         delimeter: str = field(validator=validators.instance_of(str), default=" ")
         """The delimeter for splitting. Defaults to whitespace"""
+        mapping: dict = field(default="", init=False, repr=False, eq=False)
 
     @property
     def delimeter(self):
