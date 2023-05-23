@@ -23,7 +23,7 @@ scipy>=1.9.2
 joblib
 pygrok
 pyyaml
-requests
+requests>=2.31.0
 ruamel.yaml
 schedule
 tldextract

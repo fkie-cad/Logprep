@@ -17,7 +17,7 @@ anyio==3.6.2
     #   -r requirements.txt
     #   httpcore
     #   starlette
-astroid==2.15.4
+astroid==2.15.5
     # via pylint
 async-timeout==4.0.2
     # via
@@ -37,16 +37,16 @@ boltons==21.0.0
     #   face
     #   glom
     #   semgrep
-boto3==1.26.120
+boto3==1.26.138
     # via -r requirements.txt
-botocore==1.29.120
+botocore==1.29.138
     # via
     #   -r requirements.txt
     #   boto3
     #   s3transfer
 bracex==2.3.post1
     # via wcmatch
-certifi==2022.12.7
+certifi==2023.5.7
     # via
     #   -r requirements.txt
     #   elasticsearch
@@ -74,9 +74,9 @@ colorama==0.4.6
     # via
     #   -r requirements.txt
     #   semgrep
-confluent-kafka==2.1.0
+confluent-kafka==2.1.1
     # via -r requirements.txt
-coverage[toml]==7.2.3
+coverage[toml]==7.2.5
     # via pytest-cov
 deepdiff==6.3.0
     # via -r requirements.txt
@@ -90,7 +90,7 @@ exceptiongroup==1.1.1
     # via pytest
 face==22.0.0
     # via glom
-fastapi==0.95.1
+fastapi==0.95.2
     # via -r requirements.txt
 filelock==3.12.0
     # via
@@ -102,7 +102,7 @@ frozenlist==1.3.3
     #   -r requirements.txt
     #   aiohttp
     #   aiosignal
-geoip2==4.6.0
+geoip2==4.7.0
     # via -r requirements.txt
 glom==22.1.0
     # via semgrep
@@ -111,9 +111,9 @@ h11==0.14.0
     #   -r requirements.txt
     #   httpcore
     #   uvicorn
-httpcore==0.17.0
+httpcore==0.17.2
     # via httpx
-httpx==0.24.0
+httpx==0.24.1
     # via -r requirements_dev.in
 hyperscan==0.4.0 ; sys_platform == "linux" and platform_machine == "x86_64"
     # via -r requirements.txt
@@ -155,7 +155,7 @@ markdown-it-py==2.2.0
     # via rich
 markupsafe==2.1.2
     # via jinja2
-maxminddb==2.2.0
+maxminddb==2.3.0
     # via
     #   -r requirements.txt
     #   geoip2
@@ -163,7 +163,7 @@ mccabe==0.7.0
     # via pylint
 mdurl==0.1.2
     # via markdown-it-py
-msgspec==0.14.2
+msgspec==0.15.1
     # via -r requirements.txt
 multidict==6.0.4
     # via
@@ -194,7 +194,7 @@ pathspec==0.11.1
     # via black
 peewee==3.16.2
     # via semgrep
-platformdirs==3.3.0
+platformdirs==3.5.1
     # via
     #   -r requirements.txt
     #   black
@@ -212,7 +212,7 @@ protobuf==3.20.3
     # via
     #   -r requirements.txt
     #   mysql-connector-python
-pycryptodome==3.17
+pycryptodome==3.18.0
     # via -r requirements.txt
 pydantic==1.10.7
     # via
@@ -222,7 +222,7 @@ pygments==2.15.1
     # via rich
 pygrok==1.0.0
     # via -r requirements.txt
-pylint==2.17.3
+pylint==2.17.4
     # via -r requirements_dev.in
 pyparsing==3.0.9
     # via -r requirements.txt
@@ -247,11 +247,11 @@ pyyaml==6.0
     # via
     #   -r requirements.txt
     #   responses
-regex==2023.3.23
+regex==2023.5.5
     # via
     #   -r requirements.txt
     #   pygrok
-requests==2.28.2
+requests==2.31.0
     # via
     #   -r requirements.txt
     #   geoip2
@@ -266,9 +266,9 @@ requests-file==1.5.1
     #   tldextract
 responses==0.23.1
     # via -r requirements_dev.in
-rich==13.3.4
+rich==13.3.5
     # via semgrep
-ruamel-yaml==0.17.21
+ruamel-yaml==0.17.26
     # via
     #   -r requirements.txt
     #   semgrep
@@ -276,7 +276,7 @@ ruamel-yaml-clib==0.2.7
     # via
     #   -r requirements.txt
     #   ruamel-yaml
-s3transfer==0.6.0
+s3transfer==0.6.1
     # via
     #   -r requirements.txt
     #   boto3
@@ -288,7 +288,7 @@ scipy==1.10.1
     # via
     #   -r requirements.txt
     #   scikit-learn
-semgrep==1.19.0
+semgrep==1.22.0
     # via -r requirements_dev.in
 six==1.16.0
     # via
@@ -302,7 +302,7 @@ sniffio==1.3.0
     #   anyio
     #   httpcore
     #   httpx
-starlette==0.26.1
+starlette==0.27.0
     # via
     #   -r requirements.txt
     #   fastapi
@@ -310,7 +310,7 @@ threadpoolctl==3.1.0
     # via
     #   -r requirements.txt
     #   scikit-learn
-tldextract==3.4.0
+tldextract==3.4.4
     # via -r requirements.txt
 tomli==2.0.1
     # via
@@ -319,11 +319,11 @@ tomli==2.0.1
     #   pylint
     #   pytest
     #   semgrep
-tomlkit==0.11.7
+tomlkit==0.11.8
     # via pylint
-types-pyyaml==6.0.12.9
+types-pyyaml==6.0.12.10
     # via responses
-typing-extensions==4.5.0
+typing-extensions==4.6.0
     # via
     #   -r requirements.txt
     #   astroid
@@ -340,17 +340,16 @@ uritools==4.0.1
     #   urlextract
 urlextract==1.8.0
     # via -r requirements.txt
-urllib3==1.26.15
+urllib3==1.26.16
     # via
     #   -r requirements.txt
     #   botocore
     #   elasticsearch
-    #   geoip2
     #   opensearch-py
     #   requests
     #   responses
     #   semgrep
-uvicorn==0.21.1
+uvicorn==0.22.0
     # via -r requirements.txt
 wcmatch==8.4.1
     # via semgrep
