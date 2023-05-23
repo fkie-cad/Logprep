@@ -5,6 +5,7 @@
 ### Improvements
 ### Bugfix
 
+* Fix error handling of FieldManager if no mapped source field exists in the event.
 
 ## v6.3.0
 ### Features
