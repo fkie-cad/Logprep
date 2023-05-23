@@ -1,9 +1,9 @@
 """This module contains all filter expressions used for matching rules."""
 
-from typing import List, Any
 import re
-from itertools import chain, zip_longest
 from abc import ABC, abstractmethod
+from itertools import chain, zip_longest
+from typing import List, Any
 
 
 class FilterExpressionError(BaseException):
@@ -100,6 +100,8 @@ class FilterExpression(ABC):
         """
         return ".".join([str(i) for i in key_list])
 
+    def get_lucene_filter(self):
+        raise NotImplementedError
 
 class Always(FilterExpression):
     """Filter expression that can be set to match always or never."""
@@ -115,6 +117,11 @@ class Always(FilterExpression):
     def does_match(self, document: dict):
         return self._value
 
+    def get_lucene_filter(self):
+        if self._value:
+            return "*"
+        return ""
+
 
 class Not(FilterExpression):
     """Filter expression that negates a match."""
@@ -124,6 +131,9 @@ class Not(FilterExpression):
 
     def __repr__(self) -> str:
         return f"NOT({str(self.expression)})"
+
+    def get_lucene_filter(self):
+        return f"NOT ({self.expression.get_lucene_filter()})"
 
     def does_match(self, document: dict) -> bool:
         return not self.expression.matches(document)
@@ -145,6 +155,9 @@ class And(CompoundFilterExpression):
     def __repr__(self) -> str:
         return f'AND({", ".join([str(i) for i in self.expressions])})'
 
+    def get_lucene_filter(self):
+        return f'({" AND ".join([exp.get_lucene_filter() for exp in self.expressions])})'
+
     def does_match(self, document: dict) -> bool:
         return all((expression.matches(document) for expression in self.expressions))
 
@@ -154,6 +167,9 @@ class Or(CompoundFilterExpression):
 
     def __repr__(self) -> str:
         return f'OR({", ".join([str(i) for i in self.expressions])})'
+
+    def get_lucene_filter(self):
+        return f'({" OR ".join([exp.get_lucene_filter() for exp in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
         return any((expression.matches(document) for expression in self.expressions))
@@ -168,6 +184,9 @@ class KeyValueBasedFilterExpression(FilterExpression):
 
     def __repr__(self) -> str:
         return f"{self.as_dotted_string(self.key)}:{str(self._expected_value)}"
+
+    def get_lucene_filter(self):
+        return str(self)
 
     def does_match(self, document):
         raise NotImplementedError
@@ -185,6 +204,9 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
 
     def __repr__(self) -> str:
         return f'{self.as_dotted_string(self.key)}:"{str(self._expected_value)}"'
+
+    def get_lucene_filter(self):
+        return str(self)
 
 
 class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
@@ -339,6 +361,9 @@ class Exists(FilterExpression):
 
     def __repr__(self) -> str:
         return f'"{self.as_dotted_string(self.split_field)}"'
+
+    def get_lucene_filter(self):
+        return f"{self}: *"
 
     def does_match(self, document: dict) -> bool:
         if not self.split_field:
