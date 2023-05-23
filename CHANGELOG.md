@@ -4,7 +4,7 @@
 ### Features
 ### Improvements
 
-* Bump `requests` to `>=2.31.0` circumvent `CVE-2023-32681`
+* Bump `requests` to `>=2.31.0` to circumvent `CVE-2023-32681`
 
 ### Bugfix
 
