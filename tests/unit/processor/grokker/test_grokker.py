@@ -112,7 +112,7 @@ test_cases = [  # testcase, rule, event, expected
                     "winlog.event_data.normalize me!": [
                         "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
                         "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
-                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                        "%{IP:some_ip_3} %{NUMBER:port_3:int} bar",
                     ]
                 }
             },

@@ -8,6 +8,8 @@
 
 ### Bugfix
 
+* Fix Grokker such that only the first grok pattern match is applied instead of all matching
+pattern
 
 ## v6.3.0
 ### Features
