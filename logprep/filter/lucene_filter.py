@@ -82,6 +82,7 @@ require additional options.
 """
 import re
 from itertools import chain, zip_longest
+
 # pylint: enable=anomalous-backslash-in-string
 from typing import List, Union, Optional
 
