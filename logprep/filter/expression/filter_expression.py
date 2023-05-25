@@ -101,7 +101,11 @@ class FilterExpression(ABC):
         return ".".join([str(i) for i in key_list])
 
     def get_lucene_filter(self):
-        raise NotImplementedError
+        """Returns a filter string that is partially lucene complete. As lucene does not support
+        regex the corresponding regex field is left as a value inside the lucene filter such that
+        the end user can decide for themselves what they want to do with this information"""
+        return str(self)
+
 
 class Always(FilterExpression):
     """Filter expression that can be set to match always or never."""
@@ -351,6 +355,9 @@ class RegExFilterExpression(FilterExpression):
         if isinstance(value, list):
             return any(filter(self._matcher.match, value))
         return self._matcher.match(str(value)) is not None
+
+    def get_lucene_filter(self):
+        return str(self)
 
 
 class Exists(FilterExpression):
