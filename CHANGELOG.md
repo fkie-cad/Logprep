@@ -3,6 +3,10 @@
 ## next release
 ### Features
 ### Improvements
+
+* Include a lucene representation of the rule filter into the predetector results. The
+representation is not completely lucene compatible due to non-existing regex functionality.  
+
 ### Bugfix
 
 
