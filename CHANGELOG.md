@@ -10,6 +10,8 @@
 
 * Fix Grokker such that only the first grok pattern match is applied instead of all matching
 pattern
+* Fix Grokker such that nested parentheses in oniguruma pattern are working (3 levels are supported
+now)
 
 ## v6.3.0
 ### Features
