@@ -216,7 +216,9 @@ class TestGrokkerRule:
                 {
                     "filter": "message",
                     "grokker": {
-                        "mapping": {"message": "(?<group>(TOO(%{SPACE}(M(AN)Y)%{SPACE})PARENTHESES))"}
+                        "mapping": {
+                            "message": "(?<group>(TOO(%{SPACE}(M(AN)Y)%{SPACE})PARENTHESES))"
+                        }
                     },
                 },
                 InvalidRuleDefinitionError,
@@ -226,7 +228,9 @@ class TestGrokkerRule:
                 {
                     "filter": "message",
                     "grokker": {
-                        "mapping": {"message": "(?<group>(NOT-TOO(%{SPACE}(MANY)%{SPACE})PARENTHESES))"}
+                        "mapping": {
+                            "message": "(?<group>(NOT-TOO(%{SPACE}(MANY)%{SPACE})PARENTHESES))"
+                        }
                     },
                 },
                 None,
