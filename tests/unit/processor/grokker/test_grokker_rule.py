@@ -222,7 +222,7 @@ class TestGrokkerRule:
                     },
                 },
                 InvalidRuleDefinitionError,
-                "The supplied regex pattern are not valid",
+                "The resolved grok pattern .* is not valid",
             ),
             (
                 {

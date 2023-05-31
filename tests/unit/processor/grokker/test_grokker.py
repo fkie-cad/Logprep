@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
 import logging
 import re
 from copy import deepcopy
@@ -261,6 +262,22 @@ test_cases = [  # testcase, rule, event, expected
             "info": "BAL",
             "rest": "/4",
             "remains": "SEND INFO BAL/4",
+        },
+    ),
+    (
+        "two oniguruma with same target names, applies only the last target",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {
+                    "message": "^(?<action>%{NUMBER})%{SPACE}(?<action>%{NUMBER})%{SPACE}(?<action>%{NUMBER})%{SPACE}(?<action>%{NUMBER})$",
+                }
+            },
+        },
+        {"message": "13 37 21 42"},
+        {
+            "message": "13 37 21 42",
+            "action": "42",
         },
     ),
 ]

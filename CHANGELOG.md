@@ -12,6 +12,8 @@
 pattern
 * Fix Grokker such that nested parentheses in oniguruma pattern are working (3 levels are supported
 now)
+* Fix Grokker such that two or more oniguruma can point to the same target. This ensures
+grok-pattern compatibility with the normalizer and other grok tools
 
 ## v6.3.0
 ### Features

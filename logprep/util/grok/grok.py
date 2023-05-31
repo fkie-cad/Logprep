@@ -23,11 +23,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import re
+import string
 import sys
 from hashlib import md5
 from itertools import chain
 from pathlib import Path
 
+import numpy as np
 import pkg_resources
 from attrs import define, field, validators
 
@@ -140,6 +142,8 @@ class Grok:
         dundered_fields = self._to_dundered_field(fields)
         dotted_fields = self._to_dotted_field(dundered_fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
+        if fields_hash in self.field_mapper:
+            fields_hash += f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
         if type_str is not None:
             self.type_mapper |= {fields_hash: type_str}
         self.field_mapper |= {fields_hash: dotted_fields}
@@ -151,6 +155,8 @@ class Grok:
         dundered_fields = self._to_dundered_field(fields)
         dotted_fields = self._to_dotted_field(dundered_fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
+        if fields_hash in self.field_mapper:
+            fields_hash += f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
         self.field_mapper |= {fields_hash: dotted_fields}
         return rf"(?P<{fields_hash}>" rf"{pattern})"
 

@@ -155,8 +155,8 @@ class GrokkerRule(DissectorRule):
                 )
                 for dotted_field, pattern in self._config.mapping.items()
             }
-        except re.error:
-            raise InvalidRuleDefinitionError("The supplied regex pattern are not valid")
+        except re.error as error:
+            raise InvalidRuleDefinitionError(f"The resolved grok pattern '{error.pattern}' is not valid")
 
         # to ensure no string splitting is done during processing for target fields:
         for _, grok in self.actions.items():
