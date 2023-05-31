@@ -40,7 +40,7 @@ DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs
 
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
-ONIGURUMA = r"\(\?\<(.*)\>(.*)\)"
+ONIGURUMA = r"\(\?<([^()]*)>\(?(([^()]*|\(([^()]*|\([^()]*\))*\))*)\)?\)"
 INT_FLOAT = {"int": int, "float": float}
 
 

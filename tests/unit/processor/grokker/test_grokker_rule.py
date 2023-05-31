@@ -212,6 +212,26 @@ class TestGrokkerRule:
                 ValueError,
                 "must match regex",
             ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {"message": "(?<group>(TOO(%{SPACE}(M(AN)Y)%{SPACE})PARENTHESES))"}
+                    },
+                },
+                InvalidRuleDefinitionError,
+                "The supplied regex pattern are not valid",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "grokker": {
+                        "mapping": {"message": "(?<group>(NOT-TOO(%{SPACE}(MANY)%{SPACE})PARENTHESES))"}
+                    },
+                },
+                None,
+                None,
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):

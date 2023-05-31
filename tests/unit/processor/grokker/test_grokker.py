@@ -242,6 +242,27 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "userfield": "MyUser586"},
     ),
+    (
+        "oniguruma with nested parentheses (3 levels supported)",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {
+                    "message": "^(?<timestamp>%{DAY}%{SPACE}%{MONTH}%{SPACE}%{MONTHDAY}%{SPACE}%{TIME}%{SPACE}%{YEAR})%{SPACE}%{GREEDYDATA:[remains]}$",
+                    "remains": "(?<action>(SEND%{SPACE}INFO)%{SPACE}(?<info>BAL)%{GREEDYDATA:rest}",
+                }
+            },
+        },
+        {"message": "Wed Dec 7 13:14:13 2005 SEND INFO BAL/4"},
+        {
+            "message": "Wed Dec 7 13:14:13 2005 SEND INFO BAL/4",
+            "timestamp": "Wed Dec 7 13:14:13 2005",
+            "action": "SEND INFO",
+            "info": "BAL",
+            "rest": "/4",
+            "remains": "SEND INFO BAL/4",
+        },
+    ),
 ]
 
 failure_test_cases = [

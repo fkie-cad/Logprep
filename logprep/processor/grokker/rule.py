@@ -115,7 +115,8 @@ class GrokkerRule(DissectorRule):
         Lists of search pattern will be checked in the order of the list until the first matching
         pattern.
         It is possible to use `oniguruma` regex pattern with or without grok patterns in the
-        patterns part.
+        patterns part. When defining an `oniguruma` there is a limitation of three nested
+        parentheses inside the pattern. Applying more nested parentheses is not possible.  
         Logstashs ecs conform grok patterns are used to resolve the here used grok patterns.
         """
         patterns: dict = field(
@@ -144,14 +145,18 @@ class GrokkerRule(DissectorRule):
     def set_mapping_actions(self, custom_patterns_dir: str = None) -> None:
         """sets the mapping actions"""
         custom_patterns_dir = "" if custom_patterns_dir is None else custom_patterns_dir
-        self.actions = {
-            dotted_field: Grok(
-                pattern,
-                custom_patterns=self._config.patterns,
-                custom_patterns_dir=custom_patterns_dir,
-            )
-            for dotted_field, pattern in self._config.mapping.items()
-        }
+
+        try:
+            self.actions = {
+                dotted_field: Grok(
+                    pattern,
+                    custom_patterns=self._config.patterns,
+                    custom_patterns_dir=custom_patterns_dir,
+                )
+                for dotted_field, pattern in self._config.mapping.items()
+            }
+        except re.error:
+            raise InvalidRuleDefinitionError("The supplied regex pattern are not valid")
 
         # to ensure no string splitting is done during processing for target fields:
         for _, grok in self.actions.items():
