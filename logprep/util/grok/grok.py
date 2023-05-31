@@ -143,7 +143,9 @@ class Grok:
         dotted_fields = self._to_dotted_field(dundered_fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
         if fields_hash in self.field_mapper:
-            fields_hash += f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
+            fields_hash += (
+                f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
+            )
         if type_str is not None:
             self.type_mapper |= {fields_hash: type_str}
         self.field_mapper |= {fields_hash: dotted_fields}
@@ -156,7 +158,9 @@ class Grok:
         dotted_fields = self._to_dotted_field(dundered_fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
         if fields_hash in self.field_mapper:
-            fields_hash += f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
+            fields_hash += (
+                f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
+            )
         self.field_mapper |= {fields_hash: dotted_fields}
         return rf"(?P<{fields_hash}>" rf"{pattern})"
 
