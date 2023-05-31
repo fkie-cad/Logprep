@@ -28,6 +28,7 @@ import sys
 from hashlib import md5
 from itertools import chain
 from pathlib import Path
+from re import error
 
 import numpy as np
 import pkg_resources
@@ -43,6 +44,7 @@ DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
 ONIGURUMA = r"\(\?<([^()]*)>\(?(([^()]*|\(([^()]*|\([^()]*\))*\))*)\)?\)"
+NON_RESOLVED_ONIGURUMA = r"\(\?<[^md5].*>"
 INT_FLOAT = {"int": int, "float": float}
 
 
@@ -186,6 +188,9 @@ class Grok:
                 py_regex_pattern,
                 count=1,
             )
+        # Enforce error to be consistent between python versions 3.9 and 3.11
+        if re.match(NON_RESOLVED_ONIGURUMA, py_regex_pattern):
+            raise error("Not valid oniguruma pattern", pattern=py_regex_pattern)
         return re.compile(py_regex_pattern)
 
 
