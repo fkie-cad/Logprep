@@ -5,6 +5,8 @@
 ### Improvements
 
 * Bump `requests` to `>=2.31.0` to circumvent `CVE-2023-32681`
+* Include a lucene representation of the rule filter into the predetector results. The
+representation is not completely lucene compatible due to non-existing regex functionality.  
 
 ### Bugfix
 

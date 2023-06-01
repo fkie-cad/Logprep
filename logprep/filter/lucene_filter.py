@@ -7,7 +7,7 @@ The filters are based on the Lucene query language, but contain some additional 
 It is possible to filter for keys and values in log messages.
 **Dot notation** is used to access subfields in log messages.
 A filter for :code:`{'field': {'subfield': 'value'}}` can be specified by
-:code:`field.subfield': 'value`.
+:code:`field.subfield': 'value'`.
 
 If a key without a value is given it is filtered for the existence of the key.
 The existence of a specific field can therefore be checked by a key without a value.
@@ -32,7 +32,7 @@ This example is not complete, since rules are specific to processors and require
 It is possible to use filters with field names that contain white spaces or use special symbols
 of the Lucene syntax. However, this has to be escaped.
 The filter :code:`filter: 'field.a subfield(test): value'` must be escaped as
-:code:`filter: 'field.a\ subfield\(test\): value'`.
+:code:`filter: 'field.a\\\ subfield\(test\): value'`.
 Other references to this field do not require such escaping.
 This is *only* necessary for the filter.
 It is necessary to escape twice if the file is in the JSON format - once for
@@ -80,10 +80,11 @@ require additional options.
     regex_fields:
     - ip_address
 """
-# pylint: enable=anomalous-backslash-in-string
-from typing import List, Union, Optional
 import re
 from itertools import chain, zip_longest
+
+# pylint: enable=anomalous-backslash-in-string
+from typing import List, Union, Optional
 
 import luqum
 from luqum.parser import parser, ParseSyntaxError, IllegalCharacterError

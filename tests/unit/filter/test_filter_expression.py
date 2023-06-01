@@ -24,6 +24,7 @@ from logprep.filter.expression.filter_expression import (
     SigmaFilterExpression,
     Exists,
 )
+from logprep.filter.lucene_filter import LuceneFilter
 
 
 class TestFilterExpression:
@@ -521,3 +522,58 @@ class TestSigmaFilterExpression(ValueBasedFilterExpressionTest):
     def test_escaped_expected(self, filter_expression, expected_expression):
         _filter = SigmaFilterExpression(["key1", "key2"], filter_expression)
         assert _filter.escaped_expected == expected_expression
+
+
+class TestLuceneRepresentation:
+    @pytest.mark.parametrize(
+        "logprep_filter_language, special_fields, expected_lucene_filter_query",
+        [
+            ("exist_field", None, '"exist_field": *'),
+            ("key: value", None, 'key:"value"'),
+            ("dotted.key: value", None, 'dotted.key:"value"'),
+            ("*", None, "*"),
+            ("NOT key", None, 'NOT ("key": *)'),
+            ("NOT key: value", None, 'NOT (key:"value")'),
+            ("key: value1 AND keyy: value2", None, '(key:"value1" AND keyy:"value2")'),
+            (
+                "key: value1 AND keyy: value2 AND keyyy: value3",
+                None,
+                '(key:"value1" AND keyy:"value2" AND keyyy:"value3")',
+            ),
+            ("key: value1 OR key: value2", None, '(key:"value1" OR key:"value2")'),
+            (
+                "key: value1 AND keyy: value2 OR keyyy: value3",
+                None,
+                '((key:"value1" AND keyy:"value2") OR keyyy:"value3")',
+            ),
+            (
+                "key: value1 AND (keyy: value2 OR keyyy: value3)",
+                None,
+                '(key:"value1" AND (keyy:"value2" OR keyyy:"value3"))',
+            ),
+            (
+                "key: value1 AND (keyy: value2 OR NOT keyyy: value3)",
+                None,
+                '(key:"value1" AND (keyy:"value2" OR NOT (keyyy:"value3")))',
+            ),
+            ("key: val*", None, 'key:"val*"'),
+            ("key: 1", None, 'key:"1"'),
+            ("key: 1.0", None, 'key:"1.0"'),
+            (r"key: field\[\d\].*", {"regex_fields": ["key"]}, r"key:r/^field\[\d\].*$/"),
+            (
+                r"nonRegexKey: something AND key: field\[\d\].*",
+                {"regex_fields": ["key"]},
+                r'(nonRegexKey:"something" AND key:r/^field\[\d\].*$/)',
+            ),
+        ],
+    )
+    def test_convert_filter_to_best_closest_lucene_language(
+        self, logprep_filter_language, special_fields, expected_lucene_filter_query
+    ):
+        filter_expression = LuceneFilter.create(
+            logprep_filter_language, special_fields=special_fields
+        )
+        lucene_filter = filter_expression.get_lucene_filter()
+        assert (
+            lucene_filter == expected_lucene_filter_query
+        ), f"Expected: '{expected_lucene_filter_query}', but got: '{lucene_filter}'"
