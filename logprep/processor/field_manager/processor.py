@@ -75,6 +75,8 @@ class FieldManager(Processor):
         source_fields, targets = list(zip(*mapping.items()))
         source_field_values = self._get_field_values(event, mapping.keys())
         self._handle_missing_fields(event, rule, source_fields, source_field_values)
+        if not any(source_field_values):
+            return
         source_field_values, targets = self._filter_missing_fields(source_field_values, targets)
         self._write_to_multiple_targets(event, targets, source_field_values, rule, rule_args)
         if rule.delete_source_fields:
