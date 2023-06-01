@@ -130,6 +130,7 @@ This slicing is based on the native
 """
 
 import json
+from functools import cached_property
 from os.path import basename, splitext
 from typing import Dict, List, Optional, Set
 
@@ -246,6 +247,10 @@ class Rule:
     @property
     def failure_tags(self):
         return self._config.tag_on_failure
+
+    @cached_property
+    def lucene_filter(self):
+        return self.filter.get_lucene_filter()
 
     # pylint: enable=C0111
 

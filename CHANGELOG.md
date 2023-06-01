@@ -5,9 +5,12 @@
 ### Improvements
 
 * Bump `requests` to `>=2.31.0` to circumvent `CVE-2023-32681`
+* Include a lucene representation of the rule filter into the predetector results. The
+representation is not completely lucene compatible due to non-existing regex functionality.  
 
 ### Bugfix
 
+* Fix error handling of FieldManager if no mapped source field exists in the event.
 * Fix Grokker such that only the first grok pattern match is applied instead of all matching
 pattern
 * Fix Grokker such that nested parentheses in oniguruma pattern are working (3 levels are supported

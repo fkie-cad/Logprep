@@ -471,6 +471,18 @@ failure_test_cases = [
         },
         ".*FieldExistsWarning.*",
     ),
+    (
+        "tries to move multiple fields to multiple target fields but none exists",
+        {
+            "filter": "no-mapped-field",
+            "field_manager": {
+                "mapping": {"field.one": "one", "field.two": "two", "field.three": "three"},
+            },
+        },
+        {"no-mapped-field": "exists"},
+        {"no-mapped-field": "exists", "tags": ["_field_manager_missing_field_warning"]},
+        ".*ProcessingWarning.*",
+    ),
 ]  # testcase, rule, event, expected, error
 
 
