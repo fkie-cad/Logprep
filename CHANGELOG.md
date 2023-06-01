@@ -3,6 +3,10 @@
 ## next release
 ### Features
 ### Improvements
+### Bugfix
+
+## v6.4.0
+### Improvements
 
 * Bump `requests` to `>=2.31.0` to circumvent `CVE-2023-32681`
 * Include a lucene representation of the rule filter into the predetector results. The
