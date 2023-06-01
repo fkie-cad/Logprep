@@ -23,11 +23,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import re
+import string
 import sys
 from hashlib import md5
 from itertools import chain
 from pathlib import Path
+from re import error
 
+import numpy as np
 import pkg_resources
 from attrs import define, field, validators
 
@@ -40,7 +43,8 @@ DEFAULT_PATTERNS_DIRS = [pkg_resources.resource_filename(__name__, "patterns/ecs
 
 LOGSTASH_NOTATION = r"(([^\[\]\{\}\.:]*)?(\[[^\[\]\{\}\.:]*\])*)"
 GROK = r"%\{" + rf"([A-Z0-9_]*)(:({LOGSTASH_NOTATION}))?(:(int|float))?" + r"\}"
-ONIGURUMA = r"\(\?\<(.*)\>(.*)\)"
+ONIGURUMA = r"\(\?<([^()]*)>\(?(([^()]*|\(([^()]*|\([^()]*\))*\))*)\)?\)"
+NON_RESOLVED_ONIGURUMA = r"\(\?<[^md5].*>"
 INT_FLOAT = {"int": int, "float": float}
 
 
@@ -92,15 +96,15 @@ class Grok:
 
         match_obj = [match for match in match_obj if match is not None]
         matches = [match.groupdict() for match in match_obj]
+        if not matches:
+            return {}
+        first_match = matches[0]
         if self.type_mapper:
-            matches = list(map(self._map_types, matches))
-        # deduplicate matches
-        matches = [dict(tup) for tup in {tuple(match.items()) for match in matches}]
-        return {
-            self.field_mapper[field_hash]: value
-            for match in matches
-            for field_hash, value in match.items()
-        }
+            for key, match in first_match.items():
+                type_ = INT_FLOAT.get(self.type_mapper.get(key))
+                if type_ is not None and match is not None:
+                    first_match[key] = type_(match)
+        return {self.field_mapper[field_hash]: value for field_hash, value in first_match.items()}
 
     def _map_types(self, matches):
         for key, match in matches.items():
@@ -140,6 +144,10 @@ class Grok:
         dundered_fields = self._to_dundered_field(fields)
         dotted_fields = self._to_dotted_field(dundered_fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
+        if fields_hash in self.field_mapper:
+            fields_hash += (
+                f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
+            )
         if type_str is not None:
             self.type_mapper |= {fields_hash: type_str}
         self.field_mapper |= {fields_hash: dotted_fields}
@@ -151,6 +159,10 @@ class Grok:
         dundered_fields = self._to_dundered_field(fields)
         dotted_fields = self._to_dotted_field(dundered_fields)
         fields_hash = f"md5{md5(fields.encode()).hexdigest()}"  # nosemgrep
+        if fields_hash in self.field_mapper:
+            fields_hash += (
+                f"_{''.join(np.random.choice(list(string.ascii_letters), size=10, replace=True))}"
+            )
         self.field_mapper |= {fields_hash: dotted_fields}
         return rf"(?P<{fields_hash}>" rf"{pattern})"
 
@@ -176,6 +188,9 @@ class Grok:
                 py_regex_pattern,
                 count=1,
             )
+        # Enforce error to be consistent between python versions 3.9 and 3.11
+        if re.match(NON_RESOLVED_ONIGURUMA, py_regex_pattern):
+            raise error("Not valid oniguruma pattern", pattern=py_regex_pattern)
         return re.compile(py_regex_pattern)
 
 

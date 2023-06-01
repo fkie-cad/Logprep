@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
 import logging
 import re
 from copy import deepcopy
@@ -112,7 +113,7 @@ test_cases = [  # testcase, rule, event, expected
                     "winlog.event_data.normalize me!": [
                         "%{IP:some_ip_1} %{NUMBER:port_1:int} foo",
                         "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
-                        "%{IP:some_ip_2} %{NUMBER:port_2:int} bar",
+                        "%{IP:some_ip_3} %{NUMBER:port_3:int} bar",
                     ]
                 }
             },
@@ -241,6 +242,43 @@ test_cases = [  # testcase, rule, event, expected
         },
         {"message": "this is the MyUser586"},
         {"message": "this is the MyUser586", "userfield": "MyUser586"},
+    ),
+    (
+        "oniguruma with nested parentheses (3 levels supported)",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {
+                    "message": "^(?<timestamp>%{DAY}%{SPACE}%{MONTH}%{SPACE}%{MONTHDAY}%{SPACE}%{TIME}%{SPACE}%{YEAR})%{SPACE}%{GREEDYDATA:[remains]}$",
+                    "remains": "(?<action>(SEND%{SPACE}INFO)%{SPACE}(?<info>BAL)%{GREEDYDATA:rest}",
+                }
+            },
+        },
+        {"message": "Wed Dec 7 13:14:13 2005 SEND INFO BAL/4"},
+        {
+            "message": "Wed Dec 7 13:14:13 2005 SEND INFO BAL/4",
+            "timestamp": "Wed Dec 7 13:14:13 2005",
+            "action": "SEND INFO",
+            "info": "BAL",
+            "rest": "/4",
+            "remains": "SEND INFO BAL/4",
+        },
+    ),
+    (
+        "two oniguruma with same target names, applies only the last target",
+        {
+            "filter": "message",
+            "grokker": {
+                "mapping": {
+                    "message": "^(?<action>%{NUMBER})%{SPACE}(?<action>%{NUMBER})%{SPACE}(?<action>%{NUMBER})%{SPACE}(?<action>%{NUMBER})$",
+                }
+            },
+        },
+        {"message": "13 37 21 42"},
+        {
+            "message": "13 37 21 42",
+            "action": "42",
+        },
     ),
 ]
 
