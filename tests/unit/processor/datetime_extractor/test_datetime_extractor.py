@@ -4,10 +4,8 @@
 # pylint: disable=wrong-import-order
 import logging
 import re
-from datetime import datetime
 
-from dateutil.parser import parse
-from dateutil.tz import tzlocal, tzutc
+from dateutil.tz import tzutc
 
 from logprep.processor.datetime_extractor.processor import DatetimeExtractor
 from tests.unit.processor.base import BaseProcessorTestCase
@@ -36,27 +34,17 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        # Two different timezones need to be used in the test to account for daylight savings
-        # Use current timezone here, since the processor initializes with timezone on the system
-        tz_local_name = datetime.now(tzlocal()).strftime("%z")
-        _, _, local_timezone = self._parse_local_tz(tz_local_name)
-
-        # Use timestamps timezone here, since processor uses timezones of each timestamp for deltas
-        parsed_timestamp = parse(timestamp).astimezone(tzlocal())
-        tz_local_name = parsed_timestamp.strftime("%z")
-        ts_hour_delta, ts_minute_delta, _ = self._parse_local_tz(tz_local_name)
-
         expected = {
             "@timestamp": timestamp,
             "winlog": {"event_id": 123},
             "split_@timestamp": {
                 "day": 30,
-                "hour": 14 + ts_hour_delta,
+                "hour": 14,
                 "microsecond": 861000,
-                "minute": 37 + ts_minute_delta,
+                "minute": 37,
                 "month": 7,
                 "second": 42,
-                "timezone": local_timezone,
+                "timezone": "UTC",
                 "weekday": "Tuesday",
                 "year": 2019,
             },
@@ -71,27 +59,17 @@ class TestDatetimeExtractor(BaseProcessorTestCase):
 
         self.object.process(document)
 
-        # Two different timezones need to be used in the test to account for daylight savings
-        # Use current timezone here, since the processor initializes with timezone on the system
-        tz_local_name = datetime.now(tzlocal()).strftime("%z")
-        _, _, local_timezone = self._parse_local_tz(tz_local_name)
-
-        # Use timestamps timezone here, since processor uses timezones of each timestamp for deltas
-        parsed_timestamp = parse(timestamp).astimezone(tzlocal())
-        tz_local_name = parsed_timestamp.strftime("%z")
-        ts_hour_delta, ts_minute_delta, _ = self._parse_local_tz(tz_local_name)
-
         expected = {
             "@timestamp": timestamp,
             "winlog": {"event_id": 123},
             "split_@timestamp": {
                 "day": 30,
-                "hour": 13 + ts_hour_delta,  # 13 ist hour of src timestamp in UTC
+                "hour": 14,
                 "microsecond": 861000,
-                "minute": 37 + ts_minute_delta,
+                "minute": 37,
                 "month": 7,
                 "second": 42,
-                "timezone": local_timezone,
+                "timezone": "UTC+01:00",
                 "weekday": "Tuesday",
                 "year": 2019,
             },

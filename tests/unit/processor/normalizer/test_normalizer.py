@@ -669,7 +669,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
     def test_normalization_from_timestamp_berlin_to_utc(self):
         expected = {
-            "@timestamp": "1999-12-12T11:12:22Z",
+            "@timestamp": "1999-12-12T12:12:22Z",
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
@@ -1000,7 +1000,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
     def test_normalization_from_timestamp_with_collision(self):
         expected = {
-            "@timestamp": "1999-12-12T11:12:22Z",
+            "@timestamp": "1999-12-12T12:12:22Z",
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,

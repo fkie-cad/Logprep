@@ -78,7 +78,7 @@ class DryRunner:
 
     @cached_property
     def _input_documents(self):
-        return GetterFactory.from_string(self._input_file_path).get_yaml()
+        return GetterFactory.from_string(self._input_file_path).get_jsonl()
 
     def __init__(
         self, input_file_path: str, config_path: str, full_output: bool, use_json: bool, logger

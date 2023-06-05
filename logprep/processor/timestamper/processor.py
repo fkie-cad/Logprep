@@ -30,7 +30,7 @@ from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.processor.field_manager.processor import FieldManager
 from logprep.processor.timestamper.rule import TimestamperRule
 from logprep.util.helper import get_dotted_field_value
-from logprep.util.time import TimeParser, TimeParserException
+from logprep.util.time import TimeParserException, TimeParser
 
 
 class Timestamper(FieldManager):
@@ -48,7 +48,9 @@ class Timestamper(FieldManager):
         parsed_successfully = False
         for source_format in source_formats:
             try:
-                parsed_datetime = self._parse_datetime(source_field, source_format, source_timezone)
+                parsed_datetime = TimeParser.parse_datetime(
+                    source_field, source_format, source_timezone
+                )
             except TimeParserException:
                 continue
             result = parsed_datetime.astimezone(target_timezone).isoformat().replace("+00:00", "Z")
@@ -67,18 +69,3 @@ class Timestamper(FieldManager):
             )
 
         return source_field_value
-
-    def _parse_datetime(self, source_field, source_format, source_timezone):
-        if source_format == "ISO8601":
-            parsed_datetime = TimeParser.from_string(source_field).astimezone(source_timezone)
-        elif source_format == "UNIX":
-            parsed_datetime = (
-                int(source_field) if len(source_field) <= 10 else int(source_field) / 1000
-            )
-            parsed_datetime = TimeParser.from_timestamp(parsed_datetime).astimezone(source_timezone)
-        else:
-            parsed_datetime = TimeParser.from_format(source_field, source_format).astimezone(
-                source_timezone
-            )
-
-        return parsed_datetime
