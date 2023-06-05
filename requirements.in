@@ -19,8 +19,8 @@ pyparsing
 scikit-learn>=1.2.0
 scipy>=1.9.2
 joblib
-pygrok
 pyyaml
+regex
 requests>=2.31.0
 ruamel.yaml
 schedule

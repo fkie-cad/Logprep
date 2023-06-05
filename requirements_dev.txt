@@ -223,8 +223,6 @@ pydantic==1.10.8
     #   fastapi
 pygments==2.15.1
     # via rich
-pygrok==1.0.0
-    # via -r requirements.txt
 pylint==2.17.4
     # via -r requirements_dev.in
 pyparsing==3.0.9
@@ -249,9 +247,7 @@ pyyaml==6.0
     #   -r requirements.txt
     #   responses
 regex==2023.6.3
-    # via
-    #   -r requirements.txt
-    #   pygrok
+    # via -r requirements.txt
 requests==2.31.0
     # via
     #   -r requirements.txt
