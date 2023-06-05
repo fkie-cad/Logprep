@@ -44,14 +44,8 @@ class TestAutoRuleTester:
             (
                 "One successful test",
                 {
-                    "input": {
-                        "message": "A B"
-                    },
-                    "expected_output": {
-                        "message": "A B",
-                        "source": "A",
-                        "target": "B"
-                    },
+                    "input": {"message": "A B"},
+                    "expected_output": {"message": "A B", "source": "A", "target": "B"},
                     "expected_extra_output": [],
                 },
                 None,
