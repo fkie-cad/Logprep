@@ -43,15 +43,15 @@ Therefore, results of a processor should not depend on other events.
    A[Input\nConnector] --> C
    A[Input\nConnector] --> D
    subgraph Pipeline 1
-   B[Normalizer] --> E[Geo-IP Enricher]
+   B[Dissector] --> E[Geo-IP Enricher]
    E --> F[Dropper] 
    end
    subgraph Pipeline 2
-   C[Normalizer] --> G[Geo-IP Enricher]
+   C[Dissector] --> G[Geo-IP Enricher]
    G --> H[Dropper] 
    end
    subgraph Pipeline n
-   D[Normalizer] --> I[Geo-IP Enricher]
+   D[Dissector] --> I[Geo-IP Enricher]
    I --> J[Dropper] 
    end
    F --> K[Output\nConnector]
@@ -74,7 +74,6 @@ Processors
    logprep.processor.geoip_enricher.processor
    logprep.processor.labeler.processor
    logprep.processor.list_comparison.processor
-   logprep.processor.normalizer.processor
    logprep.processor.pre_detector.processor
    logprep.processor.pseudonymizer.processor
    logprep.processor.selective_extractor.processor

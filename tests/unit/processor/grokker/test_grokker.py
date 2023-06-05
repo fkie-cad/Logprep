@@ -412,26 +412,26 @@ class TestGrokker(BaseProcessorTestCase):
         rule = {
             "filter": "winlog.event_id: 123456789",
             "grokker": {
-                "mapping": {"winlog.event_data.normalize me!": "%{CUSTOM_PATTERN_TEST:normalized}"}
+                "mapping": {"winlog.event_data.normalize me!": "%{ID:normalized}"}
             },
         }
         event = {
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"normalize me!": "Test"},
+                "event_data": {"normalize me!": "id-1"},
             }
         }
         expected = {
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"normalize me!": "Test"},
+                "event_data": {"normalize me!": "id-1"},
             },
-            "normalized": "Test",
+            "normalized": "id-1",
         }
         self.object._config.custom_patterns_dir = (
-            "tests/testdata/unit/normalizer/additional_grok_patterns"
+            "tests/testdata/unit/grokker/patterns/"
         )
         self._load_specific_rule(rule)
         self.object.setup()

@@ -80,14 +80,14 @@ def fixture_full_pipeline_metrics():
     rule_metrics_one = Rule.RuleMetrics(
         labels={
             "pipeline": "pipeline-01",
-            "processor": "normalizer",
+            "processor": "dissector",
             "tree_type": "specific",
         }
     )
     specific_rule_tree_metrics = RuleTree.RuleTreeMetrics(
         labels={
             "pipeline": "pipeline-01",
-            "processor": "normalizer",
+            "processor": "dissector",
             "rule_tree": "specific",
         },
         rules=[rule_metrics_one],
@@ -95,20 +95,20 @@ def fixture_full_pipeline_metrics():
     rule_metrics_two = Rule.RuleMetrics(
         labels={
             "pipeline": "pipeline-01",
-            "processor": "normalizer",
+            "processor": "dissector",
             "rule_tree": "generic",
         }
     )
     generic_rule_tree_metrics = RuleTree.RuleTreeMetrics(
         labels={
             "pipeline": "pipeline-01",
-            "processor": "normalizer",
+            "processor": "dissector",
             "rule_tree": "generic",
         },
         rules=[rule_metrics_two],
     )
-    normalizer_metrics = Processor.ProcessorMetrics(
-        labels={"pipeline": "pipeline-01", "processor": "normalizer"},
+    dissector_metrics = Processor.ProcessorMetrics(
+        labels={"pipeline": "pipeline-01", "processor": "dissector"},
         generic_rule_tree=generic_rule_tree_metrics,
         specific_rule_tree=specific_rule_tree_metrics,
     )
@@ -124,7 +124,7 @@ def fixture_full_pipeline_metrics():
         input=input_metrics,
         output=output_metrics,
         labels={"pipeline": "pipeline-01"},
-        pipeline=[generic_adder_metrics, normalizer_metrics],
+        pipeline=[generic_adder_metrics, dissector_metrics],
     )
     return pipeline_metrics
 
@@ -227,7 +227,7 @@ class TestMetricFileTarget:
                                 },
                             },
                         },
-                        "normalizer": {
+                        "dissector": {
                             "logprep_processor_number_of_processed_events": 0.0,
                             "logprep_processor_mean_processing_time_per_event": 0.0,
                             "logprep_processor_number_of_warnings": 0.0,
@@ -407,25 +407,25 @@ class TestPrometheusMetricTarget:
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01", processor="generic_adder", rule_tree="specific"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer"),
+                mock.call(pipeline="pipeline-01", processor="dissector"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer"),
+                mock.call(pipeline="pipeline-01", processor="dissector"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer"),
+                mock.call(pipeline="pipeline-01", processor="dissector"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer"),
+                mock.call(pipeline="pipeline-01", processor="dissector"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
+                mock.call(pipeline="pipeline-01", processor="dissector", rule_tree="generic"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
+                mock.call(pipeline="pipeline-01", processor="dissector", rule_tree="generic"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="generic"),
+                mock.call(pipeline="pipeline-01", processor="dissector", rule_tree="generic"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="specific"),
+                mock.call(pipeline="pipeline-01", processor="dissector", rule_tree="specific"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="specific"),
+                mock.call(pipeline="pipeline-01", processor="dissector", rule_tree="specific"),
                 mock.call().set(0.0),
-                mock.call(pipeline="pipeline-01", processor="normalizer", rule_tree="specific"),
+                mock.call(pipeline="pipeline-01", processor="dissector", rule_tree="specific"),
                 mock.call().set(0.0),
                 mock.call(pipeline="pipeline-01"),
                 mock.call().set(0.0),

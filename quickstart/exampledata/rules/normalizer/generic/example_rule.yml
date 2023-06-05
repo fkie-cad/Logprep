@@ -1,4 +1,0 @@
-filter: "test_normalizer"
-normalize:
-  something: normalized_field
-description: "..."

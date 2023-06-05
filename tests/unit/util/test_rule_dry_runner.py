@@ -14,13 +14,12 @@ class TestRunLogprep:
         process_count: 1
         timeout: 0.1
         pipeline:
-          - normalizer:
-              type: normalizer
+          - dissector:
+              type: dissector
               specific_rules:
-                - tests/testdata/unit/normalizer/rules/specific/
+                - tests/testdata/unit/dissector/
               generic_rules:
-                - tests/testdata/unit/normalizer/rules/generic/
-              regex_mapping: tests/testdata/unit/normalizer/regex_mapping.yml
+                - tests/testdata/unit/dissector/
           - labelername:
               type: labeler
               schema: tests/testdata/unit/labeler/schemas/schema3.json
@@ -60,7 +59,7 @@ class TestRunLogprep:
         os.remove(self.config_path)
 
     def test_dry_run_accepts_json_as_input(self, tmp_path, capsys):
-        test_json = {"winlog": {"event_id": 1111, "event_data": {"test2": "fancy data"}}}
+        test_json = {"message": "123 456"}
         input_json_file = os.path.join(tmp_path, "test_input.json")
         with open(input_json_file, "w", encoding="utf8") as input_file:
             json.dump(test_json, input_file)
@@ -98,10 +97,7 @@ class TestRunLogprep:
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
 
     def test_dry_run_accepts_jsonl_as_input(self, tmp_path, capsys):
-        test_jsonl = [
-            '{"winlog": {"event_id": 1111, "event_data": {"test2": "fancy data"}}}\n',
-            '{"winlog": {"event_id": 1111, "event_data": {"test2": "more fancy data"}}}',
-        ]
+        test_jsonl = ['{"message": "123 456"}\n', '{"message": "789 012"}']
         input_jsonl_file = os.path.join(tmp_path, "test_input.jsonl")
         with open(input_jsonl_file, "w", encoding="utf8") as input_file:
             input_file.writelines(test_jsonl)

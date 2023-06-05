@@ -1,0 +1,9 @@
+[{
+  "filter": "message",
+  "dissector": {
+    "mapping": {
+      "message": "%{source} %{target}"
+    }
+  },
+  "description": "Test-rule with matching auto-test"
+}]

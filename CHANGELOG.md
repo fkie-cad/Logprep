@@ -1,8 +1,16 @@
 ## Upcoming Changes
 
 ## next release
+### Breaking
+
+* Remove `normalizer` processor
+
 ### Features
+
 ### Improvements
+
+* Remove direct dependency of `python-dateutil`
+
 ### Bugfix
 
 ## v6.4.0
@@ -11,7 +19,6 @@
 * Bump `requests` to `>=2.31.0` to circumvent `CVE-2023-32681`
 * Include a lucene representation of the rule filter into the predetector results. The
 representation is not completely lucene compatible due to non-existing regex functionality.
-* Remove direct dependency of `python-dateutil`
 
 ### Bugfix
 

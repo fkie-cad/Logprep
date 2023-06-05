@@ -19,7 +19,6 @@ from logprep.factory_error import (
 )
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.labeler.processor import Labeler
-from logprep.processor.normalizer.processor import Normalizer
 from logprep.processor.pseudonymizer.processor import Pseudonymizer
 from tests.testdata.metadata import path_to_schema, path_to_single_rule
 
@@ -93,22 +92,6 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
     )
 
     assert isinstance(processor, Pseudonymizer)
-
-
-def test_create_normalizer_returns_normalizer_processor():
-    processor = Factory.create(
-        {
-            "normalizer": {
-                "type": "normalizer",
-                "specific_rules": ["tests/testdata/unit/normalizer/rules/specific"],
-                "generic_rules": ["tests/testdata/unit/normalizer/rules/generic"],
-                "regex_mapping": "tests/testdata/unit/normalizer/regex_mapping.yml",
-            }
-        },
-        logger,
-    )
-
-    assert isinstance(processor, Normalizer)
 
 
 def test_create_clusterer_returns_clusterer_processor():

@@ -45,11 +45,12 @@ class TestAutoRuleTester:
                 "One successful test",
                 {
                     "input": {
-                        "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}
+                        "message": "A B"
                     },
                     "expected_output": {
-                        "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}},
-                        "test_normalized": {"test": {"field1": 1, "field2": 2}},
+                        "message": "A B",
+                        "source": "A",
+                        "target": "B"
                     },
                     "expected_extra_output": [],
                 },
@@ -392,12 +393,14 @@ class TestAutoRuleTester:
         corpus_tester = RuleCorpusTester(str(test_config_path), "")
         test_data = {
             "input": {
-                "message": "something",
+                "message": "A B",
                 "field1": "field 1 value",
                 "winlog": {"event_id": "2222", "event_data": {"IpAddress": "1.2.3.4"}},
             },
             "expected_output": {
-                "message": "something",
+                "message": "A B",
+                "source": "A",
+                "target": "B",
                 "field1": "field 1 value",
                 "winlog": {"event_id": "2222", "event_data": {"IpAddress": "<IGNORE_VALUE>"}},
             },

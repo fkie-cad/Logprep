@@ -9,14 +9,14 @@ Development
         Component <-- Connector
         Connector <-- Input : implements
         Connector <-- Output : implements
-        Processor <-- Normalizer : implements
+        Processor <-- Dissector : implements
         Processor <-- Pseudonymizer : implements
         Input <-- ConfluentKafkaInput : implements
         Output <-- ConfluentKafkaOutput : implements
         ProcessorConfiguration
-        Rule <-- NormalizerRule : inherit
+        Rule <-- DissectorRule : inherit
         Rule <-- PseudonymizerRule : inherit
-        BaseProcessorTestCase <-- NormalizerTestCase : implements
+        BaseProcessorTestCase <-- DissectorTestCase : implements
         BaseProcessorTestCase <-- PseudonymizerTestCase : implements
         class Component{
             +Config
@@ -36,10 +36,10 @@ Development
             +process()
             +apply_rules()*
         }
-        class Normalizer{
+        class Dissector{
             +Config
-            +rule_class = NormalizerRule
-            +_config: Normalizer.Config
+            +rule_class = DissectorRule
+            +_config: Dissector.Config
             +apply_rules()
         }
 
@@ -98,7 +98,7 @@ Development
 
         class TestFactory{
             +test_check()
-            +test_create_normalizer()
+            +test_create_dissector()
             +test_create_pseudonymizer()
         }
 
@@ -109,7 +109,7 @@ Development
             +test_apply_rules()*
         }
 
-        class NormalizerTestCase{
+        class DissectorTestCase{
             +test_apply_rules()
         }
 

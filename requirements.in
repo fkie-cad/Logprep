@@ -16,7 +16,6 @@ prometheus_client
 protobuf>=3.20.2
 pycryptodome
 pyparsing
-pytz # can be removed with normalizer code
 scikit-learn>=1.2.0
 scipy>=1.9.2
 joblib
