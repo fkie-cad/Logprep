@@ -48,7 +48,9 @@ class Timestamper(FieldManager):
         parsed_successfully = False
         for source_format in source_formats:
             try:
-                parsed_datetime = TimeParser.parse_datetime(source_field, source_format, source_timezone)
+                parsed_datetime = TimeParser.parse_datetime(
+                    source_field, source_format, source_timezone
+                )
             except TimeParserException:
                 continue
             result = parsed_datetime.astimezone(target_timezone).isoformat().replace("+00:00", "Z")
