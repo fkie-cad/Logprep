@@ -3,7 +3,8 @@
 ## next release
 ### Breaking
 
-* Remove `normalizer` processor
+* Remove `normalizer` processor, as it's functionality was replaced by the `grokker`, `timestamper`
+and `field_manager` processors
 
 ### Features
 
