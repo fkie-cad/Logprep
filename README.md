@@ -412,8 +412,13 @@ The environment can either be started with a Logprep container or without one.
 #### Running Test Environment without Logprep Container (default way)
 
   * Run from within the `quickstart` directory: `docker-compose up -d` 
-    * It starts and connects Kafka, Logstash, Opensearch and Opensearch Dashboards.
-  * Run Logprep against loaded environment from main `Logprep` directory: `logprep quickstart/exampledata/config/pipeline.yml`
+    * It starts and connects Kafka, Opensearch and Opensearch Dashboards.
+  * Create Kafka consumer topic by running `docker-compose exec kafka /opt/bitnami/kafka/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --topic consumer`
+  * Run `Logprep` against loaded environment from main `Logprep` directory: `PYTHONPATH="." python  ./logprep/run_logprep.py ./quickstart/exampledata/config/pipeline.yml`
+  * put log messages in kafka by running `cat ./exampledata/input_logdata/test_input.jsonl | kafkacat -b localhost:9092 -t consumer`
+  * you will find the processed messages in opensearch in the index `processed`
+  * you will find pseudonyms in the index `pseudonyms`
+  * you will find predetections in the index `sre`
 
 #### Running Test Environment with Logprep Container
 
