@@ -492,7 +492,10 @@ class RuleParser:
                     elif isinstance(segment, Always):
                         continue
                     else:
-                        if segment.key[0] in tag_map.keys() and Exists([tag_map[segment.key[0]]]) not in rule:
+                        if (
+                            segment.key[0] in tag_map.keys()
+                            and Exists([tag_map[segment.key[0]]]) not in rule
+                        ):
                             RuleParser._add_tag(rule, tag_map[segment.key[0]])
 
     @staticmethod
