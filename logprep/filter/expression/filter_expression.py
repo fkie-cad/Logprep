@@ -100,12 +100,6 @@ class FilterExpression(ABC):
         """
         return ".".join([str(i) for i in key_list])
 
-    def get_lucene_filter(self):
-        """Returns a filter string that is partially lucene complete. As lucene does not support
-        regex the corresponding regex field is left as a value inside the lucene filter such that
-        the end user can decide for themselves what they want to do with this information"""
-        return str(self)
-
 
 class Always(FilterExpression):
     """Filter expression that can be set to match always or never."""
@@ -115,16 +109,11 @@ class Always(FilterExpression):
 
     def __repr__(self):
         if self._value:
-            return "TRUE"
-        return "FALSE"
+            return "*"
+        return ""
 
     def does_match(self, document: dict):
         return self._value
-
-    def get_lucene_filter(self):
-        if self._value:
-            return "*"
-        return ""
 
 
 class Not(FilterExpression):
@@ -134,10 +123,7 @@ class Not(FilterExpression):
         self.expression = expression
 
     def __repr__(self) -> str:
-        return f"NOT({str(self.expression)})"
-
-    def get_lucene_filter(self):
-        return f"NOT ({self.expression.get_lucene_filter()})"
+        return f"NOT ({str(self.expression)})"
 
     def does_match(self, document: dict) -> bool:
         return not self.expression.matches(document)
@@ -157,10 +143,7 @@ class And(CompoundFilterExpression):
     """Compound filter expression that is a logical conjunction."""
 
     def __repr__(self) -> str:
-        return f'AND({", ".join([str(i) for i in self.expressions])})'
-
-    def get_lucene_filter(self):
-        return f'({" AND ".join([exp.get_lucene_filter() for exp in self.expressions])})'
+        return f'({" AND ".join([str(exp) for exp in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
         return all((expression.matches(document) for expression in self.expressions))
@@ -170,10 +153,7 @@ class Or(CompoundFilterExpression):
     """Compound filter expression that is a logical disjunction."""
 
     def __repr__(self) -> str:
-        return f'OR({", ".join([str(i) for i in self.expressions])})'
-
-    def get_lucene_filter(self):
-        return f'({" OR ".join([exp.get_lucene_filter() for exp in self.expressions])})'
+        return f'({" OR ".join([str(exp) for exp in self.expressions])})'
 
     def does_match(self, document: dict) -> bool:
         return any((expression.matches(document) for expression in self.expressions))
@@ -188,9 +168,6 @@ class KeyValueBasedFilterExpression(FilterExpression):
 
     def __repr__(self) -> str:
         return f"{self.as_dotted_string(self.key)}:{str(self._expected_value)}"
-
-    def get_lucene_filter(self):
-        return str(self)
 
     def does_match(self, document):
         raise NotImplementedError
@@ -208,9 +185,6 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
 
     def __repr__(self) -> str:
         return f'{self.as_dotted_string(self.key)}:"{str(self._expected_value)}"'
-
-    def get_lucene_filter(self):
-        return str(self)
 
 
 class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
@@ -334,7 +308,7 @@ class RegExFilterExpression(FilterExpression):
         self._matcher = re.compile(self._regex)
 
     def __repr__(self) -> str:
-        return f"{self.as_dotted_string(self.key)}:r/{self._regex}/"
+        return f"{self.as_dotted_string(self.key)}:/{self._regex}/"
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
@@ -356,9 +330,6 @@ class RegExFilterExpression(FilterExpression):
             return any(filter(self._matcher.match, value))
         return self._matcher.match(str(value)) is not None
 
-    def get_lucene_filter(self):
-        return str(self)
-
 
 class Exists(FilterExpression):
     """Filter expression that returns true if a given field exists."""
@@ -367,10 +338,7 @@ class Exists(FilterExpression):
         self.split_field = value
 
     def __repr__(self) -> str:
-        return f'"{self.as_dotted_string(self.split_field)}"'
-
-    def get_lucene_filter(self):
-        return f"{self}: *"
+        return f'"{self.as_dotted_string(self.split_field)}": *'
 
     def does_match(self, document: dict) -> bool:
         if not self.split_field:

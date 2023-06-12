@@ -138,7 +138,6 @@ class PreDetector(Processor):
     def _generate_detection_result(self, rule: PreDetectorRule):
         detection_result = rule.detection_data
         detection_result["rule_filter"] = rule.filter_str
-        detection_result["lucene_filter"] = rule.lucene_filter
         detection_result["description"] = rule.description
         detection_result["pre_detection_id"] = self._event["pre_detection_id"]
         if "host" in self._event and "name" in self._event["host"]:

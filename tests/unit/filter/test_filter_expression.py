@@ -47,8 +47,8 @@ class TestAlways:
         self.documents = [{}, {"key": "value"}, {"integer": 42}]
 
     def test_string_representation(self):
-        assert str(Always(True)) == "TRUE"
-        assert str(Always(False)) == "FALSE"
+        assert str(Always(True)) == "*"
+        assert str(Always(False)) == ""
 
     def test_different_objects_with_same_payload_are_equal(self):
         filter1 = Always(False)
@@ -67,7 +67,7 @@ class TestAlways:
 
 class TestNot:
     def test_string_representation(self):
-        assert str(Not(Always(True))) == "NOT(TRUE)"
+        assert str(Not(Always(True))) == "NOT (*)"
 
     def test_different_objects_with_same_payload_are_equal(self):
         not_filter1 = Not(Always(True))
@@ -86,7 +86,8 @@ class TestNot:
 
 class TestAnd:
     def test_string_representation(self):
-        assert str(And(Always(True))) == "AND(TRUE)"
+        assert str(And(Exists(["foo"]))) == '("foo": *)'
+        assert str(And(Exists(["foo"]), Exists(["bar"]))) == '("foo": * AND "bar": *)'
 
     def test_different_objects_with_same_payload_are_equal(self):
         and_filter1 = And(Always(False))
@@ -124,7 +125,8 @@ class TestAnd:
 
 class TestOr:
     def test_string_representation(self):
-        assert str(Or(Always(True))) == "OR(TRUE)"
+        assert str(Or(Exists(["foo"]))) == '("foo": *)'
+        assert str(Or(Exists(["foo"]), Exists(["bar"]))) == '("foo": * OR "bar": *)'
 
     def test_different_objects_with_same_payload_are_equal(self):
         or_filter1 = Or(Always(False))
@@ -282,7 +284,7 @@ class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
         self.filter_identical = RegExFilterExpression(["key1", "key2"], self.regex)
 
     def test_string_representation(self):
-        assert str(self.filter) == "key1.key2:r/^start.*end$/"
+        assert str(self.filter) == "key1.key2:/^start.*end$/"
 
     def test_does_not_match_if_key_is_missing(self):
         assert not self.filter.matches({"not": {"the": {"key": "to match"}}})
@@ -340,7 +342,7 @@ class TestExistsFilterExpression(ValueBasedFilterExpressionTest):
         self.filter_identical = Exists(["key1", "key2"])
 
     def test_string_representation(self):
-        assert str(self.filter) == '"key1.key2"'
+        assert str(self.filter) == '"key1.key2": *'
 
     def test_matches_any_value(self):
         filter = Exists(["key1", "key2"])
@@ -559,11 +561,11 @@ class TestLuceneRepresentation:
             ("key: val*", None, 'key:"val*"'),
             ("key: 1", None, 'key:"1"'),
             ("key: 1.0", None, 'key:"1.0"'),
-            (r"key: field\[\d\].*", {"regex_fields": ["key"]}, r"key:r/^field\[\d\].*$/"),
+            (r"key: field\[\d\].*", {"regex_fields": ["key"]}, r"key:/^field\[\d\].*$/"),
             (
                 r"nonRegexKey: something AND key: field\[\d\].*",
                 {"regex_fields": ["key"]},
-                r'(nonRegexKey:"something" AND key:r/^field\[\d\].*$/)',
+                r'(nonRegexKey:"something" AND key:/^field\[\d\].*$/)',
             ),
         ],
     )
@@ -573,7 +575,6 @@ class TestLuceneRepresentation:
         filter_expression = LuceneFilter.create(
             logprep_filter_language, special_fields=special_fields
         )
-        lucene_filter = filter_expression.get_lucene_filter()
         assert (
-            lucene_filter == expected_lucene_filter_query
-        ), f"Expected: '{expected_lucene_filter_query}', but got: '{lucene_filter}'"
+            str(filter_expression) == expected_lucene_filter_query
+        ), f"Expected: '{expected_lucene_filter_query}', but got: '{filter_expression}'"
