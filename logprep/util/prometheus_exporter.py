@@ -1,6 +1,7 @@
 """This module contains functionality to start a prometheus exporter and expose metrics with it"""
 import os
 import shutil
+import tempfile
 from os import listdir, path
 from os.path import isfile
 
@@ -27,16 +28,18 @@ class PrometheusStatsExporter:
         Sets up the proper metric registry for multiprocessing and handles the necessary
         temporary multiprocessing directory that the prometheus client expects.
         """
-        self.multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-        if self.multi_processing_dir:
-            if os.path.isdir(self.multi_processing_dir):
-                shutil.rmtree(self.multi_processing_dir)
-            if os.path.isfile(self.multi_processing_dir):
-                raise ValueError(
-                    "Environment variable 'PROMETHEUS_MULTIPROC_DIR' is a file and not a directory"
-                )
-            os.makedirs(self.multi_processing_dir, exist_ok=True)
-            multiprocess.MultiProcessCollector(REGISTRY, self.multi_processing_dir)
+        if os.environ.get("PROMETHEUS_MULTIPROC_DIR"):
+            self.multi_processing_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+        else:
+            self.multi_processing_dir = f"{tempfile.gettempdir()}/logprep/prometheus_multiproc_dir"
+        if os.path.isdir(self.multi_processing_dir):
+            shutil.rmtree(self.multi_processing_dir)
+        if os.path.isfile(self.multi_processing_dir):
+            raise ValueError(
+                "Environment variable 'PROMETHEUS_MULTIPROC_DIR' is a file and not a directory"
+            )
+        os.makedirs(self.multi_processing_dir, exist_ok=True)
+        multiprocess.MultiProcessCollector(REGISTRY, self.multi_processing_dir)
 
     def remove_metrics_from_process(self, pid):
         """

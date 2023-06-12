@@ -1,7 +1,6 @@
 """This module implements different targets for the logprep metrics"""
 import datetime
 import json
-import os
 from logging import getLogger, Logger
 from logging.handlers import TimedRotatingFileHandler
 from os.path import dirname
@@ -120,14 +119,6 @@ class PrometheusMetricTarget(MetricTarget):
     @classmethod
     def create(cls, config, logger):
         """Creates a PrometheusMetricTarget"""
-        if not os.environ.get("PROMETHEUS_MULTIPROC_DIR", False):
-            logger.warning(
-                "Prometheus Exporter was deactivated because the "
-                "mandatory environment variable "
-                "'PROMETHEUS_MULTIPROC_DIR' is missing."
-            )
-            return None
-
         prometheus_exporter = PrometheusStatsExporter(config.get("metrics", {}), logger)
         prometheus_exporter.run()
         return PrometheusMetricTarget(prometheus_exporter, config)

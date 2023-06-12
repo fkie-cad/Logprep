@@ -5,7 +5,7 @@
 import hashlib
 import logging
 import re
-from multiprocessing import current_process
+import tempfile
 from pathlib import Path
 from unittest import mock
 
@@ -377,7 +377,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         responses.add(responses.GET, geoip_database_path, db_path_content)
         self.object._config.db_path = geoip_database_path
         self.object.setup()
-        downloaded_file = Path(f"{current_process().name}-{self.object.name}.mmdb")
+        downloaded_file = Path(tempfile.gettempdir()) / Path(f"{self.object.name}.mmdb")
         assert downloaded_file.exists()
         downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
         assert expected_checksum == downloaded_checksum
