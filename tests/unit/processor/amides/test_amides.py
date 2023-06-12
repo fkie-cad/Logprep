@@ -38,9 +38,10 @@ class TestAmides(BaseProcessorTestCase):
         self.object.process(document)
         assert self.object.metrics.number_of_processed_events == 1
 
-        rule_attributions = document.get("rule_attributions", None)
-        assert rule_attributions
-        assert len(rule_attributions) == 10
+        result = document.get("amides")
+        assert result
+        assert result["confidence"] >= 0.32
+        assert len(result["attributions"]) == 10
         assert self.object.metrics.total_cmdlines == 1
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.num_cache_entries == 1
@@ -60,7 +61,9 @@ class TestAmides(BaseProcessorTestCase):
         }
         self.object.process(document)
         assert self.object.metrics.number_of_processed_events == 1
-        assert not document.get("rule_attributions")
+        result = document.get("amides")
+        assert result
+        assert result["confidence"] < 0.32
         assert self.object.metrics.total_cmdlines == 1
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.num_cache_entries == 1
@@ -82,7 +85,7 @@ class TestAmides(BaseProcessorTestCase):
 
         self.object.process(document)
         assert self.object.metrics.number_of_processed_events == 1
-        assert not document.get("rule_attributions")
+        assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.num_cache_entries == 0
@@ -100,7 +103,7 @@ class TestAmides(BaseProcessorTestCase):
 
         self.object.process(document)
         assert self.object.metrics.number_of_processed_events == 1
-        assert not document.get("rule_attributions")
+        assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
         assert self.object.metrics.new_results == 0
         assert self.object.metrics.num_cache_entries == 0
@@ -124,7 +127,7 @@ class TestAmides(BaseProcessorTestCase):
         self.object.process(other_document)
         assert self.object.metrics.number_of_processed_events == 2
 
-        assert other_document.get("rule_attributions") == document.get("rule_attributions")
+        assert other_document.get("amides") == document.get("amides")
         assert self.object.metrics.total_cmdlines == 2
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
@@ -144,7 +147,7 @@ class TestAmides(BaseProcessorTestCase):
             }
         }
         self.object.process(document)
-        assert document.get("rule_attributions")
+        assert document.get("amides")
         with caplog.at_level(logging.WARNING):
             self.object.process(document)
         assert re.match(".*FieldExistsWarning.*", caplog.text)

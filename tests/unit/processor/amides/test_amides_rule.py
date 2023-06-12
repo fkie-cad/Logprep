@@ -3,7 +3,6 @@
 # pylint: disable=missing-docstring
 import pytest
 
-
 from logprep.processor.amides.rule import AmidesRule
 
 
@@ -13,7 +12,7 @@ def fixture_default_rule_definition():
         "filter": "winlog.event_id: 1 AND winlog.provider_name: Microsoft-Windows-Sysmon",
         "amides": {
             "source_fields": ["process.command_line"],
-            "target_field": "rule_attributions",
+            "target_field": "amides",
         },
         "description": "Description for Amides",
     }
@@ -29,7 +28,7 @@ class TestAmidesRule:
                     "filter": "winlog.event_id: 1 AND winlog.provider_name: Microsoft-Windows-Sysmon",
                     "amides": {
                         "source_fields": ["process.command_line"],
-                        "target_field": "rule_attributions",
+                        "target_field": "amides",
                     },
                     "description": "Description for Amides",
                 },
@@ -41,7 +40,7 @@ class TestAmidesRule:
                     "filter": "winlog.event_id: 12",
                     "amides": {
                         "source_fields": ["process.command_line"],
-                        "target_field": "rule_attributions",
+                        "target_field": "amides",
                     },
                     "description": "Description for Amides",
                 },
@@ -53,7 +52,7 @@ class TestAmidesRule:
                     "filter": "winlog.event_id: 1 AND winlog.provider_name: Microsoft-Windows-Sysmon",
                     "amides": {
                         "source_fields": ["winlog.event_data.CommandLine"],
-                        "target_field": "rule_attributions",
+                        "target_field": "amides",
                     },
                     "description": "Description for Amides",
                 },

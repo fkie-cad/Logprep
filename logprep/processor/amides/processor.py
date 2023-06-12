@@ -82,7 +82,7 @@ metrics like the number of hits and misses and the current cache load.
 
 .. automodule:: logprep.processor.amides.rule
 """
-from functools import lru_cache, cached_property
+from functools import cached_property, lru_cache
 from multiprocessing import current_process
 from pathlib import Path
 from time import time
@@ -218,15 +218,16 @@ class Amides(Processor):
         result = self._evaluate_cmdline_cached(normalized)
         self._update_cache_metrics()
 
-        if result:
-            self._write_target_field(event=event, rule=rule, result=result)
+        self._write_target_field(event=event, rule=rule, result=result)
 
     def _evaluate_cmdline(self, cmdline: str):
-        result = self._perform_misuse_detection(cmdline)
-        if result == 0:
-            return []
+        malicious, confidence = self._perform_misuse_detection(cmdline)
+        if malicious:
+            attributions = self._calculate_rule_attributions(cmdline)
+        else:
+            attributions = []
 
-        return self._calculate_rule_attributions(cmdline)
+        return {"confidence": confidence, "attributions": attributions}
 
     def _perform_misuse_detection(self, cmdline: str) -> int:
         begin = time()

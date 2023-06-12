@@ -52,7 +52,5 @@ class AmidesRule(FieldManagerRule):
                 validators.max_len(1),
             ]
         )
-        target_field: str = field(
-            validator=validators.instance_of(str), default="rule_attributions"
-        )
+        target_field: str = field(validator=validators.instance_of(str), default="amides")
         mapping: dict = field(default="", init=False, repr=False, eq=False)
