@@ -70,7 +70,7 @@ class GeoipEnricher(Processor):
         if not db_path.exists():
             self._logger.debug("start geoip database download...")
             temp_dir = Path(tempfile.gettempdir())
-            db_path_file = temp_dir / Path(f"{self.name}.mmdb")
+            db_path_file = temp_dir / "logprep" / f"{self.name}.mmdb"
             db_path_file.touch()
             db_path_file.write_bytes(GetterFactory.from_string(str(self._config.db_path)).get_raw())
             self._logger.debug("finished geoip database download.")
