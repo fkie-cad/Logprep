@@ -3,11 +3,17 @@
 ## next release
 ### Features
 ### Improvements
+### Bugfix
+
+## v6.5.0
+### Improvements
 
 * Make the `PROMETHEUS_MULTIPROC_DIR` environment variable optional, will default to
 `/tmp/PROMETHEUS_MULTIPROC_DIR` if not given
 
 ### Bugfix
+
+* All temp files will now be stored inside the systems default temp directory 
 
 ## v6.4.0
 ### Improvements
