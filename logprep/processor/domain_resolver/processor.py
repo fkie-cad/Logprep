@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Optional
 
 from attr import define, field, validators
+from filelock import FileLock
 from tldextract import TLDExtract
 
 from logprep.abc.processor import Processor
@@ -155,8 +156,9 @@ class DomainResolver(Processor):
             for index, tld_list in enumerate(self._config.tld_lists):
                 temp_dir = Path(tempfile.gettempdir())
                 list_path = temp_dir / "logprep" / f"{self.name}-tldlist-{index}.dat"
-                list_path.touch()
-                list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
+                with FileLock(list_path):
+                    list_path.touch()
+                    list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
                 downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
             self._config.tld_lists = downloaded_tld_lists_paths
             self._logger.debug("finished tldlists download...")

@@ -31,6 +31,7 @@ from ipaddress import ip_address
 from pathlib import Path
 
 from attr import define, field, validators
+from filelock import FileLock
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
@@ -71,8 +72,11 @@ class GeoipEnricher(Processor):
             self._logger.debug("start geoip database download...")
             temp_dir = Path(tempfile.gettempdir())
             db_path_file = temp_dir / "logprep" / f"{self.name}.mmdb"
-            db_path_file.touch()
-            db_path_file.write_bytes(GetterFactory.from_string(str(self._config.db_path)).get_raw())
+            with FileLock(db_path_file):
+                db_path_file.touch()
+                db_path_file.write_bytes(
+                    GetterFactory.from_string(str(self._config.db_path)).get_raw()
+                )
             self._logger.debug("finished geoip database download.")
             self._config.db_path = str(db_path_file.absolute())
 
