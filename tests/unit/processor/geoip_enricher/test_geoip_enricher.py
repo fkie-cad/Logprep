@@ -377,7 +377,7 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         responses.add(responses.GET, geoip_database_path, db_path_content)
         self.object._config.db_path = geoip_database_path
         self.object.setup()
-        downloaded_file = Path(tempfile.gettempdir()) / Path(f"{self.object.name}.mmdb")
+        downloaded_file = Path(tempfile.gettempdir()) / "logprep" / f"{self.object.name}.mmdb"
         assert downloaded_file.exists()
         downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
         assert expected_checksum == downloaded_checksum
