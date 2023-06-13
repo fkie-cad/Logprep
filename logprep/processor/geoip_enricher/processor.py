@@ -25,12 +25,13 @@ Processor Configuration
 
 .. automodule:: logprep.processor.geoip_enricher.rule
 """
+import tempfile
 from functools import cached_property
 from ipaddress import ip_address
-from multiprocessing import current_process
 from pathlib import Path
 
 from attr import define, field, validators
+from filelock import FileLock
 from geoip2 import database
 from geoip2.errors import AddressNotFoundError
 
@@ -69,9 +70,13 @@ class GeoipEnricher(Processor):
         db_path = Path(self._config.db_path)
         if not db_path.exists():
             self._logger.debug("start geoip database download...")
-            db_path_file = Path(f"{current_process().name}-{self.name}.mmdb")
-            db_path_file.touch()
-            db_path_file.write_bytes(GetterFactory.from_string(str(self._config.db_path)).get_raw())
+            temp_dir = Path(tempfile.gettempdir())
+            db_path_file = temp_dir / "logprep" / f"{self.name}.mmdb"
+            with FileLock(db_path_file):
+                db_path_file.touch()
+                db_path_file.write_bytes(
+                    GetterFactory.from_string(str(self._config.db_path)).get_raw()
+                )
             self._logger.debug("finished geoip database download.")
             self._config.db_path = str(db_path_file.absolute())
 
