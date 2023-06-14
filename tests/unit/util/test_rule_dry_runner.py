@@ -137,7 +137,7 @@ class TestRunLogprep:
                 "event_data": {"param1": "username"},
             },
             "message": "some message",
-            "field1": "field for the selective extractor"
+            "field1": "field for the selective extractor",
         }
         input_json_file = os.path.join(tmp_path, "test_input.json")
         with open(input_json_file, "w", encoding="utf8") as input_file:
