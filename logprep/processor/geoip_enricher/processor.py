@@ -25,6 +25,7 @@ Processor Configuration
 
 .. automodule:: logprep.processor.geoip_enricher.rule
 """
+import os
 import tempfile
 from functools import cached_property
 from ipaddress import ip_address
@@ -70,8 +71,9 @@ class GeoipEnricher(Processor):
         db_path = Path(self._config.db_path)
         if not db_path.exists():
             self._logger.debug("start geoip database download...")
-            temp_dir = Path(tempfile.gettempdir())
-            db_path_file = temp_dir / "logprep" / f"{self.name}.mmdb"
+            logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
+            os.makedirs(logprep_tmp_dir, exist_ok=True)
+            db_path_file = logprep_tmp_dir / f"{self.name}.mmdb"
             with FileLock(db_path_file):
                 db_path_file.touch()
                 db_path_file.write_bytes(

@@ -34,6 +34,7 @@ Processor Configuration
 .. automodule:: logprep.processor.domain_label_extractor.rule
 """
 import ipaddress
+import os
 import tempfile
 from functools import cached_property
 from pathlib import Path
@@ -88,8 +89,9 @@ class DomainLabelExtractor(Processor):
             downloaded_tld_lists_paths = []
             self._logger.debug("start tldlists download...")
             for index, tld_list in enumerate(self._config.tld_lists):
-                temp_dir = Path(tempfile.gettempdir())
-                list_path = temp_dir / "logprep" / f"{self.name}-tldlist-{index}.dat"
+                logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
+                os.makedirs(logprep_tmp_dir, exist_ok=True)
+                list_path = logprep_tmp_dir / f"{self.name}-tldlist-{index}.dat"
                 with FileLock(list_path):
                     list_path.touch()
                     list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())

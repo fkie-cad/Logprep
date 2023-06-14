@@ -6,9 +6,11 @@
 import json
 import logging
 import os
+import shutil
 import tempfile
 from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -364,8 +366,10 @@ class TestPrometheusMetricTarget:
         with mock.patch.dict(os.environ, {}):
             config = {"port": 8000}
             created_target = PrometheusMetricTarget.create(config, logging.getLogger("test-logger"))
-            expected_metric_path = f"{tempfile.gettempdir()}/logprep/prometheus_multiproc_dir"
-            assert created_target.prometheus_exporter.multi_processing_dir == expected_metric_path
+            logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
+            expected_metric_path = logprep_tmp_dir / "prometheus_multiproc_dir"
+            assert created_target.prometheus_exporter.multi_processing_dir == str(expected_metric_path)
+            shutil.rmtree(logprep_tmp_dir)
 
     def test_expose_creates_new_metric_exporter_if_it_does_not_exist_yet(self):
         metrics = Rule.RuleMetrics(labels={"type": "generic"})
