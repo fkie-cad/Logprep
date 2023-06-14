@@ -5,6 +5,9 @@
 ### Improvements
 ### Bugfix
 
+## v6.5.1
+### Bugfix
+
 * Fix creation of logprep temp dir 
 
 ## v6.5.0
