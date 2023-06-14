@@ -5,6 +5,7 @@
 ### Improvements
 ### Bugfix
 
+* Fix creation of logprep temp dir 
 * Fix `dry_runner` to support extra outputs of the `selective_extractor`
 
 ## v6.5.0
