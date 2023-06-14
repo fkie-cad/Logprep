@@ -368,7 +368,9 @@ class TestPrometheusMetricTarget:
             created_target = PrometheusMetricTarget.create(config, logging.getLogger("test-logger"))
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
             expected_metric_path = logprep_tmp_dir / "prometheus_multiproc_dir"
-            assert created_target.prometheus_exporter.multi_processing_dir == str(expected_metric_path)
+            assert created_target.prometheus_exporter.multi_processing_dir == str(
+                expected_metric_path
+            )
             shutil.rmtree(logprep_tmp_dir)
 
     def test_expose_creates_new_metric_exporter_if_it_does_not_exist_yet(self):
