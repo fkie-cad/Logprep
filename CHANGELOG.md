@@ -5,6 +5,8 @@
 ### Improvements
 ### Bugfix
 
+* Fix `dry_runner` to support extra outputs of the `selective_extractor`
+
 ## v6.5.0
 ### Improvements
 
