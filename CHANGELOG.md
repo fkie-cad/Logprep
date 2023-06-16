@@ -6,9 +6,11 @@
 
 * Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule 
 representation is not present anymore in the predetector output, the name `rule_filter` will stay
-in place of the `lucene_filter` name.
+in place of the `lucene_filter` name. 
 
 ### Bugfix
+
+* Fix lucene rule filter representation such that it is aligned with opensearch lucene query syntax
 
 ## v6.5.1
 ### Bugfix

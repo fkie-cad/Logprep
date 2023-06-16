@@ -408,7 +408,7 @@ class RuleParser:
             try:
                 return priority_dict[expr.as_dotted_string(expr.split_field)]
             except KeyError:
-                return repr(expr)[1:-1]
+                return repr(expr)
         else:
             try:
                 return priority_dict[expr.as_dotted_string(expr.key)]
