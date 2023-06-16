@@ -16,7 +16,7 @@ class TestProcessingWarning:
     exception = ProcessingWarning
 
     error_message = """ProcessingWarning in Dissector (my_dissector): the error message
-Rule: filename=None, filter="message": *, Rule.Config(description='', regex_fields=[], tests=[], tag_on_failure=['_rule_failure']),
+Rule: filename=None, filter='"message": *', Rule.Config(description='', regex_fields=[], tests=[], tag_on_failure=['_rule_failure']),
 Event: {'message': 'test_event'}
 """
 
@@ -43,7 +43,7 @@ Event: {'message': 'test_event'}
 class TestFieldExsitsWarning(TestProcessingWarning):
     exception = FieldExistsWarning
     error_message = """FieldExistsWarning in Dissector (my_dissector): The following fields could not be written, because one or more subfields existed and could not be extended: my_field
-Rule: filename=None, filter="message": *, Rule.Config(description='', regex_fields=[], tests=[], tag_on_failure=[\'_rule_failure\']),
+Rule: filename=None, filter='"message": *', Rule.Config(description='', regex_fields=[], tests=[], tag_on_failure=[\'_rule_failure\']),
 Event: {'message': 'test_event'}
 """
 
