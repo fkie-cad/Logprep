@@ -54,5 +54,9 @@ def test_amides(tmp_path, config):
     dump_config_as_file(config_path, config)
 
     test_output = get_test_output(config_path)
-    test_output_documents = [event for event in test_output[0] if event.get("amides", None)]
-    assert len(test_output_documents) == 8
+    test_output_documents = [event for event in test_output[0] if event.get("amides")]
+    attributed_documents = [
+        event for event in test_output_documents if event.get("amides").get("attributions")
+    ]
+    assert len(test_output_documents) == 20
+    assert len(attributed_documents) == 8

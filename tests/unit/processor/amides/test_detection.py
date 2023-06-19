@@ -51,7 +51,7 @@ def fixture_misuse_model():
     return {
         "clf": MockClassifier(malicious_predict=0.8),
         "vectorizer": MockVectorizer(),
-        "scaler": MockScaler(minimum=-0.5, maximum=0.5),
+        "scaler": MockScaler(minimum=-0.5, maximum=0.8),
     }
 
 
@@ -79,8 +79,8 @@ class TestMisuseDetector:
 
     def test_detect(self, misuse_model):
         detector = MisuseDetector(misuse_model, 0.5)
-        assert detector.detect("benign") == (False, -0.5)
-        assert detector.detect("malicious") == (True, 0.8)
+        assert detector.detect("benign") == (False, 0.0)
+        assert detector.detect("malicious") == (True, 1.0)
 
 
 class TestRuleAttributor:
