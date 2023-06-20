@@ -3,8 +3,9 @@
 import hashlib
 import logging
 import re
+import shutil
+import tempfile
 from copy import deepcopy
-from multiprocessing import current_process
 from os.path import exists
 from pathlib import Path
 from unittest import mock
@@ -281,9 +282,10 @@ sth.ac.at
         responses.add(responses.GET, tld_list, tld_list_content)
         self.object._config.tld_lists = [tld_list]
         self.object.setup()
-        downloaded_file = Path(f"{current_process().name}-{self.object.name}-tldlist-0.dat")
+        logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
+        downloaded_file = logprep_tmp_dir / f"{self.object.name}-tldlist-0.dat"
         assert downloaded_file.exists()
         downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
         assert expected_checksum == downloaded_checksum
         # delete testfile
-        downloaded_file.unlink()
+        shutil.rmtree(logprep_tmp_dir)

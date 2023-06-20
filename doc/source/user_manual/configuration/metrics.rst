@@ -17,6 +17,8 @@ To activate the prometheus exporter the required target has to be configured.
 Furthermore the utilized `prometheus python client <https://github.com/prometheus/client_python>`_
 requires the configuration of the environment variable :code:`PROMETHEUS_MULTIPROC_DIR`, a
 directory to save temporary files needed for in-between process communication.
+If this environment variable is not set it defaults to the local systems temporary directory path,
+e.g. :code:`{TEMP_DIR}/logprep/prometheus_multiproc_dir`
 
 .. WARNING::
    The configured directory :code:`PROMETHEUS_MULTIPROC_DIR` will be cleared on every startup.

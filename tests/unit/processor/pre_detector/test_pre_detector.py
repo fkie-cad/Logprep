@@ -30,8 +30,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": ["attack.test1", "attack.test2"],
                     "case_condition": "directly",
                     "description": "Test rule one",
-                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
-                    "lucene_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
             ({"kafka": "pre_detector_alerts"},),
@@ -58,8 +57,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "case_condition": "directly",
                     "host": {"name": "Test hostname"},
                     "description": "Test rule one",
-                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
-                    "lucene_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
             ({"kafka": "pre_detector_alerts"},),
@@ -82,8 +80,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": ["attack.test1", "attack.test2"],
                     "case_condition": "directly",
                     "description": "Test rule one",
-                    "rule_filter": 'AND(winlog.event_id:"123", winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
-                    "lucene_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
+                    "rule_filter": '(winlog.event_id:"123" AND winlog.event_data.ServiceName:"VERY BAD")',  # pylint: disable=line-too-long
                 }
             ],
             ({"kafka": "pre_detector_alerts"},),
@@ -108,11 +105,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": [],
                     "case_condition": "directly",
                     "description": "Test rule two",
-                    "rule_filter": 'AND(tags:"test", '
-                    'process.program:"test", '
-                    'OR(message:"test1*xyz", '
-                    'message:"test2*xyz"))',
-                    "lucene_filter": '(tags:"test" AND process.program:"test" AND '
+                    "rule_filter": '(tags:"test" AND process.program:"test" AND '
                     '(message:"test1*xyz" OR message:"test2*xyz"))',
                 }
             ],
@@ -136,11 +129,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": [],
                     "case_condition": "directly",
                     "description": "Test rule three",
-                    "rule_filter": 'AND(tags:"test2", '
-                    'process.program:"test", '
-                    'OR(message:"test1*xyz", '
-                    'message:"test2?xyz"))',
-                    "lucene_filter": '(tags:"test2" AND process.program:"test" AND '
+                    "rule_filter": '(tags:"test2" AND process.program:"test" AND '
                     '(message:"test1*xyz" OR message:"test2?xyz"))',
                 }
             ],
@@ -162,8 +151,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "id": "RULE_ONE_ID",
                     "mitre": ["attack.test1", "attack.test2"],
                     "description": "Test two rules one",
-                    "rule_filter": '"first_match"',
-                    "lucene_filter": '"first_match": *',
+                    "rule_filter": '"first_match": *',
                     "severity": "critical",
                     "title": "RULE_ONE",
                 },
@@ -172,8 +160,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "id": "RULE_TWO_ID",
                     "mitre": ["attack.test2", "attack.test4"],
                     "description": "Test two rules two",
-                    "rule_filter": '"second_match"',
-                    "lucene_filter": '"second_match": *',
+                    "rule_filter": '"second_match": *',
                     "severity": "suspicious",
                     "title": "RULE_TWO",
                 },
@@ -264,8 +251,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": [],
                     "case_condition": "directly",
                     "description": "Test rule two",
-                    "rule_filter": 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))',  # pylint: disable=line-too-long
-                    "lucene_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
+                    "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
                 }
             ],
             ({"kafka": "pre_detector_alerts"},),
@@ -288,8 +274,7 @@ class TestPreDetector(BaseProcessorTestCase):
                     "mitre": [],
                     "case_condition": "directly",
                     "description": "Test rule two",
-                    "rule_filter": 'AND(tags:"test", process.program:"test", OR(message:"test1*xyz", message:"test2*xyz"))',  # pylint: disable=line-too-long
-                    "lucene_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
+                    "rule_filter": '(tags:"test" AND process.program:"test" AND (message:"test1*xyz" OR message:"test2*xyz"))',  # pylint: disable=line-too-long
                 }
             ],
             ({"kafka": "pre_detector_alerts"},),

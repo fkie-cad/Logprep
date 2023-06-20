@@ -3,7 +3,27 @@
 ## next release
 ### Features
 ### Improvements
+
+* Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule 
+representation is not present anymore in the predetector output, the name `rule_filter` will stay
+in place of the `lucene_filter` name.
+
 ### Bugfix
+
+## v6.5.1
+### Bugfix
+
+* Fix creation of logprep temp dir 
+
+## v6.5.0
+### Improvements
+
+* Make the `PROMETHEUS_MULTIPROC_DIR` environment variable optional, will default to
+`/tmp/PROMETHEUS_MULTIPROC_DIR` if not given
+
+### Bugfix
+
+* All temp files will now be stored inside the systems default temp directory 
 
 ## v6.4.0
 ### Improvements
