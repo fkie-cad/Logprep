@@ -221,13 +221,13 @@ class Amides(Processor):
         self._write_target_field(event=event, rule=rule, result=result)
 
     def _evaluate_cmdline(self, cmdline: str):
-        malicious, confidence = self._perform_misuse_detection(cmdline)
-        if malicious:
-            attributions = self._calculate_rule_attributions(cmdline)
-        else:
-            attributions = []
+        result = {}
 
-        return {"confidence": confidence, "attributions": attributions}
+        malicious, result["confidence"] = self._perform_misuse_detection(cmdline)
+        if malicious:
+            result["attributions"] = self._calculate_rule_attributions(cmdline)
+
+        return result
 
     def _perform_misuse_detection(self, cmdline: str) -> int:
         begin = time()
