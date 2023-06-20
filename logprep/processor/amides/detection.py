@@ -94,8 +94,8 @@ class MisuseDetector(DetectionModel):
         confidence_value = super().detect(sample)
 
         if confidence_value >= self._decision_threshold:
-            return True, confidence_value
-        return False, confidence_value
+            return True, round(confidence_value, 3)
+        return False, round(confidence_value, 3)
 
 
 class RuleAttributorError(BaseException):
