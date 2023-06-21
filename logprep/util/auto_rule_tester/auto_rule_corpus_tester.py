@@ -103,6 +103,23 @@ from logprep.util.helper import get_dotted_field_value
 from logprep.util.json_handling import parse_json
 
 
+def align_extra_output_formats(extra_outputs):
+    """
+    Aligns the different output formats into one common format of the selective_extractor,
+    predetector and pseudonymizer.
+    """
+    reformatted_extra_outputs = []
+    for extra_output in extra_outputs:
+        if isinstance(extra_output, tuple):
+            documents, target = extra_output
+            for document in documents:
+                reformatted_extra_outputs.append({str(target): document})
+        else:
+            for output in extra_output:
+                reformatted_extra_outputs.append({str(output[1]): output[0][0]})
+    return reformatted_extra_outputs
+
+
 class RuleCorpusTester:
     """This class can test a rule corpus against expected outputs"""
 
@@ -189,24 +206,12 @@ class RuleCorpusTester:
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
             parsed_event, extra_outputs = self._pipeline.process_pipeline()
-            extra_outputs = self._align_extra_output_formats(extra_outputs)
+            extra_outputs = align_extra_output_formats(extra_outputs)
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
             self._compare_logprep_outputs(test_case_id, parsed_event)
             self._compare_extra_data_output(test_case_id, extra_outputs)
             self._print_pass_fail_statements(test_case_id)
-
-    def _align_extra_output_formats(self, extra_outputs):
-        reformatted_extra_outputs = []
-        for extra_output in extra_outputs:
-            if isinstance(extra_output, tuple):
-                documents, target = extra_output
-                for document in documents:
-                    reformatted_extra_outputs.append({str(target): document})
-            else:
-                for output in extra_output:
-                    reformatted_extra_outputs.append({str(output[1]): output[0][0]})
-        return reformatted_extra_outputs
 
     def _compare_logprep_outputs(self, test_case_id, logprep_output):
         test_case = self._test_cases.get(test_case_id, {})

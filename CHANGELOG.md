@@ -16,6 +16,7 @@ in place of the `lucene_filter` name.
 ### Bugfix
 
 * Fix creation of logprep temp dir 
+* Fix `dry_runner` to support extra outputs of the `selective_extractor`
 
 ## v6.5.0
 ### Improvements
