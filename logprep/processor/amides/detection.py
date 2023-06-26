@@ -77,7 +77,7 @@ class MisuseDetector(DetectionModel):
         super().__init__(misuse_model)
         self._decision_threshold = decision_threshold
 
-    def detect(self, sample: str) -> int:
+    def detect(self, sample: str) -> Tuple[bool, float]:
         """Detect if given sample is malicious. Returns 0 or 1 if sample's detection
         result is below or above the configured decision threshold.
 
@@ -128,7 +128,7 @@ class RuleAttributor:
             except DetectionModelError as err:
                 raise RuleAttributorError from err
 
-    def attribute(self, sample: str) -> list[str, float]:
+    def attribute(self, sample: str) -> List[dict]:
         """Attribute given sample to rules of which the attributor holds rule models.
 
         Parameters
@@ -138,14 +138,14 @@ class RuleAttributor:
 
         Returns
         -------
-        attributions: Dict[str, float]
+        attributions: List[dict]
             List of rule attributions, containing rule model names and confidence values.
         """
         conf_values = self._calculate_rule_confidence_values(sample)
 
         return self._get_rules_with_highest_confidence_values(conf_values)
 
-    def _calculate_rule_confidence_values(self, cmdline: str) -> list[dict]:
+    def _calculate_rule_confidence_values(self, cmdline: str) -> List[dict]:
         conf_values = []
 
         for name, rule_model in self._rule_models.items():
@@ -154,9 +154,7 @@ class RuleAttributor:
 
         return conf_values
 
-    def _get_rules_with_highest_confidence_values(
-        self, conf_values: List[Tuple[str, float]]
-    ) -> list[dict]:
+    def _get_rules_with_highest_confidence_values(self, conf_values: List[dict]) -> List[dict]:
         conf_values.sort(key=lambda item: item["confidence"], reverse=True)
 
         return conf_values[: self._num_rule_attributions]

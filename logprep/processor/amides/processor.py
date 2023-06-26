@@ -229,7 +229,7 @@ class Amides(Processor):
 
         return result
 
-    def _perform_misuse_detection(self, cmdline: str) -> int:
+    def _perform_misuse_detection(self, cmdline: str) -> Tuple[bool, float]:
         begin = time()
         result = self._misuse_detector.detect(cmdline)
         processing_time = time() - begin
@@ -238,7 +238,7 @@ class Amides(Processor):
 
         return result
 
-    def _calculate_rule_attributions(self, cmdline: str) -> List[Tuple[str, int]]:
+    def _calculate_rule_attributions(self, cmdline: str) -> List[dict]:
         begin = time()
         attributions = self._rule_attributor.attribute(cmdline)
         processing_time = time() - begin
