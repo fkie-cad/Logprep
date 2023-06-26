@@ -12,10 +12,13 @@ In case of positive detection results, rule attributions are now inserted in the
 
 ### Bugfix
 
+* Fix lucene rule filter representation such that it is aligned with opensearch lucene query syntax
+
 ## v6.5.1
 ### Bugfix
 
 * Fix creation of logprep temp dir 
+* Fix `dry_runner` to support extra outputs of the `selective_extractor`
 
 ## v6.5.0
 ### Improvements

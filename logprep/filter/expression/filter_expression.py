@@ -308,7 +308,7 @@ class RegExFilterExpression(FilterExpression):
         self._matcher = re.compile(self._regex)
 
     def __repr__(self) -> str:
-        return f"{self.as_dotted_string(self.key)}:/{self._regex}/"
+        return f"{self.as_dotted_string(self.key)}:/{self._regex.strip('^$')}/"
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
@@ -338,7 +338,7 @@ class Exists(FilterExpression):
         self.split_field = value
 
     def __repr__(self) -> str:
-        return f'"{self.as_dotted_string(self.split_field)}": *'
+        return f"{self.as_dotted_string(self.split_field)}: *"
 
     def does_match(self, document: dict) -> bool:
         if not self.split_field:

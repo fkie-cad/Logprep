@@ -86,8 +86,8 @@ class TestNot:
 
 class TestAnd:
     def test_string_representation(self):
-        assert str(And(Exists(["foo"]))) == '("foo": *)'
-        assert str(And(Exists(["foo"]), Exists(["bar"]))) == '("foo": * AND "bar": *)'
+        assert str(And(Exists(["foo"]))) == "(foo: *)"
+        assert str(And(Exists(["foo"]), Exists(["bar"]))) == "(foo: * AND bar: *)"
 
     def test_different_objects_with_same_payload_are_equal(self):
         and_filter1 = And(Always(False))
@@ -125,8 +125,8 @@ class TestAnd:
 
 class TestOr:
     def test_string_representation(self):
-        assert str(Or(Exists(["foo"]))) == '("foo": *)'
-        assert str(Or(Exists(["foo"]), Exists(["bar"]))) == '("foo": * OR "bar": *)'
+        assert str(Or(Exists(["foo"]))) == "(foo: *)"
+        assert str(Or(Exists(["foo"]), Exists(["bar"]))) == "(foo: * OR bar: *)"
 
     def test_different_objects_with_same_payload_are_equal(self):
         or_filter1 = Or(Always(False))
@@ -284,7 +284,7 @@ class TestRegExFilterExpression(ValueBasedFilterExpressionTest):
         self.filter_identical = RegExFilterExpression(["key1", "key2"], self.regex)
 
     def test_string_representation(self):
-        assert str(self.filter) == "key1.key2:/^start.*end$/"
+        assert str(self.filter) == "key1.key2:/start.*end/"
 
     def test_does_not_match_if_key_is_missing(self):
         assert not self.filter.matches({"not": {"the": {"key": "to match"}}})
@@ -342,7 +342,7 @@ class TestExistsFilterExpression(ValueBasedFilterExpressionTest):
         self.filter_identical = Exists(["key1", "key2"])
 
     def test_string_representation(self):
-        assert str(self.filter) == '"key1.key2": *'
+        assert str(self.filter) == "key1.key2: *"
 
     def test_matches_any_value(self):
         filter = Exists(["key1", "key2"])
@@ -530,11 +530,11 @@ class TestLuceneRepresentation:
     @pytest.mark.parametrize(
         "logprep_filter_language, special_fields, expected_lucene_filter_query",
         [
-            ("exist_field", None, '"exist_field": *'),
+            ("exist_field", None, "exist_field: *"),
             ("key: value", None, 'key:"value"'),
             ("dotted.key: value", None, 'dotted.key:"value"'),
             ("*", None, "*"),
-            ("NOT key", None, 'NOT ("key": *)'),
+            ("NOT key", None, "NOT (key: *)"),
             ("NOT key: value", None, 'NOT (key:"value")'),
             ("key: value1 AND keyy: value2", None, '(key:"value1" AND keyy:"value2")'),
             (
@@ -561,11 +561,11 @@ class TestLuceneRepresentation:
             ("key: val*", None, 'key:"val*"'),
             ("key: 1", None, 'key:"1"'),
             ("key: 1.0", None, 'key:"1.0"'),
-            (r"key: field\[\d\].*", {"regex_fields": ["key"]}, r"key:/^field\[\d\].*$/"),
+            (r"key: field\[\d\].*", {"regex_fields": ["key"]}, r"key:/field\[\d\].*/"),
             (
                 r"nonRegexKey: something AND key: field\[\d\].*",
                 {"regex_fields": ["key"]},
-                r'(nonRegexKey:"something" AND key:/^field\[\d\].*$/)',
+                r'(nonRegexKey:"something" AND key:/field\[\d\].*/)',
             ),
         ],
     )
