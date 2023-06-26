@@ -40,7 +40,7 @@ class TestAmides(BaseProcessorTestCase):
 
         result = document.get("amides")
         assert result
-        assert result["confidence"] >= 0.32
+        assert result["confidence"] >= 0.32 and result.get("attributions")
         assert len(result["attributions"]) == 10
         assert self.object.metrics.total_cmdlines == 1
         assert self.object.metrics.new_results == 1
@@ -63,7 +63,7 @@ class TestAmides(BaseProcessorTestCase):
         assert self.object.metrics.number_of_processed_events == 1
         result = document.get("amides")
         assert result
-        assert result["confidence"] < 0.32
+        assert result["confidence"] < 0.32 and not result.get("attributions")
         assert self.object.metrics.total_cmdlines == 1
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.num_cache_entries == 1
