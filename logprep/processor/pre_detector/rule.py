@@ -26,7 +26,47 @@ The following example shows a complete rule:
       title: Rule one
     description: Some malicious event.
 
-Additionally the optional field :code:`ip_fields` can be specified.
+Applying this rule to the event
+
+..  code-block:: json
+    :linenos:
+    :caption: Example Input Event
+
+    {
+      "some_field": "very malicious!",
+    }
+
+would result in the following output and event enrichment
+
+..  code-block:: json
+    :linenos:
+    :caption: Enriched event
+
+    {
+      "some_field": "very malicious!",
+      "pre_detection_id": "80bfea3f-c24e-41d0-b82d-b2f02fc03ba9"
+    }
+
+..  code-block:: json
+    :linenos:
+    :caption: Generated extra output
+
+    {
+      "@timestamp": "2023-06-16T08:23:41.000Z",
+      "id": "RULE_ONE_ID",
+      "title": "Rule one",
+      "mitre": ["attack.something1", "attack.something2"],
+      "case_condition": "directly",
+      "rule_filter": "(some_field: 'very malicious!')",
+      "severity": "critical",
+      "pre_detection_id": "80bfea3f-c24e-41d0-b82d-b2f02fc03ba9",
+      "description": "Some malicious event."
+    }
+
+This generated extra output contains a corresponding :code:`rule_filter` in lucene notation, which
+can be used to further investigate this rule in an existing OpenSearch or ElasticSearch.
+
+Additionally, the optional field :code:`ip_fields` can be specified.
 It allows to specify a list of fields that can be compared to a list of IPs,
 which can be configured in the pipeline for the predetector.
 If this field was specified, then the rule will *only* trigger in case one of
