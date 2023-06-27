@@ -106,7 +106,7 @@ class PreDetectorRule(Rule):
     """Check if documents match a filter."""
 
     @define(kw_only=True)
-    class Config(Rule.Config):
+    class Config(Rule.Config):  # pylint: disable=too-many-instance-attributes
         """RuleConfig for Predetector"""
 
         id: str = field(validator=validators.instance_of((str, int)))
