@@ -7,7 +7,7 @@
 * Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule 
 representation is not present anymore in the predetector output, the name `rule_filter` will stay
 in place of the `lucene_filter` name.
-* 'amides' now stores confidence values of processed events in the `amides.confidence` field.
+* 'amides' processor now stores confidence values of processed events in the `amides.confidence` field.
 In case of positive detection results, rule attributions are now inserted in the `amides.attributions` field.
 
 ### Bugfix
