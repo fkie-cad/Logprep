@@ -13,6 +13,7 @@ In case of positive detection results, rule attributions are now inserted in the
 ### Bugfix
 
 * Fix lucene rule filter representation such that it is aligned with opensearch lucene query syntax
+* Fix overwriting of temporary tld-list with empty content  
 
 ## v6.5.1
 ### Bugfix
