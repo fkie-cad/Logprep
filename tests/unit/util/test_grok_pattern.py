@@ -13,31 +13,33 @@ def grok_pattern():
 
 
 class TestGrokPattern:
-
-    @pytest.mark.parametrize("test_string, matches", (
-        ["/usr/http/http-client.log", True],
-        ["/usr.log", True],
-        ["/usr/./foo.log", True],
-        ["/../user.log", True],
-        ["/path with spaces/log.file", True],
-        ["//path//log.file", True],
-        ["///path///log.file", True],
-        ["/path///log.file", True],
-        ["/path/with/NUMBERS/123/lo3g.file", True],
-        ["/path/with/utf8/öüä/log.file", True],
-        ["/path///", True],
-        ["./user.log", False],
-        ["~/user.log", False],
-        [",/.", False],
-        ["+/.../", False],
-        [".", False],
-        ["..", False],
-        ["something", False],
-        ["something with spaces", False],
-        [r"\windows\path", False],
-        ["\\windows\\path", False],
-        [r"\\windows\\\path", False],
-    ))
+    @pytest.mark.parametrize(
+        "test_string, matches",
+        (
+            ["/usr/http/http-client.log", True],
+            ["/usr.log", True],
+            ["/usr/./foo.log", True],
+            ["/../user.log", True],
+            ["/path with spaces/log.file", True],
+            ["//path//log.file", True],
+            ["///path///log.file", True],
+            ["/path///log.file", True],
+            ["/path/with/NUMBERS/123/lo3g.file", True],
+            ["/path/with/utf8/öüä/log.file", True],
+            ["/path///", True],
+            ["./user.log", False],
+            ["~/user.log", False],
+            [",/.", False],
+            ["+/.../", False],
+            [".", False],
+            ["..", False],
+            ["something", False],
+            ["something with spaces", False],
+            [r"\windows\path", False],
+            ["\\windows\\path", False],
+            [r"\\windows\\\path", False],
+        ),
+    )
     def test_unixpath_pattern(self, pattern, test_string, matches):
         grok = pattern.get("UNIXPATH")
         if matches:
