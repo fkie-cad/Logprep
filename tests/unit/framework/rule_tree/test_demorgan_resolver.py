@@ -81,7 +81,7 @@ class TestDeMorganResolver:
                 (
                     DeMorganResolverException,
                     r'Could not resolve expression ".*", '
-                    r'since its child is neither of the type "AND" nor "OR".',
+                    + r'since its child is neither of the type "AND" nor "OR".',
                 ),
             ),
         ],
