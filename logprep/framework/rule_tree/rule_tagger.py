@@ -117,7 +117,7 @@ class RuleTagger:
 
         """
         if isinstance(expression, Exists):
-            if repr(expression)[1:-1] == tag:
+            if repr(expression).rstrip(": *") == tag:
                 return True
         elif isinstance(expression, StringFilterExpression):
             if repr(expression).replace('"', "") == tag:
