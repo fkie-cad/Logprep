@@ -6,6 +6,7 @@
 ### Bugfix
 
 * Fix error when writing too large documents into Opensearch/Elasticsearch
+* Fix dissector pattern that end with a dissect, e.g `system_%{type}`
 
 ## v6.6.0
 

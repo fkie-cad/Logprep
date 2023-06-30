@@ -596,6 +596,18 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "this is 42#### message and this is 0##"},
         {"message": "this is 42#### message and this is 0##", "field1": 42, "field2": False},
     ),
+    (
+        "extract end of string",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "system_%{type}"}},
+        },
+        {"message": "system_monitor"},
+        {
+            "message": "system_monitor",
+            "type": "monitor",
+        },
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (
