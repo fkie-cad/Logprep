@@ -62,9 +62,30 @@ class TestRuleTagger:
                 [[StringFilterExpression(["TAG"], "VALUE"), sfe_1, ex_2]],
             ),
             ([[Not(sfe_1)]], {"key1": "TAG"}, [[Exists(["TAG"]), Not(sfe_1)]]),
+            ([[sfe_1]], {"key1": "key1:value1"}, [[sfe_1]]),
+            (
+                [[sfe_1, sfe_2, ex_2]],
+                {"key1": "TAG1", "key2": "xyz"},
+                [[Exists(["TAG1"]), sfe_1, sfe_2, ex_2]],
+            ),
+            ([[sfe_1]], {}, [[sfe_1]]),
         ],
     )
     def test_add_special_tags(self, rule_list, tag_map, expected):
         rule_tagger = RuleTagger(tag_map)
         rule_tagger.add(rule_list)
         assert rule_list == expected
+
+    @pytest.mark.parametrize(
+        "expression, tag, tag_map, expected",
+        [
+            (ex_2, "xyz", {"key1": "xyz"}, True),
+            (ex_2, "foo", {"key1": "foo"}, False),
+            (sfe_1, "key1:value1", {"key1": "key1:value1"}, True),
+            (sfe_1, "foo:bar", {"key1": "foo:bar"}, False),
+        ],
+    )
+    def test_tag_exists(self, expression, tag, tag_map, expected):
+        rule_tagger = RuleTagger(tag_map)
+        print(type(expression), expression)
+        assert rule_tagger._tag_exists(expression, tag) is expected
