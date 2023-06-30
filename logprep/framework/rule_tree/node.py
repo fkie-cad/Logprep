@@ -1,6 +1,6 @@
 """This module implements the tree node functionality for the tree model."""
 
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.expression.filter_expression import KeyDoesNotExistError
@@ -9,7 +9,13 @@ from logprep.filter.expression.filter_expression import KeyDoesNotExistError
 class Node:
     """Tree node for rule tree model."""
 
-    def __init__(self, expression: FilterExpression):
+    __slots__ = ("_expression", "_children", "matching_rules")
+
+    _expression: Union[FilterExpression, str]
+    _children: list
+    matching_rules: list
+
+    def __init__(self, expression: Optional[Union[FilterExpression, str]]):
         """Node initialization function.
 
         Initializes a new node with a given expression and empty lists of children and matching
@@ -63,25 +69,6 @@ class Node:
         """
         self._children.append(node)
 
-    def has_child_with_expression(self, expression: FilterExpression) -> Optional["Node"]:
-        """Check if node has child with given expression.
-
-        This function checks if a node has a child with the given filter expression.
-        It is used to iterate through a tree in the process of adding a new rule to a tree.
-
-        Parameters
-        ----------
-        expression: FilterExpression
-            Filter expression to check for.
-
-        Returns
-        -------
-        has_child: bool
-            Decision if the node has a child with the given expression.
-
-        """
-        return self.get_child_with_expression(expression)
-
     def get_child_with_expression(self, expression: FilterExpression) -> Optional["Node"]:
         """Get child of node with given expression.
 
@@ -107,8 +94,10 @@ class Node:
 
     @property
     def expression(self) -> FilterExpression:
+        """Filter expression of the node."""
         return self._expression
 
     @property
     def children(self) -> List["Node"]:
+        """Children of the node."""
         return self._children

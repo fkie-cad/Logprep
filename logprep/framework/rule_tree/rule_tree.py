@@ -1,7 +1,7 @@
 """This module contains the rule tree functionality."""
 
 from logging import Logger
-from typing import List, TYPE_CHECKING
+from typing import List, TYPE_CHECKING, Optional
 
 import numpy as np
 from attr import define, Factory
@@ -45,6 +45,22 @@ class RuleTree:
         # pylint: enable=not-an-iterable
         # pylint: enable=protected-access
 
+    __slots__ = (
+        "rule_parser",
+        "metrics",
+        "priority_dict",
+        "_rule_mapping",
+        "_config_path",
+        "_root",
+    )
+
+    rule_parser: Optional[RuleParser]
+    metrics: RuleTreeMetrics
+    priority_dict: dict
+    _rule_mapping: dict
+    _config_path: str
+    _root: Node
+
     def __init__(self, root: Node = None, config_path: str = None, metric_labels: dict = None):
         """Rule tree initialization function.
 
@@ -60,6 +76,7 @@ class RuleTree:
             Path to the optional configuration file that contains the new rule tree's configuration.
 
         """
+        self.rule_parser = None
         self._rule_mapping = {}
         self._config_path = config_path
         self._setup()
@@ -79,12 +96,13 @@ class RuleTree:
 
         """
         self.priority_dict = {}
-        self.tag_map = {}
+        tag_map = {}
 
         if self._config_path:
             config_data = getter.GetterFactory.from_string(self._config_path).get_json()
             self.priority_dict = config_data["priority_dict"]
-            self.tag_map = config_data["tag_map"]
+            tag_map = config_data["tag_map"]
+        self.rule_parser = RuleParser(tag_map)
 
     def add_rule(self, rule: "Rule", logger: Logger = None):
         """Add rule to rule tree.
@@ -105,18 +123,18 @@ class RuleTree:
 
         """
         try:
-            parsed_rule_list = RuleParser.parse_rule(rule, self.priority_dict, self.tag_map)
-        except Exception as ex:
+            parsed_rule = self.rule_parser.parse_rule(rule, self.priority_dict)
+        except Exception as error:  # pylint: disable=broad-except
             logger.warning(
-                f'Error parsing rule "{rule.filter}": {type(ex).__name__}: {ex}.'
+                f'Error parsing rule "{rule.filter}": {type(error).__name__}: {error}.'
                 f"\nIgnore and continue with next rule."
             )
             return
 
         self.metrics.number_of_rules += 1
 
-        for parsed_rule in parsed_rule_list:
-            end_node = self._add_parsed_rule(parsed_rule)
+        for rule_segment in parsed_rule:
+            end_node = self._add_parsed_rule(rule_segment)
             if rule not in end_node.matching_rules:
                 end_node.matching_rules.append(rule)
 
@@ -126,7 +144,7 @@ class RuleTree:
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.
 
-        This function adds a parsed subrule of a given rule to the rule tree by iterating through
+        This function adds a parsed sub-rule of a given rule to the rule tree by iterating through
         the current tree.
 
         For every filter expression in the parsed rule, the children of the current node are
@@ -148,12 +166,13 @@ class RuleTree:
         current_node = self.root
 
         for expression in parsed_rule:
-            if current_node.has_child_with_expression(expression):
-                current_node = current_node.get_child_with_expression(expression)
-                continue
-            new_node = Node(expression)
-            current_node.add_child(new_node)
-            current_node = new_node
+            child_with_expression = current_node.get_child_with_expression(expression)
+            if child_with_expression:
+                current_node = child_with_expression
+            else:
+                new_node = Node(expression)
+                current_node.add_child(new_node)
+                current_node = new_node
 
         return current_node
 
@@ -234,14 +253,12 @@ class RuleTree:
             current_node = self._root
 
         for child in current_node.children:
+            indentations = "\t" * (depth - 1)
+            arrow_length = "-" * depth
             print(
-                "\t" * (depth - 1) + str(current_node.expression),
-                "\t",
-                "-" * depth + ">",
-                child.expression,
-                child.matching_rules,
+                f"{indentations}{current_node.expression} \t {arrow_length}> "
+                f"{child.expression} {child.matching_rules}"
             )
-
             self.print(child, depth + 1)
 
     def get_size(self, current_node: Node = None) -> int:
@@ -276,6 +293,7 @@ class RuleTree:
         Returns
         -------
         rules: List[Rule]
+
         """
 
         return list(self._rule_mapping)
