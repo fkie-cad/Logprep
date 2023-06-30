@@ -38,11 +38,15 @@ class RuleSorter:
 
         """
         for parsed_rule in parsed_rule_list:
-            parsed_rule.sort(key=lambda r: RuleSorter._sort(r, priority_dict))
+            parsed_rule.sort(
+                key=lambda expression: RuleSorter._get_sorting_key(expression, priority_dict)
+            )
 
     @staticmethod
-    def _sort(expression: FilterExpression, priority_dict: dict) -> Union[dict, str, None]:
-        """Helper function for _sort_rule_segments.
+    def _get_sorting_key(
+        expression: FilterExpression, priority_dict: dict
+    ) -> Union[dict, str, None]:
+        """Get the sorting key for an expression with a priority dict..
 
         This function is used by the _sort_rule_segments() function in the sorting key.
         It includes various cases to cover all the different expression classes. For every class it
@@ -85,4 +89,4 @@ class RuleSorter:
                 return priority_dict[expression.child.key_as_dotted_string]
         except KeyError:
             pass
-        return RuleSorter._sort(expression.child, priority_dict)
+        return RuleSorter._get_sorting_key(expression.child, priority_dict)
