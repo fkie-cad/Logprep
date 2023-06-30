@@ -584,6 +584,10 @@ class TestRuleParser:
                 ],
             ),
             ([[Not(sfe_1)]], [[Not(sfe_1)]]),
+            (
+                [[sfe_1, Exists(["key1"])], [sfe_1]],
+                [[sfe_1, Exists(["key1"])], [Exists(["key1"]), sfe_1]],
+            ),
         ],
     )
     def test_add_exists_filter(self, rule_list, expected):

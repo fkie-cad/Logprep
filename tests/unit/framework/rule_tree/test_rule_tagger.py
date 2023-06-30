@@ -87,5 +87,4 @@ class TestRuleTagger:
     )
     def test_tag_exists(self, expression, tag, tag_map, expected):
         rule_tagger = RuleTagger(tag_map)
-        print(type(expression), expression)
         assert rule_tagger._tag_exists(expression, tag) is expected

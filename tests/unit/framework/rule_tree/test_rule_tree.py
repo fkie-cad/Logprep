@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 from copy import deepcopy
+from unittest import mock
 
 import pytest
 
@@ -10,17 +11,6 @@ from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.pre_detector.rule import PreDetectorRule
-
-RULE_DICT = {
-    "filter": "winlog: 123",
-    "pre_detector": {
-        "id": 1,
-        "title": "1",
-        "severity": "0",
-        "case_condition": "directly",
-        "mitre": [],
-    },
-}
 
 
 @pytest.fixture(name="rule_dict")
@@ -40,11 +30,28 @@ def rule_dict_fixture():
 
 
 class TestRuleTree:
-    def test_init(self):
+    def test_init_without_specifying_parameters(self):
         rule_tree = RuleTree()
 
         assert isinstance(rule_tree.root, Node)
+        assert not rule_tree.rule_parser._rule_tagger._tag_map
+        assert not rule_tree.priority_dict
         assert rule_tree.root.expression == "root"
+
+    def test_init_with_specifying_root_node(self):
+        rule_tree = RuleTree(Node("foo"))
+
+        assert isinstance(rule_tree.root, Node)
+        assert rule_tree.root.expression == "foo"
+
+    def test_init_with_specifying_config(self):
+        rule_tree = RuleTree(config_path="tests/testdata/unit/tree_config.json")
+
+        assert isinstance(rule_tree.root, Node)
+        assert rule_tree.rule_parser._rule_tagger._tag_map == {
+            "field_name_to_check_for_in_rule": "TAG-TO-CHECK-IF-IN-EVENT"
+        }
+        assert rule_tree.priority_dict == {"field_name": "priority"}
 
     def test_add_rule(self, rule_dict):
         rule_tree = RuleTree()
@@ -68,6 +75,22 @@ class TestRuleTree:
         assert rule_tree.root.children[0].children[0].children[0].children[0].matching_rules == [
             rule
         ]
+
+    def test_add_rule_fails(self, rule_dict):
+        rule_tree = RuleTree()
+        rule = PreDetectorRule._create_from_dict(rule_dict)
+
+        mocked_logger = mock.MagicMock()
+        with mock.patch(
+            "logprep.framework.rule_tree.rule_parser.RuleParser.parse_rule",
+            side_effect=Exception("mocked error"),
+        ):
+            rule_tree.add_rule(rule, logger=mocked_logger)
+        expected_call = mock.call.warning(
+            'Error parsing rule "winlog:"123"": Exception: mocked error.'
+            "\nIgnore and continue with next rule."
+        )
+        assert expected_call in mocked_logger.mock_calls
 
     def test_get_rule_id(self, rule_dict):
         rule_tree = RuleTree()

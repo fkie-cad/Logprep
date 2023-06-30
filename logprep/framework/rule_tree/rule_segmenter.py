@@ -18,16 +18,15 @@ class RuleSegmenterException(Exception):
 class RuleSegmenter:
     """Segments filter expression into list of less complex expressions."""
 
-    def segment_into_dnf(self, rule, expression):
+    @staticmethod
+    def segment_into_dnf(expression) -> list:
         """Segment expression into list of less complex expressions."""
-        if self._has_disjunction(expression):
-            rule_segments = self._segment_expression(expression)
+        if RuleSegmenter._has_disjunction(expression):
+            rule_segments = RuleSegmenter._segment_expression(expression)
         elif isinstance(expression, And):
-            rule_segments = [self._segment_conjunctive_expression(expression)]
+            rule_segments = [RuleSegmenter._segment_conjunctive_expression(expression)]
         else:
             rule_segments = [[expression]]
-        if not rule_segments:
-            raise RuleSegmenterException("Rule probably not parsed correctly:", rule.filter)
         return rule_segments
 
     @staticmethod
@@ -54,7 +53,6 @@ class RuleSegmenter:
             for exp in expression.children:
                 if RuleSegmenter._has_disjunction(exp):
                     return True
-
         if isinstance(expression, Not):
             return RuleSegmenter._has_disjunction(expression.child)
 
@@ -88,10 +86,8 @@ class RuleSegmenter:
             if isinstance(filter_expression, And):
                 return tuple(RuleSegmenter._segment_conjunctive_expression(filter_expression))
             return filter_expression
-
         if isinstance(filter_expression, Or):
             return RuleSegmenter._segment_disjunctive_expression(filter_expression)
-
         if isinstance(filter_expression, And):
             segmented_sub_expressions = RuleSegmenter._segment_sub_expressions(filter_expression)
             RuleSegmenter._flatten_tuples_in_list(segmented_sub_expressions)

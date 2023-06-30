@@ -46,7 +46,6 @@ class RuleParser:
 
         """
         self._demorgan_resolver = DeMorganResolver()
-        self._rule_segmenter = RuleSegmenter()
         self._rule_tagger = RuleTagger(tag_map)
 
     def parse_rule(self, rule: "Rule", priority_dict: dict) -> list:
@@ -79,7 +78,7 @@ class RuleParser:
 
         """
         filter_expression = self._demorgan_resolver.resolve(rule.filter)
-        dnf_rule_segments = self._rule_segmenter.segment_into_dnf(rule, filter_expression)
+        dnf_rule_segments = RuleSegmenter.segment_into_dnf(filter_expression)
         RuleSorter.sort_rule_segments(dnf_rule_segments, priority_dict)
         self._add_exists_filter(dnf_rule_segments)
         self._rule_tagger.add(dnf_rule_segments)

@@ -78,6 +78,11 @@ class DeMorganResolver:
         return False
 
     def _resolve_not_expression(self, not_expression: Not) -> FilterExpression:
+        if not isinstance(not_expression, Not):
+            raise DeMorganResolverException(
+                f'Can\'t resolve expression "{not_expression}", since it\'s not of the type "NOT."'
+            )
+
         if not isinstance(not_expression.child, CompoundFilterExpression):
             return not_expression
 
@@ -89,7 +94,10 @@ class DeMorganResolver:
         elif isinstance(compound_expression, And):
             expression = Or(*negated_children)
         else:
-            raise DeMorganResolverException(f"Could not resolve expression {not_expression}")
+            raise DeMorganResolverException(
+                f'Could not resolve expression "{not_expression}", '
+                f'since its child is neither of the type "AND" nor "OR".'
+            )
 
         return self._resolve_compound_expression(expression)
 
