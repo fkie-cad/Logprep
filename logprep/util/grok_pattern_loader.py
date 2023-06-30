@@ -1,7 +1,9 @@
 """This module contains a loader for grok patterns."""
 
-from typing import Optional
 from os import walk, path
+from typing import Optional
+
+PATTERN_CONVERSION = [("[[:alnum:]]", r"\w")]
 
 
 class GrokPatternLoaderError(BaseException):
@@ -50,7 +52,7 @@ class GrokPatternLoader:
             Dictionary with grok patterns.
 
         """
-        grok_pattern_dict = dict()
+        grok_pattern_dict = {}
         with open(pattern_path, "r", encoding="utf8") as pattern_file:
             lines = pattern_file.readlines()
             lines = [line for line in lines if line.strip() and not line.startswith("#")]
@@ -63,7 +65,7 @@ class GrokPatternLoader:
                         f"Duplicate pattern definition - Pattern: " f'"{identifier}"'
                     )
                 grok_pattern_dict[identifier] = pattern
-        return grok_pattern_dict
+        return GrokPatternLoader._update_pattern(grok_pattern_dict)
 
     @staticmethod
     def load_from_dir(pattern_dir_path: str) -> dict:
@@ -80,7 +82,7 @@ class GrokPatternLoader:
             Dictionary with grok patterns.
 
         """
-        grok_pattern_dict = dict()
+        grok_pattern_dict = {}
         for root, _, files in walk(pattern_dir_path):
             for file in files:
                 new_patterns = GrokPatternLoader.load_from_file(path.join(root, file))
@@ -91,3 +93,13 @@ class GrokPatternLoader:
                     )
                 grok_pattern_dict.update(new_patterns)
         return grok_pattern_dict
+
+    @staticmethod
+    def _update_pattern(grok_pattern_dict) -> dict:
+        return {
+            grok: pattern.replace(non_supported_regex, supported_regex)
+            if non_supported_regex in pattern
+            else pattern
+            for grok, pattern in grok_pattern_dict.items()
+            for non_supported_regex, supported_regex in PATTERN_CONVERSION
+        }
