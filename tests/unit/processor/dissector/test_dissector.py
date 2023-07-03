@@ -608,6 +608,18 @@ test_cases = [  # testcase, rule, event, expected
             "type": "monitor",
         },
     ),
+    (
+        "copy field - dissect without separator",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "%{sys_type}"}},
+        },
+        {"message": "system_monitor"},
+        {
+            "message": "system_monitor",
+            "sys_type": "system_monitor",
+        },
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (
