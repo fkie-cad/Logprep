@@ -3,6 +3,12 @@
 ## next release
 ### Features
 ### Improvements
+### Bugfix
+
+## v6.6.0
+
+
+### Improvements
 
 * Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule 
 representation is not present anymore in the predetector output, the name `rule_filter` will stay
