@@ -35,9 +35,10 @@ import re
 import ssl
 from functools import cached_property
 from logging import Logger
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 import elasticsearch as search
+import msgspec
 from attr import define, field
 from attrs import validators
 from elasticsearch import ElasticsearchException, helpers
@@ -45,6 +46,7 @@ from opensearchpy import OpenSearchException
 from urllib3.exceptions import TimeoutError
 
 from logprep.abc.output import FatalOutputError, Output
+from logprep.util.helper import get_json_dict_size_in_byte
 from logprep.util.time import TimeParser
 
 
@@ -73,6 +75,11 @@ class ElasticsearchOutput(Output):
         """Index to write documents to that could not be processed."""
         message_backlog_size: int = field(validator=validators.instance_of(int))
         """Amount of documents to store before sending them."""
+        maximum_message_size_mb: Optional[Union[float, int]] = field(
+            validator=validators.optional(validators.instance_of(Union[float, int])), default=None
+        )
+        """(Optional) Maximum estimated size of a document in MB before discarding it if it causes 
+        an error."""
         timeout: int = field(validator=validators.instance_of(int), default=500)
         """(Optional) Timeout for the connection (default is 500ms)."""
         max_retries: int = field(validator=validators.instance_of(int), default=0)
@@ -85,15 +92,28 @@ class ElasticsearchOutput(Output):
         ca_cert: Optional[str] = field(validator=validators.instance_of(str), default="")
         """(Optional) Path to a SSL ca certificate to verify the ssl context."""
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
-        """(Optional) Timout after :code:`message_backlog` is flushed if :code:`message_backlog_size` is not reached."""
+        """(Optional) Timout after :code:`message_backlog` is flushed if 
+        :code:`message_backlog_size` is not reached."""
 
     __slots__ = ["_message_backlog"]
 
     _message_backlog: List
 
+    _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
+
+    SIZE_ERROR_PATTERN = re.compile(
+        r".*coordinating_operation_bytes=(?P<size>\d+), "
+        r"max_coordinating_and_primary_bytes=(?P<max_size>\d+).*"
+    )
+
     def __init__(self, name: str, configuration: "ElasticsearchOutput.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self._message_backlog = []
+        self._max_message_size_byte = (
+            self._config.maximum_message_size_mb * 10**6
+            if self._config.maximum_message_size_mb
+            else None
+        )
 
     @cached_property
     def ssl_context(self) -> ssl.SSLContext:
@@ -237,6 +257,8 @@ class ElasticsearchOutput(Output):
             self._handle_connection_error(error)
         except helpers.BulkIndexError as error:
             self._handle_bulk_index_error(error)
+        except search.exceptions.TransportError as error:
+            self._handle_transport_error(error)
         if self.input_connector:
             self.input_connector.batch_finished_callback()
 
@@ -280,7 +302,89 @@ class ElasticsearchOutput(Output):
         """
         raise FatalOutputError(self, f"{error.args[1]} in document {error.args[0]}")
 
-    def store(self, document: dict) -> bool:
+    def _is_message_exceeds_max_size_error(self, error):
+        if error.status_code == 429:
+            if error.error == "circuit_breaking_exception":
+                return True
+
+            if error.error == "rejected_execution_exception":
+                reason = error.info.get("error", {}).get("reason", {})
+                match = self.SIZE_ERROR_PATTERN.match(reason)
+                if match and int(match.group("size")) >= int(match.group("max_size")):
+                    return True
+        return False
+
+    def _handle_transport_error(self, error: search.exceptions.TransportError):
+        """Handle transport error for elasticsearch bulk indexing.
+
+        Discard messages that exceed the maximum size if they caused an error.
+
+        Parameters
+        ----------
+        error : TransportError
+           TransportError for the error message.
+
+        """
+        if self._max_message_size_byte is None:
+            raise error
+
+        if self._is_message_exceeds_max_size_error(error):
+            messages_under_size_limit = []
+            messages_over_size_limit = []
+            total_size = 0
+            for message in self._message_backlog:
+                message_size = get_json_dict_size_in_byte(message)
+                if message_size < self._max_message_size_byte:
+                    messages_under_size_limit.append(message)
+                    total_size += message_size
+                else:
+                    messages_over_size_limit.append((message, message_size))
+
+            if len(messages_over_size_limit) == 0:
+                raise error
+
+            error_documents = self._build_messages_for_large_error_documents(
+                messages_over_size_limit
+            )
+            self._message_backlog = error_documents + messages_under_size_limit
+            self._bulk(self._search_context, self._message_backlog)
+        else:
+            raise error
+
+    def _build_messages_for_large_error_documents(
+        self, messages_over_size_limit: List[Tuple[dict, int]]
+    ) -> List[dict]:
+        """Build error message for messages that were larger than the allowed size limit.
+
+        Only a snipped of the message is stored in the error document, since the original message
+        was to large to be written in the first place.
+
+        Parameters
+        ----------
+        messages_over_size_limit : List[Tuple[dict, int]]
+           Messages that were to large with their corresponding sizes in byte.
+
+        """
+        error_documents = []
+        for message, size in messages_over_size_limit:
+            error_message = (
+                f"Discarded message that is larger than the allowed size limit "
+                f"({size / 10 ** 6} MB/{self._config.maximum_message_size_mb} MB)"
+            )
+            self._logger.warning(error_message)
+
+            error = error_message
+            error_document = {
+                "processed_snipped": f'{self._encoder.encode(message).decode("utf-8")[:1000]} ...',
+                "error": error,
+                "@timestamp": TimeParser.now().isoformat(),
+                "_index": self._config.error_index,
+            }
+            self._add_dates(error_document)
+            error_documents.append(error_document)
+        return error_documents
+
+    def store(self, document: dict):
         """Store a document in the index.
 
         Parameters

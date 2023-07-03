@@ -76,5 +76,7 @@ class OpensearchOutput(ElasticsearchOutput):
             self._handle_connection_error(error)
         except helpers.BulkIndexError as error:
             self._handle_bulk_index_error(error)
+        except search.exceptions.TransportError as error:
+            self._handle_transport_error(error)
         if self.input_connector:
             self.input_connector.batch_finished_callback()
