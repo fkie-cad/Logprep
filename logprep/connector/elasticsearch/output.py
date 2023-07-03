@@ -76,7 +76,7 @@ class ElasticsearchOutput(Output):
         message_backlog_size: int = field(validator=validators.instance_of(int))
         """Amount of documents to store before sending them."""
         maximum_message_size_mb: Optional[Union[float, int]] = field(
-            validator=validators.optional(validators.instance_of(Union[float, int])), default=None
+            validator=validators.optional(validators.instance_of((float, int))), default=None
         )
         """(Optional) Maximum estimated size of a document in MB before discarding it if it causes 
         an error."""
