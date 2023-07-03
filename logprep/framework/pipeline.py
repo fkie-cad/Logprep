@@ -427,9 +427,12 @@ class Pipeline:
                 self.logger.warning(str(error))
             except ProcessingCriticalError as error:
                 self.logger.error(str(error))
-                for _, output in self._output.items():
-                    if output.default:
-                        output.store_failed(str(error), self._decoder.decode(event_received), event)
+                if self._output:
+                    for _, output in self._output.items():
+                        if output.default:
+                            output.store_failed(
+                                str(error), self._decoder.decode(event_received), event
+                            )
             if not event:
                 break
         if self._processing_counter:
