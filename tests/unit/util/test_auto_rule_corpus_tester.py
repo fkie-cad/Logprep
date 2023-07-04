@@ -468,9 +468,7 @@ class TestAutoRuleTester:
         mock_exit.assert_called_with(0)
 
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.sys.exit")
-    def test_warnings_are_printed_inside_the_detailed_reports(
-        self, mock_exit, tmp_path, capsys
-    ):
+    def test_warnings_are_printed_inside_the_detailed_reports(self, mock_exit, tmp_path, capsys):
         test_case_data = {
             "input": {
                 "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}},
