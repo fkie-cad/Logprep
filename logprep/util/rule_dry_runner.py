@@ -50,6 +50,7 @@ from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline
+from logprep.util.auto_rule_tester.auto_rule_corpus_tester import align_extra_output_formats
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare
@@ -78,7 +79,10 @@ class DryRunner:
 
     @cached_property
     def _input_documents(self):
-        return GetterFactory.from_string(self._input_file_path).get_jsonl()
+        document_getter = GetterFactory.from_string(self._input_file_path)
+        if self._use_json:
+            return [document_getter.get_json()]
+        return document_getter.get_jsonl()
 
     def __init__(
         self, input_file_path: str, config_path: str, full_output: bool, use_json: bool, logger
@@ -95,6 +99,7 @@ class DryRunner:
         output_count = 0
         for input_document in self._input_documents:
             test_output, test_output_custom = self._pipeline.process_pipeline()
+            test_output_custom = align_extra_output_formats(test_output_custom)
             if test_output:
                 output_count += 1
             diff = self._print_output_results(input_document, test_output, test_output_custom)
@@ -133,8 +138,8 @@ class DryRunner:
 
     def _print_custom_outputs(self, test_output_custom):
         color_print_title(Back.MAGENTA, "CUSTOM OUTPUTS")
-        for output, output_target in test_output_custom:
-            color_print_title(Back.YELLOW, f"Output Target: {str(output_target[0])}")
-            for out in output:
-                test_json = json.dumps(out, sort_keys=True, indent=4)
-                color_print_line(Back.BLACK, Fore.YELLOW, test_json)
+        for custom_output in test_output_custom:
+            output_target, output = list(custom_output.items())[0]
+            color_print_title(Back.YELLOW, f"Output Target: {output_target}")
+            test_json = json.dumps(output, sort_keys=True, indent=4)
+            color_print_line(Back.BLACK, Fore.YELLOW, test_json)

@@ -4,8 +4,10 @@
 # pylint: disable=too-many-statements
 import hashlib
 import logging
+import os
 import re
-from multiprocessing import current_process
+import shutil
+import tempfile
 from pathlib import Path
 from unittest import mock
 
@@ -377,9 +379,30 @@ class TestGeoipEnricher(BaseProcessorTestCase):
         responses.add(responses.GET, geoip_database_path, db_path_content)
         self.object._config.db_path = geoip_database_path
         self.object.setup()
-        downloaded_file = Path(f"{current_process().name}-{self.object.name}.mmdb")
+        logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
+        downloaded_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
         assert downloaded_file.exists()
         downloaded_checksum = hashlib.md5(downloaded_file.read_bytes()).hexdigest()  # nosemgrep
         assert expected_checksum == downloaded_checksum
         # delete testfile
-        downloaded_file.unlink()
+        shutil.rmtree(logprep_tmp_dir)
+
+    @responses.activate
+    def test_setup_doesnt_overwrite_already_existing_geomap_file(self):
+        tld_list = "http://db-path-target/db_file.mmdb"
+        tld_list_content = "some content"
+        responses.add(responses.GET, tld_list, tld_list_content.encode("utf8"))
+
+        logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
+        os.makedirs(logprep_tmp_dir, exist_ok=True)
+        tld_temp_file = logprep_tmp_dir / f"{self.object.name}.mmdb"
+
+        pre_existing_content = "file exists already"
+        tld_temp_file.touch()
+        tld_temp_file.write_bytes(pre_existing_content.encode("utf8"))
+        self.object._config.tld_lists = [tld_list]
+        self.object.setup()
+        assert tld_temp_file.exists()
+        assert tld_temp_file.read_bytes().decode("utf8") == pre_existing_content
+        assert tld_temp_file.read_bytes().decode("utf8") != tld_list_content
+        shutil.rmtree(logprep_tmp_dir)  # delete testfile

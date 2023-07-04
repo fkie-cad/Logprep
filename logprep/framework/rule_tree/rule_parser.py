@@ -408,7 +408,7 @@ class RuleParser:
             try:
                 return priority_dict[expr.as_dotted_string(expr.split_field)]
             except KeyError:
-                return repr(expr)[1:-1]
+                return repr(expr)
         else:
             try:
                 return priority_dict[expr.as_dotted_string(expr.key)]
@@ -492,7 +492,10 @@ class RuleParser:
                     elif isinstance(segment, Always):
                         continue
                     else:
-                        if segment.key[0] in tag_map.keys():
+                        if (
+                            segment.key[0] in tag_map.keys()
+                            and Exists([tag_map[segment.key[0]]]) not in rule
+                        ):
                             RuleParser._add_tag(rule, tag_map[segment.key[0]])
 
     @staticmethod

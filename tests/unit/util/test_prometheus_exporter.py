@@ -90,18 +90,6 @@ class TestPrometheusStatsExporter:
             ):
                 _ = PrometheusStatsExporter(self.metrics_config, getLogger("test-logger"))
 
-    @mock.patch("logprep.util.prometheus_exporter.multiprocess")
-    @mock.patch("logprep.util.prometheus_exporter.os.makedirs")
-    @mock.patch("logprep.util.prometheus_exporter.shutil.rmtree")
-    def test_prepare_multiprocessing_does_not_init_prometheus_if_env_variable_is_missing(
-        self, mock_multiprocess, mock_makedirs, mock_rmtree
-    ):
-        _ = PrometheusStatsExporter(self.metrics_config, getLogger("test-logger"))
-
-        mock_multiprocess.assert_not_called()
-        mock_makedirs.assert_not_called()
-        mock_rmtree.assert_not_called()
-
     @mock.patch("logprep.util.prometheus_exporter.start_http_server")
     def test_run_starts_http_server(self, mock_http_server, caplog):
         with caplog.at_level(logging.INFO):

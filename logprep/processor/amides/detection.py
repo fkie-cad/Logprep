@@ -1,7 +1,7 @@
 """This module contains classes for misuse detection and rule attribution
 as used by AMIDES."""
 
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 from sklearn.base import BaseEstimator
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -44,7 +44,7 @@ class DetectionModel:
             raise MissingModelComponentError(err.args[0]) from err
 
     def detect(self, sample: str) -> float:
-        """Detect malicious data sample. Return probability value that estimates how likely
+        """Detect malicious data sample. Returns confidence value that estimates how likely
         given sample is malicious.
 
         Parameters
@@ -54,7 +54,7 @@ class DetectionModel:
 
         Returns
         -------
-        positive_probability: float
+        confidence_value: float
             Value between 0.0 and 1.0 that serves as confidence value.
         """
         feature_vector = self._vectorizer.transform([sample])
@@ -77,7 +77,7 @@ class MisuseDetector(DetectionModel):
         super().__init__(misuse_model)
         self._decision_threshold = decision_threshold
 
-    def detect(self, sample: str) -> int:
+    def detect(self, sample: str) -> Tuple[bool, float]:
         """Detect if given sample is malicious. Returns 0 or 1 if sample's detection
         result is below or above the configured decision threshold.
 
@@ -88,14 +88,14 @@ class MisuseDetector(DetectionModel):
 
         Returns
         -------
-        predict: int.
-            0 or 1 if classified as benign or malicious.
+        predict: Tuple[boolean, float].
+            Detection result as boolean value and the corresponding confidence.
         """
         confidence_value = super().detect(sample)
 
         if confidence_value >= self._decision_threshold:
-            return 1
-        return 0
+            return True, round(confidence_value, 3)
+        return False, round(confidence_value, 3)
 
 
 class RuleAttributorError(BaseException):
@@ -128,7 +128,7 @@ class RuleAttributor:
             except DetectionModelError as err:
                 raise RuleAttributorError from err
 
-    def attribute(self, sample: str) -> Dict[str, float]:
+    def attribute(self, sample: str) -> List[dict]:
         """Attribute given sample to rules of which the attributor holds rule models.
 
         Parameters
@@ -138,25 +138,23 @@ class RuleAttributor:
 
         Returns
         -------
-        attributions: Dict[str, float]
+        attributions: List[dict]
             List of rule attributions, containing rule model names and confidence values.
         """
         conf_values = self._calculate_rule_confidence_values(sample)
 
         return self._get_rules_with_highest_confidence_values(conf_values)
 
-    def _calculate_rule_confidence_values(self, cmdline: str) -> List[Tuple[str, float]]:
+    def _calculate_rule_confidence_values(self, cmdline: str) -> List[dict]:
         conf_values = []
 
         for name, rule_model in self._rule_models.items():
             rule_confidence_value = rule_model.detect(cmdline)
-            conf_values.append((name, round(rule_confidence_value, 3)))
+            conf_values.append({"rule": name, "confidence": round(rule_confidence_value, 3)})
 
         return conf_values
 
-    def _get_rules_with_highest_confidence_values(
-        self, conf_values: List[Tuple[str, float]]
-    ) -> Dict[str, float]:
-        conf_values.sort(key=lambda item: item[1], reverse=True)
+    def _get_rules_with_highest_confidence_values(self, conf_values: List[dict]) -> List[dict]:
+        conf_values.sort(key=lambda item: item["confidence"], reverse=True)
 
-        return dict(conf_values[: self._num_rule_attributions])
+        return conf_values[: self._num_rule_attributions]

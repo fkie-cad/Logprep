@@ -232,7 +232,7 @@ class Rule:
 
     def __repr__(self) -> str:
         if hasattr(self, "_config"):
-            return f"filename={self.file_name}, filter={self.filter}, {self._config}"
+            return f"filename={self.file_name}, filter='{self.filter}', {self._config}"
         return super().__repr__()
 
     # pylint: disable=C0111
