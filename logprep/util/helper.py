@@ -1,5 +1,6 @@
 """This module contains helper functions that are shared by different modules."""
 import re
+import sys
 from functools import lru_cache, partial, reduce
 from os import remove
 from typing import Optional, Union
@@ -294,3 +295,16 @@ def get_source_fields_dict(event, rule):
     source_field_values = map(partial(get_dotted_field_value, event), source_fields)
     source_field_dict = dict(zip(source_fields, source_field_values))
     return source_field_dict
+
+
+def get_dict_size_in_byte(dictionary: dict) -> int:
+    """returns the size of a nested dictionary in bytes"""
+    size = sys.getsizeof(dictionary)
+    if isinstance(dictionary, dict):
+        keys_size = sum(map(get_dict_size_in_byte, dictionary.keys()))
+        values_size = sum(map(get_dict_size_in_byte, dictionary.values()))
+        return size + keys_size + values_size
+    if isinstance(dictionary, list):
+        elements_size = sum(map(get_dict_size_in_byte, dictionary))
+        return size + elements_size
+    return size

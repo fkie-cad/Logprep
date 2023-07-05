@@ -21,6 +21,7 @@ In case of positive detection results, rule attributions are now inserted in the
 * Fix lucene rule filter representation such that it is aligned with opensearch lucene query syntax
 * Fix grok pattern `UNIXPATH` by internally converting `[[:alnum:]]` to `\w"`
 * Fix overwriting of temporary tld-list with empty content
+* Fix error when writing too large documents into Opensearch/Elasticsearch
 
 ## v6.5.1
 ### Bugfix
