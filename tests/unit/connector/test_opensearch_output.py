@@ -6,7 +6,6 @@
 # pylint: disable=too-many-arguments
 import json
 import re
-from copy import deepcopy
 from datetime import datetime
 from math import isclose
 from unittest import mock
@@ -18,7 +17,6 @@ from opensearchpy import helpers
 
 from logprep.abc.component import Component
 from logprep.abc.output import FatalOutputError
-from logprep.factory import Factory
 from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
 
@@ -28,25 +26,6 @@ class NotJsonSerializableMock:
 
 
 helpers.bulk = mock.MagicMock()
-
-
-class MockTransportError(BaseException):
-    def __init__(self, status_code: int, error: str, info: dict):
-        self._status_code = status_code
-        self._error = error
-        self._info = info
-
-    @property
-    def status_code(self):
-        return self._status_code
-
-    @property
-    def error(self):
-        return self._error
-
-    @property
-    def info(self):
-        return self._info
 
 
 class TestOpenSearchOutput(BaseOutputTestCase):
@@ -240,7 +219,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "bar"}, {"bar": "baz"}],
                 0,
-                MockTransportError,
+                search.exceptions.TransportError,
             ),
             (
                 429,
@@ -264,7 +243,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                MockTransportError,
+                search.exceptions.TransportError,
             ),
             (
                 429,
@@ -272,7 +251,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"anything": "anything"},
                 [{"foo": "*" * 500}],
                 1,
-                MockTransportError,
+                search.exceptions.TransportError,
             ),
             (
                 429,
@@ -288,7 +267,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 {"error": {"reason": "wrong_reason"}},
                 [{"foo": "*" * 500}],
                 1,
-                MockTransportError,
+                search.exceptions.TransportError,
             ),
             (
                 429,
@@ -316,28 +295,26 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 },
                 [{"foo": "*" * 500}],
                 1,
-                MockTransportError,
+                search.exceptions.TransportError,
             ),
         ],
     )
     def test_handle_transport_error_calls_bulk_with_error_documents(
         self, status_code, error, error_info, messages, discarded_cnt, exception
     ):
-        config = deepcopy(self.CONFIG)
-        config.update({"maximum_message_size_mb": 5 * 10**-4})
-        self.output = Factory.create(configuration={"elasticsearch": config}, logger=self.logger)
+        self.object._config.maximum_message_size_mb = 5 * 10**-4
 
-        mock_transport_error = MockTransportError(status_code, error, error_info)
+        mock_transport_error = search.exceptions.TransportError(status_code, error, error_info)
 
         if exception:
             with pytest.raises(exception):
-                self.output._handle_transport_error(mock_transport_error)
+                self.object._handle_transport_error(mock_transport_error)
         else:
-            self.output._message_backlog = messages
-            self.output._handle_transport_error(mock_transport_error)
+            self.object._message_backlog = messages
+            self.object._handle_transport_error(mock_transport_error)
             above_limit = []
             under_limit = []
-            for message in self.output._message_backlog:
+            for message in self.object._message_backlog:
                 if message.get("_index") == "error_index":
                     assert message.get("error", "").startswith(
                         "Discarded message that is larger than the allowed size limit"
@@ -348,7 +325,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
                 else:
                     under_limit.append(message)
             assert len(above_limit) == discarded_cnt
-            assert len(above_limit) + len(under_limit) == len(self.output._message_backlog)
+            assert len(above_limit) + len(under_limit) == len(self.object._message_backlog)
 
     def test_handle_connection_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):
