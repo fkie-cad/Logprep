@@ -404,7 +404,10 @@ class ElasticsearchOutput(Output):
             raise error
 
         if self._is_message_exceeds_max_size_error(error):
-            messages_under_size_limit, messages_over_size_limit = self._split_list_by_size_limit()
+            (
+                messages_under_size_limit,
+                messages_over_size_limit,
+            ) = self._split_message_backlog_by_size_limit()
 
             if len(messages_over_size_limit) == 0:
                 raise error
@@ -429,7 +432,7 @@ class ElasticsearchOutput(Output):
                     return True
         return False
 
-    def _split_list_by_size_limit(self):
+    def _split_message_backlog_by_size_limit(self):
         messages_under_size_limit = []
         messages_over_size_limit = []
         total_size = 0
