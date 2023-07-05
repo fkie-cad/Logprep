@@ -95,8 +95,8 @@ class ElasticsearchOutput(Output):
         flush_timeout: Optional[int] = field(validator=validators.instance_of(int), default=60)
         """(Optional) Timout after :code:`message_backlog` is flushed if 
         :code:`message_backlog_size` is not reached."""
-    __slots__ = ["_message_backlog", "_size_error_pattern"]
 
+    __slots__ = ["_message_backlog", "_size_error_pattern"]
 
     _message_backlog: List
 
@@ -443,7 +443,7 @@ class ElasticsearchOutput(Output):
         return messages_under_size_limit, messages_over_size_limit
 
     def _build_messages_for_large_error_documents(
-            self, messages_over_size_limit: List[Tuple[dict, int]]
+        self, messages_over_size_limit: List[Tuple[dict, int]]
     ) -> List[dict]:
         """Build error message for messages that were larger than the allowed size limit.
 
