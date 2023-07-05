@@ -45,7 +45,7 @@ from opensearchpy import OpenSearchException
 from urllib3.exceptions import TimeoutError
 
 from logprep.abc.output import FatalOutputError, Output
-from logprep.util.helper import get_json_dict_size_in_byte
+from logprep.util.helper import get_dict_size_in_byte
 from logprep.util.time import TimeParser
 
 
@@ -403,7 +403,7 @@ class ElasticsearchOutput(Output):
         if self._config.maximum_message_size_mb is None:
             raise error
 
-        if self._is_message_exceeds_max_size_error(error):
+        if self._message_exceeds_max_size_error(error):
             (
                 messages_under_size_limit,
                 messages_over_size_limit,
@@ -420,7 +420,7 @@ class ElasticsearchOutput(Output):
         else:
             raise error
 
-    def _is_message_exceeds_max_size_error(self, error):
+    def _message_exceeds_max_size_error(self, error):
         if error.status_code == 429:
             if error.error == "circuit_breaking_exception":
                 return True
@@ -437,7 +437,7 @@ class ElasticsearchOutput(Output):
         messages_over_size_limit = []
         total_size = 0
         for message in self._message_backlog:
-            message_size = get_json_dict_size_in_byte(message)
+            message_size = get_dict_size_in_byte(message)
             if message_size < self._config.maximum_message_size_mb:
                 messages_under_size_limit.append(message)
                 total_size += message_size
@@ -467,10 +467,9 @@ class ElasticsearchOutput(Output):
             )
             self._logger.warning(error_message)
 
-            error = error_message
             error_document = {
                 "processed_snipped": f'{self._encoder.encode(message).decode("utf-8")[:1000]} ...',
-                "error": error,
+                "error": error_message,
                 "@timestamp": TimeParser.now().isoformat(),
                 "_index": self._config.error_index,
             }

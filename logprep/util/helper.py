@@ -297,14 +297,14 @@ def get_source_fields_dict(event, rule):
     return source_field_dict
 
 
-def get_json_dict_size_in_byte(json_dict: dict) -> int:
-    """returns the size of a nested json dictionary in bytes"""
-    size = sys.getsizeof(json_dict)
-    if isinstance(json_dict, dict):
-        keys_size = sum(map(get_json_dict_size_in_byte, json_dict.keys()))
-        values_size = sum(map(get_json_dict_size_in_byte, json_dict.values()))
+def get_dict_size_in_byte(dictionary: dict) -> int:
+    """returns the size of a nested dictionary in bytes"""
+    size = sys.getsizeof(dictionary)
+    if isinstance(dictionary, dict):
+        keys_size = sum(map(get_dict_size_in_byte, dictionary.keys()))
+        values_size = sum(map(get_dict_size_in_byte, dictionary.values()))
         return size + keys_size + values_size
-    if isinstance(json_dict, list):
-        elements_size = sum(map(get_json_dict_size_in_byte, json_dict))
+    if isinstance(dictionary, list):
+        elements_size = sum(map(get_dict_size_in_byte, dictionary))
         return size + elements_size
     return size
