@@ -87,7 +87,7 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "winlog.event_id: 123456789",
             "timestamper": {
-                "source_fields": ["winlog.event_data.some_timestamp_utc"],
+                "source_fields": ["winlog.event_data.some_timestamp_berlin"],
                 "target_field": "@timestamp",
                 "source_format": "%Y %m %d - %H:%M:%S",
                 "source_timezone": "Europe/Berlin",
@@ -98,15 +98,15 @@ test_cases = [  # testcase, rule, event, expected
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"some_timestamp_utc": "1999 12 12 - 12:12:22"},
+                "event_data": {"some_timestamp_berlin": "1999 12 12 - 12:12:22"},
             }
         },
         {
-            "@timestamp": "1999-12-12T12:12:22Z",
+            "@timestamp": "1999-12-12T11:12:22Z",
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"some_timestamp_utc": "1999 12 12 - 12:12:22"},
+                "event_data": {"some_timestamp_berlin": "1999 12 12 - 12:12:22"},
             },
         },
     ),

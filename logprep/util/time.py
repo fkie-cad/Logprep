@@ -103,7 +103,7 @@ class TimeParser:
 
     @classmethod
     def parse_datetime(
-        cls, timestamp: str, source_format: str, source_timezone: [str, tzinfo]
+        cls, timestamp: str, source_format: str, source_timezone: Union[str, tzinfo]
     ) -> datetime:
         """
         Parses a timestamp based on different formats, besides a format string 'ISO8601' and
@@ -125,10 +125,12 @@ class TimeParser:
             The parsed timestamp as datetime object.
         """
         if source_format == "ISO8601":
-            parsed_datetime = cls.from_string(timestamp).astimezone(source_timezone)
+            parsed_datetime = cls.from_string(timestamp).replace(tzinfo=source_timezone)
         elif source_format == "UNIX":
             parsed_datetime = int(timestamp) if len(timestamp) <= 10 else int(timestamp) / 1000
-            parsed_datetime = cls.from_timestamp(parsed_datetime).astimezone(source_timezone)
+            parsed_datetime = cls.from_timestamp(parsed_datetime).replace(tzinfo=source_timezone)
         else:
-            parsed_datetime = cls.from_format(timestamp, source_format).astimezone(source_timezone)
+            parsed_datetime = cls.from_format(timestamp, source_format).replace(
+                tzinfo=source_timezone
+            )
         return parsed_datetime

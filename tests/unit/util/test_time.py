@@ -64,3 +64,50 @@ class TestTimeParser:
         assert time_object.tzinfo is None
         time_object = TimeParser._set_utc_if_timezone_is_missing(time_object)
         assert time_object.tzinfo is ZoneInfo("UTC")
+
+    @pytest.mark.parametrize(
+        "timestamp, source_format, source_timezone, expected",
+        [
+            (
+                "1615634593",
+                "UNIX",
+                ZoneInfo("UTC"),
+                {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
+            ),
+            (
+                "1615634593",
+                "UNIX",
+                ZoneInfo("Europe/Berlin"),
+                {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
+            ),
+            (
+                "2021-03-13T11:23:13Z",
+                "ISO8601",
+                ZoneInfo("Europe/Berlin"),
+                {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
+            ),
+            (
+                "2021-03-13T11:23:13Z",
+                "ISO8601",
+                ZoneInfo("UTC"),
+                {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
+            ),
+            (
+                "2021 03 13 - 11:23:13",
+                "%Y %m %d - %H:%M:%S",
+                ZoneInfo("UTC"),
+                {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
+            ),
+            (
+                "2021 03 13 - 11:23:13",
+                "%Y %m %d - %H:%M:%S",
+                ZoneInfo("Europe/Berlin"),
+                {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
+            ),
+        ],
+    )
+    def test_parse_datetime(self, timestamp, source_format, source_timezone, expected):
+        timestamp = TimeParser.parse_datetime(timestamp, source_format, source_timezone)
+        assert timestamp.tzinfo == source_timezone
+        for attribute, value in expected.items():
+            assert getattr(timestamp, attribute) == value
