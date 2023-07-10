@@ -104,6 +104,19 @@ class TestTimeParser:
                 ZoneInfo("Europe/Berlin"),
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
+            (
+                "03 13 - 11:23:13",
+                "%m %d - %H:%M:%S",
+                ZoneInfo("UTC"),
+                {
+                    "year": datetime.now().year,
+                    "month": 3,
+                    "day": 13,
+                    "hour": 11,
+                    "minute": 23,
+                    "second": 13,
+                },
+            ),
         ],
     )
     def test_parse_datetime(self, timestamp, source_format, source_timezone, expected):

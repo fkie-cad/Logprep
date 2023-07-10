@@ -133,4 +133,6 @@ class TimeParser:
             parsed_datetime = cls.from_format(timestamp, source_format).replace(
                 tzinfo=source_timezone
             )
+            if parsed_datetime.year == 1900:
+                parsed_datetime = parsed_datetime.replace(year=datetime.now().year)
         return parsed_datetime
