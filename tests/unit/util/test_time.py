@@ -112,11 +112,11 @@ class TestTimeParser:
                 {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
             (
-                    "2021 03 13 - 11:23:13 -03:00",
-                    "%Y %m %d - %H:%M:%S %z",
-                    ZoneInfo("Europe/Berlin"),
-                    "UTC-03:00",
-                    {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
+                "2021 03 13 - 11:23:13 -03:00",
+                "%Y %m %d - %H:%M:%S %z",
+                ZoneInfo("Europe/Berlin"),
+                "UTC-03:00",
+                {"year": 2021, "month": 3, "day": 13, "hour": 11, "minute": 23, "second": 13},
             ),
             (
                 "03 13 - 11:23:13",
