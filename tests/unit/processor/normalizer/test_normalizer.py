@@ -669,7 +669,7 @@ class TestNormalizer(BaseProcessorTestCase):
 
     def test_normalization_from_timestamp_berlin_to_utc(self):
         expected = {
-            "@timestamp": "1999-12-12T12:12:22Z",
+            "@timestamp": "1999-12-12T11:12:22Z",
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
@@ -1000,11 +1000,11 @@ class TestNormalizer(BaseProcessorTestCase):
 
     def test_normalization_from_timestamp_with_collision(self):
         expected = {
-            "@timestamp": "1999-12-12T12:12:22Z",
+            "@timestamp": "1999-12-12T11:12:22Z",
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"some_timestamp_utc": "1999 12 12 - 12:12:22"},
+                "event_data": {"some_timestamp_berlin": "1999 12 12 - 12:12:22"},
             },
         }
 
@@ -1013,14 +1013,14 @@ class TestNormalizer(BaseProcessorTestCase):
             "winlog": {
                 "api": "wineventlog",
                 "event_id": 123456789,
-                "event_data": {"some_timestamp_utc": "1999 12 12 - 12:12:22"},
+                "event_data": {"some_timestamp_berlin": "1999 12 12 - 12:12:22"},
             },
         }
 
         rule = {
             "filter": "winlog.event_id: 123456789",
             "normalize": {
-                "winlog.event_data.some_timestamp_utc": {
+                "winlog.event_data.some_timestamp_berlin": {
                     "timestamp": {
                         "destination": "@timestamp",
                         "source_formats": ["%Y", "%Y %m %d - %H:%M:%S"],

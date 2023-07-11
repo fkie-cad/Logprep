@@ -16,13 +16,15 @@ class TimeParser:
     """encapsulation of time related methods"""
 
     @classmethod
-    def from_string(cls, source: str) -> datetime:
+    def from_string(cls, source: str, set_missing_utc: bool = True) -> datetime:
         """parses input string to datetime object
 
         Parameters
         ----------
         source : str
             input string
+        set_missing_utc : bool
+            Set timezone to utc if it is missing and this is true
 
         Returns
         -------
@@ -31,7 +33,8 @@ class TimeParser:
         """
         try:
             time_object = ciso8601.parse_datetime(source)  # pylint: disable=c-extension-no-member
-            time_object = cls._set_utc_if_timezone_is_missing(time_object)
+            if set_missing_utc:
+                time_object = cls._set_utc_if_timezone_is_missing(time_object)
             return time_object
         except ValueError as error:
             raise TimeParserException(str(error)) from error
@@ -68,7 +71,7 @@ class TimeParser:
         return time_object
 
     @classmethod
-    def from_format(cls, source: str, format_str: str) -> datetime:
+    def from_format(cls, source: str, format_str: str, set_missing_utc: bool = True) -> datetime:
         """parse date from format
 
         Parameters
@@ -77,6 +80,8 @@ class TimeParser:
             the date string
         format_str : str
             the format string
+        set_missing_utc : bool
+            Set timezone to utc if it is missing and this is true
 
         Returns
         -------
@@ -90,7 +95,8 @@ class TimeParser:
         """
         try:
             time_object = datetime.strptime(source, format_str)
-            time_object = cls._set_utc_if_timezone_is_missing(time_object)
+            if set_missing_utc:
+                time_object = cls._set_utc_if_timezone_is_missing(time_object)
             return time_object
         except ValueError as error:
             raise TimeParserException(str(error)) from error
@@ -124,15 +130,17 @@ class TimeParser:
         datetime
             The parsed timestamp as datetime object.
         """
-        if source_format == "ISO8601":
-            parsed_datetime = cls.from_string(timestamp).replace(tzinfo=source_timezone)
-        elif source_format == "UNIX":
+        if source_format == "UNIX":
             parsed_datetime = int(timestamp) if len(timestamp) <= 10 else int(timestamp) / 1000
-            parsed_datetime = cls.from_timestamp(parsed_datetime).replace(tzinfo=source_timezone)
+            parsed_datetime = cls.from_timestamp(parsed_datetime)
+        elif source_format == "ISO8601":
+            parsed_datetime = cls.from_string(timestamp, set_missing_utc=False)
         else:
-            parsed_datetime = cls.from_format(timestamp, source_format).replace(
-                tzinfo=source_timezone
-            )
+            parsed_datetime = cls.from_format(timestamp, source_format, set_missing_utc=False)
             if parsed_datetime.year == 1900:
                 parsed_datetime = parsed_datetime.replace(year=datetime.now().year)
+
+        if parsed_datetime.tzinfo is None:
+            parsed_datetime = parsed_datetime.replace(tzinfo=source_timezone)
+
         return parsed_datetime
