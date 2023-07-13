@@ -117,7 +117,7 @@ POSITION = r"(\/(?P<position>\d*))?"
 DATATYPE = r"(\|(?P<datatype>int|float|bool))?"
 SECTION_MATCH = rf"{START}{ACTION}{SEPERATOR}{TARGET_FIELD}{STRIP_CHAR}{POSITION}{DATATYPE}{END}(?P<delimiter>.*)"
 
-MAPPING_VALIDATION_REGEX = re.compile(rf"^({DELIMITER})?({DISSECT}{DELIMITER})+({DISSECT})?$")
+MAPPING_VALIDATION_REGEX = re.compile(rf"^({DELIMITER})?({DISSECT}({DELIMITER})?)+({DISSECT})?$")
 
 
 def _do_nothing(*_):
