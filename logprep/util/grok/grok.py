@@ -34,6 +34,8 @@ import numpy as np
 import pkg_resources
 from attrs import define, field, validators
 
+from logprep.util.decorators import timeout
+
 if sys.version_info.minor < 11:
     # because needed possessive quantifiers and atomic grouping
     # added to re module in python 3.11
@@ -80,6 +82,7 @@ class Grok:
 
         self._load_search_pattern()
 
+    @timeout(seconds=1)
     def match(self, text):
         """If text is matched with pattern, return variable names
         specified(%{pattern:variable name}) in pattern and their
