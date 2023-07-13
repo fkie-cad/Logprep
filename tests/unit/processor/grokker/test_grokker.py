@@ -360,11 +360,11 @@ failure_test_cases = [
                 "mapping": {
                     "url": "^(%{URIPROTO:[network][protocol]}://)?%{IPORHOST:[url][domain]}(?::%{POSINT:[url][port]})?(?:%{URIPATHPARAM:[url][path]})?$"
                 }
-            }
+            },
         },
         {"url": "is-ascdwa-fv458.sdcfvfdaq.ascg:316"},
         {"url": "is-ascdwa-fv458.sdcfvfdaq.ascg:316"},
-        ProcessingCriticalError
+        ProcessingCriticalError,
     ),
 ]  # testcase, rule, event, expected
 
@@ -384,9 +384,7 @@ class TestGrokker(BaseProcessorTestCase):
         assert event == expected, testcase
 
     @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
-    def test_testcases_failure_handling(
-        self, caplog, testcase, rule, event, expected, error
-    ):
+    def test_testcases_failure_handling(self, caplog, testcase, rule, event, expected, error):
         self._load_specific_rule(rule)
         self.object.setup()
         if isinstance(error, str):
