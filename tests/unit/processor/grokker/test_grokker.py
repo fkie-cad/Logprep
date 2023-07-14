@@ -9,6 +9,7 @@ from unittest import mock
 import pytest
 
 from logprep.factory import Factory
+from logprep.processor.base.exceptions import ProcessingCriticalError
 from logprep.util.getter import GetterFactory
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -351,6 +352,20 @@ failure_test_cases = [
         },
         "no grok pattern matched",
     ),
+    (
+        "grok pattern timeout",
+        {
+            "filter": "url",
+            "grokker": {
+                "mapping": {
+                    "url": "^(%{URIPROTO:[network][protocol]}://)?%{IPORHOST:[url][domain]}(?::%{POSINT:[url][port]})?(?:%{URIPATHPARAM:[url][path]})?$"
+                }
+            },
+        },
+        {"url": "is-ascdwa-fv458.sdcfvfdaq.ascg:316"},
+        {"url": "is-ascdwa-fv458.sdcfvfdaq.ascg:316"},
+        ProcessingCriticalError,
+    ),
 ]  # testcase, rule, event, expected
 
 
@@ -368,16 +383,18 @@ class TestGrokker(BaseProcessorTestCase):
         self.object.process(event)
         assert event == expected, testcase
 
-    @pytest.mark.parametrize("testcase, rule, event, expected, error_message", failure_test_cases)
-    def test_testcases_failure_handling(
-        self, caplog, testcase, rule, event, expected, error_message
-    ):
+    @pytest.mark.parametrize("testcase, rule, event, expected, error", failure_test_cases)
+    def test_testcases_failure_handling(self, caplog, testcase, rule, event, expected, error):
         self._load_specific_rule(rule)
         self.object.setup()
-        with caplog.at_level(logging.WARNING):
-            self.object.process(event)
-            assert re.match(rf".*{error_message}", caplog.text)
-        assert event == expected, testcase
+        if isinstance(error, str):
+            with caplog.at_level(logging.WARNING):
+                self.object.process(event)
+                assert re.match(rf".*{error}", caplog.text)
+                assert event == expected, testcase
+        else:
+            with pytest.raises(error):
+                self.object.process(event)
 
     def test_load_custom_patterns_from_http_as_zip_file(self):
         rule = {

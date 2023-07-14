@@ -7,6 +7,7 @@
 
 * Fix error when writing too large documents into Opensearch/Elasticsearch
 * Fix dissector pattern that end with a dissect, e.g `system_%{type}`
+* Handle long-running grok pattern in the `Grokker` by introducing a timeout limit of one second  
 
 ## v6.6.0
 
