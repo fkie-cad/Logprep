@@ -3,6 +3,10 @@
 ## next release
 ### Features
 ### Improvements
+
+* Print logprep warnings in the rule corpus tester only in the detailed reports instead of the
+summary.
+
 ### Bugfix
 
 * Fix error when writing too large documents into Opensearch/Elasticsearch
