@@ -1,9 +1,12 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import copy
+
 from pytest import raises
 
 from logprep.abc.input import SourceDisconnectedError
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -39,3 +42,13 @@ class TestDummyInput(BaseInputTestCase):
         self.object._config.documents = [BaseException]
         with raises(BaseException):
             self.object.get_next(self.timeout)
+
+    def test_repeat_documents_repeats_documents(self):
+        config = copy.deepcopy(self.CONFIG)
+        config["repeat_documents"] = True
+        object = Factory.create(configuration={"Test Instance Name": config}, logger=self.logger)
+        object._config.documents = [{"order": 0}, {"order": 1}, {"order": 2}]
+
+        for order in range(0, 9):
+            event, _ = object.get_next(self.timeout)
+            assert event.get("order") == order % 3

@@ -2,6 +2,10 @@
 
 ## next release
 ### Features
+
+* Add option to repeat input documents for the following connectors: `DummyInput`, `JsonInput`,
+`JsonlInput`. This enables easier debugging by introducing a continues input stream of documents.
+
 ### Improvements
 ### Bugfix
 

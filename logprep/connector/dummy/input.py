@@ -18,8 +18,11 @@ Example
         type: dummy_input
         documents: [{"document":"one"}, "Exception", {"document":"two"}]
 """
-from typing import List, Union
+import copy
+from functools import cached_property
+from typing import List, Union, Optional
 
+from attr import field, validators
 from attrs import define
 
 from logprep.abc.input import Input, SourceDisconnectedError
@@ -34,15 +37,22 @@ class DummyInput(Input):
 
         documents: List[Union[dict, type, BaseException]]
         """A list of documents that should be returned."""
+        repeat_documents: Optional[str] = field(
+            validator=validators.instance_of(bool), default=False
+        )
+        """If set to :code:`true`, then the given input documents will be repeated after the last
+        one is reached. Default: :code:`False`"""
 
-    @property
+    @cached_property
     def _documents(self):
-        return self._config.documents
+        return copy.copy(self._config.documents)
 
     def _get_event(self, timeout: float) -> tuple:
-        """Retriev next document from configuration and raise error if found"""
+        """Retrieve next document from configuration and raise error if found"""
         if not self._documents:
-            raise SourceDisconnectedError(self, "no documents left")
+            if not self._config.repeat_documents:
+                raise SourceDisconnectedError(self, "no documents left")
+            del self.__dict__["_documents"]
 
         document = self._documents.pop(0)
 
