@@ -3,6 +3,10 @@
 ## next release
 ### Features
 ### Improvements
+### Bugfix
+
+## v6.7.0
+### Improvements
 
 * Print logprep warnings in the rule corpus tester only in the detailed reports instead of the
 summary.
@@ -11,10 +15,11 @@ summary.
 
 * Fix error when writing too large documents into Opensearch/Elasticsearch
 * Fix dissector pattern that end with a dissect, e.g `system_%{type}`
-* Handle long-running grok pattern in the `Grokker` by introducing a timeout limit of one second  
+* Handle long-running grok pattern in the `Grokker` by introducing a timeout limit of one second
+* Fix time handling: If no year is given assume the current year instead of 1900 and convert time
+zone only once
 
 ## v6.6.0
-
 
 ### Improvements
 
