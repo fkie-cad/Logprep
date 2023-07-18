@@ -5,14 +5,14 @@ version: "3.9"
 
 services:
   opensearch:
-    image: public.ecr.aws/opensearchproject/opensearch:2.6.0
+    image: public.ecr.aws/opensearchproject/opensearch:2.8.0
     hostname: opensearch
     container_name: opensearch
     environment:
       - cluster.name=opensearch-cluster # Name the cluster
       - node.name=opensearch # Name the node that will run in this container
       - discovery.seed_hosts=opensearch # Nodes to look for when discovering the cluster
-      - cluster.initial_cluster_manager_nodes=opensearch # Nodes eligibile to serve as cluster manager
+      - discovery.type=single-node
       - bootstrap.memory_lock=true # Disable JVM heap memory swapping
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" # Set min and max JVM heap sizes to at least 50% of system RAM
       - "DISABLE_INSTALL_DEMO_CONFIG=true" # Prevents execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
@@ -26,32 +26,23 @@ services:
         hard: 65536
     volumes:
       - data:/usr/share/opensearch/data
-    ports:
-      - 9200:9200
-    networks:
-      - opensearch-net
+    network_mode: host
 
   dashboards:
-    image: public.ecr.aws/opensearchproject/opensearch-dashboards:2.6.0
+    image: public.ecr.aws/opensearchproject/opensearch-dashboards:2.8.0
     container_name: dashboards
-    ports:
-      - 5601:5601
     environment:
-      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - 'OPENSEARCH_HOSTS=["http://localhost:9200"]'
       - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true" # disables security dashboards plugin in OpenSearch Dashboards
-    networks:
-      - opensearch-net
+    network_mode: host
     depends_on:
       - opensearch
 
   kafka:
     image: bitnami/kafka:3.4.0
     container_name: kafka
-    ports:
-      - 9092:9092
     hostname: kafka
-    networks:
-      - opensearch-net
+    network_mode: host
     environment:
       - KAFKA_ENABLE_KRAFT=yes
       - KAFKA_CFG_NODE_ID=1
@@ -64,27 +55,24 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    command: sh -c "((sleep 15 && echo 'kafka up' && kafka-topics.sh --create --if-not-exists --bootstrap-server localhost:9092 --replication-factor 1 --partitions 3 --topic consumer)&) && /opt/bitnami/scripts/kafka/run.sh"
 
   logprep:
     build:
       context: ..
     image: logprep
     container_name: logprep
-    networks:
-      - opensearch-net
+    network_mode: host
     profiles:
       - logprep
     depends_on:
       - kafka
+      - opensearch
     volumes:
-      - ./exampledata/:/home/logprep/
+      - ../quickstart/:/home/logprep/quickstart/
     entrypoint:
       - logprep
-      - /home/logprep/config/pipeline.yml
+      - /home/logprep/quickstart/exampledata/config/pipeline.yml
 
 volumes:
   data:
-
-
-networks:
-  opensearch-net:
