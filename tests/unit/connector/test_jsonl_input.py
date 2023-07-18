@@ -1,10 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
+import copy
 from unittest import mock
 
 import pytest
+
 from logprep.abc.input import CriticalInputError
+from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
 
@@ -47,3 +50,14 @@ class TestJsonlInput(BaseInputTestCase):
             _ = self.object.get_next(self.timeout)
             _ = self.object.get_next(self.timeout)
             _ = self.object.get_next(self.timeout)
+
+    @mock.patch(parse_function)
+    def test_repeat_documents_repeats_documents(self, mock_parse):
+        config = copy.deepcopy(self.CONFIG)
+        config["repeat_documents"] = True
+        mock_parse.return_value = [{"order": 0}, {"order": 1}, {"order": 2}]
+        object = Factory.create(configuration={"Test Instance Name": config}, logger=self.logger)
+
+        for order in range(0, 9):
+            event, _ = object.get_next(self.timeout)
+            assert event.get("order") == order % 3

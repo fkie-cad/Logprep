@@ -35,7 +35,6 @@ from logprep.framework.pipeline import (
 from logprep.metrics.metric import MetricTargets
 from logprep.processor.base.exceptions import (
     ProcessingCriticalError,
-    ProcessingError,
     ProcessingWarning,
 )
 from logprep.processor.deleter.rule import DeleterRule
@@ -151,7 +150,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.logger.setLevel(DEBUG)
         while self.pipeline._input._documents:
             self.pipeline.process_pipeline()
-        assert len(input_data) == 0, "all events were processed"
+        assert len(self.pipeline._input._documents) == 0, "all events were processed"
         assert self.pipeline._pipeline[0].process.call_count == 3, "called for all events"
         assert self.pipeline._pipeline[2].process.call_count == 2, "not called for deleted event"
         assert {"delete_me": "2"} not in self.pipeline._output["dummy"].events
