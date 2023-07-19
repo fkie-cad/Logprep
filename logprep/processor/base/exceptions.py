@@ -61,7 +61,9 @@ class ProcessingCriticalError(ProcessingError):
 
     def __init__(self, processor: "Processor", message: str, event: dict):
         processor.metrics.number_of_errors += 1
-        super().__init__(processor, f"{message} -> event was send to error output and further processing stopped")
+        super().__init__(
+            processor, f"{message} -> event was send to error output and further processing stopped"
+        )
 
 
 class ProcessingWarning(Warning):
