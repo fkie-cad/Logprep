@@ -5,7 +5,6 @@ They can be multi-processed.
 
 """
 import copy
-
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -447,6 +446,7 @@ class Pipeline:
                 self.logger.error(str(error))
                 if self._output:
                     self._store_failed_event(error, copy.deepcopy(event), event_received)
+                    event.clear()
             if not event:
                 break
         if self._processing_counter:
