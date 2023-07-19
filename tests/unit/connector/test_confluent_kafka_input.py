@@ -9,7 +9,7 @@ from unittest import mock
 
 import pytest
 
-from logprep.abc.input import CriticalInputError
+from logprep.abc.input import CriticalInputError, CriticalInputParsingError
 from logprep.abc.output import FatalOutputError
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
@@ -157,3 +157,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._config.kafka_config = config
         with pytest.raises(FatalOutputError, match="No such configuration property"):
             self.object.setup()
+
+    def test_get_next_raises_critical_input_parsing_error(self):
+        return_value = b'{"invalid": "json'
+        self.object._get_raw_event = mock.MagicMock(return_value=return_value)
+        with pytest.raises(CriticalInputParsingError, match="is not a valid json"):
+            self.object.get_next(0.01)
