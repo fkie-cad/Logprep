@@ -9,6 +9,9 @@
 ### Improvements
 ### Bugfix
 
+* Fix restarting of logprep every time the kafka input connector receives events that aren't valid
+json documents. Now the documents will be written to the error output.
+
 ## v6.7.0
 ### Improvements
 

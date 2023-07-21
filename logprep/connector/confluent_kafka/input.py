@@ -35,7 +35,7 @@ import msgspec
 from attrs import define, field, validators
 from confluent_kafka import Consumer, KafkaException, TopicPartition
 
-from logprep.abc.input import CriticalInputError, Input
+from logprep.abc.input import CriticalInputError, Input, CriticalInputParsingError
 from logprep.abc.output import FatalOutputError
 from logprep.util.validators import dict_with_keys_validator
 
@@ -230,11 +230,11 @@ class ConfluentKafkaInput(Input):
         try:
             event_dict = self._decoder.decode(raw_event)
         except msgspec.DecodeError as error:
-            raise CriticalInputError(
+            raise CriticalInputParsingError(
                 self, "Input record value is not a valid json string", raw_event
             ) from error
         if not isinstance(event_dict, dict):
-            raise CriticalInputError(
+            raise CriticalInputParsingError(
                 self, "Input record value could not be parsed as dict", event_dict
             )
         return event_dict, raw_event

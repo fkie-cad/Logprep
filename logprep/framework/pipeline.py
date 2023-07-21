@@ -4,6 +4,8 @@ Pipelines contain a list of processors that can be executed in order to process 
 They can be multi-processed.
 
 """
+import copy
+
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -27,6 +29,7 @@ from logprep.abc.input import (
     Input,
     SourceDisconnectedError,
     WarningInputError,
+    CriticalInputParsingError,
 )
 from logprep.abc.output import (
     CriticalOutputError,
@@ -388,7 +391,17 @@ class Pipeline:
         self._metrics_exposer.expose(self.metrics)
         Component.run_pending_tasks()
         extra_outputs = []
-        if event := self._get_event():
+        event = None
+        try:
+            event = self._get_event()
+        except CriticalInputParsingError as error:
+            input_data = error.raw_input
+            if isinstance(input_data, bytes):
+                input_data = input_data.decode("utf8")
+            error_event = self._encoder.encode({"invalid_json": input_data})
+            self._store_failed_event(error, "", error_event)
+            self.logger.error(f"{error}, event was written to error output")
+        if event:
             extra_outputs = self.process_event(event)
         if event and self._output:
             self._store_event(event)
@@ -399,6 +412,11 @@ class Pipeline:
             if output.default:
                 output.store(event)
                 self.logger.debug(f"Stored output in {output_name}")
+
+    def _store_failed_event(self, error, event, event_received):
+        for _, output in self._output.items():
+            if output.default:
+                output.store_failed(str(error), self._decoder.decode(event_received), event)
 
     def _get_event(self) -> dict:
         event, non_critical_error_msg = self._input.get_next(self._timeout)
@@ -428,11 +446,8 @@ class Pipeline:
             except ProcessingCriticalError as error:
                 self.logger.error(str(error))
                 if self._output:
-                    for _, output in self._output.items():
-                        if output.default:
-                            output.store_failed(
-                                str(error), self._decoder.decode(event_received), event
-                            )
+                    self._store_failed_event(error, copy.deepcopy(event), event_received)
+                    event.clear()
             if not event:
                 break
         if self._processing_counter:

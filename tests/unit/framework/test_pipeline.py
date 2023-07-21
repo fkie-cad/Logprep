@@ -16,6 +16,7 @@ from logprep.abc.input import (
     FatalInputError,
     SourceDisconnectedError,
     WarningInputError,
+    CriticalInputParsingError,
 )
 from logprep.abc.output import (
     CriticalOutputError,
@@ -318,7 +319,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = (input_event2, None)
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
-        assert mock_error.call_count == 2, "two errors occured"
+        assert mock_error.call_count == 2, "two errors occurred"
         mock_error.assert_called_with(
             str(
                 ProcessingCriticalError(
@@ -676,6 +677,15 @@ class TestPipeline(ConfigurationForTests):
         with mock.patch("schedule.Job.should_run", return_value=True):
             self.pipeline.process_pipeline()
         mock_task.assert_called()
+
+    def test_event_with_critical_input_parsing_error_is_stored_in_error_output(self, _):
+        self.pipeline._setup()
+        error = CriticalInputParsingError(self.pipeline._input, "test-error", "raw_input")
+        self.pipeline._input.get_next = mock.MagicMock()
+        self.pipeline._input.get_next.side_effect = error
+        self.pipeline._output = {"dummy": mock.MagicMock()}
+        self.pipeline.process_pipeline()
+        self.pipeline._output["dummy"].store_failed.assert_called()
 
 
 class TestPipelineWithActualInput:
