@@ -3,7 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
-from typing import List, Any
+from typing import List, Any, Tuple
 
 
 class FilterExpressionError(BaseException):
@@ -16,6 +16,25 @@ class KeyDoesNotExistError(FilterExpressionError):
 
 class FilterExpression(ABC):
     """Base class for all filter expression used for matching rules."""
+
+    __slots__ = ["children"]
+
+    children: Tuple["FilterExpression"]
+
+    def __init__(self, *children: "FilterExpression"):
+        """Initializes children for filter expression.
+
+        Filter expression can contain multiple child filter expression,
+        i.e. a 'Not' expression could contain a child that gets negated,
+        or an 'And' expression could contain multiple children that must all match.
+
+        Parameters
+        ----------
+        children : FilterExpression
+            Child expression of this expression.
+
+        """
+        self.children = children
 
     def matches(self, document: dict) -> bool:
         """Receives a document and returns True if it is matched by the expression.
@@ -87,6 +106,7 @@ class Always(FilterExpression):
     """Filter expression that can be set to match always or never."""
 
     def __init__(self, value: Any):
+        super().__init__()
         self._value = value
 
     def __repr__(self):
@@ -102,20 +122,17 @@ class Not(FilterExpression):
     """Filter expression that negates a match."""
 
     def __init__(self, expression: FilterExpression):
-        self.child = expression
+        super().__init__(expression)
 
     def __repr__(self) -> str:
-        return f"NOT ({repr(self.child)})"
+        return f"NOT ({repr(self.children[0])})"
 
     def does_match(self, document: dict) -> bool:
-        return not self.child.matches(document)
+        return not self.children[0].matches(document)
 
 
 class CompoundFilterExpression(FilterExpression):
     """Base class of filter expressions that combine other filter expressions."""
-
-    def __init__(self, *args: FilterExpression):
-        self.children = args
 
     def does_match(self, document: dict):
         raise NotImplementedError
@@ -145,6 +162,7 @@ class KeyBasedFilterExpression(FilterExpression):
     """Base class of filter expressions that match a certain value on a given key."""
 
     def __init__(self, key: List[str]):
+        super().__init__()
         self.key = key
         self._key_as_dotted_string = ".".join([str(i) for i in self.key])
 

@@ -54,7 +54,7 @@ class RuleSegmenter:
                 if RuleSegmenter._has_disjunction(exp):
                     return True
         if isinstance(expression, Not):
-            return RuleSegmenter._has_disjunction(expression.child)
+            return RuleSegmenter._has_disjunction(expression.children[0])
 
         return False
 

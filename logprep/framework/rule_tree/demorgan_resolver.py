@@ -46,10 +46,10 @@ class DeMorganResolver:
                 f'Can\'t resolve expression "{not_expression}", since it\'s not of the type "NOT."'
             )
 
-        if not isinstance(not_expression.child, CompoundFilterExpression):
+        if not isinstance(not_expression.children[0], CompoundFilterExpression):
             return not_expression
 
-        compound_expression = not_expression.child
+        compound_expression = not_expression.children[0]
         negated_children = (Not(expression) for expression in compound_expression.children)
 
         if isinstance(compound_expression, Or):

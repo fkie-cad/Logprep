@@ -81,12 +81,12 @@ class RuleSorter:
     @staticmethod
     def _sort_not_expression(expression, priority_dict):
         try:
-            if isinstance(expression.child, Not):
-                if isinstance(expression.child.child, KeyBasedFilterExpression):
-                    return priority_dict[expression.child.child.key[0]]
+            if isinstance(expression.children[0], Not):
+                if isinstance(expression.children[0].children[0], KeyBasedFilterExpression):
+                    return priority_dict[expression.children[0].children[0].key[0]]
 
-            if isinstance(expression.child, KeyBasedFilterExpression):
-                return priority_dict[expression.child.key_as_dotted_string]
+            if isinstance(expression.children[0], KeyBasedFilterExpression):
+                return priority_dict[expression.children[0].key_as_dotted_string]
         except KeyError:
             pass
-        return RuleSorter._get_sorting_key(expression.child, priority_dict)
+        return RuleSorter._get_sorting_key(expression.children[0], priority_dict)

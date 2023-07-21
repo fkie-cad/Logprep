@@ -59,7 +59,7 @@ class RuleTagger:
     def _add_tags_to_rule_expressions(self, rule_expressions):
         """Iterate through all expressions and handle different cases"""
         for expression in rule_expressions.copy():
-            next_expression = expression.child if isinstance(expression, Not) else expression
+            next_expression = expression.children[0] if isinstance(expression, Not) else expression
             if self._expression_in_tag_map(next_expression):
                 if Exists([self._tag_map[next_expression.key[0]]]) not in rule_expressions:
                     self._add_tag(rule_expressions, self._tag_map[next_expression.key[0]])
