@@ -9,9 +9,13 @@ from logprep.filter.expression.filter_expression import StringFilterExpression, 
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.processor.pre_detector.rule import PreDetectorRule
 
-from tests.unit.framework.rule_tree.shared_constants import sfe_1, sfe_2, sfe_3, sfe_4, sfe_5
-
 pytest.importorskip("logprep.processor.pre_detector")
+
+string_filter_expression_1 = StringFilterExpression(["key1"], "value1")
+string_filter_expression_2 = StringFilterExpression(["key2"], "value2")
+string_filter_expression_3 = StringFilterExpression(["key3"], "value3")
+string_filter_expression_4 = StringFilterExpression(["key4"], "value4")
+string_filter_expression_with_subkey = StringFilterExpression(["key5", "subkey5"], "value5")
 
 
 class TestRuleParser:
@@ -548,45 +552,65 @@ class TestRuleParser:
         "rule_list, expected",
         [
             (
-                [[sfe_1, sfe_2, sfe_3, sfe_4]],
+                [
+                    [
+                        string_filter_expression_1,
+                        string_filter_expression_2,
+                        string_filter_expression_3,
+                        string_filter_expression_4,
+                    ]
+                ],
                 [
                     [
                         Exists(["key1"]),
-                        sfe_1,
+                        string_filter_expression_1,
                         Exists(["key2"]),
-                        sfe_2,
+                        string_filter_expression_2,
                         Exists(["key3"]),
-                        sfe_3,
+                        string_filter_expression_3,
                         Exists(["key4"]),
-                        sfe_4,
+                        string_filter_expression_4,
                     ]
                 ],
             ),
             (
-                [[sfe_1, sfe_3, sfe_5]],
+                [
+                    [
+                        string_filter_expression_1,
+                        string_filter_expression_3,
+                        string_filter_expression_with_subkey,
+                    ]
+                ],
                 [
                     [
                         Exists(["key1"]),
-                        sfe_1,
+                        string_filter_expression_1,
                         Exists(["key3"]),
-                        sfe_3,
+                        string_filter_expression_3,
                         Exists(["key5", "subkey5"]),
-                        sfe_5,
+                        string_filter_expression_with_subkey,
                     ]
                 ],
             ),
             (
-                [[sfe_1], [sfe_2], [sfe_3]],
                 [
-                    [Exists(["key1"]), sfe_1],
-                    [Exists(["key2"]), sfe_2],
-                    [Exists(["key3"]), sfe_3],
+                    [string_filter_expression_1],
+                    [string_filter_expression_2],
+                    [string_filter_expression_3],
+                ],
+                [
+                    [Exists(["key1"]), string_filter_expression_1],
+                    [Exists(["key2"]), string_filter_expression_2],
+                    [Exists(["key3"]), string_filter_expression_3],
                 ],
             ),
-            ([[Not(sfe_1)]], [[Not(sfe_1)]]),
+            ([[Not(string_filter_expression_1)]], [[Not(string_filter_expression_1)]]),
             (
-                [[sfe_1, Exists(["key1"])], [sfe_1]],
-                [[sfe_1, Exists(["key1"])], [Exists(["key1"]), sfe_1]],
+                [[string_filter_expression_1, Exists(["key1"])], [string_filter_expression_1]],
+                [
+                    [string_filter_expression_1, Exists(["key1"])],
+                    [Exists(["key1"]), string_filter_expression_1],
+                ],
             ),
         ],
     )
