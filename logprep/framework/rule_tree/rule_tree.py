@@ -87,7 +87,7 @@ class RuleTree:
         if root:
             self._root = root
         else:
-            self._root = Node("root")
+            self._root = Node(None)
 
     def _setup(self):
         """Basic setup of rule tree.

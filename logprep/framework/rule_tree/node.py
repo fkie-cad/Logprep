@@ -1,6 +1,6 @@
 """This module implements the tree node functionality for the tree model."""
 
-from typing import Optional, List, Union
+from typing import Optional, List
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.expression.filter_expression import KeyDoesNotExistError
@@ -11,11 +11,11 @@ class Node:
 
     __slots__ = ("_expression", "_children", "matching_rules")
 
-    _expression: Union[FilterExpression, str]
+    _expression: FilterExpression
     _children: list
     matching_rules: list
 
-    def __init__(self, expression: Optional[Union[FilterExpression, str]]):
+    def __init__(self, expression: Optional[FilterExpression]):
         """Node initialization function.
 
         Initializes a new node with a given expression and empty lists of children and matching

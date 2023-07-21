@@ -36,13 +36,7 @@ class TestRuleTree:
         assert isinstance(rule_tree.root, Node)
         assert not rule_tree.rule_parser._rule_tagger._tag_map
         assert not rule_tree.priority_dict
-        assert rule_tree.root.expression == "root"
-
-    def test_init_with_specifying_root_node(self):
-        rule_tree = RuleTree(Node("foo"))
-
-        assert isinstance(rule_tree.root, Node)
-        assert rule_tree.root.expression == "foo"
+        assert rule_tree.root.expression is None
 
     def test_init_with_specifying_config(self):
         rule_tree = RuleTree(config_path="tests/testdata/unit/tree_config.json")
