@@ -105,7 +105,7 @@ class Not(FilterExpression):
         self.child = expression
 
     def __repr__(self) -> str:
-        return f"NOT ({str(self.child)})"
+        return f"NOT ({repr(self.child)})"
 
     def does_match(self, document: dict) -> bool:
         return not self.child.matches(document)
