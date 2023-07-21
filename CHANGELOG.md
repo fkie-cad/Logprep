@@ -11,6 +11,7 @@
 
 * Fix restarting of logprep every time the kafka input connector receives events that aren't valid
 json documents. Now the documents will be written to the error output.
+* Fix ProcessCounter to actually print counts periodically and not only once events are processed
 
 ## v6.7.0
 ### Improvements
