@@ -26,22 +26,6 @@ def fixture_demorgan_resolver():
 
 class TestDeMorganResolver:
     @pytest.mark.parametrize(
-        "expression, resolve_state",
-        [
-            (sfe_1, False),
-            (Not(sfe_1), False),
-            (And(sfe_1, sfe_2), False),
-            (And(Not(sfe_1), sfe_2), False),
-            (Or(And(sfe_1, Not(sfe_2))), False),
-            (Or(And(sfe_1, sfe_2)), False),
-            (Not(And(sfe_1, sfe_2)), True),
-            (Or(Not(And(sfe_1, sfe_2)), sfe_3), True),
-        ],
-    )
-    def test_has_unresolved_not_expression(self, expression, resolve_state, demorgan_resolver):
-        assert demorgan_resolver._has_unresolved_expression(expression) == resolve_state
-
-    @pytest.mark.parametrize(
         "expression, resolved_expr",
         [
             (sfe_1, sfe_1),
