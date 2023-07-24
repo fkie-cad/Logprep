@@ -4,6 +4,18 @@ timeout: 0.1
 logger:
   level: DEBUG
 
+metrics:
+  enabled: true
+  period: 10
+  cumulative: false
+  aggregate_processes: false
+  measure_time:
+    enabled: true
+    append_to_event: false
+  targets:
+    - prometheus:
+        port: 8000
+
 pipeline:
   - labelername:
       type: labeler
