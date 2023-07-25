@@ -1,6 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import logging
+import re
+import time
 from copy import deepcopy
 from logging import DEBUG, WARNING, getLogger
 from multiprocessing import Lock, active_children
@@ -687,6 +690,13 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.process_pipeline()
         self.pipeline._output["dummy"].store_failed.assert_called()
 
+    def test_process_pipeline_calls_shared_counter_scheduler(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({}, {})
+        self.pipeline._processing_counter = mock.MagicMock()
+        self.pipeline.process_pipeline()
+        assert self.pipeline._processing_counter.scheduler.run_pending.call_count == 1
+
 
 class TestPipelineWithActualInput:
     def setup_method(self):
@@ -920,3 +930,24 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         wrapper.join()
 
         return children_running
+
+
+class TestSharedCounter:
+    test_logger = getLogger("test-logger")
+
+    def test_shared_counter_prints_value_after_configured_period(self, caplog):
+        with caplog.at_level(logging.INFO):
+            shared_counter = SharedCounter()
+            print_period = 1
+            shared_counter._logger = self.test_logger
+            shared_counter.setup(print_period, None, Lock())
+            test_counter = 0
+            test_counter_limit = 100
+            start_time = time.time()
+            while time.time() - start_time < print_period:
+                if test_counter < test_counter_limit:
+                    shared_counter.increment()
+                    test_counter += 1
+                shared_counter.scheduler.run_pending()
+            message = f".*Processed events per {print_period} seconds: {test_counter_limit}.*"
+            assert re.match(message, caplog.text)
