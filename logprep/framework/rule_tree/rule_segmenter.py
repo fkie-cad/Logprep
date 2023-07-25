@@ -16,10 +16,35 @@ class RuleSegmenterException(Exception):
 
 
 class RuleSegmenter:
-    """Segments filter expression into list of less complex expressions."""
+    """Segments filter expression into list of less complex expressions.
+
+    The segmenter gets a (compound) FilterExpression as input,
+    which must have been already resolved via De Morgan's law.
+    That means all NOT-expressions must have been resolved.
+    The expression is then changed into the disjunctive normal form (DNF),
+    which is required for the rule tree.
+    However, the output is not another FilterExpression, but a list of lists with rule segments
+    (FilterExpressions that are not compound), which represent the FilterExpression in DNF.
+    The outer list representing OR and the inner lists representing AND.
+
+    This representation then allows to easily sort the rule segments,
+    add tags and build a tree out of them.
+
+    Example:
+    Assume the following CompoundFilterExpression X as input:
+
+    `X := (A and (B or C)) or D`
+
+    Furthermore, assume that A, B and C are StringFilterExpressions.
+
+    Calling segment_into_dnf(X) would result in the list `[[A, B], [A, C], [D]]`.
+    This is equivalent to the FilterExpression `(A and B) or (A and C) or (D)`,
+    which is the DNF of X.
+
+    """
 
     @staticmethod
-    def segment_into_dnf(expression) -> list:
+    def segment_into_dnf(expression: FilterExpression) -> list:
         """Segment expression into list of less complex expressions."""
         if RuleSegmenter._has_disjunction(expression):
             rule_segments = RuleSegmenter._segment_expression(expression)

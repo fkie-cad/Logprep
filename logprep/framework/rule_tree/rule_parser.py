@@ -52,9 +52,33 @@ class RuleParser:
         """Main parsing function to parse rule into list of less complex rules.
 
         This function aims to parse a rule into a list of less complex rules that shows the same
-        decision behavior when matching events. The parsing process includes resolving NOT- and
-        OR-expressions, sorting the expression segments of a rule as well as adding EXISTS-filter
-        and special tags to the parsed rule.
+        decision behavior when matching events.
+
+        First, Not expressions are resolved by applying De Morgan's law on the rule's expression.
+        Example: `not((A and not B) or not C)` becomes `(not A or B) and C`.
+
+        Then the expression is transformed into a list representing the disjunctive normal form
+        (DNF). This representation is required to build the rule tree.
+        Example: `(not A or B) and C` becomes `[[not A, C], [B, C]]`,
+        which is equivalent to the DNF `(not A and C) or (B and C)`.
+
+        The segments are then sorted using a priority dict to achieve a better performance for
+        rule matching.
+
+        Afterwards, Exists filter expressions are added for every segment that is not an
+        Exists, Not or Always expression.
+        Those are then being checked first in the tree.
+        Exists expressions are cheap and can lead to an optimization of the rule matching.
+
+        Finally, tags may be added to more efficiently check the existence of configured fields.
+        This is configured via a tag map, by specifying target fields and tags.
+        Those tags are added as Exists filters in front of the rule to be checked first if the
+        target field exists.
+        Example: The tag map `{"some.key": "some_tag"}` would add an Exists filter
+        `Exists("some_tag")` in front of the rules with filters `some.key: foo OR key_x` and
+        `key_y AND some.key: bar`, but not the rule with filter `key_z: foo`, since it does not
+        have the field `some.key`
+
 
         Parameters
         ----------
