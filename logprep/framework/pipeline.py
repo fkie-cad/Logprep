@@ -4,19 +4,21 @@ Pipelines contain a list of processors that can be executed in order to process 
 They can be multi-processed.
 
 """
+import copy
+
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
-from ctypes import c_bool, c_double, c_ulonglong
+from ctypes import c_bool, c_ulonglong
 from functools import cached_property
 from logging import INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
-from time import time
 from typing import Any, List, Tuple
 
 import attrs
 import msgspec
 import numpy as np
+from schedule import Scheduler
 
 from logprep._version import get_versions
 from logprep.abc.component import Component
@@ -27,6 +29,7 @@ from logprep.abc.input import (
     Input,
     SourceDisconnectedError,
     WarningInputError,
+    CriticalInputParsingError,
 )
 from logprep.abc.output import (
     CriticalOutputError,
@@ -59,21 +62,21 @@ class MustProvideAnMPLogHandlerError(BaseException):
 class SharedCounter:
     """A shared counter for multiprocessing pipelines."""
 
-    CHECKING_PERIOD = 0.5
-
     def __init__(self):
         self._val = Value(c_ulonglong, 0)
-        self._lock = Lock()
-        self._timer = Value(c_double, 0)
-        self._checking_timer = 0
+        self._printed = Value(c_bool, False)
+        self._lock = None
         self._logger = None
         self._period = None
+        self.scheduler = Scheduler()
 
     def _init_timer(self, period: float):
         if self._period is None:
             self._period = period
-        with self._lock:
-            self._timer.value = time() + self._period
+        jobs = map(lambda job: job.job_func.func, self.scheduler.jobs)
+        if self.print_value not in jobs and self.reset_printed not in jobs:
+            self.scheduler.every(int(self._period)).seconds.do(self.print_value)
+            self.scheduler.every(int(self._period + 1)).seconds.do(self.reset_printed)
 
     def _create_logger(self, log_handler: Handler):
         if self._logger is None:
@@ -81,38 +84,36 @@ class SharedCounter:
             for handler in logger.handlers:
                 logger.removeHandler(handler)
             logger.addHandler(log_handler)
-
             self._logger = logger
 
-    def setup(self, print_processed_period: float, log_handler: Handler):
+    def setup(self, print_processed_period: float, log_handler: Handler, lock: Lock):
         """Setup shared counter for multiprocessing pipeline."""
         self._create_logger(log_handler)
         self._init_timer(print_processed_period)
-        self._checking_timer = time() + self.CHECKING_PERIOD
+        self._lock = lock
 
     def increment(self):
         """Increment the counter."""
         with self._lock:
             self._val.value += 1
 
-    def print_if_ready(self):
-        """Periodically print the counter and reset it."""
-        current_time = time()
-        if current_time > self._checking_timer:
-            self._checking_timer = current_time + self.CHECKING_PERIOD
-            if self._timer.value != 0 and current_time >= self._timer.value:
-                with self._lock:
-                    if self._period / 60.0 < 1:
-                        msg = f"Processed events per {self._period} seconds: {self._val.value}"
-                    else:
-                        msg = (
-                            f"Processed events per {self._period / 60.0:.2f} minutes: "
-                            f"{self._val.value}"
-                        )
-                    if self._logger:
-                        self._logger.info(msg)
-                    self._val.value = 0
-                    self._timer.value = time() + self._period
+    def reset_printed(self):
+        """Reset the printed flag after the configured period + 1"""
+        with self._lock:
+            self._printed.value = False
+
+    def print_value(self):
+        """Print the number of processed event in the last interval"""
+        with self._lock:
+            if not self._printed.value:
+                period_human_form = f"{self._period} seconds"
+                if self._period / 60.0 > 1:
+                    period_human_form = f"{self._period / 60.0:.2f} minutes"
+                self._logger.info(
+                    f"Processed events per {period_human_form}: " f"{self._val.value}"
+                )
+                self._val.value = 0
+                self._printed.value = True
 
 
 def _handle_pipeline_error(func):
@@ -234,6 +235,9 @@ class Pipeline:
         self._lock = lock
         self._shared_dict = shared_dict
         self._processing_counter = counter
+        if self._processing_counter:
+            print_processed_period = self._logprep_config.get("print_processed_period", 300)
+            self._processing_counter.setup(print_processed_period, log_handler, lock)
         self._used_server_ports = used_server_ports
         self._metric_targets = metric_targets
         self.pipeline_index = pipeline_index
@@ -387,8 +391,20 @@ class Pipeline:
         assert self._input, "Run process_pipeline only with an valid input connector"
         self._metrics_exposer.expose(self.metrics)
         Component.run_pending_tasks()
+        if self._processing_counter:
+            self._processing_counter.scheduler.run_pending()
         extra_outputs = []
-        if event := self._get_event():
+        event = None
+        try:
+            event = self._get_event()
+        except CriticalInputParsingError as error:
+            input_data = error.raw_input
+            if isinstance(input_data, bytes):
+                input_data = input_data.decode("utf8")
+            error_event = self._encoder.encode({"invalid_json": input_data})
+            self._store_failed_event(error, "", error_event)
+            self.logger.error(f"{error}, event was written to error output")
+        if event:
             extra_outputs = self.process_event(event)
         if event and self._output:
             self._store_event(event)
@@ -399,6 +415,11 @@ class Pipeline:
             if output.default:
                 output.store(event)
                 self.logger.debug(f"Stored output in {output_name}")
+
+    def _store_failed_event(self, error, event, event_received):
+        for _, output in self._output.items():
+            if output.default:
+                output.store_failed(str(error), self._decoder.decode(event_received), event)
 
     def _get_event(self) -> dict:
         event, non_critical_error_msg = self._input.get_next(self._timeout)
@@ -427,14 +448,13 @@ class Pipeline:
                 self.logger.warning(str(error))
             except ProcessingCriticalError as error:
                 self.logger.error(str(error))
-                for _, output in self._output.items():
-                    if output.default:
-                        output.store_failed(str(error), self._decoder.decode(event_received), event)
+                if self._output:
+                    self._store_failed_event(error, copy.deepcopy(event), event_received)
+                    event.clear()
             if not event:
                 break
         if self._processing_counter:
             self._processing_counter.increment()
-            self._processing_counter.print_if_ready()
         if self.metrics:
             self.metrics.number_of_processed_events += 1
         return extra_outputs
@@ -492,8 +512,6 @@ class MultiprocessingPipeline(Process, Pipeline):
             raise MustProvideAnMPLogHandlerError
 
         self._profile = config.get("profile_pipelines", False)
-        print_processed_period = config.get("print_processed_period", 300)
-        self.processed_counter.setup(print_processed_period, log_handler)
 
         Pipeline.__init__(
             self,

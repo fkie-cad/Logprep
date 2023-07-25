@@ -92,9 +92,10 @@ class DomainLabelExtractor(Processor):
                 logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
                 os.makedirs(logprep_tmp_dir, exist_ok=True)
                 list_path = logprep_tmp_dir / f"{self.name}-tldlist-{index}.dat"
-                with FileLock(list_path):
-                    list_path.touch()
-                    list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
+                if not os.path.isfile(list_path):
+                    with FileLock(list_path):
+                        list_path.touch()
+                        list_path.write_bytes(GetterFactory.from_string(tld_list).get_raw())
                 downloaded_tld_lists_paths.append(f"file://{str(list_path.absolute())}")
             self._config.tld_lists = downloaded_tld_lists_paths
             self._logger.debug("finished tldlists download...")

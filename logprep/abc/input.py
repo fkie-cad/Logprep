@@ -35,6 +35,13 @@ class CriticalInputError(InputError):
         super().__init__(input_connector, f"{message} -> {raw_input}")
 
 
+class CriticalInputParsingError(CriticalInputError):
+    """The input couldn't be parsed correctly."""
+
+    def __init__(self, input_connector: "Input", message, raw_input):
+        super().__init__(input_connector, message, raw_input)
+
+
 class FatalInputError(InputError):
     """Must not be catched."""
 

@@ -2,15 +2,46 @@
 
 ## next release
 ### Features
+
+* Add option to repeat input documents for the following connectors: `DummyInput`, `JsonInput`,
+`JsonlInput`. This enables easier debugging by introducing a continues input stream of documents.
+
+### Improvements
+### Bugfix
+
+* Fix restarting of logprep every time the kafka input connector receives events that aren't valid
+json documents. Now the documents will be written to the error output.
+* Fix ProcessCounter to actually print counts periodically and not only once events are processed
+
+## v6.7.0
+### Improvements
+
+* Print logprep warnings in the rule corpus tester only in the detailed reports instead of the
+summary.
+
+### Bugfix
+
+* Fix error when writing too large documents into Opensearch/Elasticsearch
+* Fix dissector pattern that end with a dissect, e.g `system_%{type}`
+* Handle long-running grok pattern in the `Grokker` by introducing a timeout limit of one second
+* Fix time handling: If no year is given assume the current year instead of 1900 and convert time
+zone only once
+
+## v6.6.0
+
 ### Improvements
 
 * Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule 
 representation is not present anymore in the predetector output, the name `rule_filter` will stay
-in place of the `lucene_filter` name. 
+in place of the `lucene_filter` name.
+* 'amides' processor now stores confidence values of processed events in the `amides.confidence` field.
+In case of positive detection results, rule attributions are now inserted in the `amides.attributions` field.
 
 ### Bugfix
 
 * Fix lucene rule filter representation such that it is aligned with opensearch lucene query syntax
+* Fix grok pattern `UNIXPATH` by internally converting `[[:alnum:]]` to `\w"`
+* Fix overwriting of temporary tld-list with empty content
 
 ## v6.5.1
 ### Bugfix

@@ -1,6 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import logging
+import re
+import time
 from copy import deepcopy
 from logging import DEBUG, WARNING, getLogger
 from multiprocessing import Lock, active_children
@@ -16,6 +19,7 @@ from logprep.abc.input import (
     FatalInputError,
     SourceDisconnectedError,
     WarningInputError,
+    CriticalInputParsingError,
 )
 from logprep.abc.output import (
     CriticalOutputError,
@@ -35,7 +39,6 @@ from logprep.framework.pipeline import (
 from logprep.metrics.metric import MetricTargets
 from logprep.processor.base.exceptions import (
     ProcessingCriticalError,
-    ProcessingError,
     ProcessingWarning,
 )
 from logprep.processor.deleter.rule import DeleterRule
@@ -151,7 +154,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.logger.setLevel(DEBUG)
         while self.pipeline._input._documents:
             self.pipeline.process_pipeline()
-        assert len(input_data) == 0, "all events were processed"
+        assert len(self.pipeline._input._documents) == 0, "all events were processed"
         assert self.pipeline._pipeline[0].process.call_count == 3, "called for all events"
         assert self.pipeline._pipeline[2].process.call_count == 2, "not called for deleted event"
         assert {"delete_me": "2"} not in self.pipeline._output["dummy"].events
@@ -319,7 +322,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = (input_event2, None)
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
-        assert mock_error.call_count == 2, "two errors occured"
+        assert mock_error.call_count == 2, "two errors occurred"
         mock_error.assert_called_with(
             str(
                 ProcessingCriticalError(
@@ -678,6 +681,22 @@ class TestPipeline(ConfigurationForTests):
             self.pipeline.process_pipeline()
         mock_task.assert_called()
 
+    def test_event_with_critical_input_parsing_error_is_stored_in_error_output(self, _):
+        self.pipeline._setup()
+        error = CriticalInputParsingError(self.pipeline._input, "test-error", "raw_input")
+        self.pipeline._input.get_next = mock.MagicMock()
+        self.pipeline._input.get_next.side_effect = error
+        self.pipeline._output = {"dummy": mock.MagicMock()}
+        self.pipeline.process_pipeline()
+        self.pipeline._output["dummy"].store_failed.assert_called()
+
+    def test_process_pipeline_calls_shared_counter_scheduler(self, _):
+        self.pipeline._setup()
+        self.pipeline._input.get_next.return_value = ({}, {})
+        self.pipeline._processing_counter = mock.MagicMock()
+        self.pipeline.process_pipeline()
+        assert self.pipeline._processing_counter.scheduler.run_pending.call_count == 1
+
 
 class TestPipelineWithActualInput:
     def setup_method(self):
@@ -911,3 +930,24 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         wrapper.join()
 
         return children_running
+
+
+class TestSharedCounter:
+    test_logger = getLogger("test-logger")
+
+    def test_shared_counter_prints_value_after_configured_period(self, caplog):
+        with caplog.at_level(logging.INFO):
+            shared_counter = SharedCounter()
+            print_period = 1
+            shared_counter._logger = self.test_logger
+            shared_counter.setup(print_period, None, Lock())
+            test_counter = 0
+            test_counter_limit = 100
+            start_time = time.time()
+            while time.time() - start_time < print_period:
+                if test_counter < test_counter_limit:
+                    shared_counter.increment()
+                    test_counter += 1
+                shared_counter.scheduler.run_pending()
+            message = f".*Processed events per {print_period} seconds: {test_counter_limit}.*"
+            assert re.match(message, caplog.text)

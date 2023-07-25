@@ -118,6 +118,9 @@ class GrokkerRule(DissectorRule):
         patterns part. When defining an `oniguruma` there is a limitation of three nested
         parentheses inside the pattern. Applying more nested parentheses is not possible.  
         Logstashs ecs conform grok patterns are used to resolve the here used grok patterns.
+        When writing patterns it is advised to be careful as the underlying regex can become complex
+        fast. If the execution and the resolving of the pattern takes more than one second a
+        matching timeout will be raised.
         """
         patterns: dict = field(
             validator=[

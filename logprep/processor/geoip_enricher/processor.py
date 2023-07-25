@@ -74,11 +74,12 @@ class GeoipEnricher(Processor):
             logprep_tmp_dir = Path(tempfile.gettempdir()) / "logprep"
             os.makedirs(logprep_tmp_dir, exist_ok=True)
             db_path_file = logprep_tmp_dir / f"{self.name}.mmdb"
-            with FileLock(db_path_file):
-                db_path_file.touch()
-                db_path_file.write_bytes(
-                    GetterFactory.from_string(str(self._config.db_path)).get_raw()
-                )
+            if not os.path.isfile(db_path_file):
+                with FileLock(db_path_file):
+                    db_path_file.touch()
+                    db_path_file.write_bytes(
+                        GetterFactory.from_string(str(self._config.db_path)).get_raw()
+                    )
             self._logger.debug("finished geoip database download.")
             self._config.db_path = str(db_path_file.absolute())
 

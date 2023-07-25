@@ -78,9 +78,12 @@ the log message.
 
 If one or more test cases fail this tester ends with an exit code of 1, otherwise 0.
 """
+import io
+
 # pylint: enable=anomalous-backslash-in-string
 # pylint: disable=protected-access
 import json
+import logging
 import os
 import re
 import shutil
@@ -144,10 +147,12 @@ class RuleCorpusTester:
         generated_extra_output: dict = field(validator=validators.instance_of(list), default=[])
         failed: bool = field(validator=validators.instance_of(bool), default=False)
         report: List = Factory(list)
+        warnings: str = field(default="")
 
     def __init__(self, config_path, input_test_data_path):
         self._original_config_path = config_path
         self._input_test_data_path = input_test_data_path
+        self.log_capture_string = None
 
     @cached_property
     def _tmp_dir(self):
@@ -169,6 +174,17 @@ class RuleCorpusTester:
         return dict(sorted(test_cases.items()))
 
     @cached_property
+    def _logprep_logger(self):
+        logprep_logger = getLogger("logprep-rule-corpus-tester")
+        logprep_logger.propagate = False
+        logprep_logger.setLevel(logging.WARNING)
+        self.log_capture_string = io.StringIO()
+        self.stream_handler = logging.StreamHandler(self.log_capture_string)
+        self.stream_handler.setLevel(logging.WARNING)
+        logprep_logger.addHandler(self.stream_handler)
+        return logprep_logger
+
+    @cached_property
     def _pipeline(self):
         merged_input_file_path = Path(self._tmp_dir) / "input.json"
         inputs = [test_case.input_document for test_case in self._test_cases.values()]
@@ -180,6 +196,7 @@ class RuleCorpusTester:
         config.verify_pipeline_without_processor_outputs(getLogger("logprep"))
         del config["output"]
         pipeline = Pipeline(config=config)
+        pipeline.logger = self._logprep_logger
         return pipeline
 
     def run(self):
@@ -206,12 +223,23 @@ class RuleCorpusTester:
         for test_case_id, test_case in self._test_cases.items():
             _ = [processor.setup() for processor in self._pipeline._pipeline]
             parsed_event, extra_outputs = self._pipeline.process_pipeline()
+            test_case.warnings = self._retrieve_log_capture()
             extra_outputs = align_extra_output_formats(extra_outputs)
             test_case.generated_output = parsed_event
             test_case.generated_extra_output = extra_outputs
             self._compare_logprep_outputs(test_case_id, parsed_event)
             self._compare_extra_data_output(test_case_id, extra_outputs)
             self._print_pass_fail_statements(test_case_id)
+
+    def _retrieve_log_capture(self):
+        log_capture = self.log_capture_string.getvalue()
+        # set new log_capture to clear previous entries
+        self.log_capture_string = io.StringIO()
+        self.stream_handler = logging.StreamHandler(self.log_capture_string)
+        self.stream_handler.setLevel(logging.WARNING)
+        self._logprep_logger.handlers.clear()
+        self._logprep_logger.addHandler(self.stream_handler)
+        return log_capture
 
     def _compare_logprep_outputs(self, test_case_id, logprep_output):
         test_case = self._test_cases.get(test_case_id, {})
@@ -319,6 +347,9 @@ class RuleCorpusTester:
             status = f"{Style.BRIGHT}{Fore.RESET} SKIPPED - (no expected output given)"
         elif len(test_case.report) > 0:
             status = f"{Style.BRIGHT}{Fore.RED} FAILED"
+        elif test_case.warnings:
+            status = f"{Style.BRIGHT}{Fore.YELLOW} PASSED - (with warnings)"
+
         print(f"{Fore.BLUE} Test Case: {Fore.CYAN}{test_case_id} {status}{Style.RESET_ALL}")
 
     def _print_test_reports(self):
@@ -326,22 +357,31 @@ class RuleCorpusTester:
             return
         print(Style.BRIGHT + "# Test Cases Detailed Reports:" + Style.RESET_ALL)
         for test_case_id, test_case in self._test_cases.items():
-            if test_case.report and test_case.expected_output:
+            if (test_case.warnings or test_case.report) and test_case.expected_output:
                 self._print_long_test_result(test_case_id, test_case)
                 print()
 
     def _print_long_test_result(self, test_case_id, test_case):
         report_title = f"test report for '{test_case_id}'"
         print(f"{Fore.RED}{Style.BRIGHT}↓ {report_title} ↓ {Style.RESET_ALL}")
+        print_logprep_output = True
+        if test_case.warnings and not test_case.report:
+            print(Fore.GREEN + "Test passed, but with following warnings:" + Fore.RESET)
+            print(test_case.warnings)
+            print_logprep_output = False
+        if test_case.warnings and test_case.report:
+            print(Fore.RED + "Logprep Warnings:" + Fore.RESET)
+            print(test_case.warnings)
         for statement in test_case.report:
             if isinstance(statement, (dict, list)):
                 pprint(statement)
             else:
                 print(statement)
-        print(Fore.RED + "Logprep Event Output:" + Fore.RESET)
-        pprint(test_case.generated_output)
-        print(Fore.RED + "Logprep Extra Data Output:" + Fore.RESET)
-        pprint(test_case.generated_extra_output)
+        if print_logprep_output:
+            print(Fore.RED + "Logprep Event Output:" + Fore.RESET)
+            pprint(test_case.generated_output)
+            print(Fore.RED + "Logprep Extra Data Output:" + Fore.RESET)
+            pprint(test_case.generated_extra_output)
         print(f"{Fore.RED}{Style.BRIGHT}↑ {report_title} ↑ {Style.RESET_ALL}")
 
     def _print_test_summary(self):

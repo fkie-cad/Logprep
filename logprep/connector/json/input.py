@@ -17,10 +17,13 @@ Example
       myjsoninput:
         type: json_input
         documents_path: path/to/a/document.json
+        repeat_documents: true
 """
-
+import copy
 from functools import cached_property
+from typing import Optional
 
+from attr import field, validators
 from attrs import define
 
 from logprep.abc.input import Input
@@ -38,7 +41,12 @@ class JsonInput(DummyInput):
         documents_path: str
         """A path to a file in json format, with can also include multiple jsons
         dicts wrapped in a list."""
+        repeat_documents: Optional[bool] = field(
+            validator=validators.instance_of(bool), default=False
+        )
+        """If set to :code:`true`, then the given input documents will be repeated after the last
+        one is reached. Default: :code:`False`"""
 
     @cached_property
     def _documents(self):
-        return parse_json(self._config.documents_path)
+        return copy.copy(parse_json(self._config.documents_path))
