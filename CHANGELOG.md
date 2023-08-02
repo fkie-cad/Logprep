@@ -2,11 +2,15 @@
 
 ## next release
 ### Features
+### Improvements
+### Bugfix
+
+## v6.8.0
+### Features
 
 * Add option to repeat input documents for the following connectors: `DummyInput`, `JsonInput`,
 `JsonlInput`. This enables easier debugging by introducing a continues input stream of documents.
 
-### Improvements
 ### Bugfix
 
 * Fix restarting of logprep every time the kafka input connector receives events that aren't valid
