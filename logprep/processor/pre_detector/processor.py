@@ -38,6 +38,7 @@ from attr import define, field, validators
 from logprep.abc.processor import Processor
 from logprep.processor.pre_detector.ip_alerter import IPAlerter
 from logprep.processor.pre_detector.rule import PreDetectorRule
+from logprep.util.time import TimeParser
 
 
 class PreDetectorError(BaseException):
@@ -128,6 +129,8 @@ class PreDetector(Processor):
         if "@timestamp" in event:
             for detection in self._extra_data:
                 detection["@timestamp"] = event["@timestamp"]
+        for detection in self._extra_data:
+            detection["creation_timestamp"] = TimeParser.now().isoformat()
 
     def _get_detection_result(self, rule: PreDetectorRule, detection_results: list):
         if self._event.get("pre_detection_id") is None:
