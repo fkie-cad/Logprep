@@ -35,7 +35,9 @@ class TestTimeMeasurement:
         assert timestamp is not None
         assert isinstance(timestamp, float)
 
-    def test_time_measurement_decorator_doesn_not_append_processing_time_to_event_after_deleter_deletes_event(self):
+    def test_time_measurement_decorator_does_not_append_processing_time_to_event_after_deleter_deletes_event(
+        self,
+    ):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
         TimeMeasurement.APPEND_TO_EVENT = True
         self.name = "deleter"  # setting the caller name to deleter, simulates a call of the deleter
