@@ -40,6 +40,33 @@ class TestPreDetector(BaseProcessorTestCase):
             document, expected, detection_results, expected_detection_results
         )
 
+    def test_perform_pre_detection_that_fails_if_filter_children_were_slots(self):
+        assert self.object.metrics.number_of_processed_events == 0
+        document = {"A": "foo X bar Y"}
+        expected = deepcopy(document)
+        expected_detection_results = (
+            [
+                {
+                    "case_condition": "directly",
+                    "description": "Test rule four",
+                    "id": "RULE_FOUR_ID",
+                    "mitre": ["attack.test1", "attack.test2"],
+                    "rule_filter": '(A:"*bar*" AND NOT ((A:"foo*" AND A:"*baz")))',
+                    "severity": "critical",
+                    "title": "RULE_FOUR",
+                }
+            ],
+            ({"kafka": "pre_detector_alerts"},),
+        )
+        detection_results = self.object.process(document)
+        self._assert_equality_of_results(
+            document, expected, detection_results, expected_detection_results
+        )
+
+        document = {"A": "foo X bar Y baz"}
+        detection_results = self.object.process(document)
+        assert detection_results is None
+
     def test_perform_successful_pre_detection_with_host_name(self):
         assert self.object.metrics.number_of_processed_events == 0
         document = {

@@ -3,7 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 from itertools import chain, zip_longest
-from typing import List, Any, Tuple
+from typing import List, Any
 
 
 class FilterExpressionError(BaseException):
@@ -16,10 +16,6 @@ class KeyDoesNotExistError(FilterExpressionError):
 
 class FilterExpression(ABC):
     """Base class for all filter expression used for matching rules."""
-
-    __slots__ = ["children"]
-
-    children: Tuple["FilterExpression"]
 
     def __init__(self, *children: "FilterExpression"):
         """Initializes children for filter expression.
