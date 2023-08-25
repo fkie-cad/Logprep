@@ -78,7 +78,9 @@ def test_events_pre_detected_correctly(
     logprep_output, logprep_extra_output, logprep_error_output = get_test_output(config_path)
     assert not logprep_error_output
     diff = DeepDiff(
-        expected_output_event, logprep_output[0], exclude_paths="root['pre_detection_id']"  # pylint: disable=unsubscriptable-object
+        expected_output_event,
+        logprep_output[0],  # pylint: disable=unsubscriptable-object
+        exclude_paths="root['pre_detection_id']",
     )
     assert not diff, f"The expected output event and the logprep output differ: {diff}"
     if expected_extra_output is not None:
