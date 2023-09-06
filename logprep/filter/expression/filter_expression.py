@@ -17,6 +17,21 @@ class KeyDoesNotExistError(FilterExpressionError):
 class FilterExpression(ABC):
     """Base class for all filter expression used for matching rules."""
 
+    def __init__(self, *children: "FilterExpression"):
+        """Initializes children for filter expression.
+
+        Filter expression can contain multiple child filter expression,
+        i.e. a 'Not' expression could contain a child that gets negated,
+        or an 'And' expression could contain multiple children that must all match.
+
+        Parameters
+        ----------
+        children : FilterExpression
+            Child expression of this expression.
+
+        """
+        self.children = children
+
     def matches(self, document: dict) -> bool:
         """Receives a document and returns True if it is matched by the expression.
 
@@ -62,10 +77,9 @@ class FilterExpression(ABC):
 
         """
 
-    # Return the value for the given key from
-    # the document.
     @staticmethod
     def _get_value(key: List[str], document: dict) -> Any:
+        """Return the value for the given key from the document."""
         if not key:
             raise KeyDoesNotExistError
 
@@ -83,28 +97,12 @@ class FilterExpression(ABC):
             return False
         return True
 
-    @staticmethod
-    def as_dotted_string(key_list: List[str]) -> str:
-        """Converts list of keys to dotted string.
-
-        Parameters
-        ----------
-        key_list : List[str]
-            List of keys.
-
-        Returns
-        -------
-        str
-            Returns dotted string.
-
-        """
-        return ".".join([str(i) for i in key_list])
-
 
 class Always(FilterExpression):
     """Filter expression that can be set to match always or never."""
 
     def __init__(self, value: Any):
+        super().__init__()
         self._value = value
 
     def __repr__(self):
@@ -120,20 +118,17 @@ class Not(FilterExpression):
     """Filter expression that negates a match."""
 
     def __init__(self, expression: FilterExpression):
-        self.expression = expression
+        super().__init__(expression)
 
     def __repr__(self) -> str:
-        return f"NOT ({str(self.expression)})"
+        return f"NOT ({repr(self.children[0])})"
 
     def does_match(self, document: dict) -> bool:
-        return not self.expression.matches(document)
+        return not self.children[0].matches(document)
 
 
 class CompoundFilterExpression(FilterExpression):
     """Base class of filter expressions that combine other filter expressions."""
-
-    def __init__(self, *args: FilterExpression):
-        self.expressions = args
 
     def does_match(self, document: dict):
         raise NotImplementedError
@@ -143,31 +138,58 @@ class And(CompoundFilterExpression):
     """Compound filter expression that is a logical conjunction."""
 
     def __repr__(self) -> str:
-        return f'({" AND ".join([str(exp) for exp in self.expressions])})'
+        return f'({" AND ".join([str(exp) for exp in self.children])})'
 
     def does_match(self, document: dict) -> bool:
-        return all((expression.matches(document) for expression in self.expressions))
+        return all((expression.matches(document) for expression in self.children))
 
 
 class Or(CompoundFilterExpression):
     """Compound filter expression that is a logical disjunction."""
 
     def __repr__(self) -> str:
-        return f'({" OR ".join([str(exp) for exp in self.expressions])})'
+        return f'({" OR ".join([str(exp) for exp in self.children])})'
 
     def does_match(self, document: dict) -> bool:
-        return any((expression.matches(document) for expression in self.expressions))
+        return any((expression.matches(document) for expression in self.children))
 
 
-class KeyValueBasedFilterExpression(FilterExpression):
+class KeyBasedFilterExpression(FilterExpression):
+    """Base class of filter expressions that match a certain value on a given key."""
+
+    def __init__(self, key: List[str]):
+        super().__init__()
+        self.key = key
+        self._key_as_dotted_string = ".".join([str(i) for i in self.key])
+
+    def __repr__(self) -> str:
+        return f"{self.key_as_dotted_string}"
+
+    def does_match(self, document):
+        raise NotImplementedError
+
+    @property
+    def key_as_dotted_string(self) -> str:
+        """Converts key of expression to dotted string.
+
+        Returns
+        -------
+        str
+            Returns dotted string.
+
+        """
+        return self._key_as_dotted_string
+
+
+class KeyValueBasedFilterExpression(KeyBasedFilterExpression):
     """Base class of filter expressions that match a certain value on a given key."""
 
     def __init__(self, key: List[str], expected_value: Any):
-        self.key = key
+        super().__init__(key)
         self._expected_value = expected_value
 
     def __repr__(self) -> str:
-        return f"{self.as_dotted_string(self.key)}:{str(self._expected_value)}"
+        return f"{self.key_as_dotted_string}:{str(self._expected_value)}"
 
     def does_match(self, document):
         raise NotImplementedError
@@ -184,7 +206,7 @@ class StringFilterExpression(KeyValueBasedFilterExpression):
         return str(value) == self._expected_value
 
     def __repr__(self) -> str:
-        return f'{self.as_dotted_string(self.key)}:"{str(self._expected_value)}"'
+        return f'{self.key_as_dotted_string}:"{str(self._expected_value)}"'
 
 
 class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
@@ -236,7 +258,7 @@ class WildcardStringFilterExpression(KeyValueBasedFilterExpression):
         return "".join([x for x in chain.from_iterable(zip_longest(split, matches)) if x])
 
     def __repr__(self) -> str:
-        return f'{self.as_dotted_string(self.key)}:"{self._expected_value}"'
+        return f'{self.key_as_dotted_string}:"{self._expected_value}"'
 
 
 class SigmaFilterExpression(WildcardStringFilterExpression):
@@ -263,16 +285,16 @@ class FloatFilterExpression(KeyValueBasedFilterExpression):
         return value == self._expected_value
 
 
-class RangeBasedFilterExpression(FilterExpression):
+class RangeBasedFilterExpression(KeyBasedFilterExpression):
     """Base class of filter expressions that match for a range of values."""
 
     def __init__(self, key: List[str], lower_bound: float, upper_bound: float):
-        self.key = key
+        super().__init__(key)
         self._lower_bound = lower_bound
         self._upper_bound = upper_bound
 
     def __repr__(self) -> str:
-        return f"{self.as_dotted_string(self.key)}:[{self._lower_bound} TO {self._upper_bound}]"
+        return f"{self.key_as_dotted_string}:[{self._lower_bound} TO {self._upper_bound}]"
 
     def does_match(self, document: dict):
         raise NotImplementedError
@@ -296,19 +318,19 @@ class FloatRangeFilterExpression(RangeBasedFilterExpression):
         return self._lower_bound <= value <= self._upper_bound
 
 
-class RegExFilterExpression(FilterExpression):
+class RegExFilterExpression(KeyBasedFilterExpression):
     """Filter expression that matches a value using regex."""
 
     match_escaping_pattern = re.compile(r".*?(?P<escaping>\\*)\$$")
     match_parts_pattern = re.compile(r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>.*)")
 
     def __init__(self, key: List[str], regex: str):
-        self.key = key
+        super().__init__(key)
         self._regex = self._normalize_regex(regex)
         self._matcher = re.compile(self._regex)
 
     def __repr__(self) -> str:
-        return f"{self.as_dotted_string(self.key)}:/{self._regex.strip('^$')}/"
+        return f"{self.key_as_dotted_string}:/{self._regex.strip('^$')}/"
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:
@@ -331,22 +353,19 @@ class RegExFilterExpression(FilterExpression):
         return self._matcher.match(str(value)) is not None
 
 
-class Exists(FilterExpression):
+class Exists(KeyBasedFilterExpression):
     """Filter expression that returns true if a given field exists."""
 
-    def __init__(self, value: list):
-        self.split_field = value
-
     def __repr__(self) -> str:
-        return f"{self.as_dotted_string(self.split_field)}: *"
+        return f"{self.key_as_dotted_string}: *"
 
     def does_match(self, document: dict) -> bool:
-        if not self.split_field:
+        if not self.key:
             return False
 
         try:
             current = document
-            for sub_field in self.split_field:
+            for sub_field in self.key:
                 if (
                     sub_field not in current.keys()
                 ):  # .keys() is important as it is used to "check" for dict
@@ -361,14 +380,11 @@ class Exists(FilterExpression):
         return True
 
 
-class Null(FilterExpression):
+class Null(KeyBasedFilterExpression):
     """Filter expression that returns true if a given field is set to null."""
 
-    def __init__(self, key: List[str]):
-        self.key = key
-
     def __repr__(self) -> str:
-        return f"{self.as_dotted_string(self.key)}:{None}"
+        return f"{self.key_as_dotted_string}:{None}"
 
     def does_match(self, document: dict) -> bool:
         value = self._get_value(self.key, document)
