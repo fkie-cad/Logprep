@@ -10,7 +10,6 @@ from logprep.util.time_measurement import TimeMeasurement
 class TestTimeMeasurement:
     def setup_method(self):
         self.event = {"test_key": "test_val"}
-        self.name = "TestTimeMeasurement"
 
     @TimeMeasurement.measure_time("test")
     def dummy_method(self, event):  # pylint: disable=unused-argument
@@ -40,9 +39,18 @@ class TestTimeMeasurement:
     ):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
         TimeMeasurement.APPEND_TO_EVENT = True
-        self.name = "deleter"  # setting the caller name to deleter, simulates a call of the deleter
-        event = {}
-        self.dummy_method(event)
+        deleter_config = {
+            "deleter-with-different-name": {
+                "type": "deleter",
+                "specific_rules": ["tests/testdata/unit/deleter/rules/specific/"],
+                "generic_rules": ["tests/testdata/unit/deleter/rules/generic/"],
+            }
+        }
+        deleter = Factory.create(
+            configuration=deleter_config, logger=logging.getLogger("test-logger")
+        )
+        event = {"delete_event": "some content"}
+        deleter.process(event)
         assert not event
 
     def test_deactivated_decorator_does_not_do_a_thing(self):

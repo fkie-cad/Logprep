@@ -45,7 +45,7 @@ class TimeMeasurement:
                 return func(*args, **kwargs)
 
             def add_processing_times_to_event(event, processing_time, caller, name):  # nosemgrep
-                if caller.name == "deleter" and not event:
+                if caller.__class__.__name__ == "Deleter" and not event:
                     return
                 if not event.get("processing_times"):
                     event["processing_times"] = {}
