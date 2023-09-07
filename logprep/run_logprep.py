@@ -16,7 +16,6 @@ from colorama import Fore
 from logprep._version import get_versions
 from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
-from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
@@ -139,8 +138,7 @@ def get_versions_string(args) -> str:
 
 def _setup_logger(args, config):
     try:
-        AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
-        logger = AggregatingLogger.create("Logprep")
+        logger = logging.getLogger("Logprep")
         for version in get_versions_string(args).split("\n"):
             logger.info(version)
     except BaseException as error:  # pylint: disable=broad-except
