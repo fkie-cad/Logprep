@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 import json
 from pathlib import Path
+import time
 
 from ruamel.yaml import YAML
 
@@ -24,10 +25,10 @@ def test_two_times_config_refresh_after_5_seconds(tmp_path):
     wait_for_output(proc, "Config refresh interval is set to: 5 seconds", test_timeout=5)
     config.update({"version": 2})
     config_path.write_text(json.dumps(config))
-    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=20)
+    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=7)
     config.update({"version": "other version"})
     config_path.write_text(json.dumps(config))
-    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=20)
+    wait_for_output(proc, "Successfully reloaded configuration", test_timeout=7)
 
 
 def test_no_config_refresh_after_5_seconds(tmp_path):
