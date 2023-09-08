@@ -184,6 +184,7 @@ class Runner:
             self._continue_iterating.value = True
         self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
+        self._logger.debug("Runner iterating")
         for _ in self._keep_iterating():
             self._loop()
         self.stop()

@@ -82,7 +82,7 @@ input:
   kafka:
     type: confluentkafka_input
     bootstrapservers:
-      - 127.0.0.1:9092
+      - 172.24.51.98:9092
     topic: consumer
     group: cgroup3
     auto_commit: true
@@ -93,7 +93,7 @@ output:
   opensearch:
     type: opensearch_output
     hosts:
-      - 127.0.0.1:9200
+      - 172.24.51.98:9200
     default_index: processed
     error_index: errors
     message_backlog_size: 10000
