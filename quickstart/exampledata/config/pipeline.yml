@@ -2,7 +2,7 @@ version: 1
 process_count: 2
 timeout: 0.1
 logger:
-  level: INFO
+  level: DEBUG
 
 metrics:
   enabled: true
