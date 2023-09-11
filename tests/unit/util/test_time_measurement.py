@@ -34,23 +34,11 @@ class TestTimeMeasurement:
         assert timestamp is not None
         assert isinstance(timestamp, float)
 
-    def test_time_measurement_decorator_does_not_append_processing_time_to_event_after_deleter_deletes_event(
-        self,
-    ):
+    def test_time_measurement_decorator_only_writes_times_if_event_is_not_empty(self):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
         TimeMeasurement.APPEND_TO_EVENT = True
-        deleter_config = {
-            "deleter-with-different-name": {
-                "type": "deleter",
-                "specific_rules": ["tests/testdata/unit/deleter/rules/specific/"],
-                "generic_rules": ["tests/testdata/unit/deleter/rules/generic/"],
-            }
-        }
-        deleter = Factory.create(
-            configuration=deleter_config, logger=logging.getLogger("test-logger")
-        )
-        event = {"delete_event": "some content"}
-        deleter.process(event)
+        event = {}
+        self.dummy_method(event)
         assert not event
 
     def test_deactivated_decorator_does_not_do_a_thing(self):
