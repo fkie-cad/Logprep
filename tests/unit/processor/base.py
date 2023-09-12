@@ -245,7 +245,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_process_is_measured(self):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
         TimeMeasurement.APPEND_TO_EVENT = True
-        event = {}
+        event = {"some": "event"}
         self.object.process(event)
         processing_times = event.get("processing_times")
         assert processing_times
@@ -253,7 +253,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_process_measurements_appended_under_processor_config_name(self):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
         TimeMeasurement.APPEND_TO_EVENT = True
-        event = {}
+        event = {"some": "event"}
         self.object.process(event)
         processing_times = event.get("processing_times")
         config_name = camel_to_snake(self.object.__class__.__name__)
