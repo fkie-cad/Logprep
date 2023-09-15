@@ -26,28 +26,11 @@ from logprep.util.time_measurement import TimeMeasurement
 
 from logging import (
     getLogger,
-    CRITICAL,
-    FATAL,
-    ERROR,
-    WARNING,
-    INFO,
-    DEBUG,
-    NOTSET,
     basicConfig,
     Logger,
 )
 from logging.handlers import SysLogHandler
 
-name_to_level = {
-    "CRITICAL": CRITICAL,
-    "FATAL": FATAL,
-    "ERROR": ERROR,
-    "WARN": WARNING,
-    "WARNING": WARNING,
-    "INFO": INFO,
-    "DEBUG": DEBUG,
-    "NOTSET": NOTSET,
-}
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
@@ -164,13 +147,12 @@ def get_versions_string(args) -> str:
 def _setup_logger(args, config: Configuration):
     try:
         log_config = config.get("logger", {})
-        log_level_name = log_config.get("level", "INFO")
-        log_level = name_to_level.get(log_level_name)
+        log_level = log_config.get("level", "INFO")
         basicConfig(
             level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
         )
         logger = logging.getLogger("Logprep")
-        logger.info(f"Log level set to '{log_level_name}'")
+        logger.info(f"Log level set to '{log_level}'")
         for version in get_versions_string(args).split("\n"):
             logger.info(version)
     except BaseException as error:  # pylint: disable=broad-except
