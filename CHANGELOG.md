@@ -5,6 +5,9 @@
 ### Improvements
 ### Bugfix
 
+## v6.8.1
+### Bugfix
+
 * Fix writing time measurements into the event after the deleter has deleted the event. The bug only
 happened when the `metrics.measure_time.append_to_event` configuration was set to `true`.
 
