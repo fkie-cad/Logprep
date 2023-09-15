@@ -16,7 +16,6 @@ from colorama import Fore
 from logprep._version import get_versions
 from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
-from logprep.util.aggregating_logger import AggregatingLogger
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
@@ -24,6 +23,14 @@ from logprep.util.helper import print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement
+
+from logging import (
+    getLogger,
+    basicConfig,
+    Logger,
+)
+from logging.handlers import SysLogHandler
+
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
@@ -137,10 +144,15 @@ def get_versions_string(args) -> str:
     return version_string
 
 
-def _setup_logger(args, config):
+def _setup_logger(args, config: Configuration):
     try:
-        AggregatingLogger.setup(config, logger_disabled=args.disable_logging)
-        logger = AggregatingLogger.create("Logprep")
+        log_config = config.get("logger", {})
+        log_level = log_config.get("level", "INFO")
+        basicConfig(
+            level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
+        )
+        logger = logging.getLogger("Logprep")
+        logger.info(f"Log level set to '{log_level}'")
         for version in get_versions_string(args).split("\n"):
             logger.info(version)
     except BaseException as error:  # pylint: disable=broad-except

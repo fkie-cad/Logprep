@@ -8,6 +8,8 @@
 * Fix writing time measurements into the event after the deleter has deleted the event. The bug only
 happened when the `metrics.measure_time.append_to_event` configuration was set to `true`.
 
+* Fix memory leak by removing the log aggregation capability
+
 ## v6.8.0
 ### Features
 

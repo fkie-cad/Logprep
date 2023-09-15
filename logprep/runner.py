@@ -184,6 +184,7 @@ class Runner:
             self._continue_iterating.value = True
         self._schedule_config_refresh_job()
         self._logger.info("Startup complete")
+        self._logger.debug("Runner iterating")
         for _ in self._keep_iterating():
             self._loop()
         self.stop()
@@ -194,7 +195,6 @@ class Runner:
 
     def _loop(self):
         self.scheduler.run_pending()
-        self._logger.debug("Runner iterating")
         self._manager.restart_failed_pipeline()
         # Note: We are waiting half the timeout because when shutting down, we also have to
         # wait for the logprep's timeout before the shutdown is actually initiated.
