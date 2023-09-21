@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-in_ci = os.environ.get("GITHUB_ACTIONS", False)
+in_ci = os.environ.get("CI")
 
 
 @pytest.mark.skipif(in_ci, reason="requires kafka")
