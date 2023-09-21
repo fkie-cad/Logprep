@@ -6,7 +6,7 @@ import pytest
 in_ci = os.environ.get("CI")
 
 
-@pytest.mark.skipif(in_ci, reason="requires kafka")
 class TestKafkaConnection:
+    @pytest.mark.skipif(in_ci, reason="requires kafka")
     def test_simple(self):
         assert False
