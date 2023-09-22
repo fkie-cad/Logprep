@@ -1,11 +1,13 @@
 {
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
-    "python.linting.enabled": true,
     "python.analysis.importFormat": "absolute",
     "editor.formatOnSave": true,
-    "python.linting.pylintEnabled": true,
-    "python.linting.lintOnSave": true,
+    "editor.rulers": [
+        80,
+        100,
+        120
+    ],
     "editor.codeActionsOnSave": {
         "source.organizeImports": true
     },
@@ -29,5 +31,5 @@
     "[python]": {
         "editor.defaultFormatter": "ms-python.black-formatter",
         "editor.formatOnSave": true
-    }
+    },
 }
