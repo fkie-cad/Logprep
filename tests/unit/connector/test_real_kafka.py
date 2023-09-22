@@ -3,10 +3,10 @@ import os
 
 import pytest
 
-in_ci = os.environ.get("CI")
+in_ci = os.environ.get("CI") == "true"
 
 
+@pytest.mark.skipif(in_ci, reason="requires kafka")
 class TestKafkaConnection:
-    @pytest.mark.skipif(in_ci, reason="requires kafka")
     def test_simple(self):
         assert False
