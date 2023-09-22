@@ -32,6 +32,13 @@ class TestKafkaConnection:
         consumer.close()
         return highwater - lowwater
 
+    def wait_for_topic_creation(self):
+        while (
+            self.topic_name not in self.admin.list_topics().topics
+            and self.error_topic_name not in self.admin.list_topics().topics
+        ):
+            time.sleep(2)
+
     def setup_method(self):
         self.admin = AdminClient(kafka_config)
         self.topic_name = str(uuid.uuid4())
@@ -41,13 +48,8 @@ class TestKafkaConnection:
         self.error_topic = NewTopic(self.error_topic_name, num_partitions=1, replication_factor=1)
         self.error_topic_partition = TopicPartition(self.topic_name, 0)
         self.admin.create_topics([self.topic, self.error_topic])
-        while (
-            self.topic_name not in self.admin.list_topics().topics
-            and self.error_topic_name not in self.admin.list_topics().topics
-        ):
-            time.sleep(2)
+        self.wait_for_topic_creation()
 
-    def test_simple(self):
         ouput_config = {
             "type": "confluentkafka_output",
             "bootstrapservers": ["localhost:9092"],
@@ -56,7 +58,27 @@ class TestKafkaConnection:
             "flush_timeout": 0.1,
             "maximum_backlog": 1,
         }
-        kafka_output = Factory.create({"test connector": ouput_config}, logger=logging.getLogger())
-        kafka_output.store({"test": "test"})
+        self.kafka_output = Factory.create(
+            {"test output": ouput_config}, logger=logging.getLogger()
+        )
+
+        input_config = {
+            "type": "confluentkafka_input",
+            "bootstrapservers": ["localhost:9092"],
+            "topic": self.topic_name,
+            "group": "test_consumergroup",
+            "auto_commit": False,
+            "session_timeout": 6000,
+            "enable_auto_offset_store": True,
+            "offset_reset_policy": "smallest",
+        }
+        self.kafka_input = Factory.create({"test input": input_config}, logger=logging.getLogger())
+
+    def test_input_returns_by_output_produced_message(self):
+        expected_event = {"test": "test"}
+        self.kafka_output.store(expected_event)
 
         assert self.get_topic_partition_size(self.topic_partition) == 1
+
+        returned_event = self.kafka_input.get_next(1)[0]
+        assert returned_event == expected_event

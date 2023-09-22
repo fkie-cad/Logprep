@@ -26,6 +26,7 @@ Example
         session_timeout: 6000
         offset_reset_policy: smallest
 """
+import time
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
@@ -35,7 +36,7 @@ import msgspec
 from attrs import define, field, validators
 from confluent_kafka import Consumer, KafkaException, TopicPartition
 
-from logprep.abc.input import CriticalInputError, Input, CriticalInputParsingError
+from logprep.abc.input import CriticalInputError, CriticalInputParsingError, Input
 from logprep.abc.output import FatalOutputError
 from logprep.util.validators import dict_with_keys_validator
 
@@ -193,8 +194,8 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
         self._record = self._consumer.poll(timeout=timeout)
-        if self._record is None:
-            return None
+        while self._record is None:
+            self._record = self._consumer.poll(timeout=timeout)
         self._last_valid_records[self._record.partition()] = self._record
         self.current_offset = self._record.offset()
         record_error = self._record.error()
@@ -225,8 +226,6 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
         raw_event = self._get_raw_event(timeout)
-        if raw_event is None:
-            return None, None
         try:
             event_dict = self._decoder.decode(raw_event)
         except msgspec.DecodeError as error:
