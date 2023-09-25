@@ -39,6 +39,13 @@ from confluent_kafka import Consumer, KafkaException, TopicPartition
 from logprep.abc.input import CriticalInputError, CriticalInputParsingError, Input
 from logprep.abc.output import FatalOutputError
 
+logprep_kafka_defaults = {
+    "enable.auto.offset.store": "false",
+    "enable.auto.commit": "false",
+    "client.id": getfqdn(),
+    "auto.offset.reset": "earliest",
+}
+
 
 class ConfluentKafkaInput(Input):
     """A kafka input connector."""
@@ -57,7 +64,6 @@ class ConfluentKafkaInput(Input):
                     value_validator=validators.instance_of(str),
                 ),
             ],
-            factory=dict,
         )
         """ Kafka configuration for the kafka client. 
         At minimum the following keys must be set:
@@ -85,20 +91,14 @@ class ConfluentKafkaInput(Input):
         self._record = None
 
     @cached_property
-    def _client_id(self):
-        """Return the client id"""
-        return getfqdn()
-
-    @cached_property
-    def _consumer(self):
+    def _consumer(self) -> Consumer:
         """Create and return a new confluent kafka consumer"""
         injected_config = {
-            "client.id": self._client_id,
             "logger": self._logger,
         }
+        self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
         consumer = Consumer(self._config.kafka_config | injected_config)
         consumer.subscribe([self._config.topic])
-        # consumer.poll()  # poll first time to get assigned partitions
         return consumer
 
     def describe(self) -> str:
@@ -183,20 +183,25 @@ class ConfluentKafkaInput(Input):
         This is only used if automatic offest storing is disabled in the kafka input.
         The last valid record for each partition is be used by this method to update all offsets.
         """
-        if not self._config.enable_auto_offset_store:
-            if self._last_valid_records:
-                for last_valid_records in self._last_valid_records.values():
-                    try:
-                        self._consumer.store_offsets(message=last_valid_records)
-                    except KafkaException:
-                        topic = self._consumer.list_topics(topic=self._config.topic)
-                        partition_keys = list(topic.topics[self._config.topic].partitions.keys())
-                        partitions = [
-                            TopicPartition(self._config.topic, partition)
-                            for partition in partition_keys
-                        ]
-                        self._consumer.assign(partitions)
-                        self._consumer.store_offsets(message=last_valid_records)
+        if self._config.kafka_config.get("enable.auto.commit") == "false":
+            for last_valid_record in self._last_valid_records.values():
+                self._consumer.commit(message=last_valid_record, asynchronous=False)
+            return
+
+        if self._config.kafka_config.get("enable.auto.offset.store") == "true":
+            return
+
+        for last_valid_records in self._last_valid_records.values():
+            try:
+                self._consumer.store_offsets(message=last_valid_records)
+            except KafkaException:
+                topic = self._consumer.list_topics(topic=self._config.topic)
+                partition_keys = list(topic.topics[self._config.topic].partitions.keys())
+                partitions = [
+                    TopicPartition(self._config.topic, partition) for partition in partition_keys
+                ]
+                self._consumer.assign(partitions)
+                self._consumer.store_offsets(message=last_valid_records)
 
     def setup(self):
         super().setup()
@@ -207,5 +212,5 @@ class ConfluentKafkaInput(Input):
 
     def shut_down(self):
         """Close consumer, which also commits kafka offsets."""
-        if self._consumer is not None:
-            self._consumer.close()
+        self._consumer.close()
+        super().shut_down()

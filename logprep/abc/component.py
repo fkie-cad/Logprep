@@ -65,6 +65,8 @@ class Component(ABC):
         Optional: Called when stopping the pipeline
 
         """
+        if hasattr(self, "__dict__"):
+            self.__dict__.clear()
 
     def _schedule_task(
         self, task: Callable, seconds: int, args: tuple = None, kwargs: dict = None

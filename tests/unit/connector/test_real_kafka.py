@@ -88,10 +88,7 @@ class TestKafkaConnection:
             "kafka_config": {
                 "bootstrap.servers": "localhost:9092",
                 "group.id": "test_consumergroup",
-                "enable.auto.commit": "false",
                 "session.timeout.ms": "6000",
-                "enable.auto.offset.store": "true",
-                "auto.offset.reset": "earliest",
             },
         }
         self.kafka_input = Factory.create({"test input": input_config}, logger=logging.getLogger())
@@ -135,3 +132,38 @@ class TestKafkaConnection:
         assert re.search(
             r"Failed to resolve 'notexisting:9092'", kafka_input._logger.log.mock_calls[0][1][4]
         )
+
+    def test_debugging_consumer(self):
+        input_config = {
+            "type": "confluentkafka_input",
+            "topic": self.topic_name,
+            "kafka_config": {
+                "bootstrap.servers": "localhost:9092",
+                "group.id": "test_consumergroup",
+                "debug": "consumer,cgrp,topic,fetch",
+            },
+        }
+        logger = logging.getLogger()
+        kafka_input = Factory.create({"librdkafkatest": input_config}, logger=logger)
+        kafka_input.get_next(5)
+
+    def test_reconnect_consumer_after_failure_should_start_after_committed_offsets(self):
+        expected_event = {"test": "test"}
+        for index in range(10):
+            self.kafka_output.store(expected_event | {"index": index})
+        assert self.get_topic_partition_size(self.topic_partition) == 10
+
+        for index in range(5):
+            event = self.kafka_input.get_next(10)[0]
+            assert event
+            assert event.get("index") == index
+        # simulate delivery by output_connector
+        self.kafka_input.batch_finished_callback()
+        # simulate pipeline restart
+        self.kafka_input.shut_down()
+        self.kafka_input.setup()
+
+        for index in range(5, 10):
+            event = self.kafka_input.get_next(10)[0]
+            assert event
+            assert event.get("index") == index, "should start after commited offsets"
