@@ -71,12 +71,12 @@ class ConfluentKafkaOutput(Output):
         """
 
     @cached_property
-    def _client_id(self):
-        return getfqdn()
-
-    @cached_property
     def _producer(self):
-        return Producer(self._config.kafka_config)
+        injected_config = {
+            "client.id": getfqdn(),
+            "logger": self._logger,
+        }
+        return Producer(self._config.kafka_config | injected_config)
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.

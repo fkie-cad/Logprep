@@ -4,10 +4,12 @@
 # pylint: disable=protected-access
 import logging
 import os
+import re
 import socket
 import subprocess
 import time
 import uuid
+from unittest import mock
 
 import pytest
 import testinfra
@@ -116,3 +118,20 @@ class TestKafkaConnection:
             event = self.kafka_input.get_next(5)[0]
             assert event
             assert event.get("index") == index
+
+    def test_librdkafka_logs_forwarded_to_logprep_logger(self):
+        input_config = {
+            "type": "confluentkafka_input",
+            "topic": self.topic_name,
+            "kafka_config": {
+                "bootstrap.servers": "notexisting:9092",
+                "group.id": "test_consumergroup",
+            },
+        }
+        kafka_input = Factory.create({"librdkafkatest": input_config}, logger=mock.MagicMock())
+        kafka_input._logger.log = mock.MagicMock()
+        kafka_input.get_next(5)
+        kafka_input._logger.log.assert_called()
+        assert re.search(
+            r"Failed to resolve 'notexisting:9092'", kafka_input._logger.log.mock_calls[0][1][4]
+        )
