@@ -30,7 +30,7 @@ Example
 from functools import cached_property
 from logging import Logger
 from socket import getfqdn
-from typing import Any, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
@@ -41,9 +41,10 @@ from logprep.abc.output import FatalOutputError
 
 logprep_kafka_defaults = {
     "enable.auto.offset.store": "false",
-    "enable.auto.commit": "false",
+    "enable.auto.commit": "true",
     "client.id": getfqdn(),
     "auto.offset.reset": "earliest",
+    "session.timeout.ms": "6000",
 }
 
 
@@ -73,22 +74,15 @@ class ConfluentKafkaInput(Input):
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
         """
 
-    current_offset: int
-
-    _record: Any
-
     _last_valid_records: dict
 
     __slots__ = [
-        "current_offset",
-        "_record",
         "_last_valid_records",
     ]
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self._last_valid_records = {}
-        self._record = None
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -130,17 +124,16 @@ class ConfluentKafkaInput(Input):
         CriticalInputError
             Raises if an input is invalid or if it causes an error.
         """
-        self._record = self._consumer.poll(timeout=timeout)
-        if self._record is None:
+        record = self._consumer.poll(timeout=timeout)
+        if record is None:
             return None
-        self._last_valid_records[self._record.partition()] = self._record
-        self.current_offset = self._record.offset()
-        record_error = self._record.error()
+        self._last_valid_records[record.partition()] = record
+        record_error = record.error()
         if record_error:
             raise CriticalInputError(
                 self, "A confluent-kafka record contains an error code", record_error
             )
-        return self._record.value()
+        return record.value()
 
     def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
         """Parse the raw document from Kafka into a json.
@@ -184,16 +177,16 @@ class ConfluentKafkaInput(Input):
         The last valid record for each partition is be used by this method to update all offsets.
         """
         if self._config.kafka_config.get("enable.auto.commit") == "false":
-            for last_valid_record in self._last_valid_records.values():
-                self._consumer.commit(message=last_valid_record, asynchronous=False)
+            for message in self._last_valid_records.values():
+                self._consumer.commit(message=message, asynchronous=True)
             return
 
         if self._config.kafka_config.get("enable.auto.offset.store") == "true":
             return
 
-        for last_valid_records in self._last_valid_records.values():
+        for message in self._last_valid_records.values():
             try:
-                self._consumer.store_offsets(message=last_valid_records)
+                self._consumer.store_offsets(message=message)
             except KafkaException:
                 topic = self._consumer.list_topics(topic=self._config.topic)
                 partition_keys = list(topic.topics[self._config.topic].partitions.keys())
@@ -201,7 +194,7 @@ class ConfluentKafkaInput(Input):
                     TopicPartition(self._config.topic, partition) for partition in partition_keys
                 ]
                 self._consumer.assign(partitions)
-                self._consumer.store_offsets(message=last_valid_records)
+                self._consumer.store_offsets(message=message)
 
     def setup(self):
         super().setup()

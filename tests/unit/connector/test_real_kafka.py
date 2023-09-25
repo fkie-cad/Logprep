@@ -5,14 +5,12 @@
 import logging
 import os
 import re
-import socket
 import subprocess
 import time
 import uuid
 from unittest import mock
 
 import pytest
-import testinfra
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AdminClient, NewTopic
 
@@ -28,17 +26,6 @@ def setup_module():
         subprocess.run(
             ["docker-compose", "-f", "quickstart/docker-compose.yml", "up", "-d", "kafka"]
         )
-
-
-def get_consumer_stats(host):
-    return host.check_output(
-        "docker-compose -f quickstart/docker-compose.yml exec -tty kafka "
-        "/opt/bitnami/kafka/bin/kafka-consumer-groups.sh "
-        "--bootstrap-server localhost:9092 "
-        "--describe "
-        "--all-groups "
-        "--all-topics"
-    )
 
 
 @pytest.mark.skipif(in_ci, reason="requires kafka")
@@ -88,7 +75,6 @@ class TestKafkaConnection:
             "kafka_config": {
                 "bootstrap.servers": "localhost:9092",
                 "group.id": "test_consumergroup",
-                "session.timeout.ms": "6000",
             },
         }
         self.kafka_input = Factory.create({"test input": input_config}, logger=logging.getLogger())
@@ -147,7 +133,7 @@ class TestKafkaConnection:
         kafka_input = Factory.create({"librdkafkatest": input_config}, logger=logger)
         kafka_input.get_next(5)
 
-    def test_reconnect_consumer_after_failure_should_start_after_committed_offsets(self):
+    def test_reconnect_consumer_after_failure(self):
         expected_event = {"test": "test"}
         for index in range(10):
             self.kafka_output.store(expected_event | {"index": index})
