@@ -13,9 +13,12 @@
 
 ### Improvements
 
-* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections.
+* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections. 
 It contains the time at which a pre-detection was created by the processor.
 * add `prometheus` and `grafana` to the quickstart setup to support development
+* reimplemented kafka input connector
+  - move kafka config options to `kafka_config` dictionary
+  - wait until poll returns message (never return `None` in `get_next`)
 
 ### Bugfix
 

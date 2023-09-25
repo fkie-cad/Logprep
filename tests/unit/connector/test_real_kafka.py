@@ -64,13 +64,15 @@ class TestKafkaConnection:
 
         input_config = {
             "type": "confluentkafka_input",
-            "bootstrapservers": ["localhost:9092"],
             "topic": self.topic_name,
-            "group": "test_consumergroup",
-            "auto_commit": False,
-            "session_timeout": 6000,
-            "enable_auto_offset_store": True,
-            "offset_reset_policy": "smallest",
+            "kafka_config": {
+                "bootstrap.servers": "localhost:9092",
+                "group.id": "test_consumergroup",
+                "enable.auto.commit": "false",
+                "session.timeout.ms": "6000",
+                "enable.auto.offset.store": "true",
+                "auto.offset.reset": "smallest",
+            },
         }
         self.kafka_input = Factory.create({"test input": input_config}, logger=logging.getLogger())
 

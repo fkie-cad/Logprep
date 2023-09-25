@@ -21,44 +21,17 @@ from tests.unit.connector.test_confluent_kafka_common import (
 class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     CONFIG = {
         "type": "confluentkafka_input",
-        "bootstrapservers": ["testserver:9092"],
+        "kafka_config": {"bootstrap.servers": "testserver:9092"},
         "topic": "test_input_raw",
-        "group": "test_consumergroup",
-        "auto_commit": False,
-        "session_timeout": 654321,
-        "enable_auto_offset_store": True,
-        "offset_reset_policy": "latest",
-        "ssl": {
-            "cafile": "test_cafile",
-            "certfile": "test_certfile",
-            "keyfile": "test_keyfile",
-            "password": "test_password",
-        },
     }
 
-    def test_confluent_settings_contains_expected_values(self):
-        expected_config = {
-            "bootstrap.servers": "testserver:9092",
-            "default.topic.config": {"auto.offset.reset": "latest"},
-            "enable.auto.commit": False,
-            "enable.auto.offset.store": True,
-            "group.id": "test_consumergroup",
-            "security.protocol": "SSL",
-            "session.timeout.ms": 654321,
-            "ssl.ca.location": "test_cafile",
-            "ssl.certificate.location": "test_certfile",
-            "ssl.key.location": "test_keyfile",
-            "ssl.key.password": "test_password",
-        }
-        kafka_input_cfg = self.object._confluent_settings
-        assert kafka_input_cfg == expected_config
-
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_get_next_returns_none_if_no_records(self, _):
-        self.object._consumer.poll = mock.MagicMock(return_value=None)
-        event, non_critical_error_msg = self.object.get_next(1)
-        assert event is None
-        assert non_critical_error_msg is None
+    # why should wie return none if no records? -> no records no processing!
+    # @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    # def test_get_next_returns_none_if_no_records(self, _):
+    #     self.object._consumer.poll = mock.MagicMock(return_value=None)
+    #     event, non_critical_error_msg = self.object.get_next(1)
+    #     assert event is None
+    #     assert non_critical_error_msg is None
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self, _):
@@ -90,12 +63,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._last_valid_records = {"record1": ["dummy"]}
         self.object.batch_finished_callback()
         kafka_consumer.store_offsets.assert_called()
-
-    def test_create_fails_for_unknown_offset_reset_policy(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update({"offset_reset_policy": "invalid"})
-        with pytest.raises(ValueError, match=r"'offset_reset_policy' must be in.*got 'invalid'"):
-            _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_error_if_not_a_dict(self, _):
@@ -143,17 +110,12 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         result = self.object._get_raw_event(0.001)
         assert result
 
-    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_logprep_config_has_precedence(self, mock_consumer):
-        kafka_config = deepcopy(self.object._confluent_settings)
-        config = {"bootstrap.servers": "bootstrap1, myprivatebootstrap"}
-        self.object._config.kafka_config = config
-        self.object._consumer.clear()
-        _ = self.object._consumer
-        mock_consumer.assert_called_with(kafka_config)
-
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
-        config = {"myconfig": "the config"}
+        config = {
+            "bootstrap.servers": "testinstance:9092",
+            "group.id": "sapsal",
+            "myconfig": "the config",
+        }
         self.object._config.kafka_config = config
         with pytest.raises(FatalOutputError, match="No such configuration property"):
             self.object.setup()
