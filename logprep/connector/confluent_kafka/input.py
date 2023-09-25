@@ -92,8 +92,9 @@ class ConfluentKafkaInput(Input):
     @cached_property
     def _consumer(self):
         """Create and return a new confluent kafka consumer"""
-        consumer = Consumer(self._config.kafka_config)
+        consumer = Consumer(self._config.kafka_config | {"client.id": self._client_id})
         consumer.subscribe([self._config.topic])
+        # consumer.poll()  # poll first time to get assigned partitions
         return consumer
 
     def describe(self) -> str:
@@ -126,8 +127,8 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
         self._record = self._consumer.poll(timeout=timeout)
-        while self._record is None:
-            self._record = self._consumer.poll(timeout=timeout)
+        if self._record is None:
+            return None
         self._last_valid_records[self._record.partition()] = self._record
         self.current_offset = self._record.offset()
         record_error = self._record.error()

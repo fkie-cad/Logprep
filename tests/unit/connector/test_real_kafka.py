@@ -1,13 +1,16 @@
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=subprocess-run-check
+# pylint: disable=protected-access
 import logging
 import os
+import socket
 import subprocess
 import time
 import uuid
 
 import pytest
+import testinfra
 from confluent_kafka import Consumer, TopicPartition
 from confluent_kafka.admin import AdminClient, NewTopic
 
@@ -20,7 +23,20 @@ kafka_config = {"bootstrap.servers": "localhost:9092"}
 
 def setup_module():
     if not in_ci:
-        subprocess.run(["docker-compose", "-f", "quickstart/docker-compose.yml", "up", "-d"])
+        subprocess.run(
+            ["docker-compose", "-f", "quickstart/docker-compose.yml", "up", "-d", "kafka"]
+        )
+
+
+def get_consumer_stats(host):
+    return host.check_output(
+        "docker-compose -f quickstart/docker-compose.yml exec -tty kafka "
+        "/opt/bitnami/kafka/bin/kafka-consumer-groups.sh "
+        "--bootstrap-server localhost:9092 "
+        "--describe "
+        "--all-groups "
+        "--all-topics"
+    )
 
 
 @pytest.mark.skipif(in_ci, reason="requires kafka")
@@ -52,11 +68,13 @@ class TestKafkaConnection:
 
         ouput_config = {
             "type": "confluentkafka_output",
-            "bootstrapservers": ["localhost:9092"],
             "topic": self.topic_name,
             "error_topic": self.error_topic_name,
-            "flush_timeout": 0.1,
-            "maximum_backlog": 1,
+            "flush_timeout": 1,
+            "maximum_backlog": 10,
+            "kafka_config": {
+                "bootstrap.servers": "localhost:9092",
+            },
         }
         self.kafka_output = Factory.create(
             {"test output": ouput_config}, logger=logging.getLogger()
@@ -71,16 +89,30 @@ class TestKafkaConnection:
                 "enable.auto.commit": "false",
                 "session.timeout.ms": "6000",
                 "enable.auto.offset.store": "true",
-                "auto.offset.reset": "smallest",
+                "auto.offset.reset": "earliest",
             },
         }
         self.kafka_input = Factory.create({"test input": input_config}, logger=logging.getLogger())
 
+    def teardown_method(self):
+        self.kafka_input.shut_down()
+        self.kafka_output.shut_down()
+
     def test_input_returns_by_output_produced_message(self):
         expected_event = {"test": "test"}
         self.kafka_output.store(expected_event)
-
         assert self.get_topic_partition_size(self.topic_partition) == 1
 
-        returned_event = self.kafka_input.get_next(1)[0]
+        returned_event = self.kafka_input.get_next(5)[0]
         assert returned_event == expected_event
+
+    def test_input_returns_by_output_produced_messages(self):
+        expected_event = {"test": "test"}
+        for index in range(10):
+            self.kafka_output.store(expected_event | {"index": index})
+        assert self.get_topic_partition_size(self.topic_partition) == 10
+
+        for index in range(10):
+            event = self.kafka_input.get_next(5)[0]
+            assert event
+            assert event.get("index") == index

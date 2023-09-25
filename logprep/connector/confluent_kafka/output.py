@@ -14,30 +14,28 @@ Example
     output:
       my_confluent_kafka_output:
         type: confluentkafka_output
-        bootstrapservers: [127.0.0.1:9200]
         topic: my_default_topic
         error_topic: my_error_topic
         flush_timeout: 0.2
         send_timeout: 0
-        compression: gzip
         maximum_backlog: 100000
-        ack_policy: -1
-        linger_duration: 0.5
-        ssl: {"cafile": None, "certfile": None, "keyfile": None, "password": None}
+        kafka_config:
+            bootstrap.servers: "127.0.0.1:9200,127.0.0.1:9200"
+            compression.type: gzip
+            request.required.acks: -1
+            queue.buffering.max.ms: 0.5
 """
 
 import json
 from datetime import datetime
-from functools import cached_property, partial
+from functools import cached_property
 from socket import getfqdn
 from typing import List, Optional
 
-import msgspec
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
-from logprep.util.validators import dict_with_keys_validator
 
 
 class ConfluentKafkaOutput(Output):
@@ -47,39 +45,14 @@ class ConfluentKafkaOutput(Output):
     class Config(Output.Config):
         """Confluent Kafka Output Config"""
 
-        bootstrapservers: List[str]
         topic: str = field(validator=validators.instance_of(str))
         error_topic: str
         flush_timeout: float
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
-        compression: str = field(
-            validator=[
-                validators.instance_of(str),
-                validators.in_(["snappy", "gzip", "lz4", "zstd", "none"]),
-            ],
-            default="none",
-        )
         maximum_backlog: int = field(
             validator=[validators.instance_of(int), validators.gt(0)], default=100000
         )
-        ack_policy: int = field(
-            validator=[validators.instance_of(int), validators.in_([0, 1, -1])],
-            converter=lambda x: -1 if x == "all" else x,
-            default=-1,
-        )
-        linger_duration: float = field(
-            validator=[validators.instance_of(float)], converter=float, default=0.5
-        )
-        ssl: dict = field(
-            validator=[
-                validators.instance_of(dict),
-                partial(
-                    dict_with_keys_validator,
-                    expected_keys=["cafile", "certfile", "keyfile", "password"],
-                ),
-            ],
-            default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
-        )
+
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
@@ -90,8 +63,10 @@ class ConfluentKafkaOutput(Output):
             ],
             factory=dict,
         )
-        """ (Optional) Additional kafka configuration for the kafka client. 
-        This is for advanced usage only. For possible configuration options see: 
+        """ Kafka configuration for the kafka client.
+        At minimum the following keys must be set:
+        - bootstrap.servers
+        For possible configuration options see: 
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
         """
 
@@ -101,36 +76,7 @@ class ConfluentKafkaOutput(Output):
 
     @cached_property
     def _producer(self):
-        return Producer(self._confluent_settings)
-
-    @cached_property
-    def _confluent_settings(self) -> dict:
-        """generate confluence settings mapping
-
-        Returns
-        -------
-        dict
-            the translated confluence settings
-        """
-        configuration = {
-            "bootstrap.servers": ",".join(self._config.bootstrapservers),
-            "queue.buffering.max.messages": self._config.maximum_backlog,
-            "compression.type": self._config.compression,
-            "acks": self._config.ack_policy,
-            "linger.ms": self._config.linger_duration,
-        }
-        ssl_settings_are_setted = any(self._config.ssl[key] for key in self._config.ssl)
-        if ssl_settings_are_setted:
-            configuration.update(
-                {
-                    "security.protocol": "SSL",
-                    "ssl.ca.location": self._config.ssl["cafile"],
-                    "ssl.certificate.location": self._config.ssl["certfile"],
-                    "ssl.key.location": self._config.ssl["keyfile"],
-                    "ssl.key.password": self._config.ssl["password"],
-                }
-            )
-        return self._config.kafka_config | configuration
+        return Producer(self._config.kafka_config)
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
@@ -142,7 +88,7 @@ class ConfluentKafkaOutput(Output):
 
         """
         base_description = super().describe()
-        return f"{base_description} - Kafka Output: {self._config.bootstrapservers[0]}"
+        return f"{base_description} - Kafka Output: {self._config.kafka_config.get('bootstrap.servers')}"
 
     def store(self, document: dict) -> Optional[bool]:
         """Store a document in the producer topic.
