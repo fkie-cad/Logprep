@@ -30,12 +30,20 @@ import json
 from datetime import datetime
 from functools import cached_property
 from socket import getfqdn
-from typing import List, Optional
+from typing import Optional
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
+
+logprep_kafka_defaults = {
+    "acks": "-1",
+    "linger.ms": "0.5",
+    "compression.type": "none",
+    "client.id": getfqdn(),
+    "queue.buffering.max.messages": "100000",
+}
 
 
 class ConfluentKafkaOutput(Output):
@@ -49,10 +57,6 @@ class ConfluentKafkaOutput(Output):
         error_topic: str
         flush_timeout: float
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
-        maximum_backlog: int = field(
-            validator=[validators.instance_of(int), validators.gt(0)], default=100000
-        )
-
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
@@ -73,9 +77,9 @@ class ConfluentKafkaOutput(Output):
     @cached_property
     def _producer(self):
         injected_config = {
-            "client.id": getfqdn(),
             "logger": self._logger,
         }
+        self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
         return Producer(self._config.kafka_config | injected_config)
 
     def describe(self) -> str:
