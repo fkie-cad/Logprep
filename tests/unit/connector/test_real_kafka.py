@@ -60,7 +60,6 @@ class TestKafkaConnection:
             "topic": self.topic_name,
             "error_topic": self.error_topic_name,
             "flush_timeout": 1,
-            "maximum_backlog": 10,
             "kafka_config": {
                 "bootstrap.servers": "localhost:9092",
             },
@@ -133,7 +132,31 @@ class TestKafkaConnection:
         kafka_input = Factory.create({"librdkafkatest": input_config}, logger=logger)
         kafka_input.get_next(5)
 
-    def test_reconnect_consumer_after_failure(self):
+    def test_reconnect_consumer_after_failure_defaults(self):
+        expected_event = {"test": "test"}
+        for index in range(10):
+            self.kafka_output.store(expected_event | {"index": index})
+        assert self.get_topic_partition_size(self.topic_partition) == 10
+
+        for index in range(5):
+            event = self.kafka_input.get_next(10)[0]
+            assert event
+            assert event.get("index") == index
+        # simulate delivery by output_connector
+        self.kafka_input.batch_finished_callback()
+        # simulate pipeline restart
+        self.kafka_input.shut_down()
+        self.kafka_input.setup()
+
+        for index in range(5, 10):
+            event = self.kafka_input.get_next(10)[0]
+            assert event
+            assert event.get("index") == index, "should start after commited offsets"
+
+    def test_reconnect_consumer_after_failure_manual_commits(self):
+        self.kafka_input.shut_down()
+        self.kafka_input._config.kafka_config.update({"enable.auto.commit": "false"})
+        self.kafka_input.setup()
         expected_event = {"test": "test"}
         for index in range(10):
             self.kafka_output.store(expected_event | {"index": index})

@@ -97,9 +97,6 @@ input:
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3
-      auto.commit: "true"
-      session_timeout.ms: "6000"
-      auto.offset.reset: earliest
 
 output:
   opensearch:

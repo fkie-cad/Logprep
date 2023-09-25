@@ -18,7 +18,6 @@ Example
         error_topic: my_error_topic
         flush_timeout: 0.2
         send_timeout: 0
-        maximum_backlog: 100000
         kafka_config:
             bootstrap.servers: "127.0.0.1:9200,127.0.0.1:9200"
             compression.type: gzip
@@ -38,9 +37,9 @@ from confluent_kafka import KafkaException, Producer
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 
 logprep_kafka_defaults = {
-    "acks": "-1",
+    "request.required.acks": "-1",
     "linger.ms": "0.5",
-    "compression.type": "none",
+    "compression.codec": "none",
     "client.id": getfqdn(),
     "queue.buffering.max.messages": "100000",
 }

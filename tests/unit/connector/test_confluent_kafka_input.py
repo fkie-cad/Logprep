@@ -4,14 +4,16 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
-from copy import deepcopy
 from unittest import mock
 
 import pytest
 
-from logprep.abc.input import CriticalInputError, CriticalInputParsingError
+from logprep.abc.input import (
+    CriticalInputError,
+    CriticalInputParsingError,
+    WarningInputError,
+)
 from logprep.abc.output import FatalOutputError
-from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
@@ -25,13 +27,12 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "topic": "test_input_raw",
     }
 
-    # why should wie return none if no records? -> no records no processing!
-    # @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    # def test_get_next_returns_none_if_no_records(self, _):
-    #     self.object._consumer.poll = mock.MagicMock(return_value=None)
-    #     event, non_critical_error_msg = self.object.get_next(1)
-    #     assert event is None
-    #     assert non_critical_error_msg is None
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_get_next_returns_none_if_no_records(self, _):
+        self.object._consumer.poll = mock.MagicMock(return_value=None)
+        event, non_critical_error_msg = self.object.get_next(1)
+        assert event is None
+        assert non_critical_error_msg is None
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_exception_for_invalid_confluent_kafka_record(self, _):
@@ -125,3 +126,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._get_raw_event = mock.MagicMock(return_value=return_value)
         with pytest.raises(CriticalInputParsingError, match="is not a valid json"):
             self.object.get_next(0.01)
+
+    def test_on_commit_callback_raises_warning_error(self):
+        with pytest.raises(WarningInputError, match="Could not commit offsets"):
+            self.object._commit_callback(BaseException, ["topic_partition"])

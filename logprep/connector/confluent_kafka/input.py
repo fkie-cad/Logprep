@@ -36,7 +36,12 @@ import msgspec
 from attrs import define, field, validators
 from confluent_kafka import Consumer, KafkaException, TopicPartition
 
-from logprep.abc.input import CriticalInputError, CriticalInputParsingError, Input
+from logprep.abc.input import (
+    CriticalInputError,
+    CriticalInputParsingError,
+    Input,
+    WarningInputError,
+)
 from logprep.abc.output import FatalOutputError
 
 logprep_kafka_defaults = {
@@ -51,12 +56,21 @@ logprep_kafka_defaults = {
 class ConfluentKafkaInput(Input):
     """A kafka input connector."""
 
+    @define(kw_only=True)
+    class ConnectorMetrics(Input.ConnectorMetrics):
+        """Metrics for ConfluentKafkaInput"""
+
+        _prefix = "logprep_connector_input_kafka_"
+
+        commit_failures: int = 0
+
     @define(kw_only=True, slots=False)
     class Config(Input.Config):
         """Kafka specific configurations"""
 
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
+
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
@@ -89,11 +103,36 @@ class ConfluentKafkaInput(Input):
         """Create and return a new confluent kafka consumer"""
         injected_config = {
             "logger": self._logger,
+            "on_commit": self._commit_callback,
         }
         self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
         consumer = Consumer(self._config.kafka_config | injected_config)
         consumer.subscribe([self._config.topic])
         return consumer
+
+    def _commit_callback(
+        self, error: KafkaException | None, topic_partitions: list[TopicPartition]
+    ):
+        """Callback used to indicate success or failure of asynchronous and
+        automatic commit requests. This callback is served upon calling consumer.poll()
+
+        Parameters
+        ----------
+        error : KafkaException | None
+            the commit error, or None on success
+        topic_partitions : list[TopicPartition]
+            partitions with their committed offsets or per-partition errors
+
+        Raises
+        ------
+        WarningInputError
+            if `error` is not None
+        """
+        if error is not None:
+            self.metrics.commit_failures += 1
+            raise WarningInputError(
+                self, f"Could not commit offsets for {topic_partitions}: {error}"
+            )
 
     def describe(self) -> str:
         """Get name of Kafka endpoint and the first bootstrap server.
