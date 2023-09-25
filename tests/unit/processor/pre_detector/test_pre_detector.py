@@ -314,6 +314,9 @@ class TestPreDetector(BaseProcessorTestCase):
     def _assert_equality_of_results(
         self, document, expected, detection_results, expected_detection_results
     ):
+        for detection_result in detection_results[0]:
+            assert detection_result.pop("creation_timestamp")
+
         pre_detection_id = document.pop("pre_detection_id", None)
 
         assert pre_detection_id is not None

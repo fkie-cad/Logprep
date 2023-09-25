@@ -3,6 +3,10 @@
 ## next release
 ### Features
 ### Improvements
+
+* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections.
+It contains the time at which a pre-detection was created by the processor.
+
 ### Bugfix
 
 ## v6.8.1
