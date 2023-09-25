@@ -93,13 +93,13 @@ pipeline:
 input:
   kafka:
     type: confluentkafka_input
-    bootstrapservers:
-      - 127.0.0.1:9092
     topic: consumer
-    group: cgroup3
-    auto_commit: true
-    session_timeout: 6000
-    offset_reset_policy: smallest
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      group.id: cgroup3
+      auto.commit: "true"
+      session_timeout.ms: "6000"
+      auto.offset.reset: earliest
 
 output:
   opensearch:
