@@ -160,7 +160,7 @@ jobs:
 
       - name: Check semgrep rules
         if: steps.changed-files.outputs.all_changed_files
-        run: semgrep -c .semgrep_rules -c r/python --error -l python --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
+        run: semgrep -c .semgrep_rules -c r/python --error --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
 
   containerbuild:
     strategy:
