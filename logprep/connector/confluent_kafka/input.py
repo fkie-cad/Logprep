@@ -63,8 +63,54 @@ class ConfluentKafkaInput(Input):
 
         _prefix = "logprep_connector_input_kafka_"
 
+        _stats: dict = field(factory=dict)
+        """statistcs form librdkafka. Is filled by `_stats_callback`"""
+
         commit_failures: int = 0
         commit_success: int = 0
+
+        def _get_top_level_metrics(self):
+            labels = self._get_labels(self._stats)
+            return {
+                f"{self._prefix}librdkafka_{stat};{labels}": value
+                for stat, value in self._stats.items()
+                if isinstance(value, (int, float))
+            }
+
+        def _get_broker_metrics(self):
+            exp = {}
+            for _, value in self._stats["brokers"].items():
+                labels = self._get_labels(value)
+                for stat, value in value.items():
+                    if isinstance(value, (int, float)):
+                        exp[f"{self._prefix}librdkafka_broker_{stat};{labels}"] = value
+            return exp
+
+        def _get_cgrp_metrics(self):
+            exp = {}
+            cgrp = self._stats.get("cgrp")
+            labels = self._get_labels(cgrp)
+            for stat, value in cgrp.items():
+                if isinstance(value, (int, float)):
+                    exp[f"{self._prefix}librdkafka_cgrp_{stat};{labels}"] = value
+            return exp
+
+        def _get_labels(self, stats: dict):
+            labels = self._labels | {
+                stat: value
+                for stat, value in stats.items()
+                if isinstance(value, str) and ":" not in value
+            }
+            labels = [":".join(item) for item in labels.items()]
+            labels = ",".join(labels)
+            return labels
+
+        def expose(self):
+            exp = super().expose()
+            exp |= self._get_top_level_metrics()
+            exp |= self._get_broker_metrics()
+            exp |= self._get_cgrp_metrics()
+            return exp
 
     @define(kw_only=True, slots=False)
     class Config(Input.Config):
@@ -92,9 +138,7 @@ class ConfluentKafkaInput(Input):
 
     _last_valid_records: dict
 
-    __slots__ = [
-        "_last_valid_records",
-    ]
+    __slots__ = ["_last_valid_records"]
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
         super().__init__(name, configuration, logger)
@@ -107,12 +151,25 @@ class ConfluentKafkaInput(Input):
             "logger": self._logger,
             "on_commit": self._commit_callback,
             "stats_cb": self._stats_callback,
+            "error_cb": self._error_callback,
             "statistics.interval.ms": 1000,
         }
         self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
         consumer = Consumer(self._config.kafka_config | injected_config)
         consumer.subscribe([self._config.topic])
         return consumer
+
+    def _error_callback(self, error: KafkaException):
+        """Callback for generic/global error events, these errors are typically
+        to be considered informational since the client will automatically try to recover.
+        This callback is served upon calling client.poll()
+
+        Parameters
+        ----------
+        error : KafkaException
+            the error that occurred
+        """
+        raise WarningInputError(self, f"KafkaException: {error}")
 
     def _stats_callback(self, stats: str):
         """Callback for statistics data. This callback is triggered by poll()
@@ -125,8 +182,7 @@ class ConfluentKafkaInput(Input):
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
-        stats = self._decoder.decode(stats)
-        assert stats
+        self.metrics._stats = self._decoder.decode(stats)  # pylint: disable=protected-access
 
     def _commit_callback(
         self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
