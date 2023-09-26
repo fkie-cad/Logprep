@@ -51,6 +51,7 @@ logprep_kafka_defaults = {
     "client.id": getfqdn(),
     "auto.offset.reset": "earliest",
     "session.timeout.ms": "6000",
+    "statistics.interval.ms": "1000",
 }
 
 
@@ -90,17 +91,21 @@ class ConfluentKafkaInput(Input):
 
         def _get_kafka_input_metrics(self):
             exp = {
-                f"{self._prefix}kafka_consumer_current_offset;{self._rdkafka_labels},partition:{partition}": offset
+                f"{self._prefix}kafka_consumer_current_offset;"
+                f"{self._rdkafka_labels},partition:{partition}": offset
                 for partition, offset in self._current_offsets.items()
             }
             exp |= {
-                f"{self._prefix}kafka_consumer_committed_offset;{self._rdkafka_labels},partition:{partition}": offset
+                f"{self._prefix}kafka_consumer_committed_offset;"
+                f"{self._rdkafka_labels},partition:{partition}": offset
                 for partition, offset in self._committed_offsets.items()
             }
             exp.update(
                 {
-                    f"{self._prefix}kafka_consumer_commit_failures;{self._rdkafka_labels}": self._commit_failures,
-                    f"{self._prefix}kafka_consumer_commit_success;{self._rdkafka_labels}": self._commit_success,
+                    f"{self._prefix}kafka_consumer_commit_failures;"
+                    f"{self._rdkafka_labels}": self._commit_failures,
+                    f"{self._prefix}kafka_consumer_commit_success;"
+                    f"{self._rdkafka_labels}": self._commit_success,
                 }
             )
             return exp
@@ -168,13 +173,18 @@ class ConfluentKafkaInput(Input):
 
     @cached_property
     def _consumer(self) -> Consumer:
-        """Create and return a new confluent kafka consumer"""
+        """configures and returns the consumer
+
+        Returns
+        -------
+        Consumer
+            confluent_kafka consumer object
+        """
         injected_config = {
             "logger": self._logger,
             "on_commit": self._commit_callback,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
-            "statistics.interval.ms": 1000,
         }
         self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
         consumer = Consumer(self._config.kafka_config | injected_config)

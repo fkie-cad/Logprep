@@ -3,6 +3,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
+import socket
 from unittest import mock
 
 import pytest
@@ -129,3 +130,50 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     def test_on_commit_callback_raises_warning_error(self):
         with pytest.raises(WarningInputError, match="Could not commit offsets"):
             self.object._commit_callback(BaseException, ["topic_partition"])
+
+    def test_error_callback_logs_warnings(self):
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            test_error = BaseException("test error")
+            self.object._error_callback(test_error)
+            mock_warning.assert_called()
+            mock_warning.assert_called_with(f"{self.object.describe()}: {test_error}")
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_default_config_is_injected(self, mock_consumer):
+        injected_config = {
+            "enable.auto.offset.store": "false",
+            "enable.auto.commit": "true",
+            "client.id": socket.getfqdn(),
+            "auto.offset.reset": "earliest",
+            "session.timeout.ms": "6000",
+            "bootstrap.servers": self.object._config.kafka_config.get("bootstrap.servers"),
+            "group.id": "testgroup",
+            "logger": self.object._logger,
+            "on_commit": self.object._commit_callback,
+            "stats_cb": self.object._stats_callback,
+            "error_cb": self.object._error_callback,
+            "statistics.interval.ms": "1000",
+        }
+        _ = self.object._consumer
+        mock_consumer.assert_called_with(injected_config)
+
+    def test_stats_callback_sets_stats_in_metric_object(self):
+        self.object._stats_callback('{"test": "stats"}')
+        assert self.object.metrics._stats == {"test": "stats"}
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_client_id_can_be_overwritten(self, mock_consumer):
+        self.object.shut_down()
+        self.object._config.kafka_config["client.id"] = "thisclientid"
+        self.object.setup()
+        mock_consumer.assert_called()
+        assert mock_consumer.call_args[0][0].get("client.id") == "thisclientid"
+        assert not mock_consumer.call_args[0][0].get("client.id") == socket.getfqdn()
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_statistics_interval_can_be_overwritten(self, mock_consumer):
+        self.object.shut_down()
+        self.object._config.kafka_config["statistics.interval.ms"] = "999999999"
+        self.object.setup()
+        mock_consumer.assert_called()
+        assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"

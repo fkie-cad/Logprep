@@ -42,6 +42,7 @@ logprep_kafka_defaults = {
     "compression.codec": "none",
     "client.id": getfqdn(),
     "queue.buffering.max.messages": "100000",
+    "statistics.interval.ms": "1000",
 }
 
 
@@ -100,7 +101,6 @@ class ConfluentKafkaOutput(Output):
             "logger": self._logger,
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
-            "statistics.interval.ms": 1000,
         }
         self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
         return Producer(self._config.kafka_config | injected_config)
