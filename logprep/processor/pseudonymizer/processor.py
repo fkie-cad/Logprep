@@ -39,7 +39,7 @@ import datetime
 import re
 from functools import cached_property
 from logging import Logger
-from typing import Any, List, Optional, Tuple, Union, Pattern
+from typing import Any, List, Optional, Pattern, Tuple, Union
 from urllib.parse import parse_qs
 
 from attr import define, field, validators
@@ -328,7 +328,9 @@ class Pseudonymizer(Processor):
         parts["domain"] = url.domain
         parts["subdomain"] = url.subdomain
         parts["suffix"] = url.suffix
-        url_list = ".".join(list(url))
+        url_list = list(url)
+        url_list.pop()
+        url_list = ".".join(url_list)
         parts["path"] = self._find_first(
             rf"(?:^[a-z0-9]+\:\/\/)?{url_list}(?:\:\d+)?([^#^\?]*).*", url_str
         )
