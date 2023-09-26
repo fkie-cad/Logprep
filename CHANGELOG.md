@@ -18,9 +18,11 @@ It contains the time at which a pre-detection was created by the processor.
 * add `prometheus` and `grafana` to the quickstart setup to support development
 * reimplemented kafka input connector
   - move kafka config options to `kafka_config` dictionary
-  - implement manual commit behaviour if `enable.auto.commit: false`
-  - implement on_commit callback to check for errors during commit
-* reimplement kafka output connector
+  - implemented manual commit behaviour if `enable.auto.commit: false`
+  - implemented on_commit callback to check for errors during commit
+  - implemented statistics callback to collect metrics from underlying librdkafka library
+  - implemented per partition offset metrics
+* reimplemented kafka output connector
   - move kafka config options to `kafka_config` dictionary
 
 ### Bugfix
