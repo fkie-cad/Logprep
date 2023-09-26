@@ -64,6 +64,7 @@ class ConfluentKafkaInput(Input):
         _prefix = "logprep_connector_input_kafka_"
 
         commit_failures: int = 0
+        commit_success: int = 0
 
     @define(kw_only=True, slots=False)
     class Config(Input.Config):
@@ -105,11 +106,27 @@ class ConfluentKafkaInput(Input):
         injected_config = {
             "logger": self._logger,
             "on_commit": self._commit_callback,
+            "stats_cb": self._stats_callback,
+            "statistics.interval.ms": 1000,
         }
         self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
         consumer = Consumer(self._config.kafka_config | injected_config)
         consumer.subscribe([self._config.topic])
         return consumer
+
+    def _stats_callback(self, stats: str):
+        """Callback for statistics data. This callback is triggered by poll()
+        or flush every `statistics.interval.ms` (needs to be configured separately)
+
+        Parameters
+        ----------
+        stats : str
+            statistics from the underlying librdkafka library
+            details about the data can be found here:
+            https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+        """
+        stats = self._decoder.decode(stats)
+        assert stats
 
     def _commit_callback(
         self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
@@ -134,6 +151,7 @@ class ConfluentKafkaInput(Input):
             raise WarningInputError(
                 self, f"Could not commit offsets for {topic_partitions}: {error}"
             )
+        self.metrics.commit_success += 1
 
     def describe(self) -> str:
         """Get name of Kafka endpoint and the first bootstrap server.

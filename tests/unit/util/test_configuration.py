@@ -710,7 +710,7 @@ output:
 """
         os.environ[
             "LOGPREP_INPUT"
-        ] = "input:\n    kafka:\n        type: confluentkafka_input\n        topic: consumer\n"
+        ] = "input:\n    kafka:\n        type: confluentkafka_input\n        topic: consumer\n        kafka_config:\n          bootstrap.servers: localhost:9092\n          group.id: testgroup\n"
         config = Configuration.create_from_yaml(str(config_path))
         config.verify(mock.MagicMock())
 
