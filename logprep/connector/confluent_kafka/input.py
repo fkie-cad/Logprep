@@ -66,8 +66,30 @@ class ConfluentKafkaInput(Input):
         _stats: dict = field(factory=dict)
         """statistcs form librdkafka. Is filled by `_stats_callback`"""
 
-        commit_failures: int = 0
-        commit_success: int = 0
+        _commit_failures: int = 0
+        _commit_success: int = 0
+
+        _current_offsets: dict = field(factory=dict)
+
+        _committed_offsets: dict = field(factory=dict)
+
+        def _get_kafka_input_metrics(self):
+            labels = self._get_labels(self._stats)
+            exp = {
+                f"{self._prefix}kafka_consumer_current_offset;{labels},partition:{partition}": offset
+                for partition, offset in self._current_offsets.items()
+            }
+            exp |= {
+                f"{self._prefix}kafka_consumer_committed_offset;{labels},partition:{partition}": offset
+                for partition, offset in self._committed_offsets.items()
+            }
+            exp.update(
+                {
+                    f"{self._prefix}kafka_consumer_commit_failures;{labels}": self._commit_failures,
+                    f"{self._prefix}kafka_consumer_commit_success;{labels}": self._commit_success,
+                }
+            )
+            return exp
 
         def _get_top_level_metrics(self):
             labels = self._get_labels(self._stats)
@@ -110,6 +132,7 @@ class ConfluentKafkaInput(Input):
             exp |= self._get_top_level_metrics()
             exp |= self._get_broker_metrics()
             exp |= self._get_cgrp_metrics()
+            exp |= self._get_kafka_input_metrics()
             return exp
 
     @define(kw_only=True, slots=False)
@@ -142,6 +165,7 @@ class ConfluentKafkaInput(Input):
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
         super().__init__(name, configuration, logger)
+        self.metric_labels = {"component": "kafka", "topic": self._config.topic}
         self._last_valid_records = {}
 
     @cached_property
@@ -203,11 +227,15 @@ class ConfluentKafkaInput(Input):
             if `error` is not None
         """
         if error is not None:
-            self.metrics.commit_failures += 1
+            self.metrics._commit_failures += 1
             raise WarningInputError(
                 self, f"Could not commit offsets for {topic_partitions}: {error}"
             )
-        self.metrics.commit_success += 1
+        self.metrics._commit_success += 1
+        self.metrics._committed_offsets |= {
+            topic_partition.partition: topic_partition.offset()
+            for topic_partition in topic_partitions
+        }
 
     def describe(self) -> str:
         """Get name of Kafka endpoint and the first bootstrap server.
@@ -242,6 +270,8 @@ class ConfluentKafkaInput(Input):
         if record is None:
             return None
         self._last_valid_records[record.partition()] = record
+        offset = {record.partition(): record.offset()}
+        self.metrics._current_offsets |= offset  # pylint: disable=protected-access
         record_error = record.error()
         if record_error:
             raise CriticalInputError(

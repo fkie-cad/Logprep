@@ -213,7 +213,6 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     assert re.search("logprep_processor_timeouts.*domain_resolver.* 0\.0", metrics)
     assert re.search("logprep_processor_pseudonymized_urls.*pseudonymizer.* 0\.0", metrics)
 
-    assert re.search("logprep_pipeline_kafka_offset.*pipeline-1.* 0\.0", metrics)
     assert re.search(
         r"logprep_pipeline_mean_processing_time_per_event.*pipeline-1.* \d\..*", metrics
     )

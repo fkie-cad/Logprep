@@ -141,8 +141,6 @@ class Pipeline:
         """Output metrics"""
         pipeline: List["Processor.ProcessorMetrics"] = attrs.field(factory=list)
         """Pipeline containing the metrics of all set processors"""
-        kafka_offset: int = 0
-        """The current offset of the kafka input reader"""
         number_of_processed_events: int = 0
         """Number of events that this pipeline has processed"""
         mean_processing_time_per_event: float = 0.0
@@ -395,10 +393,6 @@ class Pipeline:
             for _, output in self._output.items():
                 if output.default:
                     output.store_failed(non_critical_error_msg, event, None)
-        try:
-            self.metrics.kafka_offset = self._input.current_offset
-        except AttributeError:
-            pass
         return event
 
     @TimeMeasurement.measure_time("pipeline")
