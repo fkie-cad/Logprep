@@ -701,7 +701,6 @@ output:
         type: confluentkafka_output
         topic: producer
         error_topic: producer_error
-        maximum_backlog: 10000
         flush_timeout: 30
         send_timeout: 2
         kafka_config:
@@ -754,7 +753,6 @@ output:
         type: confluentkafka_output
         topic: producer
         error_topic: producer_error
-        maximum_backlog: 10000
         flush_timeout: 30
         send_timeout: 2
         kafka_config:

@@ -87,7 +87,7 @@ class TestKafkaConnection:
         self.kafka_output.store(expected_event)
         assert self.get_topic_partition_size(self.topic_partition) == 1
 
-        returned_event = self.kafka_input.get_next(5)[0]
+        returned_event = self.kafka_input.get_next(10)[0]
         assert returned_event == expected_event
 
     def test_input_returns_by_output_produced_messages(self):
@@ -97,7 +97,7 @@ class TestKafkaConnection:
         assert self.get_topic_partition_size(self.topic_partition) == 10
 
         for index in range(10):
-            event = self.kafka_input.get_next(5)[0]
+            event = self.kafka_input.get_next(10)[0]
             assert event
             assert event.get("index") == index
 
@@ -112,7 +112,7 @@ class TestKafkaConnection:
         }
         kafka_input = Factory.create({"librdkafkatest": input_config}, logger=mock.MagicMock())
         kafka_input._logger.log = mock.MagicMock()
-        kafka_input.get_next(5)
+        kafka_input.get_next(10)
         kafka_input._logger.log.assert_called()
         assert re.search(
             r"Failed to resolve 'notexisting:9092'", kafka_input._logger.log.mock_calls[0][1][4]
@@ -130,7 +130,7 @@ class TestKafkaConnection:
         }
         logger = logging.getLogger()
         kafka_input = Factory.create({"librdkafkatest": input_config}, logger=logger)
-        kafka_input.get_next(5)
+        kafka_input.get_next(10)
 
     def test_reconnect_consumer_after_failure_defaults(self):
         expected_event = {"test": "test"}

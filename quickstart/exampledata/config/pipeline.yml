@@ -6,7 +6,7 @@ logger:
 
 metrics:
   enabled: true
-  period: 10
+  period: 1
   cumulative: false
   aggregate_processes: false
   measure_time:

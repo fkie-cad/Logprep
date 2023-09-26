@@ -32,7 +32,7 @@ services:
     image: public.ecr.aws/opensearchproject/opensearch-dashboards:2
     container_name: dashboards
     environment:
-      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - 'OPENSEARCH_HOSTS=["http://127.0.0.1:9200"]'
       - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true" # disables security dashboards plugin in OpenSearch Dashboards
     depends_on:
       - opensearch
@@ -41,7 +41,7 @@ services:
     network_mode: host
 
   kafka:
-    image: bitnami/kafka:3.4.0
+    image: bitnami/kafka:3.4
     container_name: kafka
     hostname: kafka
     expose:

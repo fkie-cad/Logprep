@@ -36,6 +36,7 @@ import msgspec
 from attrs import define, field, validators
 from confluent_kafka import Consumer, KafkaException, TopicPartition
 
+from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,

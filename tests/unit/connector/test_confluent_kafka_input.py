@@ -23,7 +23,7 @@ from tests.unit.connector.test_confluent_kafka_common import (
 class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     CONFIG = {
         "type": "confluentkafka_input",
-        "kafka_config": {"bootstrap.servers": "testserver:9092"},
+        "kafka_config": {"bootstrap.servers": "testserver:9092", "group.id": "testgroup"},
         "topic": "test_input_raw",
     }
 

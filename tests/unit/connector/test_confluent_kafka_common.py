@@ -7,12 +7,12 @@ from socket import getfqdn
 import pytest
 
 from logprep.factory import Factory
-from logprep.factory_error import InvalidConfigurationError
 
 
 class CommonConfluentKafkaTestCase:
     def test_client_id_is_set_to_hostname(self):
-        assert self.object._client_id == getfqdn()
+        self.object.setup()
+        assert self.object._config.kafka_config.get("client.id") == getfqdn()
 
     def test_create_fails_for_unknown_option(self):
         kafka_config = deepcopy(self.CONFIG)
