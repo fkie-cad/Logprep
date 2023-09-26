@@ -1,5 +1,5 @@
 attrs
-certifi>=2022.12.07
+certifi>=2023.7.22
 ciso8601 # fastest iso8601 datetime parser. can be removed after dropping support for python < 3.11
 colorama
 confluent-kafka>2
