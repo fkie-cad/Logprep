@@ -40,10 +40,10 @@ from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
+    FatalInputError,
     Input,
     WarningInputError,
 )
-from logprep.abc.output import FatalOutputError
 
 logprep_kafka_defaults = {
     "enable.auto.offset.store": "false",
@@ -57,7 +57,7 @@ logprep_kafka_defaults = {
 class ConfluentKafkaInput(Input):
     """A kafka input connector."""
 
-    @define(kw_only=True)
+    @define(kw_only=True, slots=False)
     class ConnectorMetrics(Input.ConnectorMetrics):
         """Metrics for ConfluentKafkaInput"""
 
@@ -67,70 +67,66 @@ class ConfluentKafkaInput(Input):
         """statistcs form librdkafka. Is filled by `_stats_callback`"""
 
         _commit_failures: int = 0
+
         _commit_success: int = 0
 
         _current_offsets: dict = field(factory=dict)
 
         _committed_offsets: dict = field(factory=dict)
 
+        _consumer_group_id: str = ""
+
+        _consumer_client_id: str = ""
+
+        @cached_property
+        def _rdkafka_labels(self) -> str:
+            client_id = self._consumer_client_id
+            group_id = self._consumer_group_id
+            labels = {"client_id": client_id, "group_id": group_id}
+            labels = self._labels | labels
+            labels = [":".join(item) for item in labels.items()]
+            labels = ",".join(labels)
+            return labels
+
         def _get_kafka_input_metrics(self):
-            labels = self._get_labels(self._stats)
             exp = {
-                f"{self._prefix}kafka_consumer_current_offset;{labels},partition:{partition}": offset
+                f"{self._prefix}kafka_consumer_current_offset;{self._rdkafka_labels},partition:{partition}": offset
                 for partition, offset in self._current_offsets.items()
             }
             exp |= {
-                f"{self._prefix}kafka_consumer_committed_offset;{labels},partition:{partition}": offset
+                f"{self._prefix}kafka_consumer_committed_offset;{self._rdkafka_labels},partition:{partition}": offset
                 for partition, offset in self._committed_offsets.items()
             }
             exp.update(
                 {
-                    f"{self._prefix}kafka_consumer_commit_failures;{labels}": self._commit_failures,
-                    f"{self._prefix}kafka_consumer_commit_success;{labels}": self._commit_success,
+                    f"{self._prefix}kafka_consumer_commit_failures;{self._rdkafka_labels}": self._commit_failures,
+                    f"{self._prefix}kafka_consumer_commit_success;{self._rdkafka_labels}": self._commit_success,
                 }
             )
             return exp
 
         def _get_top_level_metrics(self):
-            labels = self._get_labels(self._stats)
             return {
-                f"{self._prefix}librdkafka_{stat};{labels}": value
+                f"{self._prefix}librdkafka_{stat};{self._rdkafka_labels}": value
                 for stat, value in self._stats.items()
                 if isinstance(value, (int, float))
             }
 
-        def _get_broker_metrics(self):
-            exp = {}
-            for _, value in self._stats["brokers"].items():
-                labels = self._get_labels(value)
-                for stat, value in value.items():
-                    if isinstance(value, (int, float)):
-                        exp[f"{self._prefix}librdkafka_broker_{stat};{labels}"] = value
-            return exp
-
         def _get_cgrp_metrics(self):
             exp = {}
             cgrp = self._stats.get("cgrp")
-            labels = self._get_labels(cgrp)
+            if cgrp is None:
+                return exp
             for stat, value in cgrp.items():
                 if isinstance(value, (int, float)):
-                    exp[f"{self._prefix}librdkafka_cgrp_{stat};{labels}"] = value
+                    exp[f"{self._prefix}librdkafka_cgrp_{stat};{self._rdkafka_labels}"] = value
             return exp
-
-        def _get_labels(self, stats: dict):
-            labels = self._labels | {
-                stat: value
-                for stat, value in stats.items()
-                if isinstance(value, str) and ":" not in value
-            }
-            labels = [":".join(item) for item in labels.items()]
-            labels = ",".join(labels)
-            return labels
 
         def expose(self):
             exp = super().expose()
+            labels = [":".join(item) for item in self._labels.items()]
+            labels = ",".join(labels)
             exp |= self._get_top_level_metrics()
-            exp |= self._get_broker_metrics()
             exp |= self._get_cgrp_metrics()
             exp |= self._get_kafka_input_metrics()
             return exp
@@ -167,6 +163,8 @@ class ConfluentKafkaInput(Input):
         super().__init__(name, configuration, logger)
         self.metric_labels = {"component": "kafka", "topic": self._config.topic}
         self._last_valid_records = {}
+        self.metrics._consumer_group_id = self._config.kafka_config["group.id"]
+        self.metrics._consumer_client_id = self._config.kafka_config.get("client.id", getfqdn())
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -193,7 +191,7 @@ class ConfluentKafkaInput(Input):
         error : KafkaException
             the error that occurred
         """
-        raise WarningInputError(self, f"KafkaException: {error}")
+        self._logger.warning(f"{self.describe()}: {error}")
 
     def _stats_callback(self, stats: str):
         """Callback for statistics data. This callback is triggered by poll()
@@ -233,7 +231,7 @@ class ConfluentKafkaInput(Input):
             )
         self.metrics._commit_success += 1
         self.metrics._committed_offsets |= {
-            topic_partition.partition: topic_partition.offset()
+            topic_partition.partition: topic_partition.offset
             for topic_partition in topic_partitions
         }
 
@@ -345,7 +343,7 @@ class ConfluentKafkaInput(Input):
         try:
             _ = self._consumer
         except (KafkaException, ValueError) as error:
-            raise FatalOutputError(self, str(error)) from error
+            raise FatalInputError(self, str(error)) from error
 
     def shut_down(self):
         """Close consumer, which also commits kafka offsets."""

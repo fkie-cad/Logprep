@@ -3,7 +3,6 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=no-self-use
 from unittest import mock
 
 import pytest
@@ -11,9 +10,9 @@ import pytest
 from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
+    FatalInputError,
     WarningInputError,
 )
-from logprep.abc.output import FatalOutputError
 from tests.unit.connector.base import BaseInputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
@@ -111,14 +110,14 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         result = self.object._get_raw_event(0.001)
         assert result
 
-    def test_setup_raises_fatal_output_error_on_invalid_config(self):
+    def test_setup_raises_fatal_input_error_on_invalid_config(self):
         config = {
             "bootstrap.servers": "testinstance:9092",
             "group.id": "sapsal",
             "myconfig": "the config",
         }
         self.object._config.kafka_config = config
-        with pytest.raises(FatalOutputError, match="No such configuration property"):
+        with pytest.raises(FatalInputError, match="No such configuration property"):
             self.object.setup()
 
     def test_get_next_raises_critical_input_parsing_error(self):

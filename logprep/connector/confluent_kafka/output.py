@@ -48,6 +48,27 @@ logprep_kafka_defaults = {
 class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
 
+    @define(kw_only=True)
+    class ConnectorMetrics(Output.ConnectorMetrics):
+        """Metrics for ConfluentKafkaOutput"""
+
+        _prefix = "logprep_connector_output_kafka_"
+
+        _stats: dict = field(factory=dict)
+        """statistcs form librdkafka. Is filled by `_stats_callback`"""
+
+        def _get_top_level_metrics(self):
+            return {
+                f"{self._prefix}librdkafka_{stat}": value
+                for stat, value in self._stats.items()
+                if isinstance(value, (int, float))
+            }
+
+        def expose(self):
+            exp = super().expose()
+            exp |= self._get_top_level_metrics()
+            return exp
+
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
         """Confluent Kafka Output Config"""
@@ -77,9 +98,37 @@ class ConfluentKafkaOutput(Output):
     def _producer(self):
         injected_config = {
             "logger": self._logger,
+            "stats_cb": self._stats_callback,
+            "error_cb": self._error_callback,
+            "statistics.interval.ms": 1000,
         }
         self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
         return Producer(self._config.kafka_config | injected_config)
+
+    def _error_callback(self, error: KafkaException):
+        """Callback for generic/global error events, these errors are typically
+        to be considered informational since the client will automatically try to recover.
+        This callback is served upon calling client.poll()
+
+        Parameters
+        ----------
+        error : KafkaException
+            the error that occurred
+        """
+        self._logger.warning(f"{self.describe()}: {error}")
+
+    def _stats_callback(self, stats: str):
+        """Callback for statistics data. This callback is triggered by poll()
+        or flush every `statistics.interval.ms` (needs to be configured separately)
+
+        Parameters
+        ----------
+        stats : str
+            statistics from the underlying librdkafka library
+            details about the data can be found here:
+            https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+        """
+        self.metrics._stats = self._decoder.decode(stats)  # pylint: disable=protected-access
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
@@ -167,13 +216,6 @@ class ConfluentKafkaOutput(Output):
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
-
-    def setup(self):
-        super().setup()
-        try:
-            _ = self._producer
-        except (KafkaException, ValueError) as error:
-            raise FatalOutputError(self, str(error)) from error
 
     def shut_down(self) -> None:
         """ensures that all messages are flushed"""
