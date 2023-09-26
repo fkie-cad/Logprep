@@ -217,6 +217,13 @@ class ConfluentKafkaOutput(Output):
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
 
+    def setup(self):
+        super().setup()
+        try:
+            _ = self._producer
+        except (KafkaException, ValueError) as error:
+            raise FatalOutputError(self, str(error)) from error
+
     def shut_down(self) -> None:
         """ensures that all messages are flushed"""
         if self._producer is not None:
