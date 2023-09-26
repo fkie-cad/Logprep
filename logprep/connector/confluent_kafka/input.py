@@ -112,7 +112,7 @@ class ConfluentKafkaInput(Input):
         return consumer
 
     def _commit_callback(
-        self, error: KafkaException | None, topic_partitions: list[TopicPartition]
+        self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
     ):
         """Callback used to indicate success or failure of asynchronous and
         automatic commit requests. This callback is served upon calling consumer.poll()
