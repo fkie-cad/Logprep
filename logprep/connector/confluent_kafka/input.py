@@ -30,7 +30,7 @@ Example
 from functools import cached_property
 from logging import Logger
 from socket import getfqdn
-from typing import Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
@@ -329,24 +329,29 @@ class ConfluentKafkaInput(Input):
         The last valid record for each partition is be used by this method to update all offsets.
         """
         if self._config.kafka_config.get("enable.auto.commit") == "false":
-            for message in self._last_valid_records.values():
-                self._consumer.commit(message=message, asynchronous=True)
+            self._handle_offsets(self._consumer.commit)
             return
 
         if self._config.kafka_config.get("enable.auto.offset.store") == "true":
             return
 
+        self._handle_offsets(self._consumer.store_offsets)
+
+    def _handle_offsets(self, offset_handler: Callable):
         for message in self._last_valid_records.values():
             try:
-                self._consumer.store_offsets(message=message)
+                offset_handler(message=message)
             except KafkaException:
-                topic = self._consumer.list_topics(topic=self._config.topic)
-                partition_keys = list(topic.topics[self._config.topic].partitions.keys())
-                partitions = [
-                    TopicPartition(self._config.topic, partition) for partition in partition_keys
-                ]
+                partitions = self._get_partitions()
                 self._consumer.assign(partitions)
-                self._consumer.store_offsets(message=message)
+                offset_handler(message=message)
+
+    def _get_partitions(self):
+        topic = self._consumer.list_topics(topic=self._config.topic)
+        partition_keys = list(topic.topics[self._config.topic].partitions.keys())
+        partitions = [TopicPartition(self._config.topic, partition) for partition in partition_keys]
+
+        return partitions
 
     def setup(self):
         super().setup()

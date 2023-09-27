@@ -57,13 +57,20 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object.shut_down()
         kafka_consumer.close.assert_called()
 
+    @pytest.mark.parametrize(
+        "settings,handler",
+        [
+            ({"enable.auto.offset.store": "false", "enable.auto.commit": "true"}, "store_offsets"),
+            ({"enable.auto.offset.store": "false", "enable.auto.commit": "false"}, "commit"),
+        ],
+    )
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_calls_consumer_store_offsets(self, _):
+    def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handler):
+        self.object._config.kafka_config.update(settings)
         kafka_consumer = self.object._consumer
-        self.object._config.enable_auto_offset_store = False
-        self.object._last_valid_records = {"record1": ["dummy"]}
+        self.object._last_valid_records = {0: "message"}
         self.object.batch_finished_callback()
-        kafka_consumer.store_offsets.assert_called()
+        getattr(kafka_consumer, handler).assert_called()
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_error_if_not_a_dict(self, _):
@@ -127,9 +134,21 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         with pytest.raises(CriticalInputParsingError, match="is not a valid json"):
             self.object.get_next(0.01)
 
-    def test_on_commit_callback_raises_warning_error(self):
+    def test_commit_callback_raises_warning_error(self):
         with pytest.raises(WarningInputError, match="Could not commit offsets"):
             self.object._commit_callback(BaseException, ["topic_partition"])
+
+    def test_commit_callback_counts_commit_success(self):
+        assert self.object.metrics._commit_success == 0
+        self.object._commit_callback(None, [mock.MagicMock()])
+        assert self.object.metrics._commit_success == 1
+
+    def test_commit_callback_sets_committed_offsets(self):
+        topic_partion = mock.MagicMock()
+        topic_partion.partition = 99
+        topic_partion.offset = 666
+        self.object._commit_callback(None, [topic_partion])
+        assert self.object.metrics._committed_offsets == {99: 666}
 
     def test_error_callback_logs_warnings(self):
         with mock.patch("logging.Logger.warning") as mock_warning:
