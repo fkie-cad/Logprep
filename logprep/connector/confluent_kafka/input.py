@@ -89,7 +89,7 @@ class ConfluentKafkaInput(Input):
             labels = ",".join(labels)
             return labels
 
-        def _get_kafka_input_metrics(self):
+        def _get_kafka_input_metrics(self) -> dict:
             exp = {
                 f"{self._prefix}kafka_consumer_current_offset;"
                 f"{self._rdkafka_labels},partition:{partition}": offset
@@ -110,14 +110,14 @@ class ConfluentKafkaInput(Input):
             )
             return exp
 
-        def _get_top_level_metrics(self):
+        def _get_top_level_metrics(self) -> dict:
             return {
                 f"{self._prefix}librdkafka_{stat};{self._rdkafka_labels}": value
                 for stat, value in self._stats.items()
                 if isinstance(value, (int, float))
             }
 
-        def _get_cgrp_metrics(self):
+        def _get_cgrp_metrics(self) -> dict:
             exp = {}
             cgrp = self._stats.get("cgrp", {})
             for stat, value in cgrp.items():
@@ -125,7 +125,7 @@ class ConfluentKafkaInput(Input):
                     exp[f"{self._prefix}librdkafka_cgrp_{stat};{self._rdkafka_labels}"] = value
             return exp
 
-        def expose(self):
+        def expose(self) -> dict:
             exp = super().expose()
             labels = [":".join(item) for item in self._labels.items()]
             labels = ",".join(labels)
@@ -162,7 +162,7 @@ class ConfluentKafkaInput(Input):
 
     __slots__ = ["_last_valid_records"]
 
-    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
+    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
         self.metric_labels = {"component": "kafka", "topic": self._config.topic}
         self._last_valid_records = {}
@@ -189,7 +189,7 @@ class ConfluentKafkaInput(Input):
         consumer.subscribe([self._config.topic])
         return consumer
 
-    def _error_callback(self, error: KafkaException):
+    def _error_callback(self, error: KafkaException) -> None:
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
         This callback is served upon calling client.poll()
@@ -201,7 +201,7 @@ class ConfluentKafkaInput(Input):
         """
         self._logger.warning(f"{self.describe()}: {error}")
 
-    def _stats_callback(self, stats: str):
+    def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
@@ -216,7 +216,7 @@ class ConfluentKafkaInput(Input):
 
     def _commit_callback(
         self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
-    ):
+    ) -> None:
         """Callback used to indicate success or failure of asynchronous and
         automatic commit requests. This callback is served upon calling consumer.poll()
 
@@ -319,11 +319,10 @@ class ConfluentKafkaInput(Input):
             ) from error
         return event_dict, raw_event
 
-    def batch_finished_callback(self):
+    def batch_finished_callback(self) -> None:
         """Store offsets for each kafka partition.
         Should be called by output connectors if they are finished processing a batch of records.
-        This is only used if automatic offest storing is disabled in the kafka input.
-        The last valid record for each partition is be used by this method to update all offsets.
+        Commits or stores the offset hold in `self._last_valid_records` for each partition.
         """
         if self._config.kafka_config.get("enable.auto.offset.store") == "true":
             return
@@ -334,7 +333,7 @@ class ConfluentKafkaInput(Input):
 
         self._handle_offsets(self._consumer.store_offsets)
 
-    def _handle_offsets(self, offset_handler: Callable):
+    def _handle_offsets(self, offset_handler: Callable) -> None:
         for message in self._last_valid_records.values():
             try:
                 offset_handler(message=message)
@@ -343,21 +342,21 @@ class ConfluentKafkaInput(Input):
                 self._consumer.assign(partitions)
                 offset_handler(message=message)
 
-    def _get_partitions(self):
+    def _get_partitions(self) -> list[TopicPartition]:
         topic = self._consumer.list_topics(topic=self._config.topic)
         partition_keys = list(topic.topics[self._config.topic].partitions.keys())
         partitions = [TopicPartition(self._config.topic, partition) for partition in partition_keys]
 
         return partitions
 
-    def setup(self):
+    def setup(self) -> None:
         super().setup()
         try:
             _ = self._consumer
         except (KafkaException, ValueError) as error:
             raise FatalInputError(self, str(error)) from error
 
-    def shut_down(self):
+    def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
         self._consumer.close()
         super().shut_down()
