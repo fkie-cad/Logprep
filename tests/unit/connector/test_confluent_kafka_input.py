@@ -129,7 +129,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.poll = mock.MagicMock(return_value=mock_record)
         mock_record.value = mock.MagicMock()
         mock_record.value.return_value = '[{"element":"in list"}]'.encode("utf8")
-        with pytest.raises(CriticalInputError, match=r"could not be parsed as dict"):
+        with pytest.raises(CriticalInputError, match=r"not a dict"):
             self.object.get_next(1)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")

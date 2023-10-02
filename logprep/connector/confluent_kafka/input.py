@@ -283,8 +283,8 @@ class ConfluentKafkaInput(Input):
         offset = {record.partition(): record.offset()}
         self.metrics._current_offsets |= offset  # pylint: disable=protected-access
         if record_error:
-            raise WarningInputError(
-                self, f"A confluent-kafka record contains an error code {record_error}"
+            raise CriticalInputError(
+                self, "A confluent-kafka record contains an error code", record_error
             )
         return record.value()
 
@@ -317,10 +317,6 @@ class ConfluentKafkaInput(Input):
             raise CriticalInputParsingError(
                 self, "Input record value is not a valid json string", raw_event
             ) from error
-        if not isinstance(event_dict, dict):
-            raise CriticalInputParsingError(
-                self, "Input record value could not be parsed as dict", event_dict
-            )
         return event_dict, raw_event
 
     def batch_finished_callback(self):
