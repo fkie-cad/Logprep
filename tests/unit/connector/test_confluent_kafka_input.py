@@ -3,7 +3,6 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
-import json
 import socket
 from copy import deepcopy
 from pathlib import Path
@@ -200,13 +199,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._commit_callback(None, [topic_partion])
         assert self.object.metrics._committed_offsets == {99: 666}
 
-    def test_error_callback_logs_warnings(self):
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            test_error = BaseException("test error")
-            self.object._error_callback(test_error)
-            mock_warning.assert_called()
-            mock_warning.assert_called_with(f"{self.object.describe()}: {test_error}")
-
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_default_config_is_injected(self, mock_consumer):
         injected_config = {
@@ -225,11 +217,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         }
         _ = self.object._consumer
         mock_consumer.assert_called_with(injected_config)
-
-    def test_stats_callback_sets_stats_in_metric_object(self):
-        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
-        self.object._stats_callback(json_string)
-        assert self.object.metrics._stats == json.loads(json_string)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_client_id_can_be_overwritten(self, mock_consumer):
@@ -291,7 +278,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         assert self.object.metrics.expose() == expected
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_raises_fatal_input_error_if_poll_raises_runtime_error(self, mock_consumer):
+    def test_raises_fatal_input_error_if_poll_raises_runtime_error(self, _):
         self.object._consumer.poll.side_effect = RuntimeError("test error")
         with pytest.raises(FatalInputError, match="test error"):
             self.object.get_next(0.01)

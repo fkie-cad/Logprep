@@ -28,19 +28,21 @@ Example
 import json
 from datetime import datetime
 from functools import cached_property
+from logging import Logger
 from socket import getfqdn
 from typing import Optional
 
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
 
+from logprep.abc.connector import Connector
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
 
-logprep_kafka_defaults = {
+DEFAULTS = {
     "request.required.acks": "-1",
     "linger.ms": "0.5",
     "compression.codec": "none",
-    "client.id": getfqdn(),
+    "client.id": "<<hostname>>",
     "queue.buffering.max.messages": "100000",
     "statistics.interval.ms": "1000",
 }
@@ -49,24 +51,45 @@ logprep_kafka_defaults = {
 class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
 
-    @define(kw_only=True)
+    @define(kw_only=True, slots=False)
     class ConnectorMetrics(Output.ConnectorMetrics):
         """Metrics for ConfluentKafkaOutput"""
 
         _prefix = "logprep_connector_output_kafka_"
 
-        _stats: dict = field(factory=dict)
-        """statistcs form librdkafka. Is filled by `_stats_callback`"""
+        _producer_client_id: str = ""
+        """client id of the producer. Is filled during initialization."""
 
-        def _get_top_level_metrics(self):
+        _stats: dict = field(factory=dict)
+        """statistcs form librdkafka. Is filled by `_stats_callback`."""
+
+        @cached_property
+        def _rdkafka_labels(self) -> str:
+            client_id = self._producer_client_id
+            labels = {"client_id": client_id}
+            labels = self._labels | labels
+            labels = [":".join(item) for item in labels.items()]
+            labels = ",".join(labels)
+            return labels
+
+        def _get_top_level_metrics(self) -> dict:
             return {
-                f"{self._prefix}librdkafka_{stat}": value
+                f"{self._prefix}librdkafka_{stat};{self._rdkafka_labels}": value
                 for stat, value in self._stats.items()
                 if isinstance(value, (int, float))
             }
 
-        def expose(self):
+        def expose(self) -> dict:
+            """overload of `expose` to add kafka specific metrics
+
+            Returns
+            -------
+            dict
+                metrics dictionary
+            """
             exp = super().expose()
+            labels = [":".join(item) for item in self._labels.items()]
+            labels = ",".join(labels)
             exp |= self._get_top_level_metrics()
             return exp
 
@@ -88,11 +111,17 @@ class ConfluentKafkaOutput(Output):
             ],
             factory=dict,
         )
-        """ Kafka configuration for the kafka client.
+        """ Kafka configuration for the kafka client. 
         At minimum the following keys must be set:
-        - bootstrap.servers
-        For possible configuration options see: 
+        
+        - bootstrap.servers (STRING): a comma separated list of kafka brokers
+        
+        For additional configuration options and their description see: 
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        
+        .. datatemplate:import-module:: logprep.connector.confluent_kafka.output
+            :template: defaults-renderer.tmpl
+
         """
 
     @cached_property
@@ -102,8 +131,13 @@ class ConfluentKafkaOutput(Output):
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
-        self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
+        DEFAULTS.update({"client.id": getfqdn()})
+        self._config.kafka_config = DEFAULTS | self._config.kafka_config
         return Producer(self._config.kafka_config | injected_config)
+
+    def __init__(self, name: str, configuration: Config, logger: Logger):
+        super().__init__(name, configuration, logger)
+        self.metrics._producer_client_id = self._config.kafka_config.get("client.id", getfqdn())
 
     def _error_callback(self, error: KafkaException):
         """Callback for generic/global error events, these errors are typically

@@ -6,6 +6,8 @@
 # pylint: disable=no-self-use
 
 import json
+import socket
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -16,6 +18,8 @@ from tests.unit.connector.base import BaseOutputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
 )
+
+KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
 class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
@@ -129,3 +133,34 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object._config.kafka_config = config
         with pytest.raises(FatalOutputError, match="No such configuration property"):
             self.object.setup()
+
+    def test_metrics_expose_returns_data(self):
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        client_id = socket.getfqdn()
+        # pylint: disable=line-too-long
+        expected = {
+            "logprep_connector_number_of_processed_events;direction:output,name:Test Instance Name,type:confluentkafka_output": 0.0,
+            "logprep_connector_mean_processing_time_per_event;direction:output,name:Test Instance Name,type:confluentkafka_output": 0.0,
+            "logprep_connector_number_of_warnings;direction:output,name:Test Instance Name,type:confluentkafka_output": 0.0,
+            "logprep_connector_number_of_errors;direction:output,name:Test Instance Name,type:confluentkafka_output": 0.0,
+            f"logprep_connector_librdkafka_ts;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 5016483227792,
+            f"logprep_connector_librdkafka_time;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 1527060869,
+            f"logprep_connector_librdkafka_replyq;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 0,
+            f"logprep_connector_librdkafka_msg_cnt;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 22710,
+            f"logprep_connector_librdkafka_msg_size;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 704010,
+            f"logprep_connector_librdkafka_msg_max;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 500000,
+            f"logprep_connector_librdkafka_msg_size_max;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 1073741824,
+            f"logprep_connector_librdkafka_simple_cnt;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 0,
+            f"logprep_connector_librdkafka_metadata_cache_cnt;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 1,
+            f"logprep_connector_librdkafka_tx;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 631,
+            f"logprep_connector_librdkafka_tx_bytes;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 168584479,
+            f"logprep_connector_librdkafka_rx;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 631,
+            f"logprep_connector_librdkafka_rx_bytes;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 31084,
+            f"logprep_connector_librdkafka_txmsgs;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 4300753,
+            f"logprep_connector_librdkafka_txmsg_bytes;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 133323343,
+            f"logprep_connector_librdkafka_rxmsgs;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 0,
+            f"logprep_connector_librdkafka_rxmsg_bytes;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 0,
+        }
+        # pylint: enable=line-too-long
+        assert self.object.metrics.expose() == expected

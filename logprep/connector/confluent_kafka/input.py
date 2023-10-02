@@ -1,15 +1,15 @@
+# pylint: disable=line-too-long
 """
 ConfluentkafkaInput
 ===================
 
-Logprep uses Confluent-Kafka-Python as client library to communicate with kafka-clusters.
-Important information sources are `Confluent-Kafka-Python-Repo
-<https://github.com/confluentinc/confluent-kafka-python>`_,
-`Confluent-Kafka-Python-Doku 1 <https://docs.confluent.io/current/clients/confluent-kafka-python/>`_
-(comprehensive but out-dated description),
-`Confluent-Kafka-Python-Doku 2 <https://docs.confluent.io/current/clients/python.html#>`_
-(currently just a brief description) and the C-library
-`librdkafka <https://github.com/edenhill/librdkafka>`_, which is built on Confluent-Kafka-Python.
+Logprep uses `confluent-kafka` python client library to communicate with kafka-clusters.
+Important documentation sources are:
+
+- `the python client github page <https://github.com/confluentinc/confluent-kafka-python>`_
+- `the python client api documentation <https://docs.confluent.io/current/clients/confluent-kafka-python/>`_
+- `first steps documentation on confluent.io <https://docs.confluent.io/current/clients/python.html#>`_
+- `underlying c-library documentation (librdkafka) <https://github.com/edenhill/librdkafka>`_
 
 Example
 ^^^^^^^
@@ -27,6 +27,7 @@ Example
             session.timeout.ms: "6000"
             auto.offset.reset: "earliest"
 """
+# pylint: enable=line-too-long
 from functools import cached_property
 from logging import Logger
 from socket import getfqdn
@@ -45,10 +46,10 @@ from logprep.abc.input import (
     WarningInputError,
 )
 
-logprep_kafka_defaults = {
+DEFAULTS = {
     "enable.auto.offset.store": "false",
     "enable.auto.commit": "true",
-    "client.id": getfqdn(),
+    "client.id": "<<hostname>>",
     "auto.offset.reset": "earliest",
     "session.timeout.ms": "6000",
     "statistics.interval.ms": "1000",
@@ -66,18 +67,18 @@ class ConfluentKafkaInput(Input):
 
         _stats: dict = field(factory=dict)
         """statistcs form librdkafka. Is filled by `_stats_callback`"""
-
         _commit_failures: int = 0
-
+        """count of failed commits. Is filled by `_commit_callback`"""
         _commit_success: int = 0
-
+        """count of successful commits. Is filled by `_commit_callback`"""
         _current_offsets: dict = field(factory=dict)
-
+        """current offsets of the consumer. Is filled by `_get_raw_event`"""
         _committed_offsets: dict = field(factory=dict)
-
+        """committed offsets of the consumer. Is filled by `_commit_callback`"""
         _consumer_group_id: str = ""
-
+        """group id of the consumer. Is filled during initialization"""
         _consumer_client_id: str = ""
+        """client id of the consumer. Is filled during initialization"""
 
         @cached_property
         def _rdkafka_labels(self) -> str:
@@ -126,6 +127,13 @@ class ConfluentKafkaInput(Input):
             return exp
 
         def expose(self) -> dict:
+            """overload of `expose` to add kafka specific metrics
+
+            Returns
+            -------
+            dict
+                metrics dictionary
+            """
             exp = super().expose()
             labels = [":".join(item) for item in self._labels.items()]
             labels = ",".join(labels)
@@ -136,7 +144,7 @@ class ConfluentKafkaInput(Input):
 
     @define(kw_only=True, slots=False)
     class Config(Input.Config):
-        """Kafka specific configurations"""
+        """Kafka input connector specific configurations"""
 
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
@@ -152,10 +160,16 @@ class ConfluentKafkaInput(Input):
         )
         """ Kafka configuration for the kafka client. 
         At minimum the following keys must be set:
-        - bootstrap.servers
-        - group.id
-        For possible configuration options see: 
+        
+        - bootstrap.servers (STRING): a comma separated list of kafka brokers
+        - group.id (STRING): a unique identifier for the consumer group
+        
+        For additional configuration options and their description see: 
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        
+        .. datatemplate:import-module:: logprep.connector.confluent_kafka.input
+            :template: defaults-renderer.tmpl
+
         """
 
     _last_valid_records: dict
@@ -184,7 +198,8 @@ class ConfluentKafkaInput(Input):
             "stats_cb": self._stats_callback,
             "error_cb": self._error_callback,
         }
-        self._config.kafka_config = logprep_kafka_defaults | self._config.kafka_config
+        DEFAULTS.update({"client.id": getfqdn()})
+        self._config.kafka_config = DEFAULTS | self._config.kafka_config
         consumer = Consumer(self._config.kafka_config | injected_config)
         consumer.subscribe([self._config.topic])
         return consumer
