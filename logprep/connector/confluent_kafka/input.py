@@ -92,12 +92,12 @@ class ConfluentKafkaInput(Input):
 
         def _get_kafka_input_metrics(self) -> dict:
             exp = {
-                f"{self._prefix}kafka_consumer_current_offset;"
+                f"{self._prefix}kafka_consumer_current_offset;"  # nosemgrep
                 f"{self._rdkafka_labels},partition:{partition}": offset
                 for partition, offset in self._current_offsets.items()
             }
             exp |= {
-                f"{self._prefix}kafka_consumer_committed_offset;"
+                f"{self._prefix}kafka_consumer_committed_offset;"  # nosemgrep
                 f"{self._rdkafka_labels},partition:{partition}": offset
                 for partition, offset in self._committed_offsets.items()
             }
