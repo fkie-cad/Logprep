@@ -22,8 +22,11 @@ It contains the time at which a pre-detection was created by the processor.
   - implemented on_commit callback to check for errors during commit
   - implemented statistics callback to collect metrics from underlying librdkafka library
   - implemented per partition offset metrics
+  - get logs from underlying librdkafka library
 * reimplemented kafka output connector
   - move kafka config options to `kafka_config` dictionary
+  - implemented statistics callback to collect metrics from underlying librdkafka library
+  - get logs from underlying librdkafka library
 
 ### Bugfix
 
