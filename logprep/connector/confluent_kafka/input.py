@@ -328,11 +328,11 @@ class ConfluentKafkaInput(Input):
         This is only used if automatic offest storing is disabled in the kafka input.
         The last valid record for each partition is be used by this method to update all offsets.
         """
-        if self._config.kafka_config.get("enable.auto.commit") == "false":
-            self._handle_offsets(self._consumer.commit)
+        if self._config.kafka_config.get("enable.auto.offset.store") == "true":
             return
 
-        if self._config.kafka_config.get("enable.auto.offset.store") == "true":
+        if self._config.kafka_config.get("enable.auto.commit") == "false":
+            self._handle_offsets(self._consumer.commit)
             return
 
         self._handle_offsets(self._consumer.store_offsets)

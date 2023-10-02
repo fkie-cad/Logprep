@@ -8,6 +8,7 @@ from copy import deepcopy
 from unittest import mock
 
 import pytest
+from confluent_kafka import KafkaException
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -64,6 +65,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         [
             ({"enable.auto.offset.store": "false", "enable.auto.commit": "true"}, "store_offsets"),
             ({"enable.auto.offset.store": "false", "enable.auto.commit": "false"}, "commit"),
+            ({"enable.auto.offset.store": "true", "enable.auto.commit": "false"}, None),
+            ({"enable.auto.offset.store": "true", "enable.auto.commit": "true"}, None),
         ],
     )
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
@@ -74,7 +77,45 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_consumer = kafka_input._consumer
         kafka_input._last_valid_records = {0: "message"}
         kafka_input.batch_finished_callback()
+        if handler is None:
+            assert kafka_consumer.commit.call_count == 0
+            assert kafka_consumer.store_offsets.call_count == 0
+        else:
+            getattr(kafka_consumer, handler).assert_called()
+            getattr(kafka_consumer, handler).assert_called_with(
+                message=kafka_input._last_valid_records.get(0)
+            )
+
+    @pytest.mark.parametrize(
+        "settings,handler",
+        [
+            ({"enable.auto.offset.store": "false", "enable.auto.commit": "true"}, "store_offsets"),
+            ({"enable.auto.offset.store": "false", "enable.auto.commit": "false"}, "commit"),
+        ],
+    )
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_batch_finished_callback_reassigns_partition_and_calls_again_on_kafka_exception(
+        self, _, settings, handler
+    ):
+        input_config = deepcopy(self.CONFIG)
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
+        kafka_input._config.kafka_config.update(settings)
+        kafka_consumer = kafka_input._consumer
+        return_sequence = [KafkaException("test error"), None]
+
+        def raise_generator(return_sequence):
+            return list(reversed(return_sequence)).pop()
+
+        getattr(kafka_consumer, handler).side_effect = raise_generator(return_sequence)
+        kafka_input._last_valid_records = {0: "message"}
+        with pytest.raises(KafkaException):
+            kafka_input.batch_finished_callback()
+        kafka_consumer.assign.assert_called()
         getattr(kafka_consumer, handler).assert_called()
+        getattr(kafka_consumer, handler).assert_called_with(
+            message=kafka_input._last_valid_records.get(0)
+        )
+        assert getattr(kafka_consumer, handler).call_count == 2
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_error_if_not_a_dict(self, _):
