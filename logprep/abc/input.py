@@ -38,9 +38,6 @@ class CriticalInputError(InputError):
 class CriticalInputParsingError(CriticalInputError):
     """The input couldn't be parsed correctly."""
 
-    def __init__(self, input_connector: "Input", message, raw_input):
-        super().__init__(input_connector, message, raw_input)
-
 
 class FatalInputError(InputError):
     """Must not be catched."""
@@ -219,7 +216,7 @@ class Input(Connector):
         )
         return log_arrival_time_target_field_present & log_arrival_timedelta_present
 
-    def _get_raw_event(self, timeout: float) -> bytearray:
+    def _get_raw_event(self, timeout: float) -> bytearray:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
 
         Parameters

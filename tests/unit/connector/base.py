@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
 import base64
 import json
 import zlib
@@ -466,7 +467,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
-        assert test_event == {"any": "content"}
+        assert result == {"any": "content"}
 
     def test_get_next_returns_event_with_active_time_measurement(self):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
