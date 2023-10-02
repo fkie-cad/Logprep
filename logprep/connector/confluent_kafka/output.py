@@ -74,7 +74,7 @@ class ConfluentKafkaOutput(Output):
 
         def _get_top_level_metrics(self) -> dict:
             return {
-                f"{self._prefix}librdkafka_{stat};{self._rdkafka_labels}": value
+                f"{self._prefix}librdkafka_producer_{stat};{self._rdkafka_labels}": value
                 for stat, value in self._stats.items()
                 if isinstance(value, (int, float))
             }

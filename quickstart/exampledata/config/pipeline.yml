@@ -111,3 +111,11 @@ output:
     max_retries: 3
     user: admin
     secret: admin
+  kafka:
+    type: confluentkafka_output
+    default: true
+    topic: producer
+    error_topic: errors
+    flush_timeout: 300
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
