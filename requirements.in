@@ -11,7 +11,7 @@ hyperscan>=0.4.0; sys_platform == 'linux' and platform_machine == 'x86_64'
 jsonref
 luqum
 mysql-connector-python
-numpy>=1.24.1
+numpy>=1.26.0
 opensearch-py
 prometheus_client
 protobuf>=3.20.2
