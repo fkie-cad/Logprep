@@ -241,3 +241,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_input.setup()
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
+
+    def test_init_sets_metrics_properties(self):
+        assert self.object.metrics._consumer_group_id == "testgroup"
+        assert self.object.metrics._consumer_client_id == socket.getfqdn()
