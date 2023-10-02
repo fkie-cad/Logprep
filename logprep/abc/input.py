@@ -4,6 +4,7 @@ New input endpoint types are created by implementing it.
 
 import base64
 import hashlib
+import os
 import zlib
 from abc import abstractmethod
 from functools import partial
@@ -102,6 +103,17 @@ class TimeDeltaConfig:
     The calculation will be the arrival time minus the time of this reference field."""
 
 
+@define(kw_only=True)
+class EnvEnrichmentConfig:
+    """Enrichment Configurations
+    Works only if the preprocessor enrich_by_env_variable is set."""
+
+    target_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
+    """Defines the fieldname to which the env variable value should be written to."""
+    variable_name: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
+    """Defines the name of the env variable that should be used for the enrichment."""
+
+
 class Input(Connector):
     """Connect to a source for log data."""
 
@@ -119,6 +131,7 @@ class Input(Connector):
                         "hmac": Optional[HmacConfig],
                         "log_arrival_time_target_field": Optional[str],
                         "log_arrival_timedelta": Optional[TimeDeltaConfig],
+                        "enrich_by_env_variables": Optional[dict],
                     },
                 ),
             ],
@@ -216,6 +229,11 @@ class Input(Connector):
         )
         return log_arrival_time_target_field_present & log_arrival_timedelta_present
 
+    @property
+    def _add_env_enrichment(self):
+        """Check and return if the env enrichment should be added to the event."""
+        return bool(self._config.preprocessing.get("enrich_by_env_variables"))
+
     def _get_raw_event(self, timeout: float) -> bytearray:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
 
@@ -278,11 +296,21 @@ class Input(Connector):
             self._add_arrival_time_information_to_event(event)
         if self._add_log_arrival_timedelta_information:
             self._add_arrival_timedelta_information_to_event(event)
+        if self._add_env_enrichment:
+            self._add_env_enrichment_to_event(event)
         self.metrics.number_of_processed_events += 1
         return event, non_critical_error_msg
 
     def batch_finished_callback(self):
         """Can be called by output connectors after processing a batch of one or more records."""
+
+    def _add_env_enrichment_to_event(self, event: dict):
+        """Add the env enrichment information to the event"""
+        enrichments = self._config.preprocessing.get("enrich_by_env_variables")
+        if not enrichments:
+            return
+        for target_field, variable_name in enrichments.items():
+            add_field_to(event, target_field, os.environ.get(variable_name, ""))
 
     def _add_arrival_time_information_to_event(self, event: dict):
         now = TimeParser.now()
