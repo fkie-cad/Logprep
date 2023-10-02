@@ -244,7 +244,7 @@ class ConfluentKafkaInput(Input):
         }
 
     def describe(self) -> str:
-        """Get name of Kafka endpoint and the first bootstrap server.
+        """Get name of Kafka endpoint and bootstrap servers.
 
         Returns
         -------
@@ -272,16 +272,19 @@ class ConfluentKafkaInput(Input):
         CriticalInputError
             Raises if an input is invalid or if it causes an error.
         """
-        record = self._consumer.poll(timeout=timeout)
+        try:
+            record = self._consumer.poll(timeout=timeout)
+        except RuntimeError as error:
+            raise FatalInputError(self, str(error)) from error
         if record is None:
             return None
+        record_error = record.error()
         self._last_valid_records[record.partition()] = record
         offset = {record.partition(): record.offset()}
         self.metrics._current_offsets |= offset  # pylint: disable=protected-access
-        record_error = record.error()
         if record_error:
-            raise CriticalInputError(
-                self, "A confluent-kafka record contains an error code", record_error
+            raise WarningInputError(
+                self, f"A confluent-kafka record contains an error code {record_error}"
             )
         return record.value()
 

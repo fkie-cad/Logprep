@@ -288,3 +288,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         }
         # pylint: enable=line-too-long
         assert self.object.metrics.expose() == expected
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_raises_fatal_input_error_if_poll_raises_runtime_error(self, mock_consumer):
+        self.object._consumer.poll.side_effect = RuntimeError("test error")
+        with pytest.raises(FatalInputError, match="test error"):
+            self.object.get_next(0.01)
