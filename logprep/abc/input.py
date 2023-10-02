@@ -103,17 +103,6 @@ class TimeDeltaConfig:
     The calculation will be the arrival time minus the time of this reference field."""
 
 
-@define(kw_only=True)
-class EnvEnrichmentConfig:
-    """Enrichment Configurations
-    Works only if the preprocessor enrich_by_env_variable is set."""
-
-    target_field: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
-    """Defines the fieldname to which the env variable value should be written to."""
-    variable_name: field(validator=[validators.instance_of(str), lambda _, __, x: bool(x)])
-    """Defines the name of the env variable that should be used for the enrichment."""
-
-
 class Input(Connector):
     """Connect to a source for log data."""
 
@@ -189,6 +178,9 @@ class Input(Connector):
               containing the original message that was used to calculate the hmac in compressed and
               base64 encoded. In case the output field exists already in the original message an
               error is raised.
+        - `enrich_by_env_variables` - If required it is possible to automatically enrich incoming
+          events by environment variables. To activate this preprocessor the fields value has to be
+          a mapping from the target field name (key) to the environment variable name (value).
         """
 
         _version_information: dict = field(
