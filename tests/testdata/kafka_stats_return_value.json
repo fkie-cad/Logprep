@@ -375,6 +375,15 @@
             }
         }
     },
+    "cgrp": {
+        "state": "up",
+        "stateage": 996,
+        "join_state": "wait-join",
+        "rebalance_age": 0,
+        "rebalance_cnt": 0,
+        "rebalance_reason": "Metadata for subscribed topic(s) has changed",
+        "assignment_size": 0
+    },
     "tx": 631,
     "tx_bytes": 168584479,
     "rx": 631,

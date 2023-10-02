@@ -118,6 +118,7 @@ class TestKafkaConnection:
             r"Failed to resolve 'notexisting:9092'", kafka_input._logger.log.mock_calls[0][1][4]
         )
 
+    @pytest.mark.skip(reason="is only for debugging")
     def test_debugging_consumer(self):
         input_config = {
             "type": "confluentkafka_input",
@@ -132,7 +133,7 @@ class TestKafkaConnection:
         kafka_input = Factory.create({"librdkafkatest": input_config}, logger=logger)
         kafka_input.get_next(10)
 
-    @pytest.mark.skip(reason="only runs isolated")
+    @pytest.mark.xfail(reason="sometimes fails, if not ran isolated")
     def test_reconnect_consumer_after_failure_defaults(self):
         expected_event = {"test": "test"}
         for index in range(10):
@@ -149,11 +150,11 @@ class TestKafkaConnection:
         self.kafka_input.shut_down()
         self.kafka_input.setup()
         for index in range(5, 10):
-            event = self.kafka_input.get_next(20)[0]
+            event = self.kafka_input.get_next(10)[0]
             assert event
             assert event.get("index") == index, "should start after commited offsets"
 
-    @pytest.mark.skip(reason="only runs isolated")
+    @pytest.mark.xfail(reason="sometimes fails, if not ran isolated")
     def test_reconnect_consumer_after_failure_manual_commits(self):
         self.kafka_input.shut_down()
         self.kafka_input._config.kafka_config.update({"enable.auto.commit": "false"})

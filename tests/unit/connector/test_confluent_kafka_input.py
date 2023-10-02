@@ -233,7 +233,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_client_id_can_be_overwritten(self, mock_consumer):
-        kafka_input = Factory.create({"test": self.CONFIG}, logger=self.logger)
+        input_config = deepcopy(self.CONFIG)
+        kafka_input = Factory.create({"test": input_config}, logger=self.logger)
         kafka_input._config.kafka_config["client.id"] = "thisclientid"
         kafka_input.setup()
         mock_consumer.assert_called()
@@ -278,6 +279,10 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             "logprep_connector_librdkafka_txmsg_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 133323343,
             "logprep_connector_librdkafka_rxmsgs;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
             "logprep_connector_librdkafka_rxmsg_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+            "logprep_connector_librdkafka_cgrp_stateage;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 996,
+            "logprep_connector_librdkafka_cgrp_rebalance_age;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+            "logprep_connector_librdkafka_cgrp_rebalance_cnt;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+            "logprep_connector_librdkafka_cgrp_assignment_size;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
             "logprep_connector_kafka_consumer_commit_failures;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
             "logprep_connector_kafka_consumer_commit_success;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
         }

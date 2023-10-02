@@ -119,9 +119,7 @@ class ConfluentKafkaInput(Input):
 
         def _get_cgrp_metrics(self):
             exp = {}
-            cgrp = self._stats.get("cgrp")
-            if cgrp is None:
-                return exp
+            cgrp = self._stats.get("cgrp", {})
             for stat, value in cgrp.items():
                 if isinstance(value, (int, float)):
                     exp[f"{self._prefix}librdkafka_cgrp_{stat};{self._rdkafka_labels}"] = value
