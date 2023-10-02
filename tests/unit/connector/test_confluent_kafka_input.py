@@ -3,8 +3,10 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
+import json
 import socket
 from copy import deepcopy
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -21,6 +23,8 @@ from tests.unit.connector.base import BaseInputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
 )
+
+KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
 class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
@@ -179,9 +183,10 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         with pytest.raises(CriticalInputParsingError, match="is not a valid json"):
             self.object.get_next(0.01)
 
-    def test_commit_callback_raises_warning_error(self):
+    def test_commit_callback_raises_warning_error_and_counts_failures(self):
         with pytest.raises(WarningInputError, match="Could not commit offsets"):
             self.object._commit_callback(BaseException, ["topic_partition"])
+            assert self.object._commit_failures == 1
 
     def test_commit_callback_counts_commit_success(self):
         assert self.object.metrics._commit_success == 0
@@ -222,8 +227,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_consumer.assert_called_with(injected_config)
 
     def test_stats_callback_sets_stats_in_metric_object(self):
-        self.object._stats_callback('{"test": "stats"}')
-        assert self.object.metrics._stats == {"test": "stats"}
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        assert self.object.metrics._stats == json.loads(json_string)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_client_id_can_be_overwritten(self, mock_consumer):
@@ -245,3 +251,35 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     def test_init_sets_metrics_properties(self):
         assert self.object.metrics._consumer_group_id == "testgroup"
         assert self.object.metrics._consumer_client_id == socket.getfqdn()
+
+    def test_metrics_expose_returns_data(self):
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        # pylint: disable=line-too-long
+        expected = {
+            "logprep_connector_number_of_processed_events;direction:input,name:Test Instance Name,type:confluentkafka_input": 0.0,
+            "logprep_connector_mean_processing_time_per_event;direction:input,name:Test Instance Name,type:confluentkafka_input": 0.0,
+            "logprep_connector_number_of_warnings;direction:input,name:Test Instance Name,type:confluentkafka_input": 0.0,
+            "logprep_connector_number_of_errors;direction:input,name:Test Instance Name,type:confluentkafka_input": 0.0,
+            "logprep_connector_librdkafka_ts;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 5016483227792,
+            "logprep_connector_librdkafka_time;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 1527060869,
+            "logprep_connector_librdkafka_replyq;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+            "logprep_connector_librdkafka_msg_cnt;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 22710,
+            "logprep_connector_librdkafka_msg_size;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 704010,
+            "logprep_connector_librdkafka_msg_max;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 500000,
+            "logprep_connector_librdkafka_msg_size_max;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 1073741824,
+            "logprep_connector_librdkafka_simple_cnt;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+            "logprep_connector_librdkafka_metadata_cache_cnt;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 1,
+            "logprep_connector_librdkafka_tx;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 631,
+            "logprep_connector_librdkafka_tx_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 168584479,
+            "logprep_connector_librdkafka_rx;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 631,
+            "logprep_connector_librdkafka_rx_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 31084,
+            "logprep_connector_librdkafka_txmsgs;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 4300753,
+            "logprep_connector_librdkafka_txmsg_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 133323343,
+            "logprep_connector_librdkafka_rxmsgs;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+            "logprep_connector_librdkafka_rxmsg_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+            "logprep_connector_kafka_consumer_commit_failures;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+            "logprep_connector_kafka_consumer_commit_success;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:dev-machine,group_id:testgroup": 0,
+        }
+        # pylint: enable=line-too-long
+        assert self.object.metrics.expose() == expected
