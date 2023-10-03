@@ -95,12 +95,15 @@ class ConfluentKafkaInput(Input):
         """group id of the consumer. Is filled during initialization"""
         _consumer_client_id: str = ""
         """client id of the consumer. Is filled during initialization"""
+        _consumer_topic: str = ""
+        """topic of the consumer. Is filled during initialization"""
 
         @cached_property
         def _rdkafka_labels(self) -> str:
             client_id = self._consumer_client_id
             group_id = self._consumer_group_id
-            labels = {"client_id": client_id, "group_id": group_id}
+            topic = self._consumer_topic
+            labels = {"client_id": client_id, "group_id": group_id, "topic": topic}
             labels = self._labels | labels
             labels = [":".join(item) for item in labels.items()]
             labels = ",".join(labels)
@@ -198,6 +201,7 @@ class ConfluentKafkaInput(Input):
         self._last_valid_records = {}
         self.metrics._consumer_group_id = self._config.kafka_config["group.id"]
         self.metrics._consumer_client_id = self._config.kafka_config.get("client.id", getfqdn())
+        self.metrics._consumer_topic = self._config.topic
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -356,39 +360,41 @@ class ConfluentKafkaInput(Input):
         return event_dict, raw_event
 
     def batch_finished_callback(self) -> None:
-        """Store offsets for each kafka partition.
-        Should be called by output connectors if they are finished processing a batch of records.
-        Commits or stores the offset hold in `self._last_valid_records` for each partition.
+        """Store offsets for each kafka partition in `self._last_valid_records`
+        and if configured commit them. Should be called by output connectors if
+        they are finished processing a batch of records.
         """
         if self._config.kafka_config.get("enable.auto.offset.store") == "true":
             return
 
+        self._handle_offsets(self._consumer.store_offsets)
+
         if self._config.kafka_config.get("enable.auto.commit") == "false":
             self._handle_offsets(self._consumer.commit)
-            return
 
-        self._handle_offsets(self._consumer.store_offsets)
+        self._last_valid_records.clear()
 
     def _handle_offsets(self, offset_handler: Callable) -> None:
         for message in self._last_valid_records.values():
             offset_handler(message=message)
 
-        self._last_valid_records.clear()
-
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
             self._logger.info(
-                f"{consumer.memberid()} was assigned to"
+                f"{consumer.memberid()} was assigned to "
                 f"topic: {topic_partition.topic} | "
                 f"partition {topic_partition.partition}"
             )
-            offset = topic_partition.offset if topic_partition.offset not in SPECIAL_OFFSETS else 0
-            partition_offset = {topic_partition.partition: offset}
+            if topic_partition.offset in SPECIAL_OFFSETS:
+                continue
+            partition_offset = {
+                topic_partition.partition: topic_partition.offset,
+            }
             self.metrics._current_offsets |= partition_offset
 
     def _revoke_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
-            self._logger.info(
+            self._logger.warning(
                 f"{consumer.memberid()} to be revoked from "
                 f"topic: {topic_partition.topic} | "
                 f"partition {topic_partition.partition}"
@@ -396,12 +402,13 @@ class ConfluentKafkaInput(Input):
 
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
-            self._logger.info(
+            self._logger.warning(
                 f"{consumer.memberid()} has lost "
                 f"topic: {topic_partition.topic} | "
                 f"partition {topic_partition.partition}"
                 "- try to reassign"
             )
+            topic_partition.offset = OFFSET_STORED
         self._consumer.assign(topic_partitions)
 
     def setup(self) -> None:
