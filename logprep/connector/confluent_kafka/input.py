@@ -35,7 +35,15 @@ from typing import Callable, Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
-from confluent_kafka import Consumer, KafkaException, TopicPartition
+from confluent_kafka import (
+    OFFSET_BEGINNING,
+    OFFSET_END,
+    OFFSET_INVALID,
+    OFFSET_STORED,
+    Consumer,
+    KafkaException,
+    TopicPartition,
+)
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import (
@@ -53,6 +61,14 @@ DEFAULTS = {
     "auto.offset.reset": "earliest",
     "session.timeout.ms": "6000",
     "statistics.interval.ms": "1000",
+}
+
+
+SPECIAL_OFFSETS = {
+    OFFSET_BEGINNING,
+    OFFSET_END,
+    OFFSET_INVALID,
+    OFFSET_STORED,
 }
 
 
@@ -201,7 +217,11 @@ class ConfluentKafkaInput(Input):
         DEFAULTS.update({"client.id": getfqdn()})
         self._config.kafka_config = DEFAULTS | self._config.kafka_config
         consumer = Consumer(self._config.kafka_config | injected_config)
-        consumer.subscribe([self._config.topic])
+        consumer.subscribe(
+            [self._config.topic],
+            on_assign=self._assign_callback,
+            on_revoke=self._revoke_callback,
+        )
         return consumer
 
     def _error_callback(self, error: KafkaException) -> None:
@@ -256,6 +276,7 @@ class ConfluentKafkaInput(Input):
         self.metrics._committed_offsets |= {
             topic_partition.partition: topic_partition.offset
             for topic_partition in topic_partitions
+            if topic_partition.offset not in SPECIAL_OFFSETS
         }
 
     def describe(self) -> str:
@@ -295,7 +316,7 @@ class ConfluentKafkaInput(Input):
             return None
         record_error = record.error()
         self._last_valid_records[record.partition()] = record
-        offset = {record.partition(): record.offset()}
+        offset = {record.partition(): record.offset() + 1}
         self.metrics._current_offsets |= offset  # pylint: disable=protected-access
         if record_error:
             raise CriticalInputError(
@@ -350,19 +371,38 @@ class ConfluentKafkaInput(Input):
 
     def _handle_offsets(self, offset_handler: Callable) -> None:
         for message in self._last_valid_records.values():
-            try:
-                offset_handler(message=message)
-            except KafkaException:
-                partitions = self._get_partitions()
-                self._consumer.assign(partitions)
-                offset_handler(message=message)
+            offset_handler(message=message)
 
-    def _get_partitions(self) -> list[TopicPartition]:
-        topic = self._consumer.list_topics(topic=self._config.topic)
-        partition_keys = list(topic.topics[self._config.topic].partitions.keys())
-        partitions = [TopicPartition(self._config.topic, partition) for partition in partition_keys]
+        self._last_valid_records.clear()
 
-        return partitions
+    def _assign_callback(self, consumer, topic_partitions):
+        for topic_partition in topic_partitions:
+            self._logger.info(
+                f"{consumer.memberid()} was assigned to"
+                f"topic: {topic_partition.topic} | "
+                f"partition {topic_partition.partition}"
+            )
+            offset = topic_partition.offset if topic_partition.offset not in SPECIAL_OFFSETS else 0
+            partition_offset = {topic_partition.partition: offset}
+            self.metrics._current_offsets |= partition_offset
+
+    def _revoke_callback(self, consumer, topic_partitions):
+        for topic_partition in topic_partitions:
+            self._logger.info(
+                f"{consumer.memberid()} to be revoked from "
+                f"topic: {topic_partition.topic} | "
+                f"partition {topic_partition.partition}"
+            )
+
+    def _lost_callback(self, consumer, topic_partitions):
+        for topic_partition in topic_partitions:
+            self._logger.info(
+                f"{consumer.memberid()} has lost "
+                f"topic: {topic_partition.topic} | "
+                f"partition {topic_partition.partition}"
+                "- try to reassign"
+            )
+        self._consumer.assign(topic_partitions)
 
     def setup(self) -> None:
         super().setup()

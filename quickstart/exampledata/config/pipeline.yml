@@ -97,6 +97,8 @@ input:
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3
+      enable.auto.commit: "false"
+      enable.auto.offset.store: "false"
 
 output:
   opensearch:
@@ -107,13 +109,13 @@ output:
     error_index: errors
     message_backlog_size: 1000
     timeout: 10000
-    flush_timeout: 300
+    flush_timeout: 60
     max_retries: 3
     user: admin
     secret: admin
   kafka:
     type: confluentkafka_output
-    default: true
+    default: false
     topic: producer
     error_topic: errors
     flush_timeout: 300
