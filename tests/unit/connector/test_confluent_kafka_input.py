@@ -64,30 +64,36 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_consumer.close.assert_called()
 
     @pytest.mark.parametrize(
-        "settings,handler",
+        "settings,handlers",
         [
-            ({"enable.auto.offset.store": "false", "enable.auto.commit": "true"}, "store_offsets"),
-            ({"enable.auto.offset.store": "false", "enable.auto.commit": "false"}, "commit"),
+            (
+                {"enable.auto.offset.store": "false", "enable.auto.commit": "true"},
+                ("store_offsets",),
+            ),
+            (
+                {"enable.auto.offset.store": "false", "enable.auto.commit": "false"},
+                ("store_offsets", "commit"),
+            ),
             ({"enable.auto.offset.store": "true", "enable.auto.commit": "false"}, None),
             ({"enable.auto.offset.store": "true", "enable.auto.commit": "true"}, None),
         ],
     )
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handler):
+    def test_batch_finished_callback_calls_offsets_handler_for_setting(self, _, settings, handlers):
         input_config = deepcopy(self.CONFIG)
         kafka_input = Factory.create({"test": input_config}, logger=self.logger)
         kafka_input._config.kafka_config.update(settings)
         kafka_consumer = kafka_input._consumer
-        kafka_input._last_valid_records = {0: "message"}
+        message = "test message"
+        kafka_input._last_valid_records = {0: message}
         kafka_input.batch_finished_callback()
-        if handler is None:
+        if handlers is None:
             assert kafka_consumer.commit.call_count == 0
             assert kafka_consumer.store_offsets.call_count == 0
         else:
-            getattr(kafka_consumer, handler).assert_called()
-            getattr(kafka_consumer, handler).assert_called_with(
-                message=kafka_input._last_valid_records.get(0)
-            )
+            for handler in handlers:
+                getattr(kafka_consumer, handler).assert_called()
+                getattr(kafka_consumer, handler).assert_called_with(message=message)
 
     @pytest.mark.parametrize(
         "settings,handler",

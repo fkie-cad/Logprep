@@ -42,6 +42,7 @@ from confluent_kafka import (
     OFFSET_STORED,
     Consumer,
     KafkaException,
+    Message,
     TopicPartition,
 )
 
