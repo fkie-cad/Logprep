@@ -42,6 +42,7 @@ from confluent_kafka import (
     OFFSET_STORED,
     Consumer,
     KafkaException,
+    Message,
     TopicPartition,
 )
 
@@ -295,7 +296,7 @@ class ConfluentKafkaInput(Input):
         return f"{base_description} - Kafka Input: {self._config.kafka_config['bootstrap.servers']}"
 
     def _get_raw_event(self, timeout: float) -> bytearray:
-        """Get next raw document from Kafka.
+        """Get next raw Message from Kafka.
 
         Parameters
         ----------
@@ -304,7 +305,7 @@ class ConfluentKafkaInput(Input):
 
         Returns
         -------
-        record_value : bytearray
+        message_value : bytearray
             A raw document obtained from Kafka.
 
         Raises
@@ -313,20 +314,20 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
         try:
-            record = self._consumer.poll(timeout=timeout)
+            message = self._consumer.poll(timeout=timeout)
         except RuntimeError as error:
             raise FatalInputError(self, str(error)) from error
-        if record is None:
+        if message is None:
             return None
-        record_error = record.error()
-        if record_error:
+        kafka_error = message.error()
+        if kafka_error:
             raise CriticalInputError(
-                self, "A confluent-kafka record contains an error code", record_error
+                self, "A confluent-kafka record contains an error code", kafka_error
             )
-        self._last_valid_records[record.partition()] = record
-        offset = {record.partition(): record.offset() + 1}
+        self._last_valid_records[message.partition()] = message
+        offset = {message.partition(): message.offset() + 1}
         self.metrics._current_offsets |= offset  # pylint: disable=protected-access
-        return record.value()
+        return message.value()
 
     def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
         """Parse the raw document from Kafka into a json.
