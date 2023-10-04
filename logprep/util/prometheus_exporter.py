@@ -57,7 +57,8 @@ class PrometheusStatsExporter:
             if str(pid) in filename:
                 os.remove(os.path.join(self.multi_processing_dir, filename))
                 removed_files.append(filename)
-        self._logger.debug(f"Removed stale metric files: {removed_files}")
+        if removed_files:
+            self._logger.debug(f"Removed stale metric files: {removed_files}")
 
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""
