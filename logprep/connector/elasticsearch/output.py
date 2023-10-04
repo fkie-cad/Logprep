@@ -42,7 +42,7 @@ from attr import define, field
 from attrs import validators
 from elasticsearch import ElasticsearchException, helpers
 from opensearchpy import OpenSearchException
-from urllib3.exceptions import TimeoutError
+from urllib3.exceptions import HTTPError
 
 from logprep.abc.output import FatalOutputError, Output
 from logprep.util.helper import get_dict_size_in_byte
@@ -190,7 +190,7 @@ class ElasticsearchOutput(Output):
         self._schedule_task(task=self._write_backlog, seconds=flush_timeout)
         try:
             self._search_context.info()
-        except (ElasticsearchException, OpenSearchException, TimeoutError) as error:
+        except (ElasticsearchException, OpenSearchException, HTTPError) as error:
             raise FatalOutputError(self, error) from error
 
     def store(self, document: dict):
