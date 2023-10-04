@@ -42,7 +42,6 @@ from confluent_kafka import (
     OFFSET_STORED,
     Consumer,
     KafkaException,
-    Message,
     TopicPartition,
 )
 
@@ -360,17 +359,31 @@ class ConfluentKafkaInput(Input):
             ) from error
         return event_dict, raw_event
 
+    @property
+    def _enable_auto_offset_store(self) -> bool:
+        if self._config.kafka_config.get("enable.auto.offset.store") == "true":
+            return True
+        if self._config.kafka_config.get("enable.auto.offset.store") == "false":
+            return False
+
+    @property
+    def _enable_auto_commit(self) -> bool:
+        if self._config.kafka_config.get("enable.auto.commit") == "true":
+            return True
+        if self._config.kafka_config.get("enable.auto.commit") == "false":
+            return False
+
     def batch_finished_callback(self) -> None:
         """Store offsets for each kafka partition in `self._last_valid_records`
         and if configured commit them. Should be called by output connectors if
         they are finished processing a batch of records.
         """
-        if self._config.kafka_config.get("enable.auto.offset.store") == "true":
+        if self._enable_auto_offset_store:
             return
 
         self._handle_offsets(self._consumer.store_offsets)
 
-        if self._config.kafka_config.get("enable.auto.commit") == "false":
+        if not self._enable_auto_commit:
             self._handle_offsets(self._consumer.commit)
 
         self._last_valid_records.clear()
@@ -379,8 +392,14 @@ class ConfluentKafkaInput(Input):
         for message in self._last_valid_records.values():
             try:
                 offset_handler(message=message)
-            except KafkaException as error:
-                self._logger.error(f"Could not store or commit offsets: {error}")
+            except KafkaException:
+                topic = self._consumer.list_topics(topic=self._config.topic)
+                partition_keys = list(topic.topics[self._config.topic].partitions.keys())
+                partitions = [
+                    TopicPartition(self._config.topic, partition) for partition in partition_keys
+                ]
+                self._consumer.assign(partitions)
+                offset_handler(message=message)
 
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
