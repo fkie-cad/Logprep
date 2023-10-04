@@ -372,19 +372,12 @@ class ConfluentKafkaInput(Input):
         and if configured commit them. Should be called by output connectors if
         they are finished processing a batch of records.
         """
-        try:
-            if self._enable_auto_offset_store:
-                return
-
-            self._handle_offsets(self._consumer.store_offsets)
-
-            if not self._enable_auto_commit:
-                self._handle_offsets(self._consumer.commit)
-
-            self._last_valid_records.clear()
-        except BaseException as error:
-            self._logger.error(f"Could not commit offsets: {error}")
-            raise FatalInputError(self, str(error)) from error
+        if self._enable_auto_offset_store:
+            return
+        self._handle_offsets(self._consumer.store_offsets)
+        if not self._enable_auto_commit:
+            self._handle_offsets(self._consumer.commit)
+        self._last_valid_records.clear()
 
     def _handle_offsets(self, offset_handler: Callable) -> None:
         for message in self._last_valid_records.values():

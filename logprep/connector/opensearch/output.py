@@ -74,7 +74,7 @@ class OpensearchOutput(ElasticsearchOutput):
             self._handle_serialization_error(error)
         except search.ConnectionError as error:
             self._handle_connection_error(error)
-        except helpers.BulkIndexError as error:
+        except helpers.errors.BulkIndexError as error:
             self._handle_bulk_index_error(error)
         except search.exceptions.TransportError as error:
             self._handle_transport_error(error)
