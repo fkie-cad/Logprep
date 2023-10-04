@@ -319,13 +319,13 @@ class ConfluentKafkaInput(Input):
         if record is None:
             return None
         record_error = record.error()
-        self._last_valid_records[record.partition()] = record
-        offset = {record.partition(): record.offset() + 1}
-        self.metrics._current_offsets |= offset  # pylint: disable=protected-access
         if record_error:
             raise CriticalInputError(
                 self, "A confluent-kafka record contains an error code", record_error
             )
+        self._last_valid_records[record.partition()] = record
+        offset = {record.partition(): record.offset() + 1}
+        self.metrics._current_offsets |= offset  # pylint: disable=protected-access
         return record.value()
 
     def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
@@ -376,7 +376,10 @@ class ConfluentKafkaInput(Input):
 
     def _handle_offsets(self, offset_handler: Callable) -> None:
         for message in self._last_valid_records.values():
-            offset_handler(message=message)
+            try:
+                offset_handler(message=message)
+            except KafkaException as error:
+                self._logger.error(f"Could not store or commit offsets: {error}")
 
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
