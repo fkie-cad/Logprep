@@ -361,17 +361,11 @@ class ConfluentKafkaInput(Input):
 
     @property
     def _enable_auto_offset_store(self) -> bool:
-        if self._config.kafka_config.get("enable.auto.offset.store") == "true":
-            return True
-        if self._config.kafka_config.get("enable.auto.offset.store") == "false":
-            return False
+        return self._config.kafka_config.get("enable.auto.offset.store") == "true"
 
     @property
     def _enable_auto_commit(self) -> bool:
-        if self._config.kafka_config.get("enable.auto.commit") == "true":
-            return True
-        if self._config.kafka_config.get("enable.auto.commit") == "false":
-            return False
+        return self._config.kafka_config.get("enable.auto.commit") == "true"
 
     def batch_finished_callback(self) -> None:
         """Store offsets for each kafka partition in `self._last_valid_records`
