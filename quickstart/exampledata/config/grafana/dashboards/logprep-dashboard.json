@@ -1,0 +1,3135 @@
+{
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "datasource",
+                    "uid": "grafana"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "target": {
+                    "limit": 100,
+                    "matchAny": false,
+                    "tags": [],
+                    "type": "dashboard"
+                },
+                "type": "dashboard"
+            }
+        ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "id": 7,
+    "links": [
+        {
+            "asDropdown": true,
+            "icon": "external link",
+            "includeVars": false,
+            "keepTime": true,
+            "tags": [
+                "SIEM-Komponente"
+            ],
+            "targetBlank": false,
+            "title": "SIEM Komponenten",
+            "tooltip": "",
+            "type": "dashboards",
+            "url": ""
+        },
+        {
+            "asDropdown": true,
+            "icon": "external link",
+            "includeVars": false,
+            "keepTime": true,
+            "tags": [
+                "k8s"
+            ],
+            "targetBlank": false,
+            "title": "Kubernetes Cluster",
+            "tooltip": "",
+            "type": "dashboards",
+            "url": ""
+        }
+    ],
+    "liveNow": false,
+    "panels": [
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 64,
+            "panels": [],
+            "title": "Logprep Overview",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {
+                        "align": "auto",
+                        "displayMode": "auto",
+                        "filterable": false,
+                        "inspect": false
+                    },
+                    "mappings": [
+                        {
+                            "options": {
+                                "0": {
+                                    "color": "dark-red",
+                                    "index": 0,
+                                    "text": "LogPrep Applikation: DOWN"
+                                }
+                            },
+                            "type": "value"
+                        },
+                        {
+                            "options": {
+                                "from": 1,
+                                "result": {
+                                    "color": "dark-green",
+                                    "index": 1,
+                                    "text": "LogPrep Applikation: UP"
+                                },
+                                "to": 25
+                            },
+                            "type": "range"
+                        }
+                    ],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "image"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Image"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "namespace"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Namespace"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "pod"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Pod Name"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "container"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Container"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Container"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 296
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 20,
+                "x": 0,
+                "y": 1
+            },
+            "id": 7,
+            "options": {
+                "footer": {
+                    "fields": "",
+                    "reducer": [
+                        "sum"
+                    ],
+                    "show": false
+                },
+                "showHeader": true,
+                "sortBy": []
+            },
+            "pluginVersion": "9.3.1",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "namedprocess_namegroup_num_procs{groupname=\"python3\", instance=\"pa-siembw-vm030.devopslab.tech:9256\", job=\"Logprep_01\", node=\"Logprep-01\"}",
+                    "hide": true,
+                    "interval": "",
+                    "legendFormat": "",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "kube_pod_container_info{container=\"logprep\", namespace=\"zeus-k8s-logprep\"}",
+                    "format": "table",
+                    "hide": true,
+                    "instant": true,
+                    "interval": "",
+                    "legendFormat": "",
+                    "queryType": "randomWalk",
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "kube_pod_container_info{container=\"logprep\", namespace=\"logprep\"}",
+                    "format": "table",
+                    "hide": false,
+                    "instant": true,
+                    "interval": "",
+                    "legendFormat": "",
+                    "queryType": "randomWalk",
+                    "refId": "C"
+                }
+            ],
+            "title": "LogPrep",
+            "transformations": [
+                {
+                    "id": "filterFieldsByName",
+                    "options": {
+                        "include": {
+                            "names": [
+                                "container",
+                                "image",
+                                "namespace",
+                                "pod"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "type": "table"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        }
+                    },
+                    "mappings": []
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 20,
+                "y": 1
+            },
+            "id": 70,
+            "options": {
+                "displayLabels": [],
+                "legend": {
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true,
+                    "values": [
+                        "value",
+                        "percent"
+                    ]
+                },
+                "pieType": "pie",
+                "reduceOptions": {
+                    "calcs": [
+                        "count"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "9.0.2",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "expr": "logprep_tracking_interval_in_seconds",
+                    "format": "time_series",
+                    "hide": false,
+                    "instant": true,
+                    "interval": "",
+                    "legendFormat": "__auto",
+                    "queryType": "randomWalk",
+                    "range": false,
+                    "refId": "C"
+                }
+            ],
+            "title": "Anzahl Logprep Versionen",
+            "transformations": [
+                {
+                    "id": "labelsToFields",
+                    "options": {
+                        "keepLabels": [
+                            "version",
+                            "pid"
+                        ],
+                        "mode": "columns",
+                        "valueLabel": "version"
+                    }
+                },
+                {
+                    "id": "merge",
+                    "options": {}
+                },
+                {
+                    "id": "filterFieldsByName",
+                    "options": {
+                        "include": {
+                            "names": [
+                                "Time",
+                                "3.1.0",
+                                "pid"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "type": "piechart"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "dark-red",
+                                "value": 0
+                            },
+                            {
+                                "color": "dark-green",
+                                "value": ""
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 3,
+                "w": 5,
+                "x": 0,
+                "y": 5
+            },
+            "id": 10,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "last"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "text": {},
+                "textMode": "auto"
+            },
+            "pluginVersion": "9.3.1",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(kube_pod_container_info{container=\"logprep\", namespace=\"logprep\"})",
+                    "hide": false,
+                    "interval": "",
+                    "legendFormat": "",
+                    "queryType": "randomWalk",
+                    "refId": "B"
+                }
+            ],
+            "title": "Laufende LogPrep Instanzen",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Diese Zahl zeigt die Anzahl an Events die durchschnittlich pro Sekunde abgearbeitet werden.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "dark-green",
+                        "mode": "fixed"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "percentage",
+                        "steps": [
+                            {
+                                "color": "dark-red",
+                                "value": null
+                            },
+                            {
+                                "color": "#EAB839",
+                                "value": 10
+                            },
+                            {
+                                "color": "dark-green",
+                                "value": 100
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 3,
+                "w": 5,
+                "x": 5,
+                "y": 5
+            },
+            "id": 45,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "mean"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "text": {},
+                "textMode": "auto"
+            },
+            "pluginVersion": "9.3.1",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(logprep_pipeline_number_of_processed_events)",
+                    "interval": "",
+                    "legendFormat": "",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "editorMode": "code",
+                    "expr": "max(logprep_tracking_interval_in_seconds)",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "B"
+                }
+            ],
+            "title": "Durchschnittliche bearbeitete Events pro Sekunde",
+            "transformations": [
+                {
+                    "id": "calculateField",
+                    "options": {
+                        "alias": "Events per Second",
+                        "binary": {
+                            "left": "sum(logprep_pipeline_number_of_processed_events)",
+                            "operator": "/",
+                            "reducer": "sum",
+                            "right": "max(logprep_tracking_interval_in_seconds)"
+                        },
+                        "mode": "binary",
+                        "reduce": {
+                            "reducer": "sum"
+                        }
+                    }
+                },
+                {
+                    "id": "filterFieldsByName",
+                    "options": {
+                        "include": {
+                            "names": [
+                                "Time",
+                                "Events per Second"
+                            ]
+                        }
+                    }
+                }
+            ],
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Diese Zahl zeigt die Anzahl an Events die maximal in einer Sekunde abgearbeitet wurden",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "dark-green",
+                        "mode": "fixed"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "percentage",
+                        "steps": [
+                            {
+                                "color": "dark-red",
+                                "value": null
+                            },
+                            {
+                                "color": "#EAB839",
+                                "value": 10
+                            },
+                            {
+                                "color": "dark-green",
+                                "value": 100
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 3,
+                "w": 5,
+                "x": 10,
+                "y": 5
+            },
+            "id": 65,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "max"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "text": {},
+                "textMode": "auto"
+            },
+            "pluginVersion": "9.3.1",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "max(max(logprep_pipeline_number_of_processed_events) by(pipeline))",
+                    "interval": "",
+                    "legendFormat": "",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "editorMode": "code",
+                    "expr": "max(logprep_tracking_interval_in_seconds)",
+                    "hide": false,
+                    "legendFormat": "__auto",
+                    "range": true,
+                    "refId": "B"
+                }
+            ],
+            "title": "Maximum bearbeiteter Events pro Sekunde",
+            "transformations": [
+                {
+                    "id": "calculateField",
+                    "options": {
+                        "alias": "Max Events per Second",
+                        "binary": {
+                            "left": "max(max(logprep_pipeline_number_of_processed_events) by(pipeline))",
+                            "operator": "/",
+                            "reducer": "sum",
+                            "right": "max(logprep_tracking_interval_in_seconds)"
+                        },
+                        "mode": "binary",
+                        "reduce": {
+                            "reducer": "sum"
+                        },
+                        "replaceFields": true
+                    }
+                }
+            ],
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Diese Zahl zeigt die durchschnittliche Zeit Logprep ben?tigt um ein Event komplett abzuarbeiten.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "dark-green",
+                        "mode": "fixed"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 3,
+                "w": 5,
+                "x": 15,
+                "y": 5
+            },
+            "id": 46,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "mean"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "text": {},
+                "textMode": "auto"
+            },
+            "pluginVersion": "9.3.1",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "avg(logprep_pipeline_mean_processing_time_per_event)",
+                    "interval": "",
+                    "legendFormat": "",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "expr": "max(logprep_tracking_interval_in_seconds)",
+                    "hide": false,
+                    "refId": "B"
+                }
+            ],
+            "title": "Durchschnittliche Bearbeitungszeit eines Event",
+            "transformations": [
+                {
+                    "id": "calculateField",
+                    "options": {
+                        "binary": {
+                            "left": "avg(logprep_pipeline_mean_processing_time_per_event)",
+                            "operator": "/",
+                            "reducer": "sum",
+                            "right": "max(logprep_tracking_interval_in_seconds)"
+                        },
+                        "mode": "binary",
+                        "reduce": {
+                            "reducer": "sum"
+                        },
+                        "replaceFields": true
+                    }
+                }
+            ],
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Alle Graphen zeigen Metriken je Tracking Time Interval",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "dark-green",
+                        "mode": "fixed"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 3,
+                "w": 4,
+                "x": 20,
+                "y": 5
+            },
+            "id": 67,
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "textMode": "auto"
+            },
+            "pluginVersion": "9.3.1",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "expr": "max(logprep_tracking_interval_in_seconds)",
+                    "refId": "A"
+                }
+            ],
+            "title": "Tracking Time Interval",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Dieser Graph zeigt an wie viele Regeln ein Prozessor im Verh?ltnis zu allen angeschlagenen Regeln hat.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        }
+                    },
+                    "mappings": []
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 12,
+                "x": 0,
+                "y": 8
+            },
+            "id": 49,
+            "options": {
+                "displayLabels": [],
+                "legend": {
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true,
+                    "values": [
+                        "percent"
+                    ]
+                },
+                "pieType": "donut",
+                "reduceOptions": {
+                    "calcs": [
+                        "mean"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "text": {},
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "avg(logprep_number_of_matches) by(processor)",
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "title": "Angeschlagene Regeln pro Prozessor",
+            "transformations": [],
+            "type": "piechart"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "green",
+                        "mode": "fixed"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 12,
+                "x": 12,
+                "y": 8
+            },
+            "id": 55,
+            "options": {
+                "displayMode": "gradient",
+                "minVizHeight": 10,
+                "minVizWidth": 0,
+                "orientation": "horizontal",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showUnfilled": true,
+                "text": {}
+            },
+            "pluginVersion": "9.3.1",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "avg(logprep_number_of_matches) by(processor)",
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "title": "Angeschlagene Regeln pro Prozessor",
+            "transformations": [],
+            "type": "bargauge"
+        },
+        {
+            "collapsed": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "cdLSil37k"
+            },
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 18
+            },
+            "id": 26,
+            "panels": [],
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "cdLSil37k"
+                    },
+                    "refId": "A"
+                }
+            ],
+            "title": "LogPrep lag",
+            "type": "row"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "decimals": 0,
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "none"
+                },
+                "overrides": []
+            },
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 4,
+                "w": 24,
+                "x": 0,
+                "y": 19
+            },
+            "hiddenSeries": false,
+            "id": 2,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": false,
+                "max": true,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "sort": "current",
+                "sortDesc": true,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "(sum(rate(kafka_topic_partition_current_offset{instance=\"localhost:9308\", topic=~\"consumer\"}[1m])) by (topic)) - (sum(rate(kafka_consumergroup_current_offset{instance=\"localhost:9308\",topic=~\"consumer\"}[1m])) by (topic))",
+                    "format": "time_series",
+                    "hide": true,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "Lag LogPrep Eingang",
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "(sum(rate(kafka_topic_partition_current_offset{topic=~\"consumer\"}[1m])) by (topic)) - (sum(rate(kafka_consumergroup_current_offset{topic=~\"consumer\"}[1m])) by (topic))",
+                    "format": "time_series",
+                    "hide": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "Lag LogPrep Eingang",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [
+                {
+                    "$$hashKey": "object:2067",
+                    "colorMode": "critical",
+                    "fill": true,
+                    "line": true,
+                    "op": "gt",
+                    "value": 500,
+                    "yaxis": "left"
+                }
+            ],
+            "timeRegions": [],
+            "title": "LogPrep lag | Differenz der zu verarbeitenden Logs - Der abgeholten Logs",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:151",
+                    "format": "none",
+                    "label": "Logs",
+                    "logBase": 1,
+                    "min": "0",
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:152",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "collapsed": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "cdLSil37k"
+            },
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 23
+            },
+            "id": 18,
+            "panels": [],
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "cdLSil37k"
+                    },
+                    "refId": "A"
+                }
+            ],
+            "title": "Datenfluss Durchsatz",
+            "type": "row"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "decimals": 0,
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "none"
+                },
+                "overrides": []
+            },
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 5,
+                "w": 24,
+                "x": 0,
+                "y": 24
+            },
+            "hiddenSeries": false,
+            "id": 20,
+            "legend": {
+                "alignAsTable": true,
+                "avg": true,
+                "current": true,
+                "max": true,
+                "min": true,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "sort": "current",
+                "sortDesc": true,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(rate(kafka_topic_partition_current_offset{instance=\"localhost:9308\", topic=~\"consumer\"}[1m])) by (topic)",
+                    "format": "time_series",
+                    "hide": true,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "Topic: {{topic}}",
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(rate(kafka_topic_partition_current_offset{topic=~\"consumer\"}[1m])) by (topic)",
+                    "format": "time_series",
+                    "hide": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "Topic: {{topic}}",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [
+                {
+                    "$$hashKey": "object:2729",
+                    "colorMode": "critical",
+                    "fill": true,
+                    "line": true,
+                    "op": "gt",
+                    "value": 1000,
+                    "yaxis": "left"
+                }
+            ],
+            "timeRegions": [],
+            "title": "Zu verarbeitende Logs | Kafka: Eingehende Logs pro Sekunde von Filebeat und Auditbeat",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:151",
+                    "format": "none",
+                    "label": "Logs/Sekunde",
+                    "logBase": 1,
+                    "min": "0",
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:152",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "decimals": 0,
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 5,
+                "w": 24,
+                "x": 0,
+                "y": 29
+            },
+            "hiddenSeries": false,
+            "id": 22,
+            "legend": {
+                "alignAsTable": true,
+                "avg": true,
+                "current": true,
+                "max": true,
+                "min": true,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "sort": "current",
+                "sortDesc": true,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(delta(kafka_consumergroup_current_offset{instance='localhost:9308',topic=~\"consumer\"}[5m])/5) by (consumergroup, topic)",
+                    "format": "time_series",
+                    "hide": true,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "{{consumergroup}} (Topic: {{topic}})",
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(rate(kafka_consumergroup_current_offset{instance='localhost:9308',topic=~\"consumer\"}[1m])) by (consumergroup, topic)",
+                    "format": "time_series",
+                    "hide": true,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "Topic: {{topic}}",
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(rate(kafka_consumergroup_current_offset{topic=~\"consumer\"}[1m])) by (consumergroup, topic)",
+                    "format": "time_series",
+                    "hide": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "Topic: {{topic}}",
+                    "refId": "C"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Abgeholte Logs | LogPrep: Abgeholte Logs pro Sekunde von Kafka",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:227",
+                    "format": "short",
+                    "label": "Logs/Sekunde",
+                    "logBase": 1,
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:228",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "decimals": 0,
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 5,
+                "w": 24,
+                "x": 0,
+                "y": 34
+            },
+            "hiddenSeries": false,
+            "id": 24,
+            "legend": {
+                "alignAsTable": true,
+                "avg": true,
+                "current": true,
+                "max": true,
+                "min": true,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "sort": "current",
+                "sortDesc": true,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "links": [],
+            "nullPointMode": "connected",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(rate(kafka_topic_partition_current_offset{instance=\"localhost:9308\", topic=~\"producer\"}[1m])) by (topic)",
+                    "format": "time_series",
+                    "hide": true,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "Topic: {{topic}}",
+                    "refId": "B"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(rate(kafka_topic_partition_current_offset{topic=~\"producer\"}[1m])) by (topic)",
+                    "format": "time_series",
+                    "hide": false,
+                    "interval": "",
+                    "intervalFactor": 1,
+                    "legendFormat": "Topic: {{topic}}",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Weitergereichte Logs | LogPrep: Empfangene Logs von LogPrep in Kafka",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:151",
+                    "format": "short",
+                    "label": "Logs/Sekunde",
+                    "logBase": 1,
+                    "min": "0",
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:152",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "collapsed": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "cdLSil37k"
+            },
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 39
+            },
+            "id": 16,
+            "panels": [],
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "cdLSil37k"
+                    },
+                    "refId": "A"
+                }
+            ],
+            "title": "Ressourcen: CPU, MEM, NET, HD",
+            "type": "row"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "editable": true,
+            "error": false,
+            "fill": 1,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 5,
+                "w": 24,
+                "x": 0,
+                "y": 40
+            },
+            "hiddenSeries": false,
+            "id": 12,
+            "isNew": true,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": true,
+                "max": true,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "sort": "current",
+                "sortDesc": true,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "rate(container_cpu_usage_seconds_total{container=\"logprep\", cpu=\"total\", namespace=\"logprep\", service=\"prometheus-kube-prometheus-kubelet\"}[5m])",
+                    "hide": false,
+                    "interval": "",
+                    "intervalFactor": 2,
+                    "legendFormat": "Pod: {{ pod }}",
+                    "metric": "process_namegroup_cpu_seconds_total",
+                    "refId": "D",
+                    "step": 10
+                }
+            ],
+            "thresholds": [
+                {
+                    "$$hashKey": "object:2645",
+                    "colorMode": "critical",
+                    "fill": true,
+                    "line": true,
+                    "op": "gt",
+                    "value": 1,
+                    "yaxis": "left"
+                }
+            ],
+            "timeRegions": [],
+            "title": "LogPrep Container CPU",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "cumulative"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:76",
+                    "format": "s",
+                    "logBase": 1,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:77",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": false
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "editable": true,
+            "error": false,
+            "fill": 1,
+            "fillGradient": 0,
+            "grid": {},
+            "gridPos": {
+                "h": 5,
+                "w": 24,
+                "x": 0,
+                "y": 45
+            },
+            "hiddenSeries": false,
+            "id": 14,
+            "isNew": true,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": true,
+                "max": true,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "sort": "current",
+                "sortDesc": true,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 2,
+            "links": [],
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 5,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "container_memory_usage_bytes{container=\"logprep\", namespace=\"logprep\", service=\"prometheus-kube-prometheus-kubelet\"}",
+                    "hide": false,
+                    "interval": "",
+                    "legendFormat": "Pod: {{ pod }}",
+                    "refId": "D"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "LogPrep Container MEM",
+            "tooltip": {
+                "msResolution": false,
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:156",
+                    "format": "bytes",
+                    "logBase": 1,
+                    "min": 0,
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:157",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {
+                "Kafka-01: receive ens192": "#DEB6F2",
+                "Kafka-01: transmit ens192": "dark-purple",
+                "Spark-01: receive ens192": "super-light-blue",
+                "Spark-01: transmit ens192": "dark-blue"
+            },
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "",
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 4,
+                "w": 24,
+                "x": 0,
+                "y": 50
+            },
+            "hiddenSeries": false,
+            "id": 9,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": true,
+                "max": true,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "rate(container_network_receive_bytes_total{namespace=\"logprep\", service=\"prometheus-kube-prometheus-kubelet\"}[$__rate_interval])*8",
+                    "hide": false,
+                    "interval": "",
+                    "legendFormat": "Pod: {{ pod }} receive",
+                    "refId": "C"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "rate(container_network_transmit_bytes_total{namespace=\"logprep\", service=\"prometheus-kube-prometheus-kubelet\"}[$__rate_interval])*8",
+                    "hide": false,
+                    "interval": "",
+                    "legendFormat": "Pod: {{ pod }} transmit",
+                    "refId": "D"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "LogPrep Network Container Ebene ",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:232",
+                    "format": "binBps",
+                    "label": "Bandbreite: In / Out",
+                    "logBase": 1,
+                    "min": "0",
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:233",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "bytes"
+                },
+                "overrides": []
+            },
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 4,
+                "w": 24,
+                "x": 0,
+                "y": 54
+            },
+            "hiddenSeries": false,
+            "id": 5,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": true,
+                "max": true,
+                "min": true,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "node_filesystem_free_bytes{device=\"/dev/mapper/data_vg-data01_lv\", fstype=\"ext4\", instance=\"pa-siembw-vm027.devopslab.tech:9100\", job=\"Kafka_01\", mountpoint=\"/data\", node=\"Kafka-01\"}",
+                    "hide": true,
+                    "interval": "",
+                    "legendFormat": "Kafka /data Free Bytes",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                },
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "kubelet_volume_stats_available_bytes{persistentvolumeclaim=\"data-0-zeus-kafka-kafka-0\"} - kubelet_volume_stats_used_bytes{persistentvolumeclaim=\"data-0-zeus-kafka-kafka-0\"}",
+                    "hide": false,
+                    "interval": "",
+                    "legendFormat": "Kafka /data Free Space",
+                    "queryType": "randomWalk",
+                    "refId": "B"
+                }
+            ],
+            "thresholds": [
+                {
+                    "$$hashKey": "object:177",
+                    "colorMode": "critical",
+                    "fill": true,
+                    "line": true,
+                    "op": "lt",
+                    "value": 50000000000,
+                    "yaxis": "left"
+                }
+            ],
+            "timeRegions": [],
+            "title": "Kafka Data HD: Free",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:232",
+                    "format": "bytes",
+                    "label": "Kafka Free HD Space",
+                    "logBase": 1,
+                    "min": "0",
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:233",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "collapsed": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "cdLSil37k"
+            },
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 58
+            },
+            "id": 43,
+            "panels": [],
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "cdLSil37k"
+                    },
+                    "refId": "A"
+                }
+            ],
+            "title": "Prozessierte Events",
+            "type": "row"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Dieser Graph zeigt die Anzahl an abgearbeiteten Events pro Sekunde.",
+            "fill": 1,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 6,
+                "w": 24,
+                "x": 0,
+                "y": 59
+            },
+            "hiddenSeries": false,
+            "id": 47,
+            "legend": {
+                "alignAsTable": true,
+                "avg": true,
+                "current": false,
+                "max": true,
+                "min": true,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "editorMode": "code",
+                    "exemplar": true,
+                    "expr": "sum(logprep_pipeline_number_of_processed_events) by(pipeline)",
+                    "hide": false,
+                    "interval": "",
+                    "legendFormat": "{{pipeline}}",
+                    "queryType": "randomWalk",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Anzahl abgearbeiteter Events",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "transformations": [],
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:147",
+                    "format": "short",
+                    "label": "Events/Tracking Timer Interval",
+                    "logBase": 1,
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:148",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Dieser Graph zeigt die Anzahl an Events die jeder Prozess pro Sekunde abarbeitet.",
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 6,
+                "w": 24,
+                "x": 0,
+                "y": 65
+            },
+            "hiddenSeries": false,
+            "id": 56,
+            "legend": {
+                "alignAsTable": true,
+                "avg": true,
+                "current": false,
+                "max": true,
+                "min": true,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "editorMode": "code",
+                    "expr": "avg(logprep_pipeline_number_of_processed_events) by(pid)",
+                    "hide": false,
+                    "legendFormat": "PID={{pid}}",
+                    "range": true,
+                    "refId": "B"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Anzahl abgearbeiteter Events pro Prozess",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "transformations": [],
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:480",
+                    "format": "short",
+                    "label": "Events/Tracking Timer Interval",
+                    "logBase": 1,
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:481",
+                    "format": "short",
+                    "label": "",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Dieser Graph zeigt die Anzahl der Fehlermeldungen die je Prozessor je Sekunde aufgetreten sind.",
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 6,
+                "w": 24,
+                "x": 0,
+                "y": 71
+            },
+            "hiddenSeries": false,
+            "id": 30,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": true,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": false,
+                    "expr": "sum(logprep_pipeline_number_of_errors) by(pipeline)",
+                    "format": "time_series",
+                    "hide": false,
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Errors",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "transformations": [],
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:459",
+                    "format": "short",
+                    "label": "Errors/Tracking Time Interval",
+                    "logBase": 1,
+                    "min": "0",
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:460",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Dieser Graph zeigt die Anzahl der Warnungen die pro Prozessor pro Sekunde aufgetreten sind.",
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 6,
+                "w": 24,
+                "x": 0,
+                "y": 77
+            },
+            "hiddenSeries": false,
+            "id": 31,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": true,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": false,
+                    "expr": "sum(logprep_pipeline_number_of_warnings) by(pipeline)",
+                    "format": "time_series",
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Warnungen",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "transformations": [],
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:459",
+                    "format": "short",
+                    "label": "Warnungen/Tracking Interval",
+                    "logBase": 1,
+                    "min": "0",
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:460",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "collapsed": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "cdLSil37k"
+            },
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 83
+            },
+            "id": 41,
+            "panels": [],
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "cdLSil37k"
+                    },
+                    "refId": "A"
+                }
+            ],
+            "title": "Regeltrefferqouten",
+            "type": "row"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Dieser Graph zeigt die Anzahl an Regelfilter die je Prozessor pro Sekunde bei einem Event angeschlagen haben.",
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 84
+            },
+            "hiddenSeries": false,
+            "id": 32,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": true,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": false,
+                    "expr": "sum(logprep_number_of_matches) by(processor)",
+                    "format": "time_series",
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Angeschlagene Regelfilter",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "transformations": [],
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:459",
+                    "format": "short",
+                    "label": "Regeln/Tracking Interval",
+                    "logBase": 1,
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:460",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "short"
+                },
+                "overrides": []
+            },
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 92
+            },
+            "hiddenSeries": false,
+            "id": 57,
+            "legend": {
+                "alignAsTable": true,
+                "avg": false,
+                "current": false,
+                "max": false,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": true,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": false,
+                    "expr": "sum(logprep_number_of_matches{processor=\"pre_detector\"}) by(processor)",
+                    "format": "time_series",
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Detektionen des PreDetectors",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "transformations": [],
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:459",
+                    "format": "short",
+                    "label": "Detektionen/Tracking Interval",
+                    "logBase": 1,
+                    "min": "0",
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:460",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "collapsed": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "cdLSil37k"
+            },
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 100
+            },
+            "id": 39,
+            "panels": [],
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "cdLSil37k"
+                    },
+                    "refId": "A"
+                }
+            ],
+            "title": "Bearbeitungszeiten",
+            "type": "row"
+        },
+        {
+            "aliasColors": {},
+            "bars": false,
+            "dashLength": 10,
+            "dashes": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Dieser Graph zeigt die durchschnittlichen Bearbeitungszeiten f?r ein Event",
+            "fieldConfig": {
+                "defaults": {
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "fill": 0,
+            "fillGradient": 0,
+            "gridPos": {
+                "h": 8,
+                "w": 24,
+                "x": 0,
+                "y": 101
+            },
+            "hiddenSeries": false,
+            "id": 29,
+            "legend": {
+                "alignAsTable": true,
+                "avg": true,
+                "current": false,
+                "max": true,
+                "min": false,
+                "rightSide": true,
+                "show": true,
+                "sideWidth": 350,
+                "total": false,
+                "values": true
+            },
+            "lines": true,
+            "linewidth": 1,
+            "nullPointMode": "null",
+            "options": {
+                "alertThreshold": true
+            },
+            "percentage": false,
+            "pluginVersion": "9.3.1",
+            "pointradius": 2,
+            "points": false,
+            "renderer": "flot",
+            "seriesOverrides": [],
+            "spaceLength": 10,
+            "stack": false,
+            "steppedLine": false,
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "avg(logprep_mean_processing_time) by(processor)",
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "thresholds": [],
+            "timeRegions": [],
+            "title": "Durchschnittliche Bearbeitungszeit f?r ein Event",
+            "tooltip": {
+                "shared": true,
+                "sort": 0,
+                "value_type": "individual"
+            },
+            "transformations": [],
+            "type": "graph",
+            "xaxis": {
+                "mode": "time",
+                "show": true,
+                "values": []
+            },
+            "yaxes": [
+                {
+                    "$$hashKey": "object:459",
+                    "format": "s",
+                    "label": "Sekunden/Tracking Interval",
+                    "logBase": 1,
+                    "show": true
+                },
+                {
+                    "$$hashKey": "object:460",
+                    "format": "short",
+                    "logBase": 1,
+                    "show": true
+                }
+            ],
+            "yaxis": {
+                "align": false
+            }
+        },
+        {
+            "collapsed": false,
+            "datasource": {
+                "type": "prometheus",
+                "uid": "cdLSil37k"
+            },
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 109
+            },
+            "id": 51,
+            "panels": [],
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "cdLSil37k"
+                    },
+                    "refId": "A"
+                }
+            ],
+            "title": "Weitere Statistiken",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Dieser Graph zeigt die Anteile der Bearbeitungszeiten jedes Prozessors an der gesamten Pipeline.",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        }
+                    },
+                    "mappings": []
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 12,
+                "x": 0,
+                "y": 110
+            },
+            "id": 35,
+            "options": {
+                "displayLabels": [],
+                "legend": {
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": true,
+                    "values": [
+                        "percent"
+                    ]
+                },
+                "pieType": "donut",
+                "reduceOptions": {
+                    "calcs": [
+                        "mean"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "text": {},
+                "tooltip": {
+                    "mode": "single",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "8.0.3",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "sum(logprep_mean_processing_time) by(processor)",
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "title": "Prozessorbearbeitungszeit im Verh?ltnis zur Pipeline",
+            "transformations": [],
+            "type": "piechart"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "continuous-GrYlRd"
+                    },
+                    "mappings": [],
+                    "max": 0.0004,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green"
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 12,
+                "x": 12,
+                "y": 110
+            },
+            "id": 37,
+            "options": {
+                "displayMode": "gradient",
+                "minVizHeight": 10,
+                "minVizWidth": 0,
+                "orientation": "horizontal",
+                "reduceOptions": {
+                    "calcs": [
+                        "mean"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showUnfilled": true,
+                "text": {}
+            },
+            "pluginVersion": "9.3.1",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "exemplar": true,
+                    "expr": "avg(logprep_mean_processing_time) by(processor)",
+                    "interval": "",
+                    "legendFormat": "{{of}}",
+                    "queryType": "randomWalk",
+                    "refId": "A"
+                }
+            ],
+            "title": "Prozessorbearbeitungszeiten im Vergleich",
+            "transformations": [],
+            "type": "bargauge"
+        },
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+            },
+            "description": "Diese Histogramme ziegen wie die Verteilung der Bearbeitungszeiten je Prozessor aussehen.  \n  \nInfo: Bei der Migration von \"histogram\" auf \"Heatmap\" umgestellt. Die \"histogram\" Darstellung gibt es erst ab Gravana v8.x.x.  \n  \nVG Manfred",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "fillOpacity": 65,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "lineWidth": 1
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green"
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": [
+                    {
+                        "__systemRef": "hideSeriesFrom",
+                        "matcher": {
+                            "id": "byNames",
+                            "options": {
+                                "mode": "exclude",
+                                "names": [
+                                    "clusterer"
+                                ],
+                                "prefix": "All except:",
+                                "readOnly": true
+                            }
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.hideFrom",
+                                "value": {
+                                    "legend": false,
+                                    "tooltip": false,
+                                    "viz": true
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "gridPos": {
+                "h": 9,
+                "w": 24,
+                "x": 0,
+                "y": 120
+            },
+            "id": 68,
+            "options": {
+                "bucketOffset": 0,
+                "bucketSize": 0.0001,
+                "combine": false,
+                "legend": {
+                    "calcs": [
+                        "mean"
+                    ],
+                    "displayMode": "list",
+                    "placement": "right",
+                    "showLegend": true
+                }
+            },
+            "pluginVersion": "8.0.3",
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "promz2394"
+                    },
+                    "editorMode": "code",
+                    "exemplar": true,
+                    "expr": "avg(logprep_mean_processing_time) by(processor)",
+                    "interval": "",
+                    "legendFormat": "__auto",
+                    "queryType": "randomWalk",
+                    "range": true,
+                    "refId": "A"
+                }
+            ],
+            "title": "Histogramme der Bearbeitungszeiten der Prozessoren",
+            "transformations": [],
+            "type": "histogram"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 129
+            },
+            "id": 62,
+            "panels": [],
+            "title": "PogPrep Logs",
+            "type": "row"
+        },
+        {
+            "datasource": {
+                "type": "loki",
+                "uid": "OZZKzmuVk"
+            },
+            "gridPos": {
+                "h": 25,
+                "w": 24,
+                "x": 0,
+                "y": 130
+            },
+            "id": 60,
+            "maxDataPoints": "",
+            "options": {
+                "dedupStrategy": "none",
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showLabels": false,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+            },
+            "targets": [
+                {
+                    "datasource": {
+                        "type": "loki",
+                        "uid": "OZZKzmuVk"
+                    },
+                    "expr": "{job=\"logprep/zeus-logprep\"}",
+                    "hide": false,
+                    "legendFormat": "",
+                    "refId": "A"
+                }
+            ],
+            "title": "LogPrep Logs",
+            "transparent": true,
+            "type": "logs"
+        }
+    ],
+    "refresh": "",
+    "schemaVersion": 37,
+    "style": "dark",
+    "tags": [
+        "SIEM-Komponente"
+    ],
+    "templating": {
+        "list": [
+            {
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "cdLSil37k"
+                },
+                "filters": [],
+                "hide": 0,
+                "name": "Filters",
+                "skipUrlSync": false,
+                "type": "adhoc"
+            }
+        ]
+    },
+    "time": {
+        "from": "now-24h",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "LogPrep v0.1.1",
+    "uid": "Ijmjihx7z",
+    "version": 4,
+    "weekStart": ""
+}

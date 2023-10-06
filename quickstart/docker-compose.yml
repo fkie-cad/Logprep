@@ -83,6 +83,7 @@ services:
 
   grafana:
     image: bitnami/grafana:latest
+    container_name: grafana
     expose:
       - 3000
     network_mode: host
@@ -91,6 +92,7 @@ services:
       - ../quickstart/exampledata/config/grafana/dashboards:/opt/bitnami/grafana/conf/provisioning/dashboards
   prometheus:
     image: bitnami/prometheus:latest
+    container_name: prometheus
     network_mode: host
     expose:
       - 9090

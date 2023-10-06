@@ -6,6 +6,7 @@ datasources:
     access: proxy
     # Access mode - proxy (server in the UI) or direct (browser in the UI).
     url: http://localhost:9090
+    uid: promz2394
     jsonData:
       httpMethod: POST
       manageAlerts: true
