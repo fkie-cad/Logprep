@@ -1,7 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+# pylint: disable=line-too-long
 import base64
 import json
+import os
 import zlib
 from copy import deepcopy
 from logging import getLogger
@@ -466,7 +468,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
-        assert test_event == {"any": "content"}
+        assert result == {"any": "content"}
 
     def test_get_next_returns_event_with_active_time_measurement(self):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
@@ -478,6 +480,46 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert self.object.metrics.mean_processing_time_per_event > 0
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
         TimeMeasurement.APPEND_TO_EVENT = False
+
+    def test_preprocessing_enriches_by_env_variable(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "enrich_by_env_variables": {
+                    "enriched_field": "TEST_ENV_VARIABLE",
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        test_event = {"any": "content"}
+        os.environ["TEST_ENV_VARIABLE"] = "test_value"
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result, _ = connector.get_next(0.01)
+        assert result == {"any": "content", "enriched_field": "test_value"}
+
+    def test_preprocessing_enriches_by_multiple_env_variables(self):
+        preprocessing_config = {
+            "preprocessing": {
+                "enrich_by_env_variables": {
+                    "enriched_field1": "TEST_ENV_VARIABLE_FOO",
+                    "enriched_field2": "TEST_ENV_VARIABLE_BAR",
+                },
+            }
+        }
+        connector_config = deepcopy(self.CONFIG)
+        connector_config.update(preprocessing_config)
+        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        test_event = {"any": "content"}
+        os.environ["TEST_ENV_VARIABLE_FOO"] = "test_value_foo"
+        os.environ["TEST_ENV_VARIABLE_BAR"] = "test_value_bar"
+        connector._get_event = mock.MagicMock(return_value=(test_event, None))
+        result, _ = connector.get_next(0.01)
+        assert result == {
+            "any": "content",
+            "enriched_field1": "test_value_foo",
+            "enriched_field2": "test_value_bar",
+        }
 
 
 class BaseOutputTestCase(BaseConnectorTestCase):

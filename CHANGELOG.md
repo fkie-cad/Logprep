@@ -2,6 +2,9 @@
 
 ## next release
 ### Features
+
+* add a preprocessor to enrich by systems env variables
+
 ### Improvements
 
 * `pre_detector` processor now adds the field `creation_timestamp` to pre-detections.
