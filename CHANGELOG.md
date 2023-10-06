@@ -9,6 +9,7 @@
 
 * `pre_detector` processor now adds the field `creation_timestamp` to pre-detections.
 It contains the time at which a pre-detection was created by the processor.
+* add `prometheus` and `grafana` to the quickstart setup to support development
 
 ### Bugfix
 
