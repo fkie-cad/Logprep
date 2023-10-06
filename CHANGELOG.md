@@ -12,6 +12,8 @@ It contains the time at which a pre-detection was created by the processor.
 
 ### Bugfix
 
+* fix CVE-2023-37920 Removal of e-Tugra root certificate
+
 ## v6.8.1
 ### Bugfix
 
