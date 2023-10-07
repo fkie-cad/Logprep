@@ -7,7 +7,6 @@ from unittest.mock import call
 
 import pytest
 
-from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline
 from logprep.processor.dissector.rule import DissectorRule
@@ -122,9 +121,7 @@ class TestSpecificGenericProcessStrategy:
         with mock.patch("logprep.abc.processor.Processor._apply_rules_wrapper") as mock_callback:
             expected_call_order = [call(event, rule_one), call(event, rule_two)]
             processor.process(event=event)
-            assert mock_callback.assert_has_calls(
-                expected_call_order, any_order=False
-            ), f"Wrong call order in test {execution_number}"
+            mock_callback.assert_has_calls(expected_call_order, any_order=False)
 
     def test_strategy_processes_generic_rules_after_processor_error_in_specific_rules(self, capsys):
         config = {
