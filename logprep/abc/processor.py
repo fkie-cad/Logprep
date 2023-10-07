@@ -190,9 +190,7 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"{self.describe()} processing event {event}")
-
+        self._logger.debug(f"{self.describe()} processing event {event}")
         self.metrics.number_of_processed_events += 1
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
