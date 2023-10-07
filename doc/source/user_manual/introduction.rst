@@ -36,27 +36,6 @@ Multiple instances of pipelines are created and run in parallel by different pro
 Only one event at a time is processed by each processor.
 Therefore, results of a processor should not depend on other events.
 
-.. mermaid::
-
-   flowchart LR
-   A[Input\nConnector] --> B
-   A[Input\nConnector] --> C
-   A[Input\nConnector] --> D
-   subgraph Pipeline 1
-   B[Normalizer] --> E[Geo-IP Enricher]
-   E --> F[Dropper] 
-   end
-   subgraph Pipeline 2
-   C[Normalizer] --> G[Geo-IP Enricher]
-   G --> H[Dropper] 
-   end
-   subgraph Pipeline n
-   D[Normalizer] --> I[Geo-IP Enricher]
-   I --> J[Dropper] 
-   end
-   F --> K[Output\nConnector]
-   H --> K[Output\nConnector]
-   J --> K[Output\nConnector]
 
 Processors
 ==========

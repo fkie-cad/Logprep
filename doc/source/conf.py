@@ -56,7 +56,6 @@ release = get_versions()["version"]
 # ones.
 extensions = [
     "sphinx.ext.napoleon",
-    "sphinxcontrib.mermaid",
     "sphinx.ext.autosummary",
     "sphinxcontrib.datatemplates",
     "nbsphinx",
