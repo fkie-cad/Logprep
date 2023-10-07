@@ -155,7 +155,8 @@ class TestRunLogprep:
         expected_lines = (
             f"python version:          {sys.version.split()[0]}\n"
             f"logprep version:         {get_versions()['version']}\n"
-            f"configuration version:   {configuration['version']}, http://localhost:32000/{config_path}"
+            f"configuration version:   {configuration['version']},"
+            f" http://localhost:32000/{config_path}"
         )
         assert lines == expected_lines
 
@@ -184,7 +185,8 @@ class TestRunLogprep:
         expected_lines = (
             f"python version:          {sys.version.split()[0]}\n"
             f"logprep version:         {get_versions()['version']}\n"
-            f"configuration version:   {configuration['version']}, http://localhost:32000/{config_path}"
+            f"configuration version:   {configuration['version']},"
+            f" http://localhost:32000/{config_path}"
         )
         assert lines == expected_lines
 
