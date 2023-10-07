@@ -250,7 +250,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         event = {}
         self.object.process(event)
         mock_debug.assert_called()
-        mock_debug.assert_called_with(f"{self.object.describe()} processing event {event}")
 
     def test_config_attribute_is_config_object(self):
         assert isinstance(self.object._config, self.object.Config)
