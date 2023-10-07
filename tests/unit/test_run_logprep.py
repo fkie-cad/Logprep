@@ -5,8 +5,8 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
-import responses
 import requests
+import responses
 from yaml import safe_load
 
 from logprep import run_logprep
@@ -233,7 +233,7 @@ class TestRunLogprep:
         mock_stop.assert_called()
 
     def test_logprep_exits_if_logger_can_not_be_created(self):
-        with mock.patch("logging.getLogger") as mock_create:
+        with mock.patch("logprep.run_logprep.Configuration.get") as mock_create:
             mock_create.side_effect = BaseException
             config_path = "quickstart/exampledata/config/pipeline.yml"
             with mock.patch("sys.argv", ["logprep", config_path]):
