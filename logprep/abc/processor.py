@@ -47,6 +47,7 @@ class Processor(Component):
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
         For valid URI formats see :ref:`getters`.
+        As last option it is possible to define rules inline.
         """
         generic_rules: List[str] = field(
             validator=[
@@ -57,6 +58,7 @@ class Processor(Component):
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
         For valid URI formats see :ref:`getters`.
+        As last option it is possible to define rules inline.
         """
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
