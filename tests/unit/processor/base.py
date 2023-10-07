@@ -246,12 +246,11 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert isinstance(processing_times[config_name], float)
 
     @mock.patch("logging.Logger.debug")
-    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
-    def test_process_writes_debug_messages(self, mock_is_enabled, mock_debug):
+    def test_process_writes_debug_messages(self, mock_debug):
         event = {}
         self.object.process(event)
-        mock_is_enabled.assert_called()
         mock_debug.assert_called()
+        mock_debug.assert_called_with(f"{self.object.describe()} processing event {event}")
 
     def test_config_attribute_is_config_object(self):
         assert isinstance(self.object._config, self.object.Config)
