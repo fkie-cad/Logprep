@@ -41,7 +41,7 @@ class Processor(Component):
         specific_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
             ]
         )
         """List of rule locations to load rules from.
@@ -51,7 +51,7 @@ class Processor(Component):
         generic_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
             ]
         )
         """List of rule locations to load rules from.
@@ -230,8 +230,23 @@ class Processor(Component):
 
     @staticmethod
     def resolve_directories(rule_paths: list) -> list:
+        """resolves directories to a list of files or rule definitions
+
+        Parameters
+        ----------
+        rule_paths : list
+            a list of files, directories or rule definitions
+
+        Returns
+        -------
+        list
+            a list of files and rule definitions
+        """
         resolved_paths = []
         for rule_path in rule_paths:
+            if isinstance(rule_path, dict):
+                resolved_paths.append(rule_path)
+                continue
             getter_instance = getter.GetterFactory.from_string(rule_path)
             if getter_instance.protocol == "file":
                 if Path(getter_instance.target).is_dir():

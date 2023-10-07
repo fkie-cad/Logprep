@@ -7,16 +7,17 @@ from random import sample
 from string import ascii_letters
 from unittest import mock
 
-from pytest import raises, mark
+from pytest import mark, raises
 
 from logprep.abc.input import Input
 from logprep.factory import Factory
 from logprep.factory_error import (
-    InvalidConfigurationError,
-    UnknownComponentTypeError,
-    NoTypeSpecifiedError,
     InvalidConfigSpecificationError,
+    InvalidConfigurationError,
+    NoTypeSpecifiedError,
+    UnknownComponentTypeError,
 )
+from logprep.filter.expression.filter_expression import Exists
 from logprep.processor.clusterer.processor import Clusterer
 from logprep.processor.labeler.processor import Labeler
 from logprep.processor.normalizer.processor import Normalizer
@@ -150,6 +151,87 @@ def test_create_labeler_creates_labeler_processor():
     )
 
     assert isinstance(processor, Labeler)
+
+
+def test_creates_calculator_with_inline_rules():
+    processor = Factory.create(
+        {
+            "calculator": {
+                "type": "calculator",
+                "generic_rules": [
+                    {
+                        "filter": "message",
+                        "calculator": {"target_field": "target", "calc": "1 + 1"},
+                    },
+                ],
+                "specific_rules": [
+                    {
+                        "filter": "message",
+                        "calculator": {"target_field": "target", "calc": "1 + 3"},
+                    },
+                ],
+            }
+        },
+        logger,
+    )
+    assert len(processor._generic_rules) == 1
+    assert len(processor._specific_rules) == 1
+
+
+def test_creates_calculator_with_inline_rules_and_files():
+    processor = Factory.create(
+        {
+            "calculator": {
+                "type": "calculator",
+                "generic_rules": [
+                    {
+                        "filter": "message1",
+                        "calculator": {"target_field": "target", "calc": "1 + 1"},
+                    },
+                    "tests/testdata/unit/calculator/generic_rules/calculator.json",
+                ],
+                "specific_rules": [
+                    {
+                        "filter": "message",
+                        "calculator": {"target_field": "target", "calc": "1 + 3"},
+                    },
+                    "tests/testdata/unit/calculator/specific_rules/calculator.json",
+                ],
+            }
+        },
+        logger,
+    )
+    assert len(processor._generic_rules) == 2
+    assert len(processor._specific_rules) == 2
+    assert processor._generic_rules[0].filter_str == "message1: *"
+    assert processor._generic_rules[1].filter_str == "(field1: * AND field2: *)"
+
+
+def test_creates_calculator_with_inline_rules_and_file_and_directory():
+    processor = Factory.create(
+        {
+            "calculator": {
+                "type": "calculator",
+                "generic_rules": [
+                    {
+                        "filter": "message",
+                        "calculator": {"target_field": "target", "calc": "1 + 1"},
+                    },
+                    "tests/testdata/unit/calculator/generic_rules/",
+                ],
+                "specific_rules": [
+                    {
+                        "filter": "message",
+                        "calculator": {"target_field": "target", "calc": "1 + 3"},
+                    },
+                    "tests/testdata/unit/calculator/specific_rules/calculator.json",
+                ],
+            }
+        },
+        logger,
+    )
+    assert len(processor._generic_rules) == 2
+    assert len(processor._specific_rules) == 2
 
 
 def test_dummy_input_creates_dummy_input_connector():
