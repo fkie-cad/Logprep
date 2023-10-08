@@ -12,15 +12,14 @@ class PrometheusStatsExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
     metric_prefix: str = "logprep_"
-    multi_processing_dir = None
+    multi_processing_dir: str = None
 
     def __init__(self, status_logger_config, application_logger):
         self._logger = application_logger
         self.configuration = status_logger_config
-        self._port = 8000
+        self._port = status_logger_config.get("metrics", {}).get("port", 8000)
 
         self._prepare_multiprocessing()
-        self._extract_port_from(self.configuration)
         self._set_up_metrics()
 
     def _prepare_multiprocessing(self):
@@ -59,9 +58,6 @@ class PrometheusStatsExporter:
                 os.remove(os.path.join(self.multi_processing_dir, filename))
                 removed_files.append(filename)
         self._logger.debug(f"Removed stale metric files: {removed_files}")
-
-    def _extract_port_from(self, configuration):
-        self._port = configuration.get("metrics", {}).get("port")
 
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""

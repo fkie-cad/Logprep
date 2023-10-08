@@ -43,7 +43,7 @@ class RunnerForTesting(Runner):
         super().__init__(bypass_check_to_obtain_non_singleton_instance=True)
 
     def _create_manager(self):
-        self._manager = PipelineManagerForTesting(self._logger, self._metric_targets)
+        self._manager = PipelineManagerForTesting(self._logger)
 
 
 class LogprepRunnerTest:
