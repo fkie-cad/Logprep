@@ -231,12 +231,12 @@ class Processor(Component):
         """
 
     @staticmethod
-    def resolve_directories(rule_paths: list) -> list:
+    def resolve_directories(rule_sources: list) -> list:
         """resolves directories to a list of files or rule definitions
 
         Parameters
         ----------
-        rule_paths : list
+        rule_sources : list
             a list of files, directories or rule definitions
 
         Returns
@@ -244,22 +244,22 @@ class Processor(Component):
         list
             a list of files and rule definitions
         """
-        resolved_paths = []
-        for rule_path in rule_paths:
-            if isinstance(rule_path, dict):
-                resolved_paths.append(rule_path)
+        resolved_sources = []
+        for rule_source in rule_sources:
+            if isinstance(rule_source, dict):
+                resolved_sources.append(rule_source)
                 continue
-            getter_instance = getter.GetterFactory.from_string(rule_path)
+            getter_instance = getter.GetterFactory.from_string(rule_source)
             if getter_instance.protocol == "file":
                 if Path(getter_instance.target).is_dir():
                     paths = list_json_files_in_directory(getter_instance.target)
                     for file_path in paths:
-                        resolved_paths.append(file_path)
+                        resolved_sources.append(file_path)
                 else:
-                    resolved_paths.append(rule_path)
+                    resolved_sources.append(rule_source)
             else:
-                resolved_paths.append(rule_path)
-        return resolved_paths
+                resolved_sources.append(rule_source)
+        return resolved_sources
 
     def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
         """method to add rules from directories or urls"""
