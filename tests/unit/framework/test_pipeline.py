@@ -75,7 +75,7 @@ class TestPipeline(ConfigurationForTests):
             lock=self.lock,
             shared_dict=self.shared_dict,
             used_server_ports=mock.MagicMock(),
-            metric_targets=self.metric_targets,
+            prometheus_exporter=mock.MagicMock(),
         )
 
     def test_fails_if_log_handler_is_not_of_type_loghandler(self, _):
@@ -89,7 +89,7 @@ class TestPipeline(ConfigurationForTests):
                     lock=self.lock,
                     shared_dict=self.shared_dict,
                     used_server_ports=mock.MagicMock(),
-                    metric_targets=self.metric_targets,
+                    prometheus_exporter=mock.MagicMock(),
                 )
 
     def test_pipeline_property_returns_pipeline(self, mock_create):

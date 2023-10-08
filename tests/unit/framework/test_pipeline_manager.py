@@ -1,18 +1,25 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-from logging import WARNING, Logger, INFO, ERROR
-from time import time, sleep
+from logging import ERROR, INFO, WARNING, Logger
+from time import sleep, time
 from unittest import mock
 
 from pytest import raises
 
 from logprep.framework.pipeline import MultiprocessingPipeline
-from logprep.framework.pipeline_manager import PipelineManager, MustSetConfigurationFirstError
+from logprep.framework.pipeline_manager import (
+    MustSetConfigurationFirstError,
+    PipelineManager,
+)
 from logprep.metrics.metric import MetricTargets
 from logprep.util.configuration import Configuration
 from tests.testdata.metadata import path_to_config
-from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub, AssertEmitsLogMessages
+from tests.util.testhelpers import (
+    AssertEmitsLogMessage,
+    AssertEmitsLogMessages,
+    HandlerStub,
+)
 
 
 class MultiprocessingPipelineMock(MultiprocessingPipeline):
@@ -58,11 +65,11 @@ class TestPipelineManager:
         self.metric_targets = MetricTargets(file_target=self.logger, prometheus_target=None)
         self.logger.addHandler(self.handler)
 
-        self.manager = PipelineManagerForTesting(self.logger, self.metric_targets)
+        self.manager = PipelineManagerForTesting(self.logger)
         self.manager.set_configuration(self.config)
 
     def test_create_pipeline_fails_if_config_is_unset(self):
-        manager = PipelineManager(self.logger, self.metric_targets)
+        manager = PipelineManager(self.logger)
 
         with raises(
             MustSetConfigurationFirstError,
@@ -214,15 +221,13 @@ class TestPipelineManager:
         failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
         failed_pipeline.is_alive.return_value = False  # nosemgrep
         failed_pipeline.pid = 42
-        metric_targets = MetricTargets(None, prometheus_exporter_mock)
-        manager = PipelineManager(self.logger, metric_targets)
+        manager = PipelineManager(self.logger)
+        manager.set_configuration({"metrics": {"enabled": True}, "process_count": 2})
+        manager._prometheus_exporter = prometheus_exporter_mock
         manager._pipelines = [failed_pipeline]
-        manager._configuration = {"process_count": 2}
         manager.restart_failed_pipeline()
-        prometheus_exporter_mock.prometheus_exporter.remove_metrics_from_process.assert_called()
-        prometheus_exporter_mock.prometheus_exporter.remove_metrics_from_process.assert_called_with(
-            42
-        )
+        prometheus_exporter_mock.remove_metrics_from_process.assert_called()
+        prometheus_exporter_mock.remove_metrics_from_process.assert_called_with(42)
 
     def test_restart_failed_pipelines_skips_removal_of_metrics_database_if_no_metric_target_is_configured(
         self,
@@ -231,7 +236,7 @@ class TestPipelineManager:
         failed_pipeline.metric_targets = None
         failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
         failed_pipeline.is_alive.return_value = False  # nosemgrep
-        manager = PipelineManager(self.logger, None)
+        manager = PipelineManager(self.logger)
         manager._pipelines = [failed_pipeline]
         manager._configuration = {"process_count": 2}
         manager.restart_failed_pipeline()

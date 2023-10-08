@@ -5,7 +5,7 @@ import tempfile
 from os import listdir, path
 from os.path import isfile
 
-from prometheus_client import start_http_server, multiprocess, REGISTRY, Gauge
+from prometheus_client import REGISTRY, Gauge, multiprocess, start_http_server
 
 
 class PrometheusStatsExporter:
@@ -61,10 +61,7 @@ class PrometheusStatsExporter:
         self._logger.debug(f"Removed stale metric files: {removed_files}")
 
     def _extract_port_from(self, configuration):
-        target_configs = configuration.get("targets", [])
-        for config in target_configs:
-            if "prometheus" in config:
-                self._port = config.get("prometheus").get("port")
+        self._port = configuration.get("metrics", {}).get("port")
 
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""

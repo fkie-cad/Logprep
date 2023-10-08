@@ -4,7 +4,7 @@
 # pylint: disable=line-too-long
 import logging
 from ctypes import c_double
-from multiprocessing import Manager, Lock, Value
+from multiprocessing import Lock, Manager, Value
 from time import time
 from unittest import mock
 
@@ -24,16 +24,7 @@ class TestMetricExposer:
             "enabled": True,
             "cumulative": True,
             "aggregate_processes": True,
-            "targets": [
-                {"prometheus": {"port": 8000}},
-                {
-                    "file": {
-                        "path": "./logs/status.json",
-                        "rollover_interval": 86400,
-                        "backup_count": 10,
-                    }
-                },
-            ],
+            "port": 8000,
         }
 
         self.shared_dict = Manager().dict()
@@ -108,15 +99,6 @@ class TestMetricExposer:
         }
 
         assert metrics == expected_metrics
-
-    def test_send_to_output_calls_expose_of_configured_targets(self):
-        mock_file_target = mock.MagicMock()
-        mock_prometheus_target = mock.MagicMock()
-        self.exposer.output_targets = [mock_file_target, mock_prometheus_target]
-        metrics = Rule.RuleMetrics(labels={"type": "generic"})
-        self.exposer._send_to_output(metrics)
-        self.exposer.output_targets[0].expose.assert_called_with(metrics)
-        self.exposer.output_targets[1].expose.assert_called_with(metrics)
 
     @mock.patch("logprep.metrics.metric_exposer.MetricExposer._store_metrics")
     @mock.patch(

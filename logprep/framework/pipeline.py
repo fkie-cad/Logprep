@@ -25,11 +25,11 @@ from logprep.abc.component import Component
 from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
+    CriticalInputParsingError,
     FatalInputError,
     Input,
     SourceDisconnectedError,
     WarningInputError,
-    CriticalInputParsingError,
 )
 from logprep.abc.output import (
     CriticalOutputError,
@@ -44,6 +44,7 @@ from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
+from logprep.util.prometheus_exporter import PrometheusStatsExporter
 from logprep.util.time_measurement import TimeMeasurement
 
 
@@ -223,7 +224,7 @@ class Pipeline:
         lock: Lock = None,
         shared_dict: dict = None,
         used_server_ports: dict = None,
-        metric_targets: MetricTargets = None,
+        prometheus_exporter: PrometheusStatsExporter = None,
     ) -> None:
         if log_handler and not isinstance(log_handler, Handler):
             raise MustProvideALogHandlerError
@@ -239,7 +240,7 @@ class Pipeline:
             print_processed_period = self._logprep_config.get("print_processed_period", 300)
             self._processing_counter.setup(print_processed_period, log_handler, lock)
         self._used_server_ports = used_server_ports
-        self._metric_targets = metric_targets
+        self._prometheus_exporter = prometheus_exporter
         self.pipeline_index = pipeline_index
         self._encoder = msgspec.msgpack.Encoder()
         self._decoder = msgspec.msgpack.Decoder()
@@ -263,7 +264,7 @@ class Pipeline:
     def _metrics_exposer(self) -> MetricExposer:
         return MetricExposer(
             self._logprep_config.get("metrics", {}),
-            self._metric_targets,
+            self._prometheus_exporter,
             self._shared_dict,
             self._lock,
             self.logger,
@@ -272,7 +273,7 @@ class Pipeline:
     @cached_property
     def metrics(self) -> PipelineMetrics:
         """The pipeline metrics object"""
-        if self._metric_targets is None:
+        if self._prometheus_exporter is None:
             return None
         return self.PipelineMetrics(
             input=self._input.metrics,
@@ -506,7 +507,7 @@ class MultiprocessingPipeline(Process, Pipeline):
         lock: Lock,
         shared_dict: dict,
         used_server_ports: dict,
-        metric_targets: MetricTargets = None,
+        prometheus_exporter: PrometheusStatsExporter = None,
     ) -> None:
         if not isinstance(log_handler, MultiprocessingLogHandler):
             raise MustProvideAnMPLogHandlerError
@@ -522,7 +523,7 @@ class MultiprocessingPipeline(Process, Pipeline):
             lock=lock,
             shared_dict=shared_dict,
             used_server_ports=used_server_ports,
-            metric_targets=metric_targets,
+            prometheus_exporter=prometheus_exporter,
         )
 
         self._continue_iterating = Value(c_bool)
