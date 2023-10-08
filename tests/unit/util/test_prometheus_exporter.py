@@ -21,7 +21,9 @@ class TestPrometheusStatsExporter:
         }
 
     def test_correct_setup(self):
-        exporter = PrometheusStatsExporter(self.metrics_config, getLogger("test-logger"))
+        exporter = PrometheusStatsExporter(
+            self.metrics_config.get("metrics"), getLogger("test-logger")
+        )
         assert not exporter.metrics
         assert isinstance(exporter.tracking_interval, Gauge)
         assert exporter._port == self.metrics_config["metrics"]["port"]

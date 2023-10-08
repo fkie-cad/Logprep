@@ -39,7 +39,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.metrics.metric import Metric, MetricTargets, calculate_new_average
+from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler

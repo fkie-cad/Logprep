@@ -9,7 +9,6 @@ import requests
 from schedule import Scheduler
 
 from logprep.framework.pipeline_manager import PipelineManager
-from logprep.metrics.metric import MetricTargets
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 

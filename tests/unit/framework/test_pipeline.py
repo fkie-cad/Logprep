@@ -36,7 +36,6 @@ from logprep.framework.pipeline import (
     Pipeline,
     SharedCounter,
 )
-from logprep.metrics.metric import MetricTargets
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.getter import GetterFactory
@@ -58,7 +57,6 @@ class ConfigurationForTests:
     log_handler = MultiprocessingLogHandler(WARNING)
     lock = Lock()
     shared_dict = {}
-    metric_targets = MetricTargets(file_target=getLogger("Mock"), prometheus_target=None)
     counter = SharedCounter()
 
 

@@ -12,7 +12,6 @@ from logprep.framework.pipeline_manager import (
     MustSetConfigurationFirstError,
     PipelineManager,
 )
-from logprep.metrics.metric import MetricTargets
 from logprep.util.configuration import Configuration
 from tests.testdata.metadata import path_to_config
 from tests.util.testhelpers import (
@@ -62,7 +61,6 @@ class TestPipelineManager:
         self.config = Configuration.create_from_yaml(path_to_config)
         self.handler = HandlerStub()
         self.logger = Logger("test")
-        self.metric_targets = MetricTargets(file_target=self.logger, prometheus_target=None)
         self.logger.addHandler(self.handler)
 
         self.manager = PipelineManagerForTesting(self.logger)
@@ -229,15 +227,13 @@ class TestPipelineManager:
         prometheus_exporter_mock.remove_metrics_from_process.assert_called()
         prometheus_exporter_mock.remove_metrics_from_process.assert_called_with(42)
 
-    def test_restart_failed_pipelines_skips_removal_of_metrics_database_if_no_metric_target_is_configured(
+    def test_restart_failed_pipelines_skips_removal_of_metrics_database_if_prometheus_is_not_enabled(
         self,
     ):
         failed_pipeline = mock.MagicMock()
-        failed_pipeline.metric_targets = None
         failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
         failed_pipeline.is_alive.return_value = False  # nosemgrep
         manager = PipelineManager(self.logger)
         manager._pipelines = [failed_pipeline]
         manager._configuration = {"process_count": 2}
         manager.restart_failed_pipeline()
-        assert failed_pipeline.metric_targets is None

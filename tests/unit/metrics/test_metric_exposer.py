@@ -11,7 +11,6 @@ from unittest import mock
 import pytest
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics.metric import MetricTargets
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.rule import Rule
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -33,12 +32,9 @@ class TestMetricExposer:
             self.shared_dict[idx] = None
 
         self.logger = logging.getLogger("test-file-metric-logger")
-        self.metric_targets = MetricTargets(
-            file_target=self.logger,
-            prometheus_target=PrometheusStatsExporter(self.config, self.logger),
-        )
+        self.prometheus_exporter = PrometheusStatsExporter(self.config, self.logger)
         self.exposer = MetricExposer(
-            self.config, self.metric_targets, self.shared_dict, Lock(), self.logger
+            self.config, self.prometheus_exporter, self.shared_dict, Lock(), self.logger
         )
 
     def test_time_to_expose_returns_true_after_enough_time_has_passed(self):
@@ -118,7 +114,7 @@ class TestMetricExposer:
         config = self.config.copy()
         config["aggregate_processes"] = False
         self.exposer = MetricExposer(
-            config, self.metric_targets, self.shared_dict, Lock(), self.logger
+            config, self.prometheus_exporter, self.shared_dict, Lock(), self.logger
         )
         self.exposer._timer = Value(c_double, time() - self.config["period"])
         mock_metrics = mock.MagicMock()
@@ -130,7 +126,7 @@ class TestMetricExposer:
         config = self.config.copy()
         config["cumulative"] = False
         self.exposer = MetricExposer(
-            config, self.metric_targets, self.shared_dict, Lock(), self.logger
+            config, self.prometheus_exporter, self.shared_dict, Lock(), self.logger
         )
         self.exposer._timer = Value(c_double, time() - self.config["period"])
         metrics = Rule.RuleMetrics(labels={"type": "generic"})
