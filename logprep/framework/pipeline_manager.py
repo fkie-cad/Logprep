@@ -26,7 +26,7 @@ class PipelineManager:
 
     def __init__(self, logger: Logger):
         self._logger = logger
-        self._prometheus_exporter = None
+        self.prometheus_exporter = None
         self._log_handler = MultiprocessingLogHandler(self._logger.level)
 
         self._pipelines = []
@@ -47,7 +47,7 @@ class PipelineManager:
             self._shared_dict[idx] = None
         prometheus_config = configuration.get("metrics", {})
         if prometheus_config.get("enabled", False):
-            self._prometheus_exporter = PrometheusStatsExporter(prometheus_config, self._logger)
+            self.prometheus_exporter = PrometheusStatsExporter(prometheus_config, self._logger)
 
     def get_count(self) -> int:
         """Get the pipeline count.
@@ -93,9 +93,9 @@ class PipelineManager:
         failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
-            if self._prometheus_exporter is None:
+            if self.prometheus_exporter is None:
                 continue
-            self._prometheus_exporter.remove_metrics_from_process(failed_pipeline.pid)
+            self.prometheus_exporter.remove_metrics_from_process(failed_pipeline.pid)
 
         if failed_pipelines:
             self.set_count(self._configuration.get("process_count"))
@@ -126,5 +126,5 @@ class PipelineManager:
             lock=self._lock,
             shared_dict=self._shared_dict,
             used_server_ports=self._used_server_ports,
-            prometheus_exporter=self._prometheus_exporter,
+            prometheus_exporter=self.prometheus_exporter,
         )

@@ -223,7 +223,7 @@ class TestPipelineManager:
         failed_pipeline.pid = 42
         manager = PipelineManager(self.logger)
         manager.set_configuration({"metrics": {"enabled": True}, "process_count": 2})
-        manager._prometheus_exporter = prometheus_exporter_mock
+        manager.prometheus_exporter = prometheus_exporter_mock
         manager._pipelines = [failed_pipeline]
         manager.restart_failed_pipeline()
         prometheus_exporter_mock.remove_metrics_from_process.assert_called()
