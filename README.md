@@ -437,6 +437,10 @@ Opensearch Dashboards. Following services are available after start up:
 | Logprep metrics: | `localhost:8000` |
 | Opensearch: | `localhost:9200` |
 | Opensearch Dashboards: | `localhost:5601` |
+| Grafana Dashboards: | `localhost:3000` |
+| Prometheus: | `localhost:9090` |
+
+The credentials for Grafana are `admin` and `admin`.
 
 The example rules that are used in the docker instance of Logprep can be found 
 in `quickstart/exampledata/rules`.
