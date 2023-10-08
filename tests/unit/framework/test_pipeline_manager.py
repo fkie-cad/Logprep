@@ -227,8 +227,9 @@ class TestPipelineManager:
         prometheus_exporter_mock.remove_metrics_from_process.assert_called()
         prometheus_exporter_mock.remove_metrics_from_process.assert_called_with(42)
 
+    @mock.patch("logprep.util.prometheus_exporter.PrometheusStatsExporter")
     def test_restart_failed_pipelines_skips_removal_of_metrics_database_if_prometheus_is_not_enabled(
-        self,
+        self, prometheus_exporter_mock
     ):
         failed_pipeline = mock.MagicMock()
         failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
@@ -237,3 +238,4 @@ class TestPipelineManager:
         manager._pipelines = [failed_pipeline]
         manager._configuration = {"process_count": 2}
         manager.restart_failed_pipeline()
+        prometheus_exporter_mock.remove_metrics_from_process.assert_not_called()
