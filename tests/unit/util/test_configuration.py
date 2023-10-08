@@ -11,14 +11,14 @@ from unittest import mock
 import pytest
 
 from logprep.util.configuration import (
-    InvalidConfigurationError,
     Configuration,
     IncalidMetricsConfigurationError,
-    RequiredConfigurationKeyMissingError,
+    InvalidConfigurationError,
     InvalidConfigurationErrors,
-    InvalidProcessorConfigurationError,
     InvalidInputConnectorConfigurationError,
     InvalidOutputConnectorConfigurationError,
+    InvalidProcessorConfigurationError,
+    RequiredConfigurationKeyMissingError,
 )
 from logprep.util.getter import GetterFactory
 from logprep.util.json_handling import dump_config_as_file
@@ -139,16 +139,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 None,
@@ -161,79 +152,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
-            ),
-            (
-                "empty target",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [],
-                    }
-                },
-                IncalidMetricsConfigurationError,
-            ),
-            (
-                "unkown target",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [{"webserver": {"does-not": "exist"}}],
-                    }
-                },
-                IncalidMetricsConfigurationError,
-            ),
-            (
-                "missing key in prometheus target config",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [{"prometheus": {"wrong": "key"}}],
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
-            ),
-            (
-                "missing key in file target config",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {
-                                "file": {
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 RequiredConfigurationKeyMissingError,
@@ -247,10 +166,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {"file": {}},
-                        ],
+                        "port": 8000,
                     }
                 },
                 RequiredConfigurationKeyMissingError,
@@ -264,16 +180,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 RequiredConfigurationKeyMissingError,
@@ -611,16 +518,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 [],
@@ -634,16 +532,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 [

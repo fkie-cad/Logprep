@@ -182,7 +182,8 @@ class Runner:
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
         self._schedule_config_refresh_job()
-        self._manager.prometheus_exporter.run()
+        if self._manager.prometheus_exporter:
+            self._manager.prometheus_exporter.run()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")
         for _ in self._keep_iterating():
