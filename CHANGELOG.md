@@ -11,7 +11,7 @@
 
 * add a preprocessor to enrich by systems env variables
 * add option to define rules inline in pipeline config under processor configs `generic_rules` or `specific_rules`
-* add option to `field_manager` to ignore missing source fields to suppress warings and failure tags
+* add option to `field_manager` to ignore missing source fields to suppress warnings and failure tags
 * add ignore_missing_source_fields behavior to `calculator`, `concatenator`, `dissector`, `grokker`, `ip_informer`, `selective_extractor`
 
 ### Improvements

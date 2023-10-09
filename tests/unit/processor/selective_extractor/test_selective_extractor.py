@@ -149,6 +149,7 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
             "selective_extractor": {
                 "source_fields": ["other.message", "not.exists", "message"],
                 "outputs": [{"opensearch": "index"}],
+                "ignore_missing_fields": False,
             },
         }
         self._load_specific_rule(rule)
