@@ -42,6 +42,7 @@ class DatetimeExtractorRule(FieldManagerRule):
         source_fields: list = field(
             validator=[
                 validators.instance_of(list),
+                validators.max_len(1),
                 validators.deep_iterable(member_validator=validators.instance_of(str)),
             ],
         )
@@ -49,3 +50,4 @@ class DatetimeExtractorRule(FieldManagerRule):
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to. """
         mapping: dict = field(default="", init=False, repr=False, eq=False)
+        ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)

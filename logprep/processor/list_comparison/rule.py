@@ -70,6 +70,7 @@ class ListComparisonRule(FieldManagerRule):
         e.g.,  :code:`${<your environment variable>}`. The special key :code:`${LOGPREP_LIST}`
         will be filled by this processor. """
         mapping: dict = field(default="", init=False, repr=False, eq=False)
+        ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
     def __init__(self, filter_rule: FilterExpression, config: dict):
         super().__init__(filter_rule, config)

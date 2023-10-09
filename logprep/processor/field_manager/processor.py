@@ -138,11 +138,14 @@ class FieldManager(Processor):
 
     def _handle_missing_fields(self, event, rule, source_fields, field_values):
         if rule.ignore_missing_fields:
-            return
+            return False
         if None in field_values:
             error = self._get_missing_fields_error(source_fields, field_values)
             self._handle_warning_error(
-                event, rule, error, failure_tags=["_field_manager_missing_field_warning"]
+                event,
+                rule,
+                error,
+                failure_tags=[f"_{self.rule_class.rule_type}_missing_field_warning"],
             )
             return True
         return False

@@ -70,3 +70,4 @@ class KeyCheckerRule(FieldManagerRule):
         target_field: str = field(validator=validators.instance_of(str))
         """The field where to write the processed values to. """
         mapping: dict = field(default="", init=False, repr=False, eq=False)
+        ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)

@@ -281,6 +281,35 @@ test_cases = [  # testcase, rule, event, expected
             "action": "42",
         },
     ),
+    (
+        "ignore_missing_fields",
+        {
+            "filter": "winlog.event_id: 123456789",
+            "grokker": {
+                "mapping": {
+                    "winlog.event_data.normalize me!": "%{IP:some_ip} %{NUMBER:port:int}",
+                    "this_field_does_not_exist": "%{IP:some_ip} %{NUMBER:port:int}",
+                },
+                "ignore_missing_fields": True,
+            },
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234"},
+            }
+        },
+        {
+            "winlog": {
+                "api": "wineventlog",
+                "event_id": 123456789,
+                "event_data": {"normalize me!": "123.123.123.123 1234"},
+            },
+            "some_ip": "123.123.123.123",
+            "port": 1234,
+        },
+    ),
 ]
 
 failure_test_cases = [

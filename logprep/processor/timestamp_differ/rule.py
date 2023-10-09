@@ -86,6 +86,7 @@ class TimestampDifferRule(FieldManagerRule):
         """(Optional) Specifies whether the unit (s, ms, ns) should be part of the output.
         Defaults to :code:`False`."""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
+        ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):
             field_format_str = re.findall(FIELD_PATTERN, self.diff)

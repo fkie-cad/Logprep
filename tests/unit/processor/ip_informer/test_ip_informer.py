@@ -226,6 +226,27 @@ test_cases = [
             },
         },
     ),
+    (
+        "ignore missing fields",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip", "does_not_exist"],
+                "target_field": "result",
+                "properties": ["teredo"],
+                "ignore_missing_fields": True,
+            },
+        },
+        {"ip": "192.168.5.1"},
+        {
+            "ip": "192.168.5.1",
+            "result": {
+                "192.168.5.1": {
+                    "teredo": False,
+                }
+            },
+        },
+    ),
 ]  # testcase, rule, event, expected
 
 failure_test_cases = [
@@ -240,6 +261,27 @@ failure_test_cases = [
         },
         {"ip": "not an ip"},
         {"ip": "not an ip", "tags": ["_ip_informer_failure"]},
+    ),
+    (
+        "missing fields",
+        {
+            "filter": "ip",
+            "ip_informer": {
+                "source_fields": ["ip", "does_not_exist"],
+                "target_field": "result",
+                "properties": ["teredo"],
+            },
+        },
+        {"ip": "192.168.5.1"},
+        {
+            "ip": "192.168.5.1",
+            "result": {
+                "192.168.5.1": {
+                    "teredo": False,
+                }
+            },
+            "tags": ["_ip_informer_missing_field_warning"],
+        },
     ),
     (
         "single field is not an ip address and other field is an ip address",
@@ -324,7 +366,7 @@ failure_test_cases = [
         {
             "filter": "ip",
             "ip_informer": {
-                "source_fields": ["ip", "notip"],
+                "source_fields": ["ip"],
                 "target_field": "result",
             },
         },

@@ -143,6 +143,25 @@ class TestConcatenator(BaseProcessorTestCase):
                 },
                 {"field": {"c": "another one"}, "target_field": "first-second"},
             ),
+            (
+                "ignore missing fields",
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": "target_field",
+                        "separator": "-",
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
+                    },
+                },
+                {"field": {"a": "first"}, "other_field": {"c": "third"}},
+                {
+                    "field": {"a": "first"},
+                    "other_field": {"c": "third"},
+                    "target_field": "first-third",
+                },
+            ),
         ],
     )
     def test_for_expected_output(self, test_case, rule, document, expected_output):

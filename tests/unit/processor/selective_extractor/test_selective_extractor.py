@@ -142,3 +142,39 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
         assert len(self.object._extra_data) == 1
         _ = self.object.process(document)
         assert len(self.object._extra_data) == 1
+
+    def test_process_extracts_dotted_fields_complains_on_missing_fields(self):
+        rule = {
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["other.message", "not.exists", "message"],
+                "outputs": [{"opensearch": "index"}],
+            },
+        }
+        self._load_specific_rule(rule)
+        document = {"message": "test_message", "other": {"message": "my message value"}}
+        expected = {
+            "message": "test_message",
+            "other": {"message": "my message value"},
+            "tags": ["_selective_extractor_missing_field_warning"],
+        }
+        self.object.process(document)
+        assert document == expected
+
+    def test_process_extracts_dotted_fields_and_ignores_missing_fields(self):
+        rule = {
+            "filter": "message",
+            "selective_extractor": {
+                "source_fields": ["other.message", "message", "not.exists"],
+                "outputs": [{"opensearch": "index"}],
+                "ignore_missing_fields": True,
+            },
+        }
+        self._load_specific_rule(rule)
+        document = {"message": "test_message", "other": {"message": "my message value"}}
+        expected = {
+            "message": "test_message",
+            "other": {"message": "my message value"},
+        }
+        self.object.process(document)
+        assert document == expected
