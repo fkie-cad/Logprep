@@ -36,7 +36,6 @@ from logprep.framework.pipeline import (
     Pipeline,
     SharedCounter,
 )
-from logprep.metrics.metric import MetricTargets
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.getter import GetterFactory
@@ -58,7 +57,6 @@ class ConfigurationForTests:
     log_handler = MultiprocessingLogHandler(WARNING)
     lock = Lock()
     shared_dict = {}
-    metric_targets = MetricTargets(file_target=getLogger("Mock"), prometheus_target=None)
     counter = SharedCounter()
 
 
@@ -75,7 +73,7 @@ class TestPipeline(ConfigurationForTests):
             lock=self.lock,
             shared_dict=self.shared_dict,
             used_server_ports=mock.MagicMock(),
-            metric_targets=self.metric_targets,
+            prometheus_exporter=mock.MagicMock(),
         )
 
     def test_fails_if_log_handler_is_not_of_type_loghandler(self, _):
@@ -89,7 +87,7 @@ class TestPipeline(ConfigurationForTests):
                     lock=self.lock,
                     shared_dict=self.shared_dict,
                     used_server_ports=mock.MagicMock(),
-                    metric_targets=self.metric_targets,
+                    prometheus_exporter=mock.MagicMock(),
                 )
 
     def test_pipeline_property_returns_pipeline(self, mock_create):

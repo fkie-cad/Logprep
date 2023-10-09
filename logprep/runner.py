@@ -9,7 +9,6 @@ import requests
 from schedule import Scheduler
 
 from logprep.framework.pipeline_manager import PipelineManager
-from logprep.metrics.metric_targets import get_metric_targets
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
@@ -93,7 +92,6 @@ class Runner:
         self._configuration = None
         self._yaml_path = None
         self._logger = None
-        self._metric_targets = None
         self._log_handler = None
         self._config_refresh_interval = None
 
@@ -183,6 +181,8 @@ class Runner:
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
         self._schedule_config_refresh_job()
+        if self._manager.prometheus_exporter:
+            self._manager.prometheus_exporter.run()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")
         for _ in self._keep_iterating():
@@ -267,8 +267,7 @@ class Runner:
     def _create_manager(self):
         if self._manager is not None:
             raise MustNotCreateMoreThanOneManagerError
-        metric_targets = get_metric_targets(self._configuration, self._logger)
-        self._manager = PipelineManager(self._logger, metric_targets)
+        self._manager = PipelineManager(self._logger)
 
     def stop(self):
         """Stop the current process"""

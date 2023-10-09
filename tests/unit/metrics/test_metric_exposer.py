@@ -4,14 +4,13 @@
 # pylint: disable=line-too-long
 import logging
 from ctypes import c_double
-from multiprocessing import Manager, Lock, Value
+from multiprocessing import Lock, Manager, Value
 from time import time
 from unittest import mock
 
 import pytest
 
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics.metric import MetricTargets
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.rule import Rule
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -24,16 +23,7 @@ class TestMetricExposer:
             "enabled": True,
             "cumulative": True,
             "aggregate_processes": True,
-            "targets": [
-                {"prometheus": {"port": 8000}},
-                {
-                    "file": {
-                        "path": "./logs/status.json",
-                        "rollover_interval": 86400,
-                        "backup_count": 10,
-                    }
-                },
-            ],
+            "port": 8000,
         }
 
         self.shared_dict = Manager().dict()
@@ -42,12 +32,9 @@ class TestMetricExposer:
             self.shared_dict[idx] = None
 
         self.logger = logging.getLogger("test-file-metric-logger")
-        self.metric_targets = MetricTargets(
-            file_target=self.logger,
-            prometheus_target=PrometheusStatsExporter(self.config, self.logger),
-        )
+        self.prometheus_exporter = PrometheusStatsExporter(self.config, self.logger)
         self.exposer = MetricExposer(
-            self.config, self.metric_targets, self.shared_dict, Lock(), self.logger
+            self.config, self.prometheus_exporter, self.shared_dict, Lock(), self.logger
         )
 
     def test_time_to_expose_returns_true_after_enough_time_has_passed(self):
@@ -109,15 +96,6 @@ class TestMetricExposer:
 
         assert metrics == expected_metrics
 
-    def test_send_to_output_calls_expose_of_configured_targets(self):
-        mock_file_target = mock.MagicMock()
-        mock_prometheus_target = mock.MagicMock()
-        self.exposer.output_targets = [mock_file_target, mock_prometheus_target]
-        metrics = Rule.RuleMetrics(labels={"type": "generic"})
-        self.exposer._send_to_output(metrics)
-        self.exposer.output_targets[0].expose.assert_called_with(metrics)
-        self.exposer.output_targets[1].expose.assert_called_with(metrics)
-
     @mock.patch("logprep.metrics.metric_exposer.MetricExposer._store_metrics")
     @mock.patch(
         "logprep.metrics.metric_exposer.MetricExposer._expose_aggregated_metrics_from_shared_dict"
@@ -136,7 +114,7 @@ class TestMetricExposer:
         config = self.config.copy()
         config["aggregate_processes"] = False
         self.exposer = MetricExposer(
-            config, self.metric_targets, self.shared_dict, Lock(), self.logger
+            config, self.prometheus_exporter, self.shared_dict, Lock(), self.logger
         )
         self.exposer._timer = Value(c_double, time() - self.config["period"])
         mock_metrics = mock.MagicMock()
@@ -148,7 +126,7 @@ class TestMetricExposer:
         config = self.config.copy()
         config["cumulative"] = False
         self.exposer = MetricExposer(
-            config, self.metric_targets, self.shared_dict, Lock(), self.logger
+            config, self.prometheus_exporter, self.shared_dict, Lock(), self.logger
         )
         self.exposer._timer = Value(c_double, time() - self.config["period"])
         metrics = Rule.RuleMetrics(labels={"type": "generic"})

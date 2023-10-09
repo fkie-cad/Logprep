@@ -12,9 +12,7 @@ metrics:
   measure_time:
     enabled: true
     append_to_event: false
-  targets:
-    - prometheus:
-        port: 8000
+  port: 8000
 
 pipeline:
   - labelername:

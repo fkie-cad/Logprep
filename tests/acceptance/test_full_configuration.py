@@ -130,7 +130,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
             "cumulative": False,
             "aggregate_processes": False,
             "measure_time": {"enabled": True, "append_to_event": False},
-            "targets": [{"prometheus": {"port": 8000}}],
+            "port": 8000,
         },
         "input": {
             "fileinput": {
@@ -221,7 +221,4 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     assert re.search("logprep_pipeline_sum_of_processor_warnings.*pipeline-1.* 0\.0", metrics)
     assert re.search("logprep_pipeline_sum_of_processor_errors.*pipeline-1.* 0\.0", metrics)
 
-    assert re.search(
-        r"logprep_tracking_interval_in_seconds.*config_version.*logprep_version.* 1\.0", metrics
-    )
     proc.kill()

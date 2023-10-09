@@ -1,6 +1,11 @@
 ## Upcoming Changes
 
 ## next release
+
+### Breaking
+
+* removed metric file target
+
 ### Features
 
 * add a preprocessor to enrich by systems env variables

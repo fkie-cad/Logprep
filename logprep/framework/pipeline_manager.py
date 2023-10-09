@@ -1,13 +1,13 @@
 """This module contains functionality to manage pipelines via multi-processing."""
 
-from logging import Logger, DEBUG
-from multiprocessing import Manager, Lock
+from logging import DEBUG, Logger
+from multiprocessing import Lock, Manager
 from queue import Empty
 
 from logprep.framework.pipeline import MultiprocessingPipeline
-from logprep.metrics.metric import MetricTargets
 from logprep.util.configuration import Configuration
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
+from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 
 class PipelineManagerError(BaseException):
@@ -24,10 +24,9 @@ class MustSetConfigurationFirstError(PipelineManagerError):
 class PipelineManager:
     """Manage pipelines via multi-processing."""
 
-    def __init__(self, logger: Logger, metric_targets: MetricTargets):
+    def __init__(self, logger: Logger):
         self._logger = logger
-        self.metric_targets = metric_targets
-
+        self.prometheus_exporter = None
         self._log_handler = MultiprocessingLogHandler(self._logger.level)
 
         self._pipelines = []
@@ -44,8 +43,11 @@ class PipelineManager:
         manager = Manager()
         self._shared_dict = manager.dict()
         self._used_server_ports = manager.dict()
-        for idx in range(configuration["process_count"]):
+        for idx in range(configuration.get("process_count", 1)):
             self._shared_dict[idx] = None
+        prometheus_config = configuration.get("metrics", {})
+        if prometheus_config.get("enabled", False):
+            self.prometheus_exporter = PrometheusStatsExporter(prometheus_config, self._logger)
 
     def get_count(self) -> int:
         """Get the pipeline count.
@@ -91,11 +93,9 @@ class PipelineManager:
         failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
-
-            if self.metric_targets and self.metric_targets.prometheus_target:
-                self.metric_targets.prometheus_target.prometheus_exporter.remove_metrics_from_process(
-                    failed_pipeline.pid
-                )
+            if self.prometheus_exporter is None:
+                continue
+            self.prometheus_exporter.remove_metrics_from_process(failed_pipeline.pid)
 
         if failed_pipelines:
             self.set_count(self._configuration.get("process_count"))
@@ -126,5 +126,5 @@ class PipelineManager:
             lock=self._lock,
             shared_dict=self._shared_dict,
             used_server_ports=self._used_server_ports,
-            metric_targets=self.metric_targets,
+            prometheus_exporter=self.prometheus_exporter,
         )
