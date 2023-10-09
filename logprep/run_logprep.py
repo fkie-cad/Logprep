@@ -93,7 +93,6 @@ def _run_logprep(arguments, logger: logging.Logger):
     runner = None
     try:
         runner = Runner.get_runner()
-        runner.set_logger(logger)
         runner.load_configuration(arguments.config)
         logger.debug("Configuration loaded")
         runner.start()

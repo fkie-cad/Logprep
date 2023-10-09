@@ -165,7 +165,6 @@ def get_patched_runner(config_path, logger):
         The patched logprep runner
     """
     runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
-    runner.set_logger(logger)
     runner.load_configuration(config_path)
 
     # patch runner to stop on empty pipeline

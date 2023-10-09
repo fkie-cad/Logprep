@@ -5,13 +5,15 @@ They can be multi-processed.
 
 """
 import copy
+import logging
+import logging.handlers
+import multiprocessing
 
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
 from ctypes import c_bool, c_ulonglong
 from functools import cached_property
-from logging import INFO, NOTSET, Handler, Logger
 from multiprocessing import Lock, Process, Value, current_process
 from typing import Any, List, Tuple
 
@@ -42,22 +44,9 @@ from logprep.factory import Factory
 from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
-from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 from logprep.util.time_measurement import TimeMeasurement
-
-
-class PipelineError(BaseException):
-    """Base class for Pipeline related exceptions."""
-
-
-class MustProvideALogHandlerError(PipelineError):
-    """Raise if no log handler was provided."""
-
-
-class MustProvideAnMPLogHandlerError(BaseException):
-    """Raise if no multiprocessing log handler was provided."""
 
 
 class SharedCounter:
@@ -67,9 +56,9 @@ class SharedCounter:
         self._val = Value(c_ulonglong, 0)
         self._printed = Value(c_bool, False)
         self._lock = None
-        self._logger = None
         self._period = None
         self.scheduler = Scheduler()
+        self._logger = logging.getLogger("Logprep SharedCounter")
 
     def _init_timer(self, period: float):
         if self._period is None:
@@ -79,17 +68,9 @@ class SharedCounter:
             self.scheduler.every(int(self._period)).seconds.do(self.print_value)
             self.scheduler.every(int(self._period + 1)).seconds.do(self.reset_printed)
 
-    def _create_logger(self, log_handler: Handler):
-        if self._logger is None:
-            logger = Logger("Processing Counter", level=log_handler.level)
-            for handler in logger.handlers:
-                logger.removeHandler(handler)
-            logger.addHandler(log_handler)
-            self._logger = logger
-
-    def setup(self, print_processed_period: float, log_handler: Handler, lock: Lock):
+    def setup(self, print_processed_period: float, lock: Lock):
         """Setup shared counter for multiprocessing pipeline."""
-        self._create_logger(log_handler)
+
         self._init_timer(print_processed_period)
         self._lock = lock
 
@@ -194,7 +175,7 @@ class Pipeline:
     _logprep_config: dict
     """ the logprep configuration dict """
 
-    _log_handler: Handler
+    _log_queue: multiprocessing.Queue
     """ the handler for the logs """
 
     _continue_iterating: Value
@@ -220,17 +201,17 @@ class Pipeline:
         config: dict,
         pipeline_index: int = None,
         counter: "SharedCounter" = None,
-        log_handler: Handler = None,
+        log_queue: multiprocessing.Queue = None,
         lock: Lock = None,
         shared_dict: dict = None,
         used_server_ports: dict = None,
         prometheus_exporter: PrometheusStatsExporter = None,
     ) -> None:
-        if log_handler and not isinstance(log_handler, Handler):
-            raise MustProvideALogHandlerError
+        self._log_queue = log_queue
+        self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
+        self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
         self._logprep_config = config
         self._timeout = config.get("timeout")
-        self._log_handler = log_handler
         self._continue_iterating = Value(c_bool)
 
         self._lock = lock
@@ -238,7 +219,7 @@ class Pipeline:
         self._processing_counter = counter
         if self._processing_counter:
             print_processed_period = self._logprep_config.get("print_processed_period", 300)
-            self._processing_counter.setup(print_processed_period, log_handler, lock)
+            self._processing_counter.setup(print_processed_period, lock)
         self._used_server_ports = used_server_ports
         self._prometheus_exporter = prometheus_exporter
         self.pipeline_index = pipeline_index
@@ -285,7 +266,7 @@ class Pipeline:
     def _pipeline(self) -> tuple:
         self.logger.debug(f"Building '{self._process_name}'")
         pipeline = [self._create_processor(entry) for entry in self._logprep_config.get("pipeline")]
-        self.logger.debug(f"Finished building pipeline ({self._process_name})")
+        self.logger.debug("Finished building pipeline")
         return pipeline
 
     @cached_property
@@ -313,28 +294,14 @@ class Pipeline:
         )
         return Factory.create(input_connector_config, self.logger)
 
-    @cached_property
-    def logger(self) -> Logger:
-        """the pipeline logger"""
-        if self._log_handler is None:
-            return Logger("Pipeline")
-        if self._log_handler.level == NOTSET:
-            self._log_handler.level = INFO
-        logger = Logger("Pipeline", level=self._log_handler.level)
-        for handler in logger.handlers:
-            logger.removeHandler(handler)
-        logger.addHandler(self._log_handler)
-
-        return logger
-
     @_handle_pipeline_error
     def _setup(self):
-        self.logger.debug(f"Creating connectors ({self._process_name})")
+        self.logger.debug("Creating connectors")
         for _, output in self._output.items():
             output.input_connector = self._input
         self.logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
-            f" output -> '{[output.describe() for _, output in self._output.items()]}' ({self._process_name})"
+            f" output -> '{[output.describe() for _, output in self._output.items()]}'"
         )
         self._input.pipeline_index = self.pipeline_index
         self._input.setup()
@@ -345,10 +312,10 @@ class Pipeline:
             while self._input.server.config.port in self._used_server_ports:
                 self._input.server.config.port += 1
             self._used_server_ports.update({self._input.server.config.port: self._process_name})
-        self.logger.debug(f"Finished creating connectors ({self._process_name})")
-        self.logger.info(f"Start building pipeline ({self._process_name})")
+        self.logger.debug("Finished creating connectors")
+        self.logger.info("Start building pipeline")
         _ = self._pipeline
-        self.logger.info(f"Finished building pipeline ({self._process_name})")
+        self.logger.info("Finished building pipeline")
 
     def _create_processor(self, entry: dict) -> "Processor":
         processor_name = list(entry.keys())[0]
@@ -357,7 +324,7 @@ class Pipeline:
         processor.setup()
         if self.metrics:
             self.metrics.pipeline.append(processor.metrics)
-        self.logger.debug(f"Created '{processor}' processor ({self._process_name})")
+        self.logger.debug(f"Created '{processor}' processor")
         return processor
 
     def run(self) -> None:
@@ -369,7 +336,7 @@ class Pipeline:
             with warnings.catch_warnings():
                 warnings.simplefilter("default")
                 self._setup()
-        self.logger.debug(f"Start iterating ({self._process_name})")
+        self.logger.debug("Start iterating")
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
                 while self._iterate():
@@ -490,6 +457,7 @@ class Pipeline:
 
     def stop(self) -> None:
         """Stop processing processors in the Pipeline."""
+        self.logger.debug(f"Stopping pipeline ({self._process_name})")
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
 
@@ -503,15 +471,12 @@ class MultiprocessingPipeline(Process, Pipeline):
         self,
         pipeline_index: int,
         config: dict,
-        log_handler: Handler,
+        log_queue: multiprocessing.Queue,
         lock: Lock,
         shared_dict: dict,
         used_server_ports: dict,
         prometheus_exporter: PrometheusStatsExporter = None,
     ) -> None:
-        if not isinstance(log_handler, MultiprocessingLogHandler):
-            raise MustProvideAnMPLogHandlerError
-
         self._profile = config.get("profile_pipelines", False)
 
         Pipeline.__init__(
@@ -519,7 +484,7 @@ class MultiprocessingPipeline(Process, Pipeline):
             pipeline_index=pipeline_index,
             config=config,
             counter=self.processed_counter,
-            log_handler=log_handler,
+            log_queue=log_queue,
             lock=lock,
             shared_dict=shared_dict,
             used_server_ports=used_server_ports,

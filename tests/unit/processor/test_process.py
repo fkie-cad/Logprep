@@ -123,7 +123,10 @@ class TestSpecificGenericProcessStrategy:
             processor.process(event=event)
             mock_callback.assert_has_calls(expected_call_order, any_order=False)
 
-    def test_strategy_processes_generic_rules_after_processor_error_in_specific_rules(self, capsys):
+    @mock.patch("logging.Logger.warning")
+    def test_strategy_processes_generic_rules_after_processor_error_in_specific_rules(
+        self, mock_warning
+    ):
         config = {
             "pipeline": [
                 {"adder": {"type": "generic_adder", "specific_rules": [], "generic_rules": []}}
@@ -160,6 +163,9 @@ class TestSpecificGenericProcessStrategy:
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_two)
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_one)
         pipeline.process_event(event)
-        captured = capsys.readouterr()
-        assert re.match("FieldExistsWarning in GenericAdder.*first", captured.err)
+        assert (
+            "The following fields could not be written, "
+            "because one or more subfields existed and could not be extended: first"
+            in mock_warning.call_args[0][0]
+        )
         assert event == expected_event

@@ -1,8 +1,9 @@
 """This module contains the logprep runner and is responsible for signal handling."""
+# pylint: disable=logging-fstring-interpolation
 
+import logging
 import signal
 from ctypes import c_bool
-from logging import Logger
 from multiprocessing import Value, current_process
 
 import requests
@@ -10,10 +11,9 @@ from schedule import Scheduler
 
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
 
-class RunnerError(BaseException):
+class RunnerError(Exception):
     """Base class for Runner related exceptions."""
 
 
@@ -23,10 +23,6 @@ class MustNotConfigureTwiceError(RunnerError):
 
 class NotALoggerError(RunnerError):
     """Raise if the logger was assigned a non-logger object ."""
-
-
-class MustNotSetLoggerTwiceError(RunnerError):
-    """Raise if a logger has been set more than once."""
 
 
 class MustConfigureALoggerError(RunnerError):
@@ -60,7 +56,7 @@ class Runner:
     to start processing.
 
     The Runner should only raise exceptions derived from RunnerError but other components may raise
-    exceptions that are not catched by it. Hence, we recommend to simply catch BaseException and
+    exceptions that are not catched by it. Hence, we recommend to simply catch Exception and
     log it as an unhandled exception.
 
     Example
@@ -91,8 +87,7 @@ class Runner:
     def __init__(self, bypass_check_to_obtain_non_singleton_instance=False):
         self._configuration = None
         self._yaml_path = None
-        self._logger = None
-        self._log_handler = None
+        self._logger = logging.getLogger("Logprep Runner")
         self._config_refresh_interval = None
 
         self._manager = None
@@ -104,29 +99,6 @@ class Runner:
 
         if not bypass_check_to_obtain_non_singleton_instance:
             raise UseGetRunnerToCreateRunnerSingleton
-
-    def set_logger(self, logger: Logger):
-        """Setup logging for any "known" errors from any part of the software.
-
-        Parameters
-        ----------
-        logger: Logger
-            An instance of logging.Logger.
-
-        Raises
-        ------
-        NotALoggerError
-            If 'logger' is not an instance of Logger.
-        MustNotSetLoggerTwiceError
-            If 'self._logger' was already set.
-        """
-        if not isinstance(logger, Logger):
-            raise NotALoggerError
-        if self._logger is not None:
-            raise MustNotSetLoggerTwiceError
-
-        self._logger = logger
-        self._log_handler = MultiprocessingLogHandler(logger.level)
 
     def load_configuration(self, yaml_file: str):
         """Load the configuration from a YAML file (cf. documentation).
@@ -196,9 +168,6 @@ class Runner:
     def _loop(self):
         self.scheduler.run_pending()
         self._manager.restart_failed_pipeline()
-        # Note: We are waiting half the timeout because when shutting down, we also have to
-        # wait for the logprep's timeout before the shutdown is actually initiated.
-        self._manager.handle_logs_into_logger(self._logger, self._configuration["timeout"] / 2.0)
 
     def reload_configuration(self, refresh=False):
         """Reload the configuration from the configured yaml path.
@@ -248,10 +217,8 @@ class Runner:
             )
         except InvalidConfigurationError as error:
             self._logger.error(
-                "Invalid configuration, leaving old configuration in place: "
-                + self._yaml_path
-                + ": "
-                + str(error)
+                "Invalid configuration, leaving old"
+                f" configuration in place: {self._yaml_path}: {str(error)}"
             )
 
     def _schedule_config_refresh_job(self):
@@ -267,7 +234,7 @@ class Runner:
     def _create_manager(self):
         if self._manager is not None:
             raise MustNotCreateMoreThanOneManagerError
-        self._manager = PipelineManager(self._logger)
+        self._manager = PipelineManager()
 
     def stop(self):
         """Stop the current process"""
