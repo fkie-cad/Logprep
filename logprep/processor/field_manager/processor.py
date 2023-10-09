@@ -137,6 +137,8 @@ class FieldManager(Processor):
         add_and_overwrite(event, target_field, target_field_value)
 
     def _handle_missing_fields(self, event, rule, source_fields, field_values):
+        if rule.ignore_missing_fields:
+            return
         if None in field_values:
             error = self._get_missing_fields_error(source_fields, field_values)
             self._handle_warning_error(
