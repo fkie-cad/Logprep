@@ -16,10 +16,10 @@ from _pytest.python_api import raises
 
 from logprep.abc.input import (
     CriticalInputError,
+    CriticalInputParsingError,
     FatalInputError,
     SourceDisconnectedError,
     WarningInputError,
-    CriticalInputParsingError,
 )
 from logprep.abc.output import (
     CriticalOutputError,
@@ -37,10 +37,7 @@ from logprep.framework.pipeline import (
     SharedCounter,
 )
 from logprep.metrics.metric import MetricTargets
-from logprep.processor.base.exceptions import (
-    ProcessingCriticalError,
-    ProcessingWarning,
-)
+from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.getter import GetterFactory
 from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
@@ -63,11 +60,6 @@ class ConfigurationForTests:
     shared_dict = {}
     metric_targets = MetricTargets(file_target=getLogger("Mock"), prometheus_target=None)
     counter = SharedCounter()
-
-
-class ProcessorWarningMockError(ProcessingWarning):
-    def __init__(self):
-        super().__init__("ProcessorWarningMockError")
 
 
 @mock.patch("logprep.factory.Factory.create")

@@ -41,22 +41,24 @@ class Processor(Component):
         specific_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
             ]
         )
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
         For valid URI formats see :ref:`getters`.
+        As last option it is possible to define entire rules with all their configuration parameters as list elements.
         """
         generic_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
             ]
         )
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
         For valid URI formats see :ref:`getters`.
+        As last option it is possible to define entire rules with all their configuration parameters as list elements.
         """
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
@@ -229,20 +231,35 @@ class Processor(Component):
         """
 
     @staticmethod
-    def resolve_directories(rule_paths: list) -> list:
-        resolved_paths = []
-        for rule_path in rule_paths:
-            getter_instance = getter.GetterFactory.from_string(rule_path)
+    def resolve_directories(rule_sources: list) -> list:
+        """resolves directories to a list of files or rule definitions
+
+        Parameters
+        ----------
+        rule_sources : list
+            a list of files, directories or rule definitions
+
+        Returns
+        -------
+        list
+            a list of files and rule definitions
+        """
+        resolved_sources = []
+        for rule_source in rule_sources:
+            if isinstance(rule_source, dict):
+                resolved_sources.append(rule_source)
+                continue
+            getter_instance = getter.GetterFactory.from_string(rule_source)
             if getter_instance.protocol == "file":
                 if Path(getter_instance.target).is_dir():
                     paths = list_json_files_in_directory(getter_instance.target)
                     for file_path in paths:
-                        resolved_paths.append(file_path)
+                        resolved_sources.append(file_path)
                 else:
-                    resolved_paths.append(rule_path)
+                    resolved_sources.append(rule_source)
             else:
-                resolved_paths.append(rule_path)
-        return resolved_paths
+                resolved_sources.append(rule_source)
+        return resolved_sources
 
     def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
         """method to add rules from directories or urls"""

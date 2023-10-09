@@ -4,6 +4,7 @@
 ### Features
 
 * add a preprocessor to enrich by systems env variables
+* add option to define rules inline in pipeline config under processor configs `generic_rules` or `specific_rules`
 
 ### Improvements
 

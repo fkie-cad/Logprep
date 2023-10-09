@@ -40,6 +40,11 @@ pipeline:
         - quickstart/exampledata/rules/dropper/specific
       generic_rules:
         - quickstart/exampledata/rules/dropper/specific
+        - filter: "test_dropper"
+          dropper:
+            drop:
+              - drop_me
+          description: "..."
 
   - pre_detector:
       type: pre_detector
@@ -77,6 +82,15 @@ pipeline:
         - quickstart/exampledata/rules/pseudonymizer/generic/
       max_cached_pseudonyms: 1000000
       max_caching_days: 1
+
+  - calculator:
+      type: calculator
+      specific_rules:
+        - filter: "test_label: execute"
+          calculator:
+            target_field: "calculation"
+            calc: "1 + 1"
+      generic_rules: []
 
 input:
   kafka:
