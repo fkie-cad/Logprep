@@ -81,5 +81,23 @@ services:
       - logprep
       - /home/logprep/quickstart/exampledata/config/pipeline.yml
 
+  grafana:
+    image: bitnami/grafana:latest
+    container_name: grafana
+    expose:
+      - 3000
+    network_mode: host
+    volumes:
+      - ../quickstart/exampledata/config/grafana/datasources:/opt/bitnami/grafana/conf/provisioning/datasources
+      - ../quickstart/exampledata/config/grafana/dashboards:/opt/bitnami/grafana/conf/provisioning/dashboards
+  prometheus:
+    image: bitnami/prometheus:latest
+    container_name: prometheus
+    network_mode: host
+    expose:
+      - 9090
+    volumes:
+      - ../quickstart/exampledata/config/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml
+
 volumes:
   data:
