@@ -14,6 +14,8 @@ It contains the time at which a pre-detection was created by the processor.
 ### Bugfix
 
 * fix CVE-2023-37920 Removal of e-Tugra root certificate
+* fix CVE-2023-43804 `Cookie` HTTP header isn't stripped on cross-origin redirects
+* fix CVE-2023-37276 aiohttp.web.Application vulnerable to HTTP request smuggling via llhttp HTTP request parser
 
 ## v6.8.1
 ### Bugfix
