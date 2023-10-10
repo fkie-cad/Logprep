@@ -26,8 +26,8 @@ Processor Configuration
 
 .. automodule:: logprep.processor.concatenator.rule
 """
-from logprep.abc.processor import Processor
 from logprep.processor.concatenator.rule import ConcatenatorRule
+from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import get_dotted_field_value
 
 
@@ -38,7 +38,7 @@ class ConcatenatorError(BaseException):
         super().__init__(f"Concatenator ({name}): {message}")
 
 
-class Concatenator(Processor):
+class Concatenator(FieldManager):
     """Concatenates a list of source fields into a new target field."""
 
     rule_class = ConcatenatorRule
@@ -56,11 +56,11 @@ class Concatenator(Processor):
         rule :
             Currently applied concatenator rule.
         """
-
         source_field_values = []
         for source_field in rule.source_fields:
             field_value = get_dotted_field_value(event, source_field)
             source_field_values.append(field_value)
+        self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
 
         source_field_values = [field for field in source_field_values if field is not None]
         target_value = f"{rule.separator}".join(source_field_values)
