@@ -105,8 +105,6 @@ class PipelineManager:
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
         self._decrease_to_count(0)
-        while len(self._pipelines) > 0:
-            self._logger.debug(f"Waiting for {len(self._pipelines)} pipelines to stop")
 
     def _create_pipeline(self, index) -> MultiprocessingPipeline:
         if self._configuration is None:

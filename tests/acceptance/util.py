@@ -147,7 +147,7 @@ def get_runner_outputs(patched_runner) -> list:
     return parsed_outputs
 
 
-def get_patched_runner(config_path, logger):
+def get_patched_runner(config_path):
     """
     Creates a patched runner that bypasses check to obtain non singleton instance and the runner
     won't continue iterating on an empty pipeline.
