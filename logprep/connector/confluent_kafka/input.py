@@ -42,7 +42,6 @@ from confluent_kafka import (
     OFFSET_STORED,
     Consumer,
     KafkaException,
-    Message,
     TopicPartition,
 )
 
@@ -61,7 +60,7 @@ DEFAULTS = {
     "client.id": "<<hostname>>",
     "auto.offset.reset": "earliest",
     "session.timeout.ms": "6000",
-    "statistics.interval.ms": "1000",
+    "statistics.interval.ms": "10000",
 }
 
 
