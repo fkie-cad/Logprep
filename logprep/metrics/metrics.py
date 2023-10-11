@@ -1,5 +1,8 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
-from attr import asdict, define
+from enum import Enum
+
+from attr import asdict, define, field
+from prometheus_client import Gauge, Counter, Histogram, Info
 
 
 def is_public(attribute, _):
@@ -69,6 +72,33 @@ class Metrics:
                 attribute_value = 0.0
             self.__setattr__(attribute, attribute_value)
         return self
+
+
+class MetricType(Enum):
+    COUNTER = 1
+    HISTOGRAM = 2
+    GAUGE = 3
+    INFO = 4
+
+
+PROMETHEUS_METRIC_TYPES = {
+    MetricType.COUNTER.value: Counter,
+    MetricType.GAUGE.value: Gauge,
+    MetricType.INFO.value: Info,
+    MetricType.HISTOGRAM.value: Histogram
+}
+
+
+@define(kw_only=True)
+class Metric:
+
+    type: MetricType = field(converter=lambda x: PROMETHEUS_METRIC_TYPES.get(x.value))
+    description: str = field()
+    labels: list = field()
+
+    def __attrs_post_init__(self):
+        self.tracker = self.type()
+
 
 
 def calculate_new_average(current_average, next_sample, sample_counter):

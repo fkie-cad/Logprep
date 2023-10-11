@@ -4,8 +4,9 @@ from typing import List
 
 import numpy as np
 from attr import define
+from prometheus_client.registry import Collector
 
-from logprep.metrics.metrics import Metrics, calculate_new_average, get_settable_metrics
+from logprep.metrics.metrics import Metrics, calculate_new_average, get_settable_metrics, Metric, MetricType
 
 
 @define(kw_only=True)
@@ -145,3 +146,10 @@ class TestMetric:
             "calculated_metric": 0,
         }
         assert metrics == expected_metrics
+
+
+class TestsNewMetrics:
+
+    def test_converts_enum_to_prometheus_metric(self):
+        metric = Metric(type=MetricType.COUNTER, description="empty description", labels=["A"])
+        assert issubclass(metric.type, Collector)
