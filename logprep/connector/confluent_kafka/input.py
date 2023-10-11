@@ -60,7 +60,7 @@ DEFAULTS = {
     "client.id": "<<hostname>>",
     "auto.offset.reset": "earliest",
     "session.timeout.ms": "6000",
-    "statistics.interval.ms": "10000",
+    "statistics.interval.ms": "30000",
 }
 
 
