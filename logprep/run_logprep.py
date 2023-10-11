@@ -6,7 +6,6 @@ import logging
 import sys
 import warnings
 from argparse import ArgumentParser
-from logging import ERROR, Logger, getLogger
 from os.path import basename
 from pathlib import Path
 
@@ -24,21 +23,13 @@ from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 from logprep.util.time_measurement import TimeMeasurement
 
-from logging import (
-    getLogger,
-    basicConfig,
-    Logger,
-)
-from logging.handlers import SysLogHandler
-
-
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
 
 DEFAULT_LOCATION_CONFIG = "file:///etc/logprep/pipeline.yml"
-getLogger("filelock").setLevel(ERROR)
-getLogger("urllib3.connectionpool").setLevel(ERROR)
-getLogger("elasticsearch").setLevel(ERROR)
+logging.getLogger("filelock").setLevel(logging.ERROR)
+logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
+logging.getLogger("elasticsearch").setLevel(logging.ERROR)
 
 
 def _parse_arguments():
@@ -98,7 +89,7 @@ def _parse_arguments():
     return arguments
 
 
-def _run_logprep(arguments, logger: Logger):
+def _run_logprep(arguments, logger: logging.Logger):
     runner = None
     try:
         runner = Runner.get_runner()
@@ -148,7 +139,7 @@ def _setup_logger(args, config: Configuration):
     try:
         log_config = config.get("logger", {})
         log_level = log_config.get("level", "INFO")
-        basicConfig(
+        logging.basicConfig(
             level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
         )
         logger = logging.getLogger("Logprep")
@@ -156,7 +147,7 @@ def _setup_logger(args, config: Configuration):
         for version in get_versions_string(args).split("\n"):
             logger.info(version)
     except BaseException as error:  # pylint: disable=broad-except
-        getLogger("Logprep").exception(error)
+        logging.getLogger("Logprep").exception(error)
         sys.exit(1)
     return logger
 
@@ -187,7 +178,7 @@ def _setup_metrics_and_time_measurement(args, config, logger):
     logger.debug(f"Config path: {args.config}")
 
 
-def _validate_rules(args, config: Configuration, logger: Logger):
+def _validate_rules(args, config: Configuration, logger: logging.Logger):
     try:
         config.verify_pipeline_only(logger)
     except InvalidConfigurationError as error:

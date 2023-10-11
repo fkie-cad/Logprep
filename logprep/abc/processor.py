@@ -1,6 +1,8 @@
 """Abstract module for processors"""
 import copy
+import time
 from abc import abstractmethod
+from functools import reduce
 from logging import DEBUG, Logger
 from multiprocessing import current_process
 from pathlib import Path
@@ -16,7 +18,6 @@ from logprep.processor.base.exceptions import (
     ProcessingCriticalError,
     ProcessingWarning,
 )
-from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util import getter
 from logprep.util.helper import (
     add_and_overwrite,
@@ -122,7 +123,6 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
         super().__init__(name, configuration, logger)
-        self._strategy = SpecificGenericProcessStrategy(self._config.apply_multiple_times)
         self.metric_labels, specific_tree_labels, generic_tree_labels = self._create_metric_labels()
         self._specific_tree = RuleTree(
             config_path=self._config.tree_config, metric_labels=specific_tree_labels
@@ -192,15 +192,31 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"{self.describe()} processing event {event}")
-        self._strategy.process(
-            event,
-            generic_tree=self._generic_tree,
-            specific_tree=self._specific_tree,
-            callback=self._apply_rules_wrapper,
-            processor_metrics=self.metrics,
-        )
+        self._logger.debug(f"{self.describe()} processing event {event}")
+        self.metrics.number_of_processed_events += 1
+        self._process_rule_tree(event, self._specific_tree)
+        self._process_rule_tree(event, self._generic_tree)
+
+    def _process_rule_tree(self, event: dict, tree: "RuleTree"):
+        applied_rules = set()
+
+        def _process_rule(event, rule):
+            begin = time.time()
+            self._apply_rules_wrapper(event, rule)
+            processing_time = time.time() - begin
+            rule.metrics._number_of_matches += 1
+            rule.metrics.update_mean_processing_time(processing_time)
+            self.metrics.update_mean_processing_time_per_event(processing_time)
+            applied_rules.add(rule)
+            return event
+
+        if self._config.apply_multiple_times:
+            matching_rules = tree.get_matching_rules(event)
+            while matching_rules:
+                reduce(_process_rule, (event, *matching_rules))
+                matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
+        else:
+            reduce(_process_rule, (event, *tree.get_matching_rules(event)))
 
     def _apply_rules_wrapper(self, event, rule):
         try:

@@ -16,7 +16,6 @@ from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.processor.processor_strategy import ProcessStrategy
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
 from logprep.util.time_measurement import TimeMeasurement
@@ -228,20 +227,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         object_rules_count = len(self.object.rules)
         assert all_rules_count == object_rules_count
 
-    def test_process_strategy_returns_strategy_object(self):
-        assert isinstance(self.object._strategy, ProcessStrategy)
-
-    def test_process_calls_strategy(self):
-        """
-        This test method needs to be overwritten in your ProcessorTests
-        if your processor uses another strategy
-        """
-        with mock.patch(
-            "logprep.processor.processor_strategy.SpecificGenericProcessStrategy.process"
-        ) as mock_strategy_process:
-            self.object.process({})
-            mock_strategy_process.assert_called()
-
     def test_process_is_measured(self):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
         TimeMeasurement.APPEND_TO_EVENT = True
@@ -261,11 +246,9 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert isinstance(processing_times[config_name], float)
 
     @mock.patch("logging.Logger.debug")
-    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
-    def test_process_writes_debug_messages(self, mock_is_enabled, mock_debug):
+    def test_process_writes_debug_messages(self, mock_debug):
         event = {}
         self.object.process(event)
-        mock_is_enabled.assert_called()
         mock_debug.assert_called()
 
     def test_config_attribute_is_config_object(self):
