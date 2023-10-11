@@ -4,7 +4,6 @@ import time
 from abc import abstractmethod
 from functools import reduce
 from logging import DEBUG, Logger
-from multiprocessing import current_process
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
@@ -12,7 +11,7 @@ from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics.metrics import Metrics, calculate_new_average
+from logprep.metrics.metrics import Metric, Metrics, MetricType, calculate_new_average
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -78,7 +77,12 @@ class Processor(Component):
 
         _prefix: str = "logprep_processor_"
 
-        number_of_processed_events: int = 0
+        number_of_processed_events: Metric = Metric(
+            type=MetricType.COUNTER,
+            description="",
+            labels={"pipeline": "1"},
+            name="number_of_processed_events",
+        )
         """Number of events that were processed by the processor"""
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""

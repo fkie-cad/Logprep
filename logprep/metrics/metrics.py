@@ -1,8 +1,8 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
 from enum import Enum
 
-from attr import asdict, define, field
-from prometheus_client import Gauge, Counter, Histogram, Info
+from attr import asdict, define, field, validators
+from prometheus_client import Counter, Gauge, Histogram, Info
 
 
 def is_public(attribute, _):
@@ -85,20 +85,34 @@ PROMETHEUS_METRIC_TYPES = {
     MetricType.COUNTER.value: Counter,
     MetricType.GAUGE.value: Gauge,
     MetricType.INFO.value: Info,
-    MetricType.HISTOGRAM.value: Histogram
+    MetricType.HISTOGRAM.value: Histogram,
 }
 
 
 @define(kw_only=True)
 class Metric:
-
     type: MetricType = field(converter=lambda x: PROMETHEUS_METRIC_TYPES.get(x.value))
-    description: str = field()
-    labels: list = field()
+    name: str = field(validator=validators.instance_of(str))
+    description: str = field(validator=validators.instance_of(str))
+    labels: dict = field(
+        validator=[
+            validators.instance_of(dict),
+            validators.deep_mapping(
+                key_validator=validators.instance_of(str),
+                value_validator=validators.instance_of(str),
+            ),
+        ]
+    )
+    _tracker: object = field(init=False)
 
     def __attrs_post_init__(self):
-        self.tracker = self.type()
+        self._tracker = self.type(
+            name=self.name, documentation=self.description, labelnames=self.labels.keys()
+        )
+        self._tracker.labels(**self.labels)
 
+    def __add__(self, other):
+        self._tracker.labels(self.labels).inc(other)
 
 
 def calculate_new_average(current_average, next_sample, sample_counter):

@@ -1,12 +1,21 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
+# pylint: disable=protected-access
 from typing import List
+from unittest import mock
 
 import numpy as np
 from attr import define
+from prometheus_client import REGISTRY, Counter
 from prometheus_client.registry import Collector
 
-from logprep.metrics.metrics import Metrics, calculate_new_average, get_settable_metrics, Metric, MetricType
+from logprep.metrics.metrics import (
+    Metric,
+    Metrics,
+    MetricType,
+    calculate_new_average,
+    get_settable_metrics,
+)
 
 
 @define(kw_only=True)
@@ -149,7 +158,31 @@ class TestMetric:
 
 
 class TestsNewMetrics:
-
     def test_converts_enum_to_prometheus_metric(self):
-        metric = Metric(type=MetricType.COUNTER, description="empty description", labels=["A"])
+        metric = Metric(
+            name="testmetric",
+            type=MetricType.COUNTER,
+            description="empty description",
+            labels={"A": "a"},
+        )
         assert issubclass(metric.type, Collector)
+
+    def test_counter_metric_sets_labels(self):
+        metric = Metric(
+            type=MetricType.COUNTER,
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "pipeline-1"},
+        )
+        assert metric._tracker._labelnames == ("pipeline",)
+        assert ("pipeline-1",) in metric._tracker._metrics
+
+    def test_counter_metric_increments_correctly(self):
+        metric = Metric(
+            type=MetricType.COUNTER,
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+        )
+        metric += 1
+        assert list(REGISTRY.collect())[-1].samples[-2].value == 1
