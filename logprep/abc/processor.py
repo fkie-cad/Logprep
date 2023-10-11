@@ -291,15 +291,9 @@ class Processor(Component):
                 self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             number_specific_rules = self._specific_tree.metrics.number_of_rules
-            self._logger.debug(
-                f"{self.describe()} loaded {number_specific_rules} "
-                f"specific rules ({current_process().name})"
-            )
+            self._logger.debug(f"{self.describe()} loaded {number_specific_rules} specific rules")
             number_generic_rules = self._generic_tree.metrics.number_of_rules
-            self._logger.debug(
-                f"{self.describe()} loaded {number_generic_rules} generic rules "
-                f"generic rules ({current_process().name})"
-            )
+            self._logger.debug(f"{self.describe()} loaded {number_generic_rules} generic rules")
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:

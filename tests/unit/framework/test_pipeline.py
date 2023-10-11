@@ -5,7 +5,7 @@ import logging
 import re
 import time
 from copy import deepcopy
-from logging import DEBUG, WARNING, getLogger
+from logging import DEBUG, getLogger
 from multiprocessing import Lock, active_children
 from unittest import mock
 
@@ -29,17 +29,10 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.framework.pipeline import (
-    MultiprocessingPipeline,
-    MustProvideALogHandlerError,
-    MustProvideAnMPLogHandlerError,
-    Pipeline,
-    SharedCounter,
-)
+from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline, SharedCounter
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.getter import GetterFactory
-from logprep.util.multiprocessing_log_handler import MultiprocessingLogHandler
 
 original_create = Factory.create
 
@@ -54,7 +47,6 @@ class ConfigurationForTests:
         "pipeline": [{"mock_processor1": {"proc": "conf"}}, {"mock_processor2": {"proc": "conf"}}],
         "metrics": {"period": 300, "enabled": False},
     }
-    log_handler = MultiprocessingLogHandler(WARNING)
     lock = Lock()
     shared_dict = {}
     counter = SharedCounter()
@@ -69,26 +61,12 @@ class TestPipeline(ConfigurationForTests):
             pipeline_index=1,
             config=self.logprep_config,
             counter=self.counter,
-            log_handler=self.log_handler,
+            log_queue=mock.MagicMock(),
             lock=self.lock,
             shared_dict=self.shared_dict,
             used_server_ports=mock.MagicMock(),
             prometheus_exporter=mock.MagicMock(),
         )
-
-    def test_fails_if_log_handler_is_not_of_type_loghandler(self, _):
-        for not_a_log_handler in [123, 45.67, TestPipeline()]:
-            with raises(MustProvideALogHandlerError):
-                _ = Pipeline(
-                    pipeline_index=1,
-                    config=self.logprep_config,
-                    counter=self.counter,
-                    log_handler=not_a_log_handler,
-                    lock=self.lock,
-                    shared_dict=self.shared_dict,
-                    used_server_ports=mock.MagicMock(),
-                    prometheus_exporter=mock.MagicMock(),
-                )
 
     def test_pipeline_property_returns_pipeline(self, mock_create):
         assert len(self.pipeline._pipeline) == 2
@@ -772,30 +750,16 @@ class TestPipelineWithActualInput:
 
 
 class TestMultiprocessingPipeline(ConfigurationForTests):
-    def setup_class(self):
-        self.log_handler = MultiprocessingLogHandler(DEBUG)
-
-    def test_fails_if_log_handler_is_not_a_multiprocessing_log_handler(self):
-        for not_a_log_handler in [None, 123, 45.67, TestMultiprocessingPipeline()]:
-            with raises(MustProvideAnMPLogHandlerError):
-                MultiprocessingPipeline(
-                    pipeline_index=1,
-                    config=self.logprep_config,
-                    log_handler=not_a_log_handler,
-                    lock=self.lock,
-                    used_server_ports=mock.MagicMock(),
-                    shared_dict=self.shared_dict,
-                )
-
     def test_does_not_fail_if_log_handler_is_a_multiprocessing_log_handler(self):
         try:
             MultiprocessingPipeline(
                 pipeline_index=1,
                 config=self.logprep_config,
-                log_handler=self.log_handler,
+                log_queue=mock.MagicMock(),
                 lock=self.lock,
                 used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
+                prometheus_exporter=mock.MagicMock(),
             )
         except MustProvideAnMPLogHandlerError:
             fail("Must not raise this error for a correct handler!")
@@ -806,10 +770,11 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             MultiprocessingPipeline(
                 pipeline_index=1,
                 config=self.logprep_config,
-                log_handler=self.log_handler,
+                log_queue=mock.MagicMock(),
                 lock=self.lock,
                 used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
+                prometheus_exporter=mock.MagicMock(),
             )
         )
 
@@ -820,10 +785,11 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             MultiprocessingPipeline(
                 pipeline_index=1,
                 config=self.logprep_config,
-                log_handler=self.log_handler,
+                log_queue=mock.MagicMock(),
                 lock=self.lock,
                 used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
+                prometheus_exporter=mock.MagicMock(),
             )
         )
         children_after = active_children()
@@ -834,10 +800,11 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         pipeline = MultiprocessingPipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            log_handler=self.log_handler,
+            log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
+            prometheus_exporter=mock.MagicMock(),
         )
         assert not pipeline._iterate()
 
@@ -851,10 +818,11 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         pipeline = MultiprocessingPipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            log_handler=self.log_handler,
+            log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
+            prometheus_exporter=mock.MagicMock(),
         )
         pipeline._input = mock.MagicMock()
         pipeline._input.get_next = mock.MagicMock()
@@ -873,10 +841,11 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         pipeline = MultiprocessingPipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            log_handler=self.log_handler,
+            log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
+            prometheus_exporter=mock.MagicMock(),
         )
         pipeline._input = mock.MagicMock()
         pipeline._input.get_next = mock.MagicMock()
@@ -895,10 +864,11 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         pipeline = MultiprocessingPipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            log_handler=self.log_handler,
+            log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
+            prometheus_exporter=mock.MagicMock(),
         )
         pipeline._output = mock.MagicMock()
         pipeline._output.store = mock.MagicMock()
@@ -908,7 +878,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         pipeline.start()
         pipeline.stop()
         pipeline.join()
-        out, err = capfd.readouterr()
+        _, err = capfd.readouterr()
         assert "AttributeError: 'bool' object has no attribute 'get_lock'" not in err
 
     @staticmethod
@@ -930,7 +900,7 @@ class TestSharedCounter:
             shared_counter = SharedCounter()
             print_period = 1
             shared_counter._logger = self.test_logger
-            shared_counter.setup(print_period, None, Lock())
+            shared_counter.setup(print_period, Lock())
             test_counter = 0
             test_counter_limit = 100
             start_time = time.time()

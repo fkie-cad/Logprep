@@ -147,7 +147,7 @@ def get_runner_outputs(patched_runner) -> list:
     return parsed_outputs
 
 
-def get_patched_runner(config_path, logger):
+def get_patched_runner(config_path):
     """
     Creates a patched runner that bypasses check to obtain non singleton instance and the runner
     won't continue iterating on an empty pipeline.
@@ -165,7 +165,6 @@ def get_patched_runner(config_path, logger):
         The patched logprep runner
     """
     runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
-    runner.set_logger(logger)
     runner.load_configuration(config_path)
 
     # patch runner to stop on empty pipeline
@@ -180,7 +179,7 @@ def get_patched_runner(config_path, logger):
 
 
 def get_test_output(config_path):
-    patched_runner = get_patched_runner(config_path, logger)
+    patched_runner = get_patched_runner(config_path)
     return get_runner_outputs(patched_runner=patched_runner)
 
 
