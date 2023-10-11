@@ -7,6 +7,7 @@
 
 import json
 import socket
+from copy import deepcopy
 from pathlib import Path
 from unittest import mock
 
@@ -14,6 +15,7 @@ import pytest
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
+from logprep.factory_error import InvalidConfigurationError
 from tests.unit.connector.base import BaseOutputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
@@ -164,3 +166,10 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         }
         # pylint: enable=line-too-long
         assert self.object.metrics.expose() == expected
+
+    def test_raises_value_error_if_mandatory_parameters_not_set(self):
+        config = deepcopy(self.CONFIG)
+        config.get("kafka_config").pop("bootstrap.servers")
+        expected_error_message = r"keys are missing: {'bootstrap.servers'}"
+        with pytest.raises(InvalidConfigurationError, match=expected_error_message):
+            Factory.create({"test": config}, logger=self.logger)

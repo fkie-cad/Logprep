@@ -27,7 +27,7 @@ Example
 
 import json
 from datetime import datetime
-from functools import cached_property
+from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
 from typing import Optional
@@ -35,8 +35,8 @@ from typing import Optional
 from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
 
-from logprep.abc.connector import Connector
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
+from logprep.util.validators import dict_with_keys_validator
 
 DEFAULTS = {
     "request.required.acks": "-1",
@@ -108,6 +108,7 @@ class ConfluentKafkaOutput(Output):
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of((str, dict)),
                 ),
+                partial(dict_with_keys_validator, expected_keys=["bootstrap.servers"]),
             ],
             factory=dict,
         )

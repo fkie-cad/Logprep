@@ -18,6 +18,7 @@ from logprep.abc.input import (
     WarningInputError,
 )
 from logprep.factory import Factory
+from logprep.factory_error import InvalidConfigurationError
 from tests.unit.connector.base import BaseInputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
@@ -288,3 +289,11 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._consumer.poll.side_effect = RuntimeError("test error")
         with pytest.raises(FatalInputError, match="test error"):
             self.object.get_next(0.01)
+
+    def test_raises_value_error_if_mandatory_parameters_not_set(self):
+        config = deepcopy(self.CONFIG)
+        config.get("kafka_config").pop("bootstrap.servers")
+        config.get("kafka_config").pop("group.id")
+        expected_error_message = r"keys are missing: {'(bootstrap.servers|group.id)', '(bootstrap.servers|group.id)'}"  # pylint: disable=line-too-long
+        with pytest.raises(InvalidConfigurationError, match=expected_error_message):
+            Factory.create({"test": config}, logger=self.logger)

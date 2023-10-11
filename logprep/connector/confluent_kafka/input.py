@@ -28,7 +28,7 @@ Example
             auto.offset.reset: "earliest"
 """
 # pylint: enable=line-too-long
-from functools import cached_property
+from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
 from typing import Callable, Optional, Tuple, Union
@@ -53,6 +53,7 @@ from logprep.abc.input import (
     Input,
     WarningInputError,
 )
+from logprep.util.validators import dict_with_keys_validator
 
 DEFAULTS = {
     "enable.auto.offset.store": "false",
@@ -175,7 +176,8 @@ class ConfluentKafkaInput(Input):
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
-            ],
+                partial(dict_with_keys_validator, expected_keys=["bootstrap.servers", "group.id"]),
+            ]
         )
         """ Kafka configuration for the kafka client. 
         At minimum the following keys must be set:
