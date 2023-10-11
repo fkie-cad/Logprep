@@ -93,11 +93,16 @@ def list_of_dirs_validator(_, attribute, directory_list):
         directory_validator(_, attribute, directory_path)
 
 
-def dict_with_keys_validator(_, __, value, expected_keys):
-    """validate if a dict has keys"""
+def keys_in_validator(_, __, value: typing.Iterable, expected_keys: typing.Iterable):
+    """validate if a Iterable has keys"""
     missing_keys = set(expected_keys).difference(set(value))
     if missing_keys:
         raise InvalidConfigurationError(f"following keys are missing: {missing_keys}")
+
+
+def dict_with_keys_validator(_, __, value, expected_keys):
+    """validate if a dict has keys"""
+    keys_in_validator(_, __, value, expected_keys)
 
     unexpected_keys = set(value).difference(set(expected_keys))
     if unexpected_keys:

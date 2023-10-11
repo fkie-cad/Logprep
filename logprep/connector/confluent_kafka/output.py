@@ -36,7 +36,7 @@ from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
-from logprep.util.validators import dict_with_keys_validator
+from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
     "request.required.acks": "-1",
@@ -108,7 +108,7 @@ class ConfluentKafkaOutput(Output):
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of((str, dict)),
                 ),
-                partial(dict_with_keys_validator, expected_keys=["bootstrap.servers"]),
+                partial(keys_in_validator, expected_keys=["bootstrap.servers"]),
             ],
             factory=dict,
         )

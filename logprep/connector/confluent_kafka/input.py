@@ -53,7 +53,7 @@ from logprep.abc.input import (
     Input,
     WarningInputError,
 )
-from logprep.util.validators import dict_with_keys_validator
+from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
     "enable.auto.offset.store": "false",
@@ -176,7 +176,7 @@ class ConfluentKafkaInput(Input):
                     key_validator=validators.instance_of(str),
                     value_validator=validators.instance_of(str),
                 ),
-                partial(dict_with_keys_validator, expected_keys=["bootstrap.servers", "group.id"]),
+                partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
             ]
         )
         """ Kafka configuration for the kafka client. 
