@@ -213,7 +213,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             "client.id": socket.getfqdn(),
             "auto.offset.reset": "earliest",
             "session.timeout.ms": "6000",
-            "statistics.interval.ms": "1000",
+            "statistics.interval.ms": "30000",
             "bootstrap.servers": "testserver:9092",
             "group.id": "testgroup",
             "logger": self.object._logger,

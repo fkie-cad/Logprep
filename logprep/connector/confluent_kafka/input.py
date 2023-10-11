@@ -22,7 +22,7 @@ Example
         topic: consumer
         kafka_config:
             bootstrap.servers: "127.0.0.1:9092,127.0.0.1:9093"
-            group: "cgroup"
+            group.id: "cgroup"
             enable.auto.commit: "true"
             session.timeout.ms: "6000"
             auto.offset.reset: "earliest"
