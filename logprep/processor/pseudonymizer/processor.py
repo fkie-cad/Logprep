@@ -126,7 +126,7 @@ class Pseudonymizer(Processor):
         files the path has to be given with :code:`file:///path/to/file.dat`."""
 
     @define(kw_only=True)
-    class PseudonymizerMetrics(Processor.ProcessorMetrics):
+    class Metrics(Processor.Metrics):
         """Tracks statistics about the Pseudonymizer"""
 
         pseudonymized_urls: int = 0
@@ -156,7 +156,7 @@ class Pseudonymizer(Processor):
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self.metrics = self.PseudonymizerMetrics(
+        self.metrics = self.Metrics(
             labels=self.metric_labels,
             generic_rule_tree=self._generic_tree.metrics,
             specific_rule_tree=self._specific_tree.metrics,

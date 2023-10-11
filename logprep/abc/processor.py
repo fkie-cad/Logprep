@@ -11,7 +11,6 @@ from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics.metrics import Metric, Metrics, MetricType, calculate_new_average
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -72,18 +71,11 @@ class Processor(Component):
         of an output with the same processor."""
 
     @define(kw_only=True)
-    class ProcessorMetrics(Metrics):
+    class Metrics(Component.Metrics):
         """Tracks statistics about this processor"""
 
         _prefix: str = "logprep_processor_"
 
-        number_of_processed_events: Metric = Metric(
-            type=MetricType.COUNTER,
-            description="",
-            labels={"pipeline": "1"},
-            name="number_of_processed_events",
-        )
-        """Number of events that were processed by the processor"""
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
@@ -95,16 +87,6 @@ class Processor(Component):
         """Tracker of the generic rule tree metrics"""
         specific_rule_tree: RuleTree.RuleTreeMetrics
         """Tracker of the specific rule tree metrics"""
-
-        def update_mean_processing_time_per_event(self, new_sample):
-            """Updates the mean processing time per event"""
-            new_avg, new_sample_counter = calculate_new_average(
-                self.mean_processing_time_per_event,
-                new_sample,
-                self._mean_processing_time_sample_counter,
-            )
-            self.mean_processing_time_per_event = new_avg
-            self._mean_processing_time_sample_counter = new_sample_counter
 
     __slots__ = [
         "rule_class",
@@ -118,7 +100,7 @@ class Processor(Component):
 
     rule_class: "Rule"
     has_custom_tests: bool
-    metrics: ProcessorMetrics
+    metrics: "Processor.Metrics"
     metric_labels: dict
     _event: dict
     _specific_tree: RuleTree
@@ -138,7 +120,7 @@ class Processor(Component):
             generic_rules_targets=self._config.generic_rules,
             specific_rules_targets=self._config.specific_rules,
         )
-        self.metrics = self.ProcessorMetrics(
+        self.metrics = self.Metrics(
             labels=self.metric_labels,
             generic_rule_tree=self._generic_tree.metrics,
             specific_rule_tree=self._specific_tree.metrics,
@@ -210,7 +192,6 @@ class Processor(Component):
             processing_time = time.time() - begin
             rule.metrics._number_of_matches += 1
             rule.metrics.update_mean_processing_time(processing_time)
-            self.metrics.update_mean_processing_time_per_event(processing_time)
             applied_rules.add(rule)
             return event
 

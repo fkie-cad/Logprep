@@ -98,7 +98,7 @@ class DomainResolver(Processor):
         was retrieved from the cache or newly resolved, as well as the cache size."""
 
     @define(kw_only=True)
-    class DomainResolverMetrics(Processor.ProcessorMetrics):
+    class Metrics(Processor.Metrics):
         """Tracks statistics about the DomainResolver"""
 
         total_urls: int = 0

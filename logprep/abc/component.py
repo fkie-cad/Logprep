@@ -5,8 +5,10 @@ from typing import Callable
 
 import msgspec
 from attr import define, field, validators
+from attrs import asdict
 from schedule import Scheduler
 
+from logprep.metrics.metrics import Metric, MetricType
 from logprep.util.helper import camel_to_snake
 
 
@@ -19,6 +21,34 @@ class Component(ABC):
 
         type: str = field(validator=validators.instance_of(str))
         """Type of the component"""
+
+    @define(kw_only=True)
+    class Metrics:
+        """Base Metric class to track and expose statistics about logprep"""
+
+        _labels: dict
+        _prefix: str = "logprep_"
+
+        number_of_processed_events: Metric = Metric(
+            type=MetricType.COUNTER,
+            description="",
+            labels={"pipeline": "1"},
+            name=f"{_prefix}number_of_processed_events",
+        )
+        """Number of events that were processed by the processor"""
+
+        def __attrs_post_init__(self):
+            for attribute in asdict(self):
+                attribute = getattr(self, attribute)
+                if isinstance(attribute, Metric):
+                    attribute.labels |= self._labels
+                    attribute.tracker = attribute.type(
+                        name=attribute.name,
+                        documentation=attribute.description,
+                        labelnames=attribute.labels.keys(),
+                        registry=None,
+                    )
+                    attribute.tracker.labels(**attribute.labels)
 
     # __dict__ is added to support functools.cached_property
     __slots__ = ["name", "_logger", "_config", "__dict__"]

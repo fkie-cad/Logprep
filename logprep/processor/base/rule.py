@@ -137,9 +137,10 @@ from typing import Dict, List, Optional, Set
 from attrs import define, field, validators
 from ruamel.yaml import YAML
 
+from logprep.abc.component import Component
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
-from logprep.metrics.metrics import Metrics, calculate_new_average
+from logprep.metrics.metrics import calculate_new_average
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import camel_to_snake
@@ -193,7 +194,7 @@ class Rule:
         """
 
     @define(kw_only=True)
-    class RuleMetrics(Metrics):
+    class RuleMetrics(Component.Metrics):
         """Tracks statistics about the current rule"""
 
         _number_of_matches: int = 0

@@ -34,46 +34,6 @@ def get_settable_metrics(metric_object):
     return metric_dict
 
 
-@define(kw_only=True)
-class Metrics:
-    """Base Metric class to track and expose statistics about logprep"""
-
-    _labels: dict
-    _prefix: str = "logprep_"
-
-    def expose(self):
-        """Iterates and collects all metrics and linked metrics in a common list."""
-        exp = {}
-        for attribute in get_exposable_metrics(self):
-            attribute_value = self.__getattribute__(attribute)
-            if isinstance(attribute_value, list):
-                for value in attribute_value:
-                    exp.update(value.expose())
-            elif isinstance(attribute_value, Metrics):
-                exp.update(attribute_value.expose())
-            else:
-                labels = [":".join(item) for item in self._labels.items()]
-                labels = ",".join(labels)
-                metric_key = f"{self._prefix}{attribute}"
-                exp[f"{metric_key};{labels}"] = float(attribute_value)
-        return exp
-
-    def reset_statistics(self):
-        """Resets the statistics of self and children to 0"""
-        for attribute in get_settable_metrics(self):
-            attribute_value = self.__getattribute__(attribute)
-            if isinstance(attribute_value, Metrics):
-                attribute_value = attribute_value.reset_statistics()
-            if isinstance(attribute_value, list):
-                attribute_value = [child.reset_statistics() for child in attribute_value]
-            if isinstance(attribute_value, int):
-                attribute_value = 0
-            if isinstance(attribute_value, float):
-                attribute_value = 0.0
-            self.__setattr__(attribute, attribute_value)
-        return self
-
-
 class MetricType(Enum):
     COUNTER = 1
     HISTOGRAM = 2
@@ -103,16 +63,11 @@ class Metric:
             ),
         ]
     )
-    _tracker: object = field(init=False)
-
-    def __attrs_post_init__(self):
-        self._tracker = self.type(
-            name=self.name, documentation=self.description, labelnames=self.labels.keys()
-        )
-        self._tracker.labels(**self.labels)
+    tracker: object = field(default=None)
 
     def __add__(self, other):
-        self._tracker.labels(self.labels).inc(other)
+        self.tracker.labels(**self.labels).inc(other)
+        return self
 
 
 def calculate_new_average(current_average, next_sample, sample_counter):

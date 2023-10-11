@@ -4,20 +4,18 @@ from logging import Logger
 from attr import define
 
 from logprep.abc.component import Component
-from logprep.metrics.metrics import Metrics, calculate_new_average
+from logprep.metrics.metrics import calculate_new_average
 
 
 class Connector(Component):
     """Abstract Connector Class to define the Interface"""
 
     @define(kw_only=True)
-    class ConnectorMetrics(Metrics):
+    class ConnectorMetrics(Component.Metrics):
         """Tracks statistics about this connector"""
 
         _prefix: str = "logprep_connector_"
 
-        number_of_processed_events: int = 0
-        """Number of events that were processed by the connector"""
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0

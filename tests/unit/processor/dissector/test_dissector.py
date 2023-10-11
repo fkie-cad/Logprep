@@ -3,7 +3,9 @@ import logging
 import re
 
 import pytest
+from prometheus_client import Counter
 
+from logprep.metrics.metrics import Metric
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -735,3 +737,8 @@ class TestDissector(BaseProcessorTestCase):
             self.object.process(event)
         assert re.match(".*ProcessingWarning.*", caplog.text)
         assert event == expected, testcase
+
+    def test_has_number_of_processed_events_metric(self):
+        assert isinstance(self.object.metrics.number_of_processed_events, Metric)
+        self.object.process({"test": "event"})
+        assert True

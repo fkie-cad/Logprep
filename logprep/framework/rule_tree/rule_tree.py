@@ -1,14 +1,14 @@
 """This module contains the rule tree functionality."""
 
 from logging import Logger
-from typing import List, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
-from attr import define, Factory
+from attr import Factory, define
 
+from logprep.abc.component import Component
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
-from logprep.metrics.metrics import Metrics
 from logprep.util import getter
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ class RuleTree:
     """Represent a set of rules using a rule tree model."""
 
     @define(kw_only=True)
-    class RuleTreeMetrics(Metrics):
+    class RuleTreeMetrics(Component.Metrics):
         """Tracks statistics about the current rule tree"""
 
         number_of_rules: int = 0

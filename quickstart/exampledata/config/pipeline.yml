@@ -1,5 +1,5 @@
 version: 1
-process_count: 2
+process_count: 1
 timeout: 0.1
 logger:
   level: DEBUG

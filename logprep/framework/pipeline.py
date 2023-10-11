@@ -41,8 +41,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.metrics.metric_exposer import MetricExposer
-from logprep.metrics.metrics import Metrics, calculate_new_average
+from logprep.metrics.metrics import calculate_new_average
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -130,7 +129,7 @@ class Pipeline:
     # Would require too much change in the tests.
 
     @attrs.define(kw_only=True)
-    class PipelineMetrics(Metrics):
+    class Metrics(Component.Metrics):
         """Tracks statistics about a pipeline"""
 
         _prefix: str = "logprep_pipeline_"
@@ -139,36 +138,14 @@ class Pipeline:
         """Input metrics"""
         output: List[Connector.ConnectorMetrics]
         """Output metrics"""
-        pipeline: List["Processor.ProcessorMetrics"] = attrs.field(factory=list)
-        """Pipeline containing the metrics of all set processors"""
+        kafka_offset: int = 0
+        """The current offset of the kafka input reader"""
         number_of_processed_events: int = 0
         """Number of events that this pipeline has processed"""
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
-
-        # pylint: disable=not-an-iterable
-        @property
-        def sum_of_processor_warnings(self):
-            """Sum of all warnings of all processors"""
-            return np.sum([processor.number_of_warnings for processor in self.pipeline])
-
-        @property
-        def sum_of_processor_errors(self):
-            """Sum of all errors of all processors"""
-            return np.sum([processor.number_of_errors for processor in self.pipeline])
-
-        # pylint: enable=not-an-iterable
-
-        def update_mean_processing_time_per_event(self, new_sample):
-            """Updates the mean processing time per event"""
-            new_avg, new_sample_counter = calculate_new_average(
-                self.mean_processing_time_per_event,
-                new_sample,
-                self._mean_processing_time_sample_counter,
-            )
-            self.mean_processing_time_per_event = new_avg
-            self._mean_processing_time_sample_counter = new_sample_counter
+        """Helper to calculate mean processing time"""
 
     _logprep_config: dict
     """ the logprep configuration dict """
@@ -240,21 +217,11 @@ class Pipeline:
         return {"pipeline": f"pipeline-{self.pipeline_index}"}
 
     @cached_property
-    def _metrics_exposer(self) -> MetricExposer:
-        return MetricExposer(
-            self._logprep_config.get("metrics", {}),
-            self._prometheus_exporter,
-            self._shared_dict,
-            self._lock,
-            self.logger,
-        )
-
-    @cached_property
-    def metrics(self) -> PipelineMetrics:
+    def metrics(self) -> Metrics:
         """The pipeline metrics object"""
         if self._prometheus_exporter is None:
             return None
-        return self.PipelineMetrics(
+        return self.Metrics(
             input=self._input.metrics,
             output=[self._output.get(output).metrics for output in self._output],
             labels=self._metric_labels,
@@ -320,8 +287,6 @@ class Pipeline:
         entry[processor_name]["metric_labels"] = self._metric_labels
         processor = Factory.create(entry, self.logger)
         processor.setup()
-        if self.metrics:
-            self.metrics.pipeline.append(processor.metrics)
         self.logger.debug(f"Created '{processor}' processor")
         return processor
 
@@ -355,7 +320,6 @@ class Pipeline:
     def process_pipeline(self) -> Tuple[dict, list]:
         """Retrieve next event, process event with full pipeline and store or return results"""
         assert self._input, "Run process_pipeline only with an valid input connector"
-        self._metrics_exposer.expose(self.metrics)
         Component.run_pending_tasks()
         if self._processing_counter:
             self._processing_counter.scheduler.run_pending()

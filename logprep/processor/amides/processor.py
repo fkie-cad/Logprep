@@ -120,7 +120,7 @@ class Amides(Processor):
         and the rule attributor."""
 
     @define(kw_only=True)
-    class ProcessorMetrics(Processor.ProcessorMetrics):
+    class Metrics(Processor.Metrics):
         """Track statistics specific for Amides processor instances."""
 
         total_cmdlines: int = 0
