@@ -139,7 +139,7 @@ from ruamel.yaml import YAML
 
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
-from logprep.metrics.metric import Metric, calculate_new_average
+from logprep.metrics.metrics import Metrics, calculate_new_average
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import camel_to_snake
@@ -193,7 +193,7 @@ class Rule:
         """
 
     @define(kw_only=True)
-    class RuleMetrics(Metric):
+    class RuleMetrics(Metrics):
         """Tracks statistics about the current rule"""
 
         _number_of_matches: int = 0

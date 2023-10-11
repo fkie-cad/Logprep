@@ -41,8 +41,8 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.metrics.metric import Metric, calculate_new_average
 from logprep.metrics.metric_exposer import MetricExposer
+from logprep.metrics.metrics import Metrics, calculate_new_average
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -130,7 +130,7 @@ class Pipeline:
     # Would require too much change in the tests.
 
     @attrs.define(kw_only=True)
-    class PipelineMetrics(Metric):
+    class PipelineMetrics(Metrics):
         """Tracks statistics about a pipeline"""
 
         _prefix: str = "logprep_pipeline_"

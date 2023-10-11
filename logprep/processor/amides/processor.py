@@ -93,7 +93,7 @@ import joblib
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
-from logprep.metrics.metric import calculate_new_average
+from logprep.metrics.metrics import calculate_new_average
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule

@@ -4,14 +4,14 @@ from logging import Logger
 from attr import define
 
 from logprep.abc.component import Component
-from logprep.metrics.metric import Metric, calculate_new_average
+from logprep.metrics.metrics import Metrics, calculate_new_average
 
 
 class Connector(Component):
     """Abstract Connector Class to define the Interface"""
 
     @define(kw_only=True)
-    class ConnectorMetrics(Metric):
+    class ConnectorMetrics(Metrics):
         """Tracks statistics about this connector"""
 
         _prefix: str = "logprep_connector_"

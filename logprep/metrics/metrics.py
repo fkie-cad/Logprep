@@ -32,7 +32,7 @@ def get_settable_metrics(metric_object):
 
 
 @define(kw_only=True)
-class Metric:
+class Metrics:
     """Base Metric class to track and expose statistics about logprep"""
 
     _labels: dict
@@ -46,7 +46,7 @@ class Metric:
             if isinstance(attribute_value, list):
                 for value in attribute_value:
                     exp.update(value.expose())
-            elif isinstance(attribute_value, Metric):
+            elif isinstance(attribute_value, Metrics):
                 exp.update(attribute_value.expose())
             else:
                 labels = [":".join(item) for item in self._labels.items()]
@@ -59,7 +59,7 @@ class Metric:
         """Resets the statistics of self and children to 0"""
         for attribute in get_settable_metrics(self):
             attribute_value = self.__getattribute__(attribute)
-            if isinstance(attribute_value, Metric):
+            if isinstance(attribute_value, Metrics):
                 attribute_value = attribute_value.reset_statistics()
             if isinstance(attribute_value, list):
                 attribute_value = [child.reset_statistics() for child in attribute_value]

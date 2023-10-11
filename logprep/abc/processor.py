@@ -12,7 +12,7 @@ from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics.metric import Metric, calculate_new_average
+from logprep.metrics.metrics import Metrics, calculate_new_average
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -73,7 +73,7 @@ class Processor(Component):
         of an output with the same processor."""
 
     @define(kw_only=True)
-    class ProcessorMetrics(Metric):
+    class ProcessorMetrics(Metrics):
         """Tracks statistics about this processor"""
 
         _prefix: str = "logprep_processor_"

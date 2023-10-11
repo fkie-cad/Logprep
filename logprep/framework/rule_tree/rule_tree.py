@@ -8,7 +8,7 @@ from attr import define, Factory
 
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
-from logprep.metrics.metric import Metric
+from logprep.metrics.metrics import Metrics
 from logprep.util import getter
 
 if TYPE_CHECKING:
@@ -19,7 +19,7 @@ class RuleTree:
     """Represent a set of rules using a rule tree model."""
 
     @define(kw_only=True)
-    class RuleTreeMetrics(Metric):
+    class RuleTreeMetrics(Metrics):
         """Tracks statistics about the current rule tree"""
 
         number_of_rules: int = 0

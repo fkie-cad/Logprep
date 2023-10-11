@@ -5,11 +5,11 @@ from typing import List
 import numpy as np
 from attr import define
 
-from logprep.metrics.metric import Metric, calculate_new_average, get_settable_metrics
+from logprep.metrics.metrics import Metrics, calculate_new_average, get_settable_metrics
 
 
 @define(kw_only=True)
-class MockChildMetric(Metric):
+class MockChildMetrics(Metrics):
     metric_a: int = 0
     metric_b: float = 0.0
     _calculated_metric: int = 0
@@ -29,15 +29,15 @@ class MockChildMetric(Metric):
 
 
 @define(kw_only=True)
-class MockParentMetric(Metric):
-    data: List[MockChildMetric]
-    direct_non_list_metric: MockChildMetric
+class MockParentMetrics(Metrics):
+    data: List[MockChildMetrics]
+    direct_non_list_metric: MockChildMetrics
     more_data: int = 0
 
 
 class TestMetric:
     def test_metric_exposes_returns_correct_format(self):
-        mock_metric = MockChildMetric(labels={"test": "label"})
+        mock_metric = MockChildMetrics(labels={"test": "label"})
         mock_metric.metric_a += 1
         mock_metric.metric_b += 1
         mock_metric.calculated_metric += 2
@@ -51,16 +51,16 @@ class TestMetric:
         assert exposed_metrics == expected_metrics
 
     def test_expose_metric_ignores_private_attributes(self):
-        mock_metric = MockChildMetric(labels={"test": "label"})
+        mock_metric = MockChildMetrics(labels={"test": "label"})
         exposed_metrics = mock_metric.expose()
         private_metric = "_private_ignore_metric"
         assert mock_metric.__getattribute__(private_metric) == 0
         assert private_metric not in " ".join(exposed_metrics)
 
     def test_expose_includes_child_metrics_given_in_lists(self):
-        mock_child_metric = MockChildMetric(labels={"type": "child"})
-        mock_child_metric_two = MockChildMetric(labels={"type": "child2"})
-        mock_parent_metric = MockParentMetric(
+        mock_child_metric = MockChildMetrics(labels={"type": "child"})
+        mock_child_metric_two = MockChildMetrics(labels={"type": "child2"})
+        mock_parent_metric = MockParentMetrics(
             labels={"type": "parent"},
             data=[mock_child_metric],
             direct_non_list_metric=mock_child_metric_two,
@@ -87,9 +87,9 @@ class TestMetric:
         assert exposed_metrics == expected_metrics
 
     def test_resets_statistic_sets_everything_to_zero(self):
-        mock_child_metric = MockChildMetric(labels={"type": "child"})
-        mock_child_metric_two = MockChildMetric(labels={"type": "child2"})
-        mock_parent_metric = MockParentMetric(
+        mock_child_metric = MockChildMetrics(labels={"type": "child"})
+        mock_child_metric_two = MockChildMetrics(labels={"type": "child2"})
+        mock_parent_metric = MockParentMetrics(
             labels={"type": "parent"},
             data=[mock_child_metric],
             direct_non_list_metric=mock_child_metric_two,
@@ -133,7 +133,7 @@ class TestMetric:
             assert current_average == real_mean
 
     def test_get_settable_metrics(self):
-        mock_child_metric = MockChildMetric(labels={"type": "child"})
+        mock_child_metric = MockChildMetrics(labels={"type": "child"})
         metrics = get_settable_metrics(mock_child_metric)
         expected_metrics = {
             "_labels": {"type": "child"},
