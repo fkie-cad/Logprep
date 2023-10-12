@@ -24,6 +24,14 @@ pipeline:
       generic_rules:
         - quickstart/exampledata/rules/labeler/generic
 
+  - normalizer:
+      type: normalizer
+      specific_rules:
+        - quickstart/exampledata/rules/normalizer/specific/
+      generic_rules:
+        - quickstart/exampledata/rules/normalizer/generic/
+      regex_mapping: quickstart/exampledata/rules/normalizer/normalizer_regex_mapping.yml
+
   - dropper:
       type: dropper
       specific_rules:

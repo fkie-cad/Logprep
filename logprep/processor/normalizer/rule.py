@@ -815,6 +815,7 @@ on the Grok results.
 # pylint: enable=anomalous-backslash-in-string
 
 import re
+import uuid
 from typing import Dict, List, Union
 
 from pygrok import Grok
@@ -914,6 +915,14 @@ class NormalizerRule(Rule):
         self._special_fields = None
         self.file_name = None
         self._tests = []
+        self.metrics = self.RuleMetrics(
+            labels={
+                "component": "rule",
+                "processor": "normalizer",
+                "id": str(uuid.uuid4()),
+                "description": description,
+            }
+        )
         self._substitutions = {}
         self._grok = {}
         self._timestamps = {}
