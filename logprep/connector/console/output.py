@@ -25,7 +25,7 @@ class ConsoleOutput(Output):
 
     def store(self, document: dict):
         pprint(document)
-        # self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events += 1
         if self.input_connector:
             self.input_connector.batch_finished_callback()
 

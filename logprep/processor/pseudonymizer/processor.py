@@ -156,11 +156,6 @@ class Pseudonymizer(Processor):
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self.metrics = self.Metrics(
-            labels=self.metric_labels,
-            generic_rule_tree=self._generic_tree.metrics,
-            specific_rule_tree=self._specific_tree.metrics,
-        )
         self._regex_mapping = {}
         self._cache = None
         self.pseudonyms = []

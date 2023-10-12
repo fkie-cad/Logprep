@@ -5,7 +5,7 @@ from logging import Logger
 from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
-from attr import Factory, define
+from attr import Factory, define, field
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.node import Node
@@ -33,28 +33,7 @@ class RuleTree:
     class RuleTreeMetrics(Component.Metrics):
         """Tracks statistics about the current rule tree"""
 
-        number_of_rules: int = 0
-        """Number of rules configured in the current rule tree"""
-        rules: List["Rule.RuleMetrics"] = Factory(list)
-        """List of rule metrics"""
-
-        # pylint: disable=not-an-iterable
-        # pylint: disable=protected-access
-        @property
-        def number_of_matches(self):
-            """Sum of all rule matches"""
-            return np.sum([rule._number_of_matches for rule in self.rules])
-
-        @property
-        def mean_processing_time(self):
-            """Mean of all rule mean processing times"""
-            times = [rule._mean_processing_time for rule in self.rules]
-            if times:
-                return np.mean(times)
-            return 0.0
-
-        # pylint: enable=not-an-iterable
-        # pylint: enable=protected-access
+        number_of_processed_events = field(default=None)
 
     __slots__ = (
         "rule_parser",
@@ -163,15 +142,10 @@ class RuleTree:
             )
             return
 
-        self.metrics.number_of_rules += 1
-
         for rule_segment in parsed_rule:
             end_node = self._add_parsed_rule(rule_segment)
             if rule not in end_node.matching_rules:
                 end_node.matching_rules.append(rule)
-
-        self._rule_mapping[rule] = self.metrics.number_of_rules - 1
-        self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member
 
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.

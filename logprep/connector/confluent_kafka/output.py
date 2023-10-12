@@ -191,7 +191,7 @@ class ConfluentKafkaOutput(Output):
         configured input
         """
         self.store_custom(document, self._config.topic)
-        # self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events += 1
         if self.input_connector:
             self.input_connector.batch_finished_callback()
 
@@ -236,6 +236,7 @@ class ConfluentKafkaOutput(Output):
             Document after processing until an error occurred.
 
         """
+        self.metrics.number_of_failed_events += 1
         value = {
             "error": error_message,
             "original": document_received,

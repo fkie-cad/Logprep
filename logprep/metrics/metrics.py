@@ -69,7 +69,6 @@ class Metric:
 
     def __add__(self, other):
         self.tracker.labels(**self.labels).inc(other)
-        logging.getLogger(__name__).info("Incremented metric %s by %s", self.name, self.labels)
         return self
 
 

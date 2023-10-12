@@ -29,21 +29,23 @@ class Component(ABC):
         _labels: dict
         _prefix: str = "logprep_"
 
-        number_of_processed_events: Metric = Metric(
-            type=MetricType.COUNTER,
-            description="",
-            name=f"{_prefix}number_of_processed_events",
+        number_of_processed_events: Metric = field(
+            factory=lambda: Metric(
+                type=MetricType.COUNTER,
+                description="Number of events that were processed",
+                name="number_of_processed_events",
+            )
         )
-        """Number of events that were processed by the processor"""
+        """Number of events that were processed"""
 
         def __attrs_post_init__(self):
             for attribute in asdict(self):
                 attribute = getattr(self, attribute)
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
-                    attribute.labels |= {"component": type(self).__module__.split(".")[-1]}
+                    # attribute.labels |= {"component": type(self).__module__.split(".")[-1]}
                     attribute.tracker = attribute.type(
-                        name=attribute.name,
+                        name=f"{self._prefix}{attribute.name}",
                         documentation=attribute.description,
                         labelnames=attribute.labels.keys(),
                         registry=None,
@@ -61,10 +63,16 @@ class Component(ABC):
     _decoder: msgspec.json.Decoder = msgspec.json.Decoder()
     _encoder: msgspec.json.Encoder = msgspec.json.Encoder()
 
+    @property
+    def metric_labels(self) -> dict:
+        """Labels for the metrics"""
+        return {"component": self._config.type, "name": self.name}
+
     def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
         self._logger = logger
         self._config = configuration
         self.name = name
+        self.metrics = self.Metrics(labels=self.metric_labels)
 
     def __repr__(self):
         return camel_to_snake(self.__class__.__name__)

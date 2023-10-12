@@ -9,10 +9,12 @@ import zlib
 from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
+from logging import Logger
 from typing import Optional, Tuple
 
 from attrs import define, field, validators
 
+from logprep.abc.component import Component
 from logprep.abc.connector import Connector
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
@@ -222,9 +224,18 @@ class Input(Connector):
         return log_arrival_time_target_field_present & log_arrival_timedelta_present
 
     @property
+    def metric_labels(self) -> dict:
+        """Return the metric labels for this component."""
+        return super().metric_labels | {"component": "input", "type": self._config.type}
+
+    @property
     def _add_env_enrichment(self):
         """Check and return if the env enrichment should be added to the event."""
         return bool(self._config.preprocessing.get("enrich_by_env_variables"))
+
+    def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self.metrics = self.Metrics(labels=self.metric_labels)
 
     def _get_raw_event(self, timeout: float) -> bytearray:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
@@ -278,6 +289,7 @@ class Input(Connector):
         non_critical_error_msg = None
         if event is None:
             return None, None
+        self.metrics.number_of_processed_events += 1
         if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         if self._add_hmac:
@@ -290,7 +302,6 @@ class Input(Connector):
             self._add_arrival_timedelta_information_to_event(event)
         if self._add_env_enrichment:
             self._add_env_enrichment_to_event(event)
-        # self.metrics.number_of_processed_events += 1
         return event, non_critical_error_msg
 
     def batch_finished_callback(self):

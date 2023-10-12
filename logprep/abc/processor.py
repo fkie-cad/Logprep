@@ -74,8 +74,6 @@ class Processor(Component):
     class Metrics(Component.Metrics):
         """Tracks statistics about this processor"""
 
-        _prefix: str = "logprep_processor_"
-
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0
@@ -83,10 +81,6 @@ class Processor(Component):
         """Number of warnings that occurred while processing events"""
         number_of_errors: int = 0
         """Number of errors that occurred while processing events"""
-        generic_rule_tree: RuleTree.RuleTreeMetrics
-        """Tracker of the generic rule tree metrics"""
-        specific_rule_tree: RuleTree.RuleTreeMetrics
-        """Tracker of the specific rule tree metrics"""
 
     __slots__ = [
         "rule_class",
@@ -120,11 +114,6 @@ class Processor(Component):
         self.load_rules(
             generic_rules_targets=self._config.generic_rules,
             specific_rules_targets=self._config.specific_rules,
-        )
-        self.metrics = self.Metrics(
-            labels=self.metric_labels,
-            generic_rule_tree=self._generic_tree.metrics,
-            specific_rule_tree=self._specific_tree.metrics,
         )
         self.has_custom_tests = False
 
@@ -160,13 +149,8 @@ class Processor(Component):
 
     @property
     def metric_labels(self) -> dict:
-        """Returns the metric labels
-
-        Returns
-        -------
-        metric_labels: dict
-        """
-        return {"type": self._config.type, "name": self.name}
+        """Return the metric labels for this component."""
+        return super().metric_labels | {"component": "processor", "type": self._config.type}
 
     @TimeMeasurement.measure_time()
     def process(self, event: dict):
@@ -180,7 +164,6 @@ class Processor(Component):
 
         """
         self._logger.debug(f"{self.describe()} processing event {event}")
-        self.metrics.number_of_processed_events += 1
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
 
@@ -191,7 +174,7 @@ class Processor(Component):
             begin = time.time()
             self._apply_rules_wrapper(event, rule)
             processing_time = time.time() - begin
-            rule.metrics._number_of_matches += 1
+            rule.metrics.number_of_processed_events += 1
             rule.metrics.update_mean_processing_time(processing_time)
             applied_rules.add(rule)
             return event
@@ -205,6 +188,7 @@ class Processor(Component):
             reduce(_process_rule, (event, *tree.get_matching_rules(event)))
 
     def _apply_rules_wrapper(self, event, rule):
+        self.metrics.number_of_processed_events += 1
         try:
             self._apply_rules(event, rule)
         except ProcessingWarning as error:

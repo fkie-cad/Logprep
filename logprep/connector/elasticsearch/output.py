@@ -210,7 +210,7 @@ class ElasticsearchOutput(Output):
             document = self._build_failed_index_document(document, "Missing index in document")
 
         self._add_dates(document)
-        # self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events += 1
         self._write_to_search_context(document)
 
     def store_custom(self, document: dict, target: str):
@@ -230,7 +230,7 @@ class ElasticsearchOutput(Output):
         """
         document["_index"] = target
         self._add_dates(document)
-        # self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events += 1
         self._write_to_search_context(document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
@@ -246,6 +246,7 @@ class ElasticsearchOutput(Output):
             Document after processing until an error occurred.
 
         """
+        self.metrics.number_of_failed_events += 1
         error_document = {
             "error": error_message,
             "original": document_received,

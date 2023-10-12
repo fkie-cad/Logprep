@@ -1,6 +1,4 @@
 """ abstract module for connectors"""
-from logging import Logger
-
 from attr import define
 
 from logprep.abc.component import Component
@@ -13,8 +11,6 @@ class Connector(Component):
     @define(kw_only=True)
     class ConnectorMetrics(Component.Metrics):
         """Tracks statistics about this connector"""
-
-        _prefix: str = "logprep_connector_"
 
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
@@ -35,21 +31,6 @@ class Connector(Component):
             self.mean_processing_time_per_event = new_avg
             self._mean_processing_time_sample_counter = new_sample_counter
 
-    __slots__ = ["metrics", "metric_labels"]
+    __slots__ = ["metrics"]
 
     metrics: ConnectorMetrics
-    metric_labels: dict
-
-    def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
-        self.metric_labels = self._config.metric_labels
-        self.metric_labels.update(
-            {
-                "direction": "input" if self._config.type.endswith("_input") else "output",
-                "name": name,
-                "type": self._config.type,
-            }
-        )
-        self.metrics = self.ConnectorMetrics(
-            labels=self.metric_labels,
-        )

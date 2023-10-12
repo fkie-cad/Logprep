@@ -19,7 +19,6 @@ from typing import Any, List, Tuple
 
 import attrs
 import msgspec
-import numpy as np
 from schedule import Scheduler
 
 from logprep._version import get_versions
@@ -41,7 +40,6 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.metrics.metrics import calculate_new_average
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -131,8 +129,6 @@ class Pipeline:
     @attrs.define(kw_only=True)
     class Metrics(Component.Metrics):
         """Tracks statistics about a pipeline"""
-
-        _prefix: str = "logprep_pipeline_"
 
         input: Connector.ConnectorMetrics
         """Input metrics"""

@@ -79,7 +79,7 @@ class JsonlOutput(Output):
     def store(self, document: dict):
         self.events.append(document)
         JsonlOutput._write_json(self._config.output_file, document)
-        # self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events += 1
         if self.input_connector:
             self.input_connector.batch_finished_callback()
 
@@ -91,6 +91,7 @@ class JsonlOutput(Output):
             JsonlOutput._write_json(self._config.output_file_custom, document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+        self.metrics.number_of_failed_events += 1
         self.failed_events.append((error_message, document_received, document_processed))
 
         if self._config.output_file_error:
