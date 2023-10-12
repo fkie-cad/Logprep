@@ -33,4 +33,5 @@ class ConsoleOutput(Output):
         pprint(document, stream=getattr(sys, target))
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
+        self.metrics.number_of_failed_events += 1
         pprint(f"{error_message}: {document_received}, {document_processed}", stream=sys.stderr)

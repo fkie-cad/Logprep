@@ -67,7 +67,6 @@ class SharedCounter:
 
     def setup(self, print_processed_period: float, lock: Lock):
         """Setup shared counter for multiprocessing pipeline."""
-
         self._init_timer(print_processed_period)
         self._lock = lock
 
@@ -209,8 +208,9 @@ class Pipeline:
         }
 
     @property
-    def _metric_labels(self) -> dict:
-        return {"pipeline": self._process_name}
+    def metric_labels(self) -> dict:
+        """Return the metric labels for this component."""
+        return {"component": "pipeline"}
 
     @cached_property
     def metrics(self) -> Metrics:
@@ -220,7 +220,7 @@ class Pipeline:
         return self.Metrics(
             input=self._input.metrics,
             output=[self._output.get(output).metrics for output in self._output],
-            labels=self._metric_labels,
+            labels=self.metric_labels,
         )
 
     @cached_property
