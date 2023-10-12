@@ -80,11 +80,11 @@ class TestMetricExposer:
         rule_metrics_one = Rule.RuleMetrics(labels={"type": "generic"})
         rule_metrics_one._number_of_matches = 1
         rule_metrics_one.update_mean_processing_time(1)
-        rule_tree_one = RuleTree.RuleTreeMetrics(labels={"type": "tree"}, rules=[rule_metrics_one])
+        rule_tree_one = RuleTree.Metrics(labels={"type": "tree"}, rules=[rule_metrics_one])
         rule_metrics_two = Rule.RuleMetrics(labels={"type": "generic"})
         rule_metrics_two._number_of_matches = 2
         rule_metrics_two.update_mean_processing_time(2)
-        rule_tree_two = RuleTree.RuleTreeMetrics(labels={"type": "tree"}, rules=[rule_metrics_two])
+        rule_tree_two = RuleTree.Metrics(labels={"type": "tree"}, rules=[rule_metrics_two])
         self.exposer._store_metrics(rule_tree_one)
         self.exposer._store_metrics(rule_tree_two)
         metrics = self.exposer._aggregate_metrics()

@@ -7,9 +7,11 @@ from logging import Logger
 from pathlib import Path
 from typing import List
 
+from attrs import define, field
 from colorama import Fore
 from ruamel.yaml.scanner import ScannerError
 
+from logprep.abc.component import Component
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
@@ -51,32 +53,11 @@ class RequiredConfigurationKeyMissingError(InvalidConfigurationError):
         super().__init__(f"Required option is missing: {key}")
 
 
-class InvalidLabelingSchemaError(InvalidConfigurationError):
-    """Raise if labeling schema is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid labeling schema: {message}")
-
-
-class InvalidRulesError(InvalidConfigurationError):
-    """Raise if set of rules is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid rule set: {message}")
-
-
 class InvalidProcessorConfigurationError(InvalidConfigurationError):
     """Raise if processor configuration is invalid."""
 
     def __init__(self, message: str):
         super().__init__(f"Invalid processor configuration: {message}")
-
-
-class InvalidConnectorConfigurationError(InvalidConfigurationError):
-    """Raise if connector configuration is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid connector configuration: {message}")
 
 
 class InvalidInputConnectorConfigurationError(InvalidConfigurationError):
@@ -91,13 +72,6 @@ class InvalidOutputConnectorConfigurationError(InvalidConfigurationError):
 
     def __init__(self, message: str):
         super().__init__(f"Invalid output connector configuration: {message}")
-
-
-class IncalidMetricsConfigurationError(InvalidConfigurationError):
-    """Raise if status_logger configuration is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid metrics configuration: {message}")
 
 
 class MissingEnvironmentError(InvalidConfigurationError):

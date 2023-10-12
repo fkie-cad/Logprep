@@ -5,7 +5,7 @@ import re
 import pytest
 from prometheus_client import Counter
 
-from logprep.metrics.metrics import Metric
+from logprep.metrics.metrics import CounterMetric
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -739,6 +739,6 @@ class TestDissector(BaseProcessorTestCase):
         assert event == expected, testcase
 
     def test_has_number_of_processed_events_metric(self):
-        assert isinstance(self.object.metrics.number_of_processed_events, Metric)
+        assert isinstance(self.object.metrics.number_of_processed_events, CounterMetric)
         self.object.process({"test": "event"})
         assert True

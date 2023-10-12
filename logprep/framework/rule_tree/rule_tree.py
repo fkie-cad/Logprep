@@ -10,6 +10,7 @@ from attr import Factory, define, field
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
+from logprep.metrics.metrics import CounterMetric, MetricType
 from logprep.util import getter
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ class RuleTree:
     """Represent a set of rules using a rule tree model."""
 
     @define(kw_only=True)
-    class RuleTreeMetrics(Component.Metrics):
+    class Metrics(Component.Metrics):
         """Tracks statistics about the current rule tree"""
 
         number_of_processed_events = field(default=None)
@@ -48,7 +49,7 @@ class RuleTree:
     )
 
     rule_parser: Optional[RuleParser]
-    metrics: RuleTreeMetrics
+    metrics: Metrics
     priority_dict: dict
     rule_tree_type: RuleTreeType
     _rule_mapping: dict
@@ -83,7 +84,7 @@ class RuleTree:
         self._processor_name = processor_name
         self.rule_tree_type = rule_tree_type
         self._setup()
-        self.metrics = self.RuleTreeMetrics(labels=self.metric_labels)
+        self.metrics = self.Metrics(labels=self.metric_labels)
 
         if root:
             self._root = root

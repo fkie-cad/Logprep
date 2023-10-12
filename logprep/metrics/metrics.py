@@ -1,5 +1,5 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
-import logging
+from abc import ABC, abstractmethod
 from enum import Enum
 
 from attr import asdict, define, field, validators
@@ -35,24 +35,8 @@ def get_settable_metrics(metric_object):
     return metric_dict
 
 
-class MetricType(Enum):
-    COUNTER = 1
-    HISTOGRAM = 2
-    GAUGE = 3
-    INFO = 4
-
-
-PROMETHEUS_METRIC_TYPES = {
-    MetricType.COUNTER.value: Counter,
-    MetricType.GAUGE.value: Gauge,
-    MetricType.INFO.value: Info,
-    MetricType.HISTOGRAM.value: Histogram,
-}
-
-
 @define(kw_only=True)
-class Metric:
-    type: MetricType = field(converter=lambda x: PROMETHEUS_METRIC_TYPES.get(x.value))
+class Metric(ABC):
     name: str = field(validator=validators.instance_of(str))
     description: str = field(validator=validators.instance_of(str))
     labels: dict = field(
@@ -66,6 +50,36 @@ class Metric:
         default={},
     )
     tracker: object = field(default=None)
+
+    @abstractmethod
+    def __add__(self, other):
+        """Add"""
+
+
+@define(kw_only=True)
+class CounterMetric(Metric):
+    def __attrs_post_init__(self):
+        self.tracker = Counter(
+            name=self.name,
+            documentation=self.description,
+            labelnames=self.labels.keys(),
+            registry=None,
+        )
+
+    def __add__(self, other):
+        self.tracker.labels(**self.labels).inc(other)
+        return self
+
+
+@define(kw_only=True)
+class HistogramMetric(Metric):
+    def __attrs_post_init__(self):
+        self.tracker = Histogram(
+            name=self.name,
+            documentation=self.description,
+            labelnames=self.labels.keys(),
+            registry=None,
+        )
 
     def __add__(self, other):
         self.tracker.labels(**self.labels).inc(other)

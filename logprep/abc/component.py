@@ -8,7 +8,7 @@ from attr import define, field, validators
 from attrs import asdict
 from schedule import Scheduler
 
-from logprep.metrics.metrics import Metric, MetricType
+from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.util.helper import camel_to_snake
 
 
@@ -29,34 +29,39 @@ class Component(ABC):
         _labels: dict
         _prefix: str = "logprep_"
 
-        number_of_processed_events: Metric = field(
-            factory=lambda: Metric(
-                type=MetricType.COUNTER,
+        number_of_processed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
                 description="Number of events that were processed",
                 name="number_of_processed_events",
             )
         )
         """Number of events that were processed"""
 
-        number_of_failed_events: Metric = field(
-            factory=lambda: Metric(
-                type=MetricType.COUNTER,
+        number_of_failed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
                 description="Number of events that were send to error output",
                 name="number_of_failed_events",
             )
         )
         """Number of events that were send to error output"""
 
+        processing_time_per_event: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                description="Time in seconds that it took to process an event",
+                name="processing_time_per_event",
+            )
+        )
+        """Time in seconds that it took to process an event"""
+
         def __attrs_post_init__(self):
             for attribute in asdict(self):
                 attribute = getattr(self, attribute)
-                if isinstance(attribute, Metric):
+                if isinstance(attribute, CounterMetric):
                     attribute.labels = self._labels
-                    attribute.tracker = attribute.type(
+                    attribute.tracker = attribute(
                         name=f"{self._prefix}{attribute.name}",
                         documentation=attribute.description,
                         labelnames=attribute.labels.keys(),
-                        registry=None,
                     )
                     attribute.tracker.labels(**attribute.labels)
 
@@ -146,3 +151,6 @@ class Component(ABC):
     def run_pending_tasks(cls) -> None:
         """Starts all pending tasks. This is called in :code:`pipeline.py`"""
         cls._scheduler.run_pending()
+
+
+tri

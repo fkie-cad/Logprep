@@ -1,9 +1,8 @@
 """Abstract module for processors"""
-import copy
 import time
 from abc import abstractmethod
 from functools import reduce
-from logging import DEBUG, Logger
+from logging import Logger
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 

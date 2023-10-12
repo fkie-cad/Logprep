@@ -7,12 +7,12 @@ import numpy as np
 from prometheus_client import REGISTRY
 from prometheus_client.registry import Collector
 
-from logprep.metrics.metrics import Metric, MetricType
+from logprep.metrics.metrics import CounterMetric, MetricType
 
 
 class TestsMetrics:
     def test_converts_enum_to_prometheus_metric(self):
-        metric = Metric(
+        metric = CounterMetric(
             name="testmetric",
             type=MetricType.COUNTER,
             description="empty description",
@@ -21,7 +21,7 @@ class TestsMetrics:
         assert issubclass(metric.type, Collector)
 
     def test_counter_metric_sets_labels(self):
-        metric = Metric(
+        metric = CounterMetric(
             type=MetricType.COUNTER,
             name="bla",
             description="empty description",
@@ -31,7 +31,7 @@ class TestsMetrics:
         assert ("pipeline-1",) in metric.tracker._metrics
 
     def test_counter_metric_increments_correctly(self):
-        metric = Metric(
+        metric = CounterMetric(
             type=MetricType.COUNTER,
             name="bla",
             description="empty description",
