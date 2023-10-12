@@ -60,7 +60,7 @@ class ProcessingCriticalError(ProcessingError):
     """A critical error occurred - stop processing of this event"""
 
     def __init__(self, processor: "Processor", message: str, event: dict):
-        processor.metrics.number_of_errors += 1
+        processor.metrics.number_of_failed_events += 1
         super().__init__(
             processor, f"{message} -> event was send to error output and further processing stopped"
         )

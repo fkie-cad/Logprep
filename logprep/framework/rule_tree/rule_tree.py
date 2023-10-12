@@ -34,6 +34,7 @@ class RuleTree:
         """Tracks statistics about the current rule tree"""
 
         number_of_processed_events = field(default=None)
+        number_of_failed_events = field(default=None)
 
     __slots__ = (
         "rule_parser",

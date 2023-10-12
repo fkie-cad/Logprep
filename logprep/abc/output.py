@@ -10,7 +10,6 @@ from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import Input
-from logprep.metrics.metrics import Metric, MetricType
 
 
 class OutputError(BaseException):
@@ -57,22 +56,6 @@ class Output(Connector):
         """ (Optional) if :code:`false` the event are not delivered to this output.
         But this output can be called as output for extra_data.
         """
-
-    @define(kw_only=True)
-    class Metrics(Connector.Metrics):
-        """Base Metric class to track and expose statistics about logprep"""
-
-        _labels: dict
-        _prefix: str = "logprep_"
-
-        number_of_failed_events: Metric = field(
-            factory=lambda: Metric(
-                type=MetricType.COUNTER,
-                description="Number of events that were send to error output",
-                name="number_of_failed_events",
-            )
-        )
-        """Number of events that were send to error output"""
 
     __slots__ = {"input_connector"}
 

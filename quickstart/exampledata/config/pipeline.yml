@@ -1,5 +1,5 @@
 version: 1
-process_count: 1
+process_count: 2
 timeout: 0.1
 logger:
   level: INFO
@@ -23,14 +23,6 @@ pipeline:
         - quickstart/exampledata/rules/labeler/specific
       generic_rules:
         - quickstart/exampledata/rules/labeler/generic
-
-  - normalizer:
-      type: normalizer
-      specific_rules:
-        - quickstart/exampledata/rules/normalizer/specific/
-      generic_rules:
-        - quickstart/exampledata/rules/normalizer/generic/
-      regex_mapping: quickstart/exampledata/rules/normalizer/normalizer_regex_mapping.yml
 
   - dropper:
       type: dropper

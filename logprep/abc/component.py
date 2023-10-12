@@ -38,12 +38,20 @@ class Component(ABC):
         )
         """Number of events that were processed"""
 
+        number_of_failed_events: Metric = field(
+            factory=lambda: Metric(
+                type=MetricType.COUNTER,
+                description="Number of events that were send to error output",
+                name="number_of_failed_events",
+            )
+        )
+        """Number of events that were send to error output"""
+
         def __attrs_post_init__(self):
             for attribute in asdict(self):
                 attribute = getattr(self, attribute)
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
-                    # attribute.labels |= {"component": type(self).__module__.split(".")[-1]}
                     attribute.tracker = attribute.type(
                         name=f"{self._prefix}{attribute.name}",
                         documentation=attribute.description,

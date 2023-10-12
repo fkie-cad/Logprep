@@ -187,15 +187,17 @@ class Processor(Component):
         else:
             reduce(_process_rule, (event, *tree.get_matching_rules(event)))
 
-    def _apply_rules_wrapper(self, event, rule):
+    def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
         self.metrics.number_of_processed_events += 1
         try:
             self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
+            rule.metrics.number_of_failed_events += 1
             raise error
         except BaseException as error:
+            rule.metrics.number_of_failed_events += 1
             raise ProcessingCriticalError(self, str(error), event) from error
         if not hasattr(rule, "delete_source_fields"):
             return
@@ -252,18 +254,13 @@ class Processor(Component):
         specific_rules_targets = self.resolve_directories(specific_rules_targets)
         generic_rules_targets = self.resolve_directories(generic_rules_targets)
         for specific_rules_target in specific_rules_targets:
-            rules = self.rule_class.create_rules_from_target(specific_rules_target)
+            rules = self.rule_class.create_rules_from_target(specific_rules_target, processor=self)
             for rule in rules:
                 self._specific_tree.add_rule(rule, self._logger)
         for generic_rules_target in generic_rules_targets:
-            rules = self.rule_class.create_rules_from_target(generic_rules_target)
+            rules = self.rule_class.create_rules_from_target(generic_rules_target, processor=self)
             for rule in rules:
                 self._generic_tree.add_rule(rule, self._logger)
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            number_specific_rules = self._specific_tree.metrics.number_of_rules
-            self._logger.debug(f"{self.describe()} loaded {number_specific_rules} specific rules")
-            number_generic_rules = self._generic_tree.metrics.number_of_rules
-            self._logger.debug(f"{self.describe()} loaded {number_generic_rules} generic rules")
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
