@@ -13,24 +13,12 @@
 * add option to define rules inline in pipeline config under processor configs `generic_rules` or `specific_rules`
 * add option to `field_manager` to ignore missing source fields to suppress warnings and failure tags
 * add ignore_missing_source_fields behavior to `calculator`, `concatenator`, `dissector`, `grokker`, `ip_informer`, `selective_extractor`
-
-### Improvements
-
-* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections. 
-It contains the time at which a pre-detection was created by the processor.
-* add `prometheus` and `grafana` to the quickstart setup to support development
-* reimplemented kafka input connector
-  - move kafka config options to `kafka_config` dictionary
-
-### Features
-
 * kafka input connector
   - implemented manual commit behaviour if `enable.auto.commit: false`
   - implemented on_commit callback to check for errors during commit
   - implemented statistics callback to collect metrics from underlying librdkafka library
   - implemented per partition offset metrics
   - get logs and handle errors from underlying librdkafka library
-
 * kafka output connector
   - implemented statistics callback to collect metrics from underlying librdkafka library
   - get logs and handle errors from underlying librdkafka library
@@ -39,7 +27,9 @@ It contains the time at which a pre-detection was created by the processor.
 
 * `pre_detector` processor now adds the field `creation_timestamp` to pre-detections. 
 It contains the time at which a pre-detection was created by the processor.
+* add `prometheus` and `grafana` to the quickstart setup to support development
 * provide confluent kafka test setup to run tests against a real kafka cluster
+
 
 ### Bugfix
 
