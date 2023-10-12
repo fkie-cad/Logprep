@@ -191,7 +191,7 @@ class ConfluentKafkaOutput(Output):
         configured input
         """
         self.store_custom(document, self._config.topic)
-        self.metrics.number_of_processed_events += 1
+        # self.metrics.number_of_processed_events += 1
         if self.input_connector:
             self.input_connector.batch_finished_callback()
 

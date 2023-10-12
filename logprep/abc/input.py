@@ -290,7 +290,7 @@ class Input(Connector):
             self._add_arrival_timedelta_information_to_event(event)
         if self._add_env_enrichment:
             self._add_env_enrichment_to_event(event)
-        self.metrics.number_of_processed_events += 1
+        # self.metrics.number_of_processed_events += 1
         return event, non_critical_error_msg
 
     def batch_finished_callback(self):

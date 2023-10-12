@@ -212,9 +212,9 @@ class Pipeline:
             "configuration": self._logprep_config.get("version", "unset"),
         }
 
-    @cached_property
+    @property
     def _metric_labels(self) -> dict:
-        return {"pipeline": f"pipeline-{self.pipeline_index}"}
+        return {"pipeline": self._process_name}
 
     @cached_property
     def metrics(self) -> Metrics:
@@ -242,7 +242,6 @@ class Pipeline:
         output_names = list(output_configs.keys())
         outputs = {}
         for output_name in output_names:
-            output_configs[output_name]["metric_labels"] = self._metric_labels
             output_config = output_configs.get(output_name)
             outputs |= {output_name: Factory.create({output_name: output_config}, self.logger)}
         return outputs
@@ -252,11 +251,6 @@ class Pipeline:
         input_connector_config = self._logprep_config.get("input")
         if input_connector_config is None:
             return None
-        connector_name = list(input_connector_config.keys())[0]
-        input_connector_config[connector_name]["metric_labels"] = self._metric_labels
-        input_connector_config[connector_name].update(
-            {"version_information": self._event_version_information}
-        )
         return Factory.create(input_connector_config, self.logger)
 
     @_handle_pipeline_error
@@ -283,8 +277,6 @@ class Pipeline:
         self.logger.info("Finished building pipeline")
 
     def _create_processor(self, entry: dict) -> "Processor":
-        processor_name = list(entry.keys())[0]
-        entry[processor_name]["metric_labels"] = self._metric_labels
         processor = Factory.create(entry, self.logger)
         processor.setup()
         self.logger.debug(f"Created '{processor}' processor")
@@ -381,8 +373,7 @@ class Pipeline:
                 break
         if self._processing_counter:
             self._processing_counter.increment()
-        if self.metrics:
-            self.metrics.number_of_processed_events += 1
+        self.metrics.number_of_processed_events += 1
         return extra_outputs
 
     def _store_extra_data(self, extra_data: List[tuple]) -> None:

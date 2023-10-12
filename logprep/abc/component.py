@@ -32,7 +32,6 @@ class Component(ABC):
         number_of_processed_events: Metric = Metric(
             type=MetricType.COUNTER,
             description="",
-            labels={"pipeline": "1"},
             name=f"{_prefix}number_of_processed_events",
         )
         """Number of events that were processed by the processor"""
@@ -41,7 +40,8 @@ class Component(ABC):
             for attribute in asdict(self):
                 attribute = getattr(self, attribute)
                 if isinstance(attribute, Metric):
-                    attribute.labels |= self._labels
+                    attribute.labels = self._labels
+                    attribute.labels |= {"component": type(self).__module__.split(".")[-1]}
                     attribute.tracker = attribute.type(
                         name=attribute.name,
                         documentation=attribute.description,

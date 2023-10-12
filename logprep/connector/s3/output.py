@@ -248,7 +248,7 @@ class S3Output(Output):
         document : dict
            Document to store.
         """
-        self.metrics.number_of_processed_events += 1
+        # self.metrics.number_of_processed_events += 1
 
         prefix_value = get_dotted_field_value(document, self._config.prefix_field)
         if prefix_value is None:
@@ -284,7 +284,7 @@ class S3Output(Output):
             Prefix for the document.
 
         """
-        self.metrics.number_of_processed_events += 1
+        # self.metrics.number_of_processed_events += 1
         self._write_to_s3_resource(document, target)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):

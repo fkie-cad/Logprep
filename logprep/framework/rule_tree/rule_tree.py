@@ -1,5 +1,6 @@
 """This module contains the rule tree functionality."""
 
+from enum import Enum
 from logging import Logger
 from typing import TYPE_CHECKING, List, Optional
 
@@ -12,7 +13,17 @@ from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.util import getter
 
 if TYPE_CHECKING:
+    from logprep.abc.processor import Processor
     from logprep.processor.base.rule import Rule
+
+
+class RuleTreeType(Enum):
+    """Types of rule trees."""
+
+    SPECIFIC = 1
+    """Specific rule tree that is used to match specific rules."""
+    GENERIC = 2
+    """Generic rule tree that is used to match generic rules."""
 
 
 class RuleTree:
@@ -49,19 +60,29 @@ class RuleTree:
         "rule_parser",
         "metrics",
         "priority_dict",
+        "rule_tree_type",
         "_rule_mapping",
-        "_config_path",
+        "_processor_config",
+        "_processor_name",
         "_root",
     )
 
     rule_parser: Optional[RuleParser]
     metrics: RuleTreeMetrics
     priority_dict: dict
+    rule_tree_type: RuleTreeType
     _rule_mapping: dict
-    _config_path: str
+    _processor_name: str
+    _processor_config: "Processor.Config"
     _root: Node
 
-    def __init__(self, root: Node = None, config_path: str = None, metric_labels: dict = None):
+    def __init__(
+        self,
+        root: Node = None,
+        processor_name: str = None,
+        processor_config: "Processor.Config" = None,
+        rule_tree_type: RuleTreeType = None,
+    ):
         """Rule tree initialization function.
 
         Initializes a new rule tree with a given root node and a path to the tree's optional config
@@ -72,22 +93,31 @@ class RuleTree:
         ----------
         root: Node, optional
             Node that should be used as the new rule tree's root node.
-        config_path: str, optional
-            Path to the optional configuration file that contains the new rule tree's configuration.
+        processor_config: Processor.Config, optional
+            Configuration of the processor that uses the rule tree.
 
         """
         self.rule_parser = None
         self._rule_mapping = {}
-        self._config_path = config_path
+        self._processor_config = processor_config
+        self._processor_name = processor_name
+        self.rule_tree_type = rule_tree_type
         self._setup()
-        if not metric_labels:
-            metric_labels = {"component": "rule_tree"}
-        self.metrics = self.RuleTreeMetrics(labels=metric_labels)
+        self.metrics = self.RuleTreeMetrics(labels=self.metric_labels)
 
         if root:
             self._root = root
         else:
             self._root = Node(None)
+
+    @property
+    def metric_labels(self) -> dict:
+        """Return metric labels."""
+        return {
+            "rule_tree": self.rule_tree_type.name.lower(),
+            "processor": self._processor_name,
+            "processor_type": self._processor_config.type,
+        }
 
     def _setup(self):
         """Basic setup of rule tree.
@@ -98,8 +128,10 @@ class RuleTree:
         self.priority_dict = {}
         tag_map = {}
 
-        if self._config_path:
-            config_data = getter.GetterFactory.from_string(self._config_path).get_json()
+        if self._processor_config.tree_config:
+            config_data = getter.GetterFactory.from_string(
+                self._processor_config.tree_config
+            ).get_json()
             self.priority_dict = config_data["priority_dict"]
             tag_map = config_data["tag_map"]
         self.rule_parser = RuleParser(tag_map)

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, List, Optional
 from attr import define, field, validators
 
 from logprep.abc.component import Component
-from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -92,7 +92,6 @@ class Processor(Component):
         "rule_class",
         "has_custom_tests",
         "metrics",
-        "metric_labels",
         "_event",
         "_specific_tree",
         "_generic_tree",
@@ -101,7 +100,6 @@ class Processor(Component):
     rule_class: "Rule"
     has_custom_tests: bool
     metrics: "Processor.Metrics"
-    metric_labels: dict
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
@@ -109,12 +107,15 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
         super().__init__(name, configuration, logger)
-        self.metric_labels, specific_tree_labels, generic_tree_labels = self._create_metric_labels()
         self._specific_tree = RuleTree(
-            config_path=self._config.tree_config, metric_labels=specific_tree_labels
+            processor_name=self.name,
+            processor_config=self._config,
+            rule_tree_type=RuleTreeType.SPECIFIC,
         )
         self._generic_tree = RuleTree(
-            config_path=self._config.tree_config, metric_labels=generic_tree_labels
+            processor_name=self.name,
+            processor_config=self._config,
+            rule_tree_type=RuleTreeType.GENERIC,
         )
         self.load_rules(
             generic_rules_targets=self._config.generic_rules,
@@ -126,16 +127,6 @@ class Processor(Component):
             specific_rule_tree=self._specific_tree.metrics,
         )
         self.has_custom_tests = False
-
-    def _create_metric_labels(self):
-        """Reads out the metrics from the configuration and sets up labels for the rule trees"""
-        metric_labels = self._config.metric_labels
-        metric_labels.update({"processor": self.name})
-        specif_tree_labels = copy.deepcopy(metric_labels)
-        specif_tree_labels.update({"rule_tree": "specific"})
-        generic_tree_labels = copy.deepcopy(metric_labels)
-        generic_tree_labels.update({"rule_tree": "generic"})
-        return metric_labels, specif_tree_labels, generic_tree_labels
 
     @property
     def _specific_rules(self):
@@ -166,6 +157,16 @@ class Processor(Component):
         rules: list[Rule]
         """
         return [*self._generic_rules, *self._specific_rules]
+
+    @property
+    def metric_labels(self) -> dict:
+        """Returns the metric labels
+
+        Returns
+        -------
+        metric_labels: dict
+        """
+        return {"type": self._config.type, "name": self.name}
 
     @TimeMeasurement.measure_time()
     def process(self, event: dict):

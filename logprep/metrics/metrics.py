@@ -1,4 +1,5 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
+import logging
 from enum import Enum
 
 from attr import asdict, define, field, validators
@@ -61,12 +62,14 @@ class Metric:
                 key_validator=validators.instance_of(str),
                 value_validator=validators.instance_of(str),
             ),
-        ]
+        ],
+        default={},
     )
     tracker: object = field(default=None)
 
     def __add__(self, other):
         self.tracker.labels(**self.labels).inc(other)
+        logging.getLogger(__name__).info("Incremented metric %s by %s", self.name, self.labels)
         return self
 
 

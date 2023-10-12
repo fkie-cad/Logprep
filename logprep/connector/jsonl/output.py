@@ -79,7 +79,7 @@ class JsonlOutput(Output):
     def store(self, document: dict):
         self.events.append(document)
         JsonlOutput._write_json(self._config.output_file, document)
-        self.metrics.number_of_processed_events += 1
+        # self.metrics.number_of_processed_events += 1
         if self.input_connector:
             self.input_connector.batch_finished_callback()
 
