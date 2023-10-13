@@ -6,7 +6,7 @@ logger:
 
 metrics:
   enabled: true
-  period: 10
+  period: 1
   cumulative: false
   aggregate_processes: false
   measure_time:
@@ -93,13 +93,12 @@ pipeline:
 input:
   kafka:
     type: confluentkafka_input
-    bootstrapservers:
-      - 127.0.0.1:9092
     topic: consumer
-    group: cgroup3
-    auto_commit: true
-    session_timeout: 6000
-    offset_reset_policy: smallest
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      group.id: cgroup3
+      enable.auto.commit: "false"
+      enable.auto.offset.store: "false"
 
 output:
   opensearch:
@@ -108,9 +107,17 @@ output:
       - 127.0.0.1:9200
     default_index: processed
     error_index: errors
-    message_backlog_size: 10000
+    message_backlog_size: 1000
     timeout: 10000
-    flush_timeout: 10
+    flush_timeout: 60
     max_retries: 3
     user: admin
     secret: admin
+  kafka:
+    type: confluentkafka_output
+    default: false
+    topic: producer
+    error_topic: errors
+    flush_timeout: 300
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092

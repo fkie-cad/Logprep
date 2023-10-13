@@ -35,34 +35,22 @@ pipeline:
 input:
   kafka_input:
     type: confluentkafka_input
-    bootstrapservers:
-      - 127.0.0.1:9092
     topic: consumer
-    group: cgroup
-    auto_commit: true
-    session_timeout: 6000
-    offset_reset_policy: smallest
-    enable_auto_offset_store: true
-    ssl:
-      cafile:
-      certfile:
-      keyfile:
-      password:
+    kafka_config:
+      bootstrap.servers: "127.0.0.1:9092"
+      group.id: "cgroup"
+      auto.commit: "true"
+      session.timeout: "6000"
+      offset.reset.policy: "smallest"
+      enable.auto.offset.store: "true"
 output:
   kafka_output:
     type: confluentkafka_output
-    bootstrapservers:
-      - 127.0.0.1:9092
     topic: producer
     error_topic: producer_error
-    ack_policy: all
-    compression: none
-    maximum_backlog: 10000
-    linger_duration: 0
     flush_timeout: 30
     send_timeout: 2
-    ssl:
-      cafile:
-      certfile:
-      keyfile:
-      password:
+    kafka_config:
+      bootstrap.servers: "127.0.0.1:9092"
+      acks: "-1"
+      compression.type: none

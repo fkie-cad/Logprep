@@ -278,7 +278,7 @@ class Input(Connector):
         non_critical_error_msg = None
         if event is None:
             return None, None
-        if event is not None and not isinstance(event, dict):
+        if not isinstance(event, dict):
             raise CriticalInputError(self, "not a dict", event)
         if self._add_hmac:
             event, non_critical_error_msg = self._add_hmac_to(event, raw_event)

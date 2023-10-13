@@ -35,7 +35,7 @@ import re
 import ssl
 from functools import cached_property
 from logging import Logger
-from typing import List, Optional, Tuple, Union, Pattern
+from typing import List, Optional, Pattern, Tuple, Union
 
 import elasticsearch as search
 from attr import define, field
@@ -321,7 +321,7 @@ class ElasticsearchOutput(Output):
             self._handle_bulk_index_error(error)
         except search.exceptions.TransportError as error:
             self._handle_transport_error(error)
-        if self.input_connector:
+        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
             self.input_connector.batch_finished_callback()
 
     def _handle_serialization_error(self, error: search.SerializationError):

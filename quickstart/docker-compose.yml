@@ -5,7 +5,7 @@ version: "3.9"
 
 services:
   opensearch:
-    image: public.ecr.aws/opensearchproject/opensearch:2.8.0
+    image: public.ecr.aws/opensearchproject/opensearch:2
     hostname: opensearch
     container_name: opensearch
     environment:
@@ -29,7 +29,7 @@ services:
     network_mode: host
 
   dashboards:
-    image: public.ecr.aws/opensearchproject/opensearch-dashboards:2.8.0
+    image: public.ecr.aws/opensearchproject/opensearch-dashboards:2
     container_name: dashboards
     environment:
       - 'OPENSEARCH_HOSTS=["http://127.0.0.1:9200"]'
@@ -41,7 +41,7 @@ services:
     network_mode: host
 
   kafka:
-    image: bitnami/kafka:3.4.0
+    image: bitnami/kafka:3.4
     container_name: kafka
     hostname: kafka
     expose:

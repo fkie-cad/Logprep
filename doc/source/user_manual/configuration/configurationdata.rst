@@ -61,37 +61,21 @@ The following config file will be valid by setting the given environment variabl
     output:
         kafka:
             type: confluentkafka_output
-            bootstrapservers:
-            - 172.21.0.5:9092
             topic: producer
             error_topic: producer_error
-            ack_policy: all
-            compression: none
-            maximum_backlog: 10000
-            linger_duration: 0
             flush_timeout: 30
             send_timeout: 2
-            ssl:
-                cafile:
-                certfile:
-                keyfile:
-                password:"
+            kafka_config:
+                bootstrap.servers: localhost:9092"
     export LOGPREP_INPUT="
     input:
         kafka:
             type: confluentkafka_input
-            bootstrapservers:
-            - 172.21.0.5:9092
             topic: consumer
-            group: cgroup3
-            auto_commit: true
-            session_timeout: 6000
             offset_reset_policy: smallest
-            ssl:
-                cafile:
-                certfile:
-                keyfile:
-                password:"
+            kafka_config:
+                bootstrap.servers: localhost:9092
+                group.id: test"
 
 
 This section explains the possible configuration parameters.

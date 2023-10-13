@@ -1,15 +1,15 @@
+# pylint: disable=line-too-long
 """
 ConfluentkafkaInput
 ===================
 
-Logprep uses Confluent-Kafka-Python as client library to communicate with kafka-clusters.
-Important information sources are `Confluent-Kafka-Python-Repo
-<https://github.com/confluentinc/confluent-kafka-python>`_,
-`Confluent-Kafka-Python-Doku 1 <https://docs.confluent.io/current/clients/confluent-kafka-python/>`_
-(comprehensive but out-dated description),
-`Confluent-Kafka-Python-Doku 2 <https://docs.confluent.io/current/clients/python.html#>`_
-(currently just a brief description) and the C-library
-`librdkafka <https://github.com/edenhill/librdkafka>`_, which is built on Confluent-Kafka-Python.
+Logprep uses `confluent-kafka` python client library to communicate with kafka-clusters.
+Important documentation sources are:
+
+- `the python client github page <https://github.com/confluentinc/confluent-kafka-python>`_
+- `the python client api documentation <https://docs.confluent.io/current/clients/confluent-kafka-python/>`_
+- `first steps documentation on confluent.io <https://docs.confluent.io/current/clients/python.html#>`_
+- `underlying c-library documentation (librdkafka) <https://github.com/edenhill/librdkafka>`_
 
 Example
 ^^^^^^^
@@ -19,152 +19,274 @@ Example
     input:
       mykafkainput:
         type: confluentkafka_input
-        bootstrapservers: [127.0.0.1:9092]
         topic: consumer
-        group: cgroup
-        auto_commit: true
-        session_timeout: 6000
-        offset_reset_policy: smallest
+        kafka_config:
+            bootstrap.servers: "127.0.0.1:9092,127.0.0.1:9093"
+            group.id: "cgroup"
+            enable.auto.commit: "true"
+            session.timeout.ms: "6000"
+            auto.offset.reset: "earliest"
 """
+# pylint: enable=line-too-long
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
-from typing import Any, List, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 import msgspec
 from attrs import define, field, validators
-from confluent_kafka import Consumer, KafkaException, TopicPartition
+from confluent_kafka import (
+    OFFSET_BEGINNING,
+    OFFSET_END,
+    OFFSET_INVALID,
+    OFFSET_STORED,
+    Consumer,
+    KafkaException,
+    TopicPartition,
+)
 
-from logprep.abc.input import CriticalInputError, Input, CriticalInputParsingError
-from logprep.abc.output import FatalOutputError
-from logprep.util.validators import dict_with_keys_validator
+from logprep.abc.connector import Connector
+from logprep.abc.input import (
+    CriticalInputError,
+    CriticalInputParsingError,
+    FatalInputError,
+    Input,
+    WarningInputError,
+)
+from logprep.util.validators import keys_in_validator
+
+DEFAULTS = {
+    "enable.auto.offset.store": "false",
+    "enable.auto.commit": "true",
+    "client.id": "<<hostname>>",
+    "auto.offset.reset": "earliest",
+    "session.timeout.ms": "6000",
+    "statistics.interval.ms": "30000",
+}
+
+
+SPECIAL_OFFSETS = {
+    OFFSET_BEGINNING,
+    OFFSET_END,
+    OFFSET_INVALID,
+    OFFSET_STORED,
+}
 
 
 class ConfluentKafkaInput(Input):
     """A kafka input connector."""
 
     @define(kw_only=True, slots=False)
-    class Config(Input.Config):
-        """Kafka specific configurations"""
+    class ConnectorMetrics(Input.ConnectorMetrics):
+        """Metrics for ConfluentKafkaInput"""
 
-        bootstrapservers: List[str]
-        """This field contains a list of Kafka servers (also known as Kafka brokers or Kafka nodes)
-        that can be contacted by Logprep to initiate the connection to a Kafka cluster. The list
-        does not have to be complete, since the Kafka server contains contact information for
-        other Kafka nodes after the initial connection. It is advised to list at least two Kafka
-        servers."""
+        _prefix = "logprep_connector_input_kafka_"
+
+        _stats: dict = field(factory=dict)
+        """statistcs form librdkafka. Is filled by `_stats_callback`"""
+        _commit_failures: int = 0
+        """count of failed commits. Is filled by `_commit_callback`"""
+        _commit_success: int = 0
+        """count of successful commits. Is filled by `_commit_callback`"""
+        _current_offsets: dict = field(factory=dict)
+        """current offsets of the consumer. Is filled by `_get_raw_event`"""
+        _committed_offsets: dict = field(factory=dict)
+        """committed offsets of the consumer. Is filled by `_commit_callback`"""
+        _consumer_group_id: str = ""
+        """group id of the consumer. Is filled during initialization"""
+        _consumer_client_id: str = ""
+        """client id of the consumer. Is filled during initialization"""
+        _consumer_topic: str = ""
+        """topic of the consumer. Is filled during initialization"""
+
+        @cached_property
+        def _rdkafka_labels(self) -> str:
+            client_id = self._consumer_client_id
+            group_id = self._consumer_group_id
+            topic = self._consumer_topic
+            labels = {"client_id": client_id, "group_id": group_id, "topic": topic}
+            labels = self._labels | labels
+            labels = [":".join(item) for item in labels.items()]
+            labels = ",".join(labels)
+            return labels
+
+        def _get_kafka_input_metrics(self) -> dict:
+            exp = {
+                f"{self._prefix}kafka_consumer_current_offset;"  # nosemgrep
+                f"{self._rdkafka_labels},partition:{partition}": offset
+                for partition, offset in self._current_offsets.items()
+            }
+            exp |= {
+                f"{self._prefix}kafka_consumer_committed_offset;"  # nosemgrep
+                f"{self._rdkafka_labels},partition:{partition}": offset
+                for partition, offset in self._committed_offsets.items()
+            }
+            exp.update(
+                {
+                    f"{self._prefix}kafka_consumer_commit_failures;"
+                    f"{self._rdkafka_labels}": self._commit_failures,
+                    f"{self._prefix}kafka_consumer_commit_success;"
+                    f"{self._rdkafka_labels}": self._commit_success,
+                }
+            )
+            return exp
+
+        def _get_top_level_metrics(self) -> dict:
+            return {
+                f"{self._prefix}librdkafka_consumer_{stat};{self._rdkafka_labels}": value
+                for stat, value in self._stats.items()
+                if isinstance(value, (int, float))
+            }
+
+        def _get_cgrp_metrics(self) -> dict:
+            exp = {}
+            cgrp = self._stats.get("cgrp", {})
+            for stat, value in cgrp.items():
+                if isinstance(value, (int, float)):
+                    exp[f"{self._prefix}librdkafka_cgrp_{stat};{self._rdkafka_labels}"] = value
+            return exp
+
+        def expose(self) -> dict:
+            """overload of `expose` to add kafka specific metrics
+
+            Returns
+            -------
+            dict
+                metrics dictionary
+            """
+            exp = super().expose()
+            labels = [":".join(item) for item in self._labels.items()]
+            labels = ",".join(labels)
+            exp |= self._get_top_level_metrics()
+            exp |= self._get_cgrp_metrics()
+            exp |= self._get_kafka_input_metrics()
+            return exp
+
+    @define(kw_only=True, slots=False)
+    class Config(Input.Config):
+        """Kafka input connector specific configurations"""
+
         topic: str = field(validator=validators.instance_of(str))
         """The topic from which new log messages will be fetched."""
-        group: str = field(validator=validators.instance_of(str))
-        """Corresponds to the Kafka configuration parameter
-        `group.id <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_. The
-        individual Logprep processes have the same group.id and thus belong to the same consumer
-        group. Thereby partitions of topics can be assigned to individual consumers."""
-        enable_auto_offset_store: bool = field(
-            validator=validators.instance_of(bool), default=False
-        )
-        """Corresponds to the Kafka configuration parameter
-        `enable.auto.offset.store <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
-        This parameter defines if the offset is automatically updated in memory by librdkafka.
-        Disabling this allows Logprep to update the offset itself more accurately. It is disabled
-        per default in Logprep. The default value in librdkafka it is true."""
-        ssl: dict = field(
-            validator=[
-                validators.instance_of(dict),
-                partial(
-                    dict_with_keys_validator,
-                    expected_keys=["cafile", "certfile", "keyfile", "password"],
-                ),
-            ],
-            default={"cafile": None, "certfile": None, "keyfile": None, "password": None},
-        )
-        """In this subsection the settings of TLS/SSL are defined.
-
-        - `cafile` -  Path to a certificate authority (see ssl.ca.location).
-        - `certfile` - Path to a file with the certificate of the client 
-          (see ssl.certificate.location).
-        - `keyfile` - Path to the key file corresponding to the given certificate file 
-          (see ssl.key.location).
-        - `password` - Password for the given key file (see ssl.key.password).
-        """
-        auto_commit: bool = field(validator=validators.instance_of(bool), default=True)
-        """Corresponds to the Kafka configuration parameter
-        `enable.auto.commit <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
-        Enabling this parameter causes offsets being sent automatically and periodically. The values
-        can be either true/false or on/off. Currently, this has to be set to true, since independent
-        committing is not implemented in Logprep and it would not make sense to activate it anyways.
-        The default setting of librdkafka is true."""
-        session_timeout: int = field(validator=validators.instance_of(int), default=6000)
-        """Corresponds to the Kafka configuration parameter
-        `session.timeout.ms <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
-        This defines the maximum duration a kafka consumer can be without contact to the Kafka
-        broker. The kafka consumer must regularly send a heartbeat to the group coordinator,
-        otherwise the consumer will be considered as being unavailable. In this case the group
-        coordinator assigns the partition to be processed to another computer while re-balancing.
-        The default of librdkafka is 10000 ms (10 s)."""
-        offset_reset_policy: str = field(
-            default="smallest",
-            validator=validators.in_(["latest", "earliest", "none", "largest", "smallest"]),
-        )
-        """Corresponds to the Kafka configuration parameter
-        `auto.offset.reset <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>`_.
-        This parameter influences from which offset the Kafka consumer starts to fetch log messages
-        from an assigned partition. The values latest/earliest/none are possible. With a value of
-        none Logprep must manage the offset by itself. However, this is not supported by Logprep,
-        since it is not relevant for our use-case. If the value is set to latest/largest, the Kafka
-        consumer starts by reading the newest log messages of a partition if a valid offset is
-        missing. Thus, old log messages from that partition will not be processed. This setting can
-        therefore lead to a loss of log messages. A value of earliest/smallest causes the Kafka
-        consumer to read all log messages from a partition, which can lead to a duplication of log
-        messages. Currently, the deprecated value smallest is used, which should be later changed
-        to earliest. The default value of librdkafka is largest."""
 
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of((str, dict)),
+                    value_validator=validators.instance_of(str),
                 ),
-            ],
-            factory=dict,
+                partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
+            ]
         )
-        """ (Optional) Additional kafka configuration for the kafka client. 
-        This is for advanced usage only. For possible configuration options see: 
+        """ Kafka configuration for the kafka client. 
+        At minimum the following keys must be set:
+        
+        - bootstrap.servers (STRING): a comma separated list of kafka brokers
+        - group.id (STRING): a unique identifier for the consumer group
+        
+        For additional configuration options and their description see: 
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
+        
+        .. datatemplate:import-module:: logprep.connector.confluent_kafka.input
+            :template: defaults-renderer.tmpl
+
         """
-
-    current_offset: int
-
-    _record: Any
 
     _last_valid_records: dict
 
-    __slots__ = [
-        "current_offset",
-        "_record",
-        "_last_valid_records",
-    ]
+    __slots__ = ["_last_valid_records"]
 
-    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
+    def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
+        self.metric_labels = {"component": "kafka", "topic": self._config.topic}
         self._last_valid_records = {}
-        self._record = None
+        self.metrics._consumer_group_id = self._config.kafka_config["group.id"]
+        self.metrics._consumer_client_id = self._config.kafka_config.get("client.id", getfqdn())
+        self.metrics._consumer_topic = self._config.topic
 
     @cached_property
-    def _client_id(self):
-        """Return the client id"""
-        return getfqdn()
+    def _consumer(self) -> Consumer:
+        """configures and returns the consumer
 
-    @cached_property
-    def _consumer(self):
-        """Create and return a new confluent kafka consumer"""
-        consumer = Consumer(self._confluent_settings)
-        consumer.subscribe([self._config.topic])
+        Returns
+        -------
+        Consumer
+            confluent_kafka consumer object
+        """
+        injected_config = {
+            "logger": self._logger,
+            "on_commit": self._commit_callback,
+            "stats_cb": self._stats_callback,
+            "error_cb": self._error_callback,
+        }
+        DEFAULTS.update({"client.id": getfqdn()})
+        self._config.kafka_config = DEFAULTS | self._config.kafka_config
+        consumer = Consumer(self._config.kafka_config | injected_config)
+        consumer.subscribe(
+            [self._config.topic],
+            on_assign=self._assign_callback,
+            on_revoke=self._revoke_callback,
+        )
         return consumer
 
+    def _error_callback(self, error: KafkaException) -> None:
+        """Callback for generic/global error events, these errors are typically
+        to be considered informational since the client will automatically try to recover.
+        This callback is served upon calling client.poll()
+
+        Parameters
+        ----------
+        error : KafkaException
+            the error that occurred
+        """
+        self._logger.warning(f"{self.describe()}: {error}")
+
+    def _stats_callback(self, stats: str) -> None:
+        """Callback for statistics data. This callback is triggered by poll()
+        or flush every `statistics.interval.ms` (needs to be configured separately)
+
+        Parameters
+        ----------
+        stats : str
+            statistics from the underlying librdkafka library
+            details about the data can be found here:
+            https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
+        """
+        self.metrics._stats = self._decoder.decode(stats)  # pylint: disable=protected-access
+
+    def _commit_callback(
+        self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
+    ) -> None:
+        """Callback used to indicate success or failure of asynchronous and
+        automatic commit requests. This callback is served upon calling consumer.poll()
+
+        Parameters
+        ----------
+        error : KafkaException | None
+            the commit error, or None on success
+        topic_partitions : list[TopicPartition]
+            partitions with their committed offsets or per-partition errors
+
+        Raises
+        ------
+        WarningInputError
+            if `error` is not None
+        """
+        if error is not None:
+            self.metrics._commit_failures += 1
+            raise WarningInputError(
+                self, f"Could not commit offsets for {topic_partitions}: {error}"
+            )
+        self.metrics._commit_success += 1
+        self.metrics._committed_offsets |= {
+            topic_partition.partition: topic_partition.offset
+            for topic_partition in topic_partitions
+            if topic_partition.offset not in SPECIAL_OFFSETS
+        }
+
     def describe(self) -> str:
-        """Get name of Kafka endpoint and the first bootstrap server.
+        """Get name of Kafka endpoint and bootstrap servers.
 
         Returns
         -------
@@ -172,10 +294,10 @@ class ConfluentKafkaInput(Input):
             Description of the ConfluentKafkaInput connector.
         """
         base_description = super().describe()
-        return f"{base_description} - Kafka Input: {self._config.bootstrapservers[0]}"
+        return f"{base_description} - Kafka Input: {self._config.kafka_config['bootstrap.servers']}"
 
     def _get_raw_event(self, timeout: float) -> bytearray:
-        """Get next raw document from Kafka.
+        """Get next raw Message from Kafka.
 
         Parameters
         ----------
@@ -184,7 +306,7 @@ class ConfluentKafkaInput(Input):
 
         Returns
         -------
-        record_value : bytearray
+        message_value : bytearray
             A raw document obtained from Kafka.
 
         Raises
@@ -192,17 +314,21 @@ class ConfluentKafkaInput(Input):
         CriticalInputError
             Raises if an input is invalid or if it causes an error.
         """
-        self._record = self._consumer.poll(timeout=timeout)
-        if self._record is None:
+        try:
+            message = self._consumer.poll(timeout=timeout)
+        except RuntimeError as error:
+            raise FatalInputError(self, str(error)) from error
+        if message is None:
             return None
-        self._last_valid_records[self._record.partition()] = self._record
-        self.current_offset = self._record.offset()
-        record_error = self._record.error()
-        if record_error:
+        kafka_error = message.error()
+        if kafka_error:
             raise CriticalInputError(
-                self, "A confluent-kafka record contains an error code", record_error
+                self, "A confluent-kafka record contains an error code", kafka_error
             )
-        return self._record.value()
+        self._last_valid_records[message.partition()] = message
+        offset = {message.partition(): message.offset() + 1}
+        self.metrics._current_offsets |= offset  # pylint: disable=protected-access
+        return message.value()
 
     def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
         """Parse the raw document from Kafka into a json.
@@ -233,71 +359,82 @@ class ConfluentKafkaInput(Input):
             raise CriticalInputParsingError(
                 self, "Input record value is not a valid json string", raw_event
             ) from error
-        if not isinstance(event_dict, dict):
-            raise CriticalInputParsingError(
-                self, "Input record value could not be parsed as dict", event_dict
-            )
         return event_dict, raw_event
 
-    @cached_property
-    def _confluent_settings(self) -> dict:
-        """Generate confluence settings, mapped from the given kafka logprep configuration.
+    @property
+    def _enable_auto_offset_store(self) -> bool:
+        return self._config.kafka_config.get("enable.auto.offset.store") == "true"
 
-        Returns
-        -------
-        configuration : dict
-            The confluence kafka settings
+    @property
+    def _enable_auto_commit(self) -> bool:
+        return self._config.kafka_config.get("enable.auto.commit") == "true"
+
+    def batch_finished_callback(self) -> None:
+        """Store offsets for each kafka partition in `self._last_valid_records`
+        and if configured commit them. Should be called by output connectors if
+        they are finished processing a batch of records.
         """
-        configuration = {
-            "bootstrap.servers": ",".join(self._config.bootstrapservers),
-            "group.id": self._config.group,
-            "enable.auto.commit": self._config.auto_commit,
-            "session.timeout.ms": self._config.session_timeout,
-            "enable.auto.offset.store": self._config.enable_auto_offset_store,
-            "default.topic.config": {"auto.offset.reset": self._config.offset_reset_policy},
-        }
-        ssl_settings_are_setted = any(self._config.ssl[key] for key in self._config.ssl)
-        if ssl_settings_are_setted:
-            configuration.update(
-                {
-                    "security.protocol": "SSL",
-                    "ssl.ca.location": self._config.ssl["cafile"],
-                    "ssl.certificate.location": self._config.ssl["certfile"],
-                    "ssl.key.location": self._config.ssl["keyfile"],
-                    "ssl.key.password": self._config.ssl["password"],
-                }
+        if self._enable_auto_offset_store:
+            return
+        self._handle_offsets(self._consumer.store_offsets)
+        if not self._enable_auto_commit:
+            self._handle_offsets(self._consumer.commit)
+        self._last_valid_records.clear()
+
+    def _handle_offsets(self, offset_handler: Callable) -> None:
+        for message in self._last_valid_records.values():
+            try:
+                offset_handler(message=message)
+            except KafkaException:
+                topic = self._consumer.list_topics(topic=self._config.topic)
+                partition_keys = list(topic.topics[self._config.topic].partitions.keys())
+                partitions = [
+                    TopicPartition(self._config.topic, partition) for partition in partition_keys
+                ]
+                self._consumer.assign(partitions)
+                offset_handler(message=message)
+
+    def _assign_callback(self, consumer, topic_partitions):
+        for topic_partition in topic_partitions:
+            self._logger.info(
+                f"{consumer.memberid()} was assigned to "
+                f"topic: {topic_partition.topic} | "
+                f"partition {topic_partition.partition}"
             )
-        return self._config.kafka_config | configuration
+            if topic_partition.offset in SPECIAL_OFFSETS:
+                continue
+            partition_offset = {
+                topic_partition.partition: topic_partition.offset,
+            }
+            self.metrics._current_offsets |= partition_offset
 
-    def batch_finished_callback(self):
-        """Store offsets for each kafka partition.
-        Should be called by output connectors if they are finished processing a batch of records.
-        This is only used if automatic offest storing is disabled in the kafka input.
-        The last valid record for each partition is be used by this method to update all offsets.
-        """
-        if not self._config.enable_auto_offset_store:
-            if self._last_valid_records:
-                for last_valid_records in self._last_valid_records.values():
-                    try:
-                        self._consumer.store_offsets(message=last_valid_records)
-                    except KafkaException:
-                        topic = self._consumer.list_topics(topic=self._config.topic)
-                        partition_keys = list(topic.topics[self._config.topic].partitions.keys())
-                        partitions = [
-                            TopicPartition(self._config.topic, partition)
-                            for partition in partition_keys
-                        ]
-                        self._consumer.assign(partitions)
-                        self._consumer.store_offsets(message=last_valid_records)
+    def _revoke_callback(self, consumer, topic_partitions):
+        for topic_partition in topic_partitions:
+            self._logger.warning(
+                f"{consumer.memberid()} to be revoked from "
+                f"topic: {topic_partition.topic} | "
+                f"partition {topic_partition.partition}"
+            )
 
-    def setup(self):
+    def _lost_callback(self, consumer, topic_partitions):
+        for topic_partition in topic_partitions:
+            self._logger.warning(
+                f"{consumer.memberid()} has lost "
+                f"topic: {topic_partition.topic} | "
+                f"partition {topic_partition.partition}"
+                "- try to reassign"
+            )
+            topic_partition.offset = OFFSET_STORED
+        self._consumer.assign(topic_partitions)
+
+    def setup(self) -> None:
         super().setup()
         try:
             _ = self._consumer
         except (KafkaException, ValueError) as error:
-            raise FatalOutputError(self, str(error)) from error
+            raise FatalInputError(self, str(error)) from error
 
-    def shut_down(self):
+    def shut_down(self) -> None:
         """Close consumer, which also commits kafka offsets."""
-        if self._consumer is not None:
-            self._consumer.close()
+        self._consumer.close()
+        super().shut_down()

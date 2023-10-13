@@ -6,49 +6,34 @@
 # pylint: disable=no-self-use
 
 import json
+import socket
 from copy import deepcopy
+from pathlib import Path
 from unittest import mock
 
 import pytest
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
+from logprep.factory_error import InvalidConfigurationError
 from tests.unit.connector.base import BaseOutputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
 )
 
+KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
+
 
 class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase):
     CONFIG = {
         "type": "confluentkafka_output",
-        "bootstrapservers": ["testserver:9092"],
         "topic": "test_input_raw",
         "error_topic": "test_error_topic",
         "flush_timeout": 0.1,
-        "ssl": {
-            "cafile": "test_cafile",
-            "certfile": "test_certfile",
-            "keyfile": "test_keyfile",
-            "password": "test_password",
+        "kafka_config": {
+            "bootstrap.servers": "testserver:9092",
         },
     }
-
-    def test_confluent_settings_contains_expected_values(self):
-        expected_config = {
-            "bootstrap.servers": "testserver:9092",
-            "security.protocol": "SSL",
-            "ssl.ca.location": "test_cafile",
-            "ssl.certificate.location": "test_certfile",
-            "ssl.key.location": "test_keyfile",
-            "ssl.key.password": "test_password",
-            "queue.buffering.max.messages": 100000,
-            "compression.type": "none",
-            "acks": -1,
-            "linger.ms": 0.5,
-        }
-        kafka_input_cfg = self.object._confluent_settings
-        assert kafka_input_cfg == expected_config
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
     def test_producer_property_instanciates_kafka_producer(self, _):
@@ -145,17 +130,46 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         self.object.store({"message": "my event message"})
         self.object.input_connector.batch_finished_callback.assert_called()
 
-    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_logprep_config_has_precedence(self, mock_producer):
-        kafka_config = deepcopy(self.object._confluent_settings)
-        config = {"bootstrap.servers": "bootstrap1, myprivatebootstrap"}
-        self.object._config.kafka_config = config
-        self.object._producer.clear()
-        _ = self.object._producer
-        mock_producer.assert_called_with(kafka_config)
-
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
-        config = {"myconfig": "the config"}
+        config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
         self.object._config.kafka_config = config
         with pytest.raises(FatalOutputError, match="No such configuration property"):
             self.object.setup()
+
+    def test_metrics_expose_returns_data(self):
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        client_id = socket.getfqdn()
+        # pylint: disable=line-too-long
+        expected = {
+            "logprep_connector_number_of_processed_events;direction:output,name:Test Instance Name,type:confluentkafka_output": 0.0,
+            "logprep_connector_mean_processing_time_per_event;direction:output,name:Test Instance Name,type:confluentkafka_output": 0.0,
+            "logprep_connector_number_of_warnings;direction:output,name:Test Instance Name,type:confluentkafka_output": 0.0,
+            "logprep_connector_number_of_errors;direction:output,name:Test Instance Name,type:confluentkafka_output": 0.0,
+            f"logprep_connector_librdkafka_producer_ts;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 5016483227792,
+            f"logprep_connector_librdkafka_producer_time;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 1527060869,
+            f"logprep_connector_librdkafka_producer_replyq;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 0,
+            f"logprep_connector_librdkafka_producer_msg_cnt;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 22710,
+            f"logprep_connector_librdkafka_producer_msg_size;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 704010,
+            f"logprep_connector_librdkafka_producer_msg_max;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 500000,
+            f"logprep_connector_librdkafka_producer_msg_size_max;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 1073741824,
+            f"logprep_connector_librdkafka_producer_simple_cnt;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 0,
+            f"logprep_connector_librdkafka_producer_metadata_cache_cnt;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 1,
+            f"logprep_connector_librdkafka_producer_tx;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 631,
+            f"logprep_connector_librdkafka_producer_tx_bytes;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 168584479,
+            f"logprep_connector_librdkafka_producer_rx;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 631,
+            f"logprep_connector_librdkafka_producer_rx_bytes;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 31084,
+            f"logprep_connector_librdkafka_producer_txmsgs;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 4300753,
+            f"logprep_connector_librdkafka_producer_txmsg_bytes;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 133323343,
+            f"logprep_connector_librdkafka_producer_rxmsgs;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 0,
+            f"logprep_connector_librdkafka_producer_rxmsg_bytes;direction:output,name:Test Instance Name,type:confluentkafka_output,client_id:{client_id}": 0,
+        }
+        # pylint: enable=line-too-long
+        assert self.object.metrics.expose() == expected
+
+    def test_raises_value_error_if_mandatory_parameters_not_set(self):
+        config = deepcopy(self.CONFIG)
+        config.get("kafka_config").pop("bootstrap.servers")
+        expected_error_message = r"keys are missing: {'bootstrap.servers'}"
+        with pytest.raises(InvalidConfigurationError, match=expected_error_message):
+            Factory.create({"test": config}, logger=self.logger)

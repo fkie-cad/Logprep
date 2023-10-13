@@ -5,6 +5,7 @@
 ### Breaking
 
 * removed metric file target
+* move kafka config options to `kafka_config` dictionary for `confluent_kafka_input` and `confluent_kafka_output` connectors
 
 ### Features
 
@@ -13,9 +14,30 @@
 
 ### Improvements
 
-* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections.
+* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections. 
 It contains the time at which a pre-detection was created by the processor.
 * add `prometheus` and `grafana` to the quickstart setup to support development
+* reimplemented kafka input connector
+  - move kafka config options to `kafka_config` dictionary
+
+### Features
+
+* kafka input connector
+  - implemented manual commit behaviour if `enable.auto.commit: false`
+  - implemented on_commit callback to check for errors during commit
+  - implemented statistics callback to collect metrics from underlying librdkafka library
+  - implemented per partition offset metrics
+  - get logs and handle errors from underlying librdkafka library
+
+* kafka output connector
+  - implemented statistics callback to collect metrics from underlying librdkafka library
+  - get logs and handle errors from underlying librdkafka library
+
+### Improvements
+
+* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections. 
+It contains the time at which a pre-detection was created by the processor.
+* provide confluent kafka test setup to run tests against a real kafka cluster
 
 ### Bugfix
 

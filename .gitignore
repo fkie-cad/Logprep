@@ -16,6 +16,7 @@ tests/testdata/external/
 .venv
 *.lock
 coverage.xml
+cov.xml
 -
 logs
 sql_db_table.json
