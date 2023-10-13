@@ -37,7 +37,11 @@ from zipfile import ZipFile
 from attrs import define, field, validators
 
 from logprep.abc.processor import Processor
-from logprep.processor.base.exceptions import FieldExistsWarning, ProcessingWarning, ProcessingError
+from logprep.processor.base.exceptions import (
+    FieldExistsWarning,
+    ProcessingError,
+    ProcessingWarning,
+)
 from logprep.processor.grokker.rule import GrokkerRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -66,6 +70,8 @@ class Grokker(Processor):
         for dotted_field, grok in rule.actions.items():
             field_value = get_dotted_field_value(event, dotted_field)
             if field_value is None:
+                if rule.ignore_missing_fields:
+                    continue
                 error = BaseException(f"{self.name}: missing source_field: '{dotted_field}'")
                 self._handle_warning_error(event=event, rule=rule, error=error)
                 continue

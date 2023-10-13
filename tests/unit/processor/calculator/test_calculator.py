@@ -158,6 +158,19 @@ test_cases = [  # testcase, rule, event, expected
         {"duration": "0.01"},
         {"duration": 10000.0},
     ),
+    (
+        "Ignore missing source fields",
+        {
+            "filter": "duration",
+            "calculator": {
+                "calc": "${missing_field} * 10e5",
+                "target_field": "duration",
+                "ignore_missing_fields": True,
+            },
+        },
+        {"duration": "0.01"},
+        {"duration": "0.01"},
+    ),
 ]
 
 

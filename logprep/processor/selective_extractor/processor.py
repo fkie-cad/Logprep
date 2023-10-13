@@ -79,6 +79,7 @@ class SelectiveExtractor(FieldManager):
 
         """
         flattened_fields = get_source_fields_dict(event, rule)
+        self._handle_missing_fields(event, rule, flattened_fields.keys(), flattened_fields.values())
         flattened_fields = {
             dotted_field: content
             for dotted_field, content in flattened_fields.items()

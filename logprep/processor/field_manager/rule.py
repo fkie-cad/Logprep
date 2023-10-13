@@ -125,6 +125,9 @@ class FieldManagerRule(Rule):
         If the target field does not exist, a new field will be added with the
         source field value as list. Defaults to :code:`False`.
         """
+        ignore_missing_fields: bool = field(validator=validators.instance_of(bool), default=False)
+        """If set to :code:`True` missing fields will be ignored, no warning is logged and the event
+        is not tagged with the failure tag. Defaults to :code:`False`"""
 
         def __attrs_post_init__(self):
             # ensures no split operations during processing
@@ -160,5 +163,9 @@ class FieldManagerRule(Rule):
     @property
     def extend_target_list(self):
         return self._config.extend_target_list
+
+    @property
+    def ignore_missing_fields(self):
+        return self._config.ignore_missing_fields
 
     # pylint: enable=missing-function-docstring

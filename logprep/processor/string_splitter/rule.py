@@ -56,6 +56,7 @@ class StringSplitterRule(FieldManagerRule):
         delimeter: str = field(validator=validators.instance_of(str), default=" ")
         """The delimeter for splitting. Defaults to whitespace"""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
+        ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
     @property
     def delimeter(self):

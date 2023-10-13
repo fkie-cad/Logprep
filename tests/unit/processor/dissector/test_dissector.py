@@ -620,6 +620,24 @@ test_cases = [  # testcase, rule, event, expected
             "sys_type": "system_monitor",
         },
     ),
+    (
+        "ignore missing fields",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "%{sys_type}",
+                    "does_not_exist": "%{sys_type}",
+                },
+                "ignore_missing_fields": True,
+            },
+        },
+        {"message": "system_monitor"},
+        {
+            "message": "system_monitor",
+            "sys_type": "system_monitor",
+        },
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (
