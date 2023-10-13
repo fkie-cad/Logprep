@@ -56,7 +56,7 @@ class TestsMetrics:
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
         assert 'logprep_bla_total{pipeline="1"} 2.0' in metric_output
 
-    def test_metric_check_equality_integer(self):
+    def test_metric_check_equality(self):
         metric = CounterMetric(
             name="bla",
             description="empty description",

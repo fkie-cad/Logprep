@@ -16,6 +16,7 @@ from ruamel.yaml import YAML
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.metrics.metrics import CounterMetric
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
@@ -107,13 +108,13 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert isinstance(self.object, Processor)
 
     def test_process(self):
+        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "event_id": "1234",
             "message": "user root logged in",
         }
-        count = self.object.metrics.number_of_processed_events
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == count + 1
+        assert self.object.metrics.number_of_processed_events == 1
 
     def test_generic_specific_rule_trees(self):
         assert isinstance(self.object._generic_tree, RuleTree)
@@ -124,7 +125,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert self.object._specific_tree.get_size() > 0
 
     def test_event_processed_count(self):
-        assert isinstance(self.object.metrics.number_of_processed_events, int)
+        assert isinstance(self.object.metrics.number_of_processed_events, CounterMetric)
 
     def test_events_processed_count_counts(self):
         assert self.object.metrics.number_of_processed_events == 0
@@ -140,9 +141,8 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         event = {"a": {"b": "I do not matter"}}
         assert self.object._field_exists(event, "a.b")
 
-    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
     @mock.patch("logging.Logger.debug")
-    def test_load_rules_with_debug(self, mock_debug, _):
+    def test_load_rules_with_debug(self, mock_debug):
         self.object.load_rules(
             specific_rules_targets=self.specific_rules_dirs,
             generic_rules_targets=self.generic_rules_dirs,

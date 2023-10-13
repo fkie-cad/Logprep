@@ -162,6 +162,7 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
+        self.metrics.number_of_processed_events += 1
         self._logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
@@ -189,7 +190,6 @@ class Processor(Component):
             reduce(_process_rule, (event, *tree.get_matching_rules(event)))
 
     def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
-        self.metrics.number_of_processed_events += 1
         try:
             self._apply_rules(event, rule)
         except ProcessingWarning as error:

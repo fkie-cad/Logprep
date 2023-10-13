@@ -86,12 +86,16 @@ class Metric(ABC):
 
 @define(kw_only=True)
 class CounterMetric(Metric):
+    @property
+    def _value(self) -> int:
+        return int(self.tracker.collect()[-1].samples[0].value)
+
     def __add__(self, other):
         self.tracker.labels(**self.labels).inc(other)
         return self
 
     def __eq__(self, __value: object) -> bool:
-        return int(self.tracker.collect()[-1].samples[0].value) == int(__value)
+        return self._value == int(__value)
 
 
 @define(kw_only=True)
@@ -99,6 +103,9 @@ class HistogramMetric(Metric):
     def __add__(self, other):
         self.tracker.labels(**self.labels).observe(other)
         return self
+
+    def __eq__(self, __value: object) -> bool:
+        raise NotImplementedError
 
 
 def calculate_new_average(current_average, next_sample, sample_counter):
