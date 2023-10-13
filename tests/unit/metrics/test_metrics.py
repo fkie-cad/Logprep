@@ -1,18 +1,19 @@
 # pylint: disable=missing-docstring
-# pylint: disable=no-self-use
 # pylint: disable=protected-access
+# pylint: disable=attribute-defined-outside-init
+
 
 from prometheus_client import CollectorRegistry, Counter, generate_latest
 
-import logprep.metrics.metrics as metrics
+from logprep.metrics import metrics
 from logprep.metrics.metrics import CounterMetric
-
-custom_registry = CollectorRegistry()
-
-metrics.LOGPREP_REGISTRY = custom_registry
 
 
 class TestsMetrics:
+    def setup_method(self):
+        self.custom_registry = CollectorRegistry()
+        metrics.LOGPREP_REGISTRY = self.custom_registry
+
     def test_init_tracker_creates_metric(self):
         metric = CounterMetric(
             name="testmetric",
@@ -40,5 +41,17 @@ class TestsMetrics:
         )
         metric.init_tracker()
         metric += 1
-        metric_output = generate_latest(custom_registry).decode("utf-8")
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
         assert 'logprep_bla_total{pipeline="1"} 1.0' in metric_output
+
+    def test_counter_metric_increments_second(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+        )
+        metric.init_tracker()
+        metric += 1
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert 'logprep_bla_total{pipeline="1"} 2.0' in metric_output
