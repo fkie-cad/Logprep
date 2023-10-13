@@ -2,6 +2,11 @@
 
 ## next release
 
+### Features
+### Improvements
+### Bugfix
+
+## v7.0.0
 ### Breaking
 
 * removed metric file target
@@ -29,7 +34,6 @@
 It contains the time at which a pre-detection was created by the processor.
 * add `prometheus` and `grafana` to the quickstart setup to support development
 * provide confluent kafka test setup to run tests against a real kafka cluster
-
 
 ### Bugfix
 
