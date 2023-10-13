@@ -276,17 +276,17 @@ class Rule:
     # pylint: enable=C0111
 
     @classmethod
-    def create_rules_from_target(cls, rule_target: str, processor: Processor) -> list:
+    def create_rules_from_target(cls, rule_target: str) -> list:
         """Create a rule from a file."""
         if isinstance(rule_target, dict):
-            return [cls._create_from_dict(rule_target, processor.name)]
+            return [cls._create_from_dict(rule_target)]
         content = GetterFactory.from_string(rule_target).get()
         try:
             rule_data = json.loads(content)
         except ValueError:
             rule_data = yaml.load_all(content)
         try:
-            rules = [cls._create_from_dict(rule, processor.name) for rule in rule_data]
+            rules = [cls._create_from_dict(rule) for rule in rule_data]
         except InvalidRuleDefinitionError as error:
             raise InvalidRuleDefinitionError(f"{rule_target}: {error}") from error
         if len(rules) == 0:
@@ -302,7 +302,7 @@ class Rule:
         """
 
     @classmethod
-    def _create_from_dict(cls, rule: dict, processor_name: str) -> "Rule":
+    def _create_from_dict(cls, rule: dict) -> "Rule":
         cls.normalize_rule_dict(rule)
         filter_expression = Rule._create_filter_expression(rule)
         cls.rule_type = camel_to_snake(cls.__name__.replace("Rule", ""))
@@ -319,7 +319,7 @@ class Rule:
             if special_field_value is not None:
                 config.update({special_field: special_field_value})
         config = cls.Config(**config)
-        return cls(filter_expression, config, processor_name)
+        return cls(filter_expression, config, cls.rule_type)
 
     @staticmethod
     def _check_rule_validity(

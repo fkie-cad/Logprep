@@ -5,6 +5,8 @@ from typing import Callable
 from attr import asdict, define, field, validators
 from prometheus_client import Counter, Histogram
 
+LOGPREP_REGISTRY = None  # to inject a custom registry
+
 
 def is_public(attribute, _):
     """If an attribute name starts with an underscore it is considered private"""
@@ -60,7 +62,7 @@ class Metric(ABC):
                 name=f"{self._prefix}{self.name}",
                 documentation=self.description,
                 labelnames=self.labels.keys(),
-                registry=None,
+                registry=LOGPREP_REGISTRY,
             )
         if isinstance(self, HistogramMetric):
             tracker = Histogram(
@@ -68,10 +70,10 @@ class Metric(ABC):
                 documentation=self.description,
                 labelnames=self.labels.keys(),
                 buckets=(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1),
-                registry=None,
+                registry=LOGPREP_REGISTRY,
             )
         tracker.labels(**self.labels)
-        return tracker
+        self.tracker = tracker
 
     @abstractmethod
     def __add__(self, other):

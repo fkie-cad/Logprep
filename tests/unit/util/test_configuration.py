@@ -12,7 +12,6 @@ import pytest
 
 from logprep.util.configuration import (
     Configuration,
-    IncalidMetricsConfigurationError,
     InvalidConfigurationError,
     InvalidConfigurationErrors,
     InvalidInputConnectorConfigurationError,

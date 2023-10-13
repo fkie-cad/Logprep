@@ -350,7 +350,7 @@ class Pipeline:
             - create Grafana Dashboards
             - add pipelinemanager metrics (pipeline restarts)
             - clean up PrometheusExporter ("remove stale metric files" stil needed?)
-            - 
+            - add Kafka librdkafka metrics
         """
 
         event_received = self._encoder.encode(event)

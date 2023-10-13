@@ -59,7 +59,7 @@ class Component(ABC):
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
                     attribute.target = self._processing_time_per_event_target
-                    attribute.tracker = attribute.init_tracker()
+                    attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property
     __slots__ = ["name", "_logger", "_config", "__dict__"]

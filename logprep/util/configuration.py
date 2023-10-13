@@ -7,11 +7,9 @@ from logging import Logger
 from pathlib import Path
 from typing import List
 
-from attrs import define, field
 from colorama import Fore
 from ruamel.yaml.scanner import ScannerError
 
-from logprep.abc.component import Component
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory

@@ -255,11 +255,11 @@ class Processor(Component):
         specific_rules_targets = self.resolve_directories(specific_rules_targets)
         generic_rules_targets = self.resolve_directories(generic_rules_targets)
         for specific_rules_target in specific_rules_targets:
-            rules = self.rule_class.create_rules_from_target(specific_rules_target, processor=self)
+            rules = self.rule_class.create_rules_from_target(specific_rules_target)
             for rule in rules:
                 self._specific_tree.add_rule(rule, self._logger)
         for generic_rules_target in generic_rules_targets:
-            rules = self.rule_class.create_rules_from_target(generic_rules_target, processor=self)
+            rules = self.rule_class.create_rules_from_target(generic_rules_target)
             for rule in rules:
                 self._generic_tree.add_rule(rule, self._logger)
 
