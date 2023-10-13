@@ -1,7 +1,7 @@
 """Abstract module for processors"""
 import time
 from abc import abstractmethod
-from functools import reduce
+from functools import partial, reduce
 from logging import Logger
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
@@ -166,9 +166,11 @@ class Processor(Component):
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
 
+    @TimeMeasurement.measure_time("RuleTree processing")
     def _process_rule_tree(self, event: dict, tree: "RuleTree"):
         applied_rules = set()
 
+        @TimeMeasurement.measure_time("Rule processing")
         def _process_rule(event, rule):
             begin = time.time()
             self._apply_rules_wrapper(event, rule)

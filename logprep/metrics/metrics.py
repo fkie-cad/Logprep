@@ -1,5 +1,6 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
 from abc import ABC, abstractmethod
+from typing import Callable
 
 from attr import asdict, define, field, validators
 from prometheus_client import Counter, Histogram
@@ -49,9 +50,11 @@ class Metric(ABC):
         default={},
     )
     tracker: object = field(default=None)
+    target: Callable = field(default=None)
     _prefix: str = "logprep_"
 
     def init_tracker(self):
+        tracker = None
         if isinstance(self, CounterMetric):
             tracker = Counter(
                 name=f"{self._prefix}{self.name}",
@@ -64,7 +67,7 @@ class Metric(ABC):
                 name=f"{self._prefix}{self.name}",
                 documentation=self.description,
                 labelnames=self.labels.keys(),
-                buckets=(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, float("inf")),
+                buckets=(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1),
                 registry=None,
             )
         tracker.labels(**self.labels)

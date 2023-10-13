@@ -1,9 +1,14 @@
 """This module is used to measure the execution time of functions and add the results to events."""
 
+import logging
 from socket import gethostname
 from time import time
+from typing import TYPE_CHECKING
 
 from logprep.util.helper import camel_to_snake
+
+if TYPE_CHECKING:
+    from logprep.processor.base.rule import Rule
 
 
 class TimeMeasurement:
@@ -29,15 +34,17 @@ class TimeMeasurement:
                 if TimeMeasurement.TIME_MEASUREMENT_ENABLED:
                     caller = args[0]
                     first_argument = args[1]
+                    second_argument = args[2] if len(args) > 2 else None
                     begin = time()
                     result = func(*args, **kwargs)
                     end = time()
 
                     processing_time = end - begin
-
-                    if hasattr(caller, "metrics"):
-                        if hasattr(caller.metrics, "update_mean_processing_time_per_event"):
-                            caller.metrics.update_mean_processing_time_per_event(processing_time)
+                    if name in ("Rule processing",):
+                        caller = first_argument
+                    if name in ("RuleTree processing",):
+                        caller = second_argument
+                    caller.metrics.processing_time_per_event += processing_time
 
                     if TimeMeasurement.APPEND_TO_EVENT and isinstance(first_argument, dict):
                         add_processing_times_to_event(first_argument, processing_time, caller, name)

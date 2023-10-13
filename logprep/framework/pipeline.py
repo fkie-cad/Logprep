@@ -129,11 +129,6 @@ class Pipeline:
     class Metrics(Component.Metrics):
         """Tracks statistics about a pipeline"""
 
-        input: Connector.ConnectorMetrics
-        """Input metrics"""
-        output: List[Connector.ConnectorMetrics]
-        """Output metrics"""
-        kafka_offset: int = 0
         """The current offset of the kafka input reader"""
         number_of_processed_events: int = 0
         """Number of events that this pipeline has processed"""
@@ -195,6 +190,9 @@ class Pipeline:
         self.pipeline_index = pipeline_index
         self._encoder = msgspec.msgpack.Encoder()
         self._decoder = msgspec.msgpack.Decoder()
+        self.metrics = self.Metrics(
+            labels=self.metric_labels,
+        )
 
     @cached_property
     def _process_name(self) -> str:
@@ -211,17 +209,6 @@ class Pipeline:
     def metric_labels(self) -> dict:
         """Return the metric labels for this component."""
         return {"component": "pipeline"}
-
-    @cached_property
-    def metrics(self) -> Metrics:
-        """The pipeline metrics object"""
-        if self._prometheus_exporter is None:
-            return None
-        return self.Metrics(
-            input=self._input.metrics,
-            output=[self._output.get(output).metrics for output in self._output],
-            labels=self.metric_labels,
-        )
 
     @cached_property
     def _pipeline(self) -> tuple:
@@ -347,9 +334,25 @@ class Pipeline:
                     output.store_failed(non_critical_error_msg, event, None)
         return event
 
-    @TimeMeasurement.measure_time("pipeline")
+    @TimeMeasurement.measure_time(name="process_event")
     def process_event(self, event: dict):
         """process all processors for one event"""
+
+        """
+        ToDos:
+            - TimeTracking
+            - Processor Specific Metrics (Pseudonymizer, Amides, DomainResolver)
+            - Fix Pseudonymizer str has no match
+            - count number warnings/errors separatley or delete them from all metrics?
+            - Tests
+            - delete metric exposer
+            - delete SharedCounter (Events in last 5 min: n)
+            - create Grafana Dashboards
+            - add pipelinemanager metrics (pipeline restarts)
+            - clean up PrometheusExporter ("remove stale metric files" stil needed?)
+            - 
+        """
+
         event_received = self._encoder.encode(event)
         extra_outputs = []
         for processor in self._pipeline:

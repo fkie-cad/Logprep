@@ -44,6 +44,7 @@ class Component(ABC):
         )
         """Number of events that were send to error output"""
 
+        _processing_time_per_event_target: Callable = field(default=None)
         processing_time_per_event: HistogramMetric = field(
             factory=lambda: HistogramMetric(
                 description="Time in seconds that it took to process an event",
@@ -57,6 +58,7 @@ class Component(ABC):
                 attribute = getattr(self, attribute)
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
+                    attribute.target = self._processing_time_per_event_target
                     attribute.tracker = attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property
