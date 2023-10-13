@@ -11,13 +11,11 @@ from unittest import mock
 import pytest
 import requests
 import responses
-from prometheus_client import CollectorRegistry, generate_latest
 from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics import metrics
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.util.helper import camel_to_snake
 from logprep.util.json_handling import list_json_files_in_directory
@@ -89,8 +87,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         """
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
         TimeMeasurement.APPEND_TO_EVENT = False
-        self.custom_registry = CollectorRegistry()
-        metrics.LOGPREP_REGISTRY = self.custom_registry
         self.patchers = []
         for name, kwargs in self.mocks.items():
             patcher = mock.patch(name, **kwargs)
@@ -111,14 +107,12 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert isinstance(self.object, Processor)
 
     def test_process(self):
-        before = generate_latest()
         document = {
             "event_id": "1234",
             "message": "user root logged in",
         }
         count = self.object.metrics.number_of_processed_events
         self.object.process(document)
-        after = generate_latest()
         assert self.object.metrics.number_of_processed_events == count + 1
 
     def test_generic_specific_rule_trees(self):

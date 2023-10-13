@@ -55,3 +55,15 @@ class TestsMetrics:
         metric += 1
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
         assert 'logprep_bla_total{pipeline="1"} 2.0' in metric_output
+
+    def test_metric_check_equality_integer(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+        )
+        metric.init_tracker()
+        assert metric == 0
+        metric += 1
+        assert metric == 1.0
+        assert metric == 1

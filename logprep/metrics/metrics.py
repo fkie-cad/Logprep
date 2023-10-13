@@ -79,12 +79,19 @@ class Metric(ABC):
     def __add__(self, other):
         """Add"""
 
+    @abstractmethod
+    def __eq__(self, __value: object) -> bool:
+        """Equal"""
+
 
 @define(kw_only=True)
 class CounterMetric(Metric):
     def __add__(self, other):
         self.tracker.labels(**self.labels).inc(other)
         return self
+
+    def __eq__(self, __value: object) -> bool:
+        return int(self.tracker.collect()[-1].samples[0].value) == int(__value)
 
 
 @define(kw_only=True)
