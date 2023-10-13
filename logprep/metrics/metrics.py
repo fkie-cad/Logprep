@@ -1,9 +1,8 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
 from abc import ABC, abstractmethod
-from enum import Enum
 
 from attr import asdict, define, field, validators
-from prometheus_client import Counter, Gauge, Histogram, Info
+from prometheus_client import Counter, Histogram
 
 
 def is_public(attribute, _):
@@ -50,6 +49,26 @@ class Metric(ABC):
         default={},
     )
     tracker: object = field(default=None)
+    _prefix: str = "logprep_"
+
+    def init_tracker(self):
+        if isinstance(self, CounterMetric):
+            tracker = Counter(
+                name=f"{self._prefix}{self.name}",
+                documentation=self.description,
+                labelnames=self.labels.keys(),
+                registry=None,
+            )
+        if isinstance(self, HistogramMetric):
+            tracker = Histogram(
+                name=f"{self._prefix}{self.name}",
+                documentation=self.description,
+                labelnames=self.labels.keys(),
+                buckets=(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, float("inf")),
+                registry=None,
+            )
+        tracker.labels(**self.labels)
+        return tracker
 
     @abstractmethod
     def __add__(self, other):
@@ -58,14 +77,6 @@ class Metric(ABC):
 
 @define(kw_only=True)
 class CounterMetric(Metric):
-    def __attrs_post_init__(self):
-        self.tracker = Counter(
-            name=self.name,
-            documentation=self.description,
-            labelnames=self.labels.keys(),
-            registry=None,
-        )
-
     def __add__(self, other):
         self.tracker.labels(**self.labels).inc(other)
         return self
@@ -73,16 +84,8 @@ class CounterMetric(Metric):
 
 @define(kw_only=True)
 class HistogramMetric(Metric):
-    def __attrs_post_init__(self):
-        self.tracker = Histogram(
-            name=self.name,
-            documentation=self.description,
-            labelnames=self.labels.keys(),
-            registry=None,
-        )
-
     def __add__(self, other):
-        self.tracker.labels(**self.labels).inc(other)
+        self.tracker.labels(**self.labels).observe(other)
         return self
 
 

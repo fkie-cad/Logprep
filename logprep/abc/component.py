@@ -8,7 +8,7 @@ from attr import define, field, validators
 from attrs import asdict
 from schedule import Scheduler
 
-from logprep.metrics.metrics import CounterMetric, HistogramMetric
+from logprep.metrics.metrics import CounterMetric, HistogramMetric, Metric
 from logprep.util.helper import camel_to_snake
 
 
@@ -27,7 +27,6 @@ class Component(ABC):
         """Base Metric class to track and expose statistics about logprep"""
 
         _labels: dict
-        _prefix: str = "logprep_"
 
         number_of_processed_events: CounterMetric = field(
             factory=lambda: CounterMetric(
@@ -56,14 +55,9 @@ class Component(ABC):
         def __attrs_post_init__(self):
             for attribute in asdict(self):
                 attribute = getattr(self, attribute)
-                if isinstance(attribute, CounterMetric):
+                if isinstance(attribute, Metric):
                     attribute.labels = self._labels
-                    attribute.tracker = attribute(
-                        name=f"{self._prefix}{attribute.name}",
-                        documentation=attribute.description,
-                        labelnames=attribute.labels.keys(),
-                    )
-                    attribute.tracker.labels(**attribute.labels)
+                    attribute.tracker = attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property
     __slots__ = ["name", "_logger", "_config", "__dict__"]
@@ -151,6 +145,3 @@ class Component(ABC):
     def run_pending_tasks(cls) -> None:
         """Starts all pending tasks. This is called in :code:`pipeline.py`"""
         cls._scheduler.run_pending()
-
-
-tri

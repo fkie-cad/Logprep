@@ -4,13 +4,11 @@ from enum import Enum
 from logging import Logger
 from typing import TYPE_CHECKING, List, Optional
 
-import numpy as np
-from attr import Factory, define, field
+from attr import define, field
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
-from logprep.metrics.metrics import CounterMetric, MetricType
 from logprep.util import getter
 
 if TYPE_CHECKING:
@@ -95,7 +93,8 @@ class RuleTree:
     def metric_labels(self) -> dict:
         """Return metric labels."""
         return {
-            "rule_tree": self.rule_tree_type.name.lower(),
+            "component": "rule_tree",
+            "rule_type": self.rule_tree_type.name.lower(),
             "processor": self._processor_name,
             "processor_type": self._processor_config.type,
         }
