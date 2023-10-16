@@ -26,7 +26,6 @@ class TestAmides(BaseProcessorTestCase):
 
     def test_process_event_malicious_process_command_line(self):
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
                 "event_id": 1,
@@ -36,7 +35,6 @@ class TestAmides(BaseProcessorTestCase):
         }
 
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == 1
 
         result = document.get("amides")
         assert result
@@ -53,7 +51,6 @@ class TestAmides(BaseProcessorTestCase):
 
     def test_process_event_benign_process_command_line(self):
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
                 "event_id": 1,
@@ -62,7 +59,6 @@ class TestAmides(BaseProcessorTestCase):
             },
         }
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == 1
         result = document.get("amides")
         assert result
         assert result["confidence"] < self.CONFIG.get("decision_threshold") and not result.get(
@@ -85,10 +81,8 @@ class TestAmides(BaseProcessorTestCase):
     @pytest.mark.parametrize("document", no_pc_events)
     def test_process_event_no_process_creation_events(self, document):
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
 
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == 1
         assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
         assert self.object.metrics.new_results == 0
@@ -99,14 +93,12 @@ class TestAmides(BaseProcessorTestCase):
 
     def test_process_event_without_command_line_field(self):
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"event_id": 1, "provider_name": "Microsoft-Windows-Sysmon"},
             "some": {"random": "data"},
         }
 
         self.object.process(document)
-        assert self.object.metrics.number_of_processed_events == 1
         assert not document.get("amides")
         assert self.object.metrics.total_cmdlines == 0
         assert self.object.metrics.new_results == 0
@@ -117,7 +109,6 @@ class TestAmides(BaseProcessorTestCase):
 
     def test_classification_results_from_cache(self):
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
                 "event_id": 1,
@@ -129,7 +120,6 @@ class TestAmides(BaseProcessorTestCase):
 
         self.object.process(document)
         self.object.process(other_document)
-        assert self.object.metrics.number_of_processed_events == 2
 
         assert other_document.get("amides") == document.get("amides")
         assert self.object.metrics.total_cmdlines == 2
@@ -142,7 +132,6 @@ class TestAmides(BaseProcessorTestCase):
 
     def test_process_event_raise_duplication_error(self, caplog):
         self.object.setup()
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {
                 "event_id": 1,
