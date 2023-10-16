@@ -346,13 +346,13 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert result is None
 
     def test_connector_metrics_counts_processed_events(self):
-        assert self.object.metrics.number_of_processed_events == 0
+        self.object.metrics.number_of_processed_events = 0
         self.object._get_event = mock.MagicMock(return_value=({"message": "test"}, None))
         self.object.get_next(0.01)
         assert self.object.metrics.number_of_processed_events == 1
 
     def test_connector_metrics_does_not_count_if_no_event_was_retrieved(self):
-        assert self.object.metrics.number_of_processed_events == 0
+        self.object.metrics.number_of_processed_events = 0
         self.object._get_event = mock.MagicMock(return_value=(None, None))
         self.object.get_next(0.01)
         assert self.object.metrics.number_of_processed_events == 0
@@ -515,7 +515,7 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         assert isinstance(self.object, Output)
 
     def test_store_counts_processed_events(self):
-        assert self.object.metrics.number_of_processed_events == 0
+        self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
 

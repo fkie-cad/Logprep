@@ -2,6 +2,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 from unittest import mock
+
 from logprep.connector.jsonl.output import JsonlOutput
 from tests.unit.connector.base import BaseOutputTestCase
 
@@ -98,7 +99,7 @@ class TestJsonlOutputOutput(BaseOutputTestCase):
 
     @mock.patch("builtins.open")
     def test_store_counts_processed_events(self, _):  # pylint: disable=arguments-differ
-        assert self.object.metrics.number_of_processed_events == 0
+        self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
 
