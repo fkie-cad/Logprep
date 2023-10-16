@@ -161,11 +161,10 @@ class Rule:
     class Config:
         """Config for Rule"""
 
-        rule_id: uuid.UUID = field(
-            validator=validators.instance_of(uuid.UUID),
+        id: str = field(
+            validator=validators.instance_of((str, int)),
             factory=lambda: str(uuid.uuid4()),
             eq=False,
-            converter=uuid.UUID,
             init=False,
             repr=False,
         )
@@ -242,7 +241,6 @@ class Rule:
         "ip_fields",
         "tests",
         "tag_on_failure",
-        "rule_id",
     ]
 
     @property
@@ -250,7 +248,7 @@ class Rule:
         """Return the metric labels for this component."""
         return {
             "component": "rule",
-            "description": f"{str(self._config.rule_id)} - {self._config.description}",
+            "description": f"{str(self._config.id)} - {self._config.description}",
             "type": self.rule_type,
             "name": self._processor_name,
         }

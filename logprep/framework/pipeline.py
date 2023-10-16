@@ -237,6 +237,10 @@ class Pipeline:
     @cached_property
     def _input(self) -> Input:
         input_connector_config = self._logprep_config.get("input")
+        connector_name = list(input_connector_config.keys())[0]
+        input_connector_config[connector_name].update(
+            {"version_information": self._event_version_information}
+        )
         if input_connector_config is None:
             return None
         return Factory.create(input_connector_config, self.logger)
@@ -356,6 +360,8 @@ class Pipeline:
             - add pipelinemanager metrics (pipeline restarts)
             - clean up PrometheusExporter ("remove stale metric files" stil needed?)
             - add Kafka librdkafka metrics
+            - count warnings
+            - add version info to metrics
         """
 
         event_received = self._encoder.encode(event)
