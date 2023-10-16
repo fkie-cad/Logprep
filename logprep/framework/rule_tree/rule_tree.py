@@ -2,7 +2,7 @@
 
 from enum import Enum
 from logging import Logger
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from attr import define, field
 
@@ -39,9 +39,10 @@ class RuleTree:
         "rule_parser",
         "metrics",
         "priority_dict",
-        "rule_tree_type",
+        "_rule_tree_type",
         "_rule_mapping",
         "_processor_config",
+        "_processor_type",
         "_processor_name",
         "_root",
         "_number_of_rules"
@@ -50,10 +51,11 @@ class RuleTree:
     rule_parser: Optional[RuleParser]
     metrics: Metrics
     priority_dict: dict
-    rule_tree_type: RuleTreeType
+    _rule_tree_type: Union[RuleTreeType, str]
     _rule_mapping: dict
     _processor_name: str
     _processor_config: "Processor.Config"
+    _processor_type: str
     _root: Node
     _number_of_rules: int
 
@@ -81,8 +83,9 @@ class RuleTree:
         self.rule_parser = None
         self._rule_mapping = {}
         self._processor_config = processor_config
-        self._processor_name = processor_name
-        self.rule_tree_type = rule_tree_type
+        self._processor_name = processor_name if processor_name is not None else ""
+        self._rule_tree_type = rule_tree_type.name.lower() if rule_tree_type is not None else ""
+        self._processor_type = processor_config.type if processor_name is not None else ""
         self._setup()
         self.metrics = self.Metrics(labels=self.metric_labels)
         self._number_of_rules = 0
@@ -97,9 +100,9 @@ class RuleTree:
         """Return metric labels."""
         return {
             "component": "rule_tree",
-            "rule_type": self.rule_tree_type.name.lower(),
+            "rule_type": self._rule_tree_type,
             "processor": self._processor_name,
-            "processor_type": self._processor_config.type,
+            "processor_type": self._processor_type,
         }
 
     def _setup(self):

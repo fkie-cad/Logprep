@@ -15,7 +15,7 @@ from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
+from logprep.framework.rule_tree.rule_tree import RuleTree
 from logprep.metrics import metrics
 from logprep.metrics.metrics import CounterMetric
 from logprep.processor.base.exceptions import ProcessingWarning
@@ -78,16 +78,8 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         return rules
 
     def _load_specific_rule(self, rule):
-        self.object._generic_tree = RuleTree(
-            processor_name="Test Instance Name",
-            processor_config=self.object._config,
-            rule_tree_type=RuleTreeType.GENERIC,
-        )
-        self.object._specific_tree = RuleTree(
-            processor_name="Test Instance Name",
-            processor_config=self.object._config,
-            rule_tree_type=RuleTreeType.SPECIFIC,
-        )
+        self.object._generic_tree = RuleTree()
+        self.object._specific_tree = RuleTree()
         specific_rule = self.object.rule_class._create_from_dict(rule)
         self.object._specific_tree.add_rule(specific_rule, self.logger)
 
@@ -152,16 +144,8 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         assert self.object._field_exists(event, "a.b")
 
     def test_load_rules(self):
-        self.object._generic_tree = RuleTree(
-            processor_name="Test Instance Name",
-            processor_config=self.object._config,
-            rule_tree_type=RuleTreeType.GENERIC,
-        )
-        self.object._specific_tree = RuleTree(
-            processor_name="Test Instance Name",
-            processor_config=self.object._config,
-            rule_tree_type=RuleTreeType.SPECIFIC,
-        )
+        self.object._generic_tree = RuleTree()
+        self.object._specific_tree = RuleTree()
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.load_rules(
