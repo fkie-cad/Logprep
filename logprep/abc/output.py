@@ -33,7 +33,7 @@ class FatalOutputError(OutputError):
     """Must not be catched."""
 
     def __init__(self, output, message) -> None:
-        output.metrics.number_of_errors += 1
+        # output.metrics.number_of_errors += 1
         super().__init__(output, message)
 
 
@@ -41,7 +41,7 @@ class WarningOutputError(OutputError):
     """May be catched but must be displayed to the user/logged."""
 
     def __init__(self, output, message) -> None:
-        output.metrics.number_of_warnings += 1
+        # output.metrics.number_of_warnings += 1
         super().__init__(output, message)
 
 

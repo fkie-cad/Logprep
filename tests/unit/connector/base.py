@@ -14,7 +14,6 @@ from logprep.abc.input import Input
 from logprep.abc.output import Output
 from logprep.factory import Factory
 from logprep.util.time import TimeParser
-from logprep.util.time_measurement import TimeMeasurement
 from tests.unit.component.base import BaseComponentTestCase
 
 
@@ -469,17 +468,6 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
         assert result == {"any": "content"}
-
-    def test_get_next_returns_event_with_active_time_measurement(self):
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
-        TimeMeasurement.APPEND_TO_EVENT = True
-        return_value = ({"message": "test message"}, b'{"message": "test message"}')
-        self.object._get_event = mock.MagicMock(return_value=return_value)
-        event, _ = self.object.get_next(0.01)
-        assert isinstance(event, dict)
-        assert self.object.metrics.mean_processing_time_per_event > 0
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
-        TimeMeasurement.APPEND_TO_EVENT = False
 
     def test_preprocessing_enriches_by_env_variable(self):
         preprocessing_config = {

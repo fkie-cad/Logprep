@@ -8,7 +8,6 @@ import copy
 import logging
 import logging.handlers
 import multiprocessing
-
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -23,7 +22,6 @@ from schedule import Scheduler
 
 from logprep._version import get_versions
 from logprep.abc.component import Component
-from logprep.abc.connector import Connector
 from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
@@ -129,9 +127,6 @@ class Pipeline:
     class Metrics(Component.Metrics):
         """Tracks statistics about a pipeline"""
 
-        """The current offset of the kafka input reader"""
-        number_of_processed_events: int = 0
-        """Number of events that this pipeline has processed"""
         mean_processing_time_per_event: float = 0.0
         """Mean processing time for one event"""
         _mean_processing_time_sample_counter: int = 0

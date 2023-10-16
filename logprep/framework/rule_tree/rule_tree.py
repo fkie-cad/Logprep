@@ -44,6 +44,7 @@ class RuleTree:
         "_processor_config",
         "_processor_name",
         "_root",
+        "_number_of_rules"
     )
 
     rule_parser: Optional[RuleParser]
@@ -54,6 +55,7 @@ class RuleTree:
     _processor_name: str
     _processor_config: "Processor.Config"
     _root: Node
+    _number_of_rules: int
 
     def __init__(
         self,
@@ -83,6 +85,7 @@ class RuleTree:
         self.rule_tree_type = rule_tree_type
         self._setup()
         self.metrics = self.Metrics(labels=self.metric_labels)
+        self._number_of_rules = 0
 
         if root:
             self._root = root
@@ -108,7 +111,7 @@ class RuleTree:
         self.priority_dict = {}
         tag_map = {}
 
-        if self._processor_config.tree_config:
+        if self._processor_config and self._processor_config.tree_config:
             config_data = getter.GetterFactory.from_string(
                 self._processor_config.tree_config
             ).get_json()
@@ -142,11 +145,12 @@ class RuleTree:
                 f"\nIgnore and continue with next rule."
             )
             return
-
+        self._number_of_rules += 1
         for rule_segment in parsed_rule:
             end_node = self._add_parsed_rule(rule_segment)
             if rule not in end_node.matching_rules:
                 end_node.matching_rules.append(rule)
+        self._rule_mapping[rule] = self._number_of_rules - 1
 
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.

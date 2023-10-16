@@ -34,7 +34,6 @@ class CriticalInputError(InputError):
 
     def __init__(self, input_connector: "Input", message, raw_input):
         self.raw_input = raw_input
-        input_connector.metrics.number_of_errors += 1
         super().__init__(input_connector, f"{message} -> {raw_input}")
 
 
@@ -46,7 +45,6 @@ class FatalInputError(InputError):
     """Must not be catched."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
-        input_connector.metrics.number_of_errors += 1
         super().__init__(input_connector, message)
 
 
@@ -54,7 +52,6 @@ class WarningInputError(InputError):
     """May be catched but must be displayed to the user/logged."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
-        input_connector.metrics.number_of_warnings += 1
         super().__init__(input_connector, message)
 
 
@@ -62,7 +59,6 @@ class SourceDisconnectedError(WarningInputError):
     """Lost (or failed to establish) contact with the source."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
-        input_connector.metrics.number_of_errors += 1
         super().__init__(input_connector, message)
 
 

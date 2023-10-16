@@ -123,11 +123,6 @@ class DomainResolver(Processor):
         logger: Logger,
     ):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self.metrics = self.DomainResolverMetrics(
-            labels=self.metric_labels,
-            generic_rule_tree=self._generic_tree.metrics,
-            specific_rule_tree=self._specific_tree.metrics,
-        )
         self._domain_ip_map = {}
 
     @cached_property

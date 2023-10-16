@@ -15,7 +15,8 @@ from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.framework.rule_tree.rule_tree import RuleTree
+from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
+from logprep.metrics import metrics
 from logprep.metrics.metrics import CounterMetric
 from logprep.processor.base.exceptions import ProcessingWarning
 from logprep.util.helper import camel_to_snake
@@ -77,8 +78,16 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         return rules
 
     def _load_specific_rule(self, rule):
-        self.object._generic_tree = RuleTree()
-        self.object._specific_tree = RuleTree()
+        self.object._generic_tree = RuleTree(
+            processor_name="Test Instance Name",
+            processor_config=self.object._config,
+            rule_tree_type=RuleTreeType.GENERIC,
+        )
+        self.object._specific_tree = RuleTree(
+            processor_name="Test Instance Name",
+            processor_config=self.object._config,
+            rule_tree_type=RuleTreeType.SPECIFIC,
+        )
         specific_rule = self.object.rule_class._create_from_dict(rule)
         self.object._specific_tree.add_rule(specific_rule, self.logger)
 
@@ -94,6 +103,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             patcher.start()
             self.patchers.append(patcher)
         config = {"Test Instance Name": self.CONFIG}
+        metrics.LOGPREP_REGISTRY = None
         self.object = Factory.create(configuration=config, logger=self.logger)
         self.specific_rules = self.set_rules(self.specific_rules_dirs)
         self.generic_rules = self.set_rules(self.generic_rules_dirs)
@@ -141,17 +151,17 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         event = {"a": {"b": "I do not matter"}}
         assert self.object._field_exists(event, "a.b")
 
-    @mock.patch("logging.Logger.debug")
-    def test_load_rules_with_debug(self, mock_debug):
-        self.object.load_rules(
-            specific_rules_targets=self.specific_rules_dirs,
-            generic_rules_targets=self.generic_rules_dirs,
-        )
-        mock_debug.assert_called()
-
     def test_load_rules(self):
-        self.object._generic_tree = RuleTree()
-        self.object._specific_tree = RuleTree()
+        self.object._generic_tree = RuleTree(
+            processor_name="Test Instance Name",
+            processor_config=self.object._config,
+            rule_tree_type=RuleTreeType.GENERIC,
+        )
+        self.object._specific_tree = RuleTree(
+            processor_name="Test Instance Name",
+            processor_config=self.object._config,
+            rule_tree_type=RuleTreeType.SPECIFIC,
+        )
         generic_rules_size = self.object._generic_tree.get_size()
         specific_rules_size = self.object._specific_tree.get_size()
         self.object.load_rules(
@@ -308,7 +318,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config}, self.logger)
-        assert processor._specific_tree._config_path == "http://does.not.matter.bla/tree_config.yml"
+        assert processor._specific_tree._processor_config.tree_config == "http://does.not.matter.bla/tree_config.yml"
         tree_config = json.loads(tree_config)
         assert processor._specific_tree.priority_dict == tree_config.get("priority_dict")
 

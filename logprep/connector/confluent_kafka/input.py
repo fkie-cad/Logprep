@@ -199,7 +199,6 @@ class ConfluentKafkaInput(Input):
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
-        self.metric_labels = {"component": "kafka", "topic": self._config.topic}
         self._last_valid_records = {}
         self.metrics._consumer_group_id = self._config.kafka_config["group.id"]
         self.metrics._consumer_client_id = self._config.kafka_config.get("client.id", getfqdn())
