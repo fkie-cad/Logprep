@@ -235,7 +235,14 @@ class Rule:
         )
         """Time in seconds that it took to process an event"""
 
-    special_field_types = ["regex_fields", "sigma_fields", "ip_fields", "tests", "tag_on_failure"]
+    special_field_types = [
+        "regex_fields",
+        "sigma_fields",
+        "ip_fields",
+        "tests",
+        "tag_on_failure",
+        "rule_id",
+    ]
 
     @property
     def metric_labels(self) -> dict:
