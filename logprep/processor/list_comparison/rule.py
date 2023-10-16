@@ -72,8 +72,8 @@ class ListComparisonRule(FieldManagerRule):
         mapping: dict = field(default="", init=False, repr=False, eq=False)
         ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)
 
-    def __init__(self, filter_rule: FilterExpression, config: dict):
-        super().__init__(filter_rule, config)
+    def __init__(self, filter_rule: FilterExpression, config: dict, processor_name: str):
+        super().__init__(filter_rule, config, processor_name)
         self._compare_sets = {}
 
     def _get_list_search_base_path(self, list_search_base_path):
