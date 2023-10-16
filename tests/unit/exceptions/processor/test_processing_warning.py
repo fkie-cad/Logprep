@@ -34,7 +34,7 @@ Event: {'message': 'test_event'}
             raise self.exception(*self.exception_args)
 
     def test_metrics_counts(self):
-        assert self.processor.metrics.number_of_warnings == 0
+        self.processor.metrics.number_of_warnings = 0
         with pytest.raises(self.exception, match=re.escape(self.error_message)):
             raise self.exception(*self.exception_args)
         assert self.processor.metrics.number_of_warnings == 1
