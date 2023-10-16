@@ -22,7 +22,9 @@ class TimeMeasurement:
                 result = func(*args, **kwargs)
                 end = time()
                 processing_time = end - begin
-                caller = args[-1]
+                caller = args[0]
+                if func.__name__ in ("_process_rule_tree", "_process_rule"):
+                    caller = args[-1]
                 caller.metrics.processing_time_per_event += processing_time
                 return result
 

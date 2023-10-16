@@ -915,12 +915,12 @@ class NormalizerRule(Rule):
         self._special_fields = None
         self.file_name = None
         self._tests = []
-        self.metrics = self.RuleMetrics(
+        self.metrics = self.Metrics(
             labels={
                 "component": "rule",
-                "processor": "normalizer",
-                "id": str(uuid.uuid4()),
-                "description": description,
+                "description": f"{str(uuid.uuid4())} - {description}",
+                "type": "normalizer",
+                "name": "normalizer",
             }
         )
         self._substitutions = {}

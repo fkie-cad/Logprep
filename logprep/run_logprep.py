@@ -168,13 +168,6 @@ def _load_configuration(args):
     return config
 
 
-def _setup_metrics_and_time_measurement(args, config, logger):
-    measure_time_config = config.get("metrics", {}).get("measure_time", {})
-    logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
-    logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
-    logger.debug(f"Config path: {args.config}")
-
-
 def _validate_rules(args, config: Configuration, logger: logging.Logger):
     try:
         config.verify_pipeline_only(logger)
@@ -206,7 +199,8 @@ def main():
 
     if args.validate_rules or args.auto_test:
         _validate_rules(args, config, logger)
-    _setup_metrics_and_time_measurement(args, config, logger)
+    logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
+    logger.debug(f"Config path: {args.config}")
 
     if args.auto_test:
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False

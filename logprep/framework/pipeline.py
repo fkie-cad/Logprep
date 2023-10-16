@@ -8,6 +8,7 @@ import copy
 import logging
 import logging.handlers
 import multiprocessing
+
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -38,6 +39,7 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
+from logprep.metrics.metrics import HistogramMetric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -127,10 +129,13 @@ class Pipeline:
     class Metrics(Component.Metrics):
         """Tracks statistics about a pipeline"""
 
-        mean_processing_time_per_event: float = 0.0
-        """Mean processing time for one event"""
-        _mean_processing_time_sample_counter: int = 0
-        """Helper to calculate mean processing time"""
+        processing_time_per_event: HistogramMetric = attrs.field(
+            factory=lambda: HistogramMetric(
+                description="Time in seconds that it took to process an event",
+                name="processing_time_per_event",
+            )
+        )
+        """Time in seconds that it took to process an event"""
 
     _logprep_config: dict
     """ the logprep configuration dict """
@@ -203,7 +208,12 @@ class Pipeline:
     @property
     def metric_labels(self) -> dict:
         """Return the metric labels for this component."""
-        return {"component": "pipeline"}
+        return {
+            "component": "pipeline",
+            "name": self._process_name,
+            "type": "",
+            "description": "",
+        }
 
     @cached_property
     def _pipeline(self) -> tuple:
@@ -367,7 +377,6 @@ class Pipeline:
                 break
         if self._processing_counter:
             self._processing_counter.increment()
-        self.metrics.number_of_processed_events += 1
         return extra_outputs
 
     def _store_extra_data(self, extra_data: List[tuple]) -> None:
