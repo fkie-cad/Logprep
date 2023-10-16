@@ -77,7 +77,7 @@ class ConfluentKafkaInput(Input):
     """A kafka input connector."""
 
     @define(kw_only=True, slots=False)
-    class ConnectorMetrics(Input.ConnectorMetrics):
+    class Metrics(Input.Metrics):
         """Metrics for ConfluentKafkaInput"""
 
         _prefix = "logprep_connector_input_kafka_"

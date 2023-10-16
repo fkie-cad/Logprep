@@ -52,7 +52,7 @@ class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
 
     @define(kw_only=True, slots=False)
-    class Metrics(Output.ConnectorMetrics):
+    class Metrics(Output.Metrics):
         """Metrics for ConfluentKafkaOutput"""
 
         _prefix = "logprep_connector_output_kafka_"

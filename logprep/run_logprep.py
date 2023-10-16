@@ -170,9 +170,6 @@ def _load_configuration(args):
 
 def _setup_metrics_and_time_measurement(args, config, logger):
     measure_time_config = config.get("metrics", {}).get("measure_time", {})
-    TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)
-    TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
-
     logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
     logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
     logger.debug(f"Config path: {args.config}")

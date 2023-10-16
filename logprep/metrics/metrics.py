@@ -3,9 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Callable
 
 from attr import asdict, define, field, validators
-from prometheus_client import Counter, Histogram
-
-LOGPREP_REGISTRY = None  # to inject a custom registry
+from prometheus_client import CollectorRegistry, Counter, Histogram
 
 
 def is_public(attribute, _):
@@ -51,61 +49,56 @@ class Metric(ABC):
         ],
         default={},
     )
-    tracker: object = field(default=None)
+    trackers: dict = {}
     target: Callable = field(default=None)
+    _registry: CollectorRegistry = field(default=None)
     _prefix: str = "logprep_"
+
+    @property
+    def fullname(self):
+        return f"{self._prefix}{self.name}"
 
     def init_tracker(self):
         tracker = None
-        if isinstance(self, CounterMetric):
-            tracker = Counter(
-                name=f"{self._prefix}{self.name}",
-                documentation=self.description,
-                labelnames=self.labels.keys(),
-                registry=LOGPREP_REGISTRY,
-            )
-        if isinstance(self, HistogramMetric):
-            tracker = Histogram(
-                name=f"{self._prefix}{self.name}",
-                documentation=self.description,
-                labelnames=self.labels.keys(),
-                buckets=(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1),
-                registry=LOGPREP_REGISTRY,
-            )
-        tracker.labels(**self.labels)
-        self.tracker = tracker
+        try:
+            if isinstance(self, CounterMetric):
+                tracker = Counter(
+                    name=self.fullname,
+                    documentation=self.description,
+                    labelnames=self.labels.keys(),
+                    registry=self._registry,
+                )
+            if isinstance(self, HistogramMetric):
+                tracker = Histogram(
+                    name=self.fullname,
+                    documentation=self.description,
+                    labelnames=self.labels.keys(),
+                    buckets=(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1),
+                    registry=self._registry,
+                )
+            tracker.labels(**self.labels)
+
+            self.trackers.update({self.fullname: tracker})
+        except ValueError:
+            self.trackers.get(self.fullname).labels(**self.labels)
 
     @abstractmethod
     def __add__(self, other):
         """Add"""
 
-    @abstractmethod
-    def __eq__(self, __value: object) -> bool:
-        """Equal"""
-
 
 @define(kw_only=True)
 class CounterMetric(Metric):
-    @property
-    def _value(self) -> int:
-        return int(self.tracker.collect()[-1].samples[0].value)
-
     def __add__(self, other):
-        self.tracker.labels(**self.labels).inc(other)
+        self.trackers.get(self.fullname).labels(**self.labels).inc(other)
         return self
-
-    def __eq__(self, __value: object) -> bool:
-        return self._value == int(__value)
 
 
 @define(kw_only=True)
 class HistogramMetric(Metric):
     def __add__(self, other):
-        self.tracker.labels(**self.labels).observe(other)
+        self.trackers.get(self.fullname).labels(**self.labels).observe(other)
         return self
-
-    def __eq__(self, __value: object) -> bool:
-        raise NotImplementedError
 
 
 def calculate_new_average(current_average, next_sample, sample_counter):

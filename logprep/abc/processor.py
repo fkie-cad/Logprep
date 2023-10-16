@@ -2,7 +2,7 @@
 import time
 from abc import abstractmethod
 from functools import partial, reduce
-from logging import Logger
+from logging import DEBUG, Logger
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
@@ -10,6 +10,7 @@ from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
+from logprep.metrics.metrics import HistogramMetric
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -73,9 +74,17 @@ class Processor(Component):
     class Metrics(Component.Metrics):
         """Tracks statistics about this processor"""
 
-        mean_processing_time_per_event: float = 0.0
-        """Mean processing time for one event"""
-        _mean_processing_time_sample_counter: int = 0
+        number_of_processed_events = field(default=None)
+        number_of_failed_events = field(default=None)
+
+        processing_time_per_event: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                description="Time in seconds that it took to process an event",
+                name="processing_time_per_event",
+            )
+        )
+        """Time in seconds that it took to process an event"""
+
         number_of_warnings: int = 0
         """Number of warnings that occurred while processing events"""
         number_of_errors: int = 0
@@ -151,7 +160,6 @@ class Processor(Component):
         """Return the metric labels for this component."""
         return super().metric_labels | {"component": "processor", "type": self._config.type}
 
-    @TimeMeasurement.measure_time()
     def process(self, event: dict):
         """Process a log event by calling the implemented `process` method of the
         strategy object set in  `_strategy` attribute.
@@ -162,7 +170,6 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        self.metrics.number_of_processed_events += 1
         self._logger.debug(f"{self.describe()} processing event {event}")
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
@@ -172,7 +179,7 @@ class Processor(Component):
         applied_rules = set()
 
         @TimeMeasurement.measure_time("Rule processing")
-        def _process_rule(event, rule):
+        def _process_rule(_, event, rule):
             begin = time.time()
             self._apply_rules_wrapper(event, rule)
             processing_time = time.time() - begin
@@ -184,7 +191,7 @@ class Processor(Component):
         if self._config.apply_multiple_times:
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
-                reduce(_process_rule, (event, *matching_rules))
+                reduce(_process_rule, (None, event, *matching_rules))
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
         else:
             reduce(_process_rule, (event, *tree.get_matching_rules(event)))
@@ -262,6 +269,11 @@ class Processor(Component):
             rules = self.rule_class.create_rules_from_target(generic_rules_target)
             for rule in rules:
                 self._generic_tree.add_rule(rule, self._logger)
+        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
+            number_specific_rules = self._specific_tree.number_of_rules
+            self._logger.debug(f"{self.describe()} loaded {number_specific_rules} specific rules")
+            number_generic_rules = self._generic_tree.number_of_rules
+            self._logger.debug(f"{self.describe()} loaded {number_generic_rules} generic rules")
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
@@ -292,6 +304,14 @@ class Processor(Component):
             dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
         )
         if missing_fields:
+            if rule.ignore_missing_fields:
+                return True
+            if rule.ignore_missing_fields:
+                return True
+            if rule.ignore_missing_fields:
+                return True
+            if rule.ignore_missing_fields:
+                return True
             if rule.ignore_missing_fields:
                 return True
             error = BaseException(f"{self.name}: no value for fields: {missing_fields}")

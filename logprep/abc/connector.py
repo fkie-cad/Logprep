@@ -1,36 +1,46 @@
 """ abstract module for connectors"""
-from attr import define
+from attrs import define, field
 
 from logprep.abc.component import Component
-from logprep.metrics.metrics import calculate_new_average
+from logprep.metrics.metrics import CounterMetric, HistogramMetric
 
 
 class Connector(Component):
     """Abstract Connector Class to define the Interface"""
 
     @define(kw_only=True)
-    class ConnectorMetrics(Component.Metrics):
+    class Metrics(Component.Metrics):
         """Tracks statistics about this connector"""
 
-        mean_processing_time_per_event: float = 0.0
-        """Mean processing time for one event"""
-        _mean_processing_time_sample_counter: int = 0
-        """Helper to calculate mean processing time"""
+        number_of_processed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of events that were processed",
+                name="number_of_processed_events",
+            )
+        )
+        """Number of events that were processed"""
+
+        number_of_failed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of events that were send to error output",
+                name="number_of_failed_events",
+            )
+        )
+        """Number of events that were send to error output"""
+
+        processing_time_per_event: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                description="Time in seconds that it took to process an event",
+                name="processing_time_per_event",
+            )
+        )
+        """Time in seconds that it took to process an event"""
+
         number_of_warnings: int = 0
         """Number of warnings that occurred while processing events"""
         number_of_errors: int = 0
         """Number of errors that occurred while processing events"""
 
-        def update_mean_processing_time_per_event(self, new_sample):
-            """Updates the mean processing time per event"""
-            new_avg, new_sample_counter = calculate_new_average(
-                self.mean_processing_time_per_event,
-                new_sample,
-                self._mean_processing_time_sample_counter,
-            )
-            self.mean_processing_time_per_event = new_avg
-            self._mean_processing_time_sample_counter = new_sample_counter
-
     __slots__ = ["metrics"]
 
-    metrics: ConnectorMetrics
+    metrics: Metrics

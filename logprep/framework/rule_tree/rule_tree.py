@@ -9,6 +9,7 @@ from attr import define, field
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
+from logprep.metrics.metrics import HistogramMetric
 from logprep.util import getter
 
 if TYPE_CHECKING:
@@ -34,6 +35,13 @@ class RuleTree:
 
         number_of_processed_events = field(default=None)
         number_of_failed_events = field(default=None)
+        processing_time_per_event: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                description="Time in seconds that it took to process an event",
+                name="processing_time_per_event",
+            )
+        )
+        """Time in seconds that it took to process an event"""
 
     __slots__ = (
         "rule_parser",
@@ -45,7 +53,6 @@ class RuleTree:
         "_processor_type",
         "_processor_name",
         "_root",
-        "_number_of_rules"
     )
 
     rule_parser: Optional[RuleParser]
@@ -57,7 +64,6 @@ class RuleTree:
     _processor_config: "Processor.Config"
     _processor_type: str
     _root: Node
-    _number_of_rules: int
 
     def __init__(
         self,
@@ -88,7 +94,6 @@ class RuleTree:
         self._processor_type = processor_config.type if processor_name is not None else ""
         self._setup()
         self.metrics = self.Metrics(labels=self.metric_labels)
-        self._number_of_rules = 0
 
         if root:
             self._root = root
@@ -104,6 +109,10 @@ class RuleTree:
             "processor": self._processor_name,
             "processor_type": self._processor_type,
         }
+
+    @property
+    def number_of_rules(self) -> int:
+        return len(self._rule_mapping)
 
     def _setup(self):
         """Basic setup of rule tree.
@@ -148,12 +157,11 @@ class RuleTree:
                 f"\nIgnore and continue with next rule."
             )
             return
-        self._number_of_rules += 1
         for rule_segment in parsed_rule:
             end_node = self._add_parsed_rule(rule_segment)
             if rule not in end_node.matching_rules:
                 end_node.matching_rules.append(rule)
-        self._rule_mapping[rule] = self._number_of_rules - 1
+        self._rule_mapping[rule] = self.number_of_rules
 
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.

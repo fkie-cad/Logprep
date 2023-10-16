@@ -142,7 +142,11 @@ from logprep.abc.component import Component
 from logprep.abc.processor import Processor
 from logprep.filter.expression.filter_expression import FilterExpression
 from logprep.filter.lucene_filter import LuceneFilter
-from logprep.metrics.metrics import calculate_new_average
+from logprep.metrics.metrics import (
+    CounterMetric,
+    HistogramMetric,
+    calculate_new_average,
+)
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import camel_to_snake
@@ -204,19 +208,32 @@ class Rule:
         """
 
     @define(kw_only=True)
-    class RuleMetrics(Component.Metrics):
+    class Metrics(Component.Metrics):
         """Tracks statistics about the current rule"""
 
-        _mean_processing_time: float = 0.0
-        _mean_processing_time_sample_counter: int = 0
-
-        def update_mean_processing_time(self, new_sample):
-            """Updates the mean processing time of this rule"""
-            new_avg, new_sample_counter = calculate_new_average(
-                self._mean_processing_time, new_sample, self._mean_processing_time_sample_counter
+        number_of_processed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of events that were processed",
+                name="number_of_processed_events",
             )
-            self._mean_processing_time = new_avg
-            self._mean_processing_time_sample_counter = new_sample_counter
+        )
+        """Number of events that were processed"""
+
+        number_of_failed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of events that were send to error output",
+                name="number_of_failed_events",
+            )
+        )
+        """Number of events that were send to error output"""
+
+        processing_time_per_event: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                description="Time in seconds that it took to process an event",
+                name="processing_time_per_event",
+            )
+        )
+        """Time in seconds that it took to process an event"""
 
     special_field_types = ["regex_fields", "sigma_fields", "ip_fields", "tests", "tag_on_failure"]
 
@@ -243,7 +260,7 @@ class Rule:
         self._special_fields = None
         self.file_name = None
         self._config = config
-        self.metrics = self.RuleMetrics(labels=self.metric_labels)
+        self.metrics = self.Metrics(labels=self.metric_labels)
 
     def __eq__(self, other: "Rule") -> bool:
         return all([other.filter == self._filter, other._config == self._config])

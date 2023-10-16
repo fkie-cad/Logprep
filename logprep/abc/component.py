@@ -28,30 +28,7 @@ class Component(ABC):
 
         _labels: dict
 
-        number_of_processed_events: CounterMetric = field(
-            factory=lambda: CounterMetric(
-                description="Number of events that were processed",
-                name="number_of_processed_events",
-            )
-        )
-        """Number of events that were processed"""
-
-        number_of_failed_events: CounterMetric = field(
-            factory=lambda: CounterMetric(
-                description="Number of events that were send to error output",
-                name="number_of_failed_events",
-            )
-        )
-        """Number of events that were send to error output"""
-
         _processing_time_per_event_target: Callable = field(default=None)
-        processing_time_per_event: HistogramMetric = field(
-            factory=lambda: HistogramMetric(
-                description="Time in seconds that it took to process an event",
-                name="processing_time_per_event",
-            )
-        )
-        """Time in seconds that it took to process an event"""
 
         def __attrs_post_init__(self):
             for attribute in asdict(self):
