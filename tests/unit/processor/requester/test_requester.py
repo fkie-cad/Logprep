@@ -355,21 +355,3 @@ class TestRequester(BaseProcessorTestCase):
             self.object.process(event)
         assert re.match(error_message, caplog.text)
         assert event == expected, testcase
-
-    @responses.activate
-    def test_process(self):
-        responses.add(
-            responses.Response(
-                **{
-                    "url": "http://localhost:32000/quickstart/exampledata/config/pipeline.yml",
-                    "method": "GET",
-                }
-            )
-        )
-        assert self.object.metrics.number_of_processed_events == 0
-        document = {
-            "event_id": "1234",
-            "message": "user root logged in",
-        }
-        _ = self.object.metrics.number_of_processed_events
-        self.object.process(document)
