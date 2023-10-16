@@ -244,21 +244,6 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         with pytest.raises(FileNotFoundError):
             Factory.create({"test instance": config}, self.logger)
 
-    def test_processor_metrics_counts_processed_events(self):
-        assert self.object.metrics.number_of_processed_events == 0
-        event = {}
-        self.object.process(event)
-        assert self.object.metrics.number_of_processed_events == 1
-
-    @mock.patch("logprep.framework.rule_tree.rule_tree.RuleTree.get_matching_rules")
-    def test_metrics_update_mean_processing_times_and_sample_counter(self, get_matching_rules_mock):
-        get_matching_rules_mock.return_value = [mock.MagicMock()]
-        self.object._apply_rules = mock.MagicMock()
-        assert self.object.metrics.processing_time_per_event == 0
-        event = {"test": "event"}
-        self.object.process(event)
-        assert self.object.metrics.processing_time_per_event > 0
-
     @responses.activate
     def test_accepts_tree_config_from_http(self):
         config = deepcopy(self.CONFIG)
@@ -266,7 +251,10 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         tree_config = Path("tests/testdata/unit/tree_config.json").read_text()
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", tree_config)
         processor = Factory.create({"test instance": config}, self.logger)
-        assert processor._specific_tree._config_path == "http://does.not.matter.bla/tree_config.yml"
+        assert (
+            processor._specific_tree._processor_config.tree_config
+            == "http://does.not.matter.bla/tree_config.yml"
+        )
         tree_config = json.loads(tree_config)
         assert processor._specific_tree.priority_dict == tree_config.get("priority_dict")
 

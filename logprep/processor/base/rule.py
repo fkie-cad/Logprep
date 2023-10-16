@@ -242,10 +242,9 @@ class Rule:
         """Return the metric labels for this component."""
         return {
             "component": "rule",
+            "description": f"{str(self._config.rule_id)} - {self._config.description}",
             "type": self.rule_type,
-            "processor": self._processor_name,
-            "id": str(self._config.rule_id),
-            "description": self._config.description,
+            "name": self._processor_name,
         }
 
     def __init__(self, filter_rule: FilterExpression, config: Config, processor_name: str):

@@ -26,7 +26,9 @@ class Component(ABC):
     class Metrics:
         """Base Metric class to track and expose statistics about logprep"""
 
-        _labels: dict
+        _labels: dict = field(
+            factory=lambda: {"component": None, "name": None, "type": None, "description": None}
+        )
 
         _processing_time_per_event_target: Callable = field(default=None)
 

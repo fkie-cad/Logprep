@@ -69,7 +69,12 @@ class Output(Connector):
     @property
     def metric_labels(self) -> dict:
         """Return the metric labels for this component."""
-        return super().metric_labels | {"component": "output", "type": self._config.type}
+        return {
+            "component": "output",
+            "description": self.describe(),
+            "type": self._config.type,
+            "name": self.name,
+        }
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
         super().__init__(name, configuration, logger)

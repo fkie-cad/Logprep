@@ -18,20 +18,12 @@ class TimeMeasurement:
 
         def inner_decorator(func):
             def inner(*args, **kwargs):  # nosemgrep
-                caller = args[0]
-                first_argument = args[1]
-                second_argument = args[2] if len(args) > 2 else None
                 begin = time()
                 result = func(*args, **kwargs)
                 end = time()
-
+                caller = args[0]
                 processing_time = end - begin
-                if name in ("Rule processing",):
-                    caller = first_argument
-                    caller.metrics.processing_time_per_event += processing_time
-                if name in ("RuleTree processing",):
-                    caller = second_argument
-                    caller.metrics.processing_time_per_event += processing_time
+                caller.metrics.processing_time_per_event += processing_time
                 return result
 
             return inner

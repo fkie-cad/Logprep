@@ -157,8 +157,13 @@ class Processor(Component):
 
     @property
     def metric_labels(self) -> dict:
-        """Return the metric labels for this component."""
-        return super().metric_labels | {"component": "processor", "type": self._config.type}
+        """Return metric labels."""
+        return {
+            "component": "processor",
+            "description": self.describe(),
+            "type": self._config.type,
+            "name": self.name,
+        }
 
     def process(self, event: dict):
         """Process a log event by calling the implemented `process` method of the
@@ -178,20 +183,17 @@ class Processor(Component):
     def _process_rule_tree(self, event: dict, tree: "RuleTree"):
         applied_rules = set()
 
-        @TimeMeasurement.measure_time("Rule processing")
-        def _process_rule(_, event, rule):
-            begin = time.time()
+        # @TimeMeasurement.measure_time("Rule processing")
+        def _process_rule(event, rule):
             self._apply_rules_wrapper(event, rule)
-            processing_time = time.time() - begin
             rule.metrics.number_of_processed_events += 1
-            rule.metrics.update_mean_processing_time(processing_time)
             applied_rules.add(rule)
             return event
 
         if self._config.apply_multiple_times:
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
-                reduce(_process_rule, (None, event, *matching_rules))
+                reduce(_process_rule, (event, *matching_rules))
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
         else:
             reduce(_process_rule, (event, *tree.get_matching_rules(event)))

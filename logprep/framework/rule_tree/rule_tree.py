@@ -105,9 +105,9 @@ class RuleTree:
         """Return metric labels."""
         return {
             "component": "rule_tree",
-            "rule_type": self._rule_tree_type,
-            "processor": self._processor_name,
-            "processor_type": self._processor_type,
+            "description": self._rule_tree_type,
+            "type": self._processor_type,
+            "name": self._processor_name,
         }
 
     @property

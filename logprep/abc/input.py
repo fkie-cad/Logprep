@@ -222,7 +222,12 @@ class Input(Connector):
     @property
     def metric_labels(self) -> dict:
         """Return the metric labels for this component."""
-        return super().metric_labels | {"component": "input", "type": self._config.type}
+        return {
+            "component": "input",
+            "description": self.describe(),
+            "type": self._config.type,
+            "name": self.name,
+        }
 
     @property
     def _add_env_enrichment(self):
