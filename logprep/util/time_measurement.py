@@ -21,8 +21,8 @@ class TimeMeasurement:
                 begin = time()
                 result = func(*args, **kwargs)
                 end = time()
-                caller = args[0]
                 processing_time = end - begin
+                caller = args[-1]
                 caller.metrics.processing_time_per_event += processing_time
                 return result
 

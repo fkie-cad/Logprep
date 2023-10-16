@@ -737,8 +737,3 @@ class TestDissector(BaseProcessorTestCase):
             self.object.process(event)
         assert re.match(".*ProcessingWarning.*", caplog.text)
         assert event == expected, testcase
-
-    def test_has_number_of_processed_events_metric(self):
-        assert isinstance(self.object.metrics.number_of_processed_events, CounterMetric)
-        self.object.process({"test": "event"})
-        assert True
