@@ -1,7 +1,7 @@
 # pylint: disable=protected-access
 # pylint: disable=missing-docstring
 # pylint: disable=attribute-defined-outside-init
-from attr import field, define
+from attr import define, field
 
 from logprep.abc.component import Component
 from logprep.metrics.metrics import HistogramMetric
@@ -9,7 +9,6 @@ from logprep.util.time_measurement import TimeMeasurement
 
 
 class TestTimeMeasurement:
-
     @define(kw_only=True)
     class Metrics(Component.Metrics):
         processing_time_per_event: HistogramMetric = field(
@@ -22,7 +21,9 @@ class TestTimeMeasurement:
 
     def setup_method(self):
         self.event = {"test_key": "test_val"}
-        self.metrics = TestTimeMeasurement.Metrics(labels={"label": "test"})
+        self.metrics = TestTimeMeasurement.Metrics(
+            labels={"component": "", "name": "", "type": "", "description": ""}
+        )
 
     @TimeMeasurement.measure_time()
     def dummy_method(self, event):  # pylint: disable=unused-argument

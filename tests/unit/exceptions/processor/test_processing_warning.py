@@ -15,10 +15,10 @@ from logprep.processor.base.rule import Rule
 class TestProcessingWarning:
     exception = ProcessingWarning
 
-    error_message = """ProcessingWarning in Dissector (my_dissector): the error message
-Rule: filename=None, filter='message: *', Rule.Config(description='', regex_fields=[], tests=[], tag_on_failure=['_rule_failure']),
-Event: {'message': 'test_event'}
-"""
+    error_message = (
+        r"ProcessingWarning: the error message, Rule: rule.id='.*',"
+        r" rule.description='', event=\{'message': 'test_event'\}"
+    )
 
     def setup_method(self):
         self.processor = Factory.create(
@@ -27,10 +27,10 @@ Event: {'message': 'test_event'}
         )
         self.rule = Rule._create_from_dict({"filter": "message", "rule": {}})
         self.event = {"message": "test_event"}
-        self.exception_args = (self.processor, "the error message", self.rule, self.event)
+        self.exception_args = ("the error message", self.rule, self.event)
 
     def test_error_message(self):
-        with pytest.raises(self.exception, match=re.escape(self.error_message)):
+        with pytest.raises(self.exception, match=self.error_message):
             raise self.exception(*self.exception_args)
 
     def test_metrics_counts(self):
@@ -42,11 +42,12 @@ Event: {'message': 'test_event'}
 
 class TestFieldExsitsWarning(TestProcessingWarning):
     exception = FieldExistsWarning
-    error_message = """FieldExistsWarning in Dissector (my_dissector): The following fields could not be written, because one or more subfields existed and could not be extended: my_field
-Rule: filename=None, filter='message: *', Rule.Config(description='', regex_fields=[], tests=[], tag_on_failure=[\'_rule_failure\']),
-Event: {'message': 'test_event'}
-"""
+    error_message = (
+        r"FieldExistsWarning: The following fields could not be written,"
+        r" because one or more subfields existed and could not be extended: "
+        r"my_field, Rule: rule.id='.*', rule.description='', event=\{'message': 'test_event'\}"
+    )
 
     def setup_method(self):
         super().setup_method()
-        self.exception_args = (self.processor, self.rule, self.event, ["my_field"])
+        self.exception_args = (self.rule, self.event, ["my_field"])
