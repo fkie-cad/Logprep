@@ -15,9 +15,7 @@ import pytest
 
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.processor.base.exceptions import (
-    InvalidRuleDefinitionError,
-)
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from tests.unit.processor.base import BaseProcessorTestCase
 
 RULES_DIR_MISSING = "tests/testdata/unit/generic_adder/rules_missing"

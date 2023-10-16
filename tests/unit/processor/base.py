@@ -119,8 +119,9 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         event = {"a": {"b": "I do not matter"}}
         assert self.object._field_exists(event, "a.b")
 
+    @mock.patch("logging.Logger.isEnabledFor", return_value=True)
     @mock.patch("logging.Logger.debug")
-    def test_load_rules_with_debug(self, mock_debug):
+    def test_load_rules_with_debug(self, mock_debug, _):
         self.object.load_rules(
             specific_rules_targets=self.specific_rules_dirs,
             generic_rules_targets=self.generic_rules_dirs,
