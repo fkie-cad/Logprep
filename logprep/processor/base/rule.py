@@ -229,6 +229,22 @@ class Rule:
         )
         """Time in seconds that it took to process an event"""
 
+        number_of_warnings: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of errors that occurred while processing events",
+                name="number_of_errors",
+            )
+        )
+        """Number of errors that occurred while processing events"""
+
+        number_of_errors: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of errors that occurred while processing events",
+                name="number_of_errors",
+            )
+        )
+        """Number of errors that occurred while processing events"""
+
     special_field_types = [
         "regex_fields",
         "sigma_fields",

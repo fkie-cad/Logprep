@@ -9,7 +9,7 @@ from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
-from logprep.metrics.metrics import HistogramMetric
+from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -83,11 +83,6 @@ class Processor(Component):
             )
         )
         """Time in seconds that it took to process an event"""
-
-        number_of_warnings: int = 0
-        """Number of warnings that occurred while processing events"""
-        number_of_errors: int = 0
-        """Number of errors that occurred while processing events"""
 
     __slots__ = [
         "rule_class",
