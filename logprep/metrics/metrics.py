@@ -1,6 +1,5 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
 from abc import ABC, abstractmethod
-from typing import Callable
 
 from attr import asdict, define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Histogram
@@ -50,7 +49,6 @@ class Metric(ABC):
         default={},
     )
     trackers: dict = {}
-    target: Callable = field(default=None)
     _registry: CollectorRegistry = field(default=None)
     _prefix: str = "logprep_"
 

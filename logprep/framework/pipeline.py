@@ -8,7 +8,6 @@ import copy
 import logging
 import logging.handlers
 import multiprocessing
-
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -343,7 +342,7 @@ class Pipeline:
                     output.store_failed(non_critical_error_msg, event, None)
         return event
 
-    @TimeMeasurement.measure_time(name="process_event")
+    @TimeMeasurement.measure_time()
     def process_event(self, event: dict):
         """process all processors for one event"""
 

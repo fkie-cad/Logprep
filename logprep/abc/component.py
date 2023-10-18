@@ -8,7 +8,7 @@ from attr import define, field, validators
 from attrs import asdict
 from schedule import Scheduler
 
-from logprep.metrics.metrics import CounterMetric, HistogramMetric, Metric
+from logprep.metrics.metrics import Metric
 from logprep.util.helper import camel_to_snake
 
 
@@ -30,14 +30,11 @@ class Component(ABC):
             factory=lambda: {"component": None, "name": None, "type": None, "description": None}
         )
 
-        _processing_time_per_event_target: Callable = field(default=None)
-
         def __attrs_post_init__(self):
             for attribute in asdict(self):
                 attribute = getattr(self, attribute)
                 if isinstance(attribute, Metric):
                     attribute.labels = self._labels
-                    attribute.target = self._processing_time_per_event_target
                     attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property

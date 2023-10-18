@@ -21,7 +21,6 @@ from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
-from logprep.util.time_measurement import TimeMeasurement
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
@@ -202,7 +201,6 @@ def main():
     logger.debug(f"Config path: {args.config}")
 
     if args.auto_test:
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
         auto_rule_tester = AutoRuleTester(args.config)
         auto_rule_tester.run()
     elif args.dry_run:

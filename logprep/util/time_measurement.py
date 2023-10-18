@@ -7,14 +7,8 @@ class TimeMeasurement:
     """Measures the execution time of functions and adds the results to events via a decorator."""
 
     @staticmethod
-    def measure_time(name: str = None):
-        """Decorate function to measure execution time for function and add results to event.
-
-        Parameters
-        ----------
-        name : str
-            Name to write processing times to in event.
-        """
+    def measure_time():
+        """Decorate function to measure execution time for function and add results to event."""
 
         def inner_decorator(func):
             def inner(*args, **kwargs):  # nosemgrep
