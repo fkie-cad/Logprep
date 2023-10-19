@@ -11,18 +11,13 @@ from unittest import mock
 import pytest
 import requests
 import responses
-from prometheus_client import CollectorRegistry
 from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics import metrics
-from logprep.metrics.metrics import CounterMetric
-from logprep.processor.base.exceptions import ProcessingWarning
-from logprep.util.helper import camel_to_snake
+from logprep.metrics.metrics import CounterMetric, HistogramMetric
 from logprep.util.json_handling import list_json_files_in_directory
-from logprep.util.time_measurement import TimeMeasurement
 from tests.unit.component.base import BaseComponentTestCase
 
 yaml = YAML(typ="safe", pure=True)
@@ -266,3 +261,16 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         responses.add(responses.GET, "http://does.not.matter.bla/tree_config.yml", status=404)
         with pytest.raises(requests.HTTPError):
             Factory.create({"test instance": config}, self.logger)
+
+    @pytest.mark.parametrize(
+        "metric_name, metric_instance",
+        [
+            ("number_of_processed_events", CounterMetric),
+            ("processing_time_per_event", HistogramMetric),
+            ("number_of_warnings", CounterMetric),
+            ("number_of_errors", CounterMetric),
+        ],
+    )
+    def test_rule_has_metric(self, metric_name, metric_instance):
+        rule = getattr(self.object.rules[0].metrics, metric_name)
+        assert isinstance(rule, metric_instance)

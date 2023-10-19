@@ -197,11 +197,7 @@ class Processor(Component):
             self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
-        except ProcessingCriticalError as error:
-            rule.metrics.number_of_failed_events += 1
-            raise error  # TODO: is this realy needed?
         except BaseException as error:
-            rule.metrics.number_of_failed_events += 1
             raise ProcessingCriticalError(str(error), rule, event) from error
         if not hasattr(rule, "delete_source_fields"):
             return

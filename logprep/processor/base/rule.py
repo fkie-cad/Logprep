@@ -213,14 +213,6 @@ class Rule:
         )
         """Number of events that were processed"""
 
-        number_of_failed_events: CounterMetric = field(
-            factory=lambda: CounterMetric(
-                description="Number of events that were send to error output",
-                name="number_of_failed_events",
-            )
-        )
-        """Number of events that were send to error output"""
-
         processing_time_per_event: HistogramMetric = field(
             factory=lambda: HistogramMetric(
                 description="Time in seconds that it took to process an event",
