@@ -4,10 +4,10 @@
 
 import re
 
-from prometheus_client import CollectorRegistry, Counter, generate_latest
+from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
 from logprep.metrics import metrics
-from logprep.metrics.metrics import CounterMetric
+from logprep.metrics.metrics import CounterMetric, HistogramMetric
 
 
 class TestsMetrics:
@@ -105,3 +105,23 @@ class TestsMetrics:
         assert len(result) == 1
         result = re.findall(r'.*logprep_bla_total\{pipeline="2"\} 0\.0.*', metric_output)
         assert len(result) == 1
+
+    def test_tracker_contains_only_own_metric_types(self):
+        metric1 = CounterMetric(
+            name="bla_counter",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric1.init_tracker()
+        metric2 = HistogramMetric(
+            name="bla_histogram",
+            description="empty description",
+            labels={"pipeline": "2"},
+            registry=self.custom_registry,
+        )
+        metric2.init_tracker()
+        assert len(metric1.trackers) == 1
+        assert len(metric2.trackers) == 1
+        assert isinstance(metric1.trackers.get(metric1.fullname), Counter)
+        assert isinstance(metric2.trackers.get(metric2.fullname), Histogram)

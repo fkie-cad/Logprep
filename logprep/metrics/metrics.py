@@ -48,7 +48,7 @@ class Metric(ABC):
         ],
         default={},
     )
-    trackers: dict = {}
+    trackers: dict = None
     _registry: CollectorRegistry = field(default=None)
     _prefix: str = "logprep_"
 
@@ -87,6 +87,8 @@ class Metric(ABC):
 
 @define(kw_only=True)
 class CounterMetric(Metric):
+    trackers: dict = {}
+
     def __add__(self, other):
         self.trackers.get(self.fullname).labels(**self.labels).inc(other)
         return self
@@ -94,6 +96,8 @@ class CounterMetric(Metric):
 
 @define(kw_only=True)
 class HistogramMetric(Metric):
+    trackers: dict = {}
+
     def __add__(self, other):
         self.trackers.get(self.fullname).labels(**self.labels).observe(other)
         return self

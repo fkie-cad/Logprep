@@ -6,17 +6,19 @@ import json
 from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
+from typing import Callable
 from unittest import mock
 
 import pytest
 import requests
 import responses
+from attrs import asdict
 from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics.metrics import CounterMetric, HistogramMetric
+from logprep.metrics.metrics import CounterMetric, HistogramMetric, Metric
 from logprep.util.json_handling import list_json_files_in_directory
 from tests.unit.component.base import BaseComponentTestCase
 
@@ -263,7 +265,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             Factory.create({"test instance": config}, self.logger)
 
     @pytest.mark.parametrize(
-        "metric_name, metric_instance",
+        "metric_name, metric_class",
         [
             ("number_of_processed_events", CounterMetric),
             ("processing_time_per_event", HistogramMetric),
@@ -271,6 +273,18 @@ class BaseProcessorTestCase(BaseComponentTestCase):
             ("number_of_errors", CounterMetric),
         ],
     )
-    def test_rule_has_metric(self, metric_name, metric_instance):
-        rule = getattr(self.object.rules[0].metrics, metric_name)
-        assert isinstance(rule, metric_instance)
+    def test_rule_has_metric(self, metric_name, metric_class):
+        metric_instance = getattr(self.object.rules[0].metrics, metric_name)
+        assert isinstance(metric_instance, metric_class)
+
+    def test_custom_metrics_are_metric_objects(self):
+        def asdict_filter(attribute, value):
+            block_list = ["_labels", "_prefix"]
+            return not any(
+                (attribute.name in block_list, value is None, isinstance(value, Callable))
+            )
+
+        metric_attributes = asdict(self.object.metrics, filter=asdict_filter, recurse=False)
+        assert all(
+            isinstance(value, Metric) for value in metric_attributes.values()
+        ), "one of the metrics instance attributes is not an instance of type Metric"
