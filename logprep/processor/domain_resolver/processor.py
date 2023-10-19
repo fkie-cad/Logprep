@@ -48,6 +48,7 @@ from filelock import FileLock
 from tldextract import TLDExtract
 
 from logprep.abc.processor import Processor
+from logprep.metrics.metrics import CounterMetric
 from logprep.processor.domain_resolver.rule import DomainResolverRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
@@ -101,13 +102,33 @@ class DomainResolver(Processor):
     class Metrics(Processor.Metrics):
         """Tracks statistics about the DomainResolver"""
 
-        total_urls: int = 0
+        total_urls: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of all resolved urls",
+                name="domain_resolver_total_urls",
+            )
+        )
         """Number of all resolved urls"""
-        resolved_new: int = 0
+        resolved_new: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of urls that had to be resolved newly",
+                name="domain_resolver_resolved_new",
+            )
+        )
         """Number of urls that had to be resolved newly"""
-        resolved_cached: int = 0
+        resolved_cached: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of urls that were resolved from cache",
+                name="domain_resolver_resolved_cached",
+            )
+        )
         """Number of urls that were resolved from cache"""
-        timeouts: int = 0
+        timeouts: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of timeouts that occurred while resolving a url",
+                name="domain_resolver_timeouts",
+            )
+        )
         """Number of timeouts that occurred while resolving a url"""
 
     __slots__ = ["_domain_ip_map"]

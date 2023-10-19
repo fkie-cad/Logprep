@@ -47,6 +47,7 @@ from tldextract import TLDExtract
 from urlextract import URLExtract
 
 from logprep.abc.processor import Processor
+from logprep.metrics.metrics import CounterMetric
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
@@ -129,7 +130,12 @@ class Pseudonymizer(Processor):
     class Metrics(Processor.Metrics):
         """Tracks statistics about the Pseudonymizer"""
 
-        pseudonymized_urls: int = 0
+        pseudonymized_urls: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of urls that were pseudonymized",
+                name="pseudonymizer_pseudonymized_urls",
+            )
+        )
         """Number urls that were pseudonymized"""
 
     __slots__ = [

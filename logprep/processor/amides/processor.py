@@ -85,7 +85,6 @@ metrics like the number of hits and misses and the current cache load.
 from functools import cached_property, lru_cache
 from multiprocessing import current_process
 from pathlib import Path
-from time import time
 from typing import List, Tuple
 from zipfile import ZipFile
 
@@ -93,12 +92,7 @@ import joblib
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
-from logprep.metrics.metrics import (
-    CounterMetric,
-    GaugeMetric,
-    HistogramMetric,
-    calculate_new_average,
-)
+from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule
