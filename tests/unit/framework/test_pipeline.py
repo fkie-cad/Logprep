@@ -228,7 +228,8 @@ class TestPipeline(ConfigurationForTests):
     def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        processing_warning = ProcessingWarning("not so bad", None, {"message": "test"})
+        mock_rule = mock.MagicMock()
+        processing_warning = ProcessingWarning("not so bad", mock_rule, {"message": "test"})
 
         def raise_processing_warning(_):
             raise processing_warning
@@ -248,11 +249,10 @@ class TestPipeline(ConfigurationForTests):
         input_event1 = {"message": "first event"}
         input_event2 = {"message": "second event"}
         self.pipeline._input.get_next.return_value = (input_event1, None)
+        mock_rule = mock.MagicMock()
 
         def raise_critical_processing_error(event):
-            raise ProcessingCriticalError(
-                self.pipeline._pipeline[1], "really bad things happened", event
-            )
+            raise ProcessingCriticalError("really bad things happened", mock_rule, event)
 
         self.pipeline._pipeline[1].process.side_effect = raise_critical_processing_error
         self.pipeline.process_pipeline()
@@ -260,20 +260,24 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 2, "2 events gone into processing"
         assert mock_error.call_count == 2, "two errors occurred"
-        mock_error.assert_called_with(
-            str(
-                ProcessingCriticalError(
-                    self.pipeline._pipeline[1], "really bad things happened", input_event1
+
+        logger_calls = (
+            mock.call(
+                str(
+                    ProcessingCriticalError(
+                        "really bad things happened", mock_rule, {"message": "first event"}
+                    )
                 )
-            )
-        )
-        mock_error.assert_called_with(
-            str(
-                ProcessingCriticalError(
-                    self.pipeline._pipeline[1], "really bad things happened", input_event2
+            ),
+            mock.call(
+                str(
+                    ProcessingCriticalError(
+                        "really bad things happened", mock_rule, {"message": "second event"}
+                    )
                 )
-            )
+            ),
         )
+        mock_error.assert_has_calls(logger_calls)
         assert self.pipeline._output["dummy"].store.call_count == 0, "no event in output"
         assert (
             self.pipeline._output["dummy"].store_failed.call_count == 2
