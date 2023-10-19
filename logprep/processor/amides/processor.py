@@ -132,49 +132,49 @@ class Amides(Processor):
         total_cmdlines: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Total number of command lines processed.",
-                name="total_cmdlines",
+                name="amides_total_cmdlines",
             )
         )
         """Total number of command lines processed."""
         new_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Number of command lines that triggered detection and rule attribution.",
-                name="new_results",
+                name="amides_new_results",
             )
         )
         """Number of command lines that triggered detection and rule attribution."""
         cached_results: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Number of command lines that could be resolved from cache.",
-                name="cached_results",
+                name="amides_cached_results",
             )
         )
         """Number of command lines that could be resolved from cache."""
         num_cache_entries: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Absolute number of current cache entries.",
-                name="num_cache_entries",
+                name="amides_num_cache_entries",
             )
         )
         """Absolute number of current cache entries."""
         cache_load: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Mean processing time of command lines classified by the misuse detector.",
-                name="cache_load",
+                name="amides_cache_load",
             )
         )
         """Relative cache load."""
         mean_misuse_detection_time: HistogramMetric = field(
             factory=lambda: HistogramMetric(
                 description="Mean processing time of command lines classified by the misuse detector.",
-                name="mean_misuse_detection_time",
+                name="amides_mean_misuse_detection_time",
             )
         )
         """Mean processing time of command lines classified by the misuse detector."""
         mean_rule_attribution_time: HistogramMetric = field(
             factory=lambda: HistogramMetric(
                 description="Mean processing time of command lines attributed  by the rule attributor.",
-                name="mean_rule_attribution_time",
+                name="amides_mean_rule_attribution_time",
             )
         )
         """Mean processing time of command lines attributed  by the rule attributor."""

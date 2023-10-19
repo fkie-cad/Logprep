@@ -50,7 +50,7 @@ class Metric(ABC):
     )
     trackers: dict = None
     _registry: CollectorRegistry = field(default=None)
-    _prefix: str = "logprep_"
+    _prefix: str = field(default="logprep_")
 
     @property
     def fullname(self):
