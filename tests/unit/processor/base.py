@@ -4,17 +4,15 @@
 
 import itertools
 import json
-import re
 from copy import deepcopy
-from functools import partial
 from logging import getLogger
 from pathlib import Path
-from typing import Callable
 from unittest import mock
 
 import pytest
 import requests
 import responses
+from attrs import asdict
 from ruamel.yaml import YAML
 
 from logprep.abc.processor import Processor
@@ -278,3 +276,11 @@ class BaseProcessorTestCase(BaseComponentTestCase):
     def test_rule_has_metric(self, metric_name, metric_class):
         metric_instance = getattr(self.object.rules[0].metrics, metric_name)
         assert isinstance(metric_instance, metric_class)
+
+    def test_no_metrics_with_same_name(self):
+        metric_attributes = asdict(
+            self.object.rules[0].metrics, filter=self.asdict_filter, recurse=False
+        )
+        pairs = itertools.combinations(metric_attributes.values(), 2)
+        for metric1, metric2 in pairs:
+            assert metric1.name != metric2.name, f"{metric1.name} == {metric2.name}"

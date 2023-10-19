@@ -36,9 +36,20 @@ class Connector(Component):
         )
         """Time in seconds that it took to process an event"""
 
-        number_of_warnings: int = 0
+        number_of_warnings: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of errors that occurred while processing events",
+                name="number_of_warnings",
+            )
+        )
         """Number of warnings that occurred while processing events"""
-        number_of_errors: int = 0
+
+        number_of_errors: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of errors that occurred while processing events",
+                name="number_of_errors",
+            )
+        )
         """Number of errors that occurred while processing events"""
 
     __slots__ = ["metrics"]

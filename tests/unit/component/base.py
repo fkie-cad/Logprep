@@ -75,6 +75,9 @@ class BaseComponentTestCase(ABC):
             "_prefix",
             "processing_time_per_event",
             "number_of_processed_events",
+            "number_of_failed_events",
+            "number_of_warnings",
+            "number_of_errors",
         ]
         metric_attributes = asdict(
             self.object.metrics,
