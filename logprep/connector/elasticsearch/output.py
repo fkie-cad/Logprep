@@ -47,6 +47,7 @@ from urllib3.exceptions import TimeoutError
 from logprep.abc.output import FatalOutputError, Output
 from logprep.util.helper import get_dict_size_in_byte
 from logprep.util.time import TimeParser
+from logprep.util.time_measurement import TimeMeasurement
 
 
 class ElasticsearchOutput(Output):
@@ -299,6 +300,7 @@ class ElasticsearchOutput(Output):
         if len(self._message_backlog) >= self._config.message_backlog_size:
             self._write_backlog()
 
+    @TimeMeasurement.measure_time()
     def _write_backlog(self):
         if not self._message_backlog:
             return

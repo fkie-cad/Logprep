@@ -52,17 +52,20 @@ class SkipImportError(FactoryError):
 class ProcessingError(Exception):
     """Base class for exceptions related to processing events."""
 
-    def __init__(self, processor: "Processor", message: str):
-        super().__init__(f"{self.__class__.__name__} in {processor.describe()}: {message}")
+    def __init__(self, message: str, rule: "Rule"):
+        rule.metrics.number_of_errors += 1
+        super().__init__(f"{self.__class__.__name__}: {message}")
 
 
 class ProcessingCriticalError(ProcessingError):
     """A critical error occurred - stop processing of this event"""
 
-    def __init__(self, processor: "Processor", message: str, event: dict):
-        super().__init__(
-            processor, f"{message} -> event was send to error output and further processing stopped"
+    def __init__(self, message: str, rule: "Rule", event: dict):
+        message = (
+            f"{message} -> event was send to error output and further processing stopped"
+            f", {rule.id=}, {rule.description=}, {event=}"
         )
+        super().__init__(f"{self.__class__.__name__}: {message}", rule)
 
 
 class ProcessingWarning(Warning):
@@ -70,7 +73,7 @@ class ProcessingWarning(Warning):
 
     def __init__(self, message: str, rule: "Rule", event: dict):
         rule.metrics.number_of_warnings += 1
-        message = f"{message}, Rule: {rule.id=}, {rule.description=}, {event=}"
+        message = f"{message}, {rule.id=}, {rule.description=}, {event=}"
         super().__init__(f"{self.__class__.__name__}: {message}")
 
 

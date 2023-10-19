@@ -335,7 +335,7 @@ class ConfluentKafkaInput(Input):
         Parameters
         ----------
         timeout : float
-           Timeout for obtaining a raw document from Kafka.
+            Timeout for obtaining a raw document from Kafka.
 
         Returns
         -------

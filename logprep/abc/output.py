@@ -10,6 +10,7 @@ from attrs import define, field, validators
 
 from logprep.abc.connector import Connector
 from logprep.abc.input import Input
+from logprep.util.time_measurement import TimeMeasurement
 
 
 class OutputError(BaseException):
