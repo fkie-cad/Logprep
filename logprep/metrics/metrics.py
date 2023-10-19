@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 
 from attr import asdict, define, field, validators
-from prometheus_client import CollectorRegistry, Counter, Histogram
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 
 def is_public(attribute, _):
@@ -74,6 +74,13 @@ class Metric(ABC):
                     buckets=(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1),
                     registry=self._registry,
                 )
+            if isinstance(self, GaugeMetric):
+                tracker = Gauge(
+                    name=self.fullname,
+                    documentation=self.description,
+                    labelnames=self.labels.keys(),
+                    registry=self._registry,
+                )
             tracker.labels(**self.labels)
 
             self.trackers.update({self.fullname: tracker})
@@ -100,6 +107,15 @@ class HistogramMetric(Metric):
 
     def __add__(self, other):
         self.trackers.get(self.fullname).labels(**self.labels).observe(other)
+        return self
+
+
+@define(kw_only=True)
+class GaugeMetric(Metric):
+    trackers: dict = {}
+
+    def __add__(self, other):
+        self.trackers.get(self.fullname).labels(**self.labels).set(other)
         return self
 
 

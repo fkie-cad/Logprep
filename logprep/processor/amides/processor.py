@@ -93,12 +93,18 @@ import joblib
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
-from logprep.metrics.metrics import calculate_new_average
+from logprep.metrics.metrics import (
+    CounterMetric,
+    GaugeMetric,
+    HistogramMetric,
+    calculate_new_average,
+)
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
+from logprep.util.time_measurement import TimeMeasurement
 
 
 class Amides(Processor):
@@ -123,42 +129,55 @@ class Amides(Processor):
     class Metrics(Processor.Metrics):
         """Track statistics specific for Amides processor instances."""
 
-        total_cmdlines: int = 0
+        total_cmdlines: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Total number of command lines processed.",
+                name="total_cmdlines",
+            )
+        )
         """Total number of command lines processed."""
-        new_results: int = 0
+        new_results: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of command lines that triggered detection and rule attribution.",
+                name="new_results",
+            )
+        )
         """Number of command lines that triggered detection and rule attribution."""
-        cached_results: int = 0
+        cached_results: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of command lines that could be resolved from cache.",
+                name="cached_results",
+            )
+        )
         """Number of command lines that could be resolved from cache."""
-        num_cache_entries: int = 0
+        num_cache_entries: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Absolute number of current cache entries.",
+                name="num_cache_entries",
+            )
+        )
         """Absolute number of current cache entries."""
-        cache_load: float = 0.0
+        cache_load: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Mean processing time of command lines classified by the misuse detector.",
+                name="cache_load",
+            )
+        )
         """Relative cache load."""
-        mean_misuse_detection_time: float = 0.0
+        mean_misuse_detection_time: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                description="Mean processing time of command lines classified by the misuse detector.",
+                name="mean_misuse_detection_time",
+            )
+        )
         """Mean processing time of command lines classified by the misuse detector."""
-        _mean_misuse_detection_time_sample_counter: int = 0
-        mean_rule_attribution_time: float = 0.0
+        mean_rule_attribution_time: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                description="Mean processing time of command lines attributed  by the rule attributor.",
+                name="mean_rule_attribution_time",
+            )
+        )
         """Mean processing time of command lines attributed  by the rule attributor."""
-        _mean_rule_attribution_time_sample_counter: int = 0
-
-        def update_mean_misuse_detection_time(self, new_sample: float):
-            """Updates the mean processing time of the misuse detection."""
-            new_mean, new_sample_counter = calculate_new_average(
-                self.mean_misuse_detection_time,
-                new_sample,
-                self._mean_misuse_detection_time_sample_counter,
-            )
-            self.mean_misuse_detection_time = new_mean
-            self._mean_misuse_detection_time_sample_counter = new_sample_counter
-
-        def update_mean_rule_attribution_time(self, new_sample: float):
-            """Updates the mean processing time of the rule attribution model."""
-            new_mean, new_sample_counter = calculate_new_average(
-                self.mean_rule_attribution_time,
-                new_sample,
-                self._mean_rule_attribution_time_sample_counter,
-            )
-            self.mean_rule_attribution_time = new_mean
-            self._mean_rule_attribution_time_sample_counter = new_sample_counter
 
     __slots__ = (
         "_misuse_detector",
@@ -229,27 +248,19 @@ class Amides(Processor):
 
         return result
 
+    @TimeMeasurement.measure_time(metric_name="mean_misuse_detection_time")
     def _perform_misuse_detection(self, cmdline: str) -> Tuple[bool, float]:
-        begin = time()
         result = self._misuse_detector.detect(cmdline)
-        processing_time = time() - begin
-
-        self.metrics.update_mean_misuse_detection_time(processing_time)
-
         return result
 
+    @TimeMeasurement.measure_time(metric_name="mean_rule_attribution_time")
     def _calculate_rule_attributions(self, cmdline: str) -> List[dict]:
-        begin = time()
         attributions = self._rule_attributor.attribute(cmdline)
-        processing_time = time() - begin
-
-        self.metrics.update_mean_rule_attribution_time(processing_time)
-
         return attributions
 
     def _update_cache_metrics(self):
         cache_info = self._evaluate_cmdline_cached.cache_info()
-        self.metrics.new_results = cache_info.misses
-        self.metrics.cached_results = cache_info.hits
-        self.metrics.num_cache_entries = cache_info.currsize
-        self.metrics.cache_load = cache_info.currsize / cache_info.maxsize
+        self.metrics.new_results += cache_info.misses
+        self.metrics.cached_results += cache_info.hits
+        self.metrics.num_cache_entries += cache_info.currsize
+        self.metrics.cache_load += cache_info.currsize / cache_info.maxsize

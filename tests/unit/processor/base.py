@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 
+import itertools
 import json
 from copy import deepcopy
 from logging import getLogger
@@ -277,14 +278,20 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         metric_instance = getattr(self.object.rules[0].metrics, metric_name)
         assert isinstance(metric_instance, metric_class)
 
-    def test_custom_metrics_are_metric_objects(self):
-        def asdict_filter(attribute, value):
-            block_list = ["_labels", "_prefix"]
-            return not any(
-                (attribute.name in block_list, value is None, isinstance(value, Callable))
-            )
+    @staticmethod
+    def asdict_filter(attribute, value):
+        """Returns all attributes not in block list or None"""
+        block_list = ["_labels", "_prefix"]
+        return not any((attribute.name in block_list, value is None, isinstance(value, Callable)))
 
-        metric_attributes = asdict(self.object.metrics, filter=asdict_filter, recurse=False)
+    def test_custom_metrics_are_metric_objects(self):
+        metric_attributes = asdict(self.object.metrics, filter=self.asdict_filter, recurse=False)
         assert all(
             isinstance(value, Metric) for value in metric_attributes.values()
         ), "one of the metrics instance attributes is not an instance of type Metric"
+
+    def test_no_metrics_with_same_name(self):
+        metric_attributes = asdict(self.object.metrics, filter=self.asdict_filter, recurse=False)
+        pairs = itertools.combinations(metric_attributes.values(), 2)
+        for metric1, metric2 in pairs:
+            assert metric1.name != metric2.name, f"{metric1.name} == {metric2.name}"
