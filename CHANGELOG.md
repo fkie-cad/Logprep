@@ -6,6 +6,8 @@
 ### Improvements
 ### Bugfix
 
+* fix CVE-2023-45803 urllib3's request body not stripped after redirect from 303 status changes request method to GET
+
 ## v7.0.0
 ### Breaking
 

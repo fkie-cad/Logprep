@@ -28,7 +28,7 @@ ruamel.yaml
 schedule
 tldextract
 urlextract
-urllib3>=1.26.17 # CVE-2023-43804
+urllib3>=1.26.18 # CVE-2023-45803
 uvicorn
 wheel
 deepdiff
