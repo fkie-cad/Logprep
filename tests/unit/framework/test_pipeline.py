@@ -27,7 +27,6 @@ from logprep.abc.output import (
     Output,
     WarningOutputError,
 )
-from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline, SharedCounter
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
@@ -229,9 +228,7 @@ class TestPipeline(ConfigurationForTests):
     def test_processor_warning_error_is_logged_but_processing_continues(self, mock_warning, _):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({"message": "test"}, None)
-        processing_warning = ProcessingWarning(
-            self.pipeline._pipeline[1], "not so bad", None, {"message": "test"}
-        )
+        processing_warning = ProcessingWarning("not so bad", None, {"message": "test"})
 
         def raise_processing_warning(_):
             raise processing_warning

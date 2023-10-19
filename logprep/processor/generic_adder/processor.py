@@ -251,7 +251,7 @@ class GenericAdder(Processor):
                 conflicting_fields.append(dotted_field)
 
         if conflicting_fields:
-            raise FieldExistsWarning(self, rule, event, conflicting_fields)
+            raise FieldExistsWarning(rule, event, conflicting_fields)
 
     def _try_adding_from_db(self, event: dict, items_to_add: list, rule: GenericAdderRule):
         """Get the sub part of the value from the event using a regex pattern"""

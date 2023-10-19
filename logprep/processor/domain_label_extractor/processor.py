@@ -141,7 +141,7 @@ class DomainLabelExtractor(Processor):
                 )
 
                 if not add_successful:
-                    raise FieldExistsWarning(self, rule, event, [output_field])
+                    raise FieldExistsWarning(rule, event, [output_field])
         else:
             tagging_field.append(f"invalid_domain_in_{rule.source_fields[0].replace('.', '_')}")
             event[self._config.tagging_field_name] = tagging_field

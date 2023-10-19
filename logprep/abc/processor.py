@@ -9,7 +9,7 @@ from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
-from logprep.metrics.metrics import CounterMetric, HistogramMetric
+from logprep.metrics.metrics import HistogramMetric
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -293,7 +293,7 @@ class Processor(Component):
         if isinstance(error, ProcessingWarning):
             self._logger.warning(str(error))
         else:
-            self._logger.warning(str(ProcessingWarning(self, str(error), rule, event)))
+            self._logger.warning(str(ProcessingWarning(str(error), rule, event)))
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
@@ -324,4 +324,4 @@ class Processor(Component):
             overwrite_output_field=rule.overwrite_target,
         )
         if not add_successful:
-            raise FieldExistsWarning(self, rule, event, [rule.target_field])
+            raise FieldExistsWarning(rule, event, [rule.target_field])

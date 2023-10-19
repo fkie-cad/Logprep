@@ -121,7 +121,7 @@ class GeoipEnricher(Processor):
         ip_string = get_dotted_field_value(event, rule.source_fields[0])
         if ip_string is None:
             raise ProcessingWarning(
-                self, f"Value of IP field '{rule.source_fields[0]}' is 'None'", rule, event
+                f"Value of IP field '{rule.source_fields[0]}' is 'None'", rule, event
             )
         geoip_data = self._try_getting_geoip_data(ip_string)
         if not geoip_data:
@@ -140,4 +140,4 @@ class GeoipEnricher(Processor):
                 overwrite_output_field=rule.overwrite_target,
             )
             if not adding_was_successful:
-                raise FieldExistsWarning(self, rule, event, [full_output_field])
+                raise FieldExistsWarning(rule, event, [full_output_field])
