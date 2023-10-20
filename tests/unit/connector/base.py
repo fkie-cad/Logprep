@@ -522,6 +522,15 @@ class BaseInputTestCase(BaseConnectorTestCase):
         self.object.get_next(0.01)
         assert self.object.metrics.number_of_processed_events == 0
 
+    def test_get_next_has_time_measurement(self):
+        self.object.metrics.processing_time_per_event = mock.MagicMock()
+        self.object.metrics.processing_time_per_event.__iadd__ = mock.MagicMock()
+        return_value = ({"message": "test message"}, b'{"message": "test message"}')
+        self.object._get_event = mock.MagicMock(return_value=return_value)
+        self.object.get_next(0.01)
+        assert isinstance(self.object.metrics.processing_time_per_event, mock.MagicMock)
+        self.object.metrics.processing_time_per_event.__iadd__.assert_called()
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):
@@ -531,6 +540,11 @@ class BaseOutputTestCase(BaseConnectorTestCase):
         self.object.metrics.number_of_processed_events = 0
         self.object.store({"message": "my event message"})
         assert self.object.metrics.number_of_processed_events == 1
+
+    def test_store_failed_counts_failed_events(self):
+        self.object.metrics.number_of_failed_events = 0
+        self.object.store_failed("error", {"message": "my event message"}, {})
+        assert self.object.metrics.number_of_failed_events == 1
 
     def test_store_calls_batch_finished_callback(self):
         self.object.input_connector = mock.MagicMock()
