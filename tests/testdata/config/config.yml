@@ -8,6 +8,12 @@ pipeline:
         - tests/testdata/unit/dissector
       generic_rules:
         - tests/testdata/unit/dissector
+  - calculatorname:
+      type: calculator
+      specific_rules:
+        - tests/testdata/unit/calculator/generic_rules
+      generic_rules:
+        - tests/testdata/unit/calculator/specific_rules
   - labelername:
       type: labeler
       schema: tests/testdata/unit/labeler/schemas/schema3.json
