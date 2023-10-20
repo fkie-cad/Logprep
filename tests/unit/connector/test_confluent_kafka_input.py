@@ -345,8 +345,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             "committed_offsets",
         ],
     )
-    def test_current_offset_not_initialized_with_default_labels(self, metric_name):
+    def test_current_offset_not_initialized_with_default_label_values(self, metric_name):
         metric = getattr(self.object.metrics, metric_name)
-        assert not metric.tracker._labelnames
         metric_object = metric.tracker.collect()[0]
         assert len(metric_object.samples) == 0
