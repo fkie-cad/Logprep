@@ -6,6 +6,11 @@ from attr import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 
+def get_default_labels():
+    """returns the default labels"""
+    return {"component": None, "name": None, "type": None, "description": None}
+
+
 @define(kw_only=True)
 class Metric(ABC):
     """Metric base class"""
@@ -17,14 +22,18 @@ class Metric(ABC):
             validators.instance_of(dict),
             validators.deep_mapping(
                 key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of(str),
+                value_validator=validators.instance_of((str, type(None))),
             ),
         ],
-        default={},
+        factory=get_default_labels,
     )
     _registry: CollectorRegistry = field(default=None)
     _prefix: str = field(default="logprep_")
+    inject_label_values: bool = field(default=True)
     tracker: Union[Counter, Histogram, Gauge] = field(init=False, default=None)
+
+    def __attrs_post_init__(self):
+        self.init_tracker()
 
     @property
     def fullname(self):
@@ -65,7 +74,8 @@ class Metric(ABC):
                 raise ValueError(
                     f"Metric {self.fullname} already exists with different type"
                 ) from error
-        self.tracker.labels(**self.labels)
+        if self.inject_label_values:
+            self.tracker.labels(**self.labels)
 
     @abstractmethod
     def __add__(self, other):

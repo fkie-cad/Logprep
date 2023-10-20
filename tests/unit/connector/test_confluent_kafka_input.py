@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+from attrs import asdict
 from confluent_kafka import KafkaException
 
 from logprep.abc.input import (
@@ -19,6 +20,7 @@ from logprep.abc.input import (
 )
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
+from logprep.metrics.metrics import Metric
 from tests.unit.connector.base import BaseInputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
@@ -243,10 +245,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
 
-    def test_init_sets_metrics_properties(self):
-        assert self.object.metrics._consumer_group_id == "testgroup"
-        assert self.object.metrics._consumer_client_id == socket.getfqdn()
-
     def test_metrics_expose_returns_data(self):
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
         self.object._stats_callback(json_string)
@@ -297,3 +295,58 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         expected_error_message = r"keys are missing: {'(bootstrap.servers|group.id)', '(bootstrap.servers|group.id)'}"  # pylint: disable=line-too-long
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
             Factory.create({"test": config}, logger=self.logger)
+
+    def test_expected_metrics_attributes(self):
+        expected_metrics = {
+            "commit_failures",
+            "commit_success",
+            "current_offsets",
+            "committed_offsets",
+            "librdkafka_age",
+            "librdkafka_rx",
+            "librdkafka_rx_bytes",
+            "librdkafka_rxmsgs",
+            "librdkafka_rxmsg_bytes",
+            "librdkafka_cgrp_stateage",
+            "librdkafka_cgrp_rebalance_age",
+            "librdkafka_cgrp_rebalance_cnt",
+            "librdkafka_cgrp_assignment_size",
+        }
+        metric_attributes = set(asdict(self.object.metrics).keys())
+        diffrences = expected_metrics.difference(metric_attributes)
+        assert not diffrences, str(diffrences)
+
+    def test_expected_metrics_attributes_are_initialized(self):
+        expected_metrics = {
+            "commit_failures",
+            "commit_success",
+            "current_offsets",
+            "committed_offsets",
+            "librdkafka_age",
+            "librdkafka_rx",
+            "librdkafka_rx_bytes",
+            "librdkafka_rxmsgs",
+            "librdkafka_rxmsg_bytes",
+            "librdkafka_cgrp_stateage",
+            "librdkafka_cgrp_rebalance_age",
+            "librdkafka_cgrp_rebalance_cnt",
+            "librdkafka_cgrp_assignment_size",
+        }
+        metric_attributes = asdict(self.object.metrics, recurse=False)
+        for metric_name in expected_metrics:
+            assert metric_attributes.get(metric_name) is not None
+            assert isinstance(metric_attributes.get(metric_name), Metric)
+            assert metric_attributes.get(metric_name).tracker is not None
+
+    @pytest.mark.parametrize(
+        "metric_name",
+        [
+            "current_offsets",
+            "committed_offsets",
+        ],
+    )
+    def test_current_offset_not_initialized_with_default_labels(self, metric_name):
+        metric = getattr(self.object.metrics, metric_name)
+        assert not metric.tracker._labelnames
+        metric_object = metric.tracker.collect()[0]
+        assert len(metric_object.samples) == 0

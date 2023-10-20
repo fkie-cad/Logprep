@@ -8,7 +8,7 @@ from attr import define, field, validators
 from attrs import asdict
 from schedule import Scheduler
 
-from logprep.metrics.metrics import Metric
+from logprep.metrics.metrics import Metric, get_default_labels
 from logprep.util.helper import camel_to_snake
 
 
@@ -26,15 +26,14 @@ class Component(ABC):
     class Metrics:
         """Base Metric class to track and expose statistics about logprep"""
 
-        _labels: dict = field(
-            factory=lambda: {"component": None, "name": None, "type": None, "description": None}
-        )
+        _labels: dict = field(factory=get_default_labels)
 
         def __attrs_post_init__(self):
             for attribute in asdict(self):
                 attribute = getattr(self, attribute)
                 if isinstance(attribute, Metric):
-                    attribute.labels = self._labels
+                    if attribute.inject_label_values:
+                        attribute.labels = self._labels
                     attribute.init_tracker()
 
     # __dict__ is added to support functools.cached_property
