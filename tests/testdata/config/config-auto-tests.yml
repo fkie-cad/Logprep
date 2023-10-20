@@ -10,13 +10,12 @@ pipeline:
         - tests/testdata/auto_tests/labeler/rules/specific/
       generic_rules:
         - tests/testdata/auto_tests/labeler/rules/generic/
-  - normalizer:
-      type: normalizer
+  - dissector:
+      type: dissector
       specific_rules:
-        - tests/testdata/auto_tests/normalizer/rules/specific/
+        - tests/testdata/auto_tests/dissector/rules/specific
       generic_rules:
-        - tests/testdata/auto_tests/normalizer/rules/generic/
-      regex_mapping: tests/testdata/auto_tests/normalizer/regex_mapping.yml
+        - tests/testdata/auto_tests/dissector/rules/generic
   - dropper:
       type: dropper
       specific_rules:
