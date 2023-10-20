@@ -6,13 +6,17 @@ import re
 
 from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
 
-from logprep.metrics import metrics
-from logprep.metrics.metrics import CounterMetric, HistogramMetric
+from logprep.metrics.metrics import CounterMetric, HistogramMetric, GaugeMetric
 
 
 class TestsMetrics:
     def setup_method(self):
         self.custom_registry = CollectorRegistry()
+
+    def teardown_method(self):
+        CounterMetric(name="", description="").trackers.clear()
+        HistogramMetric(name="", description="").trackers.clear()
+        GaugeMetric(name="", description="").trackers.clear()
 
     def test_init_tracker_creates_metric(self):
         metric = CounterMetric(
