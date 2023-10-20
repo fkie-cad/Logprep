@@ -509,6 +509,19 @@ class BaseInputTestCase(BaseConnectorTestCase):
             "enriched_field2": "test_value_bar",
         }
 
+    def test_get_next_counts_number_of_processed_events(self):
+        self.object.metrics.number_of_processed_events = 0
+        return_value = ({"message": "test message"}, b'{"message": "test message"}')
+        self.object._get_event = mock.MagicMock(return_value=return_value)
+        self.object.get_next(0.01)
+        assert self.object.metrics.number_of_processed_events == 1
+
+    def test_get_next_doesnt_count_numer_of_processed_events_if_event_is_none(self):
+        self.object.metrics.number_of_processed_events = 0
+        self.object._get_event = mock.MagicMock(return_value=(None, None))
+        self.object.get_next(0.01)
+        assert self.object.metrics.number_of_processed_events == 0
+
 
 class BaseOutputTestCase(BaseConnectorTestCase):
     def test_is_output_instance(self):
