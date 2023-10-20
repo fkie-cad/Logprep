@@ -1,5 +1,6 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
 from abc import ABC, abstractmethod
+from typing import Union
 
 from attr import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
@@ -21,28 +22,27 @@ class Metric(ABC):
         ],
         default={},
     )
-    trackers: dict = None
     _registry: CollectorRegistry = field(default=None)
     _prefix: str = field(default="logprep_")
+    tracker: Union[Counter, Histogram, Gauge] = field(init=False, default=None)
 
     @property
     def fullname(self):
         """returns the fullname"""
         return f"{self._prefix}{self.name}"
 
-    def init_tracker(self):
+    def init_tracker(self) -> None:
         """initializes the tracker and adds it to the trackers dict"""
-        tracker = None
         try:
             if isinstance(self, CounterMetric):
-                tracker = Counter(
+                self.tracker = Counter(
                     name=self.fullname,
                     documentation=self.description,
                     labelnames=self.labels.keys(),
                     registry=self._registry,
                 )
             if isinstance(self, HistogramMetric):
-                tracker = Histogram(
+                self.tracker = Histogram(
                     name=self.fullname,
                     documentation=self.description,
                     labelnames=self.labels.keys(),
@@ -50,18 +50,22 @@ class Metric(ABC):
                     registry=self._registry,
                 )
             if isinstance(self, GaugeMetric):
-                tracker = Gauge(
+                self.tracker = Gauge(
                     name=self.fullname,
                     documentation=self.description,
                     labelnames=self.labels.keys(),
                     registry=self._registry,
                     multiprocess_mode="liveall",
                 )
-            tracker.labels(**self.labels)
-
-            self.trackers.update({self.fullname: tracker})
-        except ValueError:
-            self.trackers.get(self.fullname).labels(**self.labels)
+        except ValueError as error:
+            # pylint: disable=protected-access
+            self.tracker = self._registry._names_to_collectors.get(self.fullname)
+            # pylint: enable=protected-access
+            if not isinstance(self.tracker, METRIC_TO_COLLECTOR_TYPE[type(self)]):
+                raise ValueError(
+                    f"Metric {self.fullname} already exists with different type"
+                ) from error
+        self.tracker.labels(**self.labels)
 
     @abstractmethod
     def __add__(self, other):
@@ -72,15 +76,13 @@ class Metric(ABC):
 class CounterMetric(Metric):
     """Wrapper for prometheus Counter metric"""
 
-    trackers: dict = {}
-
     def __add__(self, other):
         return self.add_with_labels(other, self.labels)
 
     def add_with_labels(self, other, labels):
         """Add with labels"""
         labels = self.labels | labels
-        self.trackers.get(self.fullname).labels(**labels).inc(other)
+        self.tracker.labels(**labels).inc(other)
         return self
 
 
@@ -88,10 +90,8 @@ class CounterMetric(Metric):
 class HistogramMetric(Metric):
     """Wrapper for prometheus Histogram metric"""
 
-    trackers: dict = {}
-
     def __add__(self, other):
-        self.trackers.get(self.fullname).labels(**self.labels).observe(other)
+        self.tracker.labels(**self.labels).observe(other)
         return self
 
 
@@ -99,13 +99,18 @@ class HistogramMetric(Metric):
 class GaugeMetric(Metric):
     """Wrapper for prometheus Gauge metric""" ""
 
-    trackers: dict = {}
-
     def __add__(self, other):
         return self.add_with_labels(other, self.labels)
 
     def add_with_labels(self, other, labels):
         """Add with labels"""
         labels = self.labels | labels
-        self.trackers.get(self.fullname).labels(**labels).set(other)
+        self.tracker.labels(**labels).set(other)
         return self
+
+
+METRIC_TO_COLLECTOR_TYPE = {
+    CounterMetric: Counter,
+    HistogramMetric: Histogram,
+    GaugeMetric: Gauge,
+}
