@@ -112,68 +112,71 @@ class ConfluentKafkaInput(Input):
         )
         """committed offsets of the consumer. Is filled by `_commit_callback`"""
 
-        # @cached_property
-        # def _rdkafka_labels(self) -> str:
-        #     client_id = self._consumer_client_id
-        #     group_id = self._consumer_group_id
-        #     topic = self._consumer_topic
-        #     labels = {"client_id": client_id, "group_id": group_id, "topic": topic}
-        #     labels = self._labels | labels
-        #     labels = [":".join(item) for item in labels.items()]
-        #     labels = ",".join(labels)
-        #     return labels
+        librdkafka_age: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Time since this client instance was created (microseconds)",
+                name="confluent_kafka_input_librdkafka_age",
+            )
+        )
+        """Time since this client instance was created (microseconds)"""
 
-        # def _get_kafka_input_metrics(self) -> dict:
-        #     exp = {
-        #         f"{self._prefix}kafka_consumer_current_offset;"  # nosemgrep
-        #         f"{self._rdkafka_labels},partition:{partition}": offset
-        #         for partition, offset in self._current_offsets.items()
-        #     }
-        #     exp |= {
-        #         f"{self._prefix}kafka_consumer_committed_offset;"  # nosemgrep
-        #         f"{self._rdkafka_labels},partition:{partition}": offset
-        #         for partition, offset in self._committed_offsets.items()
-        #     }
-        #     exp.update(
-        #         {
-        #             f"{self._prefix}kafka_consumer_commit_failures;"
-        #             f"{self._rdkafka_labels}": self._commit_failures,
-        #             f"{self._prefix}kafka_consumer_commit_success;"
-        #             f"{self._rdkafka_labels}": self._commit_success,
-        #         }
-        #     )
-        #     return exp
+        librdkafka_rx: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of responses received from Kafka brokers",
+                name="confluent_kafka_input_librdkafka_rx",
+            )
+        )
+        """Total number of responses received from Kafka brokers"""
+        librdkafka_rx_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of bytes received from Kafka brokers",
+                name="confluent_kafka_input_librdkafka_rx_bytes",
+            )
+        )
+        """Total number of bytes received from Kafka brokers"""
+        librdkafka_rxmsgs: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers.",
+                name="confluent_kafka_input_librdkafka_rxmsgs",
+            )
+        )
+        """Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers."""
+        librdkafka_rxmsg_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of message bytes (including framing) received from Kafka brokers",
+                name="confluent_kafka_input_librdkafka_rxmsg_bytes",
+            )
+        )
+        """Total number of message bytes (including framing) received from Kafka brokers"""
 
-        # def _get_top_level_metrics(self) -> dict:
-        #     return {
-        #         f"{self._prefix}librdkafka_consumer_{stat};{self._rdkafka_labels}": value
-        #         for stat, value in self._stats.items()
-        #         if isinstance(value, (int, float))
-        #     }
-
-        # def _get_cgrp_metrics(self) -> dict:
-        #     exp = {}
-        #     cgrp = self._stats.get("cgrp", {})
-        #     for stat, value in cgrp.items():
-        #         if isinstance(value, (int, float)):
-        #             exp[f"{self._prefix}librdkafka_cgrp_{stat};{self._rdkafka_labels}"] = value
-        #     return exp
-
-        # def expose(self) -> dict:
-        #     """overload of `expose` to add kafka specific metrics
-
-        #     Returns
-        #     -------
-        #     dict
-        #         metrics dictionary
-        #     """
-        #     exp = super().expose()
-        #     labels = [":".join(item) for item in self._labels.items()]
-        #     labels = ",".join(labels)
-        #     exp |= self._get_top_level_metrics()
-        #     exp |= self._get_cgrp_metrics()
-        #     exp |= self._get_kafka_input_metrics()
-        #     return exp
+        librdkafka_cgrp_stateage: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Time elapsed since last state change (milliseconds).",
+                name="confluent_kafka_input_librdkafka_cgrp_stateage",
+            )
+        )
+        """Time elapsed since last state change (milliseconds)."""
+        librdkafka_cgrp_rebalance_age: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Time elapsed since last rebalance (assign or revoke) (milliseconds).",
+                name="confluent_kafka_input_librdkafka_cgrp_rebalance_age",
+            )
+        )
+        """Time elapsed since last rebalance (assign or revoke) (milliseconds)."""
+        librdkafka_cgrp_rebalance_cnt: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of rebalances (assign or revoke).",
+                name="confluent_kafka_input_librdkafka_cgrp_rebalance_cnt",
+            )
+        )
+        """Total number of rebalances (assign or revoke)."""
+        librdkafka_cgrp_assignment_size: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Current assignment's partition count.",
+                name="confluent_kafka_input_librdkafka_cgrp_assignment_size",
+            )
+        )
+        """Current assignment's partition count."""
 
     @define(kw_only=True, slots=False)
     class Config(Input.Config):
@@ -262,7 +265,19 @@ class ConfluentKafkaInput(Input):
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
-        # self.metrics._stats = self._decoder.decode(stats)  # pylint: disable=protected-access
+
+        stats = self._decoder.decode(stats)
+        self.metrics.librdkafka_age += stats.get("age", 0)
+        self.metrics.librdkafka_rx += stats.get("rx", 0)
+        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", 0)
+        self.metrics.librdkafka_rxmsgs += stats.get("rxmsgs", 0)
+        self.metrics.librdkafka_rxmsg_bytes += stats.get("rxmsg_bytes", 0)
+        self.metrics.librdkafka_cgrp_stateage += stats.get("cgrp", {}).get("stateage", 0)
+        self.metrics.librdkafka_cgrp_rebalance_age += stats.get("cgrp", {}).get("rebalance_age", 0)
+        self.metrics.librdkafka_cgrp_rebalance_cnt += stats.get("cgrp", {}).get("rebalance_cnt", 0)
+        self.metrics.librdkafka_cgrp_assignment_size += stats.get("cgrp", {}).get(
+            "assignment_size", 0
+        )
 
     def _commit_callback(
         self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
