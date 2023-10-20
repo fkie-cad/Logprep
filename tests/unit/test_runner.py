@@ -13,7 +13,6 @@ from unittest import mock
 from pytest import raises
 from requests.exceptions import HTTPError, SSLError
 
-from logprep.processor.labeler.labeling_schema import LabelingSchemaError
 from logprep.runner import (
     CannotReloadWhenConfigIsUnsetError,
     MustConfigureBeforeRunningError,
@@ -22,14 +21,10 @@ from logprep.runner import (
     Runner,
     UseGetRunnerToCreateRunnerSingleton,
 )
-from logprep.util.configuration import InvalidConfigurationErrors
-from tests.testdata.ConfigurationForTest import ConfigurationForTest
 from tests.testdata.metadata import (
     path_to_alternative_config,
     path_to_config,
     path_to_invalid_config,
-    path_to_invalid_rules,
-    path_to_schema2,
 )
 from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
 
@@ -82,34 +77,10 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
         with raises(MustConfigureBeforeRunningError):
             self.runner.start()
 
-    def test_fails_when_rules_are_invalid(self):
-        with raises(
-            InvalidConfigurationErrors,
-            match=r"Could not verify configuration for processor instance 'labelername', "
-            r"because it has invalid rules\.",
-        ):
-            with ConfigurationForTest(
-                inject_changes=[
-                    {
-                        "pipeline": {
-                            1: {
-                                "labelername": {
-                                    "specific_rules": [path_to_invalid_rules],
-                                    "generic_rules": [path_to_invalid_rules],
-                                }
-                            }
-                        }
-                    }
-                ]
-            ) as path:
-                self.runner.load_configuration(path)
-
-    def test_fails_when_schema_and_rules_are_inconsistent(self):
-        with raises(LabelingSchemaError):
-            with ConfigurationForTest(
-                inject_changes=[{"pipeline": {1: {"labelername": {"schema": path_to_schema2}}}}]
-            ) as path:
-                self.runner.load_configuration(path)
+    @mock.patch("logprep.util.configuration.Configuration.verify")
+    def test_load_configuration_calls_verify_on_config(self, mock_verify):
+        self.runner.load_configuration(path_to_config)
+        mock_verify.assert_called()
 
     def test_fails_when_calling_reload_configuration_when_config_is_unset(self):
         with raises(CannotReloadWhenConfigIsUnsetError):
