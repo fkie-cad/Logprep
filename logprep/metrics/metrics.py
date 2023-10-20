@@ -55,6 +55,7 @@ class Metric(ABC):
                     documentation=self.description,
                     labelnames=self.labels.keys(),
                     registry=self._registry,
+                    multiprocess_mode="liveall",
                 )
             tracker.labels(**self.labels)
 
@@ -74,7 +75,12 @@ class CounterMetric(Metric):
     trackers: dict = {}
 
     def __add__(self, other):
-        self.trackers.get(self.fullname).labels(**self.labels).inc(other)
+        return self.add_with_labels(other, self.labels)
+
+    def add_with_labels(self, other, labels):
+        """Add with labels"""
+        labels = self.labels | labels
+        self.trackers.get(self.fullname).labels(**labels).inc(other)
         return self
 
 
@@ -96,5 +102,10 @@ class GaugeMetric(Metric):
     trackers: dict = {}
 
     def __add__(self, other):
-        self.trackers.get(self.fullname).labels(**self.labels).set(other)
+        return self.add_with_labels(other, self.labels)
+
+    def add_with_labels(self, other, labels):
+        """Add with labels"""
+        labels = self.labels | labels
+        self.trackers.get(self.fullname).labels(**labels).set(other)
         return self

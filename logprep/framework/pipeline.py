@@ -8,6 +8,7 @@ import copy
 import logging
 import logging.handlers
 import multiprocessing
+
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -348,19 +349,16 @@ class Pipeline:
 
         """
         ToDos:
-            - TimeTracking
             - Processor Specific Metrics (Pseudonymizer, Amides, DomainResolver)
             - Fix Pseudonymizer str has no match
-            - count number warnings/errors separatley or delete them from all metrics?
             - Tests
-            - delete metric exposer
             - delete SharedCounter (Events in last 5 min: n)
             - create Grafana Dashboards
             - add pipelinemanager metrics (pipeline restarts)
             - clean up PrometheusExporter ("remove stale metric files" stil needed?)
             - add Kafka librdkafka metrics
-            - count warnings
             - add version info to metrics
+            - enforce rule_id should be unique
         """
 
         event_received = self._encoder.encode(event)
