@@ -73,6 +73,8 @@ SPECIAL_OFFSETS = {
     OFFSET_STORED,
 }
 
+DEFAULT_RETURN = 0
+
 
 class ConfluentKafkaInput(Input):
     """A kafka input connector."""
@@ -291,16 +293,25 @@ class ConfluentKafkaInput(Input):
         """
 
         stats = self._decoder.decode(stats)
-        self.metrics.librdkafka_age += stats.get("age", 0)
-        self.metrics.librdkafka_rx += stats.get("rx", 0)
-        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", 0)
-        self.metrics.librdkafka_rxmsgs += stats.get("rxmsgs", 0)
-        self.metrics.librdkafka_rxmsg_bytes += stats.get("rxmsg_bytes", 0)
-        self.metrics.librdkafka_cgrp_stateage += stats.get("cgrp", {}).get("stateage", 0)
-        self.metrics.librdkafka_cgrp_rebalance_age += stats.get("cgrp", {}).get("rebalance_age", 0)
-        self.metrics.librdkafka_cgrp_rebalance_cnt += stats.get("cgrp", {}).get("rebalance_cnt", 0)
+        self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
+        self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
+        self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
+        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_rxmsgs += stats.get("rxmsgs", DEFAULT_RETURN)
+        self.metrics.librdkafka_rxmsg_bytes += stats.get("rxmsg_bytes", DEFAULT_RETURN)
+
+        self.metrics.librdkafka_cgrp_stateage += stats.get("cgrp", {}).get(
+            "stateage", DEFAULT_RETURN
+        )
+        self.metrics.librdkafka_cgrp_rebalance_age += stats.get("cgrp", {}).get(
+            "rebalance_age", DEFAULT_RETURN
+        )
+        self.metrics.librdkafka_cgrp_rebalance_cnt += stats.get("cgrp", {}).get(
+            "rebalance_cnt", DEFAULT_RETURN
+        )
         self.metrics.librdkafka_cgrp_assignment_size += stats.get("cgrp", {}).get(
-            "assignment_size", 0
+            "assignment_size", DEFAULT_RETURN
         )
 
     def _commit_callback(

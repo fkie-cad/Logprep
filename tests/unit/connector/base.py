@@ -9,8 +9,6 @@ from copy import deepcopy
 from logging import getLogger
 from unittest import mock
 
-from prometheus_client import CollectorRegistry
-
 from logprep.abc.connector import Connector
 from logprep.abc.input import Input
 from logprep.abc.output import Output
@@ -18,18 +16,11 @@ from logprep.factory import Factory
 from logprep.util.time import TimeParser
 from tests.unit.component.base import BaseComponentTestCase
 
-CUSTOM_REGISTRY = CollectorRegistry(auto_describe=True)
-
 
 class BaseConnectorTestCase(BaseComponentTestCase):
     CONFIG: dict = {}
     object: Connector = None
     logger = getLogger()
-
-    def setup_method(self) -> None:
-        config = {"Test Instance Name": self.CONFIG}
-        self.custom_registry = CUSTOM_REGISTRY
-        self.object = Factory.create(configuration=config, logger=self.logger)
 
     def test_is_a_connector_implementation(self):
         assert isinstance(self.object, Connector)

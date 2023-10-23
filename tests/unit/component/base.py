@@ -7,7 +7,9 @@ from logging import getLogger
 from typing import Callable, Iterable
 from unittest import mock
 
+import pytest
 from attrs import asdict
+from prometheus_client import Counter, Gauge, Histogram
 
 from logprep.abc.component import Component
 from logprep.abc.connector import Connector
@@ -20,10 +22,26 @@ class BaseComponentTestCase(ABC):
     CONFIG: dict = {}
     object: Connector = None
     logger = getLogger()
+    expected_metrics: list
+
+    block_list = [
+        "_labels",
+        "_prefix",
+        "processing_time_per_event",
+        "number_of_processed_events",
+        "number_of_failed_events",
+        "number_of_warnings",
+        "number_of_errors",
+    ]
 
     def setup_method(self) -> None:
         config = {"Test Instance Name": self.CONFIG}
         self.object = Factory.create(configuration=config, logger=self.logger)
+        self.metric_attributes = asdict(
+            self.object.metrics,
+            filter=partial(self.asdict_filter, block_list=self.block_list),
+            recurse=False,
+        )
 
     def test_uses_python_slots(self):
         assert isinstance(self.object.__slots__, Iterable)
@@ -64,27 +82,29 @@ class BaseComponentTestCase(ABC):
         ), "one of the metrics instance attributes is not an instance of type Metric"
 
     def test_no_metrics_with_same_name(self):
-        metric_attributes = asdict(self.object.metrics, filter=self.asdict_filter, recurse=False)
-        pairs = itertools.combinations(metric_attributes.values(), 2)
+        pairs = itertools.combinations(self.metric_attributes.values(), 2)
         for metric1, metric2 in pairs:
             assert metric1.name != metric2.name, f"{metric1.name} == {metric2.name}"
 
     def test_custom_metrics_adds_custom_prefix_to_metrics_name(self):
-        block_list = [
-            "_labels",
-            "_prefix",
-            "processing_time_per_event",
-            "number_of_processed_events",
-            "number_of_failed_events",
-            "number_of_warnings",
-            "number_of_errors",
-        ]
-        metric_attributes = asdict(
-            self.object.metrics,
-            filter=partial(self.asdict_filter, block_list=block_list),
-            recurse=False,
-        )
-        for attribute in metric_attributes.values():
+        for attribute in self.metric_attributes.values():
             assert attribute.fullname.startswith(
                 f"logprep_{camel_to_snake(self.object.__class__.__name__)}"
             ), f"{attribute.fullname}, logprep_{camel_to_snake(self.object.__class__.__name__)}"
+
+    def test_expected_metrics_attributes(self):
+        for expected_metric in self.expected_metrics:
+            metric_attribute = getattr(self.object.metrics, expected_metric)
+            assert metric_attribute is not None
+            assert isinstance(metric_attribute, Metric)
+
+    def test_expected_metrics_attributes_are_initialized(self):
+        for expected_metric in self.expected_metrics:
+            metric_attribute = getattr(self.object.metrics, expected_metric)
+            assert metric_attribute.tracker is not None
+            possibile_tracker_types = (Counter, Gauge, Histogram)
+            assert isinstance(metric_attribute.tracker, possibile_tracker_types)
+
+    def test_all_metric_attributes_are_tested(self):
+        difference = set(self.metric_attributes).difference(set(self.expected_metrics))
+        assert not difference, f"{difference} are not defined in `expected_metrics`"

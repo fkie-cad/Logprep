@@ -37,6 +37,20 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         },
     }
 
+    expected_metrics = {
+        "librdkafka_age",
+        "librdkafka_msg_cnt",
+        "librdkafka_msg_size",
+        "librdkafka_msg_max",
+        "librdkafka_msg_size_max",
+        "librdkafka_tx",
+        "librdkafka_tx_bytes",
+        "librdkafka_rx",
+        "librdkafka_rx_bytes",
+        "librdkafka_txmsgs",
+        "librdkafka_txmsg_bytes",
+    }
+
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
     def test_producer_property_instanciates_kafka_producer(self, _):
         kafka_output = Factory.create({"test connector": self.CONFIG}, logger=self.logger)
@@ -144,41 +158,3 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         expected_error_message = r"keys are missing: {'bootstrap.servers'}"
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
             Factory.create({"test": config}, logger=self.logger)
-
-    def test_expected_metrics_attributes(self):
-        expected_metrics = {
-            "librdkafka_age",
-            "librdkafka_msg_cnt",
-            "librdkafka_msg_size",
-            "librdkafka_msg_max",
-            "librdkafka_msg_size_max",
-            "librdkafka_tx",
-            "librdkafka_tx_bytes",
-            "librdkafka_rx",
-            "librdkafka_rx_bytes",
-            "librdkafka_txmsgs",
-            "librdkafka_txmsg_bytes",
-        }
-        metric_attributes = set(asdict(self.object.metrics).keys())
-        diffrences = expected_metrics.difference(metric_attributes)
-        assert not diffrences, str(diffrences)
-
-    def test_expected_metrics_attributes_are_initialized(self):
-        expected_metrics = {
-            "librdkafka_age",
-            "librdkafka_msg_cnt",
-            "librdkafka_msg_size",
-            "librdkafka_msg_max",
-            "librdkafka_msg_size_max",
-            "librdkafka_tx",
-            "librdkafka_tx_bytes",
-            "librdkafka_rx",
-            "librdkafka_rx_bytes",
-            "librdkafka_txmsgs",
-            "librdkafka_txmsg_bytes",
-        }
-        metric_attributes = asdict(self.object.metrics, recurse=False)
-        for metric_name in expected_metrics:
-            assert metric_attributes.get(metric_name) is not None
-            assert isinstance(metric_attributes.get(metric_name), Metric)
-            assert metric_attributes.get(metric_name).tracker is not None

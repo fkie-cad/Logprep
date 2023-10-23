@@ -5,13 +5,10 @@
 # pylint: disable=attribute-defined-outside-init
 import socket
 from copy import deepcopy
-from pathlib import Path
 from unittest import mock
 
 import pytest
-from attrs import asdict
 from confluent_kafka import KafkaException
-from prometheus_client import CollectorRegistry
 
 from logprep.abc.input import (
     CriticalInputError,
@@ -21,8 +18,7 @@ from logprep.abc.input import (
 )
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.metrics.metrics import Metric
-from tests.unit.connector.base import CUSTOM_REGISTRY, BaseInputTestCase
+from tests.unit.connector.base import BaseInputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
 )
@@ -35,6 +31,25 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "type": "confluentkafka_input",
         "kafka_config": {"bootstrap.servers": "testserver:9092", "group.id": "testgroup"},
         "topic": "test_input_raw",
+    }
+
+    expected_metrics = {
+        "commit_failures",
+        "commit_success",
+        "current_offsets",
+        "committed_offsets",
+        "librdkafka_age",
+        "librdkafka_rx",
+        "librdkafka_rx_bytes",
+        "librdkafka_rxmsgs",
+        "librdkafka_rxmsg_bytes",
+        "librdkafka_cgrp_stateage",
+        "librdkafka_cgrp_rebalance_age",
+        "librdkafka_cgrp_rebalance_cnt",
+        "librdkafka_cgrp_assignment_size",
+        "librdkafka_replyq",
+        "librdkafka_tx",
+        "librdkafka_tx_bytes",
     }
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
@@ -262,51 +277,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         expected_error_message = r"keys are missing: {'(bootstrap.servers|group.id)', '(bootstrap.servers|group.id)'}"  # pylint: disable=line-too-long
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
             Factory.create({"test": config}, logger=self.logger)
-
-    def test_expected_metrics_attributes(self):
-        expected_metrics = {
-            "commit_failures",
-            "commit_success",
-            "current_offsets",
-            "committed_offsets",
-            "librdkafka_age",
-            "librdkafka_rx",
-            "librdkafka_rx_bytes",
-            "librdkafka_rxmsgs",
-            "librdkafka_rxmsg_bytes",
-            "librdkafka_cgrp_stateage",
-            "librdkafka_cgrp_rebalance_age",
-            "librdkafka_cgrp_rebalance_cnt",
-            "librdkafka_cgrp_assignment_size",
-        }
-        metric_attributes = set(asdict(self.object.metrics).keys())
-        diffrences = expected_metrics.difference(metric_attributes)
-        assert not diffrences, str(diffrences)
-
-    def test_expected_metrics_attributes_are_initialized(self):
-        expected_metrics = {
-            "commit_failures",
-            "commit_success",
-            "current_offsets",
-            "committed_offsets",
-            "librdkafka_age",
-            "librdkafka_replyq",
-            "librdkafka_tx",
-            "librdkafka_tx_bytes",
-            "librdkafka_rx",
-            "librdkafka_rx_bytes",
-            "librdkafka_rxmsgs",
-            "librdkafka_rxmsg_bytes",
-            "librdkafka_cgrp_stateage",
-            "librdkafka_cgrp_rebalance_age",
-            "librdkafka_cgrp_rebalance_cnt",
-            "librdkafka_cgrp_assignment_size",
-        }
-        metric_attributes = asdict(self.object.metrics, recurse=False)
-        for metric_name in expected_metrics:
-            assert metric_attributes.get(metric_name) is not None
-            assert isinstance(metric_attributes.get(metric_name), Metric)
-            assert metric_attributes.get(metric_name).tracker is not None
 
     @pytest.mark.parametrize(
         "metric_name",
