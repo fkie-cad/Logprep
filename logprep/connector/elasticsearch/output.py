@@ -45,9 +45,9 @@ from opensearchpy import OpenSearchException
 from urllib3.exceptions import TimeoutError
 
 from logprep.abc.output import FatalOutputError, Output
+from logprep.metrics.metrics import Metric
 from logprep.util.helper import get_dict_size_in_byte
 from logprep.util.time import TimeParser
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class ElasticsearchOutput(Output):
@@ -300,7 +300,7 @@ class ElasticsearchOutput(Output):
         if len(self._message_backlog) >= self._config.message_backlog_size:
             self._write_backlog()
 
-    @TimeMeasurement.measure_time()
+    @Metric.measure_time()
     def _write_backlog(self):
         if not self._message_backlog:
             return
@@ -332,12 +332,12 @@ class ElasticsearchOutput(Output):
 
         If at least one document in a chunk can't be serialized, no events will be sent.
         The chunk size is thus set to be the same size as the message backlog size.
-        Therefore, it won't result in duplicates once the the data is resent.
+        Therefore, it won't result in duplicates once the data is resent.
 
         Parameters
         ----------
         error : SerializationError
-           SerializationError for the error message.
+            SerializationError for the error message.
 
         Raises
         ------

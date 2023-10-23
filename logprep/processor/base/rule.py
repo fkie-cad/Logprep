@@ -260,7 +260,7 @@ class Rule:
         """Return the metric labels for this component."""
         return {
             "component": "rule",
-            "description": f"{str(self._config.id)} - {self._config.description}",
+            "description": f"id: {str(self._config.id)}",
             "type": self.rule_type,
             "name": self._processor_name,
         }

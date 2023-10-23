@@ -92,13 +92,12 @@ import joblib
 from attr import define, field, validators
 
 from logprep.abc.processor import Processor
-from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric
+from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
 from logprep.processor.amides.detection import MisuseDetector, RuleAttributor
 from logprep.processor.amides.normalize import CommandLineNormalizer
 from logprep.processor.amides.rule import AmidesRule
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import get_dotted_field_value
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class Amides(Processor):
@@ -242,12 +241,12 @@ class Amides(Processor):
 
         return result
 
-    @TimeMeasurement.measure_time(metric_name="mean_misuse_detection_time")
+    @Metric.measure_time(metric_name="mean_misuse_detection_time")
     def _perform_misuse_detection(self, cmdline: str) -> Tuple[bool, float]:
         result = self._misuse_detector.detect(cmdline)
         return result
 
-    @TimeMeasurement.measure_time(metric_name="mean_rule_attribution_time")
+    @Metric.measure_time(metric_name="mean_rule_attribution_time")
     def _calculate_rule_attributions(self, cmdline: str) -> List[dict]:
         attributions = self._rule_attributor.attribute(cmdline)
         return attributions

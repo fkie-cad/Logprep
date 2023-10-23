@@ -9,6 +9,7 @@ from attr import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
+from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -22,7 +23,6 @@ from logprep.util.helper import (
     pop_dotted_field_value,
 )
 from logprep.util.json_handling import list_json_files_in_directory
-from logprep.util.time_measurement import TimeMeasurement
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
@@ -157,11 +157,11 @@ class Processor(Component):
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
 
-    @TimeMeasurement.measure_time()
+    @Metric.measure_time()
     def _process_rule_tree(self, event: dict, tree: "RuleTree"):
         applied_rules = set()
 
-        @TimeMeasurement.measure_time()
+        @Metric.measure_time()
         def _process_rule(event, rule):
             self._apply_rules_wrapper(event, rule)
             rule.metrics.number_of_processed_events += 1

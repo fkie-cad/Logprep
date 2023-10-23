@@ -265,6 +265,7 @@ class ConfluentKafkaInput(Input):
             [self._config.topic],
             on_assign=self._assign_callback,
             on_revoke=self._revoke_callback,
+            on_lost=self._lost_callback,
         )
         return consumer
 
@@ -278,6 +279,7 @@ class ConfluentKafkaInput(Input):
         error : KafkaException
             the error that occurred
         """
+        self.metrics.number_of_warnings += 1
         self._logger.warning(f"{self.describe()}: {error}")
 
     def _stats_callback(self, stats: str) -> None:
@@ -473,6 +475,7 @@ class ConfluentKafkaInput(Input):
 
     def _revoke_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
+            self.metrics.number_of_warnings += 1
             self._logger.warning(
                 f"{consumer.memberid()} to be revoked from "
                 f"topic: {topic_partition.topic} | "
@@ -481,6 +484,7 @@ class ConfluentKafkaInput(Input):
 
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
+            self.metrics.number_of_warnings += 1
             self._logger.warning(
                 f"{consumer.memberid()} has lost "
                 f"topic: {topic_partition.topic} | "

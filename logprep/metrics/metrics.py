@@ -1,4 +1,5 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
+import time
 from abc import ABC, abstractmethod
 from typing import Union
 
@@ -80,6 +81,27 @@ class Metric(ABC):
     @abstractmethod
     def __add__(self, other):
         """Add"""
+
+    @staticmethod
+    def measure_time(metric_name: str = "processing_time_per_event"):
+        """Decorate function to measure execution time for function and add results to event."""
+
+        def inner_decorator(func):
+            def inner(*args, **kwargs):  # nosemgrep
+                begin = time.time()
+                result = func(*args, **kwargs)
+                end = time.time()
+                processing_time = end - begin
+                caller = args[0]
+                if func.__name__ in ("_process_rule_tree", "_process_rule"):
+                    caller = args[-1]
+                metric = getattr(caller.metrics, metric_name)
+                metric += processing_time
+                return result
+
+            return inner
+
+        return inner_decorator
 
 
 @define(kw_only=True)

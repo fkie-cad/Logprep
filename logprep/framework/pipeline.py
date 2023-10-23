@@ -39,11 +39,10 @@ from logprep.abc.output import (
 )
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.metrics.metrics import HistogramMetric
+from logprep.metrics.metrics import HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.pipeline_profiler import PipelineProfiler
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
-from logprep.util.time_measurement import TimeMeasurement
 
 
 class SharedCounter:
@@ -343,7 +342,7 @@ class Pipeline:
                     output.store_failed(non_critical_error_msg, event, None)
         return event
 
-    @TimeMeasurement.measure_time()
+    @Metric.measure_time()
     def process_event(self, event: dict):
         """process all processors for one event"""
 

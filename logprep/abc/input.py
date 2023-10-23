@@ -16,9 +16,9 @@ from attrs import define, field, validators
 
 from logprep.abc.component import Component
 from logprep.abc.connector import Connector
+from logprep.metrics.metrics import Metric
 from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
-from logprep.util.time_measurement import TimeMeasurement
 from logprep.util.validators import dict_structure_validator
 
 
@@ -267,7 +267,7 @@ class Input(Connector):
         (event, raw_event)
         """
 
-    @TimeMeasurement.measure_time()
+    @Metric.measure_time()
     def get_next(self, timeout: float) -> Tuple[Optional[dict], Optional[str]]:
         """Return the next document
 
