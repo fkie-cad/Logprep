@@ -7,7 +7,6 @@ from logging import getLogger
 from typing import Callable, Iterable
 from unittest import mock
 
-import pytest
 from attrs import asdict
 from prometheus_client import Counter, Gauge, Histogram
 
@@ -89,13 +88,21 @@ class BaseComponentTestCase(ABC):
 
     def test_expected_metrics_attributes(self):
         for expected_metric in self.expected_metrics:
-            metric_attribute = getattr(self.object.metrics, expected_metric)
+            metric_name = expected_metric.replace(
+                f"logprep_{camel_to_snake(self.object.__class__.__name__)}_", ""
+            )
+            metric_name = metric_name.replace("logprep_", "")
+            metric_attribute = getattr(self.object.metrics, metric_name)
             assert metric_attribute is not None
             assert isinstance(metric_attribute, Metric)
 
     def test_expected_metrics_attributes_are_initialized(self):
         for expected_metric in self.expected_metrics:
-            metric_attribute = getattr(self.object.metrics, expected_metric)
+            metric_name = expected_metric.replace(
+                f"logprep_{camel_to_snake(self.object.__class__.__name__)}_", ""
+            )
+            metric_name = metric_name.replace("logprep_", "")
+            metric_attribute = getattr(self.object.metrics, metric_name)
             assert metric_attribute.tracker is not None
             possibile_tracker_types = (Counter, Gauge, Histogram)
             assert isinstance(metric_attribute.tracker, possibile_tracker_types)
@@ -106,5 +113,5 @@ class BaseComponentTestCase(ABC):
         assert self.expected_metrics, "expected_metrics is empty"
         fullnames = {metric.fullname for metric in self.metric_attributes.values()}
         difference = fullnames.difference(set(self.expected_metrics))
-        assert fullnames == set(self.expected_metrics)
         assert not difference, f"{difference} are not defined in `expected_metrics`"
+        assert fullnames == set(self.expected_metrics)

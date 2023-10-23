@@ -37,7 +37,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         },
     }
 
-    expected_metrics = {
+    expected_metrics = [
         "logprep_confluent_kafka_output_librdkafka_age",
         "logprep_confluent_kafka_output_librdkafka_msg_cnt",
         "logprep_confluent_kafka_output_librdkafka_msg_size",
@@ -54,7 +54,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "logprep_number_of_failed_events",
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
-    }
+    ]
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
     def test_producer_property_instanciates_kafka_producer(self, _):

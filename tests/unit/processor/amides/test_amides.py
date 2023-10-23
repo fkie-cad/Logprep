@@ -24,6 +24,16 @@ class TestAmides(BaseProcessorTestCase):
         "num_rule_attributions": 10,
     }
 
+    expected_metrics = [
+        "logprep_amides_total_cmdlines",
+        "logprep_amides_new_results",
+        "logprep_amides_cached_results",
+        "logprep_amides_num_cache_entries",
+        "logprep_amides_cache_load",
+        "logprep_amides_mean_misuse_detection_time",
+        "logprep_amides_mean_rule_attribution_time",
+    ]
+
     def test_process_event_malicious_process_command_line(self):
         self.object.metrics.total_cmdlines = 0
         self.object.metrics.new_results = 0

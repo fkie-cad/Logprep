@@ -33,7 +33,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "topic": "test_input_raw",
     }
 
-    expected_metrics = {
+    expected_metrics = [
         "logprep_confluent_kafka_input_commit_failures",
         "logprep_confluent_kafka_input_commit_success",
         "logprep_confluent_kafka_input_current_offsets",
@@ -55,7 +55,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "logprep_number_of_failed_events",
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
-    }
+    ]
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_returns_none_if_no_records(self, _):
