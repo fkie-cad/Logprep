@@ -85,12 +85,12 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         """
         setUp class for the imported TestCase
         """
-        super().setup_method()
         self.patchers = []
         for name, kwargs in self.mocks.items():
             patcher = mock.patch(name, **kwargs)
             patcher.start()
             self.patchers.append(patcher)
+        super().setup_method()
         config = {"Test Instance Name": self.CONFIG}
         self.object = Factory.create(configuration=config, logger=self.logger)
         self.specific_rules = self.set_rules(self.specific_rules_dirs)
