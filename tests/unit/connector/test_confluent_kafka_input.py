@@ -14,7 +14,7 @@ from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
     FatalInputError,
-    WarningInputError,
+    InputWarning,
 )
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
@@ -213,7 +213,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             self.object.get_next(0.01)
 
     def test_commit_callback_raises_warning_error_and_counts_failures(self):
-        with pytest.raises(WarningInputError, match="Could not commit offsets"):
+        with pytest.raises(InputWarning, match="Could not commit offsets"):
             self.object._commit_callback(BaseException, ["topic_partition"])
             assert self.object._commit_failures == 1
 

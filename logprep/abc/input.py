@@ -22,10 +22,11 @@ from logprep.util.time import UTC, TimeParser
 from logprep.util.validators import dict_structure_validator
 
 
-class InputError(BaseException):
+class InputError(Exception):
     """Base class for Input related exceptions."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
+        input_connector.metrics.number_of_errors += 1
         super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
 
 
@@ -44,26 +45,17 @@ class CriticalInputParsingError(CriticalInputError):
 class FatalInputError(InputError):
     """Must not be catched."""
 
-    def __init__(self, input_connector: "Input", message: str) -> None:
-        super().__init__(input_connector, message)
 
-
-class WarningInputError(InputError):
+class InputWarning(Exception):
     """May be catched but must be displayed to the user/logged."""
 
     def __init__(self, input_connector: "Input", message: str) -> None:
-        super().__init__(input_connector, message)
+        input_connector.metrics.number_of_warnings += 1
+        super().__init__(f"{self.__class__.__name__} in {input_connector.describe()}: {message}")
 
 
-class SourceDisconnectedError(WarningInputError):
+class SourceDisconnectedWarning(InputWarning):
     """Lost (or failed to establish) contact with the source."""
-
-    def __init__(self, input_connector: "Input", message: str) -> None:
-        super().__init__(input_connector, message)
-
-
-class InfoInputError(InputError):
-    """Informational exceptions, e.g. to inform that a timeout occurred"""
 
 
 @define(kw_only=True)

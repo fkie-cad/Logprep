@@ -18,14 +18,14 @@ from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
     FatalInputError,
-    SourceDisconnectedError,
-    WarningInputError,
+    InputWarning,
+    SourceDisconnectedWarning,
 )
 from logprep.abc.output import (
     CriticalOutputError,
     FatalOutputError,
     Output,
-    WarningOutputError,
+    OutputWarning,
 )
 from logprep.factory import Factory
 from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline, SharedCounter
@@ -193,7 +193,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
 
         def raise_warning_error(_):
-            raise WarningInputError(self.pipeline._input, "i warn you")
+            raise InputWarning(self.pipeline._input, "i warn you")
 
         self.pipeline._input.metrics = mock.MagicMock()
         self.pipeline._input.metrics.number_of_warnings = 0
@@ -204,7 +204,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.side_effect = None
         self.pipeline.process_pipeline()
         assert self.pipeline._input.get_next.call_count == 3
-        mock_warning.assert_called_with(str(WarningInputError(self.pipeline._input, "i warn you")))
+        mock_warning.assert_called_with(str(InputWarning(self.pipeline._input, "i warn you")))
         assert self.pipeline._output["dummy"].store.call_count == 2
 
     @mock.patch("logging.Logger.warning")
@@ -214,7 +214,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._output["dummy"].metrics = mock.MagicMock()
         self.pipeline._output["dummy"].metrics.number_of_warnings = 0
         self.pipeline.process_pipeline()
-        self.pipeline._output["dummy"].store.side_effect = WarningOutputError(
+        self.pipeline._output["dummy"].store.side_effect = OutputWarning(
             self.pipeline._output["dummy"], ""
         )
         self.pipeline.process_pipeline()
@@ -306,14 +306,14 @@ class TestPipeline(ConfigurationForTests):
     @mock.patch("logging.Logger.warning")
     def test_input_warning_is_logged(self, mock_warning, _):
         def raise_warning(_):
-            raise WarningInputError(self.pipeline._input, "mock input warning")
+            raise InputWarning(self.pipeline._input, "mock input warning")
 
         self.pipeline._setup()
         self.pipeline._input.get_next.side_effect = raise_warning
         self.pipeline.process_pipeline()
         self.pipeline._input.get_next.assert_called()
         mock_warning.assert_called_with(
-            str(WarningInputError(self.pipeline._input, "mock input warning"))
+            str(InputWarning(self.pipeline._input, "mock input warning"))
         )
 
     @mock.patch("logging.Logger.error")
@@ -342,7 +342,7 @@ class TestPipeline(ConfigurationForTests):
         dummy_output = original_create({"dummy_output": {"type": "dummy_output"}}, mock.MagicMock())
 
         def raise_warning(event):
-            raise WarningOutputError(self.pipeline._output["dummy"], "mock output warning")
+            raise OutputWarning(self.pipeline._output["dummy"], "mock output warning")
 
         input_event = {"test": "message"}
         dummy_output.store = raise_warning
@@ -351,7 +351,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._input.get_next.return_value = (input_event, None)
         self.pipeline.process_pipeline()
         mock_warning.assert_called_with(
-            str(WarningOutputError(self.pipeline._output["dummy"], "mock output warning"))
+            str(OutputWarning(self.pipeline._output["dummy"], "mock output warning"))
         )
 
     @mock.patch("logging.Logger.error")
@@ -746,7 +746,7 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         pipeline._input.get_next = mock.MagicMock()
 
         def raise_source_disconnected_error(_):
-            raise SourceDisconnectedError(pipeline._input, "source was disconnected")
+            raise SourceDisconnectedWarning(pipeline._input, "source was disconnected")
 
         pipeline._input.get_next.side_effect = raise_source_disconnected_error
         pipeline.start()

@@ -20,12 +20,12 @@ Example
 """
 import copy
 from functools import cached_property
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 from attr import field, validators
 from attrs import define
 
-from logprep.abc.input import Input, SourceDisconnectedError
+from logprep.abc.input import Input, SourceDisconnectedWarning
 
 
 class DummyInput(Input):
@@ -51,7 +51,7 @@ class DummyInput(Input):
         """Retrieve next document from configuration and raise error if found"""
         if not self._documents:
             if not self._config.repeat_documents:
-                raise SourceDisconnectedError(self, "no documents left")
+                raise SourceDisconnectedWarning(self, "no documents left")
             del self.__dict__["_documents"]
 
         document = self._documents.pop(0)

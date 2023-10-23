@@ -35,7 +35,7 @@ class TestFieldExsitsWarning(ExceptionBaseTest):
 
     def setup_method(self):
         super().setup_method()
-        self.exception_args = (self.rule, self.event, ["my_field"])
+        self.exception_args = (self.object, self.event, ["my_field"])
 
 
 class TestProcessingCriticalError(ExceptionBaseTest):
@@ -59,4 +59,4 @@ class TestProcessingError(ExceptionBaseTest):
 
     def setup_method(self):
         super().setup_method()
-        self.exception_args = ("the error message", self.rule)
+        self.exception_args = ("the error message", self.object)

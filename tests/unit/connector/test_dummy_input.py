@@ -5,7 +5,7 @@ import copy
 
 from pytest import raises
 
-from logprep.abc.input import SourceDisconnectedError
+from logprep.abc.input import SourceDisconnectedWarning
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
 
@@ -20,7 +20,7 @@ class TestDummyInput(BaseInputTestCase):
     CONFIG = {"type": "dummy_input", "documents": []}
 
     def test_fails_with_disconnected_error_if_input_was_empty(self):
-        with raises(SourceDisconnectedError):
+        with raises(SourceDisconnectedWarning):
             self.object.get_next(self.timeout)
 
     def test_returns_documents_in_order_provided(self):

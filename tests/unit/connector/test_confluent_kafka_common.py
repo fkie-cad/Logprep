@@ -29,11 +29,13 @@ class CommonConfluentKafkaTestCase:
             _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
 
     def test_error_callback_logs_warnings(self):
+        self.object.metrics.number_of_warnings = 0
         with mock.patch("logging.Logger.warning") as mock_warning:
             test_error = BaseException("test error")
             self.object._error_callback(test_error)
             mock_warning.assert_called()
             mock_warning.assert_called_with(f"{self.object.describe()}: {test_error}")
+        assert self.object.metrics.number_of_warnings == 1
 
     def test_stats_callback_sets_metric_objetc_attributes(self):
         librdkafka_metrics = tuple(

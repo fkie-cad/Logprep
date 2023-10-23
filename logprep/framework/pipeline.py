@@ -28,14 +28,14 @@ from logprep.abc.input import (
     CriticalInputParsingError,
     FatalInputError,
     Input,
-    SourceDisconnectedError,
-    WarningInputError,
+    InputWarning,
+    SourceDisconnectedWarning,
 )
 from logprep.abc.output import (
     CriticalOutputError,
     FatalOutputError,
     Output,
-    WarningOutputError,
+    OutputWarning,
 )
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
@@ -97,10 +97,10 @@ def _handle_pipeline_error(func):
     def _inner(self: "Pipeline") -> Any:
         try:
             return func(self)
-        except SourceDisconnectedError as error:
+        except SourceDisconnectedWarning as error:
             self.logger.warning(str(error))
             self.stop()
-        except (WarningOutputError, WarningInputError) as error:
+        except (OutputWarning, InputWarning) as error:
             self.logger.warning(str(error))
         except CriticalOutputError as error:
             self.logger.error(str(error))

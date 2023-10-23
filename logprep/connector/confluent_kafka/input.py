@@ -51,7 +51,7 @@ from logprep.abc.input import (
     CriticalInputParsingError,
     FatalInputError,
     Input,
-    WarningInputError,
+    InputWarning,
 )
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util.validators import keys_in_validator
@@ -336,9 +336,7 @@ class ConfluentKafkaInput(Input):
         """
         if error is not None:
             self.metrics.commit_failures += 1
-            raise WarningInputError(
-                self, f"Could not commit offsets for {topic_partitions}: {error}"
-            )
+            raise InputWarning(self, f"Could not commit offsets for {topic_partitions}: {error}")
         self.metrics.commit_success += 1
         for topic_partition in topic_partitions:
             offset = topic_partition.offset
