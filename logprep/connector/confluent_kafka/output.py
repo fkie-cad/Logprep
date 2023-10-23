@@ -191,6 +191,7 @@ class ConfluentKafkaOutput(Output):
         error : KafkaException
             the error that occurred
         """
+        self.metrics.number_of_warnings += 1
         self._logger.warning(f"{self.describe()}: {error}")
 
     def _stats_callback(self, stats: str) -> None:
