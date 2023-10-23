@@ -38,17 +38,22 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
     }
 
     expected_metrics = {
-        "librdkafka_age",
-        "librdkafka_msg_cnt",
-        "librdkafka_msg_size",
-        "librdkafka_msg_max",
-        "librdkafka_msg_size_max",
-        "librdkafka_tx",
-        "librdkafka_tx_bytes",
-        "librdkafka_rx",
-        "librdkafka_rx_bytes",
-        "librdkafka_txmsgs",
-        "librdkafka_txmsg_bytes",
+        "logprep_confluent_kafka_output_librdkafka_age",
+        "logprep_confluent_kafka_output_librdkafka_msg_cnt",
+        "logprep_confluent_kafka_output_librdkafka_msg_size",
+        "logprep_confluent_kafka_output_librdkafka_msg_max",
+        "logprep_confluent_kafka_output_librdkafka_msg_size_max",
+        "logprep_confluent_kafka_output_librdkafka_tx",
+        "logprep_confluent_kafka_output_librdkafka_tx_bytes",
+        "logprep_confluent_kafka_output_librdkafka_rx",
+        "logprep_confluent_kafka_output_librdkafka_rx_bytes",
+        "logprep_confluent_kafka_output_librdkafka_txmsgs",
+        "logprep_confluent_kafka_output_librdkafka_txmsg_bytes",
+        "logprep_processing_time_per_event",
+        "logprep_number_of_processed_events",
+        "logprep_number_of_failed_events",
+        "logprep_number_of_warnings",
+        "logprep_number_of_errors",
     }
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")

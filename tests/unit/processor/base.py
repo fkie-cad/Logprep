@@ -85,6 +85,7 @@ class BaseProcessorTestCase(BaseComponentTestCase):
         """
         setUp class for the imported TestCase
         """
+        super().setup_method()
         self.patchers = []
         for name, kwargs in self.mocks.items():
             patcher = mock.patch(name, **kwargs)

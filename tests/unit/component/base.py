@@ -22,16 +22,11 @@ class BaseComponentTestCase(ABC):
     CONFIG: dict = {}
     object: Connector = None
     logger = getLogger()
-    expected_metrics: list
+    expected_metrics: list = []
 
     block_list = [
         "_labels",
         "_prefix",
-        "processing_time_per_event",
-        "number_of_processed_events",
-        "number_of_failed_events",
-        "number_of_warnings",
-        "number_of_errors",
     ]
 
     def setup_method(self) -> None:
@@ -89,7 +84,7 @@ class BaseComponentTestCase(ABC):
     def test_custom_metrics_adds_custom_prefix_to_metrics_name(self):
         for attribute in self.metric_attributes.values():
             assert attribute.fullname.startswith(
-                f"logprep_{camel_to_snake(self.object.__class__.__name__)}"
+                f"logprep_"
             ), f"{attribute.fullname}, logprep_{camel_to_snake(self.object.__class__.__name__)}"
 
     def test_expected_metrics_attributes(self):
@@ -106,5 +101,10 @@ class BaseComponentTestCase(ABC):
             assert isinstance(metric_attribute.tracker, possibile_tracker_types)
 
     def test_all_metric_attributes_are_tested(self):
-        difference = set(self.metric_attributes).difference(set(self.expected_metrics))
+        if self.object.__class__.Metrics is Component.Metrics:
+            return
+        assert self.expected_metrics, "expected_metrics is empty"
+        fullnames = {metric.fullname for metric in self.metric_attributes.values()}
+        difference = fullnames.difference(set(self.expected_metrics))
+        assert fullnames == set(self.expected_metrics)
         assert not difference, f"{difference} are not defined in `expected_metrics`"

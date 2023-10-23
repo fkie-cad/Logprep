@@ -22,6 +22,14 @@ class BaseConnectorTestCase(BaseComponentTestCase):
     object: Connector = None
     logger = getLogger()
 
+    expected_metrics = [
+        "logprep_processing_time_per_event",
+        "logprep_number_of_processed_events",
+        "logprep_number_of_failed_events",
+        "logprep_number_of_warnings",
+        "logprep_number_of_errors",
+    ]
+
     def test_is_a_connector_implementation(self):
         assert isinstance(self.object, Connector)
 

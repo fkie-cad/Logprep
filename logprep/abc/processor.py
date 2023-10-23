@@ -69,25 +69,9 @@ class Processor(Component):
         """Set if the processor should be applied multiple times. This enables further processing
         of an output with the same processor."""
 
-    @define(kw_only=True)
-    class Metrics(Component.Metrics):
-        """Tracks statistics about this processor"""
-
-        number_of_processed_events = field(default=None)
-        number_of_failed_events = field(default=None)
-
-        processing_time_per_event: HistogramMetric = field(
-            factory=lambda: HistogramMetric(
-                description="Time in seconds that it took to process an event",
-                name="processing_time_per_event",
-            )
-        )
-        """Time in seconds that it took to process an event"""
-
     __slots__ = [
         "rule_class",
         "has_custom_tests",
-        "metrics",
         "_event",
         "_specific_tree",
         "_generic_tree",
@@ -95,7 +79,6 @@ class Processor(Component):
 
     rule_class: "Rule"
     has_custom_tests: bool
-    metrics: "Processor.Metrics"
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
