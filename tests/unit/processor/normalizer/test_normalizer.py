@@ -24,6 +24,7 @@ from logprep.util.time import TimeParser
 from tests.unit.processor.base import BaseProcessorTestCase
 
 
+@pytest.skip("deprecated", allow_module_level=True)
 class TestNormalizer(BaseProcessorTestCase):
     CONFIG = {
         "type": "normalizer",

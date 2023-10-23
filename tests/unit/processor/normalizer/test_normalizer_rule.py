@@ -27,6 +27,7 @@ def fixture_specific_rule_definition():
     }
 
 
+@pytest.skip("deprecated", allow_module_level=True)
 class TestNormalizerRule:
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
