@@ -347,15 +347,12 @@ class Pipeline:
         """process all processors for one event"""
 
         """
-        ToDos:
-            - Processor Specific Metrics (Pseudonymizer, Amides, DomainResolver)
-            - Fix Pseudonymizer str has no match
+        TODOs:
             - Tests
             - delete SharedCounter (Events in last 5 min: n)
             - create Grafana Dashboards
             - add pipelinemanager metrics (pipeline restarts)
             - clean up PrometheusExporter ("remove stale metric files" stil needed?)
-            - add Kafka librdkafka metrics
             - add version info to metrics
             - enforce rule_id should be unique
         """

@@ -5,7 +5,13 @@
 import re
 
 import pytest
-from prometheus_client import CollectorRegistry, Counter, Histogram, generate_latest
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 
 from logprep.abc.component import Component
 from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric
@@ -79,7 +85,7 @@ class TestsMetric:
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
         assert 'logprep_bla_total{pipeline="1"} 1.0' in metric_output
 
-    def test_counter_metric_increments_twice(self):
+    def test_counter_metric_increments_twice_adds_metric(self):
         metric = CounterMetric(
             name="bla",
             description="empty description",
@@ -148,6 +154,84 @@ class TestsMetric:
                 labels={"pipeline": "2"},
                 registry=self.custom_registry,
             )
+
+
+class TestGaugeMetric:
+    def setup_method(self):
+        self.custom_registry = CollectorRegistry()
+
+    def test_init_tracker_returns_collector(self):
+        metric = GaugeMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        assert isinstance(metric.tracker, Gauge)
+
+    def test_gauge_metric_increments_correctly(self):
+        metric = GaugeMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert 'logprep_bla{pipeline="1"} 1.0' in metric_output
+
+    def test_gauge_metric_increment_twice_sets_metric(self):
+        metric = GaugeMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric += 1
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert 'logprep_bla{pipeline="1"} 1.0' in metric_output
+
+
+class TestHistogramMetric:
+    def setup_method(self):
+        self.custom_registry = CollectorRegistry()
+
+    def test_init_tracker_returns_collector(self):
+        metric = HistogramMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        assert isinstance(metric.tracker, Histogram)
+
+    def test_gauge_metric_increments_correctly(self):
+        metric = HistogramMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert re.search(r'logprep_bla_sum\{pipeline="1"\} 1\.0', metric_output)
+        assert re.search(r'logprep_bla_count\{pipeline="1"\} 1\.0', metric_output)
+        assert re.search(r'logprep_bla_bucket\{le=".*",pipeline="1"\} \d+', metric_output)
+
+    def test_gauge_metric_increment_twice_sets_metric(self):
+        metric = HistogramMetric(
+            name="bla",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
+        metric += 1
+        metric += 1
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert re.search(r'logprep_bla_sum\{pipeline="1"\} 2\.0', metric_output)
+        assert re.search(r'logprep_bla_count\{pipeline="1"\} 2\.0', metric_output)
+        assert re.search(r'logprep_bla_bucket\{le=".*",pipeline="1"\} \d+', metric_output)
 
 
 class TestComponentMetric:
