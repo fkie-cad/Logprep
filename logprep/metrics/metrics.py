@@ -11,7 +11,7 @@ def get_default_labels():
     return {"component": None, "name": None, "type": None, "description": None}
 
 
-@define(kw_only=True)
+@define(kw_only=True, slots=False)
 class Metric(ABC):
     """Metric base class"""
 

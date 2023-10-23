@@ -22,18 +22,24 @@ class TestsMetric:
             labels={"A": "a"},
             registry=self.custom_registry,
         )
-        metric.init_tracker()
         assert isinstance(metric.tracker, Counter)
 
     def test_init_tracker_does_not_raise_if_initialized_twice(self):
-        metric = CounterMetric(
+        metric1 = CounterMetric(
             name="testmetric",
             description="empty description",
             labels={"A": "a"},
             registry=self.custom_registry,
         )
-        assert metric.init_tracker() == metric.init_tracker()
-        assert isinstance(metric.tracker, Counter)
+        metric2 = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        assert isinstance(metric1.tracker, Counter)
+        assert isinstance(metric2.tracker, Counter)
+        assert metric1.tracker == metric2.tracker
 
     def test_counter_metric_sets_labels(self):
         metric = CounterMetric(

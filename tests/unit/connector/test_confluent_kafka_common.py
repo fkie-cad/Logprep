@@ -32,7 +32,8 @@ class CommonConfluentKafkaTestCase:
             mock_warning.assert_called()
             mock_warning.assert_called_with(f"{self.object.describe()}: {test_error}")
 
-    def test_stats_callback_sets_stats_in_metric_object(self):
+    def test_stats_callback_sets_metric_objetc_attributes(self):
+        self.object.metrics.librdkafka_age = 0
         json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
         self.object._stats_callback(json_string)
-        assert self.object.metrics._stats == json.loads(json_string)
+        assert self.object.metrics.librdkafka_age == 1337

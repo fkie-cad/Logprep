@@ -36,6 +36,7 @@ from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
+from logprep.metrics.metrics import GaugeMetric
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -55,43 +56,13 @@ class ConfluentKafkaOutput(Output):
     class Metrics(Output.Metrics):
         """Metrics for ConfluentKafkaOutput"""
 
-        _prefix = "logprep_connector_output_kafka_"
-
-        _producer_client_id: str = ""
-        """client id of the producer. Is filled during initialization."""
-
-        _stats: dict = field(factory=dict)
-        """statistcs form librdkafka. Is filled by `_stats_callback`."""
-
-        @cached_property
-        def _rdkafka_labels(self) -> str:
-            client_id = self._producer_client_id
-            labels = {"client_id": client_id}
-            labels = self._labels | labels
-            labels = [":".join(item) for item in labels.items()]
-            labels = ",".join(labels)
-            return labels
-
-        def _get_top_level_metrics(self) -> dict:
-            return {
-                f"{self._prefix}librdkafka_producer_{stat};{self._rdkafka_labels}": value
-                for stat, value in self._stats.items()
-                if isinstance(value, (int, float))
-            }
-
-        def expose(self) -> dict:
-            """overload of `expose` to add kafka specific metrics
-
-            Returns
-            -------
-            dict
-                metrics dictionary
-            """
-            exp = super().expose()
-            labels = [":".join(item) for item in self._labels.items()]
-            labels = ",".join(labels)
-            exp |= self._get_top_level_metrics()
-            return exp
+        librdkafka_age: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Time since this client instance was created (microseconds)",
+                name="confluent_kafka_output_librdkafka_age",
+            )
+        )
+        """Time since this client instance was created (microseconds)"""
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
@@ -152,7 +123,7 @@ class ConfluentKafkaOutput(Output):
         """
         self._logger.warning(f"{self.describe()}: {error}")
 
-    def _stats_callback(self, stats: str):
+    def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
@@ -163,7 +134,9 @@ class ConfluentKafkaOutput(Output):
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
-        self.metrics._stats = self._decoder.decode(stats)  # pylint: disable=protected-access
+
+        stats = self._decoder.decode(stats)
+        self.metrics.librdkafka_age += stats.get("age", 0)
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
