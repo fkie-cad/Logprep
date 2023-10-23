@@ -1,0 +1,16 @@
+[
+    {
+        "filter": "message",
+        "dissector": {},
+        "description": "do nothing rule for dissector"
+    },
+    {
+        "filter": "message",
+        "dissector": {
+            "mapping": {
+                "message": "%{source} %{target}"
+            }
+        },
+        "description": "do nothing rule for dissector"
+    }
+]
