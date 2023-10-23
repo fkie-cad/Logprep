@@ -14,7 +14,7 @@ from prometheus_client import (
 )
 
 from logprep.abc.component import Component
-from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric
+from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
 
 
 class TestsMetric:
@@ -250,6 +250,13 @@ class TestComponentMetric:
         )
 
     def setup_method(self):
+        self.custom_registry = CollectorRegistry()
+        TestComponentMetric.Metrics.test_metric_histogram = HistogramMetric(
+            name="test_metric_histogram",
+            description="empty description",
+            labels={"pipeline": "1"},
+            registry=self.custom_registry,
+        )
         self.metrics = self.Metrics(labels={"label1": "value1", "label2": "value2"})
 
     def test_init(self):
@@ -285,3 +292,24 @@ class TestComponentMetric:
         metric = self.metrics.test_metric_without_label_values
         metric_object = metric.tracker.collect()[0]
         assert len(metric_object.samples) == 0
+
+    @Metric.measure_time(metric_name="test_metric_histogram")
+    def decorated_function(self):
+        pass
+
+    def test_measure_time_measures(self):
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert re.search(r'test_metric_histogram_sum\{pipeline="1"\} 0\.0', metric_output)
+        assert re.search(r'test_metric_histogram_count\{pipeline="1"\} 0\.0', metric_output)
+        assert re.search(
+            r'test_metric_histogram_bucket\{le="0.1",pipeline="1"\} 0\.0', metric_output
+        )
+
+        self.decorated_function()
+
+        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        assert not re.search(r'test_metric_histogram_sum\{pipeline="1"\} 0\.0', metric_output)
+        assert re.search(r'test_metric_histogram_count\{pipeline="1"\} 1\.0', metric_output)
+        assert re.search(
+            r'test_metric_histogram_bucket\{le="0.1",pipeline="1"\} 1\.0', metric_output
+        )
