@@ -122,6 +122,28 @@ class ConfluentKafkaInput(Input):
         )
         """Time since this client instance was created (microseconds)"""
 
+        librdkafka_replyq: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()",
+                name="confluent_kafka_input_librdkafka_replyq",
+            )
+        )
+        """Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()"""
+        librdkafka_tx: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of requests sent to Kafka brokers",
+                name="confluent_kafka_input_librdkafka_tx",
+            )
+        )
+        """Total number of requests sent to Kafka brokers"""
+        librdkafka_tx_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of bytes transmitted to Kafka brokers",
+                name="confluent_kafka_input_librdkafka_tx_bytes",
+            )
+        )
+        """Total number of bytes transmitted to Kafka brokers"""
+
         librdkafka_rx: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Total number of responses received from Kafka brokers",

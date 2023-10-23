@@ -63,6 +63,76 @@ class ConfluentKafkaOutput(Output):
             )
         )
         """Time since this client instance was created (microseconds)"""
+        librdkafka_msg_cnt: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Current number of messages in producer queues",
+                name="confluent_kafka_output_librdkafka_msg_cnt",
+            )
+        )
+        """Current number of messages in producer queues"""
+        librdkafka_msg_size: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Current total size of messages in producer queues",
+                name="confluent_kafka_output_librdkafka_msg_size",
+            )
+        )
+        """Current total size of messages in producer queues"""
+        librdkafka_msg_max: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Threshold: maximum number of messages allowed allowed on the producer queues",
+                name="confluent_kafka_output_librdkafka_msg_max",
+            )
+        )
+        """Threshold: maximum number of messages allowed allowed on the producer queues"""
+        librdkafka_msg_size_max: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Threshold: maximum total size of messages allowed on the producer queues",
+                name="confluent_kafka_output_librdkafka_msg_size_max",
+            )
+        )
+        """Threshold: maximum total size of messages allowed on the producer queues"""
+        librdkafka_tx: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of requests sent to Kafka brokers",
+                name="confluent_kafka_output_librdkafka_tx",
+            )
+        )
+        """Total number of requests sent to Kafka brokers"""
+        librdkafka_tx_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of bytes transmitted to Kafka brokers",
+                name="confluent_kafka_output_librdkafka_tx_bytes",
+            )
+        )
+        """Total number of bytes transmitted to Kafka brokers"""
+        librdkafka_rx: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of responses received from Kafka brokers",
+                name="confluent_kafka_output_librdkafka_rx",
+            )
+        )
+        """Total number of responses received from Kafka brokers"""
+        librdkafka_rx_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of bytes received from Kafka brokers",
+                name="confluent_kafka_output_librdkafka_rx_bytes",
+            )
+        )
+        """Total number of bytes received from Kafka brokers"""
+        librdkafka_txmsgs: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of messages transmitted (produced) to Kafka brokers",
+                name="confluent_kafka_output_librdkafka_txmsgs",
+            )
+        )
+        """Total number of messages transmitted (produced) to Kafka brokers"""
+        librdkafka_txmsg_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of message bytes (including framing, such as per-Message framing and MessageSet/batch framing) transmitted to Kafka brokers",
+                name="confluent_kafka_output_librdkafka_txmsg_bytes",
+            )
+        )
+        """Total number of message bytes (including framing, such as per-Message framing and MessageSet/batch framing) transmitted to Kafka brokers"""
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
