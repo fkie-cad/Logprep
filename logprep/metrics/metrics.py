@@ -1,5 +1,4 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
-import time
 from abc import ABC, abstractmethod
 from typing import Union
 

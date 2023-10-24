@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+# pylint: disable=unnecessary-dunder-call
 import base64
 import json
 import os

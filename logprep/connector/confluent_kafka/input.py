@@ -83,8 +83,6 @@ class ConfluentKafkaInput(Input):
     class Metrics(Input.Metrics):
         """Metrics for ConfluentKafkaInput"""
 
-        # _stats: dict = field(factory=dict)
-        # """statistcs form librdkafka. Is filled by `_stats_callback`"""
         commit_failures: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="count of failed commits. Is filled by `_commit_callback",
@@ -120,6 +118,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Time since this client instance was created (microseconds)",
                 name="confluent_kafka_input_librdkafka_age",
+                inject_label_values=False,
             )
         )
         """Time since this client instance was created (microseconds)"""
@@ -128,6 +127,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()",
                 name="confluent_kafka_input_librdkafka_replyq",
+                inject_label_values=False,
             )
         )
         """Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()"""
@@ -135,6 +135,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Total number of requests sent to Kafka brokers",
                 name="confluent_kafka_input_librdkafka_tx",
+                inject_label_values=False,
             )
         )
         """Total number of requests sent to Kafka brokers"""
@@ -142,6 +143,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Total number of bytes transmitted to Kafka brokers",
                 name="confluent_kafka_input_librdkafka_tx_bytes",
+                inject_label_values=False,
             )
         )
         """Total number of bytes transmitted to Kafka brokers"""
@@ -150,6 +152,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Total number of responses received from Kafka brokers",
                 name="confluent_kafka_input_librdkafka_rx",
+                inject_label_values=False,
             )
         )
         """Total number of responses received from Kafka brokers"""
@@ -157,6 +160,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Total number of bytes received from Kafka brokers",
                 name="confluent_kafka_input_librdkafka_rx_bytes",
+                inject_label_values=False,
             )
         )
         """Total number of bytes received from Kafka brokers"""
@@ -164,6 +168,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers.",
                 name="confluent_kafka_input_librdkafka_rxmsgs",
+                inject_label_values=False,
             )
         )
         """Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers."""
@@ -171,6 +176,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Total number of message bytes (including framing) received from Kafka brokers",
                 name="confluent_kafka_input_librdkafka_rxmsg_bytes",
+                inject_label_values=False,
             )
         )
         """Total number of message bytes (including framing) received from Kafka brokers"""
@@ -179,6 +185,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Time elapsed since last state change (milliseconds).",
                 name="confluent_kafka_input_librdkafka_cgrp_stateage",
+                inject_label_values=False,
             )
         )
         """Time elapsed since last state change (milliseconds)."""
@@ -186,6 +193,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Time elapsed since last rebalance (assign or revoke) (milliseconds).",
                 name="confluent_kafka_input_librdkafka_cgrp_rebalance_age",
+                inject_label_values=False,
             )
         )
         """Time elapsed since last rebalance (assign or revoke) (milliseconds)."""
@@ -193,6 +201,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Total number of rebalances (assign or revoke).",
                 name="confluent_kafka_input_librdkafka_cgrp_rebalance_cnt",
+                inject_label_values=False,
             )
         )
         """Total number of rebalances (assign or revoke)."""
@@ -200,6 +209,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="Current assignment's partition count.",
                 name="confluent_kafka_input_librdkafka_cgrp_assignment_size",
+                inject_label_values=False,
             )
         )
         """Current assignment's partition count."""
