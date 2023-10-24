@@ -177,10 +177,6 @@ class ConfluentKafkaOutput(Output):
         self._config.kafka_config = DEFAULTS | self._config.kafka_config
         return Producer(self._config.kafka_config | injected_config)
 
-    def __init__(self, name: str, configuration: Config, logger: Logger):
-        super().__init__(name, configuration, logger)
-        self.metrics._producer_client_id = self._config.kafka_config.get("client.id", getfqdn())
-
     def _error_callback(self, error: KafkaException):
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.

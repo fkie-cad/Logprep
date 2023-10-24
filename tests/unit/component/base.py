@@ -11,7 +11,6 @@ from attrs import asdict
 from prometheus_client import Counter, Gauge, Histogram
 
 from logprep.abc.component import Component
-from logprep.abc.connector import Connector
 from logprep.factory import Factory
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import camel_to_snake
@@ -19,7 +18,7 @@ from logprep.util.helper import camel_to_snake
 
 class BaseComponentTestCase(ABC):
     CONFIG: dict = {}
-    object: Connector = None
+    object: Component = None
     logger = getLogger()
     expected_metrics: list = []
 
@@ -28,9 +27,12 @@ class BaseComponentTestCase(ABC):
         "_prefix",
     ]
 
+    metric_attributes: dict
+
     def setup_method(self) -> None:
         config = {"Test Instance Name": self.CONFIG}
         self.object = Factory.create(configuration=config, logger=self.logger)
+        assert "metrics" not in self.object.__dict__, "metrics should be a cached_property"
         self.metric_attributes = asdict(
             self.object.metrics,
             filter=partial(self.asdict_filter, block_list=self.block_list),

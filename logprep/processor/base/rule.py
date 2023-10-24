@@ -277,7 +277,11 @@ class Rule:
         self._special_fields = None
         self.file_name = None
         self._config = config
-        self.metrics = self.Metrics(labels=self.metric_labels)
+
+    @cached_property
+    def metrics(self):
+        """create and return metrics object"""
+        return self.Metrics(labels=self.metric_labels)
 
     def __eq__(self, other: "Rule") -> bool:
         return all([other.filter == self._filter, other._config == self._config])

@@ -1,5 +1,6 @@
 """ abstract module for components"""
 from abc import ABC
+from functools import cached_property
 from logging import Logger
 from typing import Callable
 
@@ -57,7 +58,11 @@ class Component(ABC):
         self._logger = logger
         self._config = configuration
         self.name = name
-        self.metrics = self.Metrics(labels=self.metric_labels)
+
+    @cached_property
+    def metrics(self):
+        """create and return metrics object"""
+        return self.Metrics(labels=self.metric_labels)
 
     def __repr__(self):
         return camel_to_snake(self.__class__.__name__)

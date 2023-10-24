@@ -189,9 +189,11 @@ class Pipeline:
         self.pipeline_index = pipeline_index
         self._encoder = msgspec.msgpack.Encoder()
         self._decoder = msgspec.msgpack.Decoder()
-        self.metrics = self.Metrics(
-            labels=self.metric_labels,
-        )
+
+    @cached_property
+    def metrics(self):
+        """create and return metrics object"""
+        return self.Metrics(labels=self.metric_labels)
 
     @cached_property
     def _process_name(self) -> str:

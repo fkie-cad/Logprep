@@ -226,10 +226,6 @@ class Input(Connector):
         """Check and return if the env enrichment should be added to the event."""
         return bool(self._config.preprocessing.get("enrich_by_env_variables"))
 
-    def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
-        self.metrics = self.Metrics(labels=self.metric_labels)
-
     def _get_raw_event(self, timeout: float) -> bytearray:  # pylint: disable=unused-argument
         """Implements the details how to get the raw event
 

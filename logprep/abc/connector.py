@@ -51,7 +51,3 @@ class Connector(Component):
             )
         )
         """Number of errors that occurred while processing events"""
-
-    __slots__ = ["metrics"]
-
-    metrics: Metrics

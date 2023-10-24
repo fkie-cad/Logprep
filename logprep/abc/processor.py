@@ -74,7 +74,6 @@ class Processor(Component):
         "_event",
         "_specific_tree",
         "_generic_tree",
-        "metrics",
     ]
 
     rule_class: "Rule"
@@ -82,7 +81,6 @@ class Processor(Component):
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
-    metrics: Component.Metrics
     _strategy = None
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):

@@ -1,6 +1,7 @@
 """This module contains the rule tree functionality."""
 
 from enum import Enum
+from functools import cached_property
 from logging import Logger
 from typing import TYPE_CHECKING, List, Optional, Union
 
@@ -45,7 +46,6 @@ class RuleTree:
 
     __slots__ = (
         "rule_parser",
-        "metrics",
         "priority_dict",
         "_rule_tree_type",
         "_rule_mapping",
@@ -53,10 +53,10 @@ class RuleTree:
         "_processor_type",
         "_processor_name",
         "_root",
+        "__dict__",
     )
 
     rule_parser: Optional[RuleParser]
-    metrics: Metrics
     priority_dict: dict
     _rule_tree_type: Union[RuleTreeType, str]
     _rule_mapping: dict
@@ -93,12 +93,16 @@ class RuleTree:
         self._rule_tree_type = rule_tree_type.name.lower() if rule_tree_type is not None else ""
         self._processor_type = processor_config.type if processor_name is not None else ""
         self._setup()
-        self.metrics = self.Metrics(labels=self.metric_labels)
 
         if root:
             self._root = root
         else:
             self._root = Node(None)
+
+    @cached_property
+    def metrics(self):
+        """create and return metrics object"""
+        return self.Metrics(labels=self.metric_labels)
 
     @property
     def metric_labels(self) -> dict:
