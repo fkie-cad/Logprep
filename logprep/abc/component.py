@@ -84,6 +84,8 @@ class Component(ABC):
         This is optional.
 
         """
+        # initialize metrics
+        _ = self.metrics
 
     def shut_down(self):
         """Stop processing of this component.

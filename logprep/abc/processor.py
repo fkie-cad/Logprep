@@ -317,6 +317,7 @@ class Processor(Component):
             raise FieldExistsWarning(rule, event, [rule.target_field])
 
     def setup(self):
+        super().setup()
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics
 

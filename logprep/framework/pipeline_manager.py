@@ -104,7 +104,8 @@ class PipelineManager:
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
         self._decrease_to_count(0)
-        self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
+        if self.prometheus_exporter:
+            self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
 
     def _create_pipeline(self, index) -> MultiprocessingPipeline:
         if self._configuration is None:

@@ -166,7 +166,13 @@ class Pseudonymizer(Processor):
         self._cache = None
         self.pseudonyms = []
         self.pseudonymized_fields = set()
-        self.setup()
+        self._encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
+        self._cache = Cache(
+            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
+        )
+        self._init_tld_extractor()
+        self._load_regex_mapping(self._config.regex_mapping)
+        self._replace_regex_keywords_by_regex_expression()
 
     @cached_property
     def _url_extractor(self):
@@ -183,15 +189,6 @@ class Pseudonymizer(Processor):
     @cached_property
     def _encrypter(self):
         return DualPKCS1HybridEncrypter()
-
-    def setup(self):
-        self._encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
-        self._cache = Cache(
-            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
-        )
-        self._init_tld_extractor()
-        self._load_regex_mapping(self._config.regex_mapping)
-        self._replace_regex_keywords_by_regex_expression()
 
     def _init_tld_extractor(self):
         if self._config.tld_lists is not None:
