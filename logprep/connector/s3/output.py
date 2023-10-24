@@ -63,6 +63,7 @@ from botocore.exceptions import (
 )
 
 from logprep.abc.output import Output
+from logprep.metrics.metrics import Metric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 
@@ -186,6 +187,7 @@ class S3Output(Output):
                 prefix = re.sub(date_format_match, formatted_date, prefix)
         return prefix
 
+    @Metric.measure_time()
     def _write_to_s3_resource(self, document: dict, prefix: str):
         """Writes a document into s3 bucket using given prefix.
 
