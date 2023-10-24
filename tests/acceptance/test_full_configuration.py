@@ -211,4 +211,14 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     ]
     for expeced_metric in expected_metrics:
         assert re.search(expeced_metric, metrics), f"Metric {expeced_metric} not found in metrics"
+    forbidden_metrics = [
+        r"component=\"None\"",
+        r"type=\"None\"",
+        r"name=\"None\"",
+        r"description=\"None\"",
+    ]
+    for forbidden_metric in forbidden_metrics:
+        assert not re.search(
+            forbidden_metric, metrics
+        ), f"Metric {forbidden_metric} found in metrics"
     proc.kill()
