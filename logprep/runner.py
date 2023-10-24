@@ -165,7 +165,6 @@ class Runner:
 
         self._logger.info("Initiated shutdown")
         self._manager.stop()
-        self._cleanup_prometheus_multiprocess_dir()
         self._logger.info("Shutdown complete")
 
     def _loop(self):
@@ -246,15 +245,6 @@ class Runner:
                 self._logger.info("Shutting down")
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
-
-    def _cleanup_prometheus_multiprocess_dir(self):
-        multiprocess_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
-        self._logger.info(f"Cleaning up {multiprocess_dir}")
-        for root, dirs, files in os.walk(multiprocess_dir):
-            for file in files:
-                os.remove(os.path.join(root, file))
-            for directory in dirs:
-                shutil.rmtree(os.path.join(root, directory), ignore_errors=True)
 
     def _keep_iterating(self):
         """generator function"""

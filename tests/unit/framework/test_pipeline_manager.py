@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import os
 from logging import Logger
 from unittest import mock
 
@@ -155,31 +156,18 @@ class TestPipelineManager:
         for logprep_instance in logprep_instances:
             assert logprep_instance.was_started and logprep_instance.was_stopped
 
-    @mock.patch("logprep.util.prometheus_exporter.PrometheusStatsExporter")
-    def test_restart_failed_pipelines_removes_metrics_database_if_prometheus_target_is_configured(
-        self, prometheus_exporter_mock
-    ):
+    def test_restart_failed_pipelines_calls_prometheus_cleanup_method(self, tmpdir):
+        os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
         failed_pipeline = mock.MagicMock()
         failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
         failed_pipeline.is_alive.return_value = False  # nosemgrep
         failed_pipeline.pid = 42
         manager = PipelineManager()
         manager.set_configuration({"metrics": {"enabled": True}, "process_count": 2})
+        prometheus_exporter_mock = mock.MagicMock()
         manager.prometheus_exporter = prometheus_exporter_mock
         manager._pipelines = [failed_pipeline]
         manager.restart_failed_pipeline()
-        prometheus_exporter_mock.remove_metrics_from_process.assert_called()
-        prometheus_exporter_mock.remove_metrics_from_process.assert_called_with(42)
-
-    @mock.patch("logprep.util.prometheus_exporter.PrometheusStatsExporter")
-    def test_restart_failed_pipelines_skips_removal_of_metrics_database_if_prometheus_is_not_enabled(
-        self, prometheus_exporter_mock
-    ):
-        failed_pipeline = mock.MagicMock()
-        failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
-        failed_pipeline.is_alive.return_value = False  # nosemgrep
-        manager = PipelineManager()
-        manager._pipelines = [failed_pipeline]
-        manager._configuration = {"process_count": 2}
-        manager.restart_failed_pipeline()
-        prometheus_exporter_mock.remove_metrics_from_process.assert_not_called()
+        prometheus_exporter_mock.mark_process_dead.assert_called()
+        prometheus_exporter_mock.mark_process_dead.assert_called_with(42)
+        del os.environ["PROMETHEUS_MULTIPROC_DIR"]

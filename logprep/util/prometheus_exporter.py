@@ -1,4 +1,7 @@
 """This module contains functionality to start a prometheus exporter and expose metrics with it"""
+import os
+import shutil
+
 from prometheus_client import REGISTRY, Gauge, multiprocess, start_http_server
 
 
@@ -23,7 +26,19 @@ class PrometheusStatsExporter:
         """
         multiprocess.MultiProcessCollector(REGISTRY, self.multi_processing_dir)
 
-    def remove_metrics_from_process(self, pid):
+    def cleanup_prometheus_multiprocess_dir(self):
+        """removes the prometheus multiprocessing directory"""
+        multiprocess_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
+        if not multiprocess_dir:
+            return
+        self._logger.info(f"Cleaning up {multiprocess_dir}")
+        for root, dirs, files in os.walk(multiprocess_dir):
+            for file in files:
+                os.remove(os.path.join(root, file))
+            for directory in dirs:
+                shutil.rmtree(os.path.join(root, directory), ignore_errors=True)
+
+    def mark_process_dead(self, pid):
         """
         Remove the prometheus multiprocessing database file from the multiprocessing directory.
         This ensures that prometheus won't export stale metrics in case a process has died.

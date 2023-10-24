@@ -73,8 +73,8 @@ class TestMetric:
             description="empty description",
             registry=self.custom_registry,
         )
-        metric.init_tracker()
-        assert len(metric.tracker._labelnames) == 4
+        with pytest.raises(ValueError, match="No label names were set when constructing"):
+            metric.init_tracker()
 
     def test_initialize_with_empty_labels_initializes_default_labels(self):
         metric = CounterMetric(
@@ -83,8 +83,8 @@ class TestMetric:
             registry=self.custom_registry,
             labels={},
         )
-        metric.init_tracker()
-        assert set(metric.tracker._labelnames) == set(get_default_labels())
+        with pytest.raises(ValueError, match="No label names were set when constructing"):
+            metric.init_tracker()
 
     def test_counter_metric_increments_correctly(self):
         metric = CounterMetric(

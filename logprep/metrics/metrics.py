@@ -39,8 +39,6 @@ class Metric(ABC):
 
     def init_tracker(self) -> None:
         """initializes the tracker and adds it to the trackers dict"""
-        if not self.labels:
-            self.labels = get_default_labels()
         try:
             if isinstance(self, CounterMetric):
                 self.tracker = Counter(

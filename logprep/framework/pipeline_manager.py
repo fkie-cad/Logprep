@@ -94,9 +94,8 @@ class PipelineManager:
         failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
-            if self.prometheus_exporter is None:
-                continue
-            self.prometheus_exporter.remove_metrics_from_process(failed_pipeline.pid)
+            if self.prometheus_exporter:
+                self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
 
         if failed_pipelines:
             self.set_count(self._configuration.get("process_count"))
@@ -105,6 +104,7 @@ class PipelineManager:
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
         self._decrease_to_count(0)
+        self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
 
     def _create_pipeline(self, index) -> MultiprocessingPipeline:
         if self._configuration is None:

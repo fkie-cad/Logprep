@@ -98,7 +98,6 @@ def _run_logprep(arguments, logger: logging.Logger):
     # pylint: disable=broad-except
     except BaseException as error:
         logger.critical(f"A critical error occurred: {error}")
-        raise error
         if runner:
             runner.stop()
         sys.exit(1)
