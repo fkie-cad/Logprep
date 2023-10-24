@@ -32,9 +32,6 @@ class Metric(ABC):
     inject_label_values: bool = field(default=True)
     tracker: Union[Counter, Histogram, Gauge] = field(init=False, default=None)
 
-    def __attrs_post_init__(self):
-        self.init_tracker()
-
     @property
     def fullname(self):
         """returns the fullname"""

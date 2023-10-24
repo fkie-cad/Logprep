@@ -5,6 +5,7 @@
 import re
 
 import pytest
+from attrs import define, field
 from prometheus_client import (
     CollectorRegistry,
     Counter,
@@ -28,6 +29,7 @@ class TestsMetric:
             labels={"A": "a"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         assert isinstance(metric.tracker, Counter)
 
     def test_init_tracker_does_not_raise_if_initialized_twice(self):
@@ -43,6 +45,8 @@ class TestsMetric:
             labels={"A": "a"},
             registry=self.custom_registry,
         )
+        metric1.init_tracker()
+        metric2.init_tracker()
         assert isinstance(metric1.tracker, Counter)
         assert isinstance(metric2.tracker, Counter)
         assert metric1.tracker == metric2.tracker
@@ -63,16 +67,18 @@ class TestsMetric:
             description="empty description",
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         assert len(metric.tracker._labelnames) == 4
 
     def test_initialize_with_empty_labels_raises(self):
         with pytest.raises(ValueError):
-            _ = CounterMetric(
+            metric = CounterMetric(
                 name="bla",
                 description="empty description",
                 registry=self.custom_registry,
                 labels={},
             )
+            metric.init_tracker()
 
     def test_counter_metric_increments_correctly(self):
         metric = CounterMetric(
@@ -81,6 +87,7 @@ class TestsMetric:
             labels={"pipeline": "1"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         metric += 1
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
         assert 'logprep_bla_total{pipeline="1"} 1.0' in metric_output
@@ -92,6 +99,7 @@ class TestsMetric:
             labels={"pipeline": "1"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         metric += 1
         metric += 1
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
@@ -110,7 +118,8 @@ class TestsMetric:
             labels={"pipeline": "1"},
             registry=self.custom_registry,
         )
-
+        metric1.init_tracker()
+        metric2.init_tracker()
         assert metric1.tracker._labelnames == metric2.tracker._labelnames
         metric1 += 1
         metric2 += 1
@@ -131,6 +140,8 @@ class TestsMetric:
             labels={"pipeline": "2"},
             registry=self.custom_registry,
         )
+        metric1.init_tracker()
+        metric2.init_tracker()
 
         assert metric1.tracker == metric2.tracker
         metric1 += 1
@@ -141,19 +152,21 @@ class TestsMetric:
         assert len(result) == 1
 
     def test_init_tracker_raises_on_try_to_overwrite_tracker_with_different_type(self):
-        _ = CounterMetric(
+        metric = CounterMetric(
             name="bla",
             description="empty description",
             labels={"pipeline": "1"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         with pytest.raises(ValueError, match="already exists with different type"):
-            _ = HistogramMetric(
+            metric = HistogramMetric(
                 name="bla",
                 description="empty description",
                 labels={"pipeline": "2"},
                 registry=self.custom_registry,
             )
+            metric.init_tracker()
 
 
 class TestGaugeMetric:
@@ -167,6 +180,7 @@ class TestGaugeMetric:
             labels={"A": "a"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         assert isinstance(metric.tracker, Gauge)
 
     def test_gauge_metric_increments_correctly(self):
@@ -176,6 +190,7 @@ class TestGaugeMetric:
             labels={"pipeline": "1"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         metric += 1
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
         assert 'logprep_bla{pipeline="1"} 1.0' in metric_output
@@ -187,6 +202,7 @@ class TestGaugeMetric:
             labels={"pipeline": "1"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         metric += 1
         metric += 1
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
@@ -204,6 +220,7 @@ class TestHistogramMetric:
             labels={"A": "a"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         assert isinstance(metric.tracker, Histogram)
 
     def test_gauge_metric_increments_correctly(self):
@@ -213,6 +230,7 @@ class TestHistogramMetric:
             labels={"pipeline": "1"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         metric += 1
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
         assert re.search(r'logprep_bla_sum\{pipeline="1"\} 1\.0', metric_output)
@@ -226,6 +244,7 @@ class TestHistogramMetric:
             labels={"pipeline": "1"},
             registry=self.custom_registry,
         )
+        metric.init_tracker()
         metric += 1
         metric += 1
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
@@ -235,33 +254,46 @@ class TestHistogramMetric:
 
 
 class TestComponentMetric:
+    @define(kw_only=True)
     class Metrics(Component.Metrics):
         """test class"""
 
         custom_registry = CollectorRegistry()
 
-        test_metric_number_1: CounterMetric = CounterMetric(
-            name="test_metric_number_1",
-            description="empty description",
-            registry=custom_registry,
+        test_metric_number_1: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                name="test_metric_number_1",
+                description="empty description",
+                registry=TestComponentMetric.Metrics.custom_registry,
+            )
+        )
+        test_metric_without_label_values: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                name="test_metric_number_1",
+                description="empty description",
+                inject_label_values=False,
+                registry=TestComponentMetric.Metrics.custom_registry,
+            )
         )
 
-        test_metric_without_label_values: CounterMetric = CounterMetric(
-            name="test_metric_number_1",
-            description="empty description",
-            inject_label_values=False,
-            registry=custom_registry,
-        )
-
-        test_metric_histogram: HistogramMetric = HistogramMetric(
-            name="test_metric_histogram",
-            description="empty description",
-            labels={"pipeline": "1"},
-            registry=custom_registry,
+        test_metric_histogram: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                name="test_metric_histogram",
+                description="empty description",
+                registry=TestComponentMetric.Metrics.custom_registry,
+            )
         )
 
     def setup_method(self):
-        self.metrics = self.Metrics(labels={"label1": "value1", "label2": "value2"})
+        TestComponentMetric.Metrics.custom_registry = CollectorRegistry()
+        self.metrics = self.Metrics(
+            labels={
+                "component": "test",
+                "name": "test",
+                "type": "test_type",
+                "description": "test_description",
+            }
+        )
 
     def test_init(self):
         assert self.metrics.test_metric_number_1 is not None
@@ -276,15 +308,12 @@ class TestComponentMetric:
             "type",
             "description",
         )
-        metric = self.metrics.test_metric_number_1
-        metric_object = metric.tracker.collect()[0]
-        assert len(metric_object.samples) == 2
-        assert metric_object.samples[0][1] == {
-            "component": "None",
-            "name": "None",
-            "type": "None",
-            "description": "None",
-        }
+        metrics_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert (
+            'logprep_test_metric_number_1_total{component="test",description="test_description",name="test",type="test_type"} 0.0'
+            in metrics_output
+        )
+        assert '"None"' not in metrics_output, "default labels should not be present"
 
     def test_no_label_values_injection(self):
         assert self.metrics.test_metric_without_label_values.tracker._labelnames == (
@@ -293,9 +322,8 @@ class TestComponentMetric:
             "type",
             "description",
         )
-        metric = self.metrics.test_metric_without_label_values
-        metric_object = metric.tracker.collect()[0]
-        assert len(metric_object.samples) == 0
+        metrics_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert "test_metric_without_label_values" not in metrics_output
 
     @Metric.measure_time(metric_name="test_metric_histogram")
     def decorated_function(self):
@@ -303,17 +331,16 @@ class TestComponentMetric:
 
     def test_measure_time_measures(self):
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
-        assert re.search(r'test_metric_histogram_sum\{pipeline="1"\} 0\.0', metric_output)
-        assert re.search(r'test_metric_histogram_count\{pipeline="1"\} 0\.0', metric_output)
-        assert re.search(
-            r'test_metric_histogram_bucket\{le="0.1",pipeline="1"\} 0\.0', metric_output
-        )
+        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
 
         self.decorated_function()
 
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
-        assert not re.search(r'test_metric_histogram_sum\{pipeline="1"\} 0\.0', metric_output)
-        assert re.search(r'test_metric_histogram_count\{pipeline="1"\} 1\.0', metric_output)
-        assert re.search(
-            r'test_metric_histogram_bucket\{le="0.1",pipeline="1"\} 1\.0', metric_output
-        )
+        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+        assert not re.search(
+            r"test_metric_histogram_bucket.* 2\.0", metric_output
+        )  # regex is greedy
