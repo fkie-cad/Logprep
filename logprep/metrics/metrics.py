@@ -25,7 +25,7 @@ class Metric(ABC):
                 value_validator=validators.instance_of((str, type(None))),
             ),
         ],
-        factory=get_default_labels,
+        factory=dict,
     )
     _registry: CollectorRegistry = field(default=None)
     _prefix: str = field(default="logprep_")
@@ -39,6 +39,8 @@ class Metric(ABC):
 
     def init_tracker(self) -> None:
         """initializes the tracker and adds it to the trackers dict"""
+        if not self.labels:
+            self.labels = get_default_labels()
         try:
             if isinstance(self, CounterMetric):
                 self.tracker = Counter(
@@ -71,7 +73,7 @@ class Metric(ABC):
                 raise ValueError(
                     f"Metric {self.fullname} already exists with different type"
                 ) from error
-        if self.inject_label_values:
+        if None not in list(self.labels.values()):
             self.tracker.labels(**self.labels)
 
     @abstractmethod

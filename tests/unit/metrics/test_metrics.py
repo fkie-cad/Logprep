@@ -15,10 +15,16 @@ from prometheus_client import (
 )
 
 from logprep.abc.component import Component
-from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
+from logprep.metrics.metrics import (
+    CounterMetric,
+    GaugeMetric,
+    HistogramMetric,
+    Metric,
+    get_default_labels,
+)
 
 
-class TestsMetric:
+class TestMetric:
     def setup_method(self):
         self.custom_registry = CollectorRegistry()
 
@@ -70,15 +76,15 @@ class TestsMetric:
         metric.init_tracker()
         assert len(metric.tracker._labelnames) == 4
 
-    def test_initialize_with_empty_labels_raises(self):
-        with pytest.raises(ValueError):
-            metric = CounterMetric(
-                name="bla",
-                description="empty description",
-                registry=self.custom_registry,
-                labels={},
-            )
-            metric.init_tracker()
+    def test_initialize_with_empty_labels_initializes_default_labels(self):
+        metric = CounterMetric(
+            name="bla",
+            description="empty description",
+            registry=self.custom_registry,
+            labels={},
+        )
+        metric.init_tracker()
+        assert set(metric.tracker._labelnames) == set(get_default_labels())
 
     def test_counter_metric_increments_correctly(self):
         metric = CounterMetric(
@@ -253,7 +259,7 @@ class TestHistogramMetric:
         assert re.search(r'logprep_bla_bucket\{le=".*",pipeline="1"\} \d+', metric_output)
 
 
-class TestComponentMetric:
+class TestComponentMetrics:
     @define(kw_only=True)
     class Metrics(Component.Metrics):
         """test class"""
@@ -264,7 +270,7 @@ class TestComponentMetric:
             factory=lambda: CounterMetric(
                 name="test_metric_number_1",
                 description="empty description",
-                registry=TestComponentMetric.Metrics.custom_registry,
+                registry=TestComponentMetrics.Metrics.custom_registry,
             )
         )
         test_metric_without_label_values: CounterMetric = field(
@@ -272,7 +278,7 @@ class TestComponentMetric:
                 name="test_metric_number_1",
                 description="empty description",
                 inject_label_values=False,
-                registry=TestComponentMetric.Metrics.custom_registry,
+                registry=TestComponentMetrics.Metrics.custom_registry,
             )
         )
 
@@ -280,12 +286,12 @@ class TestComponentMetric:
             factory=lambda: HistogramMetric(
                 name="test_metric_histogram",
                 description="empty description",
-                registry=TestComponentMetric.Metrics.custom_registry,
+                registry=TestComponentMetrics.Metrics.custom_registry,
             )
         )
 
     def setup_method(self):
-        TestComponentMetric.Metrics.custom_registry = CollectorRegistry()
+        TestComponentMetrics.Metrics.custom_registry = CollectorRegistry()
         self.metrics = self.Metrics(
             labels={
                 "component": "test",
