@@ -1,10 +1,4 @@
 """This module contains functionality to start a prometheus exporter and expose metrics with it"""
-import os
-import shutil
-import tempfile
-from os import listdir, path
-from os.path import isfile
-
 from prometheus_client import REGISTRY, Gauge, multiprocess, start_http_server
 
 
@@ -39,15 +33,7 @@ class PrometheusStatsExporter:
         pid : int
             The Id of the process whose metrics should be removed
         """
-        directory = self.multi_processing_dir
-        metric_files = [file for file in listdir(directory) if isfile(path.join(directory, file))]
-        removed_files = []
-        for filename in metric_files:
-            if str(pid) in filename:
-                os.remove(os.path.join(self.multi_processing_dir, filename))
-                removed_files.append(filename)
-        if removed_files:
-            self._logger.debug(f"Removed stale metric files: {removed_files}")
+        multiprocess.mark_process_dead(pid)
 
     def _set_up_metrics(self):
         """Sets up the metrics that the prometheus exporter should expose"""
