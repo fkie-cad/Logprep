@@ -926,7 +926,8 @@ class NormalizerRule(Rule):
         self._substitutions = {}
         self._grok = {}
         self._timestamps = {}
-        self.description = description
+        self._description = description
+        self._id = str(uuid.uuid4())
 
         self._parse_normalizations(normalizations)
 
@@ -1003,6 +1004,14 @@ class NormalizerRule(Rule):
     @property
     def timestamps(self) -> dict:
         return self._timestamps
+
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @property
+    def id(self) -> str:
+        return self._id
 
     # pylint: enable=C0111
 
