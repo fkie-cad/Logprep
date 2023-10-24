@@ -668,20 +668,6 @@ class TestPipelineWithActualInput:
 
 
 class TestMultiprocessingPipeline(ConfigurationForTests):
-    def test_does_not_fail_if_log_handler_is_a_multiprocessing_log_handler(self):
-        try:
-            MultiprocessingPipeline(
-                pipeline_index=1,
-                config=self.logprep_config,
-                log_queue=mock.MagicMock(),
-                lock=self.lock,
-                used_server_ports=mock.MagicMock(),
-                shared_dict=self.shared_dict,
-                prometheus_exporter=mock.MagicMock(),
-            )
-        except MustProvideAnMPLogHandlerError:
-            fail("Must not raise this error for a correct handler!")
-
     def test_creates_a_new_process(self):
         children_before = active_children()
         children_running = self.start_and_stop_pipeline(

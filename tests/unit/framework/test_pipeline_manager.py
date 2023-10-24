@@ -171,3 +171,13 @@ class TestPipelineManager:
         prometheus_exporter_mock.mark_process_dead.assert_called()
         prometheus_exporter_mock.mark_process_dead.assert_called_with(42)
         del os.environ["PROMETHEUS_MULTIPROC_DIR"]
+
+    def test_stop_calls_prometheus_cleanup_method(self, tmpdir):
+        os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
+        manager = PipelineManager()
+        manager.set_configuration({"metrics": {"enabled": True}, "process_count": 2})
+        prometheus_exporter_mock = mock.MagicMock()
+        manager.prometheus_exporter = prometheus_exporter_mock
+        manager.stop()
+        prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
+        del os.environ["PROMETHEUS_MULTIPROC_DIR"]
