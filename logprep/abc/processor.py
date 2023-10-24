@@ -315,3 +315,10 @@ class Processor(Component):
         )
         if not add_successful:
             raise FieldExistsWarning(rule, event, [rule.target_field])
+
+    def setup(self):
+        for rule in self.rules:
+            _ = rule.metrics  # initialize metrics
+
+        # initialize rule tree metrics:
+        _, _ = self._specific_tree.metrics, self._generic_tree.metrics

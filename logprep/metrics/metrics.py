@@ -22,7 +22,7 @@ class Metric(ABC):
             validators.instance_of(dict),
             validators.deep_mapping(
                 key_validator=validators.instance_of(str),
-                value_validator=validators.instance_of((str, type(None))),
+                value_validator=validators.instance_of(str),
             ),
         ],
         factory=dict,
@@ -73,7 +73,7 @@ class Metric(ABC):
                 raise ValueError(
                     f"Metric {self.fullname} already exists with different type"
                 ) from error
-        if None not in list(self.labels.values()):
+        if self.inject_label_values:
             self.tracker.labels(**self.labels)
 
     @abstractmethod

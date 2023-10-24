@@ -101,6 +101,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="current offsets of the consumer. Is filled by `_get_raw_event`",
                 name="confluent_kafka_input_current_offsets",
+                inject_label_values=False,
             )
         )
         """current offsets of the consumer. Is filled by `_get_raw_event`"""
@@ -108,6 +109,7 @@ class ConfluentKafkaInput(Input):
             factory=lambda: GaugeMetric(
                 description="committed offsets of the consumer. Is filled by `_commit_callback`",
                 name="confluent_kafka_input_committed_offsets",
+                inject_label_values=False,
             )
         )
         """committed offsets of the consumer. Is filled by `_commit_callback`"""

@@ -27,9 +27,7 @@ class Component(ABC):
     class Metrics:
         """Base Metric class to track and expose statistics about logprep"""
 
-        _labels: dict = field(
-            factory=lambda: {"component": None, "name": None, "type": None, "description": None}
-        )
+        _labels: dict
 
         def __attrs_post_init__(self):
             for attribute in asdict(self):
@@ -52,7 +50,7 @@ class Component(ABC):
     @property
     def metric_labels(self) -> dict:
         """Labels for the metrics"""
-        return {"component": self._config.type, "name": self.name}
+        return {"component": self._config.type, "name": self.name, "description": "", "type": ""}
 
     def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
         self._logger = logger
