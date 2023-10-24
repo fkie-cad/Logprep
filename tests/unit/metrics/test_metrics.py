@@ -238,25 +238,29 @@ class TestComponentMetric:
     class Metrics(Component.Metrics):
         """test class"""
 
+        custom_registry = CollectorRegistry()
+
         test_metric_number_1: CounterMetric = CounterMetric(
             name="test_metric_number_1",
             description="empty description",
+            registry=custom_registry,
         )
 
         test_metric_without_label_values: CounterMetric = CounterMetric(
             name="test_metric_number_1",
             description="empty description",
             inject_label_values=False,
+            registry=custom_registry,
         )
 
-    def setup_method(self):
-        self.custom_registry = CollectorRegistry()
-        TestComponentMetric.Metrics.test_metric_histogram = HistogramMetric(
+        test_metric_histogram: HistogramMetric = HistogramMetric(
             name="test_metric_histogram",
             description="empty description",
             labels={"pipeline": "1"},
-            registry=self.custom_registry,
+            registry=custom_registry,
         )
+
+    def setup_method(self):
         self.metrics = self.Metrics(labels={"label1": "value1", "label2": "value2"})
 
     def test_init(self):
@@ -298,7 +302,7 @@ class TestComponentMetric:
         pass
 
     def test_measure_time_measures(self):
-        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert re.search(r'test_metric_histogram_sum\{pipeline="1"\} 0\.0', metric_output)
         assert re.search(r'test_metric_histogram_count\{pipeline="1"\} 0\.0', metric_output)
         assert re.search(
@@ -307,7 +311,7 @@ class TestComponentMetric:
 
         self.decorated_function()
 
-        metric_output = generate_latest(self.custom_registry).decode("utf-8")
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert not re.search(r'test_metric_histogram_sum\{pipeline="1"\} 0\.0', metric_output)
         assert re.search(r'test_metric_histogram_count\{pipeline="1"\} 1\.0', metric_output)
         assert re.search(

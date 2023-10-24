@@ -157,24 +157,34 @@ class Processor(Component):
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
 
-    @Metric.measure_time()
     def _process_rule_tree(self, event: dict, tree: "RuleTree"):
         applied_rules = set()
 
         @Metric.measure_time()
-        def _process_rule(event, rule):
+        def _process_rule(rule, event):
             self._apply_rules_wrapper(event, rule)
             rule.metrics.number_of_processed_events += 1
             applied_rules.add(rule)
             return event
 
-        if self._config.apply_multiple_times:
+        @Metric.measure_time()
+        def _process_rule_tree_multiple_times(tree, event):
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
-                reduce(_process_rule, (event, *matching_rules))
+                for rule in matching_rules:
+                    _process_rule(rule, event)
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
+
+        @Metric.measure_time()
+        def _process_rule_tree_once(tree, event):
+            matching_rules = tree.get_matching_rules(event)
+            for rule in matching_rules:
+                _process_rule(rule, event)
+
+        if self._config.apply_multiple_times:
+            _process_rule_tree_multiple_times(tree, event)
         else:
-            reduce(_process_rule, (event, *tree.get_matching_rules(event)))
+            _process_rule_tree_once(tree, event)
 
     def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
         try:

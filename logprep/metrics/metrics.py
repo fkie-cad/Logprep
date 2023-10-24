@@ -87,16 +87,10 @@ class Metric(ABC):
         """Decorate function to measure execution time for function and add results to event."""
 
         def inner_decorator(func):
-            def inner(*args, **kwargs):  # nosemgrep
-                begin = time.time()
-                result = func(*args, **kwargs)
-                end = time.time()
-                processing_time = end - begin
-                caller = args[0]
-                if func.__name__ in ("_process_rule_tree", "_process_rule"):
-                    caller = args[-1]
-                metric = getattr(caller.metrics, metric_name)
-                metric += processing_time
+            def inner(self, *args, **kwargs):  # nosemgrep
+                metric = getattr(self.metrics, metric_name)
+                with metric.tracker.labels(**metric.labels).time():
+                    result = func(self, *args, **kwargs)
                 return result
 
             return inner
