@@ -527,13 +527,14 @@ class BaseInputTestCase(BaseConnectorTestCase):
         assert self.object.metrics.number_of_processed_events == 0
 
     def test_get_next_has_time_measurement(self):
-        self.object.metrics.processing_time_per_event = mock.MagicMock()
-        self.object.metrics.processing_time_per_event.__iadd__ = mock.MagicMock()
+        mock_metric = mock.MagicMock()
+        self.object.metrics.processing_time_per_event = mock_metric
         return_value = ({"message": "test message"}, b'{"message": "test message"}')
         self.object._get_event = mock.MagicMock(return_value=return_value)
         self.object.get_next(0.01)
         assert isinstance(self.object.metrics.processing_time_per_event, mock.MagicMock)
-        self.object.metrics.processing_time_per_event.__iadd__.assert_called()
+        # asserts entering context manager in metrics.metrics.Metric.measure_time
+        mock_metric.assert_has_calls([mock.call.tracker.labels().time().__enter__()])
 
 
 class BaseOutputTestCase(BaseConnectorTestCase):

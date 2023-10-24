@@ -64,7 +64,7 @@
             },
             "gridPos": {
                 "h": 3,
-                "w": 1,
+                "w": 7,
                 "x": 0,
                 "y": 1
             },
@@ -91,7 +91,7 @@
                         "uid": "promz2394"
                     },
                     "editorMode": "code",
-                    "expr": "sum(logprep_number_of_errors_total)",
+                    "expr": "sum by (component) (logprep_number_of_errors_total)",
                     "instant": false,
                     "legendFormat": "__auto",
                     "range": true,
@@ -130,11 +130,11 @@
             },
             "gridPos": {
                 "h": 3,
-                "w": 1,
-                "x": 1,
+                "w": 7,
+                "x": 7,
                 "y": 1
             },
-            "id": 5,
+            "id": 8,
             "options": {
                 "colorMode": "value",
                 "graphMode": "none",
@@ -157,14 +157,14 @@
                         "uid": "promz2394"
                     },
                     "editorMode": "code",
-                    "expr": "sum(logprep_number_of_warnings_total)",
+                    "expr": "sum by (component) (logprep_number_of_warnings_total)",
                     "instant": false,
                     "legendFormat": "__auto",
                     "range": true,
                     "refId": "A"
                 }
             ],
-            "title": "Warnings",
+            "title": "Warnings Output",
             "type": "stat"
         },
         {
