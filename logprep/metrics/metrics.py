@@ -1,9 +1,13 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
+import time
 from abc import ABC, abstractmethod
+from socket import gethostname
 from typing import Union
 
 from attr import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
+
+from logprep.util.helper import add_field_to
 
 
 def get_default_labels():
@@ -79,17 +83,34 @@ class Metric(ABC):
         """Add"""
 
     @staticmethod
-    def measure_time(metric_name: str = "processing_time_per_event"):
+    def measure_time(metric_name: str = "processing_time_per_event", append_to_event: bool = False):
         """Decorate function to measure execution time for function and add results to event."""
 
-        def inner_decorator(func):
-            def inner(self, *args, **kwargs):  # nosemgrep
-                metric = getattr(self.metrics, metric_name)
-                with metric.tracker.labels(**metric.labels).time():
-                    result = func(self, *args, **kwargs)
-                return result
+        if not append_to_event:
 
-            return inner
+            def inner_decorator(func):
+                def inner(self, *args, **kwargs):  # nosemgrep
+                    metric = getattr(self.metrics, metric_name)
+                    with metric.tracker.labels(**metric.labels).time():
+                        result = func(self, *args, **kwargs)
+                    return result
+
+                return inner
+
+        else:
+
+            def inner_decorator(func):
+                def inner(self, event, *args, **kwargs):  # nosemgrep
+                    metric = getattr(self.metrics, metric_name)
+                    begin = time.perf_counter()
+                    result = func(self, *args, **kwargs)
+                    duration = time.perf_counter() - begin
+                    metric += duration
+                    add_field_to(event, f"processing_times.{self.rule_type}", duration)
+                    add_field_to(event, "processing_times.hostname", gethostname())
+                    return result
+
+                return inner
 
         return inner_decorator
 

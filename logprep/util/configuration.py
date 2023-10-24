@@ -396,44 +396,10 @@ class Configuration(dict):
         metrics_config = self.get("metrics")
         if metrics_config:
             errors = []
-
             if "enabled" not in metrics_config:
                 errors.append(RequiredConfigurationKeyMissingError("metrics > enabled"))
-
-            if metrics_config.get("enabled"):
-                required_keys = [
-                    "enabled",
-                    "period",
-                    "cumulative",
-                    "aggregate_processes",
-                    "measure_time",
-                    "port",
-                ]
-
-                for key in required_keys:
-                    if key not in self["metrics"]:
-                        errors.append(RequiredConfigurationKeyMissingError(f"metrics > {key}"))
-
-            try:
-                self._verify_measure_time_config(self.get("metrics").get("measure_time"))
-            except InvalidConfigurationError as error:
-                errors.append(error)
-
             if errors:
                 raise InvalidConfigurationErrors(errors)
-
-    @staticmethod
-    def _verify_measure_time_config(measure_time_config):
-        required_keys = {"enabled", "append_to_event"}
-        given_keys = set(measure_time_config.keys())
-        missing_keys = required_keys.difference(given_keys)
-
-        if missing_keys:
-            raise RequiredConfigurationKeyMissingError(
-                f"The following option keys for the "
-                f"measure time configs are missing: "
-                f"{missing_keys}"
-            )
 
     @staticmethod
     def _print_and_raise_errors(errors: List[BaseException]):

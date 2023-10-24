@@ -133,56 +133,23 @@ class TestConfiguration:
                 "valid configuration",
                 {
                     "metrics": {
-                        "period": 10,
                         "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
+                        "append_measurement_to_event": False,
                         "port": 8000,
                     }
                 },
                 None,
             ),
             (
-                "key period is missing",
+                "invalid datatype in port",
                 {
                     "metrics": {
                         "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "port": 8000,
+                        "append_measurement_to_event": False,
+                        "port": "8000",
                     }
                 },
-                RequiredConfigurationKeyMissingError,
-            ),
-            (
-                "valid configuration",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "port": 8000,
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
-            ),
-            (
-                "measure_time enabled key is missing",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"append_to_event": False},
-                        "port": 8000,
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
+                None,
             ),
         ],
     )
@@ -523,21 +490,16 @@ class TestConfiguration:
                 [],
             ),
             (
-                "measure_time enabled key is missing",
+                "metrics enabled",
                 {
                     "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"append_to_event": False},
                         "port": 8000,
                     }
                 },
                 [
                     (
                         RequiredConfigurationKeyMissingError,
-                        "Required option is missing: The following option keys for the measure time configs are missing: {'enabled'}",
+                        "Required option is missing: metrics > enabled",
                     )
                 ],
             ),

@@ -2,7 +2,9 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 
+import os
 import re
+from unittest import mock
 
 import pytest
 from attrs import define, field
@@ -300,6 +302,7 @@ class TestComponentMetrics:
                 "description": "test_description",
             }
         )
+        self.rule_type = "test_rule"
 
     def test_init(self):
         assert self.metrics.test_metric_number_1 is not None
@@ -335,6 +338,10 @@ class TestComponentMetrics:
     def decorated_function(self):
         pass
 
+    @Metric.measure_time(metric_name="test_metric_histogram", append_to_event=True)
+    def decorated_function_append(self):
+        pass
+
     def test_measure_time_measures(self):
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
@@ -350,3 +357,26 @@ class TestComponentMetrics:
         assert not re.search(
             r"test_metric_histogram_bucket.* 2\.0", metric_output
         )  # regex is greedy
+
+    @mock.patch("logprep.metrics.metrics.gethostname", return_value="testhost")
+    def test_measure_time_measures_and_appends(self, mock_gethostname):
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+        document = {}
+        self.decorated_function_append(document)
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+        assert not re.search(
+            r"test_metric_histogram_bucket.* 2\.0", metric_output
+        )  # regex is greedy
+        assert "processing_times" in document
+        assert "test_rule" in document.get("processing_times")
+        assert "hostname" in document.get("processing_times")
+        assert document.get("processing_times").get("test_rule") > 0
+        mock_gethostname.assert_called_once()
+        assert document.get("processing_times").get("hostname") == "testhost"

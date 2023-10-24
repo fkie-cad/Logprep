@@ -350,13 +350,12 @@ class Pipeline:
 
         """
         TODOs:
-            - Tests
             - delete SharedCounter (Events in last 5 min: n)
             - create Grafana Dashboards
             - add pipelinemanager metrics (pipeline restarts)
-            - clean up PrometheusExporter ("remove stale metric files" stil needed?)
             - add version info to metrics
             - enforce rule_id should be unique
+            - write processing times to events
         """
 
         event_received = self._encoder.encode(event)
