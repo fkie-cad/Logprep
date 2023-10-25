@@ -17,13 +17,8 @@ from prometheus_client import (
 )
 
 from logprep.abc.component import Component
-from logprep.metrics.metrics import (
-    CounterMetric,
-    GaugeMetric,
-    HistogramMetric,
-    Metric,
-    get_default_labels,
-)
+from logprep.metrics import metrics
+from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
 
 
 class TestMetric:
@@ -338,16 +333,11 @@ class TestComponentMetrics:
     def decorated_function(self):
         pass
 
-    @Metric.measure_time(metric_name="test_metric_histogram", append_to_event=True)
-    def decorated_function_append(self):
-        pass
-
     def test_measure_time_measures(self):
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
         assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
         assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
-
         self.decorated_function()
 
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
@@ -360,12 +350,18 @@ class TestComponentMetrics:
 
     @mock.patch("logprep.metrics.metrics.gethostname", return_value="testhost")
     def test_measure_time_measures_and_appends(self, mock_gethostname):
+        os.environ["APPEND_TO_EVENT"] = "1"
+
+        @Metric.measure_time(metric_name="test_metric_histogram")
+        def decorated_function_append(self, document):
+            pass
+
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
         assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
         assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
         document = {}
-        self.decorated_function_append(document)
+        decorated_function_append(self, document)
 
         metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
         assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
@@ -380,3 +376,4 @@ class TestComponentMetrics:
         assert document.get("processing_times").get("test_rule") > 0
         mock_gethostname.assert_called_once()
         assert document.get("processing_times").get("hostname") == "testhost"
+        os.environ["APPEND_TO_EVENT"] = "1"

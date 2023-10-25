@@ -1,4 +1,5 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
+import os
 import time
 from abc import ABC, abstractmethod
 from socket import gethostname
@@ -83,12 +84,12 @@ class Metric(ABC):
         """Add"""
 
     @staticmethod
-    def measure_time(metric_name: str = "processing_time_per_event", append_to_event: bool = False):
+    def measure_time(metric_name: str = "processing_time_per_event"):
         """Decorate function to measure execution time for function and add results to event."""
 
-        if not append_to_event:
+        if not os.environ.get("APPEND_TO_EVENT"):
 
-            def inner_decorator(func):
+            def without_append(func):
                 def inner(self, *args, **kwargs):  # nosemgrep
                     metric = getattr(self.metrics, metric_name)
                     with metric.tracker.labels(**metric.labels).time():
@@ -97,22 +98,24 @@ class Metric(ABC):
 
                 return inner
 
-        else:
+            return without_append
 
-            def inner_decorator(func):
-                def inner(self, event, *args, **kwargs):  # nosemgrep
-                    metric = getattr(self.metrics, metric_name)
-                    begin = time.perf_counter()
-                    result = func(self, *args, **kwargs)
-                    duration = time.perf_counter() - begin
-                    metric += duration
+        def with_append(func):
+            def inner(self, *args, **kwargs):  # nosemgrep
+                metric = getattr(self.metrics, metric_name)
+                begin = time.perf_counter()
+                result = func(self, *args, **kwargs)
+                duration = time.perf_counter() - begin
+                metric += duration
+                if hasattr(self, "rule_type"):
+                    event = args[0]
                     add_field_to(event, f"processing_times.{self.rule_type}", duration)
                     add_field_to(event, "processing_times.hostname", gethostname())
-                    return result
+                return result
 
-                return inner
+            return inner
 
-        return inner_decorator
+        return with_append
 
 
 @define(kw_only=True)
