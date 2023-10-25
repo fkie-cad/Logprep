@@ -376,4 +376,4 @@ class TestComponentMetrics:
         assert document.get("processing_times").get("test_rule") > 0
         mock_gethostname.assert_called_once()
         assert document.get("processing_times").get("hostname") == "testhost"
-        os.environ["APPEND_TO_EVENT"] = "1"
+        del os.environ["APPEND_TO_EVENT"]

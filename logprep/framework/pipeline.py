@@ -355,7 +355,6 @@ class Pipeline:
             - add pipelinemanager metrics (pipeline restarts)
             - add version info to metrics
             - enforce rule_id should be unique
-            - write processing times to events
         """
 
         event_received = self._encoder.encode(event)

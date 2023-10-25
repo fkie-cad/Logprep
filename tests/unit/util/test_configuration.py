@@ -481,9 +481,6 @@ class TestConfiguration:
                     "metrics": {
                         "period": 10,
                         "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
                         "port": 8000,
                     }
                 },
