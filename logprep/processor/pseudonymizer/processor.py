@@ -170,6 +170,15 @@ class Pseudonymizer(Processor):
         self._cache = Cache(
             max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
         )
+
+    def setup(self) -> None:
+        super().setup()
+        self._cache = Cache(
+            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
+        )
+
+    def load_rules(self, specific_rules_targets, generic_rules_targets):
+        super().load_rules(specific_rules_targets, generic_rules_targets)
         self._init_tld_extractor()
         self._load_regex_mapping(self._config.regex_mapping)
         self._replace_regex_keywords_by_regex_expression()
