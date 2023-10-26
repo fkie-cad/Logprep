@@ -171,6 +171,18 @@ test_cases = [  # testcase, rule, event, expected
         {"duration": "0.01"},
         {"duration": "0.01"},
     ),
+    (
+        "convert hex to int",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "int(${field1}, 16)",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "01e15"},
+        {"message": "This is a message", "field1": "1", "new_field": 485},
+    ),
 ]
 
 
