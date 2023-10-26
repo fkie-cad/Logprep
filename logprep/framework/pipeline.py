@@ -358,7 +358,6 @@ class Pipeline:
                 - count pipeline restarts
                 - count warnings and errors
                 - count config refreshes (if really changed) 
-            - implement add_to_event to configuration
             - enforce rule_id should be unique
             - delete SharedCounter (Events in last 5 min: n)
             
