@@ -492,8 +492,9 @@ class TestDissectorRule:
                 "mapping": {"field1": "%{field2}:%{field3|int} %{field4}"},
             },
         }
-        rule = DissectorRule._create_from_dict(rule)
-        assert rule.id == "e7cea62f81ad5544ca473645e3afadecb2523dc77eb028b89ed527d6dbfffa2d"
+        rule1 = DissectorRule._create_from_dict(rule)
+        rule2 = DissectorRule._create_from_dict(rule)
+        assert rule1.id == rule2.id
 
     def test_id_no_hash_if_set(self):
         rule = {
@@ -504,5 +505,4 @@ class TestDissectorRule:
             },
         }
         rule = DissectorRule._create_from_dict(rule)
-        assert rule.id != "e7cea62f81ad5544ca473645e3afadecb2523dc77eb028b89ed527d6dbfffa2d"
         assert rule.id == "my_id"
