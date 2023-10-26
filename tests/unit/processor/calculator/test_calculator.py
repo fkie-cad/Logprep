@@ -176,12 +176,24 @@ test_cases = [  # testcase, rule, event, expected
         {
             "filter": "message",
             "calculator": {
-                "calc": "int(${field1}, 16)",
+                "calc": "from_hex(0x${field1})",
                 "target_field": "new_field",
             },
         },
-        {"message": "This is a message", "field1": "01e15"},
-        {"message": "This is a message", "field1": "1", "new_field": 485},
+        {"message": "This is a message", "field1": "ff"},
+        {"message": "This is a message", "field1": "ff", "new_field": 255},
+    ),
+    (
+        "convert hex to int with prefix",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(${field1})",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "0xff"},
+        {"message": "This is a message", "field1": "0xff", "new_field": 255},
     ),
 ]
 
@@ -362,6 +374,7 @@ class TestCalculator(BaseProcessorTestCase):
             ("10+sin(PI/4)^2", 10 + math.sin(math.pi / 4) ** 2),
             ("trunc(E)", int(math.e)),
             ("trunc(-E)", int(-math.e)),
+            ("from_hex(0xff)", 255),
             ("round(E)", round(math.e)),
             ("round(-E)", round(-math.e)),
             ("E^PI", math.e**math.pi),

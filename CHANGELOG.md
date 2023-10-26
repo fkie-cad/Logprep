@@ -3,6 +3,9 @@
 ## next release
 
 ### Features
+
+* add possibility to convert hex to in in `calculator` processor with new added function `from_hex`
+
 ### Improvements
 ### Bugfix
 

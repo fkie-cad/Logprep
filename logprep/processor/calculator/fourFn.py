@@ -46,6 +46,7 @@ fn = {
     "exp": math.exp,
     "abs": abs,
     "trunc": int,
+    "from_hex": lambda a: int(a, 16),
     "round": round,
     "sgn": lambda a: -1 if a < -epsilon else 1 if a > epsilon else 0,
     # functionsl with multiple arguments
@@ -80,7 +81,7 @@ class BNF(Forward):
     #                    Optional(e + Word("+-"+nums, nums)))
     # or use provided pyparsing_common.number, but convert back to str:
     # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
-    fnumber = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+    fnumber = Regex(r"[+-]?[a-z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
     ident = Word(alphas, alphanums + "_$")
 
     plus, minus, mult, div = map(Literal, "+-*/")
@@ -124,7 +125,10 @@ class BNF(Forward):
         try:
             return int(op)
         except ValueError:
-            return float(op)
+            try:
+                return float(op)
+            except ValueError:
+                return op
 
     def __new__(cls):
         if not hasattr(cls, "instance"):
