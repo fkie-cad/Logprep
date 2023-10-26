@@ -84,10 +84,10 @@ class Runner:
     class Metrics(Component.Metrics):
         """Metrics for the PipelineManager."""
 
-        version_info_and_refresh_count: GaugeMetric = field(
+        version_info: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Logprep version information",
-                name="logprep_version_info_and_refresh_count",
+                name="version_info",
                 labels={"logprep": "unset", "config": "unset"},
                 inject_label_values=False,
             )
@@ -169,7 +169,7 @@ class Runner:
 
         self._create_manager()
         versions = get_versions()
-        self.metrics.version_info_and_refresh_count.add_with_labels(
+        self.metrics.version_info.add_with_labels(
             1,
             {
                 "logprep": f"{versions.get('version')}",
@@ -244,9 +244,7 @@ class Runner:
             self._logger.info("Successfully reloaded configuration")
             config_version = self._configuration.get("version", "unset")
             self._logger.info(f"Configuration version: {config_version}")
-            self.metrics.version_info_and_refresh_count.add_with_labels(
-                1, {"config": config_version}
-            )
+            self.metrics.version_info.add_with_labels(1, {"config": config_version})
         except InvalidConfigurationError as error:
             self._logger.error(
                 "Invalid configuration, leaving old"
