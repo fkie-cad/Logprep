@@ -22,16 +22,219 @@
   "liveNow": false,
   "panels": [
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 19,
-      "panels": [],
-      "title": "Row title",
+      "id": 33,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 7,
+            "x": 0,
+            "y": 1
+          },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "10.1.4",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+              },
+              "editorMode": "code",
+              "expr": "sum by (component) (logprep_number_of_errors_total)",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Errors",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 7,
+            "x": 7,
+            "y": 1
+          },
+          "id": 8,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "10.1.4",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+              },
+              "editorMode": "code",
+              "expr": "sum by (component) (logprep_number_of_warnings_total)",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Warnings Output",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1000
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1000
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 3,
+            "w": 24,
+            "x": 0,
+            "y": 4
+          },
+          "id": 32,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "10.1.4",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "promz2394"
+              },
+              "editorMode": "code",
+              "expr": "count by (type)(logprep_number_of_processed_events_total{component=\"rule\"})",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Number of Rules per Processor",
+          "type": "stat"
+        }
+      ],
+      "title": "Ideas",
       "type": "row"
     },
     {
@@ -42,9 +245,9 @@
         "x": 0,
         "y": 1
       },
-      "id": 3,
+      "id": 19,
       "panels": [],
-      "title": "Connector Processing Time",
+      "title": "Overview",
       "type": "row"
     },
     {
@@ -89,7 +292,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
+        "w": 3,
         "x": 0,
         "y": 2
       },
@@ -118,12 +321,26 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(logprep_processing_time_per_event_sum)/sum(logprep_processing_time_per_event_count)",
-          "hide": false,
+          "expr": "sum(increase(logprep_processing_time_per_event_sum[1m]))/sum(increase(logprep_processing_time_per_event_count[1m]))",
+          "hide": true,
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=~\"input|output|rule_tree\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=~\"input|output|rule_tree\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
         }
       ],
       "title": "Total Processing Times",
@@ -171,9 +388,798 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 4,
+        "w": 3,
+        "x": 3,
         "y": 2
+      },
+      "id": 38,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"input\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=\"input\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Input Processing Times",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 6,
+        "y": 2
+      },
+      "id": 36,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"rule_tree\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=\"rule_tree\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Processor Processing Times",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 9,
+        "y": 2
+      },
+      "id": 37,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"output\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=\"output\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Output Processing Times",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 12,
+        "y": 2
+      },
+      "id": 29,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(rate(logprep_number_of_errors_total[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Current Number of Errors",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 15,
+        "y": 2
+      },
+      "id": 30,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(rate(logprep_number_of_warnings_total[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Current Number of Warnings",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "grafana"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 18,
+        "y": 2
+      },
+      "id": 39,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "Config Version",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.1.4",
+      "title": "Panel Title",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "grafana"
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 2
+      },
+      "id": 40,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "Logprep Version",
+        "mode": "markdown"
+      },
+      "pluginVersion": "10.1.4",
+      "title": "Panel Title",
+      "type": "text"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 0,
+        "y": 5
+      },
+      "id": 23,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "rate(logprep_number_of_processed_events_total{component=\"input\"}[1m])",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Incoming Events per Minute",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 3,
+        "y": 5
+      },
+      "id": 24,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(rate(logprep_number_of_processed_events_total{component=\"output\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Outgoing Events per Minute",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 6,
+        "y": 5
+      },
+      "id": 31,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(rate(logprep_number_of_processed_events_total{component=\"input\"}[1m])) - sum(rate(logprep_number_of_processed_events_total{component=\"output\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Dropped/Lost Events",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1000
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 9,
+        "y": 5
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "sum(count by (type)(logprep_number_of_processed_events_total{component=\"rule\"}))",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Number of Rules",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "panels": [],
+      "title": "Connector Processing Time",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 8,
+        "x": 0,
+        "y": 9
       },
       "id": 16,
       "options": {
@@ -213,188 +1219,111 @@
       "type": "stat"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "promz2394"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
+      "collapsed": false,
       "gridPos": {
-        "h": 3,
-        "w": 7,
-        "x": 0,
-        "y": 5
-      },
-      "id": 4,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.1.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "promz2394"
-          },
-          "editorMode": "code",
-          "expr": "sum by (component) (logprep_number_of_errors_total)",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Errors",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "promz2394"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 7,
-        "x": 7,
-        "y": 5
-      },
-      "id": 8,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "textMode": "auto"
-      },
-      "pluginVersion": "10.1.4",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "promz2394"
-          },
-          "editorMode": "code",
-          "expr": "sum by (component) (logprep_number_of_warnings_total)",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Warnings Output",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "promz2394"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1000
-              },
-              {
-                "color": "yellow",
-                "value": 1000
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
+        "h": 1,
         "w": 24,
         "x": 0,
-        "y": 8
+        "y": 12
       },
-      "id": 6,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
+      "id": 42,
+      "panels": [],
+      "title": "Row title",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the processing times of matched rules.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
           ],
-          "fields": "",
-          "values": false
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "unit": "s"
         },
-        "textMode": "auto"
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 0,
+        "y": 13
+      },
+      "id": 41,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "pluginVersion": "10.1.4",
       "targets": [
@@ -404,15 +1333,289 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "count by (type)(logprep_number_of_processed_events_total{component=\"rule\"})",
+          "expr": "(logprep_processing_time_per_event_sum{component=\"rule\"})/(logprep_processing_time_per_event_count{component=\"rule\"})",
+          "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "{{type}}",
           "range": true,
-          "refId": "A"
+          "refId": "B"
         }
       ],
-      "title": "Number of Rules per Processor",
-      "type": "stat"
+      "title": "Processing Times for per Processor per Minute",
+      "transformations": [
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "config": {
+                  "id": "isNull",
+                  "options": {}
+                },
+                "fieldName": "amides"
+              }
+            ],
+            "match": "any",
+            "type": "exclude"
+          }
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the processing times of matched rules.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 8,
+        "y": 13
+      },
+      "id": 43,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "avg by (type)(increase(logprep_processing_time_per_event_sum{component=\"rule_tree\"}[$__range]))/avg by(type)(increase(logprep_processing_time_per_event_count{component=\"rule_tree\"}[$__range]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Processing Times for per Processor per Minute",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the processing times of matched rules.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 0,
+        "y": 27
+      },
+      "id": 44,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "(increase(logprep_processing_time_per_event_sum{component=\"rule\", type=\"amides\"}[$__range]))/(increase(logprep_processing_time_per_event_count{component=\"rule\", type=\"amides\"}[$__range]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Processing Times for per Processor per Minute",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the processing times of matched rules.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 8,
+        "x": 8,
+        "y": 27
+      },
+      "id": 45,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "(increase(logprep_processing_time_per_event_sum{component=\"rule_tree\", type=\"amides\"}[$__range]))/(increase(logprep_processing_time_per_event_count{component=\"rule_tree\", type=\"amides\"}[$__range]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Processing Times for per Processor per Minute",
+      "type": "bargauge"
     },
     {
       "collapsed": false,
@@ -420,7 +1623,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 11
+        "y": 41
       },
       "id": 13,
       "panels": [],
@@ -490,7 +1693,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 42
       },
       "id": 10,
       "options": {
@@ -513,6 +1716,7 @@
           },
           "editorMode": "code",
           "expr": "rate(logprep_number_of_processed_events_total{component=\"input\"}[1m])",
+          "hide": false,
           "instant": false,
           "legendFormat": "{{type}}",
           "range": true,
@@ -602,7 +1806,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 19
+        "y": 49
       },
       "id": 1,
       "options": {
@@ -655,7 +1859,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 54
       },
       "id": 14,
       "panels": [],
@@ -725,7 +1929,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 55
       },
       "id": 11,
       "options": {
@@ -811,7 +2015,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "#EAB839",
@@ -827,7 +2032,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 62
       },
       "id": 2,
       "options": {
@@ -920,7 +2125,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -936,7 +2142,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 40
+        "y": 70
       },
       "id": 15,
       "options": {
@@ -994,7 +2200,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "5s",
+  "refresh": false,
   "schemaVersion": 38,
   "style": "dark",
   "tags": [],
@@ -1003,7 +2209,7 @@
       {
         "allValue": "",
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "All",
           "value": "$__all"
         },
@@ -1012,7 +2218,7 @@
           "uid": "promz2394"
         },
         "definition": "label_values(logprep_processing_time_per_event_count{component=~\"input|output\"},type)",
-        "hide": 2,
+        "hide": 0,
         "includeAll": true,
         "label": "Connector Types",
         "multi": false,
@@ -1031,13 +2237,13 @@
     ]
   },
   "time": {
-    "from": "now-6h",
-    "to": "now"
+    "from": "2023-10-26T12:01:15.889Z",
+    "to": "2023-10-26T12:03:58.551Z"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Logprep Version 0.0.1",
   "uid": "b1d9c144-d9a7-4a9c-a6c4-6929eec1c776",
-  "version": 7,
+  "version": 17,
   "weekStart": ""
 }
