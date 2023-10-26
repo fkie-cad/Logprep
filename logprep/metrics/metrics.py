@@ -68,13 +68,6 @@ class Metric(ABC):
                     registry=self._registry,
                     multiprocess_mode="liveall",
                 )
-            if isinstance(self, InfoMetric):
-                self.tracker = Info(
-                    name=self.fullname,
-                    labelnames=self.labels.keys(),
-                    registry=self._registry,
-                    documentation=self.description,
-                )
         except ValueError as error:
             # pylint: disable=protected-access
             self.tracker = self._registry._names_to_collectors.get(self.fullname)
@@ -164,23 +157,8 @@ class GaugeMetric(Metric):
         return self
 
 
-@define(kw_only=True)
-class InfoMetric(Metric):
-    """Wrapper for prometheus Gauge metric""" ""
-
-    def __add__(self, other):
-        return self.add_with_labels(other, self.labels)
-
-    def add_with_labels(self, other, labels):
-        """Add with labels"""
-        labels = self.labels | labels
-        self.tracker.labels(**labels).info(other)
-        return self
-
-
 METRIC_TO_COLLECTOR_TYPE = {
     CounterMetric: Counter,
     HistogramMetric: Histogram,
     GaugeMetric: Gauge,
-    InfoMetric: Info,
 }

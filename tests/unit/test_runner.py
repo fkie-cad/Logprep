@@ -309,7 +309,7 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 12
 
-    def test_reload_configuration_logs_new_version(self, tmp_path):
+    def test_reload_configuration_logs_new_version_and_sets_metric(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
         config_path = tmp_path / "config.yml"
         config_update = {"config_refresh_interval": 5, "version": "current version"}
@@ -319,8 +319,11 @@ class TestRunner(LogprepRunnerTest):
         config_path.write_text(json.dumps(config_update))
         self.runner._yaml_path = str(config_path)
         with mock.patch("logging.Logger.info") as mock_info:
-            self.runner.reload_configuration(refresh=True)
+            with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
+                self.runner.reload_configuration(refresh=True)
         mock_info.assert_called_with("Configuration version: new version")
+        mock_add.assert_called()
+        mock_add.assert_called_with(1, {"config": "new version"})
 
     def test_reload_configuration_decreases_processes_after_increase(self, tmp_path):
         self.runner._manager.set_configuration(self.runner._configuration)

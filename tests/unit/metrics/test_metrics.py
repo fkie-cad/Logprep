@@ -17,14 +17,7 @@ from prometheus_client import (
 )
 
 from logprep.abc.component import Component
-from logprep.metrics import metrics
-from logprep.metrics.metrics import (
-    CounterMetric,
-    GaugeMetric,
-    HistogramMetric,
-    InfoMetric,
-    Metric,
-)
+from logprep.metrics.metrics import CounterMetric, GaugeMetric, HistogramMetric, Metric
 
 
 class TestMetric:
@@ -260,23 +253,6 @@ class TestHistogramMetric:
         assert re.search(r'logprep_bla_sum\{pipeline="1"\} 2\.0', metric_output)
         assert re.search(r'logprep_bla_count\{pipeline="1"\} 2\.0', metric_output)
         assert re.search(r'logprep_bla_bucket\{le=".*",pipeline="1"\} \d+', metric_output)
-
-
-class TestInfoMetric:
-    def setup_method(self):
-        self.custom_registry = CollectorRegistry()
-
-    def test_add_sets_info_metric(self):
-        metric = InfoMetric(
-            name="version",
-            description="the product version",
-            labels={"pipeline": "1"},
-            registry=self.custom_registry,
-        )
-        metric.init_tracker()
-        metric += {"version": "1.0.0"}
-        metric_output = generate_latest(self.custom_registry).decode("utf-8")
-        assert metric_output
 
 
 class TestComponentMetrics:

@@ -3,16 +3,19 @@
 
 import logging
 import os
-import shutil
 import signal
 from ctypes import c_bool
 from multiprocessing import Value, current_process
 
 import requests
+from attrs import define, field
 from schedule import Scheduler
 
+from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
+from logprep.metrics.metrics import GaugeMetric
 from logprep.util.configuration import Configuration, InvalidConfigurationError
+from versioneer import get_versions
 
 
 class RunnerError(Exception):
@@ -77,6 +80,20 @@ class Runner:
 
     scheduler: Scheduler
 
+    @define(kw_only=True)
+    class Metrics(Component.Metrics):
+        """Metrics for the PipelineManager."""
+
+        version_info_and_refresh_count: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep version information",
+                name="logprep_version_info_and_refresh_count",
+                labels={"logprep": "unset", "config": "unset"},
+                inject_label_values=False,
+            )
+        )
+        """Logprep version info."""
+
     # Use this method to obtain a runner singleton for production
     @staticmethod
     def get_runner():
@@ -89,6 +106,7 @@ class Runner:
     def __init__(self, bypass_check_to_obtain_non_singleton_instance=False):
         self._configuration = None
         self._yaml_path = None
+        self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._logger = logging.getLogger("Logprep Runner")
         self._config_refresh_interval = None
 
@@ -150,6 +168,14 @@ class Runner:
             raise MustConfigureALoggerError
 
         self._create_manager()
+        versions = get_versions()
+        self.metrics.version_info_and_refresh_count.add_with_labels(
+            1,
+            {
+                "logprep": f"{versions.get('version')}",
+                "config": f"{self._configuration.get('version', 'unset')}",
+            },
+        )
         self._manager.set_configuration(self._configuration)
         self._manager.set_count(self._configuration["process_count"])
         self._logger.debug("Pipeline manager initiated")
@@ -216,8 +242,10 @@ class Runner:
             self._manager.set_configuration(self._configuration)
             self._manager.set_count(self._configuration["process_count"])
             self._logger.info("Successfully reloaded configuration")
-            self._logger.info(
-                f"Configuration version: {self._configuration.get('version', 'unset')}"
+            config_version = self._configuration.get("version", "unset")
+            self._logger.info(f"Configuration version: {config_version}")
+            self.metrics.version_info_and_refresh_count.add_with_labels(
+                1, {"config": config_version}
             )
         except InvalidConfigurationError as error:
             self._logger.error(

@@ -5,8 +5,8 @@ logger:
   level: INFO
 
 metrics:
-  enabled: false
-  append_measurement_to_event: true
+  enabled: true
+  append_measurement_to_event: false
   port: 8000
 
 pipeline:
