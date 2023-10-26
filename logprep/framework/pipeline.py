@@ -8,7 +8,6 @@ import copy
 import logging
 import logging.handlers
 import multiprocessing
-
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -350,6 +349,8 @@ class Pipeline:
 
         """
         TODOs:
+            - enforce rule_id should be unique, set factory to hash of rule-config
+                - extend acceptance test to check for non duplicate rules
             - create Grafana Dashboards
             - documentation überarbeiten
             - count warnings and errors in pipeline.py?
@@ -358,9 +359,8 @@ class Pipeline:
                 - count pipeline restarts
                 - count warnings and errors
                 - count config refreshes (if really changed) 
-            - enforce rule_id should be unique
             - delete SharedCounter (Events in last 5 min: n)
-            
+            - rethink histogram buckets
         """
 
         event_received = self._encoder.encode(event)
