@@ -196,16 +196,16 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "This is a message", "field1": "0xff", "new_field": 255},
     ),
     (
-        "convert hex with capital letters",
+        "convert hex to int with prefix",
         {
             "filter": "message",
             "calculator": {
-                "calc": "from_hex(FF)",
+                "calc": "from_hex(0x${field1})",
                 "target_field": "new_field",
             },
         },
-        {"message": "This is a message"},
-        {"message": "This is a message", "new_field": 255},
+        {"message": "This is a message", "field1": "FF"},
+        {"message": "This is a message", "field1": "FF", "new_field": 255},
     ),
 ]
 
