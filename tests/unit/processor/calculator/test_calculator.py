@@ -403,6 +403,6 @@ class TestCalculator(BaseProcessorTestCase):
     )
     def test_fourfn(self, expression, expected):
         bnf = BNF()
-        _ = bnf.parseString(expression, parseAll=True)
+        _ = bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
         result = bnf.evaluate_stack()
         assert result == expected
