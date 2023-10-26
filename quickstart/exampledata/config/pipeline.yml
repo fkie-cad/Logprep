@@ -5,13 +5,8 @@ logger:
   level: INFO
 
 metrics:
-  enabled: true
-  period: 1
-  cumulative: false
-  aggregate_processes: false
-  measure_time:
-    enabled: true
-    append_to_event: false
+  enabled: false
+  append_measurement_to_event: true
   port: 8000
 
 pipeline:
@@ -24,13 +19,13 @@ pipeline:
       generic_rules:
         - quickstart/exampledata/rules/labeler/generic
 
-  # - normalizer:
-  #     type: normalizer
-  #     specific_rules:
-  #       - quickstart/exampledata/rules/normalizer/specific/
-  #     generic_rules:
-  #       - quickstart/exampledata/rules/normalizer/generic/
-  #     regex_mapping: quickstart/exampledata/rules/normalizer/normalizer_regex_mapping.yml
+  - normalizer:
+      type: normalizer
+      specific_rules:
+        - quickstart/exampledata/rules/normalizer/specific/
+      generic_rules:
+        - quickstart/exampledata/rules/normalizer/generic/
+      regex_mapping: quickstart/exampledata/rules/normalizer/normalizer_regex_mapping.yml
 
   - dropper:
       type: dropper

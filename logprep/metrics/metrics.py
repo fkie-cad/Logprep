@@ -107,10 +107,12 @@ class Metric(ABC):
                 result = func(self, *args, **kwargs)
                 duration = time.perf_counter() - begin
                 metric += duration
+
                 if hasattr(self, "rule_type"):
                     event = args[0]
-                    add_field_to(event, f"processing_times.{self.rule_type}", duration)
-                    add_field_to(event, "processing_times.hostname", gethostname())
+                    if event:
+                        add_field_to(event, f"processing_times.{self.rule_type}", duration)
+                        add_field_to(event, "processing_times.hostname", gethostname())
                 return result
 
             return inner

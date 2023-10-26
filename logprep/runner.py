@@ -127,6 +127,8 @@ class Runner:
         self._yaml_path = yaml_file
         self._configuration = configuration
         self._config_refresh_interval = configuration.get("config_refresh_interval")
+        if configuration.get("metrics", {}).get("append_measurement_to_event", False):
+            os.environ["APPEND_TO_EVENT"] = "1"
 
     def start(self):
         """Start processing.

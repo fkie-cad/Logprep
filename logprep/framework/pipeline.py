@@ -350,18 +350,17 @@ class Pipeline:
 
         """
         TODOs:
-            - delete SharedCounter (Events in last 5 min: n)
             - create Grafana Dashboards
+            - documentation überarbeiten
             - count warnings and errors in pipeline.py?
+            - add version info to metrics
             - add pipelinemanager metrics (pipeline restarts)
                 - count pipeline restarts
                 - count warnings and errors
                 - count config refreshes (if really changed) 
-            - add metrics for input, output and processors
-            - add version info to metrics
-            - enforce rule_id should be unique
             - implement add_to_event to configuration
-            - documentation for add_to_event
+            - enforce rule_id should be unique
+            - delete SharedCounter (Events in last 5 min: n)
             
         """
 
