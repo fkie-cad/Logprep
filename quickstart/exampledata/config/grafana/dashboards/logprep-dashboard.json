@@ -247,7 +247,7 @@
       },
       "id": 19,
       "panels": [],
-      "title": "Overview",
+      "title": "Behavior last Minute",
       "type": "row"
     },
     {
@@ -299,12 +299,12 @@
       "id": 20,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -329,7 +329,7 @@
           "refId": "B"
         }
       ],
-      "title": "Avg Total Processing Times",
+      "title": "Total Processing Times",
       "type": "stat"
     },
     {
@@ -381,12 +381,12 @@
       "id": 38,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -411,7 +411,7 @@
           "refId": "B"
         }
       ],
-      "title": "Avg Input Processing Times",
+      "title": "Input Processing Times",
       "type": "stat"
     },
     {
@@ -463,12 +463,12 @@
       "id": 36,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -493,7 +493,7 @@
           "refId": "B"
         }
       ],
-      "title": "Avg Processor Processing Times",
+      "title": "Processor Processing Times",
       "type": "stat"
     },
     {
@@ -545,12 +545,12 @@
       "id": 61,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -575,7 +575,7 @@
           "refId": "B"
         }
       ],
-      "title": "Avg Pipeline Processing Times",
+      "title": "Pipeline Processing Times",
       "type": "stat"
     },
     {
@@ -627,12 +627,12 @@
       "id": 37,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -649,7 +649,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"output\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=\"output\"}[1m]))",
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"output\"}[1m])/increase(logprep_processing_time_per_event_count{component=\"output\"}[1m]))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -657,7 +657,7 @@
           "refId": "B"
         }
       ],
-      "title": "Avg Output Processing Times",
+      "title": "Output Processing Times",
       "type": "stat"
     },
     {
@@ -709,12 +709,12 @@
       "id": 29,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "sum"
           ],
           "fields": "",
           "values": false
@@ -731,7 +731,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_number_of_errors_total[$__range]))",
+          "expr": "round(sum(increase(logprep_number_of_errors_total[1m])))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -845,6 +845,7 @@
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "mappings": [
             {
               "options": {
@@ -879,12 +880,12 @@
       "id": 23,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -923,6 +924,7 @@
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "mappings": [
             {
               "options": {
@@ -957,12 +959,12 @@
       "id": 24,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -1001,6 +1003,7 @@
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "mappings": [
             {
               "options": {
@@ -1039,12 +1042,12 @@
       "id": 31,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -1131,7 +1134,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -1155,6 +1158,77 @@
         }
       ],
       "title": "Number of Rules",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 12,
+        "y": 5
+      },
+      "id": 69,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "ceil(sum by(type) (rate(logprep_number_of_processed_events_total{component=\"rule\", type=\"pre_detector\"}[1m])))",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Total SREs",
       "type": "stat"
     },
     {
@@ -1188,7 +1262,7 @@
                 "value": null
               },
               {
-                "color": "red",
+                "color": "yellow",
                 "value": 1
               }
             ]
@@ -1206,12 +1280,12 @@
       "id": 30,
       "options": {
         "colorMode": "value",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "sum"
           ],
           "fields": "",
           "values": false
@@ -1228,7 +1302,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_number_of_warnings_total[$__range]))",
+          "expr": "round(sum(increase(logprep_number_of_warnings_total[1m])))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -2323,7 +2397,7 @@
     ]
   },
   "time": {
-    "from": "now-15m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
