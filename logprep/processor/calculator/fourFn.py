@@ -81,7 +81,7 @@ class BNF(Forward):
     #                    Optional(e + Word("+-"+nums, nums)))
     # or use provided pyparsing_common.number, but convert back to str:
     # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
-    fnumber = Regex(r"[+-]?[a-z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+    fnumber = Regex(r"[+-]?[a-zA-Z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
     ident = Word(alphas, alphanums + "_$")
 
     plus, minus, mult, div = map(Literal, "+-*/")

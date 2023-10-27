@@ -195,6 +195,18 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "This is a message", "field1": "0xff"},
         {"message": "This is a message", "field1": "0xff", "new_field": 255},
     ),
+    (
+        "convert hex with capital letters",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(FF)",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message"},
+        {"message": "This is a message", "new_field": 255},
+    ),
 ]
 
 
@@ -374,7 +386,7 @@ class TestCalculator(BaseProcessorTestCase):
             ("10+sin(PI/4)^2", 10 + math.sin(math.pi / 4) ** 2),
             ("trunc(E)", int(math.e)),
             ("trunc(-E)", int(-math.e)),
-            ("from_hex(0xff)", 255),
+            ("from_hex(4B)", 75),
             ("round(E)", round(math.e)),
             ("round(-E)", round(-math.e)),
             ("E^PI", math.e**math.pi),
