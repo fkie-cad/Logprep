@@ -220,4 +220,9 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         assert not re.search(
             forbidden_metric, metrics
         ), f"Metric {forbidden_metric} found in metrics"
+
+    single_rule = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=single calculator rule\".+\",type\=\".+\"}"
+    assert re.search(single_rule, metrics), "Single rule metric not found"
+    assert len(re.findall(single_rule, metrics)) == 1, "Single rule metric found multiple times"
+
     proc.kill()
