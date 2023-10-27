@@ -1,6 +1,5 @@
 """Abstract module for processors"""
 from abc import abstractmethod
-from functools import reduce
 from logging import DEBUG, Logger
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
@@ -165,7 +164,6 @@ class Processor(Component):
             applied_rules.add(rule)
             return event
 
-        @Metric.measure_time()
         def _process_rule_tree_multiple_times(tree, event):
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
@@ -173,7 +171,6 @@ class Processor(Component):
                     _process_rule(rule, event)
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
 
-        @Metric.measure_time()
         def _process_rule_tree_once(tree, event):
             matching_rules = tree.get_matching_rules(event)
             for rule in matching_rules:
@@ -320,6 +317,3 @@ class Processor(Component):
         super().setup()
         for rule in self.rules:
             _ = rule.metrics  # initialize metrics
-
-        # initialize rule tree metrics:
-        _, _ = self._specific_tree.metrics, self._generic_tree.metrics

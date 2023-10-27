@@ -6,7 +6,7 @@ from socket import gethostname
 from typing import Union
 
 from attr import define, field, validators
-from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, Info
+from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 from logprep.util.helper import add_field_to
 
@@ -57,7 +57,7 @@ class Metric(ABC):
                     name=self.fullname,
                     documentation=self.description,
                     labelnames=self.labels.keys(),
-                    buckets=(0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1),
+                    buckets=(0.00001, 0.00005, 0.0001, 0.001, 0.1, 1),
                     registry=self._registry,
                 )
             if isinstance(self, GaugeMetric):

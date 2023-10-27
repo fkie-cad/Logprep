@@ -1,16 +1,11 @@
 """This module contains the rule tree functionality."""
 
 from enum import Enum
-from functools import cached_property
 from logging import Logger
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from attr import define, field
-
-from logprep.abc.component import Component
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
-from logprep.metrics.metrics import HistogramMetric
 from logprep.util import getter
 
 if TYPE_CHECKING:
@@ -29,20 +24,6 @@ class RuleTreeType(Enum):
 
 class RuleTree:
     """Represent a set of rules using a rule tree model."""
-
-    @define(kw_only=True)
-    class Metrics(Component.Metrics):
-        """Tracks statistics about the current rule tree"""
-
-        number_of_processed_events = field(default=None)
-        number_of_failed_events = field(default=None)
-        processing_time_per_event: HistogramMetric = field(
-            factory=lambda: HistogramMetric(
-                description="Time in seconds that it took to process an event",
-                name="processing_time_per_event",
-            )
-        )
-        """Time in seconds that it took to process an event"""
 
     __slots__ = (
         "rule_parser",
@@ -98,21 +79,6 @@ class RuleTree:
             self._root = root
         else:
             self._root = Node(None)
-
-    @cached_property
-    def metrics(self):
-        """create and return metrics object"""
-        return self.Metrics(labels=self.metric_labels)
-
-    @property
-    def metric_labels(self) -> dict:
-        """Return metric labels."""
-        return {
-            "component": "rule_tree",
-            "description": self._rule_tree_type,
-            "type": self._processor_type,
-            "name": self._processor_name,
-        }
 
     @property
     def number_of_rules(self) -> int:
