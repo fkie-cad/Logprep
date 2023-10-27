@@ -37,16 +37,22 @@ class RuleSorter:
             Dictionary with sorting priority information (key -> field name; value -> priority).
 
         """
+        sorting_keys = {}
         for parsed_rule in parsed_rule_list:
-            parsed_rule.sort(
-                key=lambda expression: RuleSorter._get_sorting_key(expression, priority_dict)
-            )
+            for parsed_expression in parsed_rule:
+                expression_repr = repr(parsed_expression)
+                if expression_repr not in sorting_keys:
+                    sorting_keys[expression_repr] = RuleSorter._get_sorting_key(
+                        parsed_expression, priority_dict
+                    )
+        for parsed_rule in parsed_rule_list:
+            parsed_rule.sort(key=lambda expression: sorting_keys.get(repr(expression)))
 
     @staticmethod
     def _get_sorting_key(
         expression: FilterExpression, priority_dict: dict
     ) -> Union[dict, str, None]:
-        """Get the sorting key for an expression with a priority dict..
+        """Get the sorting key for an expression with a priority dict.
 
         This function is used by the _sort_rule_segments() function in the sorting key.
         It includes various cases to cover all the different expression classes. For every class it

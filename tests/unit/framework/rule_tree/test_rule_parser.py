@@ -2,6 +2,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 # pylint: disable=too-many-statements
+from multiprocessing import Queue
 
 import pytest
 
@@ -439,10 +440,6 @@ class TestRuleParser:
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C2"]), Exists(["D1"])],
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C2"]), Exists(["D2"])],
-                    [Exists(["A1"]), Exists(["C1"]), Exists(["D1"])],
-                    [Exists(["A1"]), Exists(["C1"]), Exists(["D2"])],
-                    [Exists(["A1"]), Exists(["C2"]), Exists(["D1"])],
-                    [Exists(["A1"]), Exists(["C2"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C1"]), Exists(["D1"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C2"]), Exists(["D1"])],
@@ -451,10 +448,50 @@ class TestRuleParser:
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C2"]), Exists(["D1"])],
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C2"]), Exists(["D2"])],
-                    [Exists(["A2"]), Exists(["C1"]), Exists(["D1"])],
-                    [Exists(["A2"]), Exists(["C1"]), Exists(["D2"])],
-                    [Exists(["A2"]), Exists(["C2"]), Exists(["D1"])],
-                    [Exists(["A2"]), Exists(["C2"]), Exists(["D2"])],
+                ],
+            ),
+            (
+                PreDetectorRule._create_from_dict(
+                    {
+                        "filter": "(A1 OR A2) AND (B1 OR (C1 AND C2))",
+                        "pre_detector": {
+                            "id": 1,
+                            "title": "1",
+                            "severity": "0",
+                            "case_condition": "directly",
+                            "mitre": [],
+                        },
+                    }
+                ),
+                {},
+                {},
+                [
+                    [Exists(["A1"]), Exists(["B1"])],
+                    [Exists(["A1"]), Exists(["C1"]), Exists(["C2"])],
+                    [Exists(["A2"]), Exists(["B1"])],
+                    [Exists(["A2"]), Exists(["C1"]), Exists(["C2"])],
+                ],
+            ),
+            (
+                PreDetectorRule._create_from_dict(
+                    {
+                        "filter": "((A1 OR A2) AND (B1 OR B2)) AND C1",
+                        "pre_detector": {
+                            "id": 1,
+                            "title": "1",
+                            "severity": "0",
+                            "case_condition": "directly",
+                            "mitre": [],
+                        },
+                    }
+                ),
+                {},
+                {},
+                [
+                    [Exists(["A1"]), Exists(["B1"]), Exists(["C1"])],
+                    [Exists(["A1"]), Exists(["B2"]), Exists(["C1"])],
+                    [Exists(["A2"]), Exists(["B1"]), Exists(["C1"])],
+                    [Exists(["A2"]), Exists(["B2"]), Exists(["C1"])],
                 ],
             ),
             (
@@ -543,10 +580,13 @@ class TestRuleParser:
     )
     def test_parse_rule_param(self, rule, priority_dict, tag_map, expected_expressions):
         rule_parser = RuleParser(tag_map)
+        queue = Queue()
         if expected_expressions is not None:
-            assert rule_parser.parse_rule(rule, priority_dict) == expected_expressions
+            rule_parser.parse_rule(rule, priority_dict, queue)
+            assert queue.get() == expected_expressions
         else:
-            assert rule_parser.parse_rule(rule, priority_dict)
+            rule_parser.parse_rule(rule, priority_dict, queue)
+            assert queue.get()
 
     @pytest.mark.parametrize(
         "rule_list, expected",

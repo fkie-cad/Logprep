@@ -4,7 +4,7 @@ Goal of this module is to parse each rule into a list of less complex rules with
 behavior, allowing a simpler construction of the rule tree.
 
 """
-
+import multiprocessing
 from typing import TYPE_CHECKING
 
 from logprep.filter.expression.filter_expression import (
@@ -48,7 +48,7 @@ class RuleParser:
         self._demorgan_resolver = DeMorganResolver()
         self._rule_tagger = RuleTagger(tag_map)
 
-    def parse_rule(self, rule: "Rule", priority_dict: dict) -> list:
+    def parse_rule(self, rule: "Rule", priority_dict: dict, queue: multiprocessing.Queue):
         """Main parsing function to parse rule into list of less complex rules.
 
         This function aims to parse a rule into a list of less complex rules that shows the same
@@ -87,6 +87,8 @@ class RuleParser:
         priority_dict: dict
             Dictionary containing priority values for field names that are used to sort filter
             expression in a rule.
+        queue: multiprocessing.Queue
+            Return value for the process.
 
         Returns
         -------
@@ -107,7 +109,7 @@ class RuleParser:
         self._add_exists_filter(dnf_rule_segments)
         self._rule_tagger.add(dnf_rule_segments)
 
-        return dnf_rule_segments
+        queue.put(dnf_rule_segments)
 
     @staticmethod
     def _add_exists_filter(parsed_rules: list):

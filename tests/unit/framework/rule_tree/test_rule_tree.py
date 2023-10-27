@@ -81,8 +81,8 @@ class TestRuleTree:
         ):
             rule_tree.add_rule(rule, logger=mocked_logger)
         expected_call = mock.call.warning(
-            'Error parsing rule "winlog:"123"": Exception: mocked error.'
-            "\nIgnore and continue with next rule."
+            'Error parsing rule "None.yml": TimeoutError: '
+            "Loading the rule took longer than 10.0 seconds. Ignore and continue with next rule."
         )
         assert expected_call in mocked_logger.mock_calls
 

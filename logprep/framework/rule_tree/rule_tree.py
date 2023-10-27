@@ -1,6 +1,7 @@
 """This module contains the rule tree functionality."""
-
+import multiprocessing
 from logging import Logger
+from queue import Empty
 from typing import List, TYPE_CHECKING, Optional
 
 import numpy as np
@@ -52,6 +53,8 @@ class RuleTree:
         "_rule_mapping",
         "_config_path",
         "_root",
+        "rule_load_timeout",
+        "parsing_queue",
     )
 
     rule_parser: Optional[RuleParser]
@@ -60,6 +63,8 @@ class RuleTree:
     _rule_mapping: dict
     _config_path: str
     _root: Node
+    rule_load_timeout: float
+    parsing_queue: multiprocessing.Queue
 
     def __init__(self, root: Node = None, config_path: str = None, metric_labels: dict = None):
         """Rule tree initialization function.
@@ -89,6 +94,8 @@ class RuleTree:
         else:
             self._root = Node(None)
 
+        self.parsing_queue = multiprocessing.Queue()
+
     def _setup(self):
         """Basic setup of rule tree.
 
@@ -97,11 +104,14 @@ class RuleTree:
         """
         self.priority_dict = {}
         tag_map = {}
-
+        default_load_timeout = 10.0
         if self._config_path:
             config_data = getter.GetterFactory.from_string(self._config_path).get_json()
             self.priority_dict = config_data["priority_dict"]
             tag_map = config_data["tag_map"]
+            self.rule_load_timeout = config_data.get("rule_load_timeout", default_load_timeout)
+        else:
+            self.rule_load_timeout = default_load_timeout
         self.rule_parser = RuleParser(tag_map)
 
     def add_rule(self, rule: "Rule", logger: Logger = None):
@@ -122,12 +132,16 @@ class RuleTree:
             Logger to use for logging.
 
         """
+        parsing_process = multiprocessing.Process(
+            target=self.rule_parser.parse_rule, args=(rule, self.priority_dict, self.parsing_queue)
+        )
         try:
-            parsed_rule = self.rule_parser.parse_rule(rule, self.priority_dict)
+            parsed_rule = self._parse_rule(parsing_process)
         except Exception as error:  # pylint: disable=broad-except
+            self._kill_parsing_process(parsing_process)
             logger.warning(
-                f'Error parsing rule "{rule.filter}": {type(error).__name__}: {error}.'
-                f"\nIgnore and continue with next rule."
+                f'Error parsing rule "{rule.file_name}.yml": {type(error).__name__}: {error}. '
+                f"Ignore and continue with next rule."
             )
             return
 
@@ -140,6 +154,26 @@ class RuleTree:
 
         self._rule_mapping[rule] = self.metrics.number_of_rules - 1
         self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member
+
+    def _parse_rule(self, parsing_process: multiprocessing.Process) -> list:
+        parsing_process.start()
+        try:
+            parsed_rule = self.parsing_queue.get(timeout=self.rule_load_timeout)
+        except Empty as error:
+            raise TimeoutError(
+                f"Loading the rule took longer than {self.rule_load_timeout} seconds"
+            ) from error
+        parsing_process.join()
+        return parsed_rule
+
+    def _kill_parsing_process(self, parsing_process: multiprocessing.Process):
+        parsing_process.kill()
+        try:
+            while True:
+                self.parsing_queue.get_nowait()
+        except Empty:
+            pass
+        parsing_process.join()
 
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.
