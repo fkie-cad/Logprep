@@ -186,8 +186,8 @@ class ConfluentKafkaOutput(Output):
         error : KafkaException
             the error that occurred
         """
-        self.metrics.number_of_warnings += 1
-        self._logger.warning(f"{self.describe()}: {error}")
+        self.metrics.number_of_errors += 1
+        self._logger.error(f"{self.describe()}: {error}")
 
     def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
