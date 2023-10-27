@@ -171,6 +171,42 @@ test_cases = [  # testcase, rule, event, expected
         {"duration": "0.01"},
         {"duration": "0.01"},
     ),
+    (
+        "convert hex to int",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(0x${field1})",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "ff"},
+        {"message": "This is a message", "field1": "ff", "new_field": 255},
+    ),
+    (
+        "convert hex to int with prefix",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(${field1})",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "0xff"},
+        {"message": "This is a message", "field1": "0xff", "new_field": 255},
+    ),
+    (
+        "convert hex to int with prefix",
+        {
+            "filter": "message",
+            "calculator": {
+                "calc": "from_hex(0x${field1})",
+                "target_field": "new_field",
+            },
+        },
+        {"message": "This is a message", "field1": "FF"},
+        {"message": "This is a message", "field1": "FF", "new_field": 255},
+    ),
 ]
 
 
@@ -350,6 +386,7 @@ class TestCalculator(BaseProcessorTestCase):
             ("10+sin(PI/4)^2", 10 + math.sin(math.pi / 4) ** 2),
             ("trunc(E)", int(math.e)),
             ("trunc(-E)", int(-math.e)),
+            ("from_hex(4B)", 75),
             ("round(E)", round(math.e)),
             ("round(-E)", round(-math.e)),
             ("E^PI", math.e**math.pi),
@@ -378,6 +415,6 @@ class TestCalculator(BaseProcessorTestCase):
     )
     def test_fourfn(self, expression, expected):
         bnf = BNF()
-        _ = bnf.parseString(expression, parseAll=True)
+        _ = bnf.parseString(expression, parseAll=True)  # pylint: disable=E1123,E1121
         result = bnf.evaluate_stack()
         assert result == expected

@@ -46,6 +46,7 @@ fn = {
     "exp": math.exp,
     "abs": abs,
     "trunc": int,
+    "from_hex": lambda a: int(a, 16),
     "round": round,
     "sgn": lambda a: -1 if a < -epsilon else 1 if a > epsilon else 0,
     # functionsl with multiple arguments
@@ -80,7 +81,7 @@ class BNF(Forward):
     #                    Optional(e + Word("+-"+nums, nums)))
     # or use provided pyparsing_common.number, but convert back to str:
     # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
-    fnumber = Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+    fnumber = Regex(r"[+-]?[a-zA-Z0-9]+(?:\.\d*)?(?:[eE][+-]?\d+)?")
     ident = Word(alphas, alphanums + "_$")
 
     plus, minus, mult, div = map(Literal, "+-*/")
@@ -119,12 +120,15 @@ class BNF(Forward):
             args = reversed([self.evaluate_stack() for _ in range(num_args)])
             return fn[op](*args)
         if op[0].isalpha():
-            raise Exception(f"invalid identifier '{op}'")
+            raise Exception(f"invalid identifier '{op}'")  # pylint: disable=broad-exception-raised
         # try to evaluate as int first, then as float if int fails
         try:
             return int(op)
         except ValueError:
-            return float(op)
+            try:
+                return float(op)
+            except ValueError:
+                return op
 
     def __new__(cls):
         if not hasattr(cls, "instance"):
@@ -134,7 +138,7 @@ class BNF(Forward):
     def __init__(self) -> None:
         super().__init__()
         self.exprStack = []
-        expr_list = delimitedList(Group(self))
+        expr_list = delimitedList(Group(self))  # pylint: disable=E1121
 
         # add parse action that replaces the function identifier with a (name, number of args) tuple
         def insert_fn_argcount_tuple(t):
