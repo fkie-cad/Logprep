@@ -28,7 +28,6 @@ Example
 import json
 from datetime import datetime
 from functools import cached_property, partial
-from logging import Logger
 from socket import getfqdn
 from typing import Optional
 
@@ -36,7 +35,7 @@ from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
-from logprep.metrics.metrics import GaugeMetric
+from logprep.metrics.metrics import GaugeMetric, Metric
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -241,10 +240,10 @@ class ConfluentKafkaOutput(Output):
         configured input
         """
         self.store_custom(document, self._config.topic)
-        self.metrics.number_of_processed_events += 1
         if self.input_connector:
             self.input_connector.batch_finished_callback()
 
+    @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:
         """Write document to Kafka into target topic.
 
@@ -263,6 +262,7 @@ class ConfluentKafkaOutput(Output):
         try:
             self._producer.produce(target, value=self._encoder.encode(document))
             self._producer.poll(self._config.send_timeout)
+            self.metrics.number_of_processed_events += 1
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
@@ -271,6 +271,7 @@ class ConfluentKafkaOutput(Output):
                 self, f"Error storing output document -> {error}", document
             ) from error
 
+    @Metric.measure_time()
     def store_failed(
         self, error_message: str, document_received: dict, document_processed: dict
     ) -> None:

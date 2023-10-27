@@ -62,7 +62,7 @@
             "h": 3,
             "w": 7,
             "x": 0,
-            "y": 1
+            "y": 9
           },
           "id": 4,
           "options": {
@@ -128,7 +128,7 @@
             "h": 3,
             "w": 7,
             "x": 7,
-            "y": 1
+            "y": 9
           },
           "id": 8,
           "options": {
@@ -198,7 +198,7 @@
             "h": 3,
             "w": 24,
             "x": 0,
-            "y": 4
+            "y": 12
           },
           "id": 32,
           "options": {
@@ -337,7 +337,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "100 ms is equivalent to the timeout of the input connector",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -665,7 +665,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -731,7 +731,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "round(sum(rate(logprep_number_of_errors_total[$__range])))",
+          "expr": "sum(increase(logprep_number_of_errors_total[$__range]))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -739,7 +739,7 @@
           "refId": "A"
         }
       ],
-      "title": "Current Number of Errors",
+      "title": "Number of Errors",
       "type": "stat"
     },
     {
@@ -1064,9 +1064,23 @@
           "expr": "sum(rate(logprep_number_of_processed_events_total{component=\"input\"}[1m])) - sum(rate(logprep_number_of_processed_events_total{component=\"output\"}[1m]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "Absolut",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(rate(logprep_number_of_processed_events_total{component=\"output\"}[1m])) / sum(rate(logprep_number_of_processed_events_total{component=\"input\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Ratio",
+          "range": true,
+          "refId": "B"
         }
       ],
       "title": "Input/Output Difference",
@@ -1132,11 +1146,12 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "sum(count by (type)(logprep_number_of_processed_events_total{component=\"rule\"}))",
+          "expr": "count(logprep_number_of_processed_events_total{component=\"rule\"})",
+          "hide": false,
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
-          "refId": "A"
+          "refId": "B"
         }
       ],
       "title": "Number of Rules",
@@ -1147,7 +1162,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1213,7 +1228,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "round(sum(rate(logprep_number_of_warnings_total[$__range])))",
+          "expr": "sum(increase(logprep_number_of_warnings_total[$__range]))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1221,7 +1236,7 @@
           "refId": "A"
         }
       ],
-      "title": "Current Number of Warnings",
+      "title": "Number of Warnings",
       "type": "stat"
     },
     {
@@ -1662,7 +1677,7 @@
           "refId": "B"
         }
       ],
-      "title": "Panel Title",
+      "title": "Processing Time Per Connector",
       "type": "timeseries"
     },
     {
@@ -1672,6 +1687,208 @@
         "w": 24,
         "x": 0,
         "y": 35
+      },
+      "id": 62,
+      "panels": [],
+      "title": "Kafka",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "id": 65,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(logprep_confluent_kafka_input_librdkafka_rxmsgs[1m]))",
+          "instant": false,
+          "legendFormat": "Messages",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Recieved Messages librdkafka",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      },
+      "id": 66,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "sum(rate(logprep_confluent_kafka_output_librdkafka_txmsgs[1m]))",
+          "instant": false,
+          "legendFormat": "Messages",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Send Messages librdkafka",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 52
       },
       "id": 14,
       "panels": [],
@@ -1741,7 +1958,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 53
       },
       "id": 58,
       "options": {
@@ -1844,7 +2061,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 43
+        "y": 60
       },
       "id": 2,
       "options": {
@@ -1897,7 +2114,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 51
+        "y": 68
       },
       "id": 55,
       "panels": [],
@@ -1928,7 +2145,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 52
+        "y": 69
       },
       "id": 49,
       "options": {
@@ -2031,7 +2248,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 52
+        "y": 69
       },
       "id": 60,
       "options": {
@@ -2106,7 +2323,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-15m",
     "to": "now"
   },
   "timepicker": {},
