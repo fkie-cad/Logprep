@@ -50,7 +50,21 @@ class RuleParser:
         self._rule_tagger = RuleTagger(tag_map)
 
     @contextmanager
-    def rule_loading_timeout(self, timeout: int):
+    def _rule_loading_timeout(self, timeout: int):
+        """Contextmanager that raises exception after given timeout.
+
+        Parameters
+        ----------
+        timeout: int
+            Timeout in seconds after which to throw an exception.
+
+        Raises
+        ------
+        RuleParserException
+            Throws RuleParserException if timeout has been exceeded.
+
+        """
+
         def timeout_signal_handler(signum, frame):
             raise RuleParserException(f"Loading the rule took longer than {timeout} seconds")
 
@@ -61,7 +75,7 @@ class RuleParser:
         finally:
             signal.alarm(0)
 
-    def parse_rule(self, rule: "Rule", priority_dict: dict, timeout: int):
+    def parse_rule(self, rule: "Rule", priority_dict: dict, timeout: int) -> list:
         """Main parsing function to parse rule into list of less complex rules.
 
         This function aims to parse a rule into a list of less complex rules that shows the same
@@ -116,7 +130,7 @@ class RuleParser:
             Throws RuleParserException when parser encounters a problem during the parsing process.
 
         """
-        with self.rule_loading_timeout(timeout):
+        with self._rule_loading_timeout(timeout):
             filter_expression = self._demorgan_resolver.resolve(rule.filter)
             dnf_rule_segments = RuleSegmenter.segment_into_dnf(filter_expression)
             RuleSorter.sort_rule_segments(dnf_rule_segments, priority_dict)
