@@ -2,8 +2,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 # pylint: disable=too-many-statements
-from multiprocessing import Queue
-
 import pytest
 
 from logprep.filter.expression.filter_expression import StringFilterExpression, Not, Exists
@@ -580,13 +578,10 @@ class TestRuleParser:
     )
     def test_parse_rule_param(self, rule, priority_dict, tag_map, expected_expressions):
         rule_parser = RuleParser(tag_map)
-        queue = Queue()
         if expected_expressions is not None:
-            rule_parser.parse_rule(rule, priority_dict, queue)
-            assert queue.get() == expected_expressions
+            assert rule_parser.parse_rule(rule, priority_dict, 10) == expected_expressions
         else:
-            rule_parser.parse_rule(rule, priority_dict, queue)
-            assert queue.get()
+            assert rule_parser.parse_rule(rule, priority_dict, 10)
 
     @pytest.mark.parametrize(
         "rule_list, expected",

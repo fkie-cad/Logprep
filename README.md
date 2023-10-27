@@ -135,8 +135,8 @@ This configuration will lead to the prioritization of `tags` and `message` in th
 }
 ```
 
-Optionally, a timeout can be set for loading rules by setting `rule_load_timeout` in the rule 
-tree configuration. This is set to 10.0 seconds per rule by default.
+Optionally, a timeout in seconds can be set for loading rules by setting `rule_load_timeout` in the rule 
+tree configuration. This is set to 10 seconds per rule by default.
 A warning will be printed if a rule has not been loaded. 
 
 ```json
@@ -148,7 +148,7 @@ A warning will be printed if a rule has not been loaded.
   "tag_map": {
     "check_field_name": "check-tag"
   },
-  "rule_load_timeout": 1.0
+  "rule_load_timeout": 3
 }
 ```
 

@@ -4,7 +4,8 @@ Goal of this module is to parse each rule into a list of less complex rules with
 behavior, allowing a simpler construction of the rule tree.
 
 """
-import multiprocessing
+import signal
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from logprep.filter.expression.filter_expression import (
@@ -48,7 +49,19 @@ class RuleParser:
         self._demorgan_resolver = DeMorganResolver()
         self._rule_tagger = RuleTagger(tag_map)
 
-    def parse_rule(self, rule: "Rule", priority_dict: dict, queue: multiprocessing.Queue):
+    @contextmanager
+    def rule_loading_timeout(self, timeout: int):
+        def timeout_signal_handler(signum, frame):
+            raise RuleParserException(f"Loading the rule took longer than {timeout} seconds")
+
+        signal.signal(signal.SIGALRM, signal.signal(signal.SIGINT, timeout_signal_handler))
+        signal.alarm(timeout)
+        try:
+            yield
+        finally:
+            signal.alarm(0)
+
+    def parse_rule(self, rule: "Rule", priority_dict: dict, timeout: int):
         """Main parsing function to parse rule into list of less complex rules.
 
         This function aims to parse a rule into a list of less complex rules that shows the same
@@ -87,8 +100,8 @@ class RuleParser:
         priority_dict: dict
             Dictionary containing priority values for field names that are used to sort filter
             expression in a rule.
-        queue: multiprocessing.Queue
-            Return value for the process.
+        timeout: int
+            Timeout for loading a rule in seconds.
 
         Returns
         -------
@@ -103,13 +116,13 @@ class RuleParser:
             Throws RuleParserException when parser encounters a problem during the parsing process.
 
         """
-        filter_expression = self._demorgan_resolver.resolve(rule.filter)
-        dnf_rule_segments = RuleSegmenter.segment_into_dnf(filter_expression)
-        RuleSorter.sort_rule_segments(dnf_rule_segments, priority_dict)
-        self._add_exists_filter(dnf_rule_segments)
-        self._rule_tagger.add(dnf_rule_segments)
-
-        queue.put(dnf_rule_segments)
+        with self.rule_loading_timeout(timeout):
+            filter_expression = self._demorgan_resolver.resolve(rule.filter)
+            dnf_rule_segments = RuleSegmenter.segment_into_dnf(filter_expression)
+            RuleSorter.sort_rule_segments(dnf_rule_segments, priority_dict)
+            self._add_exists_filter(dnf_rule_segments)
+            self._rule_tagger.add(dnf_rule_segments)
+        return dnf_rule_segments
 
     @staticmethod
     def _add_exists_filter(parsed_rules: list):
