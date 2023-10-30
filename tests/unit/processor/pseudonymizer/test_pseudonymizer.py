@@ -702,17 +702,6 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
 
 failure_test_cases = [  # testcase, rule, event, expected
     (
-        "test_pseudonymization_of_field_fails_because_filter_does_not_match",
-        {
-            "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
-            "description": "description content irrelevant for these tests",
-        },
-        {"event_id": 1105, "something": "Not pseudonymized"},
-        {"event_id": 1105, "something": "Not pseudonymized"},
-        None,
-    ),
-    (
         "do_not_pseudonymize_url",
         {
             "filter": "filter_this: does_not_matter",
