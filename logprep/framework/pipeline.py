@@ -350,15 +350,14 @@ class Pipeline:
         """
         TODOs:
             - create Grafana Dashboards
+            - check counting of warnings/error per rule
             - documentation überarbeiten
             - count warnings and errors in pipeline.py?
-            - add version info to metrics
             - add pipelinemanager metrics (pipeline restarts)
                 - count pipeline restarts
                 - count warnings and errors
                 - count config refreshes (if really changed) 
             - delete SharedCounter (Events in last 5 min: n)
-            - rethink histogram buckets
         """
 
         event_received = self._encoder.encode(event)

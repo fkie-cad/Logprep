@@ -1850,7 +1850,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "Shows a per-second average of the processing times of applied processor rules, aggregated by processors.",
+      "description": "Shows a per-second average of the applied rules, aggregated by processor.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1932,7 +1932,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum by(type) (rate(logprep_number_of_processed_events_total{component=\"rule\"}[1m]))",
+          "expr": "sum by(name) (rate(logprep_number_of_processed_events_total{component=\"rule\"}[1m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -1942,7 +1942,7 @@
           "useBackend": false
         }
       ],
-      "title": "Processed Event Rate per Processor per Second",
+      "title": "Rate of Applied Rules per Processor per Second",
       "type": "timeseries"
     },
     {
@@ -2035,7 +2035,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "sum by (type)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(type)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[1m]))",
+          "expr": "sum by (name)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(name)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[1m]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{description}}",
@@ -2116,7 +2116,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "sum by (type)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(type)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[1m])>0)",
+          "expr": "sum by (name)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(name)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[1m])>0)",
           "hide": false,
           "instant": false,
           "legendFormat": "{{description}}",
@@ -2201,7 +2201,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "(sum by (type)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range])))/sum by(type)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])>0)",
+          "expr": "(sum by (name)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range])))/sum by(name)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])>0)",
           "hide": false,
           "instant": false,
           "legendFormat": "{{description}}",
@@ -2664,9 +2664,121 @@
       ],
       "title": "Number of Warnings",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 107
+      },
+      "id": 84,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "width": 200
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (name) (increase(logprep_number_of_warnings_total{component=\"rule\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Number of Warnings per Processor",
+      "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [],
@@ -2710,6 +2822,6 @@
   "timezone": "",
   "title": "Logprep Version 0.0.1",
   "uid": "b1d9c144-d9a7-4a9c-a6c4-6929eec1c776",
-  "version": 3,
+  "version": 11,
   "weekStart": ""
 }
