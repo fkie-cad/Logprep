@@ -39,7 +39,7 @@ import datetime
 import re
 from functools import cached_property
 from logging import Logger
-from typing import Any, List, Optional, Pattern, Tuple, Union
+from typing import List, Optional, Pattern, Tuple, Union
 from urllib.parse import parse_qs
 
 from attrs import define, field, validators
@@ -53,11 +53,7 @@ from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
-from logprep.util.helper import (
-    add_field_to,
-    get_dotted_field_list,
-    get_dotted_field_value,
-)
+from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.validators import list_of_urls_validator
 
 
@@ -205,6 +201,12 @@ class Pseudonymizer(Processor):
         self.pseudonyms = []
         self.pseudonymized_fields = set()
 
+    def setup(self):
+        super().setup()
+        # delete cache to avoid caching pseudonyms from previous runs
+        if "_cache" in self.__dict__:
+            del self.__dict__["_cache"]
+
     def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
         super().load_rules(specific_rules_targets, generic_rules_targets)
         self._replace_regex_keywords_by_regex_expression()
@@ -235,15 +237,15 @@ class Pseudonymizer(Processor):
                 pseudonym["@timestamp"] = event["@timestamp"]
 
     def _pseudonymize_field(
-        self, pattern: Pattern, field_: Union[str, List[str]]
+        self, pattern: Pattern, field_value: Union[str, List[str]]
     ) -> Tuple[Union[str, List[str]], Optional[list], bool]:
         new_pseudonyms = []
 
-        if isinstance(field_, list):
-            values = [str(value) for value in field_]
+        if isinstance(field_value, list):
+            values = [str(value) for value in field_value]
             matches_list = [re.match(pattern, value) for value in values]
             if not any(matches_list):
-                return field_, None, False
+                return field_value, None, False
 
             new_field = []
 
@@ -253,9 +255,9 @@ class Pseudonymizer(Processor):
                         self._get_field_with_pseudonymized_capture_groups(matches, new_pseudonyms)
                     )
                 else:
-                    new_field.append(field_[idx])
+                    new_field.append(field_value[idx])
         else:
-            new_field = str(field_)
+            new_field = str(field_value)
             matches = pattern.match(new_field)
 
             # No matches, no change
@@ -275,7 +277,7 @@ class Pseudonymizer(Processor):
         unprocessed = matches.group(0)
         for capture_group in matches.groups():
             if capture_group:
-                pseudonym = self._pseudonymize_value(capture_group, pseudonyms)
+                pseudonym = self._pseudonymize_string(capture_group, pseudonyms)
                 processed, unprocessed = self._process_field(capture_group, unprocessed)
                 field_ += processed + pseudonym
         field_ += unprocessed
@@ -284,7 +286,7 @@ class Pseudonymizer(Processor):
     def _get_field_with_pseudonymized_urls(self, field_: str, pseudonyms: List[dict]) -> str:
         pseudonyms = pseudonyms if pseudonyms else []
         for url_string in self._url_extractor.gen_urls(field_):
-            url_parts = self._parse_url_parts(self._tld_extractor, url_string)
+            url_parts = self._parse_url_parts(url_string)
             pseudonym_map = self._get_pseudonym_map(pseudonyms, url_parts)
             url_split = self.URL_SPLIT_PATTERN.split(url_string)
 
@@ -311,8 +313,8 @@ class Pseudonymizer(Processor):
 
         return field_
 
-    def _parse_url_parts(self, tld_extractor: TLDExtract, url_str: str) -> dict:
-        url = tld_extractor(url_str)
+    def _parse_url_parts(self, url_str: str) -> dict:
+        url = self._tld_extractor(url_str)
 
         parts = {}
         parts["scheme"] = self._find_first(r"^([a-z0-9]+)\:\/\/", url_str)
@@ -356,19 +358,21 @@ class Pseudonymizer(Processor):
     def _get_pseudonym_map(self, pseudonyms: List[dict], url: dict) -> dict:
         pseudonym_map = {}
         if url.get("subdomain"):
-            pseudonym_map[url["subdomain"]] = self._pseudonymize_value(url["subdomain"], pseudonyms)
+            pseudonym_map[url["subdomain"]] = self._pseudonymize_string(
+                url["subdomain"], pseudonyms
+            )
         if url.get("fragment"):
-            pseudonym_map[url["fragment"]] = self._pseudonymize_value(url["fragment"], pseudonyms)
+            pseudonym_map[url["fragment"]] = self._pseudonymize_string(url["fragment"], pseudonyms)
         if url.get("auth"):
-            pseudonym_map[url["auth"]] = self._pseudonymize_value(url["auth"], pseudonyms)
+            pseudonym_map[url["auth"]] = self._pseudonymize_string(url["auth"], pseudonyms)
         query_parts = parse_qs(url["query"])
         for values in query_parts.values():
             for value in values:
                 if value:
-                    pseudonym_map[value] = self._pseudonymize_value(value, pseudonyms)
+                    pseudonym_map[value] = self._pseudonymize_string(value, pseudonyms)
         if url.get("path"):
             if url["path"][1:]:
-                pseudonym_map[url["path"][1:]] = self._pseudonymize_value(
+                pseudonym_map[url["path"][1:]] = self._pseudonymize_string(
                     url["path"][1:], pseudonyms
                 )
         return pseudonym_map
@@ -380,7 +384,7 @@ class Pseudonymizer(Processor):
         unprocessed = split_by_cap_group[-1]
         return processed_but_not_pseudonymized, unprocessed
 
-    def _pseudonymize_value(self, value: str, pseudonyms: List[dict]) -> str:
+    def _pseudonymize_string(self, value: str, pseudonyms: List[dict]) -> str:
         hash_string = self._hasher.hash_str(value, salt=self._config.hash_salt)
         if self._cache.requires_storing(hash_string):
             encrypted_origin = self._encrypter.encrypt(value)
