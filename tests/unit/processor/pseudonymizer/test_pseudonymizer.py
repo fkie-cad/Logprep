@@ -126,7 +126,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         {
             "filter_this": "does_not_matter",
-            "pseudo_this": r"<pseudonym:08572d32bb4e3aa23a7673fbb633814d62b603bb75b27d8fc9ea4f7b5476478e>",
+            "pseudo_this": (
+                "<pseudonym:08572d32bb4e3aa23a7673fbb633814d62b603bb75b27d8fc9ea4f7b5476478e>"
+            ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
@@ -142,7 +144,9 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         {
             "filter_this": "does_not_matter",
-            "pseudo_this": "<pseudonym:08572d32bb4e3aa23a7673fbb633814d62b603bb75b27d8fc9ea4f7b5476478e>",
+            "pseudo_this": (
+                "<pseudonym:08572d32bb4e3aa23a7673fbb633814d62b603bb75b27d8fc9ea4f7b5476478e>"
+            ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
@@ -158,7 +162,11 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         {
             "filter_this": "does_not_matter",
-            "pseudo_this": "KEEP_THIS+<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>+KEEP_THIS",
+            "pseudo_this": (
+                "KEEP_THIS+"
+                "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
+                "+KEEP_THIS"
+            ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
@@ -174,7 +182,10 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         {
             "filter_this": "does_not_matter",
-            "pseudo_this": "KEEP_THIS+<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>",
+            "pseudo_this": (
+                "KEEP_THIS+"
+                "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
+            ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
@@ -190,7 +201,10 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         {
             "filter_this": "does_not_matter",
-            "pseudo_this": "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>+KEEP_THIS",
+            "pseudo_this": (
+                "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
+                "+KEEP_THIS"
+            ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
@@ -206,7 +220,10 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         {
             "filter_this": "does_not_matter",
-            "pseudo_this": "<pseudonym:c293a7d15377738f5966d78da53f3ba500f3d287a1fdea98bdb225da6212ff68><pseudonym:2c868c09bcc9ee59486e915ad2865d33f22b045ea0050215d7f99fd55b12a5d3>",
+            "pseudo_this": (
+                "<pseudonym:c293a7d15377738f5966d78da53f3ba500f3d287a1fdea98bdb225da6212ff68>"
+                "<pseudonym:2c868c09bcc9ee59486e915ad2865d33f22b045ea0050215d7f99fd55b12a5d3>"
+            ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
@@ -222,7 +239,151 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         {
             "filter_this": "does_not_matter",
-            "pseudo_this": "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>+KEEP_THIS+<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>",
+            "pseudo_this": (
+                "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
+                "+KEEP_THIS+"
+                "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
+            ),
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "pseudonymize_url_subdomain",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "url_fields": ["pseudo_this"],
+            },
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "https://www.test.de",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": (
+                "https://"
+                "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+                ".test.de"
+            ),
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "pseudonymize_url_subdomain_without_scheme",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "url_fields": ["pseudo_this"],
+            },
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "www.test.de",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": (
+                "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+                ".test.de"
+            ),
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "pseudonymize_url_path",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "url_fields": ["pseudo_this"],
+            },
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "https://test.de/some/path",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": (
+                "https://test.de/"
+                "<pseudonym:f285389e9dc7921109e18f2f1375b26cb47bbe2981d8399ee7e70c3fd156337f>"
+            ),
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "pseudonymize_url_query",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "url_fields": ["pseudo_this"],
+            },
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "https://test.de/?a=b&c=d",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": (
+                "https://test.de/?a="
+                "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
+                "&c="
+                "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
+            ),
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "pseudonymize_url_query_substrings",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "url_fields": ["pseudo_this"],
+            },
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "https://test.de/?a=b&c=d&e=bd",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": (
+                "https://test.de/?a="
+                "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
+                "&c="
+                "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
+                "&e="
+                "<pseudonym:49713f9217c2cac56d0e87a6930669f45be876812eff4bd01ec86d6f22578f99>"
+            ),
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "pseudonymize_url_subdomain_in_sentence",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "url_fields": ["pseudo_this"],
+            },
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "This is https://www.test.de !",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": (
+                "This is https://"
+                "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
+                ".test.de !"
+            ),
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
@@ -238,6 +399,45 @@ failure_test_cases = [  # testcase, rule, event, expected
         },
         {"event_id": 1105, "something": "Not pseudonymized"},
         {"event_id": 1105, "something": "Not pseudonymized"},
+        None,
+    ),
+    (
+        "do_not_pseudonymize_url",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "url_fields": ["pseudo_this"],
+            },
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "https://test.de",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "https://test.de",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "do_not_pseudonymize_url_without_scheme",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
+                "url_fields": ["pseudo_this"],
+            },
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "test.de",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "test.de",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
 ]
 
@@ -302,13 +502,18 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         assert event == expected, testcase
-        assert len(self.object.pseudonyms) > 0 and set(self.object.pseudonyms[0]) == {
-            "pseudonym",
-            "origin",
-        }
+        if rule.get("pseudonymizer").get("url_fields") is None:
+            assert len(self.object.pseudonyms) > 0 and set(self.object.pseudonyms[0]) == {
+                "pseudonym",
+                "origin",
+            }
 
-    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
-    def test_testcases_failure_handling(self, caplog, testcase, rule, event, expected):
+    @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", failure_test_cases)
+    def test_testcases_failure_handling(
+        self, caplog, testcase, rule, event, expected, regex_mapping
+    ):
+        if regex_mapping is not None:
+            self.regex_mapping = regex_mapping
         self._load_specific_rule(rule)
         with caplog.at_level(logging.WARNING):
             self.object.process(event)
@@ -361,82 +566,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object._load_regex_mapping(self.regex_mapping)
         super()._load_specific_rule(rule)
         self.object._replace_regex_keywords_by_regex_expression()
-
-    def test_do_not_pseudonymize_url(self):
-        expected = "https://test.de"
-
-        event = self._pseudo_with_url("https://test.de", "RE_ALL_NO_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_do_not_pseudonymize_url_without_scheme(self):
-        expected = "test.de"
-
-        event = self._pseudo_with_url("test.de", "RE_ALL_NO_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_pseudonymize_url_subdomain(self):
-        subdomain_pseudonym = (
-            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
-        )
-        expected = f"https://{subdomain_pseudonym}.test.de"
-
-        event = self._pseudo_with_url("https://www.test.de", "RE_ALL_NO_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_pseudonymize_url_subdomain_without_scheme(self):
-        subdomain_pseudonym = (
-            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
-        )
-        expected = f"{subdomain_pseudonym}.test.de"
-
-        event = self._pseudo_with_url("www.test.de", "RE_ALL_NO_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_pseudonymize_url_path(self):
-        path_pseudonym = (
-            "<pseudonym:f285389e9dc7921109e18f2f1375b26cb47bbe2981d8399ee7e70c3fd156337f>"
-        )
-        expected = f"https://test.de/{path_pseudonym}"
-
-        event = self._pseudo_with_url("https://test.de/some/path", "RE_ALL_NO_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_pseudonymize_url_query(self):
-        query_pseudonym_b = (
-            "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
-        )
-        query_pseudonym_d = (
-            "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
-        )
-        expected = f"https://test.de/?a={query_pseudonym_b}&c={query_pseudonym_d}"
-
-        event = self._pseudo_with_url("https://test.de/?a=b&c=d", "RE_ALL_NO_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_pseudonymize_url_query_substrings(self):
-        query_pseudonym_b = (
-            "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
-        )
-        query_pseudonym_d = (
-            "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
-        )
-        query_pseudonym_bd = (
-            "<pseudonym:49713f9217c2cac56d0e87a6930669f45be876812eff4bd01ec86d6f22578f99>"
-        )
-        expected = (
-            f"https://test.de/?a={query_pseudonym_b}&c={query_pseudonym_d}&e={query_pseudonym_bd}"
-        )
-        event = self._pseudo_with_url("https://test.de/?a=b&c=d&e=bd", "RE_ALL_NO_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_pseudonymize_url_subdomain_in_sentence(self):
-        subdomain_pseudonym = (
-            "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>"
-        )
-        expected = f"This is https://{subdomain_pseudonym}.test.de !"
-
-        event = self._pseudo_with_url("This is https://www.test.de !", "RE_ALL_NO_CAP")
-        assert event["pseudo_this"] == expected
 
     def test_pseudonymize_two_identical_urls_subdomain(self):
         subdomain_pseudonym = (
