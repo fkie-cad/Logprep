@@ -213,27 +213,24 @@ class Pseudonymizer(Processor):
 
     def _apply_rules(self, event: dict, rule: PseudonymizerRule):
         for dotted_field, regex in rule.pseudonyms.items():
-            if dotted_field not in self.pseudonymized_fields:
-                try:
-                    dict_, key = self._innermost_field(dotted_field, event)
-                    pre_pseudonymization_value = dict_[key]
+            if dotted_field in self.pseudonymized_fields:
+                continue
+            try:
+                dict_, key = self._innermost_field(dotted_field, event)
+                pre_pseudonymization_value = dict_[key]
 
-                    dict_[key], new_pseudonyms, is_match = self._pseudonymize_field(
-                        regex, dict_[key]
-                    )
+                dict_[key], new_pseudonyms, is_match = self._pseudonymize_field(regex, dict_[key])
 
-                    if is_match and dotted_field in rule.url_fields:
-                        dict_[key] = self._get_field_with_pseudonymized_urls(
-                            dict_[key], new_pseudonyms
-                        )
+                if is_match and dotted_field in rule.url_fields:
+                    dict_[key] = self._get_field_with_pseudonymized_urls(dict_[key], new_pseudonyms)
 
-                    if pre_pseudonymization_value != dict_[key]:
-                        self.pseudonymized_fields.add(dotted_field)
-                except KeyError:
-                    pass
-                else:
-                    if new_pseudonyms is not None:
-                        self.pseudonyms += new_pseudonyms
+                if pre_pseudonymization_value != dict_[key]:
+                    self.pseudonymized_fields.add(dotted_field)
+            except KeyError:
+                pass
+            else:
+                if new_pseudonyms is not None:
+                    self.pseudonyms += new_pseudonyms
 
         if "@timestamp" in event:
             for pseudonym in self.pseudonyms:
