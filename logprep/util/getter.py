@@ -92,9 +92,16 @@ class HttpGetter(Getter):
 
     * Simple http target: :code:`http://your.target/file.yml`
     * Simple https target: :code:`https://your.target/file.json`
-    * Target with asic authentication: :code:`https://username:password@your_web_target`
-    * Target with oauth compliant authentication with bearer token header:
-      :code:`https://oauth:<your bearer token>@your_web_target`
+
+    if you want to use basic auth, then you have to set the environment variables
+
+        * :code:`LOGPREP_CONFIG_AUTH_USERNAME=<your_username>`
+        * :code:`LOGPREP_CONFIG_AUTH_PASSWORD=<your_password>`
+
+    if you want to use oauth, then you have to set the environment variables
+
+        * :code:`LOGPREP_CONFIG_AUTH_TOKEN=<your_token>`
+        * :code:`LOGPREP_CONFIG_AUTH_METHOD=oauth`
 
     """
 

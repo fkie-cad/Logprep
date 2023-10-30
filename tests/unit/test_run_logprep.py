@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import os
 import sys
 from pathlib import Path
 from unittest import mock
@@ -58,7 +59,7 @@ class TestRunLogprep:
             with pytest.raises(SystemExit, match="0"):
                 run_logprep.main()
 
-    def test_raises_getter_error_for_not_existing_protocol(self):
+    def test_exits_after_getter_error_for_not_existing_protocol(self):
         with mock.patch(
             "sys.argv",
             [
@@ -68,9 +69,7 @@ class TestRunLogprep:
                 "almighty_protocol://tests/testdata/config/config.yml",
             ],
         ):
-            with pytest.raises(
-                GetterNotFoundError, match="No getter for protocol 'almighty_protocol'"
-            ):
+            with pytest.raises(SystemExit, match="1"):
                 run_logprep.main()
 
     @responses.activate
@@ -146,6 +145,13 @@ class TestRunLogprep:
     @responses.activate
     def test_version_arg_prints_with_http_config_without_exposing_secret_data(self, capsys):
         config_path = "tests/testdata/config/config.yml"
+        os.environ.update(
+            {
+                "LOGPREP_CONFIG_ATUH_USERNAME": "username",
+                "LOGPREP_CONFIG_ATUH_PASSWORD": "password",
+            }
+        )
+        config_path = "quickstart/exampledata/config/pipeline.yml"
         responses.add(
             responses.GET,
             "http://localhost:32000/tests/testdata/config/config.yml",
@@ -156,7 +162,7 @@ class TestRunLogprep:
             [
                 "logprep",
                 "--version",
-                f"http://username:password@localhost:32000/{config_path}",
+                f"http://localhost:32000/{config_path}",
             ],
         ):
             with pytest.raises(SystemExit):
@@ -172,6 +178,8 @@ class TestRunLogprep:
             f" http://localhost:32000/{config_path}"
         )
         assert lines == expected_lines
+        del os.environ["LOGPREP_CONFIG_ATUH_USERNAME"]
+        del os.environ["LOGPREP_CONFIG_ATUH_PASSWORD"]
 
     def test_no_config_error_is_printed_if_no_config_was_arg_was_given(self, capsys):
         with mock.patch("sys.argv", ["logprep"]):
