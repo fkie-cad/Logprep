@@ -219,7 +219,7 @@ class Pseudonymizer(Processor):
         for dotted_field, regex in rule.pseudonyms.items():
             field_value = get_dotted_field_value(event, dotted_field)
             if field_value is None:
-                return
+                continue
             new_field_value, new_pseudonyms, is_match = self._pseudonymize_field(regex, field_value)
             if is_match and dotted_field in rule.url_fields:
                 new_field_value = self._get_field_with_pseudonymized_urls(
@@ -233,13 +233,6 @@ class Pseudonymizer(Processor):
         if "@timestamp" in event:
             for pseudonym in self.pseudonyms:
                 pseudonym["@timestamp"] = event["@timestamp"]
-
-    @staticmethod
-    def _innermost_field(dotted_field: str, event: dict) -> Tuple[Union[dict, Any], str]:
-        keys = get_dotted_field_list(dotted_field)
-        for i in range(len(keys) - 1):
-            event = event[keys[i]]
-        return event, keys[-1]
 
     def _pseudonymize_field(
         self, pattern: Pattern, field_: Union[str, List[str]]
