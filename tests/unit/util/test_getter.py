@@ -8,9 +8,11 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import requests
 import responses
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import Timeout
+from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
@@ -311,6 +313,12 @@ second_dict:
 
 
 class TestHttpGetter:
+    def teardown_method(self):
+        del os.environ["LOGPREP_CONFIG_AUTH_METHOD"]
+        del os.environ["LOGPREP_CONFIG_AUTH_TOKEN"]
+        del os.environ["LOGPREP_CONFIG_AUTH_USERNAME"]
+        del os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"]
+
     def test_factory_returns_http_getter_for_http(self):
         http_getter = GetterFactory.from_string("http://testfile.json")
         assert isinstance(http_getter, HttpGetter)
@@ -363,43 +371,32 @@ class TestHttpGetter:
         http_getter.get()
 
     @responses.activate
-    def test_provides_oauth_compliant_headers(self):
+    def test_provides_oauth_compliant_headers_if_token_is_set_via_env(self):
+        os.environ["LOGPREP_CONFIG_AUTH_METHOD"] = "oauth"
+        os.environ["LOGPREP_CONFIG_AUTH_TOKEN"] = "ajhsdfpoweiurjdfs239487"
+
         logprep_version = get_versions().get("version")
-        responses.add(
-            responses.GET,
-            "https://the.target.url/targetfile",
-            "",
-            {
-                "User-Agent": f"Logprep version {logprep_version}",
-                "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
-            },
+        responses.get(
+            url="https://the.target.url/targetfile",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "User-Agent": f"Logprep version {logprep_version}",
+                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
+                    }
+                )
+            ],
         )
-        http_getter = GetterFactory.from_string(
-            "https://oauth:ajhsdfpoweiurjdfs239487@the.target.url/targetfile"
-        )
+        http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
         http_getter.get()
 
-    @responses.activate
-    def test_provides_basic_authentication(self):
-        responses.add(
-            responses.GET,
-            "https://the.target.url/targetfile",
-        )
-        http_getter = GetterFactory.from_string(
-            "https://myusername:mypassword@the.target.url/targetfile"
-        )
-        http_getter.get()
-        assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
-            "myusername", "mypassword"
-        )
-
-    @responses.activate
-    def test_raises_requestexception_after_3_retries(self):
-        responses.add(responses.GET, "https://does-not-matter", Timeout())
-        http_getter = GetterFactory.from_string("https://does-not-matter")
-        with pytest.raises(Timeout):
-            http_getter.get()
-        responses.assert_call_count("https://does-not-matter", 3)
+    def test_raises_on_try_to_set_credentials_from_url_string(self):
+        with pytest.raises(
+            NotImplementedError, match="Basic auth credentials via commandline are not supported"
+        ):
+            _ = GetterFactory.from_string(
+                "https://oauth:ajhsdfpoweiurjdfs239487@the.target.url/targetfile"
+            )
 
     @responses.activate
     def test_provides_basic_authentication_creds_from_environment(self):
@@ -414,23 +411,11 @@ class TestHttpGetter:
         assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
             "myusername", "mypassword"
         )
-        del os.environ["LOGPREP_CONFIG_AUTH_USERNAME"]
-        del os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"]
 
     @responses.activate
-    def test_prefers_basic_authentication_creds_from_cmdline_over_environment(self):
-        os.environ["LOGPREP_CONFIG_AUTH_USERNAME"] = "notmyusername"
-        os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"] = "notmypassword"
-        responses.add(
-            responses.GET,
-            "https://the.target.url/targetfile",
-        )
-        http_getter = GetterFactory.from_string(
-            "https://myusername:mypassword@the.target.url/targetfile"
-        )
-        http_getter.get()
-        assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
-            "myusername", "mypassword"
-        )
-        del os.environ["LOGPREP_CONFIG_AUTH_USERNAME"]
-        del os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"]
+    def test_raises_requestexception_after_3_retries(self):
+        responses.add(responses.GET, "https://does-not-matter", Timeout())
+        http_getter = GetterFactory.from_string("https://does-not-matter")
+        with pytest.raises(Timeout):
+            http_getter.get()
+        responses.assert_call_count("https://does-not-matter", 3)
