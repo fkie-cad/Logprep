@@ -615,6 +615,89 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
+    (
+        "pseudonymize_list_with_one_element",
+        {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": "RE_WHOLE_FIELD",
+                }
+            },
+        },
+        {
+            "pseudo_this": ["foo"],
+        },
+        {
+            "pseudo_this": [
+                "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>"
+            ],
+        },
+        None,
+    ),
+    (
+        "pseudonymize_list_with_two_equal_element",
+        {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": "RE_WHOLE_FIELD",
+                }
+            },
+        },
+        {
+            "pseudo_this": ["foo", "foo"],
+        },
+        {
+            "pseudo_this": [
+                "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+                "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+            ],
+        },
+        None,
+    ),
+    (
+        "pseudonymize_list_with_two_different_element",
+        {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": "RE_WHOLE_FIELD",
+                }
+            },
+        },
+        {
+            "pseudo_this": ["foo", "bar"],
+        },
+        {
+            "pseudo_this": [
+                "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
+                "<pseudonym:98b611cbecbd6a4533695fad8b40a46210f736ae3ef450fb9c4ab65638397113>",
+            ],
+        },
+        None,
+    ),
+    (
+        "pseudonymize_one_element_from_list_with_two_different_elements",
+        {
+            "filter": "pseudo_this",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": "RE_DOMAIN_BACKSLASH_USERNAME",
+                }
+            },
+        },
+        {
+            "pseudo_this": ["foo\\test", "bar"],
+        },
+        {
+            "pseudo_this": [
+                "foo\\<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>",
+                "bar",
+            ],
+        },
+        None,
+    ),
 ]
 
 failure_test_cases = [  # testcase, rule, event, expected
@@ -815,95 +898,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object.process(event)
 
         assert event["do_not_pseudo_this"] == url
-        assert event["pseudo_this"] == pseudonym
-
-    def test_pseudonymize_list_with_one_element(self):
-        pseudonym = ["<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>"]
-
-        regex_pattern = "RE_WHOLE_FIELD"
-        event = {
-            "pseudo_this": ["foo"],
-        }
-        rule = {
-            "filter": "pseudo_this",
-            "pseudonymizer": {
-                "pseudonyms": {
-                    "pseudo_this": regex_pattern,
-                }
-            },
-        }
-        self._load_specific_rule(rule)
-        self.object.process(event)
-
-        assert event["pseudo_this"] == pseudonym
-
-    def test_pseudonymize_list_with_two_equal_element(self):
-        pseudonym = [
-            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
-            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
-        ]
-
-        regex_pattern = "RE_WHOLE_FIELD"
-        event = {
-            "pseudo_this": ["foo", "foo"],
-        }
-        rule = {
-            "filter": "pseudo_this",
-            "pseudonymizer": {
-                "pseudonyms": {
-                    "pseudo_this": regex_pattern,
-                }
-            },
-        }
-        self._load_specific_rule(rule)
-        self.object.process(event)
-
-        assert event["pseudo_this"] == pseudonym
-
-    def test_pseudonymize_list_with_two_different_element(self):
-        pseudonym = [
-            "<pseudonym:e008abcd3e050a10853e0c5f694a10e87d693b8cfdb3457e42376cb06ab218ed>",
-            "<pseudonym:98b611cbecbd6a4533695fad8b40a46210f736ae3ef450fb9c4ab65638397113>",
-        ]
-
-        regex_pattern = "RE_WHOLE_FIELD"
-        event = {
-            "pseudo_this": ["foo", "bar"],
-        }
-        rule = {
-            "filter": "pseudo_this",
-            "pseudonymizer": {
-                "pseudonyms": {
-                    "pseudo_this": regex_pattern,
-                }
-            },
-        }
-        self._load_specific_rule(rule)
-        self.object.process(event)
-
-        assert event["pseudo_this"] == pseudonym
-
-    def test_pseudonymize_one_element_from_list_with_two_different_elements(self):
-        pseudonym = [
-            "foo\\<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>",
-            "bar",
-        ]
-
-        regex_pattern = "RE_DOMAIN_BACKSLASH_USERNAME"
-        event = {
-            "pseudo_this": ["foo\\test", "bar"],
-        }
-        rule = {
-            "filter": "pseudo_this",
-            "pseudonymizer": {
-                "pseudonyms": {
-                    "pseudo_this": regex_pattern,
-                }
-            },
-        }
-        self._load_specific_rule(rule)
-        self.object.process(event)
-
         assert event["pseudo_this"] == pseudonym
 
     def test_replace_regex_keywords_by_regex_expression_can_be_called_multiple_times(self):
