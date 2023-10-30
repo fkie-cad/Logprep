@@ -102,7 +102,7 @@ services:
     image: nginx:latest
     container_name: config
     profiles:
-      - http
+      - basic_auth
     network_mode: host
     expose:
       - 8080
@@ -114,6 +114,6 @@ services:
     image: bitnami/keycloak:latest
     container_name: keycloak
     profiles:
-      - http
+      - oauth2
 volumes:
   data:
