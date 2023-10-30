@@ -22,232 +22,16 @@
   "liveNow": false,
   "panels": [
     {
-      "collapsed": true,
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 0
       },
-      "id": 33,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "promz2394"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 1
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 7,
-            "x": 0,
-            "y": 9
-          },
-          "id": 4,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.1.4",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "promz2394"
-              },
-              "editorMode": "code",
-              "expr": "sum by (component) (logprep_number_of_errors_total)",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Errors",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "promz2394"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 1
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 7,
-            "x": 7,
-            "y": 9
-          },
-          "id": 8,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.1.4",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "promz2394"
-              },
-              "editorMode": "code",
-              "expr": "sum by (component) (logprep_number_of_warnings_total)",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Warnings Output",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "promz2394"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 1000
-                  },
-                  {
-                    "color": "yellow",
-                    "value": 1000
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 3,
-            "w": 24,
-            "x": 0,
-            "y": 12
-          },
-          "id": 32,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.1.4",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "promz2394"
-              },
-              "editorMode": "code",
-              "expr": "count by (type)(logprep_number_of_processed_events_total{component=\"rule\"})",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Number of Rules per Processor",
-          "type": "stat"
-        }
-      ],
-      "title": "Ideas",
-      "type": "row"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 1
-      },
       "id": 19,
       "panels": [],
-      "title": "Behavior last Minute",
+      "title": "Average Behavior Over Selected Timeframe",
       "type": "row"
     },
     {
@@ -255,7 +39,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "Duration of all connector and processor times",
+      "description": "Duration of all connector and pipeline processing times combined.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -294,7 +78,7 @@
         "h": 3,
         "w": 3,
         "x": 0,
-        "y": 2
+        "y": 1
       },
       "id": 20,
       "options": {
@@ -321,7 +105,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=~\"input|output|pipeline\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=~\"input|output|pipeline\"}[1m]))",
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=~\"input|output|pipeline\"}[$__range]))/sum(increase(logprep_processing_time_per_event_count{component=~\"input|output|pipeline\"}[$__range]) > 0)",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -337,7 +121,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "100 ms is equivalent to the timeout of the input connector",
+      "description": "Processing times of input connector. When using kafka input connector then 100 ms is equivalent to the timeout of the input connector, meaning no new messages were fetched. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -376,7 +160,7 @@
         "h": 3,
         "w": 3,
         "x": 3,
-        "y": 2
+        "y": 1
       },
       "id": 38,
       "options": {
@@ -403,7 +187,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"input\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=\"input\"}[1m]))",
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"input\"}[$__range]))/sum(increase(logprep_processing_time_per_event_count{component=\"input\"}[$__range]) > 0)",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -419,7 +203,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "Average over all processors",
+      "description": "Average over all processors when actively working (matched rules).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -458,7 +242,7 @@
         "h": 3,
         "w": 3,
         "x": 6,
-        "y": 2
+        "y": 1
       },
       "id": 36,
       "options": {
@@ -485,7 +269,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=\"rule\"}[1m]))",
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range]))/sum(increase(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])) > 0",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -540,7 +324,7 @@
         "h": 3,
         "w": 3,
         "x": 9,
-        "y": 2
+        "y": 1
       },
       "id": 61,
       "options": {
@@ -567,7 +351,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"pipeline\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=\"pipeline\"}[1m]))",
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"pipeline\"}[$__range]))/sum(increase(logprep_processing_time_per_event_count{component=\"pipeline\"}[$__range]) > 0)",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -622,7 +406,7 @@
         "h": 3,
         "w": 3,
         "x": 12,
-        "y": 2
+        "y": 1
       },
       "id": 37,
       "options": {
@@ -649,7 +433,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"output\"}[1m])/increase(logprep_processing_time_per_event_count{component=\"output\"}[1m]))",
+          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"output\"}[$__range])/increase(logprep_processing_time_per_event_count{component=\"output\"}[$__range])) > 0",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -704,7 +488,7 @@
         "h": 3,
         "w": 3,
         "x": 15,
-        "y": 2
+        "y": 1
       },
       "id": 29,
       "options": {
@@ -714,7 +498,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -731,7 +515,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "round(sum(increase(logprep_number_of_errors_total[1m])))",
+          "expr": "round(sum(increase(logprep_number_of_errors_total[$__range])))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -781,7 +565,7 @@
         "h": 6,
         "w": 6,
         "x": 18,
-        "y": 2
+        "y": 1
       },
       "id": 52,
       "options": {
@@ -875,7 +659,7 @@
         "h": 3,
         "w": 3,
         "x": 0,
-        "y": 5
+        "y": 4
       },
       "id": 23,
       "options": {
@@ -885,7 +669,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "mean"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -902,7 +686,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "rate(logprep_number_of_processed_events_total{component=\"input\"}[1m])",
+          "expr": "increase(logprep_number_of_processed_events_total{component=\"input\"}[$__range])",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -954,7 +738,7 @@
         "h": 3,
         "w": 3,
         "x": 3,
-        "y": 5
+        "y": 4
       },
       "id": 24,
       "options": {
@@ -964,7 +748,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "mean"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -981,7 +765,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(logprep_number_of_processed_events_total{component=\"output\"}[1m]))",
+          "expr": "sum(increase(logprep_number_of_processed_events_total{component=\"output\"}[$__range]))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -989,7 +773,7 @@
           "refId": "A"
         }
       ],
-      "title": "Outgoing Events per Minute",
+      "title": "Outgoing Events",
       "type": "stat"
     },
     {
@@ -1037,7 +821,7 @@
         "h": 3,
         "w": 3,
         "x": 6,
-        "y": 5
+        "y": 4
       },
       "id": 31,
       "options": {
@@ -1047,7 +831,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "mean"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -1064,7 +848,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(logprep_number_of_processed_events_total{component=\"input\"}[1m])) - sum(rate(logprep_number_of_processed_events_total{component=\"output\"}[1m]))",
+          "expr": "sum(increase(logprep_number_of_processed_events_total{component=\"input\"}[$__range])) - sum(increase(logprep_number_of_processed_events_total{component=\"output\"}[$__range]))",
           "hide": false,
           "instant": false,
           "legendFormat": "Absolut",
@@ -1078,7 +862,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(logprep_number_of_processed_events_total{component=\"output\"}[1m])) / sum(rate(logprep_number_of_processed_events_total{component=\"input\"}[1m]))",
+          "expr": "sum(increase(logprep_number_of_processed_events_total{component=\"output\"}[$__range])) / sum(increase(logprep_number_of_processed_events_total{component=\"input\"}[$__range])>0)",
           "hide": false,
           "instant": false,
           "legendFormat": "Ratio",
@@ -1124,7 +908,7 @@
         "h": 3,
         "w": 3,
         "x": 9,
-        "y": 5
+        "y": 4
       },
       "id": 6,
       "options": {
@@ -1134,7 +918,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "mean"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -1192,7 +976,7 @@
         "h": 3,
         "w": 3,
         "x": 12,
-        "y": 5
+        "y": 4
       },
       "id": 69,
       "options": {
@@ -1202,7 +986,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -1218,7 +1002,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "ceil(sum by(type) (rate(logprep_number_of_processed_events_total{component=\"rule\", type=\"pre_detector\"}[1m])))",
+          "expr": "ceil(sum by(type) (increase(logprep_number_of_processed_events_total{component=\"rule\", type=\"pre_detector\"}[$__range])))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
@@ -1228,7 +1012,7 @@
           "useBackend": false
         }
       ],
-      "title": "Total SREs",
+      "title": "Number of SREs",
       "type": "stat"
     },
     {
@@ -1275,7 +1059,7 @@
         "h": 3,
         "w": 3,
         "x": 15,
-        "y": 5
+        "y": 4
       },
       "id": 30,
       "options": {
@@ -1285,7 +1069,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -1302,7 +1086,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "round(sum(increase(logprep_number_of_warnings_total[1m])))",
+          "expr": "round(sum(increase(logprep_number_of_warnings_total[$__range])))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1312,19 +1096,6 @@
       ],
       "title": "Number of Warnings",
       "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
-      "id": 3,
-      "panels": [],
-      "title": "Connector Processing Time",
-      "type": "row"
     },
     {
       "datasource": {
@@ -1370,7 +1141,7 @@
         "h": 3,
         "w": 8,
         "x": 0,
-        "y": 9
+        "y": 7
       },
       "id": 16,
       "options": {
@@ -1398,7 +1169,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "increase(logprep_processing_time_per_event_sum{type=\"$connector_types\"}[1m])/increase(logprep_processing_time_per_event_count{type=\"$connector_types\"}[1m])",
+          "expr": "increase(logprep_processing_time_per_event_sum{type=\"$connector_types\"}[$__range])/increase(logprep_processing_time_per_event_count{type=\"$connector_types\"}[$__range])>0",
           "hide": false,
           "instant": false,
           "legendFormat": "{{type}}",
@@ -1406,7 +1177,7 @@
           "refId": "A"
         }
       ],
-      "title": "Current Processing Times for $connector_types",
+      "title": "Processing Times for $connector_types",
       "type": "stat"
     },
     {
@@ -1415,7 +1186,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 10
       },
       "id": 13,
       "panels": [],
@@ -1485,7 +1256,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 11
       },
       "id": 10,
       "options": {
@@ -1493,7 +1264,8 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "width": 200
         },
         "tooltip": {
           "mode": "single",
@@ -1528,7 +1300,7 @@
           "refId": "B"
         }
       ],
-      "title": "Processed Event Rate per Connector per Minute",
+      "title": "Processed Event Rate per Connector per Second",
       "type": "timeseries"
     },
     {
@@ -1594,7 +1366,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 18
       },
       "id": 11,
       "options": {
@@ -1602,7 +1374,8 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "width": 200
         },
         "tooltip": {
           "mode": "single",
@@ -1644,7 +1417,7 @@
           "useBackend": false
         }
       ],
-      "title": "Event Rate per Output per Minute",
+      "title": "Success/Failed Event Rate per Output per Second",
       "type": "timeseries"
     },
     {
@@ -1709,7 +1482,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 27
+        "y": 25
       },
       "id": 59,
       "options": {
@@ -1717,7 +1490,8 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "width": 200
         },
         "tooltip": {
           "mode": "single",
@@ -1760,7 +1534,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 33
       },
       "id": 62,
       "panels": [],
@@ -1830,7 +1604,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 36
+        "y": 34
       },
       "id": 65,
       "options": {
@@ -1838,7 +1612,8 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "width": 200
         },
         "tooltip": {
           "mode": "single",
@@ -1924,7 +1699,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 42
       },
       "id": 66,
       "options": {
@@ -1932,7 +1707,8 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "width": 200
         },
         "tooltip": {
           "mode": "single",
@@ -1957,12 +1733,108 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the rate of the kafka consumer group rebalancing of the input connector",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 50
+      },
+      "id": 81,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "width": 200
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "sum by (component) (increase(logprep_confluent_kafka_input_librdkafka_cgrp_rebalance_cnt[1m]))",
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Rate of Input Connector Rebalancing",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 52
+        "y": 58
       },
       "id": 14,
       "panels": [],
@@ -2032,7 +1904,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 59
       },
       "id": 58,
       "options": {
@@ -2040,7 +1912,8 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "width": 200
         },
         "tooltip": {
           "mode": "single",
@@ -2135,7 +2008,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 60
+        "y": 66
       },
       "id": 2,
       "options": {
@@ -2143,7 +2016,8 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "right",
-          "showLegend": true
+          "showLegend": true,
+          "width": 200
         },
         "tooltip": {
           "mode": "single",
@@ -2151,20 +2025,6 @@
         }
       },
       "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "promz2394"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum(increase(logprep_processing_time_per_event_count{component=\"rule\"}[1m]))",
-          "hide": true,
-          "instant": false,
-          "legendFormat": "all",
-          "range": true,
-          "refId": "A"
-        },
         {
           "datasource": {
             "type": "prometheus",
@@ -2179,7 +2039,7 @@
           "refId": "B"
         }
       ],
-      "title": "Processing Times for per Processor per Minute",
+      "title": "Processing Times per Processor per Minute",
       "type": "timeseries"
     },
     {
@@ -2188,12 +2048,300 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 68
+        "y": 74
       },
       "id": 55,
       "panels": [],
-      "title": "Rule",
+      "title": "Processing Times",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "in relation to each other",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": [],
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 0,
+        "y": 75
+      },
+      "id": 77,
+      "options": {
+        "displayLabels": [],
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "sum by (type)(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(type)(increase(logprep_processing_time_per_event_count{component=\"rule\"}[1m])>0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Processing Times per Processor per Minute",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the processing times of matched rules aggregated for each processor. If processor is missing then no data is available in the selected time frame",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 12,
+        "x": 12,
+        "y": 75
+      },
+      "id": 60,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "(sum by (type)(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range])))/sum by(type)(increase(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])>0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Avg Processing Times per Rule-Type",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the processing times of matched rules aggregated for each processor. If processor is missing then no data is available in the selected time frame",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Mean"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 86
+      },
+      "id": 78,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "frameIndex": 0,
+        "showHeader": true
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "sum by (description)(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range]))/sum by(description)(increase(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])>0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Top 10 Slowest Rules",
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "mean"
+            ]
+          }
+        },
+        {
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "Field",
+                "Mean"
+              ]
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "desc": true,
+                "field": "Mean"
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {}
+        }
+      ],
+      "type": "table"
     },
     {
       "datasource": {
@@ -2218,8 +2366,8 @@
       "gridPos": {
         "h": 10,
         "w": 12,
-        "x": 0,
-        "y": 69
+        "x": 12,
+        "y": 86
       },
       "id": 49,
       "options": {
@@ -2275,20 +2423,64 @@
       "type": "heatmap"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 96
+      },
+      "id": 74,
+      "panels": [],
+      "title": "Errors / Warnings",
+      "type": "row"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "Shows the processing times of matched rules aggregated for each processor",
+      "description": "in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
           },
           "mappings": [
             {
               "options": {
-                "match": "null+nan",
+                "match": "nan",
                 "result": {
                   "index": 0,
                   "text": "0"
@@ -2305,42 +2497,37 @@
                 "value": null
               },
               {
-                "color": "yellow",
-                "value": 0.001
-              },
-              {
                 "color": "red",
-                "value": 0.01
+                "value": 1
               }
             ]
           },
-          "unit": "s"
+          "unit": "none"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 69
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 97
       },
-      "id": 60,
+      "id": 72,
       "options": {
-        "displayMode": "gradient",
-        "minVizHeight": 10,
-        "minVizWidth": 0,
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "width": 200
         },
-        "showUnfilled": true,
-        "valueMode": "color"
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
       },
       "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
       "targets": [
         {
           "datasource": {
@@ -2348,16 +2535,129 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "avg by (type)(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range]))/sum by(type)(increase(logprep_processing_time_per_event_count{component=\"rule\"}[$__range]))",
+          "exemplar": false,
+          "expr": "sum by (component) (increase(logprep_number_of_errors_total[1m]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{description}}",
+          "legendFormat": "__auto",
           "range": true,
-          "refId": "B"
+          "refId": "A"
         }
       ],
-      "title": "Avg Processing Times per Rule-Type",
-      "type": "bargauge"
+      "title": "Number of Errors",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "in the selected time range",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 24,
+        "x": 0,
+        "y": 102
+      },
+      "id": 73,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true,
+          "width": 200
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by (component) (increase(logprep_number_of_warnings_total[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Number of Warnings",
+      "type": "timeseries"
     }
   ],
   "refresh": "5s",
@@ -2369,7 +2669,7 @@
       {
         "allValue": "",
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "All",
           "value": "$__all"
         },
@@ -2378,7 +2678,7 @@
           "uid": "promz2394"
         },
         "definition": "label_values(logprep_processing_time_per_event_count{component=~\"input|output\"},type)",
-        "hide": 0,
+        "hide": 2,
         "includeAll": true,
         "label": "Connector Types",
         "multi": false,
@@ -2397,13 +2697,13 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Logprep Version 0.0.1",
   "uid": "b1d9c144-d9a7-4a9c-a6c4-6929eec1c776",
-  "version": 32,
+  "version": 58,
   "weekStart": ""
 }
