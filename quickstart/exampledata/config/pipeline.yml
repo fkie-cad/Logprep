@@ -76,7 +76,7 @@ pipeline:
       max_cached_pseudonyms: 1000000
       max_caching_days: 1
 
-  - single calculator rule:
+  - calculator:
       type: calculator
       specific_rules:
         - filter: "test_label: execute"

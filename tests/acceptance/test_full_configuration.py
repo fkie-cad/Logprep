@@ -152,6 +152,16 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         },
     }
     config_path = str(tmp_path / "generated_config.yml")
+    # duplicate one processor to test that rule metrics are separated by processor names and not by type
+    config["pipeline"].append(
+        {
+            "calculator2": {
+                "generic_rules": ["tests/testdata/unit/calculator/generic_rules"],
+                "specific_rules": ["tests/testdata/unit/calculator/specific_rules"],
+                "type": "calculator",
+            }
+        }
+    )
     dump_config_as_file(config_path, config)
     proc = start_logprep(config_path, env={"PROMETHEUS_MULTIPROC_DIR": tmp_path})
     input_file_path.write_text("user root logged in\n", encoding="utf8")
@@ -221,8 +231,19 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
             forbidden_metric, metrics
         ), f"Metric {forbidden_metric} found in metrics"
 
-    single_rule = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=single calculator rule\".+\",type\=\".+\"}"
-    assert re.search(single_rule, metrics), "Single rule metric not found"
-    assert len(re.findall(single_rule, metrics)) == 1, "Single rule metric found multiple times"
+    first_calculator = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\"calculator\",type\=\"calculator\"}"
+    assert re.search(first_calculator, metrics), "First calculator not found"
+    assert (
+        len(re.findall(first_calculator, metrics)) == 2
+    ), "More or less than two rules (specific, generic) were found for first calculator"
+    second_calculator = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\"calculator2\",type\=\"calculator\"}"
+    assert re.search(second_calculator, metrics), "Second calculator not found"
+    assert (
+        len(re.findall(second_calculator, metrics)) == 2
+    ), "More or less than two rules (specific, generic) were found for second calculator"
+    both_calculators = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\".+\",type\=\"calculator\"}"
+    assert (
+        len(re.findall(both_calculators, metrics)) == 4
+    ), "More or less than 4 rules were found for both calculator"
 
     proc.kill()

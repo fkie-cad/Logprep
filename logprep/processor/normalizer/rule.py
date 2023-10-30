@@ -1016,7 +1016,7 @@ class NormalizerRule(Rule):
     # pylint: enable=C0111
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> "NormalizerRule":
+    def _create_from_dict(rule: dict, processor_name: str = None) -> "NormalizerRule":
         NormalizerRule._check_rule_validity(rule, "normalize")
         NormalizerRule._check_if_normalization_valid(rule)
 
