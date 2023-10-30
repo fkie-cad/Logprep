@@ -8,9 +8,10 @@ from pathlib import Path
 from string import Template
 from typing import Tuple
 from urllib.parse import urlparse
+
 import requests
+from attrs import define, field, validators
 from requests.auth import HTTPBasicAuth
-from attrs import field, validators, define
 
 from logprep._version import get_versions
 from logprep.abc.getter import Getter
@@ -106,8 +107,14 @@ class HttpGetter(Getter):
         target = self.target
         auth_match = re.match(r"^((?P<username>.+):(?P<password>.+)@)?(?P<target>.+)", target)
         self.target = auth_match.group("target")
-        self._username = auth_match.group("username")
-        self._password = auth_match.group("password")
+        if auth_match.group("username"):
+            self._username = auth_match.group("username")
+        else:
+            self._username = os.environ.get("LOGPREP_CONFIG_AUTH_USERNAME")
+        if auth_match.group("password"):
+            self._password = auth_match.group("password")
+        else:
+            self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""

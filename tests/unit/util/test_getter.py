@@ -400,3 +400,37 @@ class TestHttpGetter:
         with pytest.raises(Timeout):
             http_getter.get()
         responses.assert_call_count("https://does-not-matter", 3)
+
+    @responses.activate
+    def test_provides_basic_authentication_creds_from_environment(self):
+        os.environ["LOGPREP_CONFIG_AUTH_USERNAME"] = "myusername"
+        os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"] = "mypassword"
+        responses.add(
+            responses.GET,
+            "https://the.target.url/targetfile",
+        )
+        http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
+        http_getter.get()
+        assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
+            "myusername", "mypassword"
+        )
+        del os.environ["LOGPREP_CONFIG_AUTH_USERNAME"]
+        del os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"]
+
+    @responses.activate
+    def test_prefers_basic_authentication_creds_from_cmdline_over_environment(self):
+        os.environ["LOGPREP_CONFIG_AUTH_USERNAME"] = "notmyusername"
+        os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"] = "notmypassword"
+        responses.add(
+            responses.GET,
+            "https://the.target.url/targetfile",
+        )
+        http_getter = GetterFactory.from_string(
+            "https://myusername:mypassword@the.target.url/targetfile"
+        )
+        http_getter.get()
+        assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
+            "myusername", "mypassword"
+        )
+        del os.environ["LOGPREP_CONFIG_AUTH_USERNAME"]
+        del os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"]
