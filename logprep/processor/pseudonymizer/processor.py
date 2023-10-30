@@ -139,13 +139,10 @@ class Pseudonymizer(Processor):
         """Number urls that were pseudonymized"""
 
     __slots__ = [
-        "_regex_mapping",
-        "_cache",
         "pseudonyms",
         "pseudonymized_fields",
     ]
 
-    _regex_mapping: dict
     _cache: Cache
     _tld_lists: List[str]
 
@@ -200,11 +197,13 @@ class Pseudonymizer(Processor):
         _encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
         return _encrypter
 
-    def setup(self):
-        self._cache = Cache(
+    @cached_property
+    def _cache(self) -> Cache:
+        return Cache(
             max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
         )
-        self._load_regex_mapping(self._config.regex_mapping)
+
+    def setup(self):
         self._replace_regex_keywords_by_regex_expression()
 
     @cached_property
@@ -214,8 +213,9 @@ class Pseudonymizer(Processor):
         else:
             return TLDExtract()
 
-    def _load_regex_mapping(self, regex_mapping_path: str):
-        self._regex_mapping = GetterFactory.from_string(regex_mapping_path).get_yaml()
+    @cached_property
+    def _regex_mapping(self) -> dict:
+        return GetterFactory.from_string(self._config.regex_mapping).get_yaml()
 
     def process(self, event: dict):
         self.pseudonymized_fields = set()

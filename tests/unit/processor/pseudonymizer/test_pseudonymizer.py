@@ -862,7 +862,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
             time.sleep(CACHE_MAX_TIMEDELTA.total_seconds())
 
     def _load_specific_rule(self, rule):
-        self.object._load_regex_mapping(self.regex_mapping)
+        self.object._config.regex_mapping = self.regex_mapping
+        del self.object.__dict__["_regex_mapping"]
         super()._load_specific_rule(rule)
         self.object._replace_regex_keywords_by_regex_expression()
 
