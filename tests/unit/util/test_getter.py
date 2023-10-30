@@ -307,10 +307,14 @@ second_dict:
 
 class TestHttpGetter:
     def teardown_method(self):
-        del os.environ["LOGPREP_CONFIG_AUTH_METHOD"]
-        del os.environ["LOGPREP_CONFIG_AUTH_TOKEN"]
-        del os.environ["LOGPREP_CONFIG_AUTH_USERNAME"]
-        del os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"]
+        if "LOGPREP_CONFIG_AUTH_METHOD" in os.environ:
+            del os.environ["LOGPREP_CONFIG_AUTH_METHOD"]
+        if "LOGPREP_CONFIG_AUTH_TOKEN" in os.environ:
+            del os.environ["LOGPREP_CONFIG_AUTH_TOKEN"]
+        if "LOGPREP_CONFIG_AUTH_USERNAME" in os.environ:
+            del os.environ["LOGPREP_CONFIG_AUTH_USERNAME"]
+        if "LOGPREP_CONFIG_AUTH_PASSWORD" in os.environ:
+            del os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"]
 
     def test_factory_returns_http_getter_for_http(self):
         http_getter = GetterFactory.from_string("http://testfile.json")
