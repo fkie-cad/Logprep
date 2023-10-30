@@ -285,7 +285,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "Is the sum of the whole pipeline: parsing event, passing it through the pipeline and sending it to the output connector.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -367,7 +367,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "Average processing times of all output connectors",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -449,7 +449,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "in the selected time range",
+      "description": "The increase of number of errors in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -531,6 +531,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
+      "description": "Shows the currently active logprep versions and it's corresponding configuration version, if specified. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -623,7 +624,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "The increase of incoming events over the selected time frame. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -702,7 +703,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "The increase of outgoing events in the selected time frame. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -781,7 +782,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "Shows the absolute and relative change between the output and input connector. If using one input and output connector then the relative difference should be close to 1, except for deleted events. When using two outputs and only one input the relative difference should be around 2, because every event will be send to two outputs.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -865,7 +866,7 @@
           "expr": "sum(increase(logprep_number_of_processed_events_total{component=\"output\"}[$__range])) / sum(increase(logprep_number_of_processed_events_total{component=\"input\"}[$__range])>0)",
           "hide": false,
           "instant": false,
-          "legendFormat": "Ratio",
+          "legendFormat": "Relative",
           "range": true,
           "refId": "B"
         }
@@ -878,6 +879,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
+      "description": "The count of the number of rules at the last moment of the selected time frame.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -949,7 +951,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "The increase of number of SREs in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1020,7 +1022,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "in the selected time range",
+      "description": "The increase of number of warnings in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1102,7 +1104,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "Shows the average processing time of the $connector_types over the selected time frame.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1151,7 +1153,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "mean"
           ],
           "fields": "",
           "values": false
@@ -1198,7 +1200,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "Shows the per-second average of processed events per connector.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1308,7 +1310,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "Shows the difference between processed and failed events as a per-second average. Failed events are events that couldn't be parsed or where processors/rules canceled the processing due to an error. ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1425,6 +1427,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
+      "description": "Shows the processing time per connector ",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1546,7 +1549,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "Shows how many message the underlying kafka client received as a per-second average.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1634,7 +1637,7 @@
           "refId": "A"
         }
       ],
-      "title": "Recieved Messages librdkafka",
+      "title": "Recieved Messages in librdkafka",
       "type": "timeseries"
     },
     {
@@ -1642,6 +1645,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
+      "description": "Shows how many message the underlying kafka client transmitted back to kafka as a per-second average.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1729,7 +1733,7 @@
           "refId": "A"
         }
       ],
-      "title": "Send Messages librdkafka",
+      "title": "Transmitted Messages librdkafka",
       "type": "timeseries"
     },
     {
@@ -1846,7 +1850,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "",
+      "description": "Shows a per-second average of the processing times of applied processor rules, aggregated by processors.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1927,7 +1931,7 @@
             "uid": "promz2394"
           },
           "disableTextWrap": false,
-          "editorMode": "builder",
+          "editorMode": "code",
           "expr": "sum by(type) (rate(logprep_number_of_processed_events_total{component=\"rule\"}[1m]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1938,7 +1942,7 @@
           "useBackend": false
         }
       ],
-      "title": "Processed Event Rate per Processor per Minute",
+      "title": "Processed Event Rate per Processor per Second",
       "type": "timeseries"
     },
     {
@@ -2031,7 +2035,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "sum by (type)(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(type)(increase(logprep_processing_time_per_event_count{component=\"rule\"}[1m]))",
+          "expr": "sum by (type)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(type)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[1m]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{description}}",
@@ -2039,7 +2043,7 @@
           "refId": "B"
         }
       ],
-      "title": "Processing Times per Processor per Minute",
+      "title": "Processing Times per Processor per Second",
       "type": "timeseries"
     },
     {
@@ -2112,7 +2116,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "sum by (type)(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(type)(increase(logprep_processing_time_per_event_count{component=\"rule\"}[1m])>0)",
+          "expr": "sum by (type)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[1m]))/sum by(type)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[1m])>0)",
           "hide": false,
           "instant": false,
           "legendFormat": "{{description}}",
@@ -2120,7 +2124,7 @@
           "refId": "B"
         }
       ],
-      "title": "Processing Times per Processor per Minute",
+      "title": "Processing Times per Processor per Second",
       "type": "piechart"
     },
     {
@@ -2197,7 +2201,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "(sum by (type)(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range])))/sum by(type)(increase(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])>0)",
+          "expr": "(sum by (type)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range])))/sum by(type)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])>0)",
           "hide": false,
           "instant": false,
           "legendFormat": "{{description}}",
@@ -2213,7 +2217,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "Shows the processing times of matched rules aggregated for each processor. If processor is missing then no data is available in the selected time frame",
+      "description": "",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -2291,7 +2295,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "sum by (description)(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range]))/sum by(description)(increase(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])>0)",
+          "expr": "sum by (description)(rate(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range]))/sum by(description)(rate(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])>0)",
           "hide": false,
           "instant": false,
           "legendFormat": "{{description}}",
@@ -2348,6 +2352,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
+      "description": "Shows the processing time of applied rules as a heatmap. The y-axis shows buckets of a histogram and the color intensity shows how many rules where applied per bucket.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2370,6 +2375,7 @@
         "y": 86
       },
       "id": 49,
+      "interval": "15",
       "options": {
         "calculate": false,
         "cellGap": 1,
@@ -2660,7 +2666,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "5s",
+  "refresh": false,
   "schemaVersion": 38,
   "style": "dark",
   "tags": [],
@@ -2669,7 +2675,7 @@
       {
         "allValue": "",
         "current": {
-          "selected": true,
+          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -2697,13 +2703,13 @@
     ]
   },
   "time": {
-    "from": "now-1h",
-    "to": "now"
+    "from": "2023-10-30T12:55:30.548Z",
+    "to": "2023-10-30T12:59:33.910Z"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Logprep Version 0.0.1",
   "uid": "b1d9c144-d9a7-4a9c-a6c4-6929eec1c776",
-  "version": 58,
+  "version": 3,
   "weekStart": ""
 }
