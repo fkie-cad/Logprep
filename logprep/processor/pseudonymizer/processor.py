@@ -156,29 +156,6 @@ class Pseudonymizer(Processor):
 
     rule_class = PseudonymizerRule
 
-    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
-        super().__init__(name=name, configuration=configuration, logger=logger)
-        self._regex_mapping = {}
-        self._cache = None
-        self.pseudonyms = []
-        self.pseudonymized_fields = set()
-        self._encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
-        self._cache = Cache(
-            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
-        )
-
-    def setup(self) -> None:
-        super().setup()
-        self._cache = Cache(
-            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
-        )
-
-    def load_rules(self, specific_rules_targets, generic_rules_targets):
-        super().load_rules(specific_rules_targets, generic_rules_targets)
-        self._init_tld_extractor()
-        self._load_regex_mapping(self._config.regex_mapping)
-        self._replace_regex_keywords_by_regex_expression()
-
     @cached_property
     def _url_extractor(self):
         return URLExtract()
@@ -203,9 +180,6 @@ class Pseudonymizer(Processor):
             max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
         )
 
-    def setup(self):
-        self._replace_regex_keywords_by_regex_expression()
-
     @cached_property
     def _tld_extractor(self) -> TLDExtract:
         if self._config.tld_lists is not None:
@@ -216,6 +190,20 @@ class Pseudonymizer(Processor):
     @cached_property
     def _regex_mapping(self) -> dict:
         return GetterFactory.from_string(self._config.regex_mapping).get_yaml()
+
+    def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
+        super().__init__(name=name, configuration=configuration, logger=logger)
+        self.metrics = self.PseudonymizerMetrics(
+            labels=self.metric_labels,
+            generic_rule_tree=self._generic_tree.metrics,
+            specific_rule_tree=self._specific_tree.metrics,
+        )
+        self.pseudonyms = []
+        self.pseudonymized_fields = set()
+
+    def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
+        super().load_rules(specific_rules_targets, generic_rules_targets)
+        self._replace_regex_keywords_by_regex_expression()
 
     def process(self, event: dict):
         self.pseudonymized_fields = set()
