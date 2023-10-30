@@ -98,6 +98,22 @@ services:
       - 9090
     volumes:
       - ../quickstart/exampledata/config/prometheus/prometheus.yml:/opt/bitnami/prometheus/conf/prometheus.yml
-
+  config:
+    image: nginx:latest
+    container_name: config
+    profiles:
+      - http
+    network_mode: host
+    expose:
+      - 8080
+    volumes:
+      - ../quickstart/exampledata:/usr/share/nginx/html:ro
+      - ../quickstart/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../quickstart/exampledata/config/nginx/conf.d:/etc/nginx/conf.d:ro
+  keycloak:
+    image: bitnami/keycloak:latest
+    container_name: keycloak
+    profiles:
+      - http
 volumes:
   data:
