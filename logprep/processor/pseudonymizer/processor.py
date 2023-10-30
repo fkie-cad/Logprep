@@ -143,7 +143,6 @@ class Pseudonymizer(Processor):
         "_cache",
         "pseudonyms",
         "pseudonymized_fields",
-        "_tld_extractor",
     ]
 
     _regex_mapping: dict
@@ -196,14 +195,24 @@ class Pseudonymizer(Processor):
         return SHA256Hasher()
 
     @cached_property
-    def _encrypter(self):
-        return DualPKCS1HybridEncrypter()
+    def _encrypter(self) -> DualPKCS1HybridEncrypter:
+        _encrypter = DualPKCS1HybridEncrypter()
+        _encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
+        return _encrypter
 
-    def _init_tld_extractor(self):
+    def setup(self):
+        self._cache = Cache(
+            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
+        )
+        self._load_regex_mapping(self._config.regex_mapping)
+        self._replace_regex_keywords_by_regex_expression()
+
+    @cached_property
+    def _tld_extractor(self) -> TLDExtract:
         if self._config.tld_lists is not None:
-            self._tld_extractor = TLDExtract(suffix_list_urls=self._config.tld_lists)
+            return TLDExtract(suffix_list_urls=self._config.tld_lists)
         else:
-            self._tld_extractor = TLDExtract()
+            return TLDExtract()
 
     def _load_regex_mapping(self, regex_mapping_path: str):
         self._regex_mapping = GetterFactory.from_string(regex_mapping_path).get_yaml()

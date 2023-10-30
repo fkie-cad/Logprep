@@ -820,11 +820,10 @@ class TestPseudonymizer(BaseProcessorTestCase):
     #     assert re.match(".*ProcessingWarning.*", caplog.text)
     #     assert event == expected, testcase
 
-    def test_init_tld_extractor_uses_file(self):
+    def test_tld_extractor_uses_file(self):
         config = deepcopy(self.CONFIG)
         config["tld_lists"] = [TLD_LIST]
         object_with_tld_list = Factory.create({"pseudonymizer": config}, self.logger)
-        object_with_tld_list._init_tld_extractor()
         assert len(object_with_tld_list._tld_extractor.suffix_list_urls) == 1
         assert object_with_tld_list._tld_extractor.suffix_list_urls[0].endswith(
             "tests/testdata/mock_external/tld_list.dat",
