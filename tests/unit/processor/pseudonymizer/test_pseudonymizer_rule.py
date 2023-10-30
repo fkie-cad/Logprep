@@ -34,6 +34,19 @@ class TestPseudonomyzerRule:
                 InvalidRuleDefinitionError,
                 "config is not a dict",
             ),
+            (
+                {"filter": "message", "pseudonymizer": {"pseudonyms": {}}},
+                ValueError,
+                "Length of 'pseudonyms' must be => 1",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "pseudonymizer": {"pseudonyms": {"field": "regex"}},
+                },
+                None,
+                None,
+            ),
         ],
     )
     def test_create_from_dict_validates_config(self, rule, error, message):
@@ -41,11 +54,11 @@ class TestPseudonomyzerRule:
             with pytest.raises(error, match=message):
                 PseudonymizerRule._create_from_dict(rule)
         else:
-            dissector_rule = PseudonymizerRule._create_from_dict(rule)
-            assert hasattr(dissector_rule, "_config")
-            for key, value in rule.get("dissector").items():
-                assert hasattr(dissector_rule._config, key)
-                assert value == getattr(dissector_rule._config, key)
+            rule_instance = PseudonymizerRule._create_from_dict(rule)
+            assert hasattr(rule_instance, "_config")
+            for key, value in rule.get("pseudonymizer").items():
+                assert hasattr(rule_instance._config, key)
+                assert value == getattr(rule_instance._config, key)
 
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",

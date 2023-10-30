@@ -3,6 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-public-methods
 import datetime
+import logging
 import re
 import time
 from copy import deepcopy
@@ -11,8 +12,6 @@ from pathlib import Path
 import pytest
 
 from logprep.factory import Factory
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from tests.unit.processor.base import BaseProcessorTestCase
 
 CAP_GROUP_REGEX_MAPPING = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
@@ -22,6 +21,225 @@ CACHE_MAX_TIMEDELTA = datetime.timedelta(milliseconds=100)
 REL_TLD_LIST_PATH = "tests/testdata/mock_external/tld_list.dat"
 
 TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
+
+
+test_cases = [  # testcase, rule, event, expected, regex_mapping
+    (
+        "simple pseudonymization",
+        {
+            "filter": "event_id: 1234",
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "description": "description content irrelevant for these tests",
+        },
+        {"event_id": 1234, "something": "something"},
+        {
+            "event_id": 1234,
+            "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
+        },
+        None,
+    ),
+    (
+        "pseudonymization_of_field_does_not_happen_if_already_pseudonymized",
+        {
+            "filter": "event_id: 1234",
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "description": "description content irrelevant for these tests",
+        },
+        {
+            "event_id": 1234,
+            "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
+        },
+        {
+            "event_id": 1234,
+            "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
+        },
+        None,
+    ),
+    (
+        "pseudonymize_two_fields",
+        {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
+            },
+        },
+        {
+            "winlog": {
+                "event_id": 1234,
+                "provider_name": "Test456",
+                "event_data": {
+                    "param1": "Pseudonymize me.",
+                    "param2": "Pseudonymize me!",
+                },
+            }
+        },
+        {
+            "winlog": {
+                "event_id": 1234,
+                "provider_name": "Test456",
+                "event_data": {
+                    "param1": "<pseudonym:8f86699f51fc217651b1512f0bc0a2fa7717ffc700fe3e5426229a6ab063b47a>",
+                    "param2": "<pseudonym:c40348196f85b761e0633fa568a79c751201a50d63f3a92195985e92cdee2077>",
+                },
+            }
+        },
+        None,
+    ),
+    (
+        "match_regex_mapping_with_partial_match",
+        {
+            "filter": 'winlog.event_id: 789 AND winlog.provider_name: "Test123"',
+            "pseudonymizer": {
+                "pseudonyms": {"winlog.event_data.param1": "RE_DOMAIN_BACKSLASH_USERNAME"}
+            },
+        },
+        {
+            "winlog": {
+                "event_id": 789,
+                "provider_name": "Test123",
+                "event_data": {"param1": r"DOMAIN\pseudonymize me!"},
+            }
+        },
+        {
+            "winlog": {
+                "event_id": 789,
+                "provider_name": "Test123",
+                "event_data": {
+                    "param1": r"DOMAIN\<pseudonym:fd5ada8080bcb4a2bcf094bb7aaa7cb907fabeebfff8650676676632cdf4ac4c>"
+                },
+            }
+        },
+        None,
+    ),
+    (
+        "match replace whole field 1",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_WHOLE_FIELD_CAP"}},
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "to be pseudonymized",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": r"<pseudonym:08572d32bb4e3aa23a7673fbb633814d62b603bb75b27d8fc9ea4f7b5476478e>",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "match replace whole field 2",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_WHOLE_FIELD_EMPTY_CAPS"}},
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "to be pseudonymized",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "<pseudonym:08572d32bb4e3aa23a7673fbb633814d62b603bb75b27d8fc9ea4f7b5476478e>",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "match_capture_group_surrounded",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_CAP"}},
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "KEEP_THIS+PSEUDO_THIS+KEEP_THIS",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "KEEP_THIS+<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>+KEEP_THIS",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "match_capture_group_right",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_PATTERN_CAP"}},
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "KEEP_THIS+PSEUDO_THIS",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "KEEP_THIS+<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "match_capture_group_left",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_CAP_PATTERN"}},
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "PSEUDO_THIS+KEEP_THIS",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>+KEEP_THIS",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "match_two_capture_groups_covering_match",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_TWO_CAPS"}},
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "_PSEUDO_THIS_1__PSEUDO_THIS_2_",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "<pseudonym:c293a7d15377738f5966d78da53f3ba500f3d287a1fdea98bdb225da6212ff68><pseudonym:2c868c09bcc9ee59486e915ad2865d33f22b045ea0050215d7f99fd55b12a5d3>",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+    (
+        "match_two_capture_groups_with_gap",
+        {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {"pseudonyms": {"pseudo_this": "RE_TWO_CAPS_WITH_GAP"}},
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "PSEUDO_THIS+KEEP_THIS+PSEUDO_THIS",
+        },
+        {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>+KEEP_THIS+<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>",
+        },
+        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
+    ),
+]
+
+failure_test_cases = [  # testcase, rule, event, expected
+    (
+        "test_pseudonymization_of_field_fails_because_filter_does_not_match",
+        {
+            "filter": "event_id: 1234",
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "description": "description content irrelevant for these tests",
+        },
+        {"event_id": 1105, "something": "Not pseudonymized"},
+        {"event_id": 1105, "something": "Not pseudonymized"},
+    ),
+]
 
 
 class TestPseudonymizer(BaseProcessorTestCase):
@@ -77,47 +295,25 @@ class TestPseudonymizer(BaseProcessorTestCase):
         else:
             Factory.create({"name": config}, self.logger)
 
-    def test_rule_has_no_pseudonymize_field_and_rule_creation_fails(self):
-        rule_dict = {
-            "filter": "event_id: 1234",
-            "something": "RE_WHOLE_FIELD",
-            "description": "description content irrelevant for these tests",
-        }
-
-        with pytest.raises(
-            InvalidRuleDefinitionError,
-            match=r"config not under key pseudonymize",
-        ):
-            PseudonymizerRule._create_from_dict(rule_dict)
-
-    def test_rule_has_pseudonymize_field_and_rule_creation_succeeds(self):
-        rule_dict = {
-            "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
-            "description": "description content irrelevant for these tests",
-        }
-
-        PseudonymizerRule._create_from_dict(rule_dict)
-
-    def test_pseudonymization_of_field_succeeds(self):
-        event = {"event_id": 1234, "something": "something"}
-
-        rule_dict = {
-            "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
-            "description": "description content irrelevant for these tests",
-        }
-
-        self._load_specific_rule(rule_dict)
-
+    @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", test_cases)
+    def test_testcases(self, testcase, rule, event, expected, regex_mapping):
+        if regex_mapping is not None:
+            self.regex_mapping = regex_mapping
+        self._load_specific_rule(rule)
         self.object.process(event)
-        pseudonyms = self.object.pseudonyms
+        assert event == expected, testcase
+        assert len(self.object.pseudonyms) > 0 and set(self.object.pseudonyms[0]) == {
+            "pseudonym",
+            "origin",
+        }
 
-        assert (
-            event["something"]
-            == "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>"
-        )
-        assert len(pseudonyms) == 1 and set(pseudonyms[0]) == {"pseudonym", "origin"}
+    @pytest.mark.parametrize("testcase, rule, event, expected", failure_test_cases)
+    def test_testcases_failure_handling(self, caplog, testcase, rule, event, expected):
+        self._load_specific_rule(rule)
+        with caplog.at_level(logging.WARNING):
+            self.object.process(event)
+        assert re.match(".*ProcessingWarning.*", caplog.text)
+        assert event == expected, testcase
 
     def test_init_tld_extractor_uses_file(self):
         config = deepcopy(self.CONFIG)
@@ -165,267 +361,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object._load_regex_mapping(self.regex_mapping)
         super()._load_specific_rule(rule)
         self.object._replace_regex_keywords_by_regex_expression()
-
-    def test_pseudonymization_of_field_fails_because_filter_does_not_match(self):
-        event = {"event_id": 1105, "something": "Not pseudonymized"}
-
-        rule_dict = {
-            "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
-            "description": "description content irrelevant for these tests",
-        }
-
-        self._load_specific_rule(rule_dict)
-
-        self.object.process(event)
-
-        assert event["something"] == "Not pseudonymized"
-
-    def test_pseudonymization_of_field_does_not_happen_if_already_pseudonymized(self):
-        event = {"event_id": 1234, "something": "Not pseudonymized"}
-
-        rule_dict = {
-            "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
-            "description": "description content irrelevant for these tests",
-        }
-
-        self._load_specific_rule(deepcopy(rule_dict))
-
-        self.object.process(event)
-
-        assert (
-            event["something"]
-            == "<pseudonym:df61c2571842de3f30f4ca2d17a074fccda62945fceeb5636426a0a59347e596>"
-        )
-
-    def test_pseudonymize_only_matching_event_field(self):
-        event = {"event_id": 1234, "something": "Not pseudonymized"}
-
-        event_other_id = {"event_id": 5678, "something": "Not pseudonymized"}
-
-        rule_dict = {
-            "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
-            "description": "description content irrelevant for these tests",
-        }
-
-        self._load_specific_rule(rule_dict)
-
-        self.object.process(event)
-        self.object.process(event_other_id)
-
-        assert (
-            event["something"]
-            == "<pseudonym:df61c2571842de3f30f4ca2d17a074fccda62945fceeb5636426a0a59347e596>"
-        )
-        assert event_other_id["something"] == "Not pseudonymized"
-
-    def test_pseudonymize_two_fields(self):
-        event = {
-            "winlog": {
-                "event_id": 1234,
-                "provider_name": "Test456",
-                "event_data": {
-                    "param1": "Pseudonymize me.",
-                    "param2": "Pseudonymize me!",
-                },
-            }
-        }
-
-        expected = deepcopy(event)
-        expected["winlog"]["event_data"][
-            "param1"
-        ] = "<pseudonym:8f86699f51fc217651b1512f0bc0a2fa7717ffc700fe3e5426229a6ab063b47a>"
-        expected["winlog"]["event_data"][
-            "param2"
-        ] = "<pseudonym:c40348196f85b761e0633fa568a79c751201a50d63f3a92195985e92cdee2077>"
-
-        rule_dict = {
-            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
-            "pseudonymizer": {
-                "pseudonyms": {
-                    "winlog.event_data.param1": "RE_WHOLE_FIELD",
-                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
-                }
-            },
-            "description": "description content irrelevant for these tests",
-        }
-
-        self._load_specific_rule(rule_dict)
-
-        self.object.process(event)
-
-        assert event == expected
-
-    def test_pseudonymization_from_specific_rule_files(self):
-        event = {
-            "winlog": {
-                "event_id": 1234,
-                "provider_name": "Test456",
-                "event_data": {
-                    "param1": "Pseudonymize me.",
-                    "param2": "Pseudonymize me!",
-                },
-            }
-        }
-
-        self.object.process(event)
-
-        assert (
-            event["winlog"]["event_data"]["param1"]
-            == "<pseudonym:8f86699f51fc217651b1512f0bc0a2fa7717ffc700fe3e5426229a6ab063b47a>"
-        )
-        assert (
-            event["winlog"]["event_data"]["param2"]
-            == "<pseudonym:c40348196f85b761e0633fa568a79c751201a50d63f3a92195985e92cdee2077>"
-        )
-
-    def test_pseudonymization_from_generic_rule_files(self):
-        event = {
-            "winlog": {
-                "event_id": 1234,
-                "provider_name": "Test456",
-                "event_data": {
-                    "IpAddress": "Pseudonymize me.",
-                    "Something": "Do not pseudonymize me.",
-                },
-            }
-        }
-
-        for generic_rule in self.generic_rules:
-            self._load_specific_rule(generic_rule)
-
-        self.object.process(event)
-
-        assert (
-            event["winlog"]["event_data"]["IpAddress"]
-            == "<pseudonym:8f86699f51fc217651b1512f0bc0a2fa7717ffc700fe3e5426229a6ab063b47a>"
-        )
-        assert event["winlog"]["event_data"]["Something"] == "Do not pseudonymize me."
-
-    def test_pseudonymize_with_specific_and_generic_rule_files(self):
-        event = {
-            "winlog": {
-                "event_id": 1234,
-                "provider_name": "Test456",
-                "event_data": {
-                    "IpAddress": "Do not pseudonymize me.",
-                    "param2": "Pseudonymize me!",
-                },
-            }
-        }
-
-        self.object.process(event)
-
-        assert (
-            event["winlog"]["event_data"]["param2"]
-            == "<pseudonym:c40348196f85b761e0633fa568a79c751201a50d63f3a92195985e92cdee2077>"
-        )
-        assert (
-            event["winlog"]["event_data"]["IpAddress"]
-            == "<pseudonym:b1bbf05c20b28a0eecadff024b3e8a4496bd4d884236ef0b9f59523abe99f488>"
-        )
-
-    def test_pseudonymize_with_specific_and_generic_rule_files_with_setup(self):
-        event = {
-            "winlog": {
-                "event_id": 1234,
-                "provider_name": "Test456",
-                "event_data": {
-                    "IpAddress": "Do not pseudonymize me.",
-                    "param2": "Pseudonymize me!",
-                },
-            }
-        }
-
-        self.object.process(event)
-
-        assert (
-            event["winlog"]["event_data"]["param2"]
-            == "<pseudonym:c40348196f85b761e0633fa568a79c751201a50d63f3a92195985e92cdee2077>"
-        )
-        assert (
-            event["winlog"]["event_data"]["IpAddress"]
-            == "<pseudonym:b1bbf05c20b28a0eecadff024b3e8a4496bd4d884236ef0b9f59523abe99f488>"
-        )
-
-    def test_match_regex_mapping_with_partial_match(self):
-        event = {
-            "winlog": {
-                "event_id": 789,
-                "provider_name": "Test123",
-                "event_data": {"param1": r"DOMAIN\pseudonymize me!"},
-            }
-        }
-
-        self.object.process(event)
-        expected = (
-            r"DOMAIN\<pseudonym:fd5ada8080bcb4a2bcf094bb7aaa7cb907fabeebfff8650676676632cdf4ac4c>"
-        )
-        assert event["winlog"]["event_data"]["param1"] == expected
-
-    def test_do_not_match_regex_mapping(self):
-        event = {
-            "event_id": 789,
-            "provider_name": "Test123",
-            "winlog": {"event_data": {"param1": r"!\pseudonymize me!"}},
-        }
-
-        self.object.process(event)
-
-        assert event["winlog"]["event_data"]["param1"] == r"!\pseudonymize me!"
-
-    def test_match_replace_whole_field(self):
-        expected = r"<pseudonym:08572d32bb4e3aa23a7673fbb633814d62b603bb75b27d8fc9ea4f7b5476478e>"
-
-        event_whole_field_with_cap = self._pseudo_source_by_pattern(
-            r"to be pseudonymized", "RE_WHOLE_FIELD_CAP"
-        )
-        assert event_whole_field_with_cap["pseudo_this"] == expected
-
-        event_whole_field_empty_cap = self._pseudo_source_by_pattern(
-            r"to be pseudonymized", "RE_WHOLE_FIELD_EMPTY_CAPS"
-        )
-        assert event_whole_field_empty_cap["pseudo_this"] == expected
-
-    def test_match_capture_group_surrounded(self):
-        pseudonym = "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
-        expected = "KEEP_THIS+" + pseudonym + "+KEEP_THIS"
-
-        event = self._pseudo_source_by_pattern(r"KEEP_THIS+PSEUDO_THIS+KEEP_THIS", "RE_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_match_capture_group_right(self):
-        pseudonym = "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
-        expected = "KEEP_THIS+" + pseudonym
-
-        event = self._pseudo_source_by_pattern(r"KEEP_THIS+PSEUDO_THIS", "RE_PATTERN_CAP")
-        assert event["pseudo_this"] == expected
-
-    def test_match_capture_group_left(self):
-        pseudonym = "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
-        expected = pseudonym + "+KEEP_THIS"
-
-        event = self._pseudo_source_by_pattern(r"PSEUDO_THIS+KEEP_THIS", "RE_CAP_PATTERN")
-        assert event["pseudo_this"] == expected
-
-    def test_match_two_capture_groups_covering_match(self):
-        pseudonym_1 = "<pseudonym:c293a7d15377738f5966d78da53f3ba500f3d287a1fdea98bdb225da6212ff68>"
-        pseudonym_2 = "<pseudonym:2c868c09bcc9ee59486e915ad2865d33f22b045ea0050215d7f99fd55b12a5d3>"
-        expected = pseudonym_1 + pseudonym_2
-
-        event = self._pseudo_source_by_pattern(r"_PSEUDO_THIS_1__PSEUDO_THIS_2_", "RE_TWO_CAPS")
-        assert event["pseudo_this"] == expected
-
-    def test_match_two_capture_groups_with_gap(self):
-        pseudonym = "<pseudonym:e92c1d896e9cac51492a29bc4e6415b20e83d37c4a45e4d65e6c3498cdcc5b4b>"
-        expected = pseudonym + "+KEEP_THIS+" + pseudonym
-
-        event = self._pseudo_source_by_pattern(
-            r"PSEUDO_THIS+KEEP_THIS+PSEUDO_THIS", "RE_TWO_CAPS_WITH_GAP"
-        )
-        assert event["pseudo_this"] == expected
 
     def test_do_not_pseudonymize_url(self):
         expected = "https://test.de"
