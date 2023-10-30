@@ -40,10 +40,6 @@ class TestGetterFactory:
             ("my/file", "file", "my/file"),
             ("http://my/file", "http", "my/file"),
             ("https://my/file", "https", "my/file"),
-            ("http://user:password@my/file", "http", "my/file"),
-            ("https://user:password@my/file", "https", "my/file"),
-            ("http://oauth:ajpf0q9vrfásdjlk__234d@my/file", "http", "my/file"),
-            ("https://oauth:ajpf0q9vrfásdjlk__234d@my/file", "https", "my/file"),
         ],
     )
     def test_from_string_sets_protocol_and_target(
@@ -54,12 +50,9 @@ class TestGetterFactory:
         assert my_getter.target == expected_target
 
     def test_getter_expands_from_environment(self):
-        os.environ["PYTEST_TEST_TOKEN"] = "mytesttoken"
         os.environ["PYTEST_TEST_TARGET"] = "the-web-target"
-        url = "https://oauth:${PYTEST_TEST_TOKEN}@${PYTEST_TEST_TARGET}"
+        url = "https://${PYTEST_TEST_TARGET}"
         my_getter = GetterFactory.from_string(url)
-        assert my_getter._username == "oauth"
-        assert my_getter._password == "mytesttoken"
         assert my_getter.target == "the-web-target"
 
     def test_getter_expands_not_set_environment_to_blank(self):
