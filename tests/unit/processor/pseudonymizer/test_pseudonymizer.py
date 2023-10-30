@@ -77,16 +77,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         else:
             Factory.create({"name": config}, self.logger)
 
-    def test_pseudonymize_event(self):
-        event_raw = {"foo": "bar"}
-        self.object.process(event_raw)
-        pseudonyms = self.object.pseudonyms
-        assert event_raw == {"foo": "bar"}
-        assert pseudonyms == []
-
-    def test_shut_down(self):
-        self.object.shut_down()
-
     def test_rule_has_no_pseudonymize_field_and_rule_creation_fails(self):
         rule_dict = {
             "filter": "event_id: 1234",

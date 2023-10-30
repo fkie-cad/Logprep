@@ -42,7 +42,7 @@ from logging import Logger
 from typing import Any, List, Optional, Pattern, Tuple, Union
 from urllib.parse import parse_qs
 
-from attr import define, field, validators
+from attrs import define, field, validators
 from tldextract import TLDExtract
 from urlextract import URLExtract
 
