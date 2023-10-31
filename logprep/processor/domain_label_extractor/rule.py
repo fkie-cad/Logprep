@@ -55,7 +55,7 @@ will result in the following output
    :inherited-members:
    :noindex:
 """
-from attr import field, validators, define
+from attr import define, field, validators
 
 from logprep.processor.field_manager.rule import FieldManagerRule
 
@@ -75,3 +75,4 @@ class DomainLabelExtractorRule(FieldManagerRule):
         )
         """The fields from where to get the values which should be processed."""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
+        ignore_missing_fields: bool = field(default=False, init=False, repr=False, eq=False)

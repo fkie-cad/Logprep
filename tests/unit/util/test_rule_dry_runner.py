@@ -50,6 +50,12 @@ class TestRunLogprep:
                 - tests/testdata/unit/pre_detector/rules/generic/
               outputs:
                 - patched_output: sre_topic
+          - selective_extractor:
+              type: selective_extractor
+              specific_rules:
+                - tests/testdata/unit/selective_extractor/rules/specific/
+              generic_rules:
+                - tests/testdata/unit/selective_extractor/rules/generic/
         """
         self.config_path = os.path.join(tempfile.gettempdir(), "dry-run-config.yml")
         with open(self.config_path, "w", encoding="utf8") as config_file:
@@ -74,6 +80,7 @@ class TestRunLogprep:
         dry_runner.run()
 
         captured = capsys.readouterr()
+        assert captured.err == ""
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
 
@@ -93,6 +100,7 @@ class TestRunLogprep:
         dry_runner.run()
 
         captured = capsys.readouterr()
+        assert captured.err == ""
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
 
@@ -112,6 +120,7 @@ class TestRunLogprep:
         dry_runner.run()
 
         captured = capsys.readouterr()
+        assert captured.err == ""
         assert "------ PROCESSED EVENT ------" in captured.out
         assert captured.out.count("------ PROCESSED EVENT ------") == 2
         assert "------ TRANSFORMED EVENTS: 2/2 ------" in captured.out
@@ -122,7 +131,9 @@ class TestRunLogprep:
                 "event_id": 1234,
                 "provider_name": "Test456",
                 "event_data": {"param1": "username"},
-            }
+            },
+            "message": "some message",
+            "field1": "field for the selective extractor",
         }
         input_json_file = os.path.join(tmp_path, "test_input.json")
         with open(input_json_file, "w", encoding="utf8") as input_file:
@@ -138,6 +149,7 @@ class TestRunLogprep:
         dry_runner.run()
 
         captured = capsys.readouterr()
+        assert captured.err == ""
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
         assert "------ CUSTOM OUTPUTS ------" in captured.out
@@ -163,6 +175,7 @@ class TestRunLogprep:
         dry_runner.run()
 
         captured = capsys.readouterr()
+        assert captured.err == ""
         assert "------ PROCESSED EVENT ------" in captured.out
         assert "------ TRANSFORMED EVENTS: 1/1 ------" in captured.out
         assert "------ CUSTOM OUTPUTS ------" in captured.out

@@ -5,13 +5,21 @@ from time import time
 
 import numpy as np
 
-from logprep.metrics.metric_targets import split_key_label_string
+
+def split_key_label_string(key_label_string):
+    """Splits the key label string into separate variables"""
+    if ";" not in key_label_string:
+        return key_label_string, {}
+    key, labels = key_label_string.split(";")
+    labels = labels.split(",")
+    labels = [label.split(":") for label in labels]
+    return key, dict(labels)
 
 
 class MetricExposer:
     """The MetricExposer collects all metrics and exposes them via configured outputs"""
 
-    def __init__(self, config, metric_targets, shared_dict, lock, logger):
+    def __init__(self, config, prometheus_exporter, shared_dict, lock, logger):
         self._shared_dict = shared_dict
         self._print_period = config.get("period", 180)
         self._cumulative = config.get("cumulative", True)
@@ -20,12 +28,7 @@ class MetricExposer:
         self._logger = logger
         self._first_metrics_exposed = False
         self._timer = Value(c_double, time() + self._print_period)
-
-        self.output_targets = []
-        if metric_targets and metric_targets.file_target:
-            self.output_targets.append(metric_targets.file_target)
-        if metric_targets and metric_targets.prometheus_target:
-            self.output_targets.append(metric_targets.prometheus_target)
+        self._prometheus_exporter = prometheus_exporter
 
     def expose(self, metrics):
         """
@@ -35,7 +38,7 @@ class MetricExposer:
         pipeline, or in an independent form, where each multiprocessing pipeline will be exposed
         directly.
         """
-        if not self.output_targets:
+        if not self._prometheus_exporter:
             return
 
         if self._time_to_expose():
@@ -117,5 +120,21 @@ class MetricExposer:
         Passes the metric object to the configured outputs such that they
         can transform and expose them
         """
-        for output in self.output_targets:
-            output.expose(metrics)
+        for key_labels, value in metrics.items():
+            key, labels = split_key_label_string(key_labels)
+            if key not in self._prometheus_exporter.metrics.keys():
+                label_names = []
+                if labels:
+                    label_names = labels.keys()
+                self._prometheus_exporter.create_new_metric_exporter(key, label_names)
+
+            if labels:
+                self._prometheus_exporter.metrics[key].labels(**labels).set(value)
+            else:
+                self._prometheus_exporter.metrics[key].set(value)
+
+        interval = self._prometheus_exporter.configuration["period"]
+        labels = {
+            "component": "logprep",
+        }
+        self._prometheus_exporter.tracking_interval.labels(**labels).set(interval)

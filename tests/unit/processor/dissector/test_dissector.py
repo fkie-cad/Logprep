@@ -596,6 +596,48 @@ test_cases = [  # testcase, rule, event, expected
         {"message": "this is 42#### message and this is 0##"},
         {"message": "this is 42#### message and this is 0##", "field1": 42, "field2": False},
     ),
+    (
+        "extract end of string",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "system_%{type}"}},
+        },
+        {"message": "system_monitor"},
+        {
+            "message": "system_monitor",
+            "type": "monitor",
+        },
+    ),
+    (
+        "copy field - dissect without separator",
+        {
+            "filter": "message",
+            "dissector": {"mapping": {"message": "%{sys_type}"}},
+        },
+        {"message": "system_monitor"},
+        {
+            "message": "system_monitor",
+            "sys_type": "system_monitor",
+        },
+    ),
+    (
+        "ignore missing fields",
+        {
+            "filter": "message",
+            "dissector": {
+                "mapping": {
+                    "message": "%{sys_type}",
+                    "does_not_exist": "%{sys_type}",
+                },
+                "ignore_missing_fields": True,
+            },
+        },
+        {"message": "system_monitor"},
+        {
+            "message": "system_monitor",
+            "sys_type": "system_monitor",
+        },
+    ),
 ]
 failure_test_cases = [  # testcase, rule, event, expected
     (

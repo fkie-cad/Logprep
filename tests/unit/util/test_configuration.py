@@ -11,14 +11,14 @@ from unittest import mock
 import pytest
 
 from logprep.util.configuration import (
-    InvalidConfigurationError,
     Configuration,
     IncalidMetricsConfigurationError,
-    RequiredConfigurationKeyMissingError,
+    InvalidConfigurationError,
     InvalidConfigurationErrors,
-    InvalidProcessorConfigurationError,
     InvalidInputConnectorConfigurationError,
     InvalidOutputConnectorConfigurationError,
+    InvalidProcessorConfigurationError,
+    RequiredConfigurationKeyMissingError,
 )
 from logprep.util.getter import GetterFactory
 from logprep.util.json_handling import dump_config_as_file
@@ -139,16 +139,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 None,
@@ -161,79 +152,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
-            ),
-            (
-                "empty target",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [],
-                    }
-                },
-                IncalidMetricsConfigurationError,
-            ),
-            (
-                "unkown target",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [{"webserver": {"does-not": "exist"}}],
-                    }
-                },
-                IncalidMetricsConfigurationError,
-            ),
-            (
-                "missing key in prometheus target config",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [{"prometheus": {"wrong": "key"}}],
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
-            ),
-            (
-                "missing key in file target config",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {
-                                "file": {
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 RequiredConfigurationKeyMissingError,
@@ -247,10 +166,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {"file": {}},
-                        ],
+                        "port": 8000,
                     }
                 },
                 RequiredConfigurationKeyMissingError,
@@ -264,16 +180,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 RequiredConfigurationKeyMissingError,
@@ -611,16 +518,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"enabled": True, "append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 [],
@@ -634,16 +532,7 @@ class TestConfiguration:
                         "cumulative": True,
                         "aggregate_processes": True,
                         "measure_time": {"append_to_event": False},
-                        "targets": [
-                            {"prometheus": {"port": 8000}},
-                            {
-                                "file": {
-                                    "path": "./logs/status.json",
-                                    "rollover_interval": 86400,
-                                    "backup_count": 10,
-                                }
-                            },
-                        ],
+                        "port": 8000,
                     }
                 },
                 [
@@ -682,12 +571,12 @@ class TestConfiguration:
 
     def test_verify_input_raises_type_error(self):
         config = deepcopy(self.config)
-        del config["input"]["kafka_input"]["bootstrapservers"]
+        del config["input"]["kafka_input"]["topic"]
         with pytest.raises(
             InvalidInputConnectorConfigurationError,
             match=re.escape(
                 "Invalid input connector configuration: Required option(s) are missing: "
-                + "'bootstrapservers'."
+                + "'topic'."
             ),
         ):
             config._verify_input(logger)
@@ -697,18 +586,6 @@ class TestConfiguration:
         del config["output"]
         with pytest.raises(
             RequiredConfigurationKeyMissingError, match="Required option is missing: output"
-        ):
-            config._verify_output(logger)
-
-    def test_verify_output_raises_type_error(self):
-        config = deepcopy(self.config)
-        del config["output"]["kafka_output"]["bootstrapservers"]
-        with pytest.raises(
-            InvalidOutputConnectorConfigurationError,
-            match=re.escape(
-                "Invalid output connector configuration: Required option(s) are missing: "
-                + "'bootstrapservers'."
-            ),
         ):
             config._verify_output(logger)
 
@@ -822,25 +699,18 @@ pipeline:
 output:
     kafka:
         type: confluentkafka_output
-        bootstrapservers:
-        - 172.21.0.5:9092
         topic: producer
         error_topic: producer_error
-        ack_policy: all
-        compression: none
-        maximum_backlog: 10000
-        linger_duration: 0
         flush_timeout: 30
         send_timeout: 2
-        ssl:
-            cafile:
-            certfile:
-            keyfile:
-            password:
+        kafka_config:
+            bootstrap.servers: "172.21.0.5:9092"
+            acks: "-1"
+            compression.type: "none"
 """
         os.environ[
             "LOGPREP_INPUT"
-        ] = "input:\n    kafka:\n        type: confluentkafka_input\n        bootstrapservers:\n        - 172.21.0.5:9092\n        topic: consumer\n        group: cgroup3\n        auto_commit: true\n        session_timeout: 6000\n        offset_reset_policy: smallest\n        ssl:\n            cafile:\n            certfile:\n            keyfile:\n            password:\n            "
+        ] = "input:\n    kafka:\n        type: confluentkafka_input\n        topic: consumer\n        kafka_config:\n          bootstrap.servers: localhost:9092\n          group.id: testgroup\n"
         config = Configuration.create_from_yaml(str(config_path))
         config.verify(mock.MagicMock())
 
@@ -881,25 +751,18 @@ pipeline:
 output:
     kafka:
         type: confluentkafka_output
-        bootstrapservers:
-        - 172.21.0.5:9092
         topic: producer
         error_topic: producer_error
-        ack_policy: all
-        compression: none
-        maximum_backlog: 10000
-        linger_duration: 0
         flush_timeout: 30
         send_timeout: 2
-        ssl:
-            cafile:
-            certfile:
-            keyfile:
-            password:
+        kafka_config:
+            bootstrap.servers: "172.21.0.5:9092"
+            acks: "-1"
+            compression.type: "none"
 """
         os.environ[
             "LOGPREP_INPUT"
-        ] = "input:\n    kafka:\n        type: confluentkafka_input\n        bootstrapservers:\n        - 172.21.0.5:9092\n        topic: consumer\n        group: cgroup3\n        auto_commit: true\n        session_timeout: 6000\n        offset_reset_policy: smallest\n        ssl:\n            cafile:\n            certfile:\n            keyfile:\n            password:\n            "
+        ] = "input:\n    kafka:\n        type: confluentkafka_input\n        topic: consumer\n"
         config = Configuration.create_from_yaml(str(config_path))
         with pytest.raises(
             InvalidConfigurationErrors,

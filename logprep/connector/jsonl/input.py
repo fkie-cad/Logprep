@@ -17,8 +17,9 @@ Example
       myjsonlinput:
         type: jsonl_input
         documents_path: path/to/a/document.jsonl
-
+        repeat_documents: true
 """
+import copy
 from functools import cached_property
 
 from logprep.connector.json.input import JsonInput
@@ -30,4 +31,4 @@ class JsonlInput(JsonInput):
 
     @cached_property
     def _documents(self):
-        return parse_jsonl(self._config.documents_path)
+        return copy.copy(parse_jsonl(self._config.documents_path))

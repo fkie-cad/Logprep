@@ -1,8 +1,8 @@
 # pylint: disable=missing-docstring
-import pytest
 import numpy as np
-
+import pytest
 from sklearn.preprocessing import MinMaxScaler
+
 from logprep.processor.amides.detection import (
     MissingModelComponentError,
     MisuseDetector,
@@ -51,7 +51,7 @@ def fixture_misuse_model():
     return {
         "clf": MockClassifier(malicious_predict=0.8),
         "vectorizer": MockVectorizer(),
-        "scaler": MockScaler(minimum=-0.5, maximum=0.5),
+        "scaler": MockScaler(minimum=-0.5, maximum=0.8),
     }
 
 
@@ -79,8 +79,8 @@ class TestMisuseDetector:
 
     def test_detect(self, misuse_model):
         detector = MisuseDetector(misuse_model, 0.5)
-        assert detector.detect("benign") == 0
-        assert detector.detect("malicious") == 1
+        assert detector.detect("benign") == (False, 0.0)
+        assert detector.detect("malicious") == (True, 1.0)
 
 
 class TestRuleAttributor:
@@ -120,7 +120,7 @@ class TestRuleAttributor:
             )
 
     def test_attribute_malicious_sample_sufficient_number_of_confidence_values(self, rule_models):
-        expected = {"rule_c": 0.9, "rule_a": 0.8}
+        expected = [{"rule": "rule_c", "confidence": 0.9}, {"rule": "rule_a", "confidence": 0.8}]
         attributor = RuleAttributor(
             rule_models,
             num_rule_attributions=2,
@@ -130,7 +130,11 @@ class TestRuleAttributor:
         assert results == expected
 
     def test_attribute_malicious_sample_too_few_sufficient_confidence_values(self, rule_models):
-        expected = {"rule_c": 0.9, "rule_a": 0.8, "rule_b": 0.7}
+        expected = [
+            {"rule": "rule_c", "confidence": 0.9},
+            {"rule": "rule_a", "confidence": 0.8},
+            {"rule": "rule_b", "confidence": 0.7},
+        ]
 
         attributor = RuleAttributor(
             rule_models,

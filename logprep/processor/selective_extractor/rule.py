@@ -155,6 +155,9 @@ class SelectiveExtractorRule(FieldManagerRule):
         extract_from_file: str = field(validator=validators.instance_of(str), default="", eq=False)
         """The path or url to a file with a flat list of fields to extract.
         For string format see :ref:`getters`."""
+        ignore_missing_fields: bool = field(validator=validators.instance_of(bool), default=True)
+        """If set to :code:`True` missing fields will be ignored, no warning is logged and the event
+        is not tagged with the failure tag. Defaults to :code:`True`"""
         target_field: str = field(default="", init=False, repr=False, eq=False)
         overwrite_target: bool = field(default=False, init=False, repr=False, eq=False)
         extend_target_list: bool = field(default=False, init=False, repr=False, eq=False)

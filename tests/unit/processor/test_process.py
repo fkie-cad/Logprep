@@ -7,48 +7,48 @@ from unittest.mock import call
 
 import pytest
 
-from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.generic_adder.rule import GenericAdderRule
-from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 
 
 class TestSpecificGenericProcessStrategy:
-    @mock.patch(
-        "logprep.processor.processor_strategy.SpecificGenericProcessStrategy._process_generic"
-    )
-    @mock.patch(
-        "logprep.processor.processor_strategy.SpecificGenericProcessStrategy._process_specific"
-    )
-    def test_process(self, mock_process_specific, mock_process_generic):
-        mock_metrics = Processor.ProcessorMetrics(
-            labels={}, specific_rule_tree=[], generic_rule_tree=[]
+    @mock.patch("logprep.abc.processor.Processor._process_rule_tree")
+    def test_process(self, mock_process_rule_tree):
+        processor = Factory.create(
+            {
+                "dummy": {
+                    "type": "calculator",
+                    "generic_rules": [],
+                    "specific_rules": [],
+                }
+            },
+            mock.MagicMock(),
         )
-        strategy = SpecificGenericProcessStrategy()
-        strategy.process({}, processor_stats=mock.Mock(), processor_metrics=mock_metrics)
-        mock_process_generic.assert_called()
-        mock_process_specific.assert_called()
+        processor.process({})
+        mock_process_rule_tree.assert_called()
+        assert mock_process_rule_tree.call_count == 2
 
-    @mock.patch(
-        "logprep.processor.processor_strategy.SpecificGenericProcessStrategy._process_generic"
-    )
-    @mock.patch(
-        "logprep.processor.processor_strategy.SpecificGenericProcessStrategy._process_specific"
-    )
-    def test_process_specific_before_generic(self, mock_process_specific, mock_process_generic):
-        call_order = []
-        mock_process_specific.side_effect = lambda *a, **kw: call_order.append(
-            mock_process_specific
+    @mock.patch("logprep.abc.processor.Processor._process_rule_tree")
+    def test_process_specific_before_generic(self, mock_process_rule_tree):
+        processor = Factory.create(
+            {
+                "dummy": {
+                    "type": "calculator",
+                    "generic_rules": [],
+                    "specific_rules": [],
+                }
+            },
+            mock.MagicMock(),
         )
-        mock_process_generic.side_effect = lambda *a, **kw: call_order.append(mock_process_generic)
-        mock_metrics = Processor.ProcessorMetrics(
-            labels={}, specific_rule_tree=[], generic_rule_tree=[]
-        )
-        strategy = SpecificGenericProcessStrategy()
-        strategy.process({}, processor_stats=mock.Mock(), processor_metrics=mock_metrics)
-        assert call_order == [mock_process_specific, mock_process_generic]
+        processor.process({})
+        assert mock_process_rule_tree.call_count == 2
+        mock_calls = [
+            call({}, processor._specific_tree),
+            call({}, processor._generic_tree),
+        ]
+        mock_process_rule_tree.assert_has_calls(mock_calls, any_order=False)
 
     def test_apply_processor_multiple_times_until_no_new_rule_matches(self):
         config = {
@@ -79,14 +79,7 @@ class TestSpecificGenericProcessStrategy:
             "time": "time",
             "url": "url",
         }
-        processor._strategy.process(
-            event,
-            generic_tree=processor._generic_tree,
-            specific_tree=processor._specific_tree,
-            callback=processor._apply_rules_wrapper,
-            processor_stats=mock.Mock(),
-            processor_metrics=mock.MagicMock(),
-        )
+        processor.process(event)
         assert expected_event == event
 
     def test_apply_processor_multiple_times_not_enabled(self):
@@ -111,14 +104,7 @@ class TestSpecificGenericProcessStrategy:
             "time": "time",
             "url": "url",
         }
-        processor._strategy.process(
-            event,
-            generic_tree=processor._generic_tree,
-            specific_tree=processor._specific_tree,
-            callback=processor._apply_rules_wrapper,
-            processor_stats=mock.Mock(),
-            processor_metrics=mock.MagicMock(),
-        )
+        processor.process(event)
         assert expected_event == event
 
     @pytest.mark.parametrize("execution_number", range(5))  # repeat test to ensure determinism
@@ -132,21 +118,15 @@ class TestSpecificGenericProcessStrategy:
         processor._specific_tree.add_rule(rule_one)
         processor._specific_tree.add_rule(rule_two)
         event = {"val": "content"}
-        mock_callback = mock.MagicMock()
-        processor._strategy.process(
-            event=event,
-            generic_tree=processor._generic_tree,
-            specific_tree=processor._specific_tree,
-            callback=mock_callback,
-            processor_stats=mock.Mock(),
-            processor_metrics=mock.MagicMock(),
-        )
-        expected_call_order = [call(event, rule_one), call(event, rule_two)]
-        assert (
-            mock_callback.mock_calls == expected_call_order
-        ), f"Wrong call order in test {execution_number}"
+        with mock.patch("logprep.abc.processor.Processor._apply_rules_wrapper") as mock_callback:
+            expected_call_order = [call(event, rule_one), call(event, rule_two)]
+            processor.process(event=event)
+            mock_callback.assert_has_calls(expected_call_order, any_order=False)
 
-    def test_strategy_processes_generic_rules_after_processor_error_in_specific_rules(self, capsys):
+    @mock.patch("logging.Logger.warning")
+    def test_strategy_processes_generic_rules_after_processor_error_in_specific_rules(
+        self, mock_warning
+    ):
         config = {
             "pipeline": [
                 {"adder": {"type": "generic_adder", "specific_rules": [], "generic_rules": []}}
@@ -183,6 +163,9 @@ class TestSpecificGenericProcessStrategy:
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_two)
         pipeline._pipeline[0]._specific_tree.add_rule(specific_rule_one)
         pipeline.process_event(event)
-        captured = capsys.readouterr()
-        assert re.match("FieldExistsWarning in GenericAdder.*first", captured.err)
+        assert (
+            "The following fields could not be written, "
+            "because one or more subfields existed and could not be extended: first"
+            in mock_warning.call_args[0][0]
+        )
         assert event == expected_event

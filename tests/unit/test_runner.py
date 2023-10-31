@@ -6,7 +6,7 @@
 import json
 from copy import deepcopy
 from functools import partial
-from logging import ERROR, INFO, Logger
+from logging import Logger
 from os.path import join, split
 from unittest import mock
 
@@ -16,12 +16,9 @@ from requests.exceptions import HTTPError, SSLError
 from logprep.processor.labeler.labeling_schema import LabelingSchemaError
 from logprep.runner import (
     CannotReloadWhenConfigIsUnsetError,
-    MustConfigureALoggerError,
     MustConfigureBeforeRunningError,
     MustNotConfigureTwiceError,
     MustNotCreateMoreThanOneManagerError,
-    MustNotSetLoggerTwiceError,
-    NotALoggerError,
     Runner,
     UseGetRunnerToCreateRunnerSingleton,
 )
@@ -35,7 +32,6 @@ from tests.testdata.metadata import (
     path_to_schema2,
 )
 from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
-from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub
 
 
 class RunnerForTesting(Runner):
@@ -43,17 +39,14 @@ class RunnerForTesting(Runner):
         super().__init__(bypass_check_to_obtain_non_singleton_instance=True)
 
     def _create_manager(self):
-        self._manager = PipelineManagerForTesting(self._logger, self._metric_targets)
+        self._manager = PipelineManagerForTesting()
 
 
 class LogprepRunnerTest:
     def setup_method(self, _):
-        self.handler = HandlerStub()
         self.logger = Logger("test")
-        self.logger.addHandler(self.handler)
 
         self.runner = RunnerForTesting()
-        self.runner.set_logger(self.logger)
         self.runner._create_manager()
 
 
@@ -69,7 +62,6 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
     def test_fails_when_calling_create_manager_more_than_once(self):
         runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
-        runner.set_logger(self.logger)
         runner.load_configuration(path_to_config)
 
         runner._create_manager()
@@ -88,22 +80,6 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
     def test_fails_when_called_without_configuring_first(self):
         with raises(MustConfigureBeforeRunningError):
-            self.runner.start()
-
-    def test_fails_when_setting_logger_to_non_logger_object(self):
-        for non_logger in [None, "string", 123, 45.67, TestRunner()]:
-            with raises(NotALoggerError):
-                self.runner.set_logger(non_logger)
-
-    def test_fails_when_setting_logger_twice(self):
-        with raises(MustNotSetLoggerTwiceError):
-            self.runner.set_logger(Logger("test"))
-
-    def test_fails_when_starting_without_setting_logger_first(self):
-        self.runner.load_configuration(path_to_config)
-        self.runner._logger = None
-
-        with raises(MustConfigureALoggerError):
             self.runner.start()
 
     def test_fails_when_rules_are_invalid(self):
@@ -142,12 +118,9 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
 class TestRunner(LogprepRunnerTest):
     def setup_method(self, _):
-        self.handler = HandlerStub()
         self.logger = Logger("test")
-        self.logger.addHandler(self.handler)
 
         self.runner = RunnerForTesting()
-        self.runner.set_logger(self.logger)
         self.runner.load_configuration(path_to_config)
         self.runner._create_manager()
 
@@ -157,9 +130,10 @@ class TestRunner(LogprepRunnerTest):
         for _ in range(10):
             assert runner == Runner.get_runner()
 
-    def test_reload_configuration_logs_info_when_reloading_config_was_successful(self):
-        with AssertEmitsLogMessage(self.handler, INFO, "Successfully reloaded configuration"):
-            self.runner.reload_configuration()
+    @mock.patch("logging.Logger.info")
+    def test_reload_configuration_logs_info_when_reloading_config_was_successful(self, mock_info):
+        self.runner.reload_configuration()
+        mock_info.assert_has_calls([mock.call("Successfully reloaded configuration")])
 
     def test_reload_configuration_reduces_logprep_instance_count_to_new_value(self):
         self.runner._manager.set_count(3)
@@ -176,15 +150,14 @@ class TestRunner(LogprepRunnerTest):
 
         assert self.runner._configuration == old_configuration
 
-    def test_reload_configuration_logs_error_when_new_configuration_is_invalid(self):
+    @mock.patch("logging.Logger.error")
+    def test_reload_configuration_logs_error_when_new_configuration_is_invalid(self, mock_error):
         self.runner._yaml_path = path_to_invalid_config
-
-        with AssertEmitsLogMessage(
-            self.handler,
-            ERROR,
-            prefix="Invalid configuration, leaving old configuration in place: ",
-        ):
-            self.runner.reload_configuration()
+        self.runner.reload_configuration()
+        assert (
+            "Invalid configuration, leaving old configuration in place:"
+            in mock_error.call_args[0][0]
+        )
 
     def test_reload_configuration_creates_new_logprep_instances_with_new_configuration(self):
         self.runner._manager.set_count(3)

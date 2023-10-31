@@ -33,7 +33,7 @@ allowing further applications besides log handling.
 This readme provides basic information about the following topics:
 - [About Logprep](#about-logprep)    
 - [Getting Started](#getting-started)
-- [Docker Quickstart](#docker-quickstart-environment)
+- [Docker Quickstart](#logprep-quickstart-environment)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -395,21 +395,28 @@ If the configuration does not pass a consistency check, then an error message is
 Logprep keeps running with the previous configuration.
 The configuration should be then checked and corrected on the basis of the error message.
 
-## Docker Quickstart Environment
+## Logprep Quickstart Environment
 
-Logprep was designed to work with the Elastic Stack or Opensearch and Kafka.
-This repository comes with a docker-compose file that builds a pre-configured Elastic Stack with 
-Kafka and Logprep.
-To get it running docker and docker-compose (version >= 1.28) must be first installed.
-The docker-compose file is located in the directory quickstart.
+To demonstrate the functionality of logprep this repo comes with a complete `kafka`, `lokgprep` and
+`opensearch` stack. 
+To get it running `docker` and `docker-compose` (version >= 1.28) must be first installed.
+The docker-compose file is located in the directory `quickstart`.
+A prerequisite is to run `sysctl -w vm.max_map_count=262144`, otherwise Opensearch might not
+properly start.
 
-### Running the Test Environment
+The environment can either be started with a Logprep container or without one:
 
-Before running, docker-compose `sysctl -w vm.max_map_count=262144` must be executed.
-Otherwise, Opensearch is not properly started.
-The environment can either be started with a Logprep container or without one.
+### Run without Logprep Container (default)
 
-#### Running Test Environment without Logprep Container (default way)
+  1. Run from within the `quickstart` directory: 
+     ```bash
+     docker-compose up -d
+     ```
+     It starts and connects `Kafka`, `logprep`, `Opensearch` and `Opensearch Dashboards`.
+  2. Run Logprep against loaded environment from main `Logprep` directory:
+     ```bash
+     logprep quickstart/exampledata/config/pipeline.yml
+     ```
 
   * Run from within the `quickstart` directory: `docker-compose up -d` 
     * It starts and connects Kafka, Opensearch and Opensearch Dashboards.
@@ -420,35 +427,39 @@ The environment can either be started with a Logprep container or without one.
   * you will find pseudonyms in the index `pseudonyms`
   * you will find predetections in the index `sre`
 
-#### Running Test Environment with Logprep Container
+### Run with Logprep Container
 
-  * Run from within the `quickstart` directory: `docker-compose --profile logprep up -d`
-    * (maybe needs change of config path in container)
+  * Run from within the `quickstart` directory: 
+    ```bash
+    docker-compose --profile logprep up -d
+    ```
 
 ### Interacting with the Quickstart Environment
 
-It is now possible to write JSON events into Kafka and read the processed events in Opensearch Dashboards.
+The start up takes a few seconds to complete, but once everything is up
+and running it is possible to write JSON events into Kafka and read the processed events in
+Opensearch Dashboards. Following services are available after start up:
 
-Once everything has started, Opensearch Dashboards can be accessed by a web-browser with the 
-address `127.0.0.1:5601`.
-Kafka can be accessed with the console producer and consumer from Kafka with the 
-address `127.0.0.1:9092` or from within the docker container `Kafka`.
-The table below shows which ports have been exposed on localhost for the services.
+| Service | Location |
+|:----------|:----|
+| Kafka: | `localhost:9092` |
+| Logprep metrics: | `localhost:8000` |
+| Opensearch: | `localhost:9200` |
+| Opensearch Dashboards: | `localhost:5601` |
+| Grafana Dashboards: | `localhost:3000` |
+| Prometheus: | `localhost:9090` |
 
-#### Table of Ports for Services
-
-|          | Kafka | Opensearch    | Dashboards |
-| ---      | ---   | ---           | ---        |
-| **Port** | 9092  | 9200          | 5601       |
+The credentials for Grafana are `admin` and `admin`.
 
 The example rules that are used in the docker instance of Logprep can be found 
 in `quickstart/exampledata/rules`.
 Example events that trigger for the example rules can be found in 
 `quickstart/exampledata/input_logdata/test_input.jsonl`.
-These events can be added to Kafka with the Kafka console producer within the Kafka container by 
-executing the following command:
+These events can be added to Kafka with the following command:
 
-`(docker exec -i kafka /opt/kafka/bin/kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/test_input.jsonl`
+```bash
+(docker exec -i kafka kafka-console-producer.sh --bootstrap-server 127.0.0.1:9092 --topic consumer) < exampledata/input_logdata/test_input.jsonl
+```
 
 Once the events have been processed for the first time, the new indices *processed*, *sre* 
 and *pseudonyms* should be available in Opensearch Dashboards.

@@ -15,9 +15,9 @@ from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.factory_error import FactoryError
 from logprep.factory_error import (
-    UnknownComponentTypeError,
     InvalidConfigurationError as FactoryInvalidConfigurationError,
 )
+from logprep.factory_error import UnknownComponentTypeError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import print_fcolor
@@ -421,39 +421,26 @@ class Configuration(dict):
                     )
 
     def _verify_metrics_config(self):
-        if self.get("metrics"):
+        metrics_config = self.get("metrics")
+        if metrics_config:
             errors = []
-            required_keys = [
-                "enabled",
-                "period",
-                "cumulative",
-                "aggregate_processes",
-                "measure_time",
-                "targets",
-            ]
 
-            for key in required_keys:
-                if key not in self["metrics"]:
-                    errors.append(RequiredConfigurationKeyMissingError(f"metrics > {key}"))
+            if "enabled" not in metrics_config:
+                errors.append(RequiredConfigurationKeyMissingError("metrics > enabled"))
 
-            targets = self.get("metrics").get("targets", [])
+            if metrics_config.get("enabled"):
+                required_keys = [
+                    "enabled",
+                    "period",
+                    "cumulative",
+                    "aggregate_processes",
+                    "measure_time",
+                    "port",
+                ]
 
-            if not targets:
-                errors.append(
-                    IncalidMetricsConfigurationError("At least one target has to be configured")
-                )
-
-            for target in targets:
-                current_target = list(target.keys())[0]
-                try:
-                    if current_target == "prometheus":
-                        self._verify_status_logger_prometheus_target(target["prometheus"])
-                    elif current_target == "file":
-                        self._verify_status_logger_file_target(target["file"])
-                    else:
-                        raise IncalidMetricsConfigurationError(f"Unknown target '{current_target}'")
-                except InvalidConfigurationError as error:
-                    errors.append(error)
+                for key in required_keys:
+                    if key not in self["metrics"]:
+                        errors.append(RequiredConfigurationKeyMissingError(f"metrics > {key}"))
 
             try:
                 self._verify_measure_time_config(self.get("metrics").get("measure_time"))
@@ -462,24 +449,6 @@ class Configuration(dict):
 
             if errors:
                 raise InvalidConfigurationErrors(errors)
-
-    @staticmethod
-    def _verify_status_logger_prometheus_target(target_config):
-        if target_config is None or not target_config.get("port"):
-            raise RequiredConfigurationKeyMissingError("metrics > targets > prometheus > port")
-
-    @staticmethod
-    def _verify_status_logger_file_target(target_config):
-        required_keys = {"path", "rollover_interval", "backup_count"}
-        given_keys = set(target_config.keys())
-        missing_keys = required_keys.difference(given_keys)
-
-        if missing_keys:
-            raise RequiredConfigurationKeyMissingError(
-                f"The following option keys for the "
-                f"metrics file target are missing: "
-                f"{missing_keys}"
-            )
 
     @staticmethod
     def _verify_measure_time_config(measure_time_config):

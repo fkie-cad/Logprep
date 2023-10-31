@@ -8,7 +8,7 @@ from logging import getLogger
 from unittest import mock
 
 import pytest
-from prometheus_client import Gauge, REGISTRY
+from prometheus_client import REGISTRY, Gauge
 
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
@@ -17,27 +17,24 @@ class TestPrometheusStatsExporter:
     def setup_method(self):
         REGISTRY.__init__()
         self.metrics_config = {
-            "period": 10,
-            "enabled": True,
-            "cumulative": True,
-            "targets": [
-                {"prometheus": {"port": 80}},
-                {"file": {"path": "", "rollover_interval": 200, "backup_count": 10}},
-            ],
+            "metrics": {"period": 10, "enabled": True, "cumulative": True, "port": 80}
         }
 
     def test_correct_setup(self):
-        exporter = PrometheusStatsExporter(self.metrics_config, getLogger("test-logger"))
+        exporter = PrometheusStatsExporter(
+            self.metrics_config.get("metrics"), getLogger("test-logger")
+        )
         assert not exporter.metrics
         assert isinstance(exporter.tracking_interval, Gauge)
-        assert exporter._port == self.metrics_config["targets"][0]["prometheus"]["port"]
+        assert exporter._port == self.metrics_config["metrics"]["port"]
 
     def test_default_port_if_missing_in_config(self):
         metrics_config = {
-            "period": 10,
-            "enabled": True,
-            "cumulative": True,
-            "targets": [{"file": {"path": "", "rollover_interval": 200, "backup_count": 10}}],
+            "metrics": {
+                "period": 10,
+                "enabled": True,
+                "cumulative": True,
+            }
         }
         exporter = PrometheusStatsExporter(metrics_config, getLogger("test-logger"))
 
@@ -89,18 +86,6 @@ class TestPrometheusStatsExporter:
                 "is a file and not a directory",
             ):
                 _ = PrometheusStatsExporter(self.metrics_config, getLogger("test-logger"))
-
-    @mock.patch("logprep.util.prometheus_exporter.multiprocess")
-    @mock.patch("logprep.util.prometheus_exporter.os.makedirs")
-    @mock.patch("logprep.util.prometheus_exporter.shutil.rmtree")
-    def test_prepare_multiprocessing_does_not_init_prometheus_if_env_variable_is_missing(
-        self, mock_multiprocess, mock_makedirs, mock_rmtree
-    ):
-        _ = PrometheusStatsExporter(self.metrics_config, getLogger("test-logger"))
-
-        mock_multiprocess.assert_not_called()
-        mock_makedirs.assert_not_called()
-        mock_rmtree.assert_not_called()
 
     @mock.patch("logprep.util.prometheus_exporter.start_http_server")
     def test_run_starts_http_server(self, mock_http_server, caplog):

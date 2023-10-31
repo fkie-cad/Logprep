@@ -1,18 +1,18 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-from logging import WARNING, Logger, INFO, ERROR
-from time import time, sleep
+from logging import Logger
 from unittest import mock
 
 from pytest import raises
 
 from logprep.framework.pipeline import MultiprocessingPipeline
-from logprep.framework.pipeline_manager import PipelineManager, MustSetConfigurationFirstError
-from logprep.metrics.metric import MetricTargets
+from logprep.framework.pipeline_manager import (
+    MustSetConfigurationFirstError,
+    PipelineManager,
+)
 from logprep.util.configuration import Configuration
 from tests.testdata.metadata import path_to_config
-from tests.util.testhelpers import AssertEmitsLogMessage, HandlerStub, AssertEmitsLogMessages
 
 
 class MultiprocessingPipelineMock(MultiprocessingPipeline):
@@ -53,16 +53,13 @@ class PipelineManagerForTesting(PipelineManager):
 class TestPipelineManager:
     def setup_class(self):
         self.config = Configuration.create_from_yaml(path_to_config)
-        self.handler = HandlerStub()
         self.logger = Logger("test")
-        self.metric_targets = MetricTargets(file_target=self.logger, prometheus_target=None)
-        self.logger.addHandler(self.handler)
 
-        self.manager = PipelineManagerForTesting(self.logger, self.metric_targets)
+        self.manager = PipelineManagerForTesting()
         self.manager.set_configuration(self.config)
 
     def test_create_pipeline_fails_if_config_is_unset(self):
-        manager = PipelineManager(self.logger, self.metric_targets)
+        manager = PipelineManager()
 
         with raises(
             MustSetConfigurationFirstError,
@@ -139,61 +136,13 @@ class TestPipelineManager:
 
         assert not failed_pipeline in self.manager._pipelines
 
-    def test_remove_failed_pipelines_logs_warning_for_removed_failed_pipelines(self):
+    @mock.patch("logging.Logger.warning")
+    def test_remove_failed_pipelines_logs_warning_for_removed_failed_pipelines(self, logger_mock):
         self.manager.set_count(2)
         failed_pipeline = self.manager._pipelines[-1]
         failed_pipeline.process_is_alive = False
-
-        with AssertEmitsLogMessage(self.handler, WARNING, message="Restarted 1 failed pipeline(s)"):
-            self.manager.restart_failed_pipeline()
-
-    def test_handle_logs_into_logger_returns_after_timeout(self):
-        self.manager.set_count(1)
-        timeout = 0.1
-
-        start = time()
-        self.manager.handle_logs_into_logger(self.logger, timeout=timeout)
-        duration = time() - start
-
-        assert duration >= timeout
-        assert duration <= (1.5 * timeout)
-
-    def test_handle_logs_into_logger_forwards_log_record_to_logger(self):
-        self.manager.set_count(1)
-        timeout = 0.1
-
-        handler = HandlerStub()
-
-        logger_in = Logger("test_handle_logs_into_logger_forwards_log_record_to_logger")
-        logger_in.addHandler(self.manager._log_handler)
-        logger_in.error("this is a test")
-
-        logger_out = Logger("test_handle_logs_into_logger_forwards_log_record_to_logger")
-        logger_out.addHandler(handler)
-
-        with AssertEmitsLogMessage(handler, ERROR, "this is a test"):
-            self.manager.handle_logs_into_logger(logger_out, timeout=timeout)
-
-    def test_handle_logs_into_logger_retrieves_all_logs_with_a_single_call(self):
-        self.manager.set_count(1)
-        timeout = 0.1
-
-        handler = HandlerStub()
-
-        logger_in = Logger("test_handle_logs_into_logger_forwards_log_record_to_logger")
-        logger_in.addHandler(self.manager._log_handler)
-        logger_in.error("msg1")
-        logger_in.warning("msg2")
-        logger_in.info("msg3")
-
-        logger_out = Logger("test_handle_logs_into_logger_forwards_log_record_to_logger")
-        logger_out.addHandler(handler)
-        # NOTE: This test failed once in a while (fewer messages received than expected),
-        # this sleep seems to have fixed it, try adjusting, if the test fails randomly.
-        sleep(0.01)  # nosemgrep
-
-        with AssertEmitsLogMessages(handler, [ERROR, WARNING, INFO], ["msg1", "msg2", "msg3"]):
-            self.manager.handle_logs_into_logger(logger_out, timeout=timeout)
+        self.manager.restart_failed_pipeline()
+        logger_mock.assert_called_with("Restarted 1 failed pipeline(s)")
 
     def test_stop_terminates_processes_created(self):
         self.manager.set_count(3)
@@ -214,25 +163,23 @@ class TestPipelineManager:
         failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
         failed_pipeline.is_alive.return_value = False  # nosemgrep
         failed_pipeline.pid = 42
-        metric_targets = MetricTargets(None, prometheus_exporter_mock)
-        manager = PipelineManager(self.logger, metric_targets)
+        manager = PipelineManager()
+        manager.set_configuration({"metrics": {"enabled": True}, "process_count": 2})
+        manager.prometheus_exporter = prometheus_exporter_mock
         manager._pipelines = [failed_pipeline]
-        manager._configuration = {"process_count": 2}
         manager.restart_failed_pipeline()
-        prometheus_exporter_mock.prometheus_exporter.remove_metrics_from_process.assert_called()
-        prometheus_exporter_mock.prometheus_exporter.remove_metrics_from_process.assert_called_with(
-            42
-        )
+        prometheus_exporter_mock.remove_metrics_from_process.assert_called()
+        prometheus_exporter_mock.remove_metrics_from_process.assert_called_with(42)
 
-    def test_restart_failed_pipelines_skips_removal_of_metrics_database_if_no_metric_target_is_configured(
-        self,
+    @mock.patch("logprep.util.prometheus_exporter.PrometheusStatsExporter")
+    def test_restart_failed_pipelines_skips_removal_of_metrics_database_if_prometheus_is_not_enabled(
+        self, prometheus_exporter_mock
     ):
         failed_pipeline = mock.MagicMock()
-        failed_pipeline.metric_targets = None
         failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
         failed_pipeline.is_alive.return_value = False  # nosemgrep
-        manager = PipelineManager(self.logger, None)
+        manager = PipelineManager()
         manager._pipelines = [failed_pipeline]
         manager._configuration = {"process_count": 2}
         manager.restart_failed_pipeline()
-        assert failed_pipeline.metric_targets is None
+        prometheus_exporter_mock.remove_metrics_from_process.assert_not_called()

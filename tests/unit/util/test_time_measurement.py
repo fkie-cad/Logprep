@@ -34,6 +34,13 @@ class TestTimeMeasurement:
         assert timestamp is not None
         assert isinstance(timestamp, float)
 
+    def test_time_measurement_decorator_only_writes_times_if_event_is_not_empty(self):
+        TimeMeasurement.TIME_MEASUREMENT_ENABLED = True
+        TimeMeasurement.APPEND_TO_EVENT = True
+        event = {}
+        self.dummy_method(event)
+        assert not event
+
     def test_deactivated_decorator_does_not_do_a_thing(self):
         TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
         TimeMeasurement.APPEND_TO_EVENT = False

@@ -45,6 +45,8 @@ class IpInformer(FieldManager):
     rule_class = IpInformerRule
 
     def _apply_rules(self, event: dict, rule: IpInformerRule) -> None:
+        source_field_values = self._get_field_values(event, rule.source_fields)
+        self._handle_missing_fields(event, rule, rule.source_fields, source_field_values)
         self._processing_warnings = []
         ip_address_list = self._get_flat_ip_address_list(event, rule)
         results = self._get_results(ip_address_list, rule)

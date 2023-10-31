@@ -1,6 +1,8 @@
 """Abstract module for processors"""
 import copy
+import time
 from abc import abstractmethod
+from functools import reduce
 from logging import DEBUG, Logger
 from multiprocessing import current_process
 from pathlib import Path
@@ -16,7 +18,6 @@ from logprep.processor.base.exceptions import (
     ProcessingCriticalError,
     ProcessingWarning,
 )
-from logprep.processor.processor_strategy import SpecificGenericProcessStrategy
 from logprep.util import getter
 from logprep.util.helper import (
     add_and_overwrite,
@@ -41,22 +42,24 @@ class Processor(Component):
         specific_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
             ]
         )
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
         For valid URI formats see :ref:`getters`.
+        As last option it is possible to define entire rules with all their configuration parameters as list elements.
         """
         generic_rules: List[str] = field(
             validator=[
                 validators.instance_of(list),
-                validators.deep_iterable(member_validator=validators.instance_of(str)),
+                validators.deep_iterable(member_validator=validators.instance_of((str, dict))),
             ]
         )
         """List of rule locations to load rules from.
         In addition to paths to file directories it is possible to retrieve rules from a URI.
         For valid URI formats see :ref:`getters`.
+        As last option it is possible to define entire rules with all their configuration parameters as list elements.
         """
         tree_config: Optional[str] = field(
             default=None, validator=[validators.optional(validators.instance_of(str))]
@@ -120,7 +123,6 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
         super().__init__(name, configuration, logger)
-        self._strategy = SpecificGenericProcessStrategy(self._config.apply_multiple_times)
         self.metric_labels, specific_tree_labels, generic_tree_labels = self._create_metric_labels()
         self._specific_tree = RuleTree(
             config_path=self._config.tree_config, metric_labels=specific_tree_labels
@@ -190,21 +192,39 @@ class Processor(Component):
            A dictionary representing a log event.
 
         """
-        if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            self._logger.debug(f"{self.describe()} processing event {event}")
-        self._strategy.process(
-            event,
-            generic_tree=self._generic_tree,
-            specific_tree=self._specific_tree,
-            callback=self._apply_rules_wrapper,
-            processor_metrics=self.metrics,
-        )
+        self._logger.debug(f"{self.describe()} processing event {event}")
+        self.metrics.number_of_processed_events += 1
+        self._process_rule_tree(event, self._specific_tree)
+        self._process_rule_tree(event, self._generic_tree)
+
+    def _process_rule_tree(self, event: dict, tree: "RuleTree"):
+        applied_rules = set()
+
+        def _process_rule(event, rule):
+            begin = time.time()
+            self._apply_rules_wrapper(event, rule)
+            processing_time = time.time() - begin
+            rule.metrics._number_of_matches += 1
+            rule.metrics.update_mean_processing_time(processing_time)
+            self.metrics.update_mean_processing_time_per_event(processing_time)
+            applied_rules.add(rule)
+            return event
+
+        if self._config.apply_multiple_times:
+            matching_rules = tree.get_matching_rules(event)
+            while matching_rules:
+                reduce(_process_rule, (event, *matching_rules))
+                matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
+        else:
+            reduce(_process_rule, (event, *tree.get_matching_rules(event)))
 
     def _apply_rules_wrapper(self, event, rule):
         try:
             self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
+        except ProcessingCriticalError as error:
+            raise error
         except BaseException as error:
             raise ProcessingCriticalError(self, str(error), event) from error
         if not hasattr(rule, "delete_source_fields"):
@@ -227,20 +247,35 @@ class Processor(Component):
         """
 
     @staticmethod
-    def resolve_directories(rule_paths: list) -> list:
-        resolved_paths = []
-        for rule_path in rule_paths:
-            getter_instance = getter.GetterFactory.from_string(rule_path)
+    def resolve_directories(rule_sources: list) -> list:
+        """resolves directories to a list of files or rule definitions
+
+        Parameters
+        ----------
+        rule_sources : list
+            a list of files, directories or rule definitions
+
+        Returns
+        -------
+        list
+            a list of files and rule definitions
+        """
+        resolved_sources = []
+        for rule_source in rule_sources:
+            if isinstance(rule_source, dict):
+                resolved_sources.append(rule_source)
+                continue
+            getter_instance = getter.GetterFactory.from_string(rule_source)
             if getter_instance.protocol == "file":
                 if Path(getter_instance.target).is_dir():
                     paths = list_json_files_in_directory(getter_instance.target)
                     for file_path in paths:
-                        resolved_paths.append(file_path)
+                        resolved_sources.append(file_path)
                 else:
-                    resolved_paths.append(rule_path)
+                    resolved_sources.append(rule_source)
             else:
-                resolved_paths.append(rule_path)
-        return resolved_paths
+                resolved_sources.append(rule_source)
+        return resolved_sources
 
     def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
         """method to add rules from directories or urls"""
@@ -256,15 +291,9 @@ class Processor(Component):
                 self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
             number_specific_rules = self._specific_tree.metrics.number_of_rules
-            self._logger.debug(
-                f"{self.describe()} loaded {number_specific_rules} "
-                f"specific rules ({current_process().name})"
-            )
+            self._logger.debug(f"{self.describe()} loaded {number_specific_rules} specific rules")
             number_generic_rules = self._generic_tree.metrics.number_of_rules
-            self._logger.debug(
-                f"{self.describe()} loaded {number_generic_rules} generic rules "
-                f"generic rules ({current_process().name})"
-            )
+            self._logger.debug(f"{self.describe()} loaded {number_generic_rules} generic rules")
 
     @staticmethod
     def _field_exists(event: dict, dotted_field: str) -> bool:
@@ -295,6 +324,8 @@ class Processor(Component):
             dict(filter(lambda x: x[1] in [None, ""], source_field_dict.items())).keys()
         )
         if missing_fields:
+            if rule.ignore_missing_fields:
+                return True
             error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)
             return True

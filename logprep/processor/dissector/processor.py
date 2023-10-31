@@ -29,12 +29,12 @@ Processor Configuration
 """
 from typing import Callable, List, Tuple
 
-from logprep.abc.processor import Processor
 from logprep.processor.dissector.rule import DissectorRule
-from logprep.util.helper import get_dotted_field_value, add_field_to
+from logprep.processor.field_manager.processor import FieldManager
+from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class Dissector(Processor):
+class Dissector(FieldManager):
     """A processor that tokenizes field values to new fields and converts datatypes"""
 
     rule_class = DissectorRule
@@ -67,6 +67,8 @@ class Dissector(Processor):
                 current_field = source_field
                 loop_content = get_dotted_field_value(event, current_field)
                 if loop_content is None:
+                    if rule.ignore_missing_fields:
+                        continue
                     error = BaseException(
                         f"dissector: mapping field '{source_field}' does not exist"
                     )

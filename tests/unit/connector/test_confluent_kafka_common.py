@@ -1,18 +1,23 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=no-member
+import json
 from copy import deepcopy
+from pathlib import Path
 from socket import getfqdn
+from unittest import mock
 
 import pytest
 
 from logprep.factory import Factory
-from logprep.factory_error import InvalidConfigurationError
+
+KAFKA_STATS_JSON_PATH = "tests/testdata/kafka_stats_return_value.json"
 
 
 class CommonConfluentKafkaTestCase:
     def test_client_id_is_set_to_hostname(self):
-        assert self.object._client_id == getfqdn()
+        self.object.setup()
+        assert self.object._config.kafka_config.get("client.id") == getfqdn()
 
     def test_create_fails_for_unknown_option(self):
         kafka_config = deepcopy(self.CONFIG)
@@ -20,35 +25,14 @@ class CommonConfluentKafkaTestCase:
         with pytest.raises(TypeError, match=r"unexpected keyword argument"):
             _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
 
-    def test_create_fails_for_wrong_type_in_ssl_option(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.update({"ssl": "this should not be a string"})
-        with pytest.raises(TypeError, match=r"'ssl' must be <class 'dict'>"):
-            _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
+    def test_error_callback_logs_warnings(self):
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            test_error = BaseException("test error")
+            self.object._error_callback(test_error)
+            mock_warning.assert_called()
+            mock_warning.assert_called_with(f"{self.object.describe()}: {test_error}")
 
-    def test_create_fails_for_incomplete_ssl_options(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.get("ssl", {}).pop("password")
-        with pytest.raises(
-            InvalidConfigurationError, match=r"following keys are missing: {'password'}"
-        ):
-            _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
-
-    def test_create_fails_for_extra_key_in_ssl_options(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.get("ssl", {}).update({"extra_key": "value"})
-        with pytest.raises(
-            InvalidConfigurationError, match=r"following keys are unknown: {'extra_key'}"
-        ):
-            _ = Factory.create({"test connector": kafka_config}, logger=self.logger)
-
-    def test_create_without_ssl_options_and_set_defaults(self):
-        kafka_config = deepcopy(self.CONFIG)
-        kafka_config.pop("ssl")
-        kafka_input = Factory.create({"test connector": kafka_config}, logger=self.logger)
-        assert kafka_input._config.ssl == {
-            "cafile": None,
-            "certfile": None,
-            "keyfile": None,
-            "password": None,
-        }
+    def test_stats_callback_sets_stats_in_metric_object(self):
+        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
+        self.object._stats_callback(json_string)
+        assert self.object.metrics._stats == json.loads(json_string)

@@ -56,6 +56,7 @@ class TestConcatenator(BaseProcessorTestCase):
                         "separator": "-",
                         "overwrite_target": False,
                         "delete_source_fields": False,
+                        "ignore_missing_fields": True,
                     },
                 },
                 {"field": {"a": "first", "b": "second"}},
@@ -142,6 +143,26 @@ class TestConcatenator(BaseProcessorTestCase):
                     "target_field": "has already content",
                 },
                 {"field": {"c": "another one"}, "target_field": "first-second"},
+            ),
+            (
+                "ignore missing fields",
+                {
+                    "filter": "field.a",
+                    "concatenator": {
+                        "source_fields": ["field.a", "field.b", "other_field.c"],
+                        "target_field": "target_field",
+                        "separator": "-",
+                        "overwrite_target": False,
+                        "delete_source_fields": False,
+                        "ignore_missing_fields": True,
+                    },
+                },
+                {"field": {"a": "first"}, "other_field": {"c": "third"}},
+                {
+                    "field": {"a": "first"},
+                    "other_field": {"c": "third"},
+                    "target_field": "first-third",
+                },
             ),
         ],
     )

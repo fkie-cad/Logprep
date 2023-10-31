@@ -232,7 +232,7 @@ class Rule:
 
     def __repr__(self) -> str:
         if hasattr(self, "_config"):
-            return f"filename={self.file_name}, filter={self.filter}, {self._config}"
+            return f"filename={self.file_name}, filter='{self.filter}', {self._config}"
         return super().__repr__()
 
     # pylint: disable=C0111
@@ -255,9 +255,11 @@ class Rule:
     # pylint: enable=C0111
 
     @classmethod
-    def create_rules_from_target(cls, path: str) -> list:
+    def create_rules_from_target(cls, rule_target: str) -> list:
         """Create a rule from a file."""
-        content = GetterFactory.from_string(path).get()
+        if isinstance(rule_target, dict):
+            return [cls._create_from_dict(rule_target)]
+        content = GetterFactory.from_string(rule_target).get()
         try:
             rule_data = json.loads(content)
         except ValueError:
@@ -265,11 +267,11 @@ class Rule:
         try:
             rules = [cls._create_from_dict(rule) for rule in rule_data]
         except InvalidRuleDefinitionError as error:
-            raise InvalidRuleDefinitionError(f"{path}: {error}") from error
+            raise InvalidRuleDefinitionError(f"{rule_target}: {error}") from error
         if len(rules) == 0:
             raise InvalidRuleDefinitionError("no rules in file")
         for rule in rules:
-            rule.file_name = splitext(basename(path))[0]
+            rule.file_name = splitext(basename(rule_target))[0]
         return rules
 
     @classmethod

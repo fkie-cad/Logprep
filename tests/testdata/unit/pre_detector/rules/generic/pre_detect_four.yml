@@ -1,0 +1,11 @@
+filter: 'A: "*bar*" AND NOT (A: "foo*" AND A: "*baz")'
+pre_detector:
+  id: RULE_FOUR_ID
+  title: RULE_FOUR
+  severity: critical
+  mitre:
+    - attack.test1
+    - attack.test2
+  case_condition: directly
+sigma_fields: true
+description: Test rule four

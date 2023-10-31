@@ -36,6 +36,7 @@ Multiple instances of pipelines are created and run in parallel by different pro
 Only one event at a time is processed by each processor.
 Therefore, results of a processor should not depend on other events.
 
+<<<<<<< HEAD
 .. mermaid::
 
    flowchart LR
@@ -57,6 +58,8 @@ Therefore, results of a processor should not depend on other events.
    F --> K[Output\nConnector]
    H --> K[Output\nConnector]
    J --> K[Output\nConnector]
+=======
+>>>>>>> main
 
 Processors
 ==========

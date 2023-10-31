@@ -1,9 +1,5 @@
 """This module tracks, calculates, exposes and resets logprep metrics"""
-from collections import namedtuple
-
-from attr import define, asdict
-
-MetricTargets = namedtuple("MetricTargets", "file_target prometheus_target")
+from attr import asdict, define
 
 
 def is_public(attribute, _):

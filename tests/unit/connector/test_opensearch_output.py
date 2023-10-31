@@ -3,7 +3,7 @@
 # pylint: disable=wrong-import-position
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=no-self-use
+# pylint: disable=too-many-arguments
 import json
 import re
 from datetime import datetime
@@ -201,6 +201,131 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         assert "message" in error_document
         assert error_document.get("reason") == "myerrortype: myreason"
         assert error_document.get("message") == json.dumps({"my": "document"})
+
+    @pytest.mark.parametrize(
+        "status_code, error, error_info, messages, discarded_cnt, exception",
+        [
+            (
+                429,
+                "circuit_breaking_exception",
+                {"anything": "anything"},
+                [{"foo": "*" * 500}],
+                1,
+                None,
+            ),
+            (
+                429,
+                "circuit_breaking_exception",
+                {"anything": "anything"},
+                [{"foo": "bar"}, {"bar": "baz"}],
+                0,
+                search.exceptions.TransportError,
+            ),
+            (
+                429,
+                "circuit_breaking_exception",
+                {"anything": "anything"},
+                [{"foo": "*" * 500}, {"bar": "baz"}],
+                1,
+                None,
+            ),
+            (
+                429,
+                "circuit_breaking_exception",
+                {"anything": "anything"},
+                [{"foo": "*" * 500}, {"bar": "*" * 500}],
+                2,
+                None,
+            ),
+            (
+                123,
+                "circuit_breaking_exception",
+                {"anything": "anything"},
+                [{"foo": "*" * 500}],
+                1,
+                search.exceptions.TransportError,
+            ),
+            (
+                429,
+                "wrong_exception",
+                {"anything": "anything"},
+                [{"foo": "*" * 500}],
+                1,
+                search.exceptions.TransportError,
+            ),
+            (
+                429,
+                "rejected_execution_exception",
+                {"invalid": "error"},
+                [{"foo": "*" * 500}],
+                1,
+                TypeError,
+            ),
+            (
+                429,
+                "rejected_execution_exception",
+                {"error": {"reason": "wrong_reason"}},
+                [{"foo": "*" * 500}],
+                1,
+                search.exceptions.TransportError,
+            ),
+            (
+                429,
+                "rejected_execution_exception",
+                {
+                    "error": {
+                        "reason": "... "
+                        "coordinating_operation_bytes=9, max_coordinating_and_primary_bytes=1 "
+                        "..."
+                    }
+                },
+                [{"foo": "*" * 500}],
+                1,
+                None,
+            ),
+            (
+                429,
+                "rejected_execution_exception",
+                {
+                    "error": {
+                        "reason": "... "
+                        "coordinating_operation_bytes=1, max_coordinating_and_primary_bytes=9 "
+                        "..."
+                    }
+                },
+                [{"foo": "*" * 500}],
+                1,
+                search.exceptions.TransportError,
+            ),
+        ],
+    )
+    def test_handle_transport_error_calls_bulk_with_error_documents(
+        self, status_code, error, error_info, messages, discarded_cnt, exception
+    ):
+        self.object._config.maximum_message_size_mb = 5 * 10**-4
+
+        mock_transport_error = search.exceptions.TransportError(status_code, error, error_info)
+
+        if exception:
+            with pytest.raises(exception):
+                self.object._handle_transport_error(mock_transport_error)
+        else:
+            self.object._message_backlog = messages
+            self.object._handle_transport_error(mock_transport_error)
+            above_limit = []
+            under_limit = []
+            for message in self.object._message_backlog:
+                if message.get("_index") == "error_index":
+                    assert message.get("error", "").startswith(
+                        "Discarded message that is larger than the allowed size limit"
+                    )
+                    assert len(message.get("processed_snipped", "")) <= 1000
+                    assert message.get("processed_snipped", "").endswith(" ...")
+                    above_limit.append(message)
+                else:
+                    under_limit.append(message)
+            assert len(above_limit) == discarded_cnt
+            assert len(above_limit) + len(under_limit) == len(self.object._message_backlog)
 
     def test_handle_connection_error_raises_fatal_output_error(self):
         with pytest.raises(FatalOutputError):

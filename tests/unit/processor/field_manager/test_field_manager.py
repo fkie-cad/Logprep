@@ -402,6 +402,24 @@ test_cases = [  # testcase, rule, event, expected
             "merged": ["a", "b"],
         },
     ),
+    (
+        "Ignore missing fields: No warning and no failure tag if source field is missing",
+        {
+            "filter": "field.a",
+            "field_manager": {
+                "mapping": {
+                    "field.a": "target_field",
+                    "does.not.exists": "target_field",
+                },
+                "ignore_missing_fields": True,
+            },
+        },
+        {"field": {"a": "first", "b": "second"}},
+        {
+            "field": {"a": "first", "b": "second"},
+            "target_field": "first",
+        },
+    ),
 ]
 
 failure_test_cases = [
@@ -543,3 +561,55 @@ class TestFieldManager(BaseProcessorTestCase):
         assert re.match(
             r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]", caplog.text
         )
+
+    def test_process_raises_processing_warning_with_missing_fields_but_event_is_processed(
+        self, caplog
+    ):
+        rule = {
+            "filter": "field.a",
+            "field_manager": {
+                "mapping": {
+                    "field.a": "target_field",
+                    "does.not.exists": "target_field",
+                }
+            },
+        }
+        self._load_specific_rule(rule)
+        document = {"field": {"a": "first", "b": "second"}}
+        expected = {
+            "field": {"a": "first", "b": "second"},
+            "target_field": "first",
+            "tags": ["_field_manager_missing_field_warning"],
+        }
+        with caplog.at_level(logging.WARNING):
+            self.object.process(document)
+        assert re.match(
+            r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]", caplog.text
+        )
+        assert document == expected
+
+    def test_process_dos_not_raises_processing_warning_with_missing_fields_and_event_is_processed(
+        self, caplog
+    ):
+        rule = {
+            "filter": "field.a",
+            "field_manager": {
+                "mapping": {
+                    "field.a": "target_field",
+                    "does.not.exists": "target_field",
+                },
+                "ignore_missing_fields": True,
+            },
+        }
+        self._load_specific_rule(rule)
+        document = {"field": {"a": "first", "b": "second"}}
+        expected = {
+            "field": {"a": "first", "b": "second"},
+            "target_field": "first",
+        }
+        with caplog.at_level(logging.WARNING):
+            self.object.process(document)
+        assert not re.match(
+            r".*ProcessingWarning.*missing source_fields: \['does.not.exists'\]", caplog.text
+        )
+        assert document == expected

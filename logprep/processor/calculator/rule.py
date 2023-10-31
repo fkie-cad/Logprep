@@ -112,6 +112,10 @@ class CalculatorRule(FieldManagerRule):
         """
         timeout: int = field(validator=validators.instance_of(int), converter=int, default=1)
         """The maximum time in seconds for the calculation. Defaults to :code:`1`"""
+        ignore_missing_fields: bool = field(validator=validators.instance_of(bool), default=False)
+        """If set to :code:`True` missing fields will be ignored, no warning is logged,
+        and the event is not tagged with the a failure tag. As soon as one field is missing
+        no calculation is performed at all. Defaults to :code:`False`"""
         mapping: dict = field(default="", init=False, repr=False, eq=False)
 
         def __attrs_post_init__(self):

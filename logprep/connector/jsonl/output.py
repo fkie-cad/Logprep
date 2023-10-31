@@ -13,9 +13,9 @@ Example
     output:
       my_jsonl_output:
         type: jsonl_output
-        output_file = path/to/output.file
-        output_file_custom = ""
-        output_file_error = ""
+        output_file: path/to/output.file
+        output_file_custom: ""
+        output_file_error: ""
 """
 
 import json

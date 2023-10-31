@@ -8,11 +8,117 @@ and `field_manager` processors
 
 ### Features
 
+
+### Features
+
+* add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
+
 ### Improvements
 
 * Remove direct dependency of `python-dateutil`
 
 ### Bugfix
+
+## v7.0.0
+### Breaking
+
+* removed metric file target
+* move kafka config options to `kafka_config` dictionary for `confluent_kafka_input` and `confluent_kafka_output` connectors
+
+### Features
+
+* add a preprocessor to enrich by systems env variables
+* add option to define rules inline in pipeline config under processor configs `generic_rules` or `specific_rules`
+* add option to `field_manager` to ignore missing source fields to suppress warnings and failure tags
+* add ignore_missing_source_fields behavior to `calculator`, `concatenator`, `dissector`, `grokker`, `ip_informer`, `selective_extractor`
+* kafka input connector
+  - implemented manual commit behaviour if `enable.auto.commit: false`
+  - implemented on_commit callback to check for errors during commit
+  - implemented statistics callback to collect metrics from underlying librdkafka library
+  - implemented per partition offset metrics
+  - get logs and handle errors from underlying librdkafka library
+* kafka output connector
+  - implemented statistics callback to collect metrics from underlying librdkafka library
+  - get logs and handle errors from underlying librdkafka library
+
+### Improvements
+
+* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections. 
+It contains the time at which a pre-detection was created by the processor.
+* add `prometheus` and `grafana` to the quickstart setup to support development
+* provide confluent kafka test setup to run tests against a real kafka cluster
+
+### Bugfix
+
+* fix CVE-2023-37920 Removal of e-Tugra root certificate
+* fix CVE-2023-43804 `Cookie` HTTP header isn't stripped on cross-origin redirects
+* fix CVE-2023-37276 aiohttp.web.Application vulnerable to HTTP request smuggling via llhttp HTTP request parser
+
+## v6.8.1
+### Bugfix
+
+* Fix writing time measurements into the event after the deleter has deleted the event. The bug only
+happened when the `metrics.measure_time.append_to_event` configuration was set to `true`.
+
+* Fix memory leak by removing the log aggregation capability
+
+## v6.8.0
+### Features
+
+* Add option to repeat input documents for the following connectors: `DummyInput`, `JsonInput`,
+`JsonlInput`. This enables easier debugging by introducing a continues input stream of documents.
+
+### Bugfix
+
+* Fix restarting of logprep every time the kafka input connector receives events that aren't valid
+json documents. Now the documents will be written to the error output.
+* Fix ProcessCounter to actually print counts periodically and not only once events are processed
+
+## v6.7.0
+### Improvements
+
+* Print logprep warnings in the rule corpus tester only in the detailed reports instead of the
+summary.
+
+### Bugfix
+
+* Fix error when writing too large documents into Opensearch/Elasticsearch
+* Fix dissector pattern that end with a dissect, e.g `system_%{type}`
+* Handle long-running grok pattern in the `Grokker` by introducing a timeout limit of one second
+* Fix time handling: If no year is given assume the current year instead of 1900 and convert time
+zone only once
+
+## v6.6.0
+
+### Improvements
+
+* Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule 
+representation is not present anymore in the predetector output, the name `rule_filter` will stay
+in place of the `lucene_filter` name.
+* 'amides' processor now stores confidence values of processed events in the `amides.confidence` field.
+In case of positive detection results, rule attributions are now inserted in the `amides.attributions` field.
+
+### Bugfix
+
+* Fix lucene rule filter representation such that it is aligned with opensearch lucene query syntax
+* Fix grok pattern `UNIXPATH` by internally converting `[[:alnum:]]` to `\w"`
+* Fix overwriting of temporary tld-list with empty content
+
+## v6.5.1
+### Bugfix
+
+* Fix creation of logprep temp dir 
+* Fix `dry_runner` to support extra outputs of the `selective_extractor`
+
+## v6.5.0
+### Improvements
+
+* Make the `PROMETHEUS_MULTIPROC_DIR` environment variable optional, will default to
+`/tmp/PROMETHEUS_MULTIPROC_DIR` if not given
+
+### Bugfix
+
+* All temp files will now be stored inside the systems default temp directory 
 
 ## v6.4.0
 ### Improvements

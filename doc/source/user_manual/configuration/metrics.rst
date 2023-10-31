@@ -17,6 +17,8 @@ To activate the prometheus exporter the required target has to be configured.
 Furthermore the utilized `prometheus python client <https://github.com/prometheus/client_python>`_
 requires the configuration of the environment variable :code:`PROMETHEUS_MULTIPROC_DIR`, a
 directory to save temporary files needed for in-between process communication.
+If this environment variable is not set it defaults to the local systems temporary directory path,
+e.g. :code:`{TEMP_DIR}/logprep/prometheus_multiproc_dir`
 
 .. WARNING::
    The configured directory :code:`PROMETHEUS_MULTIPROC_DIR` will be cleared on every startup.
@@ -88,27 +90,10 @@ Time Measurement is deactivated by default.
 
 If only the general metrics are activated then the metric for the time measurement will be 0.
 
-targets
+port
 ^^^^^^^
 
-List of targets where the statistics should be exported to. At the moment only :code:`file` and
-:code:`prometheus` are allowed. Those can be further configured with the following options:
-
-**file**
-
-| **path** *(String)*
-| Path to the log file.
-
-| **rollover_interval** *(Integer, value > 0)*
-| Defines after how many seconds the log file should be rotated.
-
-| **backup_count** *(Integer, value > 0)*
-| Defines how many rotating log files should exist simultaneously.
-
-**prometheus**
-
-| **port** *(Integer, value > 0)*
-| Port which should be used to start the default prometheus exporter webservers
+Port which should be used to start the default prometheus exporter webservers. (default: 8000)
 
 Example
 -------
@@ -124,13 +109,7 @@ Example
       measure_time:
         enabled: true
         append_to_event: false
-      targets:
-        - prometheus:
-            port: 8000
-        - file:
-            path: ./logs/status.json
-            rollover_interval: 86400
-            backup_count: 10
+      port: 8000
 
 
 Metrics Overview
