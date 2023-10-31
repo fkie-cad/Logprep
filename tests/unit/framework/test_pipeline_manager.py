@@ -90,6 +90,11 @@ class TestPipelineManager:
 
             assert self.manager._pipelines == current_pipelines
 
+    def test_increase_to_count_increases_number_of_pipeline_starts_metric(self):
+        self.manager.metrics.number_of_pipeline_starts = 0
+        self.manager._increase_to_count(2)
+        assert self.manager.metrics.number_of_pipeline_starts == 2
+
     def test_processes_created_by_run_are_started(self):
         self.manager.set_count(3)
 
@@ -112,6 +117,12 @@ class TestPipelineManager:
             self.manager._decrease_to_count(len(current_pipelines) + count)
 
             assert self.manager._pipelines == current_pipelines
+
+    def test_decrease_to_count_increases_number_of_pipeline_stops_metric(self):
+        self.manager._increase_to_count(2)
+        self.manager.metrics.number_of_pipeline_stops = 0
+        self.manager._decrease_to_count(0)
+        assert self.manager.metrics.number_of_pipeline_stops == 2
 
     def test_set_count_increases_or_decreases_count_of_pipelines_as_needed(self):
         self.manager._increase_to_count(3)
@@ -171,6 +182,16 @@ class TestPipelineManager:
         prometheus_exporter_mock.mark_process_dead.assert_called()
         prometheus_exporter_mock.mark_process_dead.assert_called_with(42)
         del os.environ["PROMETHEUS_MULTIPROC_DIR"]
+
+    def test_restart_failed_pipelines_increases_number_of_failed_pipelines_metrics(self):
+        failed_pipeline = mock.MagicMock()
+        failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
+        failed_pipeline.is_alive.return_value = False  # nosemgrep
+        self.manager._pipelines = [failed_pipeline]
+        self.manager.metrics.number_of_failed_pipelines = 0
+        self.manager.restart_failed_pipeline()
+        assert self.manager.metrics.number_of_failed_pipelines == 1
+
 
     def test_stop_calls_prometheus_cleanup_method(self, tmpdir):
         os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)

@@ -5,7 +5,11 @@ import logging
 import logging.handlers
 import multiprocessing
 
+from attr import define, field
+
+from logprep.abc.component import Component
 from logprep.framework.pipeline import MultiprocessingPipeline
+from logprep.metrics.metrics import CounterMetric
 from logprep.metrics.prometheus_exporter import PrometheusStatsExporter
 from logprep.util.configuration import Configuration
 
@@ -24,8 +28,37 @@ class MustSetConfigurationFirstError(PipelineManagerError):
 class PipelineManager:
     """Manage pipelines via multi-processing."""
 
+    @define(kw_only=True)
+    class Metrics(Component.Metrics):
+        """Metrics for the PipelineManager."""
+
+        number_of_pipeline_starts: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of pipeline starts",
+                name="number_of_pipeline_starts",
+                labels={"component":"manager"},
+                inject_label_values=False
+            )
+        )
+        """Number of pipeline starts"""
+        number_of_pipeline_stops: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of pipeline stops",
+                name="number_of_pipeline_stops",
+            )
+        )
+        """Number of pipeline stops"""
+        number_of_failed_pipelines: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of failed pipelines",
+                name="number_of_failed_pipelines",
+            )
+        )
+        """Number of failed pipelines"""
+
     def __init__(self):
         self.prometheus_exporter = None
+        self.metrics = self.Metrics(labels={"component": "manager"})
         self._logger = logging.getLogger("Logprep PipelineManager")
         self.log_queue = multiprocessing.Queue(-1)
         self._queue_listener = logging.handlers.QueueListener(self.log_queue)
@@ -78,18 +111,21 @@ class PipelineManager:
             new_pipeline_index = len(self._pipelines) + 1
             self._pipelines.append(self._create_pipeline(new_pipeline_index))
             self._pipelines[-1].start()
+            self.metrics.number_of_pipeline_starts += 1
 
     def _decrease_to_count(self, count: int):
         while len(self._pipelines) > count:
             pipeline = self._pipelines.pop()
             pipeline.stop()
             pipeline.join()
+            self.metrics.number_of_pipeline_stops += 1
 
     def restart_failed_pipeline(self):
         """Remove one pipeline at a time."""
         failed_pipelines = [pipeline for pipeline in self._pipelines if not pipeline.is_alive()]
         for failed_pipeline in failed_pipelines:
             self._pipelines.remove(failed_pipeline)
+            self.metrics.number_of_failed_pipelines += 1
             if self.prometheus_exporter:
                 self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
 

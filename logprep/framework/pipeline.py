@@ -341,9 +341,7 @@ class Pipeline:
 
         """
         TODOs:
-            - add pipelinemanager metrics (pipeline restarts)
-                - count pipeline restarts
-                - count warnings and errors
+            - add metric to runner
                 - count config refreshes (if really changed) 
             - delete SharedCounter (Events in last 5 min: n)
         """
