@@ -146,9 +146,6 @@ class Pipeline:
     _lock: Lock
     """ the lock for the pipeline process """
 
-    _shared_dict: dict
-    """ a shared dict for inter process communication """
-
     _used_server_ports: dict
     """ a shard dict for signaling used ports between pipeline processes """
 
@@ -165,7 +162,6 @@ class Pipeline:
         counter: "SharedCounter" = None,
         log_queue: multiprocessing.Queue = None,
         lock: Lock = None,
-        shared_dict: dict = None,
         used_server_ports: dict = None,
     ) -> None:
         self._log_queue = log_queue
@@ -176,7 +172,6 @@ class Pipeline:
         self._continue_iterating = Value(c_bool)
 
         self._lock = lock
-        self._shared_dict = shared_dict
         self._processing_counter = counter
         if self._processing_counter:
             print_processed_period = self._logprep_config.get("print_processed_period", 300)
@@ -346,8 +341,6 @@ class Pipeline:
 
         """
         TODOs:
-            - create Grafana Dashboards
-            - count warnings and errors in pipeline.py?
             - add pipelinemanager metrics (pipeline restarts)
                 - count pipeline restarts
                 - count warnings and errors
@@ -422,7 +415,6 @@ class MultiprocessingPipeline(Process, Pipeline):
         config: dict,
         log_queue: multiprocessing.Queue,
         lock: Lock,
-        shared_dict: dict,
         used_server_ports: dict,
     ) -> None:
         self._profile = config.get("profile_pipelines", False)
@@ -434,7 +426,6 @@ class MultiprocessingPipeline(Process, Pipeline):
             counter=self.processed_counter,
             log_queue=log_queue,
             lock=lock,
-            shared_dict=shared_dict,
             used_server_ports=used_server_ports,
         )
 

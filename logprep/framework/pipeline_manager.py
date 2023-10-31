@@ -35,7 +35,6 @@ class PipelineManager:
         self._configuration = None
 
         self._lock = multiprocessing.Lock()
-        self._shared_dict = None
         self._used_server_ports = None
 
     def set_configuration(self, configuration: Configuration):
@@ -43,10 +42,7 @@ class PipelineManager:
         self._configuration = configuration
 
         manager = multiprocessing.Manager()
-        self._shared_dict = manager.dict()
         self._used_server_ports = manager.dict()
-        for idx in range(configuration.get("process_count", 1)):
-            self._shared_dict[idx] = None
         prometheus_config = configuration.get("metrics", {})
         if prometheus_config.get("enabled", False):
             self.prometheus_exporter = PrometheusStatsExporter(prometheus_config)
@@ -117,6 +113,5 @@ class PipelineManager:
             config=self._configuration,
             log_queue=self.log_queue,
             lock=self._lock,
-            shared_dict=self._shared_dict,
             used_server_ports=self._used_server_ports,
         )

@@ -46,7 +46,6 @@ class ConfigurationForTests:
         "metrics": {"period": 300, "enabled": False},
     }
     lock = Lock()
-    shared_dict = {}
     counter = SharedCounter()
 
 
@@ -61,7 +60,6 @@ class TestPipeline(ConfigurationForTests):
             counter=self.counter,
             log_queue=mock.MagicMock(),
             lock=self.lock,
-            shared_dict=self.shared_dict,
             used_server_ports=mock.MagicMock(),
         )
 
@@ -675,7 +673,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 log_queue=mock.MagicMock(),
                 lock=self.lock,
                 used_server_ports=mock.MagicMock(),
-                shared_dict=self.shared_dict,
             )
         )
 
@@ -689,7 +686,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 log_queue=mock.MagicMock(),
                 lock=self.lock,
                 used_server_ports=mock.MagicMock(),
-                shared_dict=self.shared_dict,
             )
         )
         children_after = active_children()
@@ -703,7 +699,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
-            shared_dict=self.shared_dict,
         )
         assert not pipeline._iterate()
 
@@ -720,7 +715,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
-            shared_dict=self.shared_dict,
         )
         pipeline._input = mock.MagicMock()
         pipeline._input.get_next = mock.MagicMock()
@@ -742,7 +736,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
-            shared_dict=self.shared_dict,
         )
         pipeline._input = mock.MagicMock()
         pipeline._input.get_next = mock.MagicMock()
@@ -764,7 +757,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
-            shared_dict=self.shared_dict,
         )
         pipeline._output = mock.MagicMock()
         pipeline._output.store = mock.MagicMock()
