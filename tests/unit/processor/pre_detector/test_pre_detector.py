@@ -338,3 +338,12 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
         assert sorted_detection_results == sorted_expected_detection_results
+
+    def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
+        assert self.object.metrics.number_of_processed_events == 0
+        document = {
+            "@timestamp": "custom timestamp",
+            "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
+        }
+        detection_results = self.object.process(document)
+        assert detection_results[0][0].get("@timestamp") == "custom timestamp"
