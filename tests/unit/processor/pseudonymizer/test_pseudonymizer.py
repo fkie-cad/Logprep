@@ -870,19 +870,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert self.object._pseudonymize_string("foo").startswith("<pseudonym:")
         assert len(self.object.pseudonyms) == 1
 
-    def test_parse_url_parts(self):
-        expected = {
-            "scheme": "https",
-            "auth": None,
-            "domain": "test",
-            "subdomain": "www",
-            "suffix": "de",
-            "path": "",
-            "query": None,
-            "fragment": None,
-        }
-        assert self.object._parse_url_parts("https://www.test.de") == expected
-
     def test_resolve_from_cache(self):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0

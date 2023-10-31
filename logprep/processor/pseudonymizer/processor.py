@@ -41,7 +41,7 @@ from functools import cached_property, lru_cache
 from itertools import chain
 from logging import Logger
 from typing import List, Optional, Pattern
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
 from attrs import define, field, validators
 from tldextract import TLDExtract
@@ -289,32 +289,19 @@ class Pseudonymizer(Processor):
 
         return field_
 
+    @lru_cache(maxsize=10000)
     def _parse_url_parts(self, url_str: str) -> dict:
         url = self._tld_extractor(url_str)
-
-        parts = {}
-        parts["scheme"] = self._find_first(r"^([a-z0-9]+)\:\/\/", url_str)
-        parts["auth"] = self._find_first(r"(?:.*\/\/|^)(.*:.*)@.*", url_str)
-        parts["domain"] = url.domain
-        parts["subdomain"] = url.subdomain
-        parts["suffix"] = url.suffix
-        url_list = list(url)
-        url_list.pop()
-        url_list = ".".join(url_list)
-        parts["path"] = self._find_first(
-            rf"(?:^[a-z0-9]+\:\/\/)?{url_list}(?:\:\d+)?([^#^\?]*).*", url_str
-        )
-        parts["query"] = self._find_first(r".*(\?\w+=[a-zA-Z0-9](?:&\w+=[a-zA-Z0-9]+)*).*", url_str)
-        parts["fragment"] = self._find_first(r".*#(.*)", url_str)
-
+        if url_str.startswith("http://") or url_str.startswith("https://"):
+            parsed_url = urlparse(url_str)
+        else:
+            parsed_url = urlparse("http://" + url_str)
+        parts = {
+            **{field: getattr(url, field) for field in url._fields},
+            **{field: getattr(parsed_url, field) for field in parsed_url._fields},
+            "auth": f"{parsed_url.username}:{parsed_url.password}" if parsed_url.username else None,
+        }
         return parts
-
-    @staticmethod
-    def _find_first(pattern: str, string: str) -> Optional[str]:
-        match = re.findall(pattern, string)
-        if match:
-            return match[0]
-        return None
 
     @staticmethod
     def _get_parts_to_replace_in_correct_order(pseudonym_map: dict) -> List[str]:
