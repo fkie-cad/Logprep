@@ -2,6 +2,9 @@
 Logprep provides a prometheus exporter with certain processing and connector metrics, e.g.
 :code:`logprep_number_of_processed_events_total` or :code:`logprep_processing_time_per_event_sum`.
 
+Examples of grafana dashboards can be found in `the logprep github repo
+<https://github.com/fkie-cad/Logprep/tree/main/quickstart/exampledata/config/grafana/dashboards>`_
+
 Configuration
 =============
 
@@ -20,7 +23,8 @@ Example
 The metrics configuration offers some options regarding the metrix export. Because logprep utilizes
 the `prometheus python client <https://github.com/prometheus/client_python>`_ the environment
 variable :code:`PROMETHEUS_MULTIPROC_DIR` is required to be set by the user. This is a temporary
-directory where logprep will store files needed for in-between process communication.
+directory where logprep will store files needed for in-between process communication. This folder
+has to be provided by the user because logprep won't create it.
 
 enabled
 -------
