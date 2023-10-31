@@ -154,7 +154,7 @@ class Pseudonymizer(Processor):
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
 
-    URL_SPLIT_PATTERN = re.compile("(://)")
+    is_pseudonymized: Pattern = re.compile(rf"^{HASH_PREFIX}(.+?){HASH_SUFFIX}$")
 
     rule_class = PseudonymizerRule
 
@@ -251,6 +251,8 @@ class Pseudonymizer(Processor):
         return field_value
 
     def _pseudonymize_string(self, value: str) -> str:
+        if self.is_pseudonymized.match(value):
+            return value
         pseudonym_dict = self._get_pseudonym_dict_cached(value)
         self.pseudonyms.append(pseudonym_dict)
         return self._wrap_hash(pseudonym_dict["pseudonym"])

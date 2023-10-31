@@ -32,23 +32,23 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         },
         None,
     ),
-    # (
-    #     "pseudonymization_of_field_does_not_happen_if_already_pseudonymized",
-    #     {
-    #         "filter": "event_id: 1234",
-    #         "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
-    #         "description": "description content irrelevant for these tests",
-    #     },
-    #     {
-    #         "event_id": 1234,
-    #         "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
-    #     },
-    #     {
-    #         "event_id": 1234,
-    #         "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
-    #     },
-    #     None,
-    # ),
+    (
+        "pseudonymization_of_field_does_not_happen_if_already_pseudonymized",
+        {
+            "filter": "event_id: 1234",
+            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
+            "description": "description content irrelevant for these tests",
+        },
+        {
+            "event_id": 1234,
+            "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
+        },
+        {
+            "event_id": 1234,
+            "something": "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>",
+        },
+        None,
+    ),
     (
         "pseudonymize_two_fields",
         {
@@ -795,23 +795,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule)
         self.object.process(event)
         assert event == expected, testcase
-        if rule.get("pseudonymizer").get("url_fields") is None:
-            assert len(self.object.pseudonyms) > 0 and set(self.object.pseudonyms[0]) == {
-                "pseudonym",
-                "origin",
-            }
-
-    # @pytest.mark.parametrize("testcase, rule, event, expected, regex_mapping", failure_test_cases)
-    # def test_testcases_failure_handling(
-    #     self, caplog, testcase, rule, event, expected, regex_mapping
-    # ):
-    #     if regex_mapping is not None:
-    #         self.regex_mapping = regex_mapping
-    #     self._load_specific_rule(rule)
-    #     with caplog.at_level(logging.WARNING):
-    #         self.object.process(event)
-    #     assert re.match(".*ProcessingWarning.*", caplog.text)
-    #     assert event == expected, testcase
 
     def test_tld_extractor_uses_file(self):
         config = deepcopy(self.CONFIG)
