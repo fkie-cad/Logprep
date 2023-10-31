@@ -12,14 +12,13 @@ import multiprocessing
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
-from ctypes import c_bool, c_ulonglong
+from ctypes import c_bool
 from functools import cached_property
 from multiprocessing import Lock, Process, Value, current_process
 from typing import Any, List, Tuple
 
 import attrs
 import msgspec
-from schedule import Scheduler
 
 from logprep._version import get_versions
 from logprep.abc.component import Component
@@ -42,54 +41,6 @@ from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.pipeline_profiler import PipelineProfiler
-
-
-class SharedCounter:
-    """A shared counter for multiprocessing pipelines."""
-
-    def __init__(self):
-        self._val = Value(c_ulonglong, 0)
-        self._printed = Value(c_bool, False)
-        self._lock = None
-        self._period = None
-        self.scheduler = Scheduler()
-        self._logger = logging.getLogger("Logprep SharedCounter")
-
-    def _init_timer(self, period: float):
-        if self._period is None:
-            self._period = period
-        jobs = map(lambda job: job.job_func.func, self.scheduler.jobs)
-        if self.print_value not in jobs and self.reset_printed not in jobs:
-            self.scheduler.every(int(self._period)).seconds.do(self.print_value)
-            self.scheduler.every(int(self._period + 1)).seconds.do(self.reset_printed)
-
-    def setup(self, print_processed_period: float, lock: Lock):
-        """Setup shared counter for multiprocessing pipeline."""
-        self._init_timer(print_processed_period)
-        self._lock = lock
-
-    def increment(self):
-        """Increment the counter."""
-        with self._lock:
-            self._val.value += 1
-
-    def reset_printed(self):
-        """Reset the printed flag after the configured period + 1"""
-        with self._lock:
-            self._printed.value = False
-
-    def print_value(self):
-        """Print the number of processed event in the last interval"""
-        with self._lock:
-            if not self._printed.value:
-                period_human_form = f"{self._period} seconds"
-                if self._period / 60.0 > 1:
-                    period_human_form = f"{self._period / 60.0:.2f} minutes"
-                self._logger.info(
-                    f"Processed events per {period_human_form}: " f"{self._val.value}"
-                )
-                self._val.value = 0
-                self._printed.value = True
 
 
 def _handle_pipeline_error(func):
@@ -150,9 +101,6 @@ class Pipeline:
     _used_server_ports: dict
     """ a shard dict for signaling used ports between pipeline processes """
 
-    _processing_counter: SharedCounter
-    """A shared counter for multi-processing pipelines."""
-
     pipeline_index: int
     """ the index of this pipeline """
 
@@ -160,7 +108,6 @@ class Pipeline:
         self,
         config: dict,
         pipeline_index: int = None,
-        counter: "SharedCounter" = None,
         log_queue: multiprocessing.Queue = None,
         lock: Lock = None,
         used_server_ports: dict = None,
@@ -173,10 +120,6 @@ class Pipeline:
         self._continue_iterating = Value(c_bool)
 
         self._lock = lock
-        self._processing_counter = counter
-        if self._processing_counter:
-            print_processed_period = self._logprep_config.get("print_processed_period", 300)
-            self._processing_counter.setup(print_processed_period, lock)
         self._used_server_ports = used_server_ports
         self.pipeline_index = pipeline_index
         self._encoder = msgspec.msgpack.Encoder()
@@ -298,8 +241,6 @@ class Pipeline:
         """Retrieve next event, process event with full pipeline and store or return results"""
         assert self._input, "Run process_pipeline only with an valid input connector"
         Component.run_pending_tasks()
-        if self._processing_counter:
-            self._processing_counter.scheduler.run_pending()
         extra_outputs = []
         event = None
         try:
@@ -344,7 +285,6 @@ class Pipeline:
         TODOs:
             - add metric to runner
                 - count config refreshes (if really changed) 
-            - delete SharedCounter (Events in last 5 min: n)
         """
 
         event_received = self._encoder.encode(event)
@@ -364,8 +304,6 @@ class Pipeline:
                     event.clear()
             if not event:
                 break
-        if self._processing_counter:
-            self._processing_counter.increment()
         return extra_outputs
 
     def _store_extra_data(self, extra_data: List[tuple]) -> None:
@@ -406,8 +344,6 @@ class Pipeline:
 class MultiprocessingPipeline(Process, Pipeline):
     """A thread-safe Pipeline for multiprocessing."""
 
-    processed_counter: SharedCounter = SharedCounter()
-
     def __init__(
         self,
         pipeline_index: int,
@@ -422,7 +358,6 @@ class MultiprocessingPipeline(Process, Pipeline):
             self,
             pipeline_index=pipeline_index,
             config=config,
-            counter=self.processed_counter,
             log_queue=log_queue,
             lock=lock,
             used_server_ports=used_server_ports,

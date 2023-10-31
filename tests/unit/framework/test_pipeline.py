@@ -27,7 +27,7 @@ from logprep.abc.output import (
     OutputWarning,
 )
 from logprep.factory import Factory
-from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline, SharedCounter
+from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.getter import GetterFactory
@@ -39,14 +39,12 @@ class ConfigurationForTests:
     logprep_config = {
         "version": 1,
         "timeout": 0.001,
-        "print_processed_period": 600,
         "input": {"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
         "output": {"dummy": {"type": "dummy_output"}},
         "pipeline": [{"mock_processor1": {"proc": "conf"}}, {"mock_processor2": {"proc": "conf"}}],
         "metrics": {"period": 300, "enabled": False},
     }
     lock = Lock()
-    counter = SharedCounter()
 
 
 @mock.patch("logprep.factory.Factory.create")
@@ -57,7 +55,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline = Pipeline(
             pipeline_index=1,
             config=self.logprep_config,
-            counter=self.counter,
             log_queue=mock.MagicMock(),
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
@@ -572,13 +569,6 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.process_pipeline()
         self.pipeline._output["dummy"].store_failed.assert_called()
 
-    def test_process_pipeline_calls_shared_counter_scheduler(self, _):
-        self.pipeline._setup()
-        self.pipeline._input.get_next.return_value = ({}, {})
-        self.pipeline._processing_counter = mock.MagicMock()
-        self.pipeline.process_pipeline()
-        assert self.pipeline._processing_counter.scheduler.run_pending.call_count == 1
-
 
 class TestPipelineWithActualInput:
     def setup_method(self):
@@ -778,24 +768,3 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         wrapper.join()
 
         return children_running
-
-
-class TestSharedCounter:
-    test_logger = getLogger("test-logger")
-
-    def test_shared_counter_prints_value_after_configured_period(self, caplog):
-        with caplog.at_level(logging.INFO):
-            shared_counter = SharedCounter()
-            print_period = 1
-            shared_counter._logger = self.test_logger
-            shared_counter.setup(print_period, Lock())
-            test_counter = 0
-            test_counter_limit = 100
-            start_time = time.time()
-            while time.time() - start_time < print_period:
-                if test_counter < test_counter_limit:
-                    shared_counter.increment()
-                    test_counter += 1
-                shared_counter.scheduler.run_pending()
-            message = f".*Processed events per {print_period} seconds: {test_counter_limit}.*"
-            assert re.match(message, caplog.text)

@@ -28,16 +28,6 @@ However, Logprep reacts quickly for small values (< 1.0), but this requires more
 This can be useful for testing and debugging.
 Larger values (like 5.0) slow the reaction time down, but this requires less processing power, which makes in preferable for continuous operation.
 
-print_processed_period
-======================
-
-Integer, value > 0
-
-Logprep does periodically write the amount of processed log messages per time period into the journal.
-This value defines this time period in seconds.
-It is an optional value and is set to 5 minutes by default.
-
-
 logger
 ======
 
