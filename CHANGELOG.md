@@ -1,12 +1,21 @@
 ## Upcoming Changes
 
 ## next release
+### Breaking
+
+* reimplemented metrics so the former metrics configuration won't work anymore
 
 ### Features
 
 * add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
+* add metrics on rule level
+* add grafana example dashboards
 
 ### Improvements
+
+* reimplemented prometheus metrics exporter to provide gauges, histograms and counter metrics
+* removed shared counter, because it is redundant to the metrics
+
 ### Bugfix
 
 ## v7.0.0
