@@ -12,10 +12,6 @@ import pytest
 from logprep.factory import Factory
 from tests.unit.processor.base import BaseProcessorTestCase
 
-CAP_GROUP_REGEX_MAPPING = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
-
-CACHE_MAX_TIMEDELTA = datetime.timedelta(milliseconds=100)
-
 REL_TLD_LIST_PATH = "tests/testdata/mock_external/tld_list.dat"
 
 TLD_LIST = f"file://{Path().absolute().joinpath(REL_TLD_LIST_PATH).as_posix()}"
@@ -898,3 +894,39 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 1
+
+    @pytest.mark.parametrize(
+        "url, expected",
+        [
+            (
+                "https://www.test.de",
+                "https://<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>.test.de",
+            ),
+            (
+                "www.test.de",
+                "<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>.test.de",
+            ),
+            (
+                "http://www.test.de/this/path",
+                "http://<pseudonym:63559e069172188bb713ed6cc634683514c75d6294e90907be1ffcfdddd97865>.test.de/<pseudonym:bcd18937d7d846fe5489459667e327ef2e11971853b93898e496d5b8be566171>",
+            ),
+            (
+                "https://test.de/?a=b&c=d",
+                (
+                    "https://test.de/?a="
+                    "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
+                    "&c="
+                    "<pseudonym:2344d07c391a619a9b16d1e8cfd5252e5aacf93faaf822712948b9a2fd84fce3>"
+                ),
+            ),
+            (
+                "https://test.de/#test",
+                (
+                    "https://test.de/#"
+                    "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
+                ),
+            ),
+        ],
+    )
+    def test_pseudonymize_url(self, url, expected):
+        assert self.object._pseudonymize_url(url) == expected

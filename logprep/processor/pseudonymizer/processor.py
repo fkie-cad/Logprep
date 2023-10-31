@@ -41,7 +41,7 @@ from functools import cached_property, lru_cache
 from itertools import chain
 from logging import Logger
 from typing import List, Optional, Pattern
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from attrs import define, field, validators
 from tldextract import TLDExtract
@@ -51,7 +51,6 @@ from logprep.abc.processor import Processor
 from logprep.metrics.metrics import CounterMetric
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
-from logprep.util.cache import Cache
 from logprep.util.getter import GetterFactory
 from logprep.util.hasher import SHA256Hasher
 from logprep.util.helper import add_field_to, get_dotted_field_value
@@ -242,7 +241,7 @@ class Pseudonymizer(Processor):
         if regex.groups > 1:
             clear_values = tuple(chain(*[value for value in regex.findall(field_value) if value]))
         if clear_values and dotted_field in rule.url_fields:
-            field_value = self._get_field_with_pseudonymized_urls(field_value)
+            field_value = self._pseudonymize_url(field_value)
         pseudonymized_values = [self._pseudonymize_string(value) for value in clear_values]
         pseudonymize = zip(clear_values, pseudonymized_values)
         for clear_value, pseudonymized_value in pseudonymize:
@@ -260,81 +259,42 @@ class Pseudonymizer(Processor):
         encrypted_origin = self._encrypter.encrypt(value)
         return {"pseudonym": hash_string, "origin": encrypted_origin}
 
-    def _get_field_with_pseudonymized_urls(self, field_: str) -> str:
-        for url_string in self._url_extractor.gen_urls(field_):
-            url_parts = self._parse_url_parts(url_string)
-            pseudonym_map = self._get_pseudonym_map(url_parts)
-            url_split = self.URL_SPLIT_PATTERN.split(url_string)
-
-            replacements = self._get_parts_to_replace_in_correct_order(pseudonym_map)
-
-            do_not_replace_pattern = (
-                rf"(<pseudonym:[a-z0-9]*>|\?\w+=|&\w+=|"
-                rf"{url_parts['domain']}\.{url_parts['suffix']})"
-            )
-
-            for replacement in replacements:
-                parts_to_replace = re.split(do_not_replace_pattern, url_split[-1])
-                for index, _ in enumerate(parts_to_replace):
-                    if not re.findall(do_not_replace_pattern, parts_to_replace[index]):
-                        parts_to_replace[index] = parts_to_replace[index].replace(
-                            replacement, pseudonym_map[replacement]
-                        )
-                url_split[-1] = "".join(parts_to_replace)
-
-            pseudonymized_url = "".join(url_split)
-            field_ = field_.replace(url_string, pseudonymized_url)
-
-            self.metrics.pseudonymized_urls += 1
-
-        return field_
-
-    @lru_cache(maxsize=10000)
-    def _parse_url_parts(self, url_str: str) -> dict:
-        url = self._tld_extractor(url_str)
-        if url_str.startswith("http://") or url_str.startswith("https://"):
-            parsed_url = urlparse(url_str)
-        else:
-            parsed_url = urlparse("http://" + url_str)
-        parts = {
-            **{field: getattr(url, field) for field in url._fields},
-            **{field: getattr(parsed_url, field) for field in parsed_url._fields},
-            "auth": f"{parsed_url.username}:{parsed_url.password}" if parsed_url.username else None,
-        }
-        return parts
-
-    @staticmethod
-    def _get_parts_to_replace_in_correct_order(pseudonym_map: dict) -> List[str]:
-        replacements = []
-        keys = list(pseudonym_map.keys())
-        for key in keys:
-            if not replacements:
-                replacements.append(key)
+    def _pseudonymize_url(self, input_value: str) -> str:
+        for url_string in self._url_extractor.gen_urls(input_value):
+            url = self._tld_extractor(url_string)
+            if url_string.startswith("http://") or url_string.startswith("https://"):
+                parsed_url = urlparse(url_string)
             else:
-                for index in reversed(range(len(replacements))):
-                    if not any(key in replacement for replacement in replacements[:index]):
-                        replacements.insert(index + 1, key)
-                        break
-        replacements.reverse()
-        return replacements
-
-    def _get_pseudonym_map(self, url: dict) -> dict:
-        pseudonym_map = {}
-        if url.get("subdomain"):
-            pseudonym_map[url["subdomain"]] = self._pseudonymize_string(url["subdomain"])
-        if url.get("fragment"):
-            pseudonym_map[url["fragment"]] = self._pseudonymize_string(url["fragment"])
-        if url.get("auth"):
-            pseudonym_map[url["auth"]] = self._pseudonymize_string(url["auth"])
-        query_parts = parse_qs(url["query"])
-        for values in query_parts.values():
-            for value in values:
-                if value:
-                    pseudonym_map[value] = self._pseudonymize_string(value)
-        if url.get("path"):
-            if url["path"][1:]:
-                pseudonym_map[url["path"][1:]] = self._pseudonymize_string(url["path"][1:])
-        return pseudonym_map
+                parsed_url = urlparse("http://" + url_string)
+            if url.subdomain:
+                input_value = input_value.replace(
+                    url.subdomain, self._pseudonymize_string(url.subdomain)
+                )
+            if parsed_url.fragment:
+                input_value = input_value.replace(
+                    f"#{parsed_url.fragment}", f"#{self._pseudonymize_string(parsed_url.fragment)}"
+                )
+            if parsed_url.username:
+                auth_string = f"{parsed_url.username}:{parsed_url.password}"
+                input_value = input_value.replace(
+                    auth_string, self._pseudonymize_string(auth_string)
+                )
+            if parsed_url.path and len(parsed_url.path) > 1:
+                input_value = input_value.replace(
+                    parsed_url.path[1:], self._pseudonymize_string(parsed_url.path[1:])
+                )
+            if parsed_url.query:
+                query_parts = parse_qs(parsed_url.query)
+                pseudonymized_query_parts = {
+                    key: [self._pseudonymize_string(value) for value in values if value]
+                    for key, values in query_parts.items()
+                }
+                pseudonymized_query = urlencode(
+                    pseudonymized_query_parts, safe="<pseudonym:>", doseq=True
+                )
+                input_value = input_value.replace(parsed_url.query, pseudonymized_query)
+            self.metrics.pseudonymized_urls += 1
+        return input_value
 
     def _replace_regex_keywords_by_regex_expression(self):
         for rule in self._specific_rules:
