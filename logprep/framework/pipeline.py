@@ -8,7 +8,6 @@ import copy
 import logging
 import logging.handlers
 import multiprocessing
-
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -351,8 +350,6 @@ class Pipeline:
         """
         TODOs:
             - create Grafana Dashboards
-            - check counting of warnings/error per rule
-            - documentation überarbeiten
             - count warnings and errors in pipeline.py?
             - add pipelinemanager metrics (pipeline restarts)
                 - count pipeline restarts

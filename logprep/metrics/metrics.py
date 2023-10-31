@@ -1,4 +1,109 @@
-"""This module tracks, calculates, exposes and resets logprep metrics"""
+"""
+Logprep provides a prometheus exporter with certain processing and connector metrics, e.g.
+:code:`logprep_number_of_processed_events_total` or :code:`logprep_processing_time_per_event_sum`.
+
+Configuration
+=============
+
+Example
+-------
+
+..  code-block:: yaml
+    :linenos:
+
+    metrics:
+      enabled: true
+      append_measurement_to_event: false
+      port: 8000
+
+
+The metrics configuration offers some options regarding the metrix export. Because logprep utilizes
+the `prometheus python client <https://github.com/prometheus/client_python>`_ the environment
+variable :code:`PROMETHEUS_MULTIPROC_DIR` is required to be set by the user. This is a temporary
+directory where logprep will store files needed for in-between process communication.
+
+enabled
+-------
+
+Use :code:`true` or :code:`false` to activate or deactivate the metrix exporter. Defaults to
+:code:`false`.
+
+append_measurement_to_event
+---------------------------
+
+It is also possible to add processing times of each processor to the event
+itself. The processing times can then be found in the field :code:`processing_time` of each
+processed event. Additionally, the hostname of the machine on which Logprep runs is listed. Use
+:code:`true` or :code:`false` to activate or deactivate appending the processing times to
+events. Defaults to :code:`false`.
+
+port
+----
+
+Specifies the port which should be used for the prometheus exporter endpoint. Defaults to
+:code:`8000`.
+
+Metrics Overview
+================
+
+General Metrics
+---------------
+
+.. autoclass:: logprep.abc.connector.Connector.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
+.. autoclass:: logprep.framework.pipeline.Pipeline.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
+.. autoclass:: logprep.processor.base.rule.Rule.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
+
+Connector Specific
+------------------
+
+.. autoclass:: logprep.connector.confluent_kafka.input.ConfluentKafkaInput.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
+.. autoclass:: logprep.connector.confluent_kafka.output.ConfluentKafkaOutput.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
+Processor Specific Metrics
+--------------------------
+
+.. autoclass:: logprep.processor.amides.processor.Amides.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
+.. autoclass:: logprep.processor.domain_resolver.processor.DomainResolver.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
+.. autoclass:: logprep.processor.pseudonymizer.processor.Pseudonymizer.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+"""
 import os
 import time
 from abc import ABC, abstractmethod
@@ -88,7 +193,6 @@ class Metric(ABC):
         """Decorate function to measure execution time for function and add results to event."""
 
         if not os.environ.get("APPEND_TO_EVENT"):
-
             def without_append(func):
                 def inner(self, *args, **kwargs):  # nosemgrep
                     metric = getattr(self.metrics, metric_name)
