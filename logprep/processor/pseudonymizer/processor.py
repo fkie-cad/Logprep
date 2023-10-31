@@ -141,14 +141,12 @@ class Pseudonymizer(Processor):
 
     __slots__ = [
         "pseudonyms",
-        "pseudonymized_fields",
     ]
 
     _cache: Cache
     _tld_lists: List[str]
 
     pseudonyms: list
-    pseudonymized_fields: set
 
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
@@ -200,7 +198,6 @@ class Pseudonymizer(Processor):
             specific_rule_tree=self._specific_tree.metrics,
         )
         self.pseudonyms = []
-        self.pseudonymized_fields = set()
 
     def setup(self):
         super().setup()
@@ -213,7 +210,6 @@ class Pseudonymizer(Processor):
         self._replace_regex_keywords_by_regex_expression()
 
     def process(self, event: dict):
-        self.pseudonymized_fields = set()
         self.pseudonyms = []
         super().process(event)
         return (self.pseudonyms, self._config.outputs) if self.pseudonyms != [] else None
