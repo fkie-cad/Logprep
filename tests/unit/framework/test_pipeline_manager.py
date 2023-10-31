@@ -59,6 +59,9 @@ class TestPipelineManager:
         self.manager = PipelineManagerForTesting()
         self.manager.set_configuration(self.config)
 
+    def teardown_method(self):
+        self.manager._pipelines = []
+
     def test_create_pipeline_fails_if_config_is_unset(self):
         manager = PipelineManager()
 
