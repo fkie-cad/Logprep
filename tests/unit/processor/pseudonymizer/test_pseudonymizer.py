@@ -866,7 +866,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert self.object._pseudonymize_string("foo").startswith("<pseudonym:")
         assert len(self.object.pseudonyms) == 1
 
-    def test_resolve_from_cache(self):
+    def test_resolve_from_cache_pseudonym(self):
         self.object.metrics.new_results = 0
         self.object.metrics.cached_results = 0
         self.object.metrics.num_cache_entries = 0
@@ -894,6 +894,33 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 1
+
+    def test_resolve_from_cache_pseudonymize_urls(self):
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
+        rule_dict = {
+            "filter": "filter_this: does_not_matter",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "pseudo_this": "RE_ALL_NO_CAP",
+                    "and_pseudo_this": "RE_ALL_NO_CAP",
+                },
+                "url_fields": ["pseudo_this", "and_pseudo_this"],
+            },
+        }
+        event = {
+            "filter_this": "does_not_matter",
+            "pseudo_this": "https://www.pseudo.this.de",
+            "and_pseudo_this": "https://www.pseudo.this.de",
+        }
+        self._load_specific_rule(rule_dict)
+        self.object.process(event)
+        # 1 subdomains -> pseudonym_cache, 1 url -> url_cache
+        assert self.object.metrics.new_results == 2
+        # second url is cached, no string pseudonymizatin needed
+        assert self.object.metrics.cached_results == 1
+        assert self.object.metrics.num_cache_entries == 2, "same as new results"
 
     @pytest.mark.parametrize(
         "url, expected",

@@ -34,7 +34,6 @@ Processor Configuration
 
 .. automodule:: logprep.processor.pseudonymizer.rule
 """
-import datetime
 import re
 from functools import cached_property, lru_cache
 from itertools import chain
@@ -115,6 +114,10 @@ class Pseudonymizer(Processor):
         Setting. In case the cache size has been exceeded, the least recently used
         entry is deleteted. Has to be greater than 0.
         """
+        max_cached_pseudonymized_urls: int = field(
+            validator=[validators.instance_of(int), validators.gt(0)], default=10000
+        )
+        """The maximum number of cached pseudonymized urls. Default is 10000. Has to be greater than 0."""
         tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
         """Optional list of path to files with top-level domain lists
         (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
@@ -183,6 +186,10 @@ class Pseudonymizer(Processor):
     def _get_pseudonym_dict_cached(self):
         return lru_cache(maxsize=self._config.max_cached_pseudonyms)(self._get_pseudonym_dict)
 
+    @cached_property
+    def _pseudonymize_url_cached(self):
+        return lru_cache(maxsize=self._config.max_cached_pseudonymized_urls)(self._pseudonymize_url)
+
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
         self.metrics = self.PseudonymizerMetrics(
@@ -225,17 +232,22 @@ class Pseudonymizer(Processor):
         self, rule: PseudonymizerRule, dotted_field: str, regex: Pattern, field_value: str
     ) -> str:
         if regex.groups <= 1:
-            clear_values = tuple(value for value in regex.findall(field_value) if value)
+            clear_values = set(value for value in regex.findall(field_value) if value)
         if regex.groups > 1:
-            clear_values = tuple(chain(*[value for value in regex.findall(field_value) if value]))
+            clear_values = set(chain(*[value for value in regex.findall(field_value) if value]))
         if clear_values and dotted_field in rule.url_fields:
             for url_string in self._url_extractor.gen_urls(field_value):
-                field_value = field_value.replace(url_string, self._pseudonymize_url(url_string))
-        pseudonymized_values = [self._pseudonymize_string(value) for value in clear_values]
-        pseudonymize = zip(clear_values, pseudonymized_values)
-        for clear_value, pseudonymized_value in pseudonymize:
-            if clear_value:
-                field_value = re.sub(re.escape(clear_value), pseudonymized_value, field_value)
+                field_value = field_value.replace(
+                    url_string, self._pseudonymize_url_cached(url_string)
+                )
+                if url_string in clear_values:
+                    clear_values.remove(url_string)
+        if clear_values:
+            pseudonymized_values = [self._pseudonymize_string(value) for value in clear_values]
+            pseudonymize = zip(clear_values, pseudonymized_values)
+            for clear_value, pseudonymized_value in pseudonymize:
+                if clear_value:
+                    field_value = re.sub(re.escape(clear_value), pseudonymized_value, field_value)
         return field_value
 
     def _pseudonymize_string(self, value: str) -> str:
@@ -248,7 +260,6 @@ class Pseudonymizer(Processor):
         encrypted_origin = self._encrypter.encrypt(value)
         return {"pseudonym": hash_string, "origin": encrypted_origin}
 
-    @lru_cache(maxsize=1000)
     def _pseudonymize_url(self, url_string: str) -> str:
         url = self._tld_extractor(url_string)
         if url_string.startswith("http://") or url_string.startswith("https://"):
@@ -295,8 +306,12 @@ class Pseudonymizer(Processor):
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX
 
     def _update_cache_metrics(self):
-        cache_info = self._get_pseudonym_dict_cached.cache_info()
-        self.metrics.new_results = cache_info.misses
-        self.metrics.cached_results = cache_info.hits
-        self.metrics.num_cache_entries = cache_info.currsize
-        self.metrics.cache_load = cache_info.currsize / cache_info.maxsize
+        cache_info_pseudonyms = self._get_pseudonym_dict_cached.cache_info()
+        cache_info_urls = self._pseudonymize_url_cached.cache_info()
+        self.metrics.new_results = cache_info_pseudonyms.misses + cache_info_urls.misses
+        self.metrics.cached_results = cache_info_pseudonyms.hits + cache_info_urls.hits
+        self.metrics.num_cache_entries = cache_info_pseudonyms.currsize + cache_info_urls.currsize
+        self.metrics.cache_load = (
+            cache_info_pseudonyms.currsize / cache_info_pseudonyms.maxsize
+            + cache_info_urls.currsize / cache_info_urls.maxsize
+        )
