@@ -289,6 +289,7 @@ class Pipeline:
             - measure loading times of rules
             - measure restart times of pipelines
             - count pipeline restarts
+            - measure getters
         """
 
         event_received = self._encoder.encode(event)
