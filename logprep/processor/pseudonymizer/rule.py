@@ -44,6 +44,7 @@ in a capture group and therefore pseudonymizes it completely.
    :noindex:
 """
 
+import re
 from typing import List
 
 from attrs import define, field, validators
@@ -80,7 +81,7 @@ class PseudonymizerRule(Rule):
 
     # pylint: disable=C0111
     @property
-    def pseudonyms(self) -> dict:
+    def pseudonyms(self) -> dict[str, re.Pattern]:
         return self._config.pseudonyms
 
     @property

@@ -38,8 +38,9 @@ Processor Configuration
 import datetime
 import re
 from functools import cached_property
+from itertools import chain
 from logging import Logger
-from typing import List, Optional, Pattern, Tuple, Union
+from typing import List, Optional, Pattern
 from urllib.parse import parse_qs
 
 from attrs import define, field, validators
@@ -222,72 +223,47 @@ class Pseudonymizer(Processor):
             field_value = get_dotted_field_value(event, dotted_field)
             if field_value is None:
                 continue
-            new_field_value, new_pseudonyms, is_match = self._pseudonymize_field(regex, field_value)
-            if is_match and dotted_field in rule.url_fields:
-                new_field_value = self._get_field_with_pseudonymized_urls(
-                    new_field_value, new_pseudonyms
+            if isinstance(field_value, list):
+                field_value = [
+                    self._pseudonymize_string_field(rule, dotted_field, regex, str(value))
+                    for value in field_value
+                ]
+            else:
+                field_value = self._pseudonymize_string_field(
+                    rule, dotted_field, regex, field_value
                 )
-            if field_value != new_field_value:
-                self.pseudonymized_fields.add(dotted_field)
-            if new_pseudonyms is not None:
-                self.pseudonyms += new_pseudonyms
-            _ = add_field_to(event, dotted_field, new_field_value, overwrite_output_field=True)
+            _ = add_field_to(event, dotted_field, field_value, overwrite_output_field=True)
         if "@timestamp" in event:
             for pseudonym in self.pseudonyms:
                 pseudonym["@timestamp"] = event["@timestamp"]
 
-    def _pseudonymize_field(
-        self, pattern: Pattern, field_value: Union[str, List[str]]
-    ) -> Tuple[Union[str, List[str]], Optional[list], bool]:
-        new_pseudonyms = []
+    def _pseudonymize_string_field(
+        self, rule: PseudonymizerRule, dotted_field: str, regex: Pattern, field_value: str
+    ) -> str:
+        if regex.groups <= 1:
+            clear_values = tuple(value for value in regex.findall(field_value) if value)
+        if regex.groups > 1:
+            clear_values = tuple(chain(*[value for value in regex.findall(field_value) if value]))
+        if clear_values and dotted_field in rule.url_fields:
+            field_value = self._get_field_with_pseudonymized_urls(field_value)
+        pseudonymized_values = [self._pseudonymize_string(value) for value in clear_values]
+        pseudonymize = zip(clear_values, pseudonymized_values)
+        for clear_value, pseudonymized_value in pseudonymize:
+            if clear_value:
+                field_value = re.sub(re.escape(clear_value), pseudonymized_value, field_value)
+        return field_value
 
-        if isinstance(field_value, list):
-            values = [str(value) for value in field_value]
-            matches_list = [re.match(pattern, value) for value in values]
-            if not any(matches_list):
-                return field_value, None, False
+    def _pseudonymize_string(self, value: str) -> str:
+        hash_string = self._hasher.hash_str(value, salt=self._config.hash_salt)
+        if self._cache.requires_storing(hash_string):
+            encrypted_origin = self._encrypter.encrypt(value)
+            self.pseudonyms.append({"pseudonym": hash_string, "origin": encrypted_origin})
+        return self._wrap_hash(hash_string)
 
-            new_field = []
-
-            for idx, matches in enumerate(matches_list):
-                if matches and any(matches.groups()):
-                    new_field.append(
-                        self._get_field_with_pseudonymized_capture_groups(matches, new_pseudonyms)
-                    )
-                else:
-                    new_field.append(field_value[idx])
-        else:
-            new_field = str(field_value)
-            matches = pattern.match(new_field)
-
-            # No matches, no change
-            if matches is None:
-                return new_field, None, False
-
-            # Replace capture groups if there are any, else pseudonymize whole match (group(0))
-            if any(matches.groups()):
-                new_field = self._get_field_with_pseudonymized_capture_groups(
-                    matches, new_pseudonyms
-                )
-
-        return new_field, new_pseudonyms if new_pseudonyms else None, True
-
-    def _get_field_with_pseudonymized_capture_groups(self, matches, pseudonyms: List[dict]) -> str:
-        field_ = ""
-        unprocessed = matches.group(0)
-        for capture_group in matches.groups():
-            if capture_group:
-                pseudonym = self._pseudonymize_string(capture_group, pseudonyms)
-                processed, unprocessed = self._process_field(capture_group, unprocessed)
-                field_ += processed + pseudonym
-        field_ += unprocessed
-        return field_
-
-    def _get_field_with_pseudonymized_urls(self, field_: str, pseudonyms: List[dict]) -> str:
-        pseudonyms = pseudonyms if pseudonyms else []
+    def _get_field_with_pseudonymized_urls(self, field_: str) -> str:
         for url_string in self._url_extractor.gen_urls(field_):
             url_parts = self._parse_url_parts(url_string)
-            pseudonym_map = self._get_pseudonym_map(pseudonyms, url_parts)
+            pseudonym_map = self._get_pseudonym_map(url_parts)
             url_split = self.URL_SPLIT_PATTERN.split(url_string)
 
             replacements = self._get_parts_to_replace_in_correct_order(pseudonym_map)
@@ -355,41 +331,23 @@ class Pseudonymizer(Processor):
         replacements.reverse()
         return replacements
 
-    def _get_pseudonym_map(self, pseudonyms: List[dict], url: dict) -> dict:
+    def _get_pseudonym_map(self, url: dict) -> dict:
         pseudonym_map = {}
         if url.get("subdomain"):
-            pseudonym_map[url["subdomain"]] = self._pseudonymize_string(
-                url["subdomain"], pseudonyms
-            )
+            pseudonym_map[url["subdomain"]] = self._pseudonymize_string(url["subdomain"])
         if url.get("fragment"):
-            pseudonym_map[url["fragment"]] = self._pseudonymize_string(url["fragment"], pseudonyms)
+            pseudonym_map[url["fragment"]] = self._pseudonymize_string(url["fragment"])
         if url.get("auth"):
-            pseudonym_map[url["auth"]] = self._pseudonymize_string(url["auth"], pseudonyms)
+            pseudonym_map[url["auth"]] = self._pseudonymize_string(url["auth"])
         query_parts = parse_qs(url["query"])
         for values in query_parts.values():
             for value in values:
                 if value:
-                    pseudonym_map[value] = self._pseudonymize_string(value, pseudonyms)
+                    pseudonym_map[value] = self._pseudonymize_string(value)
         if url.get("path"):
             if url["path"][1:]:
-                pseudonym_map[url["path"][1:]] = self._pseudonymize_string(
-                    url["path"][1:], pseudonyms
-                )
+                pseudonym_map[url["path"][1:]] = self._pseudonymize_string(url["path"][1:])
         return pseudonym_map
-
-    @staticmethod
-    def _process_field(capture_group: str, unprocessed: str) -> Tuple[str, str]:
-        split_by_cap_group = unprocessed.split(capture_group, 1)
-        processed_but_not_pseudonymized = split_by_cap_group[0]
-        unprocessed = split_by_cap_group[-1]
-        return processed_but_not_pseudonymized, unprocessed
-
-    def _pseudonymize_string(self, value: str, pseudonyms: List[dict]) -> str:
-        hash_string = self._hasher.hash_str(value, salt=self._config.hash_salt)
-        if self._cache.requires_storing(hash_string):
-            encrypted_origin = self._encrypter.encrypt(value)
-            pseudonyms.append({"pseudonym": hash_string, "origin": encrypted_origin})
-        return self._wrap_hash(hash_string)
 
     def _replace_regex_keywords_by_regex_expression(self):
         for rule in self._specific_rules:

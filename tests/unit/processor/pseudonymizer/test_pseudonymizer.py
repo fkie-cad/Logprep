@@ -901,8 +901,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object._replace_regex_keywords_by_regex_expression()  # Second Call
         assert self.object._specific_tree.rules[0].pseudonyms == {"something": expected_pattern}
 
-    def test_pseudonymize_string(self):
-        assert self.object._pseudonymize_string("foo", []).startswith("<pseudonym:")
+    def test_pseudonymize_string_adds_pseudonyms(self):
+        assert self.object._pseudonymize_string("foo").startswith("<pseudonym:")
+        assert len(self.object.pseudonyms) == 1
 
     def test_parse_url_parts(self):
         expected = {
