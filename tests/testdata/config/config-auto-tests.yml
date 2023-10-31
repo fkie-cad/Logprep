@@ -43,7 +43,6 @@ pipeline:
       generic_rules:
         - tests/testdata/auto_tests/pseudonymizer/rules/specific/
       max_cached_pseudonyms: 1000000
-      max_caching_days: 1
   - templatereplacername:
       type: template_replacer
       specific_rules:
