@@ -829,38 +829,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "tests/testdata/mock_external/tld_list.dat",
         )
 
-    def test_recently_stored_pseudonyms_are_not_stored_again(self):
-        self.object._cache._max_timedelta = CACHE_MAX_TIMEDELTA
-        event = {"event_id": 1234, "something": "something"}
-
-        rule_dict = {
-            "filter": "event_id: 1234",
-            "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
-            "description": "description content irrelevant for these tests",
-        }
-
-        self._load_specific_rule(rule_dict)
-        for index in range(3):
-            copied_event = deepcopy(event)
-            self.object.process(copied_event)
-            pseudonyms = self.object.pseudonyms
-            assert (
-                copied_event["something"]
-                == "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>"
-            )
-            assert len(pseudonyms) == 1, f"step {index}"
-
-            copied_event = deepcopy(event)
-            self.object.process(copied_event)
-            pseudonyms = self.object.pseudonyms
-            assert (
-                copied_event["something"]
-                == "<pseudonym:8d7e9ea64b00d7df5dd7d4e1c9dde8a0b70815eea27bddb67738502f4ea0d2ee>"
-            )
-            assert len(pseudonyms) == 0
-
-            time.sleep(CACHE_MAX_TIMEDELTA.total_seconds())
-
     def _load_specific_rule(self, rule):
         self.object._config.regex_mapping = self.regex_mapping
         del self.object.__dict__["_regex_mapping"]
@@ -917,3 +885,32 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "fragment": None,
         }
         assert self.object._parse_url_parts("https://www.test.de") == expected
+
+    def test_resolve_from_cache(self):
+        self.object.metrics.new_results = 0
+        self.object.metrics.cached_results = 0
+        self.object.metrics.num_cache_entries = 0
+        rule_dict = {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
+            },
+        }
+        event = {
+            "winlog": {
+                "event_id": 1234,
+                "provider_name": "Test456",
+                "event_data": {
+                    "param1": "Pseudonymize me!",
+                    "param2": "Pseudonymize me!",
+                },
+            }
+        }
+        self._load_specific_rule(rule_dict)  # First call
+        self.object.process(event)
+        assert self.object.metrics.new_results == 1
+        assert self.object.metrics.cached_results == 1
+        assert self.object.metrics.num_cache_entries == 1

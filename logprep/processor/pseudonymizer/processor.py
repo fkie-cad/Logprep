@@ -37,7 +37,7 @@ Processor Configuration
 """
 import datetime
 import re
-from functools import cached_property
+from functools import cached_property, lru_cache
 from itertools import chain
 from logging import Logger
 from typing import List, Optional, Pattern
@@ -139,12 +139,18 @@ class Pseudonymizer(Processor):
         )
         """Number urls that were pseudonymized"""
 
+        new_results: int = 0
+        """Number of new pseudodonyms"""
+        cached_results: int = 0
+        """Number of resolved from cache pseudonyms"""
+        num_cache_entries: int = 0
+        """Number of pseudonyms in cache"""
+        cache_load: int = 0
+        """cache usage """
+
     __slots__ = [
         "pseudonyms",
     ]
-
-    _cache: Cache
-    _tld_lists: List[str]
 
     pseudonyms: list
 
@@ -174,12 +180,6 @@ class Pseudonymizer(Processor):
         return _encrypter
 
     @cached_property
-    def _cache(self) -> Cache:
-        return Cache(
-            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
-        )
-
-    @cached_property
     def _tld_extractor(self) -> TLDExtract:
         if self._config.tld_lists is not None:
             return TLDExtract(suffix_list_urls=self._config.tld_lists)
@@ -189,6 +189,10 @@ class Pseudonymizer(Processor):
     @cached_property
     def _regex_mapping(self) -> dict:
         return GetterFactory.from_string(self._config.regex_mapping).get_yaml()
+
+    @cached_property
+    def _get_pseudonym_dict_cached(self):
+        return lru_cache(maxsize=self._config.max_cached_pseudonyms)(self._get_pseudonym_dict)
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
@@ -232,6 +236,7 @@ class Pseudonymizer(Processor):
         if "@timestamp" in event:
             for pseudonym in self.pseudonyms:
                 pseudonym["@timestamp"] = event["@timestamp"]
+        self._update_cache_metrics()
 
     def _pseudonymize_string_field(
         self, rule: PseudonymizerRule, dotted_field: str, regex: Pattern, field_value: str
@@ -250,11 +255,14 @@ class Pseudonymizer(Processor):
         return field_value
 
     def _pseudonymize_string(self, value: str) -> str:
+        pseudonym_dict = self._get_pseudonym_dict_cached(value)
+        self.pseudonyms.append(pseudonym_dict)
+        return self._wrap_hash(pseudonym_dict["pseudonym"])
+
+    def _get_pseudonym_dict(self, value):
         hash_string = self._hasher.hash_str(value, salt=self._config.hash_salt)
-        if self._cache.requires_storing(hash_string):
-            encrypted_origin = self._encrypter.encrypt(value)
-            self.pseudonyms.append({"pseudonym": hash_string, "origin": encrypted_origin})
-        return self._wrap_hash(hash_string)
+        encrypted_origin = self._encrypter.encrypt(value)
+        return {"pseudonym": hash_string, "origin": encrypted_origin}
 
     def _get_field_with_pseudonymized_urls(self, field_: str) -> str:
         for url_string in self._url_extractor.gen_urls(field_):
@@ -357,3 +365,10 @@ class Pseudonymizer(Processor):
 
     def _wrap_hash(self, hash_string: str) -> str:
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX
+
+    def _update_cache_metrics(self):
+        cache_info = self._get_pseudonym_dict_cached.cache_info()
+        self.metrics.new_results = cache_info.misses
+        self.metrics.cached_results = cache_info.hits
+        self.metrics.num_cache_entries = cache_info.currsize
+        self.metrics.cache_load = cache_info.currsize / cache_info.maxsize
