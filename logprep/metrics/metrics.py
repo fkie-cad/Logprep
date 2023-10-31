@@ -188,6 +188,7 @@ class Metric(ABC):
         """Decorate function to measure execution time for function and add results to event."""
 
         if not os.environ.get("APPEND_TO_EVENT"):
+
             def without_append(func):
                 def inner(self, *args, **kwargs):  # nosemgrep
                     metric = getattr(self.metrics, metric_name)

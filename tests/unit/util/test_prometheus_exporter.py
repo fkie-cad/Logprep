@@ -17,9 +17,7 @@ from logprep.metrics.prometheus_exporter import PrometheusStatsExporter
 class TestPrometheusStatsExporter:
     def setup_method(self):
         REGISTRY.__init__()
-        self.metrics_config = {
-            "metrics": {"enabled": True, "port": 80}
-        }
+        self.metrics_config = {"metrics": {"enabled": True, "port": 80}}
 
     def test_correct_setup(self):
         exporter = PrometheusStatsExporter(self.metrics_config.get("metrics"))

@@ -79,7 +79,7 @@ class ConfluentKafkaOutput(Output):
         librdkafka_msg_max: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Threshold: maximum number of messages allowed allowed on the "
-                            "producer queues",
+                "producer queues",
                 name="confluent_kafka_output_librdkafka_msg_max",
             )
         )
@@ -87,7 +87,7 @@ class ConfluentKafkaOutput(Output):
         librdkafka_msg_size_max: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Threshold: maximum total size of messages allowed on the "
-                            "producer queues",
+                "producer queues",
                 name="confluent_kafka_output_librdkafka_msg_size_max",
             )
         )
@@ -130,7 +130,7 @@ class ConfluentKafkaOutput(Output):
         librdkafka_txmsg_bytes: GaugeMetric = field(
             factory=lambda: GaugeMetric(
                 description="Total number of message bytes (including framing, such as per-Message "
-                            "framing and MessageSet/batch framing) transmitted to Kafka brokers",
+                "framing and MessageSet/batch framing) transmitted to Kafka brokers",
                 name="confluent_kafka_output_librdkafka_txmsg_bytes",
             )
         )

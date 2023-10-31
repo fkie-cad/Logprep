@@ -231,16 +231,16 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     first_calculator = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\"calculator\",type\=\"calculator\"}"
     assert re.search(first_calculator, metrics), "First calculator not found"
     assert (
-            len(re.findall(first_calculator, metrics)) == 2
+        len(re.findall(first_calculator, metrics)) == 2
     ), "More or less than two rules (specific, generic) were found for first calculator"
     second_calculator = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\"calculator2\",type\=\"calculator\"}"
     assert re.search(second_calculator, metrics), "Second calculator not found"
     assert (
-            len(re.findall(second_calculator, metrics)) == 2
+        len(re.findall(second_calculator, metrics)) == 2
     ), "More or less than two rules (specific, generic) were found for second calculator"
     both_calculators = r"logprep_number_of_processed_events_total\{component=\"rule\",description=\"id:.+\",name=\".+\",type\=\"calculator\"}"
     assert (
-            len(re.findall(both_calculators, metrics)) == 4
+        len(re.findall(both_calculators, metrics)) == 4
     ), "More or less than 4 rules were found for both calculator"
 
     proc.kill()

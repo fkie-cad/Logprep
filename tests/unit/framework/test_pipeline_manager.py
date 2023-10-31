@@ -192,7 +192,6 @@ class TestPipelineManager:
         self.manager.restart_failed_pipeline()
         assert self.manager.metrics.number_of_failed_pipelines == 1
 
-
     def test_stop_calls_prometheus_cleanup_method(self, tmpdir):
         os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
         manager = PipelineManager()
