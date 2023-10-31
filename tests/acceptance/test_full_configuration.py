@@ -125,6 +125,8 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     pipeline = get_full_pipeline(exclude=["requester", "selective_extractor", "normalizer"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
     config |= {
+        "version": "my_custom_version",
+        "config_refresh_interval": 300,
         "metrics": {
             "enabled": True,
             "append_measurement_to_event": False,
@@ -214,6 +216,9 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
         r"logprep_amides_mean_rule_attribution_time_sum",
         r"logprep_amides_mean_rule_attribution_time_count",
         r"logprep_amides_mean_rule_attribution_time_bucket",
+        r"logprep_version_info.*config=\"my_custom_version\"",
+        r"logprep_config_refresh_interval.+300",
+        r"logprep_number_of_config_refreshes.+0",
     ]
     for expeced_metric in expected_metrics:
         assert re.search(expeced_metric, metrics), f"Metric {expeced_metric} not found in metrics"

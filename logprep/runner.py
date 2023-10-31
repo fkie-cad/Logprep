@@ -13,7 +13,7 @@ from schedule import Scheduler
 
 from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
-from logprep.metrics.metrics import GaugeMetric
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from versioneer import get_versions
 
@@ -93,6 +93,31 @@ class Runner:
             )
         )
         """Logprep version info."""
+        config_refresh_interval: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep config refresh interval",
+                name="config_refresh_interval",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Logprep config refresh interval"""
+        number_of_config_refreshes: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Logprep config refresh interval",
+                name="number_of_config_refreshes",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Logprep config refresh interval"""
+
+    @property
+    def _metric_labels(self) -> None:
+        versions = get_versions()
+        labels = {
+            "logprep": f"{versions.get('version')}",
+            "config": f"{self._configuration.get('version', 'unset')}",
+        }
+        return labels
 
     # Use this method to obtain a runner singleton for production
     @staticmethod
@@ -168,14 +193,10 @@ class Runner:
             raise MustConfigureALoggerError
 
         self._create_manager()
-        versions = get_versions()
-        self.metrics.version_info.add_with_labels(
-            1,
-            {
-                "logprep": f"{versions.get('version')}",
-                "config": f"{self._configuration.get('version', 'unset')}",
-            },
-        )
+
+        self.metrics.version_info.add_with_labels(1, self._metric_labels)
+        if self._config_refresh_interval is not None:
+            self.metrics.config_refresh_interval += self._config_refresh_interval
         self._manager.set_configuration(self._configuration)
         self._manager.set_count(self._configuration["process_count"])
         self._logger.debug("Pipeline manager initiated")
@@ -213,6 +234,8 @@ class Runner:
         try:
             new_configuration = Configuration.create_from_yaml(self._yaml_path)
             self._config_refresh_interval = new_configuration.get("config_refresh_interval")
+            if self._config_refresh_interval is not None:
+                self.metrics.config_refresh_interval += self._config_refresh_interval
             self._schedule_config_refresh_job()
         except (requests.RequestException, FileNotFoundError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
@@ -260,6 +283,7 @@ class Runner:
             refresh_interval = 5 if refresh_interval < 5 else refresh_interval
             scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
+            self.metrics.config_refresh_interval += self._config_refresh_interval
 
     def _create_manager(self):
         if self._manager is not None:

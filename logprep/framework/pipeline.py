@@ -284,7 +284,11 @@ class Pipeline:
         """
         TODOs:
             - add metric to runner
-                - count config refreshes (if really changed) 
+                - count config refreshes (if really changed)
+                - config refresh interval
+            - measure loading times of rules
+            - measure restart times of pipelines
+            - count pipeline restarts
         """
 
         event_received = self._encoder.encode(event)

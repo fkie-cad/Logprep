@@ -113,6 +113,12 @@ class TestRunner(LogprepRunnerTest):
         self.runner.reload_configuration()
         assert self.runner._manager.get_count() == 2
 
+    def test_reload_configuration_counts_config_refreshes_if_successful(self):
+        self.runner.metrics.number_of_config_refreshes = 0
+        self.runner._yaml_path = path_to_alternative_config
+        self.runner.reload_configuration()
+        assert self.runner.metrics.number_of_config_refreshes == 1
+
     def test_reload_configuration_leaves_old_configuration_in_place_if_new_config_is_invalid(self):
         old_configuration = deepcopy(self.runner._configuration)
 
@@ -129,6 +135,14 @@ class TestRunner(LogprepRunnerTest):
             "Invalid configuration, leaving old configuration in place:"
             in mock_error.call_args[0][0]
         )
+
+    def test_reload_configuration_does_not_count_config_refresh_if_new_configuration_is_invalid(
+        self,
+    ):
+        self.runner.metrics.number_of_config_refreshes = 0
+        self.runner._yaml_path = path_to_invalid_config
+        self.runner.reload_configuration()
+        assert self.runner.metrics.number_of_config_refreshes == 0
 
     def test_reload_configuration_creates_new_logprep_instances_with_new_configuration(self):
         self.runner._manager.set_count(3)
@@ -181,6 +195,7 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 0
 
     def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(self, tmp_path):
+        self.runner.metrics.config_refresh_interval = 0
         assert len(self.runner.scheduler.jobs) == 0
         config_path = tmp_path / "config.yml"
         config_update = {"config_refresh_interval": 5, "version": "current version"}
@@ -191,6 +206,7 @@ class TestRunner(LogprepRunnerTest):
         self.runner._yaml_path = str(config_path)
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.metrics.config_refresh_interval == 5
 
     def test_reload_configuration_reschedules_job_with_new_refresh_interval(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
@@ -221,6 +237,7 @@ class TestRunner(LogprepRunnerTest):
         mock_get.side_effect = HTTPError(404)
         assert len(self.runner.scheduler.jobs) == 0
         self.runner._config_refresh_interval = 40
+        self.runner.metrics.config_refresh_interval = 40
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
                 self.runner.reload_configuration(refresh=True)
@@ -228,6 +245,7 @@ class TestRunner(LogprepRunnerTest):
         mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 10
+        assert self.runner.metrics.config_refresh_interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_logs_filenotfounderror_and_schedules_new_refresh_with_a_quarter_the_time(
