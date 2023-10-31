@@ -154,7 +154,7 @@ class Pseudonymizer(Processor):
     HASH_PREFIX = "<pseudonym:"
     HASH_SUFFIX = ">"
 
-    is_pseudonymized: Pattern = re.compile(rf"^{HASH_PREFIX}(.+?){HASH_SUFFIX}$")
+    pseudonymized_pattern: Pattern = re.compile(rf"^{HASH_PREFIX}(.+?){HASH_SUFFIX}$")
 
     rule_class = PseudonymizerRule
 
@@ -251,7 +251,7 @@ class Pseudonymizer(Processor):
         return field_value
 
     def _pseudonymize_string(self, value: str) -> str:
-        if self.is_pseudonymized.match(value):
+        if self.pseudonymized_pattern.match(value):
             return value
         pseudonym_dict = self._get_pseudonym_dict_cached(value)
         self.pseudonyms.append(pseudonym_dict)

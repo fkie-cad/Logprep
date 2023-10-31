@@ -922,6 +922,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             ),
             (
                 "https://test.de/?a=b&c=d",
+                # nosemgrep
                 (
                     "https://test.de/?a="
                     "<pseudonym:4c77fcd97a3d4d98eb062561c37e4ef000f0476bdf153b25ba8031f90ac89877>"
@@ -931,6 +932,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             ),
             (
                 "https://test.de/#test",
+                # nosemgrep
                 (
                     "https://test.de/#"
                     "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"
