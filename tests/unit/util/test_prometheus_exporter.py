@@ -3,11 +3,9 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 import logging
-import os
 from logging import getLogger
 from unittest import mock
 
-import pytest
 from prometheus_client import REGISTRY, Gauge
 
 from logprep.util.prometheus_exporter import PrometheusStatsExporter
@@ -21,7 +19,7 @@ class TestPrometheusStatsExporter:
     def setup_method(self, tmpdir):
         REGISTRY.__init__()
         self.metrics_config = {
-            "metrics": {"period": 10, "enabled": True, "cumulative": True, "port": 80}
+            "metrics": {"enabled": True, "port": 80}
         }
 
     def test_correct_setup(self):
@@ -37,7 +35,6 @@ class TestPrometheusStatsExporter:
             "metrics": {
                 "period": 10,
                 "enabled": True,
-                "cumulative": True,
             }
         }
         exporter = PrometheusStatsExporter(metrics_config, getLogger("test-logger"))
