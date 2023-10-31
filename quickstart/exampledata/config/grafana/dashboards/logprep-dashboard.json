@@ -1455,7 +1455,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -1971,7 +1971,7 @@
               "viz": false
             },
             "insertNulls": false,
-            "lineInterpolation": "smooth",
+            "lineInterpolation": "linear",
             "lineStyle": {
               "fill": "solid"
             },
@@ -1981,7 +1981,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "normal"
@@ -2778,7 +2778,7 @@
       "type": "timeseries"
     }
   ],
-  "refresh": "",
+  "refresh": "5s",
   "schemaVersion": 38,
   "style": "dark",
   "tags": [],
@@ -2815,13 +2815,13 @@
     ]
   },
   "time": {
-    "from": "2023-10-30T12:55:30.548Z",
-    "to": "2023-10-30T12:59:33.910Z"
+    "from": "now-1h",
+    "to": "now"
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Logprep Version 0.0.1",
+  "title": "Logprep Overview",
   "uid": "b1d9c144-d9a7-4a9c-a6c4-6929eec1c776",
-  "version": 11,
+  "version": 21,
   "weekStart": ""
 }

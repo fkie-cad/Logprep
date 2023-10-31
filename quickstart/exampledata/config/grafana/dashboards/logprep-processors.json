@@ -448,7 +448,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "ceil(sum(increase(logprep_number_of_warnings_total{component=\"rule\", name=\"$processor\"}[1m])))",
+          "expr": "ceil(sum(increase(logprep_number_of_warnings_total{component=\"rule\", name=\"$processor\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -585,7 +585,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -775,7 +775,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "ceil(sum(increase(logprep_number_of_errors_total{component=\"rule\", name=\"$processor\"}[1m])))",
+          "expr": "ceil(sum(increase(logprep_number_of_errors_total{component=\"rule\", name=\"$processor\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -963,7 +963,7 @@
         ]
       },
       "gridPos": {
-        "h": 7,
+        "h": 21,
         "w": 5,
         "x": 19,
         "y": 147
@@ -1059,7 +1059,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -1081,13 +1081,14 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "s"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 7,
-        "w": 24,
+        "w": 19,
         "x": 0,
         "y": 154
       },
@@ -1155,7 +1156,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
-            "spanNulls": false,
+            "spanNulls": true,
             "stacking": {
               "group": "A",
               "mode": "none"
@@ -1177,13 +1178,14 @@
                 "value": 80
               }
             ]
-          }
+          },
+          "unit": "s"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 7,
-        "w": 24,
+        "w": 19,
         "x": 0,
         "y": 161
       },
@@ -1616,7 +1618,7 @@
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
+        "sort": 5,
         "type": "query"
       }
     ]
@@ -1627,8 +1629,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Processors",
+  "title": "Logprep Processors",
   "uid": "a6a0934c-8f53-47fb-8b30-2adebed11bd5",
-  "version": 9,
+  "version": 2,
   "weekStart": ""
 }
