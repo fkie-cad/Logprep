@@ -3,6 +3,7 @@
 # pylint: disable=logging-fstring-interpolation
 import inspect
 import logging
+import os
 import sys
 import warnings
 from argparse import ArgumentParser
@@ -97,7 +98,10 @@ def _run_logprep(arguments, logger: logging.Logger):
         runner.start()
     # pylint: disable=broad-except
     except BaseException as error:
-        logger.critical(f"A critical error occurred: {error}")
+        if os.environ.get("DEBUG", False):
+            logger.exception(f"A critical error occurred: {error}")
+        else:
+            logger.critical(f"A critical error occurred: {error}")
         if runner:
             runner.stop()
         sys.exit(1)
