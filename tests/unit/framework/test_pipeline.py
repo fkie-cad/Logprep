@@ -11,7 +11,6 @@ from unittest import mock
 
 import pytest
 import requests
-from _pytest.outcomes import fail
 from _pytest.python_api import raises
 
 from logprep.abc.input import (
@@ -64,7 +63,6 @@ class TestPipeline(ConfigurationForTests):
             lock=self.lock,
             shared_dict=self.shared_dict,
             used_server_ports=mock.MagicMock(),
-            prometheus_exporter=mock.MagicMock(),
         )
 
     def test_pipeline_property_returns_pipeline(self, mock_create):
@@ -678,7 +676,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 lock=self.lock,
                 used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
-                prometheus_exporter=mock.MagicMock(),
             )
         )
 
@@ -693,7 +690,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
                 lock=self.lock,
                 used_server_ports=mock.MagicMock(),
                 shared_dict=self.shared_dict,
-                prometheus_exporter=mock.MagicMock(),
             )
         )
         children_after = active_children()
@@ -708,7 +704,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
-            prometheus_exporter=mock.MagicMock(),
         )
         assert not pipeline._iterate()
 
@@ -726,7 +721,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
-            prometheus_exporter=mock.MagicMock(),
         )
         pipeline._input = mock.MagicMock()
         pipeline._input.get_next = mock.MagicMock()
@@ -749,7 +743,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
-            prometheus_exporter=mock.MagicMock(),
         )
         pipeline._input = mock.MagicMock()
         pipeline._input.get_next = mock.MagicMock()
@@ -772,7 +765,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
             lock=self.lock,
             used_server_ports=mock.MagicMock(),
             shared_dict=self.shared_dict,
-            prometheus_exporter=mock.MagicMock(),
         )
         pipeline._output = mock.MagicMock()
         pipeline._output.store = mock.MagicMock()

@@ -6,8 +6,8 @@ import logging.handlers
 import multiprocessing
 
 from logprep.framework.pipeline import MultiprocessingPipeline
+from logprep.metrics.prometheus_exporter import PrometheusStatsExporter
 from logprep.util.configuration import Configuration
-from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 
 class PipelineManagerError(Exception):
@@ -49,7 +49,7 @@ class PipelineManager:
             self._shared_dict[idx] = None
         prometheus_config = configuration.get("metrics", {})
         if prometheus_config.get("enabled", False):
-            self.prometheus_exporter = PrometheusStatsExporter(prometheus_config, self._logger)
+            self.prometheus_exporter = PrometheusStatsExporter(prometheus_config)
 
     def get_count(self) -> int:
         """Get the pipeline count.
@@ -119,5 +119,4 @@ class PipelineManager:
             lock=self._lock,
             shared_dict=self._shared_dict,
             used_server_ports=self._used_server_ports,
-            prometheus_exporter=self.prometheus_exporter,
         )

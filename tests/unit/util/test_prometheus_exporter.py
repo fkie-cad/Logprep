@@ -3,31 +3,26 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=no-self-use
 import logging
-from logging import getLogger
 from unittest import mock
 
-from prometheus_client import REGISTRY, Gauge
+from prometheus_client import REGISTRY
 
-from logprep.util.prometheus_exporter import PrometheusStatsExporter
+from logprep.metrics.prometheus_exporter import PrometheusStatsExporter
 
 
 @mock.patch(
-    "logprep.util.prometheus_exporter.PrometheusStatsExporter._prepare_multiprocessing",
+    "logprep.metrics.prometheus_exporter.PrometheusStatsExporter._prepare_multiprocessing",
     new=lambda *args, **kwargs: None,
 )
 class TestPrometheusStatsExporter:
-    def setup_method(self, tmpdir):
+    def setup_method(self):
         REGISTRY.__init__()
         self.metrics_config = {
             "metrics": {"enabled": True, "port": 80}
         }
 
     def test_correct_setup(self):
-        exporter = PrometheusStatsExporter(
-            self.metrics_config.get("metrics"), getLogger("test-logger")
-        )
-        assert not exporter.metrics
-        assert isinstance(exporter.tracking_interval, Gauge)
+        exporter = PrometheusStatsExporter(self.metrics_config.get("metrics"))
         assert exporter._port == self.metrics_config["metrics"]["port"]
 
     def test_default_port_if_missing_in_config(self):
@@ -37,14 +32,14 @@ class TestPrometheusStatsExporter:
                 "enabled": True,
             }
         }
-        exporter = PrometheusStatsExporter(metrics_config, getLogger("test-logger"))
+        exporter = PrometheusStatsExporter(metrics_config)
 
         assert exporter._port == 8000
 
-    @mock.patch("logprep.util.prometheus_exporter.start_http_server")
+    @mock.patch("logprep.metrics.prometheus_exporter.start_http_server")
     def test_run_starts_http_server(self, mock_http_server, caplog):
         with caplog.at_level(logging.INFO):
-            exporter = PrometheusStatsExporter(self.metrics_config, getLogger("test-logger"))
+            exporter = PrometheusStatsExporter(self.metrics_config)
             exporter.run()
 
         mock_http_server.assert_has_calls([mock.call(exporter._port)])

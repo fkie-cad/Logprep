@@ -116,11 +116,6 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 from logprep.util.helper import add_field_to
 
 
-def get_default_labels():
-    """returns the default labels"""
-    return {"component": None, "name": None, "type": None, "description": None}
-
-
 @define(kw_only=True, slots=False)
 class Metric(ABC):
     """Metric base class"""

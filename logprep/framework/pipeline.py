@@ -41,7 +41,6 @@ from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.pipeline_profiler import PipelineProfiler
-from logprep.util.prometheus_exporter import PrometheusStatsExporter
 
 
 class SharedCounter:
@@ -168,7 +167,6 @@ class Pipeline:
         lock: Lock = None,
         shared_dict: dict = None,
         used_server_ports: dict = None,
-        prometheus_exporter: PrometheusStatsExporter = None,
     ) -> None:
         self._log_queue = log_queue
         self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
@@ -184,7 +182,6 @@ class Pipeline:
             print_processed_period = self._logprep_config.get("print_processed_period", 300)
             self._processing_counter.setup(print_processed_period, lock)
         self._used_server_ports = used_server_ports
-        self._prometheus_exporter = prometheus_exporter
         self.pipeline_index = pipeline_index
         self._encoder = msgspec.msgpack.Encoder()
         self._decoder = msgspec.msgpack.Decoder()
@@ -427,7 +424,6 @@ class MultiprocessingPipeline(Process, Pipeline):
         lock: Lock,
         shared_dict: dict,
         used_server_ports: dict,
-        prometheus_exporter: PrometheusStatsExporter = None,
     ) -> None:
         self._profile = config.get("profile_pipelines", False)
 
@@ -440,7 +436,6 @@ class MultiprocessingPipeline(Process, Pipeline):
             lock=lock,
             shared_dict=shared_dict,
             used_server_ports=used_server_ports,
-            prometheus_exporter=prometheus_exporter,
         )
 
         self._continue_iterating = Value(c_bool)
