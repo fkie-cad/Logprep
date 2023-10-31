@@ -889,7 +889,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             }
         }
-        self._load_specific_rule(rule_dict)  # First call
+        self._load_specific_rule(rule_dict)
         self.object.process(event)
         assert self.object.metrics.new_results == 1
         assert self.object.metrics.cached_results == 1
@@ -930,3 +930,62 @@ class TestPseudonymizer(BaseProcessorTestCase):
     )
     def test_pseudonymize_url(self, url, expected):
         assert self.object._pseudonymize_url(url) == expected
+
+    def test_process_returns_extra_output(self):
+        rule_dict = {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
+            },
+        }
+        event = {
+            "@timestamp": "custom timestamp",
+            "winlog": {
+                "event_id": 1234,
+                "provider_name": "Test456",
+                "event_data": {
+                    "param1": "Pseudonymize me!",
+                    "param2": "Pseudonymize me!",
+                },
+            },
+        }
+        self._load_specific_rule(rule_dict)  # First call
+        extra_output = self.object.process(event)
+        assert extra_output
+        assert isinstance(extra_output, tuple)
+        assert len(extra_output) == 2
+        assert isinstance(extra_output[0], list)
+        assert isinstance(extra_output[1], tuple)
+        assert isinstance(extra_output[1][0], dict)
+        assert extra_output[1][0] == {"kafka": "topic"}, "Output is setted as in CONFIG"
+        assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
+        assert extra_output[0][0].get("origin"), "encrypted origional is set"
+        assert extra_output[0][0].get("@timestamp"), "timestamp is set if present in event"
+
+    def test_ignores_missing_field(self):
+        rule_dict = {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "does_not_exists": "RE_WHOLE_FIELD",
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
+            },
+        }
+        event = {
+            "@timestamp": "custom timestamp",
+            "winlog": {
+                "event_id": 1234,
+                "provider_name": "Test456",
+                "event_data": {
+                    "param1": "Pseudonymize me!",
+                    "param2": "Pseudonymize me!",
+                },
+            },
+        }
+        self._load_specific_rule(rule_dict)  # First call
+        extra_output = self.object.process(event)
+        assert extra_output[0][0].get("pseudonym"), "pseudonym is set"

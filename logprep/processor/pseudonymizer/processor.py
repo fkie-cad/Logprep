@@ -23,7 +23,6 @@ Processor Configuration
         hash_salt: secret_salt
         regex_mapping: /path/to/regex_mapping.json
         max_cached_pseudonyms: 1000000
-        max_caching_days: 1
         tld_lists:
             -/path/to/tld_list.dat
 
@@ -161,10 +160,6 @@ class Pseudonymizer(Processor):
         return URLExtract()
 
     @cached_property
-    def _cache_max_timedelta(self):
-        return datetime.timedelta(days=self._config.max_caching_days)
-
-    @cached_property
     def _hasher(self):
         return SHA256Hasher()
 
@@ -178,8 +173,7 @@ class Pseudonymizer(Processor):
     def _tld_extractor(self) -> TLDExtract:
         if self._config.tld_lists is not None:
             return TLDExtract(suffix_list_urls=self._config.tld_lists)
-        else:
-            return TLDExtract()
+        return TLDExtract()
 
     @cached_property
     def _regex_mapping(self) -> dict:
@@ -197,12 +191,6 @@ class Pseudonymizer(Processor):
             specific_rule_tree=self._specific_tree.metrics,
         )
         self.pseudonyms = []
-
-    def setup(self):
-        super().setup()
-        # delete cache to avoid caching pseudonyms from previous runs
-        if "_cache" in self.__dict__:
-            del self.__dict__["_cache"]
 
     def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
         super().load_rules(specific_rules_targets, generic_rules_targets)
@@ -241,7 +229,8 @@ class Pseudonymizer(Processor):
         if regex.groups > 1:
             clear_values = tuple(chain(*[value for value in regex.findall(field_value) if value]))
         if clear_values and dotted_field in rule.url_fields:
-            field_value = self._pseudonymize_url(field_value)
+            for url_string in self._url_extractor.gen_urls(field_value):
+                field_value = field_value.replace(url_string, self._pseudonymize_url(url_string))
         pseudonymized_values = [self._pseudonymize_string(value) for value in clear_values]
         pseudonymize = zip(clear_values, pseudonymized_values)
         for clear_value, pseudonymized_value in pseudonymize:
@@ -259,42 +248,38 @@ class Pseudonymizer(Processor):
         encrypted_origin = self._encrypter.encrypt(value)
         return {"pseudonym": hash_string, "origin": encrypted_origin}
 
-    def _pseudonymize_url(self, input_value: str) -> str:
-        for url_string in self._url_extractor.gen_urls(input_value):
-            url = self._tld_extractor(url_string)
-            if url_string.startswith("http://") or url_string.startswith("https://"):
-                parsed_url = urlparse(url_string)
-            else:
-                parsed_url = urlparse("http://" + url_string)
-            if url.subdomain:
-                input_value = input_value.replace(
-                    url.subdomain, self._pseudonymize_string(url.subdomain)
-                )
-            if parsed_url.fragment:
-                input_value = input_value.replace(
-                    f"#{parsed_url.fragment}", f"#{self._pseudonymize_string(parsed_url.fragment)}"
-                )
-            if parsed_url.username:
-                auth_string = f"{parsed_url.username}:{parsed_url.password}"
-                input_value = input_value.replace(
-                    auth_string, self._pseudonymize_string(auth_string)
-                )
-            if parsed_url.path and len(parsed_url.path) > 1:
-                input_value = input_value.replace(
-                    parsed_url.path[1:], self._pseudonymize_string(parsed_url.path[1:])
-                )
-            if parsed_url.query:
-                query_parts = parse_qs(parsed_url.query)
-                pseudonymized_query_parts = {
-                    key: [self._pseudonymize_string(value) for value in values if value]
-                    for key, values in query_parts.items()
-                }
-                pseudonymized_query = urlencode(
-                    pseudonymized_query_parts, safe="<pseudonym:>", doseq=True
-                )
-                input_value = input_value.replace(parsed_url.query, pseudonymized_query)
-            self.metrics.pseudonymized_urls += 1
-        return input_value
+    @lru_cache(maxsize=1000)
+    def _pseudonymize_url(self, url_string: str) -> str:
+        url = self._tld_extractor(url_string)
+        if url_string.startswith("http://") or url_string.startswith("https://"):
+            parsed_url = urlparse(url_string)
+        else:
+            parsed_url = urlparse("http://" + url_string)
+        if url.subdomain:
+            url_string = url_string.replace(url.subdomain, self._pseudonymize_string(url.subdomain))
+        if parsed_url.fragment:
+            url_string = url_string.replace(
+                f"#{parsed_url.fragment}", f"#{self._pseudonymize_string(parsed_url.fragment)}"
+            )
+        if parsed_url.username:
+            auth_string = f"{parsed_url.username}:{parsed_url.password}"
+            url_string = url_string.replace(auth_string, self._pseudonymize_string(auth_string))
+        if parsed_url.path and len(parsed_url.path) > 1:
+            url_string = url_string.replace(
+                parsed_url.path[1:], self._pseudonymize_string(parsed_url.path[1:])
+            )
+        if parsed_url.query:
+            query_parts = parse_qs(parsed_url.query)
+            pseudonymized_query_parts = {
+                key: [self._pseudonymize_string(value) for value in values if value]
+                for key, values in query_parts.items()
+            }
+            pseudonymized_query = urlencode(
+                pseudonymized_query_parts, safe="<pseudonym:>", doseq=True
+            )
+            url_string = url_string.replace(parsed_url.query, pseudonymized_query)
+        self.metrics.pseudonymized_urls += 1
+        return url_string
 
     def _replace_regex_keywords_by_regex_expression(self):
         for rule in self._specific_rules:
