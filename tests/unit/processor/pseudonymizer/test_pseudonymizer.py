@@ -3,9 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-public-methods
 import datetime
-import logging
 import re
-import time
 from copy import deepcopy
 from pathlib import Path
 
@@ -753,7 +751,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic/"],
         "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
         "max_cached_pseudonyms": 1000000,
-        "max_caching_days": 1,
     }
 
     expected_metrics = [
@@ -850,7 +847,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudonymizer": {"pseudonyms": {"pseudo_this": regex_pattern}},
             "url_fields": ["do_not_pseudo_this"],
         }
-        self.regex_mapping = CAP_GROUP_REGEX_MAPPING
+        self.regex_mapping = "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml"
         self._load_specific_rule(rule)
         self.object.process(event)
 

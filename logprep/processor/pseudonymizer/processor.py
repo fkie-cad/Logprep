@@ -105,21 +105,17 @@ class Pseudonymizer(Processor):
 
         * /var/git/logprep-rules/pseudonymizer_rules/regex_mapping.json
         """
-        max_cached_pseudonyms: int = field(validator=validators.instance_of(int))
+        max_cached_pseudonyms: int = field(
+            validator=[validators.instance_of(int), validators.gt(0)]
+        )
         """
         The maximum number of cached pseudonyms. One cache entry requires ~250 Byte, thus 10
         million elements would require about 2.3 GB RAM. The cache is not persisted. Restarting
         Logprep does therefore clear the cache.
-        """
-        max_caching_days: int = field(validator=validators.instance_of(int))
-        """
-        Number of days a pseudonym is cached after the last time it appeared.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
         repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
-        Setting the caching days to Null deactivates the caching. In case the cache size has been
-        exceeded (see max_cached_pseudonyms), the oldest cached pseudonyms will be discarded first.
-        Thus, it is possible that a pseudonym is re-added to the cache before max_caching_days has
-        elapsed if it was discarded due to the size limit.
+        Setting. In case the cache size has been exceeded, the least recently used
+        entry is deleteted. Has to be greater than 0.
         """
         tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
         """Optional list of path to files with top-level domain lists

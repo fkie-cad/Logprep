@@ -8,6 +8,11 @@
 ### Improvements
 
 * improve error message on empty rule filter
+* reimplemented `pseudonymizer` processor
+  - cleaned up code
+  - reimplemened caching using pythons `lru_cache`
+  - add cache metrics
+  - removed `max_caching_days` config option
 
 ### Bugfix
 
