@@ -38,7 +38,7 @@ class TestSnakeToCamel:
             ("IPhoneHysteria", "i_phone_hysteria"),
             ("DatetimeExtractor", "datetime_extractor"),
             ("GenericAdder", "generic_adder"),
-            ("Normalizer", "normalizer"),
+            ("Dissector", "dissector"),
             ("GeoipEnricher", "geoip_enricher"),
         ],
     )

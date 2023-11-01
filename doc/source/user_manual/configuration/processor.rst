@@ -24,7 +24,6 @@ Processors
 .. automodule:: logprep.processor.key_checker.processor
 .. automodule:: logprep.processor.labeler.processor
 .. automodule:: logprep.processor.list_comparison.processor
-.. automodule:: logprep.processor.normalizer.processor
 .. automodule:: logprep.processor.pre_detector.processor
 .. automodule:: logprep.processor.pseudonymizer.processor
 .. automodule:: logprep.processor.requester.processor

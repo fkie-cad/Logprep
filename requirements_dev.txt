@@ -233,8 +233,6 @@ pydantic-core==2.10.1
     #   pydantic
 pygments==2.16.1
     # via rich
-pygrok==1.0.0
-    # via -r ./requirements.txt
 pylint==3.0.1
     # via -r ./requirements_dev.in
 pyparsing==3.1.1

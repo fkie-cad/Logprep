@@ -1,12 +1,22 @@
 ## Upcoming Changes
 
 ## next release
+### Breaking
+
+* Remove `normalizer` processor, as it's functionality was replaced by the `grokker`, `timestamper`
+and `field_manager` processors
+
+### Features
+
 
 ### Features
 
 * add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
 
 ### Improvements
+
+* Remove direct dependency of `python-dateutil`
+
 ### Bugfix
 
 ## v7.0.0
@@ -116,7 +126,6 @@ In case of positive detection results, rule attributions are now inserted in the
 * Bump `requests` to `>=2.31.0` to circumvent `CVE-2023-32681`
 * Include a lucene representation of the rule filter into the predetector results. The
 representation is not completely lucene compatible due to non-existing regex functionality.
-* Remove direct dependency of `python-dateutil`
 
 ### Bugfix
 

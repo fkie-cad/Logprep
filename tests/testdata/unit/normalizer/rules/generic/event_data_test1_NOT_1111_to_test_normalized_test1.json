@@ -1,7 +1,0 @@
-[{
-  "filter": "NOT winlog.event_id: 4444 AND winlog.event_data.test2",
-  "normalize": {
-    "winlog.event_data.test2": "test_normalized.test2"
-  },
-  "description": "..."
-}]

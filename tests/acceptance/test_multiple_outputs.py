@@ -24,13 +24,10 @@ def get_config():
         "profile_pipelines": False,
         "pipeline": [
             {
-                "normalizername": {
-                    "type": "normalizer",
-                    "specific_rules": [
-                        "tests/testdata/acceptance/normalizer/rules_static/specific"
-                    ],
-                    "generic_rules": ["tests/testdata/acceptance/normalizer/rules_static/generic"],
-                    "regex_mapping": "tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml",
+                "dissector": {
+                    "type": "dissector",
+                    "specific_rules": ["tests/testdata/acceptance/dissector/rules/specific"],
+                    "generic_rules": ["tests/testdata/acceptance/dissector/rules/generic"],
                 }
             },
             {

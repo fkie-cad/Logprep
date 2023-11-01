@@ -2,13 +2,12 @@ process_count: 3
 timeout: 0.1
 
 pipeline:
-  - normalizer:
-      type: normalizer
+  - dissector:
+      type: dissector
       specific_rules:
-        - tests/testdata/unit/normalizer/rules/specific/
+        - tests/testdata/unit/dissector
       generic_rules:
-        - tests/testdata/unit/normalizer/rules/generic/
-      regex_mapping: tests/testdata/unit/normalizer/regex_mapping.yml
+        - tests/testdata/unit/dissector
   - labelername:
       type: labeler
       schema: tests/testdata/unit/labeler/schemas/schema3.json
