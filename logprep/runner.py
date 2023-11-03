@@ -11,11 +11,11 @@ import requests
 from attrs import define, field
 from schedule import Scheduler
 
+from logprep._version import get_versions
 from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from versioneer import get_versions
 
 
 class RunnerError(Exception):
