@@ -286,10 +286,10 @@ class Pipeline:
             - add metric to runner
                 - count config refreshes (if really changed)
                 - config refresh interval
-            - measure loading times of rules
-            - measure restart times of pipelines
+                - measure (re)loading times of config (time from start loading config till piplines running)
+            - measure loading time of processors (sum of init and setup)
             - count pipeline restarts
-            - measure getters
+            - measure getters to get loading times of lists, artifacts and rules
         """
 
         event_received = self._encoder.encode(event)
