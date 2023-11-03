@@ -13,6 +13,7 @@ from unittest import mock
 from pytest import raises
 from requests.exceptions import HTTPError, SSLError
 
+from logprep._version import get_versions
 from logprep.runner import (
     CannotReloadWhenConfigIsUnsetError,
     MustConfigureBeforeRunningError,
@@ -347,7 +348,9 @@ class TestRunner(LogprepRunnerTest):
                 self.runner.reload_configuration(refresh=True)
         mock_info.assert_called_with("Configuration version: new version")
         mock_add.assert_called()
-        mock_add.assert_has_calls((mock.call(1, {'logprep': '7.0.0+145.g395fb136.dirty', 'config': 'new version'}),))
+        mock_add.assert_has_calls(
+            (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": "new version"}),)
+        )
 
     def test_reload_configuration_decreases_processes_after_increase(self, tmp_path):
         self.runner._manager.set_configuration(self.runner._configuration)
