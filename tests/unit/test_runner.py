@@ -243,7 +243,9 @@ class TestRunner(LogprepRunnerTest):
         assert self.runner.scheduler.jobs[0].interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_sets_config_refresh_interval_metric_with_a_quarter_of_the_time(self, mock_get):
+    def test_reload_configuration_sets_config_refresh_interval_metric_with_a_quarter_of_the_time(
+        self, mock_get
+    ):
         mock_get.side_effect = HTTPError(404)
         assert len(self.runner.scheduler.jobs) == 0
         self.runner._config_refresh_interval = 40
@@ -345,7 +347,7 @@ class TestRunner(LogprepRunnerTest):
                 self.runner.reload_configuration(refresh=True)
         mock_info.assert_called_with("Configuration version: new version")
         mock_add.assert_called()
-        mock_add.assert_has_calls((mock.call(1, {'config': 'new version'}),))
+        mock_add.assert_has_calls((mock.call(1, {"config": "new version"}),))
 
     def test_reload_configuration_decreases_processes_after_increase(self, tmp_path):
         self.runner._manager.set_configuration(self.runner._configuration)
@@ -375,11 +377,19 @@ class TestRunner(LogprepRunnerTest):
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner._manager._pipelines) == 1
 
-    @mock.patch("logprep.framework.pipeline_manager.PrometheusStatsExporter.cleanup_prometheus_multiprocess_dir")
-    def test_reload_configuration_does_not_call_prometheus_clean_up_method(self, prometheus, tmp_path, tmpdir):
+    @mock.patch(
+        "logprep.framework.pipeline_manager.PrometheusStatsExporter.cleanup_prometheus_multiprocess_dir"
+    )
+    def test_reload_configuration_does_not_call_prometheus_clean_up_method(
+        self, prometheus, tmp_path, tmpdir
+    ):
         os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
         config_path = tmp_path / "config.yml"
-        config_update = {"config_refresh_interval": 5, "version": "current version", "metrics": {"enabled": True}}
+        config_update = {
+            "config_refresh_interval": 5,
+            "version": "current version",
+            "metrics": {"enabled": True},
+        }
         self.runner._configuration.update(config_update)
         config_update = deepcopy(self.runner._configuration)
         config_update.update({"config_refresh_interval": 5, "version": "new version"})
