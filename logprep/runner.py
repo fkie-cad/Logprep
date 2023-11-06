@@ -82,7 +82,7 @@ class Runner:
 
     @define(kw_only=True)
     class Metrics(Component.Metrics):
-        """Metrics for the PipelineManager."""
+        """Metrics for the Logprep Runner."""
 
         version_info: GaugeMetric = field(
             factory=lambda: GaugeMetric(
@@ -100,7 +100,7 @@ class Runner:
                 labels={"from": "unset", "config": "unset"},
             )
         )
-        """Logprep config refresh interval"""
+        """Indicates the configuration refresh interval in seconds."""
         number_of_config_refreshes: CounterMetric = field(
             factory=lambda: CounterMetric(
                 description="Logprep config refresh interval",
@@ -108,7 +108,7 @@ class Runner:
                 labels={"from": "unset", "config": "unset"},
             )
         )
-        """Logprep config refresh interval"""
+        """Indicates how often the logprep configuration was updated."""
 
     @property
     def _metric_labels(self) -> dict[str, str]:

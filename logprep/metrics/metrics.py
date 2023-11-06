@@ -53,13 +53,19 @@ Metrics Overview
 General Metrics
 ---------------
 
-.. autoclass:: logprep.abc.connector.Connector.Metrics
+.. autoclass:: logprep.runner.Runner.Metrics
    :members:
    :undoc-members:
    :private-members:
    :inherited-members:
 
 .. autoclass:: logprep.framework.pipeline.Pipeline.Metrics
+   :members:
+   :undoc-members:
+   :private-members:
+   :inherited-members:
+
+.. autoclass:: logprep.abc.connector.Connector.Metrics
    :members:
    :undoc-members:
    :private-members:

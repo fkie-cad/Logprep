@@ -8,7 +8,6 @@ import copy
 import logging
 import logging.handlers
 import multiprocessing
-
 # pylint: disable=logging-fstring-interpolation
 import queue
 import warnings
@@ -284,11 +283,8 @@ class Pipeline:
         """
         TODOs:
             - add metric to runner
-                - count config refreshes (if really changed)
-                - config refresh interval
                 - measure (re)loading times of config (time from start loading config till piplines running)
             - measure loading time of processors (sum of init and setup)
-            - count pipeline restarts
             - measure getters to get loading times of lists, artifacts and rules
         """
 
