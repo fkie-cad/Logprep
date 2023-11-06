@@ -170,6 +170,7 @@ class Runner:
         self._yaml_path = yaml_file
         self._configuration = configuration
         self._config_refresh_interval = configuration.get("config_refresh_interval")
+        self.metrics.version_info.add_with_labels(1, self._metric_labels)
         if configuration.get("metrics", {}).get("append_measurement_to_event", False):
             os.environ["APPEND_TO_EVENT"] = "1"
 
@@ -194,7 +195,6 @@ class Runner:
 
         self._create_manager()
 
-        self.metrics.version_info.add_with_labels(1, self._metric_labels)
         if self._config_refresh_interval is not None:
             self.metrics.config_refresh_interval += self._config_refresh_interval
         self._manager.set_configuration(self._configuration)
@@ -234,8 +234,6 @@ class Runner:
         try:
             new_configuration = Configuration.create_from_yaml(self._yaml_path)
             self._config_refresh_interval = new_configuration.get("config_refresh_interval")
-            if self._config_refresh_interval is not None:
-                self.metrics.config_refresh_interval += self._config_refresh_interval
             self._schedule_config_refresh_job()
         except (requests.RequestException, FileNotFoundError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
@@ -243,6 +241,7 @@ class Runner:
             if isinstance(current_refresh_interval, (float, int)):
                 new_refresh_interval = current_refresh_interval / 4
                 self._config_refresh_interval = new_refresh_interval
+                self.metrics.config_refresh_interval += new_refresh_interval
             self._schedule_config_refresh_job()
             return
         if refresh:
@@ -268,6 +267,9 @@ class Runner:
             config_version = self._configuration.get("version", "unset")
             self._logger.info(f"Configuration version: {config_version}")
             self.metrics.version_info.add_with_labels(1, {"config": config_version})
+            self.metrics.number_of_config_refreshes += 1
+            if self._config_refresh_interval is not None:
+                self.metrics.config_refresh_interval += self._config_refresh_interval
         except InvalidConfigurationError as error:
             self._logger.error(
                 "Invalid configuration, leaving old"
@@ -283,7 +285,6 @@ class Runner:
             refresh_interval = 5 if refresh_interval < 5 else refresh_interval
             scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
-            self.metrics.config_refresh_interval += self._config_refresh_interval
 
     def _create_manager(self):
         if self._manager is not None:

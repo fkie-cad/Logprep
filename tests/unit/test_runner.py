@@ -237,7 +237,6 @@ class TestRunner(LogprepRunnerTest):
         mock_get.side_effect = HTTPError(404)
         assert len(self.runner.scheduler.jobs) == 0
         self.runner._config_refresh_interval = 40
-        self.runner.metrics.config_refresh_interval = 40
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
                 self.runner.reload_configuration(refresh=True)
@@ -245,6 +244,14 @@ class TestRunner(LogprepRunnerTest):
         mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 10
+
+    @mock.patch("logprep.abc.getter.Getter.get")
+    def test_reload_configuration_sets_config_refresh_interval_metric_with_a_quarter_of_the_time(self, mock_get):
+        mock_get.side_effect = HTTPError(404)
+        assert len(self.runner.scheduler.jobs) == 0
+        self.runner._config_refresh_interval = 40
+        self.runner.metrics.config_refresh_interval = 0
+        self.runner.reload_configuration(refresh=True)
         assert self.runner.metrics.config_refresh_interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
@@ -341,7 +348,7 @@ class TestRunner(LogprepRunnerTest):
                 self.runner.reload_configuration(refresh=True)
         mock_info.assert_called_with("Configuration version: new version")
         mock_add.assert_called()
-        mock_add.assert_called_with(1, {"config": "new version"})
+        mock_add.assert_has_calls((mock.call(1, {'config': 'new version'}),))
 
     def test_reload_configuration_decreases_processes_after_increase(self, tmp_path):
         self.runner._manager.set_configuration(self.runner._configuration)
