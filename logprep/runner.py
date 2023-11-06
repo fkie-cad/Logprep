@@ -111,7 +111,7 @@ class Runner:
         """Logprep config refresh interval"""
 
     @property
-    def _metric_labels(self) -> None:
+    def _metric_labels(self) -> dict[str, str]:
         versions = get_versions()
         labels = {
             "logprep": f"{versions.get('version')}",
@@ -260,9 +260,8 @@ class Runner:
             # Only reached when configuration is verified successfully
             self._configuration = new_configuration
             self._schedule_config_refresh_job()
-            self._manager.stop()
             self._manager.set_configuration(self._configuration)
-            self._manager.set_count(self._configuration["process_count"])
+            self._manager.restart()
             self._logger.info("Successfully reloaded configuration")
             config_version = self._configuration.get("version", "unset")
             self._logger.info(f"Configuration version: {config_version}")

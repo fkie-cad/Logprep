@@ -77,7 +77,7 @@ class PipelineManager:
         manager = multiprocessing.Manager()
         self._used_server_ports = manager.dict()
         prometheus_config = configuration.get("metrics", {})
-        if prometheus_config.get("enabled", False):
+        if prometheus_config.get("enabled", False) and not self.prometheus_exporter:
             self.prometheus_exporter = PrometheusStatsExporter(prometheus_config)
 
     def get_count(self) -> int:
@@ -138,6 +138,11 @@ class PipelineManager:
         self._decrease_to_count(0)
         if self.prometheus_exporter:
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
+
+    def restart(self):
+        """Restarts all pipelines"""
+        self._decrease_to_count(0)
+        self._increase_to_count(self._configuration.get("process_count"))
 
     def _create_pipeline(self, index) -> MultiprocessingPipeline:
         if self._configuration is None:

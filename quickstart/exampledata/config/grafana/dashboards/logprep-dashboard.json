@@ -486,7 +486,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
+        "w": 2,
         "x": 15,
         "y": 1
       },
@@ -523,7 +523,7 @@
           "refId": "A"
         }
       ],
-      "title": "Number of Errors",
+      "title": "Errors",
       "type": "stat"
     },
     {
@@ -556,11 +556,11 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
-        "x": 18,
+        "w": 2,
+        "x": 17,
         "y": 1
       },
-      "id": 52,
+      "id": 93,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -641,8 +641,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
-        "x": 21,
+        "w": 2,
+        "x": 19,
         "y": 1
       },
       "id": 90,
@@ -694,6 +694,85 @@
           }
         }
       ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 1
+      },
+      "id": 87,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "round(increase(logprep_number_of_pipeline_starts_total[$__range]))",
+          "instant": false,
+          "legendFormat": "Starts",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "round(increase(logprep_number_of_pipeline_stops_total[$__range]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "Stops",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Pipeline Starts/Stops",
       "type": "stat"
     },
     {
@@ -1136,7 +1215,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
+        "w": 2,
         "x": 15,
         "y": 4
       },
@@ -1173,7 +1252,7 @@
           "refId": "A"
         }
       ],
-      "title": "Number of Warnings",
+      "title": "Warnings",
       "type": "stat"
     },
     {
@@ -1181,6 +1260,7 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
+      "description": "Shows the current config refresh interval.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1196,20 +1276,21 @@
               },
               {
                 "color": "red",
-                "value": 1
+                "value": 80
               }
             ]
-          }
+          },
+          "unit": "s"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
-        "x": 18,
+        "w": 2,
+        "x": 17,
         "y": 4
       },
-      "id": 87,
+      "id": 52,
       "options": {
         "colorMode": "value",
         "graphMode": "area",
@@ -1232,27 +1313,88 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "round(increase(logprep_number_of_pipeline_starts_total[$__range]))",
-          "instant": false,
-          "legendFormat": "Starts",
-          "range": true,
+          "exemplar": false,
+          "expr": "max(logprep_config_refresh_interval) by (logprep, config)",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
           "refId": "A"
+        }
+      ],
+      "title": "Config Refresh Interval",
+      "transformations": [],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the number of config reloads in the selected time frame.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "none"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 19,
+        "y": 4
+      },
+      "id": 94,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "round(increase(logprep_number_of_pipeline_stops_total[$__range]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Stops",
-          "range": true,
-          "refId": "B"
+          "exemplar": false,
+          "expr": "increase(logprep_number_of_config_refreshes_total[$__range])",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
         }
       ],
-      "title": "Pipeline Starts/Stops",
+      "title": "Number of Config Reloads",
+      "transformations": [],
       "type": "stat"
     },
     {
@@ -1813,8 +1955,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -1909,8 +2050,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -2005,8 +2145,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -3030,13 +3169,13 @@
     ]
   },
   "time": {
-    "from": "now-1h",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Logprep Overview",
   "uid": "b1d9c144-d9a7-4a9c-a6c4-6929eec1c776",
-  "version": 3,
+  "version": 1,
   "weekStart": ""
 }

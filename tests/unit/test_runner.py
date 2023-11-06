@@ -4,10 +4,10 @@
 # pylint: disable=missing-function-docstring
 # pylint: disable=attribute-defined-outside-init
 import json
+import os
 from copy import deepcopy
 from functools import partial
 from logging import Logger
-from os.path import join, split
 from unittest import mock
 
 from pytest import raises
@@ -152,9 +152,6 @@ class TestRunner(LogprepRunnerTest):
 
         assert set(old_logprep_instances).isdisjoint(set(self.runner._manager._pipelines))
         assert len(self.runner._manager._pipelines) == 3
-
-    def get_path(self, filename):
-        return join(split(__path__), filename)
 
     def test_start_sets_config_refresh_interval_to_a_minimum_of_5_seconds(self):
         self.runner._keep_iterating = partial(mock_keep_iterating, 1)
@@ -377,6 +374,20 @@ class TestRunner(LogprepRunnerTest):
         config_path.write_text(json.dumps(config_update))
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner._manager._pipelines) == 1
+
+    @mock.patch("logprep.framework.pipeline_manager.PrometheusStatsExporter.cleanup_prometheus_multiprocess_dir")
+    def test_reload_configuration_does_not_call_prometheus_clean_up_method(self, prometheus, tmp_path, tmpdir):
+        os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
+        config_path = tmp_path / "config.yml"
+        config_update = {"config_refresh_interval": 5, "version": "current version", "metrics": {"enabled": True}}
+        self.runner._configuration.update(config_update)
+        config_update = deepcopy(self.runner._configuration)
+        config_update.update({"config_refresh_interval": 5, "version": "new version"})
+        config_path.write_text(json.dumps(config_update))
+        self.runner._yaml_path = str(config_path)
+        self.runner.reload_configuration(refresh=True)
+        prometheus.assert_not_called()
+        del os.environ["PROMETHEUS_MULTIPROC_DIR"]
 
     def test_loop_restarts_failed_pipelines(self):
         self.runner._manager.set_configuration(self.runner._configuration)
