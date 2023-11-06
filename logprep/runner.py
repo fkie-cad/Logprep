@@ -265,7 +265,7 @@ class Runner:
             self._logger.info("Successfully reloaded configuration")
             config_version = self._configuration.get("version", "unset")
             self._logger.info(f"Configuration version: {config_version}")
-            self.metrics.version_info.add_with_labels(1, {"config": config_version})
+            self.metrics.version_info.add_with_labels(1, self._metric_labels)
             self.metrics.number_of_config_refreshes += 1
             if self._config_refresh_interval is not None:
                 self.metrics.config_refresh_interval += self._config_refresh_interval
