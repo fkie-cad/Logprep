@@ -375,13 +375,19 @@ class Configuration(dict):
             rule_ids.append(rule.id)
             if not hasattr(processor.rule_class, "outputs"):
                 continue
-            for output in rule.outputs:
-                for output_name, _ in output.items():
-                    if output_name not in self["output"]:
-                        raise InvalidRuleDefinitionError(
-                            f"{processor.describe()}: output"
-                            f" '{output_name}' does not exist in logprep outputs"
-                        )
+            self._verify_outputs(processor, rule)
+        duplicates = [item for item in rule_ids if rule_ids.count(item) > 1]
+        if duplicates:
+            raise InvalidRuleDefinitionError(f"Duplicate rule ids: {duplicates}")
+
+    def _verify_outputs(self, processor, rule):
+        for output in rule.outputs:
+            for output_name, _ in output.items():
+                if output_name not in self["output"]:
+                    raise InvalidRuleDefinitionError(
+                        f"{processor.describe()}: output"
+                        f" '{output_name}' does not exist in logprep outputs"
+                    )
 
     def _verify_processor_outputs(self, processor_config):
         processor_config = deepcopy(processor_config)

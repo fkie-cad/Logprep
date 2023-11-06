@@ -821,4 +821,4 @@ output:
             config._verify_pipeline(logger=logger)
         assert len(raised.value.errors) == 1
         for error in raised.value.errors:
-            assert "Duplicate rule id" in error.args[0]
+            assert "Duplicate rule id: same id" in error.args[0]
