@@ -1,4 +1,5 @@
 filter: "test_normalizer"
 normalize:
+  id: normalizer-1352bc0a-53ae-4740-bb9e-1e865f63375f
   something: normalized_field
 description: "..."

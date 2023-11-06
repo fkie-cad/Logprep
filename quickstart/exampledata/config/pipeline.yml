@@ -32,7 +32,7 @@ pipeline:
       specific_rules:
         - quickstart/exampledata/rules/dropper/specific
       generic_rules:
-        - quickstart/exampledata/rules/dropper/specific
+        - quickstart/exampledata/rules/dropper/generic
         - filter: "test_dropper"
           dropper:
             drop:
