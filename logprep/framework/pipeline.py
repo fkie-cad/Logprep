@@ -281,14 +281,6 @@ class Pipeline:
     def process_event(self, event: dict):
         """process all processors for one event"""
 
-        """
-        TODOs:
-            - add metric to runner
-                - measure (re)loading times of config (time from start loading config till piplines running)
-            - measure loading time of processors (sum of init and setup)
-            - measure getters to get loading times of lists, artifacts and rules
-        """
-
         event_received = self._encoder.encode(event)
         extra_outputs = []
         for processor in self._pipeline:
