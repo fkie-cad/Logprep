@@ -20,6 +20,7 @@
 
 * reimplemented prometheus metrics exporter to provide gauges, histograms and counter metrics
 * removed shared counter, because it is redundant to the metrics
+* get exception stack trace by setting environment variable `DEBUG`
 
 ### Bugfix
 
