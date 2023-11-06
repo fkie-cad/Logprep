@@ -1,5 +1,4 @@
-version: 2
-config_refresh_interval: 60
+version: 1
 process_count: 2
 timeout: 0.1
 logger:

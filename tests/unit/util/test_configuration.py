@@ -15,7 +15,6 @@ from logprep.util.configuration import (
     InvalidConfigurationError,
     InvalidConfigurationErrors,
     InvalidInputConnectorConfigurationError,
-    InvalidOutputConnectorConfigurationError,
     InvalidProcessorConfigurationError,
     RequiredConfigurationKeyMissingError,
 )
@@ -83,7 +82,10 @@ class TestConfiguration:
             pytest.fail("The verification should pass for a valid configuration.")
 
     def test_verify_fails_on_missing_required_value(self):
+        not_required_keys = ["version"]
         for key in list(self.config.keys()):
+            if key in not_required_keys:
+                continue
             config = deepcopy(self.config)
             del config[key]
 

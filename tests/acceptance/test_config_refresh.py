@@ -16,7 +16,7 @@ def teardown_function():
 
 
 def test_two_times_config_refresh_after_5_seconds(tmp_path):
-    config = Configuration.create_from_yaml("quickstart/exampledata/config/pipeline.yml")
+    config = Configuration.create_from_yaml("tests/testdata/config/config.yml")
     config.update({"config_refresh_interval": 5, "metrics": {"enabled": False}})
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(json.dumps(config))
@@ -31,7 +31,7 @@ def test_two_times_config_refresh_after_5_seconds(tmp_path):
 
 
 def test_no_config_refresh_after_5_seconds(tmp_path):
-    config = Configuration.create_from_yaml("quickstart/exampledata/config/pipeline.yml")
+    config = Configuration.create_from_yaml("tests/testdata/config/config.yml")
     config.update({"config_refresh_interval": 5, "metrics": {"enabled": False}})
     config_path = tmp_path / "generated_config.yml"
     config_path.write_text(json.dumps(config))
