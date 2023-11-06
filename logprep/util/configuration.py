@@ -316,7 +316,7 @@ class Configuration(dict):
         for processor_config in self["pipeline"]:
             processor = self._verify_processor(errors, logger, processor_config)
             try:
-                self._verify_rules_outputs(processor)
+                self._verify_rules(processor)
             except InvalidRuleDefinitionError as error:
                 errors.append(error)
             try:
@@ -365,10 +365,16 @@ class Configuration(dict):
             )
         return processor
 
-    def _verify_rules_outputs(self, processor: Processor):
-        if not processor or not hasattr(processor.rule_class, "outputs"):
+    def _verify_rules(self, processor: Processor):
+        if not processor:
             return
+        rule_ids = []
         for rule in processor.rules:
+            if rule.id in rule_ids:
+                raise InvalidRuleDefinitionError(f"Duplicate rule id: {rule.id}")
+            rule_ids.append(rule.id)
+            if not hasattr(processor.rule_class, "outputs"):
+                continue
             for output in rule.outputs:
                 for output_name, _ in output.items():
                     if output_name not in self["output"]:

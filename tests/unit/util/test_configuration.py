@@ -72,8 +72,8 @@ class TestConfiguration:
     def test_verify_passes_for_valid_configuration(self):
         try:
             self.config.verify(logger)
-        except InvalidConfigurationError:
-            pytest.fail("The verification should pass for a valid configuration.")
+        except InvalidConfigurationError as error:
+            pytest.fail(f"The verification should pass for a valid configuration.: {error}")
 
     def test_verify_pipeline_only_passes_for_valid_configuration(self):
         try:
@@ -789,3 +789,36 @@ output:
             config.verify_pipeline_without_processor_outputs(logger=logger)
         except InvalidConfigurationErrors as error:
             assert False, f"Shouldn't raise output does not exist error: '{error}'"
+
+    def test_duplicate_rule_id_per_processor_raises(self):
+        config = Configuration()
+        pipeline = [
+            {
+                "my dissector": {
+                    "type": "dissector",
+                    "specific_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{new_field} %{next_field}"},
+                            },
+                        },
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{other_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                    "generic_rules": [],
+                }
+            },
+        ]
+        config.update({"pipeline": pipeline, "output": {}})
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config._verify_pipeline(logger=logger)
+        assert len(raised.value.errors) == 1
+        for error in raised.value.errors:
+            assert "Duplicate rule id" in error.args[0]
