@@ -1385,7 +1385,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "increase(logprep_number_of_config_refreshes_total[$__range])",
+          "expr": "round(increase(logprep_number_of_config_refreshes_total[$__range]))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "__auto",
@@ -1393,7 +1393,7 @@
           "refId": "A"
         }
       ],
-      "title": "Number of Config Reloads",
+      "title": "Config Reloads",
       "transformations": [],
       "type": "stat"
     },
@@ -1453,7 +1453,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "increase(logprep_number_of_failed_pipelines_total[$__range])",
+          "expr": "round(increase(logprep_number_of_failed_pipelines_total[$__range]))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -1955,7 +1955,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2050,7 +2051,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2145,7 +2147,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2253,7 +2256,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2355,7 +2359,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "#EAB839",
@@ -2513,7 +2518,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "yellow",
@@ -2593,7 +2599,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "yellow",
@@ -2856,7 +2863,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2967,7 +2975,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3078,7 +3087,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
