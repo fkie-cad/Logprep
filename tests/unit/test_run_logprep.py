@@ -75,9 +75,7 @@ class TestRunLogprep:
 
     @responses.activate
     def test_gets_config_from_https(self):
-        pipeline_config = Path("tests/testdata/config/config.yml").read_text(
-            encoding="utf8"
-        )
+        pipeline_config = Path("tests/testdata/config/config.yml").read_text(encoding="utf8")
         responses.add(responses.GET, "https://does.not.exits/pipline.yml", pipeline_config)
         with mock.patch(
             "sys.argv",
