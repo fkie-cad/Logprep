@@ -2,7 +2,7 @@
   {
     "filter": "tags: \"specific\" AND process.program: \"test\" AND (message: \"test1*xyz\" OR message:\"test2*xyz\")",
     "pre_detector": {
-      "id": "RULE_TWO_ID",
+      "id": "d58ebf8e-21eb-480b-bdc0-0ce8eeae82c0",
       "title": "RULE_TWO",
       "severity": "critical",
       "mitre": [],

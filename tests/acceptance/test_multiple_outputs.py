@@ -63,8 +63,8 @@ def get_config():
                 "pre_detector": {
                     "type": "pre_detector",
                     "outputs": [{"jsonl": "pre_detector_topic"}],
-                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
-                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
+                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/generic"],
+                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/specific"],
                     "tree_config": "tests/testdata/acceptance/pre_detector/tree_config.json",
                 }
             },

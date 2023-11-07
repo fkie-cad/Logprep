@@ -24,7 +24,7 @@ class TestRunLogprep:
             [
                 "logprep",
                 "--disable-logging",
-                "quickstart/exampledata/config/pipeline.yml",
+                "tests/testdata/config/config.yml",
             ],
         ):
             run_logprep.main()
@@ -38,7 +38,7 @@ class TestRunLogprep:
                 "logprep",
                 "--disable-logging",
                 "--validate-rules",
-                "quickstart/exampledata/config/pipeline.yml",
+                "tests/testdata/config/config.yml",
             ],
         ):
             with pytest.raises(SystemExit):
@@ -52,7 +52,7 @@ class TestRunLogprep:
                 "logprep",
                 "--disable-logging",
                 "--validate-rules",
-                "file://quickstart/exampledata/config/pipeline.yml",
+                "file://tests/testdata/config/config.yml",
             ],
         ):
             with pytest.raises(SystemExit, match="0"):
@@ -65,7 +65,7 @@ class TestRunLogprep:
                 "logprep",
                 "--disable-logging",
                 "--validate-rules",
-                "almighty_protocol://quickstart/exampledata/config/pipeline.yml",
+                "almighty_protocol://tests/testdata/config/config.yml",
             ],
         ):
             with pytest.raises(
@@ -75,7 +75,7 @@ class TestRunLogprep:
 
     @responses.activate
     def test_gets_config_from_https(self):
-        pipeline_config = Path("quickstart/exampledata/config/pipeline.yml").read_text(
+        pipeline_config = Path("tests/testdata/config/config.yml").read_text(
             encoding="utf8"
         )
         responses.add(responses.GET, "https://does.not.exits/pipline.yml", pipeline_config)
@@ -99,7 +99,7 @@ class TestRunLogprep:
                 "logprep",
                 "--disable-logging",
                 "--validate-rules",
-                "quickstart/exampledata/config/pipeline.yml",
+                "tests/testdata/config/config.yml",
             ],
         ):
             with pytest.raises(SystemExit) as e_info:
@@ -120,7 +120,7 @@ class TestRunLogprep:
         )
 
     def test_version_arg_prints_also_config_version_if_version_key_is_found(self, capsys):
-        config_path = "quickstart/exampledata/config/pipeline.yml"
+        config_path = "tests/testdata/config/config.yml"
         with mock.patch("sys.argv", ["logprep", "--version", config_path]):
             with pytest.raises(SystemExit):
                 run_logprep.main()
@@ -137,10 +137,10 @@ class TestRunLogprep:
 
     @responses.activate
     def test_version_arg_prints_with_http_config(self, capsys):
-        config_path = "quickstart/exampledata/config/pipeline.yml"
+        config_path = "tests/testdata/config/config.yml"
         responses.add(
             responses.GET,
-            "http://localhost:32000/quickstart/exampledata/config/pipeline.yml",
+            "http://localhost:32000/tests/testdata/config/config.yml",
             Path(config_path).read_text(encoding="utf8"),
         )
         with mock.patch(
@@ -162,10 +162,10 @@ class TestRunLogprep:
 
     @responses.activate
     def test_version_arg_prints_with_http_config_without_exposing_secret_data(self, capsys):
-        config_path = "quickstart/exampledata/config/pipeline.yml"
+        config_path = "tests/testdata/config/config.yml"
         responses.add(
             responses.GET,
-            "http://localhost:32000/quickstart/exampledata/config/pipeline.yml",
+            "http://localhost:32000/tests/testdata/config/config.yml",
             Path(config_path).read_text(encoding="utf8"),
         )
         with mock.patch(
@@ -218,7 +218,7 @@ class TestRunLogprep:
     @mock.patch("logprep.runner.Runner.load_configuration")
     @mock.patch("logprep.runner.Runner.start")
     def test_main_loads_configuration_and_starts_runner(self, mock_start, mock_load):
-        config_path = "quickstart/exampledata/config/pipeline.yml"
+        config_path = "tests/testdata/config/config.yml"
         with mock.patch("sys.argv", ["logprep", config_path]):
             run_logprep.main()
         mock_load.assert_called_with(config_path)
@@ -228,7 +228,7 @@ class TestRunLogprep:
     @mock.patch("logprep.runner.Runner.stop")
     def test_main_calls_runner_stop_on_any_exception(self, mock_stop, mock_start):
         mock_start.side_effect = Exception
-        config_path = "quickstart/exampledata/config/pipeline.yml"
+        config_path = "tests/testdata/config/config.yml"
         with pytest.raises(SystemExit):
             with mock.patch("sys.argv", ["logprep", config_path]):
                 run_logprep.main()
@@ -237,7 +237,7 @@ class TestRunLogprep:
     def test_logprep_exits_if_logger_can_not_be_created(self):
         with mock.patch("logprep.run_logprep.Configuration.get") as mock_create:
             mock_create.side_effect = BaseException
-            config_path = "quickstart/exampledata/config/pipeline.yml"
+            config_path = "tests/testdata/config/config.yml"
             with mock.patch("sys.argv", ["logprep", config_path]):
                 with pytest.raises(SystemExit):
                     run_logprep.main()
@@ -245,7 +245,7 @@ class TestRunLogprep:
     def test_logprep_exits_on_invalid_configuration(self):
         with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
             mock_verify.side_effect = InvalidConfigurationError
-            config_path = "quickstart/exampledata/config/pipeline.yml"
+            config_path = "tests/testdata/config/config.yml"
             with mock.patch("sys.argv", ["logprep", config_path]):
                 with pytest.raises(SystemExit):
                     run_logprep.main()
@@ -253,7 +253,7 @@ class TestRunLogprep:
     def test_logprep_exits_on_any_exception_during_verify(self):
         with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
             mock_verify.side_effect = Exception
-            config_path = "quickstart/exampledata/config/pipeline.yml"
+            config_path = "tests/testdata/config/config.yml"
             with mock.patch("sys.argv", ["logprep", config_path]):
                 with pytest.raises(SystemExit):
                     run_logprep.main()
@@ -269,7 +269,7 @@ class TestRunLogprep:
     def test_logprep_verifies_config(self, mock_verify):
         with mock.patch(
             "sys.argv",
-            ["logprep", "quickstart/exampledata/config/pipeline.yml", "--verify-config"],
+            ["logprep", "tests/testdata/config/config.yml", "--verify-config"],
         ):
             run_logprep.main()
         mock_verify.assert_called()
@@ -279,7 +279,7 @@ class TestRunLogprep:
         mock_verify.side_effect = InvalidConfigurationError
         with mock.patch(
             "sys.argv",
-            ["logprep", "quickstart/exampledata/config/pipeline.yml", "--verify-config"],
+            ["logprep", "tests/testdata/config/config.yml", "--verify-config"],
         ):
             with pytest.raises(SystemExit):
                 run_logprep.main()

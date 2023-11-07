@@ -6,9 +6,9 @@ pipeline:
   - dissector:
       type: dissector
       specific_rules:
-        - tests/testdata/unit/dissector
+        - tests/testdata/unit/dissector/specific_rules/
       generic_rules:
-        - tests/testdata/unit/dissector
+        - tests/testdata/unit/dissector/generic_rules/
   - calculatorname:
       type: calculator
       specific_rules:

@@ -3,9 +3,7 @@ import logging
 import re
 
 import pytest
-from prometheus_client import Counter
 
-from logprep.metrics.metrics import CounterMetric
 from tests.unit.processor.base import BaseProcessorTestCase
 
 test_cases = [  # testcase, rule, event, expected
@@ -720,8 +718,8 @@ failure_test_cases = [  # testcase, rule, event, expected
 class TestDissector(BaseProcessorTestCase):
     CONFIG: dict = {
         "type": "dissector",
-        "generic_rules": ["tests/testdata/unit/dissector"],
-        "specific_rules": ["tests/testdata/unit/dissector"],
+        "generic_rules": ["tests/testdata/unit/dissector/generic_rules"],
+        "specific_rules": ["tests/testdata/unit/dissector/specific_rules"],
     }
 
     @pytest.mark.parametrize("testcase, rule, event, expected", test_cases)

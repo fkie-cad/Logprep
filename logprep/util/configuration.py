@@ -371,7 +371,7 @@ class Configuration(dict):
         rule_ids = []
         for rule in processor.rules:
             if rule.id in rule_ids:
-                raise InvalidRuleDefinitionError(f"Duplicate rule id: {rule.id}")
+                raise InvalidRuleDefinitionError(f"Duplicate rule id: {rule.id}, {rule}")
             rule_ids.append(rule.id)
             if not hasattr(processor.rule_class, "outputs"):
                 continue
