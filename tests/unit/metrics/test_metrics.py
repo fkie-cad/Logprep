@@ -107,7 +107,7 @@ class TestMetric:
         metric_output = generate_latest(self.custom_registry).decode("utf-8")
         assert 'logprep_bla_total{pipeline="1"} 2.0' in metric_output
 
-    def test_no_duplicated_counter_is_created(self):
+    def test_same_counter_counts_on_same_tracker(self):
         metric1 = CounterMetric(
             name="bla",
             description="empty description",
@@ -129,7 +129,7 @@ class TestMetric:
         result = re.findall(r'.*logprep_bla_total\{pipeline="1"\} 2\.0.*', metric_output)
         assert len(result) == 1
 
-    def test_no_duplicated_counter_is_created_2(self):
+    def test_same_counter_with_different_label_values_counts_on_different_tracker(self):
         metric1 = CounterMetric(
             name="bla",
             description="empty description",

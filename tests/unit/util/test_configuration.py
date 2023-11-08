@@ -822,3 +822,37 @@ output:
         assert len(raised.value.errors) == 1
         for error in raised.value.errors:
             assert "Duplicate rule id: same id" in error.args[0]
+
+    def test_duplicate_rule_id_in_different_rule_trees_per_processor_raises(self):
+        config = Configuration()
+        pipeline = [
+            {
+                "my dissector": {
+                    "type": "dissector",
+                    "specific_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{new_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                    "generic_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{other_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                }
+            },
+        ]
+        config.update({"pipeline": pipeline, "output": {}})
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config._verify_pipeline(logger=logger)
+        assert len(raised.value.errors) == 1
+        for error in raised.value.errors:
+            assert "Duplicate rule id: same id" in error.args[0]
