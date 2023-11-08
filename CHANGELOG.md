@@ -4,8 +4,9 @@
 ### Breaking
 
 * reimplemented metrics so the former metrics configuration won't work anymore
+* metric content changed and existent grafana dashboards will break
 * new rule `id` could possibly break configurations if the same rule is used in both rule trees
-  - can be fixed by adding a unique `id` to each rule or delete the possiblly redundant rule
+  - can be fixed by adding a unique `id` to each rule or delete the possibly redundant rule
 
 ### Features
 
