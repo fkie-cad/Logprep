@@ -42,7 +42,7 @@ from attr import define, field
 from attrs import validators
 from elasticsearch import ElasticsearchException, helpers
 from opensearchpy import OpenSearchException
-from urllib3.exceptions import TimeoutError # pylint: disable=redefined-builtin
+from urllib3.exceptions import TimeoutError  # pylint: disable=redefined-builtin
 
 from logprep.abc.output import FatalOutputError, Output
 from logprep.metrics.metrics import Metric

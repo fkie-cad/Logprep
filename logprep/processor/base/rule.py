@@ -222,7 +222,7 @@ class Rule:
 
         number_of_warnings: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of errors that occurred while processing events",
+                description="Number of warnings that occurred while processing events",
                 name="number_of_warnings",
             )
         )

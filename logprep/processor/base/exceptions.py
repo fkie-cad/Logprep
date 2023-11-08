@@ -69,7 +69,7 @@ class ProcessingCriticalError(ProcessingError):
 
 
 class ProcessingWarning(Warning):
-    """A minor error occurred - log the error, but continue processing the event."""
+    """A warning occurred - log the warning, but continue processing the event."""
 
     def __init__(self, message: str, rule: "Rule", event: dict):
         rule.metrics.number_of_warnings += 1
