@@ -99,7 +99,7 @@ def _run_logprep(arguments, logger: logging.Logger):
     # pylint: disable=broad-except
     except BaseException as error:
         if os.environ.get("DEBUG", False):
-            logger.exception(f"A critical error occurred: {error}")
+            logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
         else:
             logger.critical(f"A critical error occurred: {error}")
         if runner:

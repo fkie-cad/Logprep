@@ -25,7 +25,7 @@ from attrs import validators
 from logprep.abc.output import Output
 
 if TYPE_CHECKING:
-    from logprep.abc.connector import Connector
+    from logprep.abc.connector import Connector  # pragma: no cover
 
 
 class DummyOutput(Output):
