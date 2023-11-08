@@ -187,7 +187,7 @@ class Processor(Component):
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
-            raise error  # TODO: is this realy needed?
+            raise error  # is needed to prevent wrapping it in itself
         except BaseException as error:
             raise ProcessingCriticalError(str(error), rule, event) from error
         if not hasattr(rule, "delete_source_fields"):
@@ -289,14 +289,6 @@ class Processor(Component):
         if missing_fields:
             if rule.ignore_missing_fields:
                 return True
-            if rule.ignore_missing_fields:
-                return True
-            if rule.ignore_missing_fields:
-                return True
-            if rule.ignore_missing_fields:
-                return True
-            if rule.ignore_missing_fields:
-                return True
             error = BaseException(f"{self.name}: no value for fields: {missing_fields}")
             self._handle_warning_error(event, rule, error)
             return True
@@ -316,4 +308,4 @@ class Processor(Component):
     def setup(self):
         super().setup()
         for rule in self.rules:
-            _ = rule.metrics  # initialize metrics
+            _ = rule.metrics  # initialize metrics to show them on startup
