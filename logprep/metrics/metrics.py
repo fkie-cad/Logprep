@@ -20,7 +20,7 @@ Example
       port: 8000
 
 
-The metrics configuration offers some options regarding the metrix export. Because logprep utilizes
+The metrics configuration offers some options regarding the metrics export. Because logprep utilizes
 the `prometheus python client <https://github.com/prometheus/client_python>`_ the environment
 variable :code:`PROMETHEUS_MULTIPROC_DIR` is required to be set by the user. This is a temporary
 directory where logprep will store files needed for in-between process communication. This folder
@@ -29,7 +29,7 @@ has to be provided by the user because logprep won't create it.
 enabled
 -------
 
-Use :code:`true` or :code:`false` to activate or deactivate the metrix exporter. Defaults to
+Use :code:`true` or :code:`false` to activate or deactivate the metrics exporter. Defaults to
 :code:`false`.
 
 append_measurement_to_event
@@ -120,7 +120,7 @@ from abc import ABC, abstractmethod
 from socket import gethostname
 from typing import Union
 
-from attr import define, field, validators
+from attrs import define, field, validators
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram
 
 from logprep.util.helper import add_field_to
