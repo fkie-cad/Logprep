@@ -2,14 +2,14 @@
 from typing import List
 
 from logprep.processor.amides.features import (
-    Preprocessor,
-    Lowercase,
-    FilterDummyCharacters,
-    Tokenizer,
     AnyWordCharacter,
-    TokenFilter,
-    Strings,
+    FilterDummyCharacters,
+    Lowercase,
     NumericValues,
+    Preprocessor,
+    Strings,
+    TokenFilter,
+    Tokenizer,
 )
 
 

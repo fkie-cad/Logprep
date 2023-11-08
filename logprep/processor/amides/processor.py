@@ -153,7 +153,7 @@ class Amides(Processor):
         """Absolute number of current cache entries."""
         cache_load: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="Mean processing time of command lines classified by the misuse detector.",
+                description="Relative cache load.",
                 name="amides_cache_load",
             )
         )
@@ -167,11 +167,11 @@ class Amides(Processor):
         """Mean processing time of command lines classified by the misuse detector."""
         mean_rule_attribution_time: HistogramMetric = field(
             factory=lambda: HistogramMetric(
-                description="Mean processing time of command lines attributed  by the rule attributor.",
+                description="Mean processing time of command lines attributed by the rule attributor.",
                 name="amides_mean_rule_attribution_time",
             )
         )
-        """Mean processing time of command lines attributed  by the rule attributor."""
+        """Mean processing time of command lines attributed by the rule attributor."""
 
     __slots__ = (
         "_misuse_detector",
