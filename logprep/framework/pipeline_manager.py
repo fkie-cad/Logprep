@@ -9,8 +9,8 @@ from attr import define, field
 
 from logprep.abc.component import Component
 from logprep.framework.pipeline import MultiprocessingPipeline
+from logprep.metrics.exporter import PrometheusStatsExporter
 from logprep.metrics.metrics import CounterMetric
-from logprep.metrics.prometheus_exporter import PrometheusStatsExporter
 from logprep.util.configuration import Configuration
 
 

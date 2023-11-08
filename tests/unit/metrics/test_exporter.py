@@ -7,11 +7,11 @@ from unittest import mock
 
 from prometheus_client import REGISTRY
 
-from logprep.metrics.prometheus_exporter import PrometheusStatsExporter
+from logprep.metrics.exporter import PrometheusStatsExporter
 
 
 @mock.patch(
-    "logprep.metrics.prometheus_exporter.PrometheusStatsExporter._prepare_multiprocessing",
+    "logprep.metrics.exporter.PrometheusStatsExporter._prepare_multiprocessing",
     new=lambda *args, **kwargs: None,
 )
 class TestPrometheusStatsExporter:
@@ -34,7 +34,7 @@ class TestPrometheusStatsExporter:
 
         assert exporter._port == 8000
 
-    @mock.patch("logprep.metrics.prometheus_exporter.start_http_server")
+    @mock.patch("logprep.metrics.exporter.start_http_server")
     def test_run_starts_http_server(self, mock_http_server, caplog):
         with caplog.at_level(logging.INFO):
             exporter = PrometheusStatsExporter(self.metrics_config)
