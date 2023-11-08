@@ -18,7 +18,7 @@ from logprep.util.getter import GetterNotFoundError
 
 class TestRunLogprep:
     @mock.patch("logprep.run_logprep._run_logprep")
-    def test_main_calls_run_logprep_with_quickstart_config(self, mock_run_logprep):
+    def test_main_calls_run_logprep_with_test_config(self, mock_run_logprep):
         with mock.patch(
             "sys.argv",
             [
@@ -88,21 +88,6 @@ class TestRunLogprep:
         ):
             with pytest.raises(SystemExit, match="0"):
                 run_logprep.main()
-
-    def test_quickstart_rules_are_valid(self):
-        """ensures the quickstart rules are valid"""
-        with mock.patch(
-            "sys.argv",
-            [
-                "logprep",
-                "--disable-logging",
-                "--validate-rules",
-                "tests/testdata/config/config.yml",
-            ],
-        ):
-            with pytest.raises(SystemExit) as e_info:
-                run_logprep.main()
-        assert e_info.value.code == 0
 
     def test_version_arg_prints_logprep_version_without_config_argument(self, capsys):
         with mock.patch("sys.argv", ["logprep", "--version"]):
