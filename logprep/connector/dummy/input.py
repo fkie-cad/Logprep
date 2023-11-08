@@ -48,7 +48,7 @@ class DummyInput(Input):
         return copy.copy(self._config.documents)
 
     def _get_event(self, timeout: float) -> tuple:
-        """Retrieve next document from configuration and raise error if found"""
+        """Retrieve next document from configuration and raise warning if found"""
         if not self._documents:
             if not self._config.repeat_documents:
                 raise SourceDisconnectedWarning(self, "no documents left")

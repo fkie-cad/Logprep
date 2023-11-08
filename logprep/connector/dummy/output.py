@@ -17,12 +17,15 @@ Example
         type: dummy_output
 """
 from logging import Logger
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from attr import define, field
 from attrs import validators
 
 from logprep.abc.output import Output
+
+if TYPE_CHECKING:
+    from logprep.abc.connector import Connector
 
 
 class DummyOutput(Output):
@@ -83,7 +86,7 @@ class DummyOutput(Output):
         if self._exceptions:
             exception = self._exceptions.pop(0)
             if exception is not None:
-                raise Exception(exception)
+                raise Exception(exception)  # pylint: disable=broad-exception-raised
         self.events.append(document)
         self.metrics.number_of_processed_events += 1
         if self.input_connector:
