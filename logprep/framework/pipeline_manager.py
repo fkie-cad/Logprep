@@ -9,7 +9,7 @@ from attr import define, field
 
 from logprep.abc.component import Component
 from logprep.framework.pipeline import MultiprocessingPipeline
-from logprep.metrics.exporter import PrometheusStatsExporter
+from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
 
@@ -78,7 +78,7 @@ class PipelineManager:
         self._used_server_ports = manager.dict()
         prometheus_config = configuration.get("metrics", {})
         if prometheus_config.get("enabled", False) and not self.prometheus_exporter:
-            self.prometheus_exporter = PrometheusStatsExporter(prometheus_config)
+            self.prometheus_exporter = PrometheusExporter(prometheus_config)
 
     def get_count(self) -> int:
         """Get the pipeline count.

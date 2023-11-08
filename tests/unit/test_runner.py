@@ -381,7 +381,7 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner._manager._pipelines) == 1
 
     @mock.patch(
-        "logprep.framework.pipeline_manager.PrometheusStatsExporter.cleanup_prometheus_multiprocess_dir"
+        "logprep.framework.pipeline_manager.PrometheusExporter.cleanup_prometheus_multiprocess_dir"
     )
     def test_reload_configuration_does_not_call_prometheus_clean_up_method(
         self, prometheus, tmp_path, tmpdir

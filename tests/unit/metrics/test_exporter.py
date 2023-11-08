@@ -7,20 +7,20 @@ from unittest import mock
 
 from prometheus_client import REGISTRY
 
-from logprep.metrics.exporter import PrometheusStatsExporter
+from logprep.metrics.exporter import PrometheusExporter
 
 
 @mock.patch(
-    "logprep.metrics.exporter.PrometheusStatsExporter._prepare_multiprocessing",
+    "logprep.metrics.exporter.PrometheusExporter._prepare_multiprocessing",
     new=lambda *args, **kwargs: None,
 )
-class TestPrometheusStatsExporter:
+class TestPrometheusExporter:
     def setup_method(self):
         REGISTRY.__init__()
         self.metrics_config = {"metrics": {"enabled": True, "port": 80}}
 
     def test_correct_setup(self):
-        exporter = PrometheusStatsExporter(self.metrics_config.get("metrics"))
+        exporter = PrometheusExporter(self.metrics_config.get("metrics"))
         assert exporter._port == self.metrics_config["metrics"]["port"]
 
     def test_default_port_if_missing_in_config(self):
@@ -30,14 +30,14 @@ class TestPrometheusStatsExporter:
                 "enabled": True,
             }
         }
-        exporter = PrometheusStatsExporter(metrics_config)
+        exporter = PrometheusExporter(metrics_config)
 
         assert exporter._port == 8000
 
     @mock.patch("logprep.metrics.exporter.start_http_server")
     def test_run_starts_http_server(self, mock_http_server, caplog):
         with caplog.at_level(logging.INFO):
-            exporter = PrometheusStatsExporter(self.metrics_config)
+            exporter = PrometheusExporter(self.metrics_config)
             exporter.run()
 
         mock_http_server.assert_has_calls([mock.call(exporter._port)])

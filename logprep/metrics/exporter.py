@@ -6,7 +6,7 @@ from logging import getLogger
 from prometheus_client import REGISTRY, multiprocess, start_http_server
 
 
-class PrometheusStatsExporter:
+class PrometheusExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
     def __init__(self, status_logger_config):
