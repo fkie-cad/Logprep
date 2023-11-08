@@ -30,7 +30,7 @@ class Connector(Component):
 
         processing_time_per_event: HistogramMetric = field(
             factory=lambda: HistogramMetric(
-                description="Time in seconds that it took to process an event",
+                description="Time in seconds that it took to store an event",
                 name="processing_time_per_event",
             )
         )
@@ -38,7 +38,7 @@ class Connector(Component):
 
         number_of_warnings: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of errors that occurred while processing events",
+                description="Number of warnings that occurred while storing events",
                 name="number_of_warnings",
             )
         )
@@ -46,7 +46,7 @@ class Connector(Component):
 
         number_of_errors: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="Number of errors that occurred while processing events",
+                description="Number of errors that occurred while storing events",
                 name="number_of_errors",
             )
         )

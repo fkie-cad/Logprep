@@ -79,11 +79,7 @@ class Component(ABC):
         return f"{self.__class__.__name__} ({self.name})"
 
     def setup(self):
-        """Set the component up.
-
-        This is optional.
-
-        """
+        """Set the component up."""
         # initialize metrics
         _ = self.metrics
 

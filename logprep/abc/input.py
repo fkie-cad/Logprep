@@ -9,12 +9,10 @@ import zlib
 from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
-from logging import Logger
 from typing import Optional, Tuple
 
 from attrs import define, field, validators
 
-from logprep.abc.component import Component
 from logprep.abc.connector import Connector
 from logprep.metrics.metrics import Metric
 from logprep.util.helper import add_field_to, get_dotted_field_value
