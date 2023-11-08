@@ -2,12 +2,10 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
-from logging import getLogger
 from typing import Callable
 
 import pytest
 
-from logprep.factory import Factory
 from logprep.processor.base.rule import Rule
 
 
