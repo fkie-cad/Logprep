@@ -95,7 +95,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -177,7 +177,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -259,7 +259,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -341,7 +341,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -423,7 +423,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -505,7 +505,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -575,7 +575,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -660,7 +660,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -744,7 +744,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -752,7 +752,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "round(increase(logprep_number_of_pipeline_starts_total[$__range]))",
+          "expr": "sum(round(increase(logprep_number_of_pipeline_starts_total[$__range])))",
           "instant": false,
           "legendFormat": "Starts",
           "range": true,
@@ -764,7 +764,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "round(increase(logprep_number_of_pipeline_stops_total[$__range]))",
+          "expr": "sum(round(increase(logprep_number_of_pipeline_stops_total[$__range])))",
           "hide": false,
           "instant": false,
           "legendFormat": "Stops",
@@ -833,7 +833,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -843,7 +843,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "increase(logprep_number_of_processed_events_total{component=\"input\"}[$__range])",
+          "expr": "sum(increase(logprep_number_of_processed_events_total{component=\"input\"}[$__range]))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -912,7 +912,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -995,7 +995,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1083,7 +1083,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -1151,7 +1151,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -1234,7 +1234,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1305,7 +1305,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -1376,7 +1376,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -1445,7 +1445,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -1453,7 +1453,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "round(increase(logprep_number_of_failed_pipelines_total[$__range]))",
+          "expr": "sum(round(increase(logprep_number_of_failed_pipelines_total[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -1524,7 +1524,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "repeat": "connector_types",
       "repeatDirection": "h",
       "targets": [
@@ -1535,7 +1535,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "increase(logprep_processing_time_per_event_sum{type=\"$connector_types\"}[$__range])/increase(logprep_processing_time_per_event_count{type=\"$connector_types\"}[$__range])>0",
+          "expr": "avg(increase(logprep_processing_time_per_event_sum{type=\"$connector_types\"}[$__range])/increase(logprep_processing_time_per_event_count{type=\"$connector_types\"}[$__range])>0)",
           "hide": false,
           "instant": false,
           "legendFormat": "{{type}}",
@@ -1571,6 +1571,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1645,7 +1646,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "rate(logprep_number_of_processed_events_total{component=\"input\"}[1m])",
+          "expr": "sum by(type)(rate(logprep_number_of_processed_events_total{component=\"input\"}[1m]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{type}}",
@@ -1658,7 +1659,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "rate(logprep_number_of_processed_events_total{component=\"output\"}[1m])",
+          "expr": "sum by(type)(rate(logprep_number_of_processed_events_total{component=\"output\"}[1m]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{type}}",
@@ -1681,6 +1682,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1798,6 +1800,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1920,6 +1923,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2016,6 +2020,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2112,6 +2117,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2221,6 +2227,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2321,6 +2328,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2546,6 +2554,7 @@
         "displayMode": "gradient",
         "minVizHeight": 10,
         "minVizWidth": 0,
+        "namePlacement": "auto",
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
@@ -2557,7 +2566,7 @@
         "showUnfilled": true,
         "valueMode": "color"
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -2651,7 +2660,7 @@
         "frameIndex": 0,
         "showHeader": true
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -2773,7 +2782,7 @@
           "reverse": false
         }
       },
-      "pluginVersion": "10.1.4",
+      "pluginVersion": "10.2.0",
       "targets": [
         {
           "datasource": {
@@ -2817,6 +2826,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2929,6 +2939,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3041,6 +3052,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3144,7 +3156,7 @@
   ],
   "refresh": "5s",
   "schemaVersion": 38,
-  "style": "dark",
+"style": "dark",
   "tags": [],
   "templating": {
     "list": [
@@ -3185,7 +3197,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "Logprep Overview",
-  "uid": "b1d9c144-d9a7-4a9c-a6c4-6929eec1c776",
-  "version": 1,
+  "uid": "Ijmjihx7z",
+  "version": 5,
   "weekStart": ""
 }
