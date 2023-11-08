@@ -85,21 +85,21 @@ class ConfluentKafkaInput(Input):
 
         commit_failures: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="count of failed commits. Is filled by `_commit_callback",
+                description="count of failed commits.",
                 name="confluent_kafka_input_commit_failures",
             )
         )
         """count of failed commits. Is filled by `_commit_callback`"""
         commit_success: CounterMetric = field(
             factory=lambda: CounterMetric(
-                description="count of successful commits. Is filled by `_commit_callback`",
+                description="count of successful commits.",
                 name="confluent_kafka_input_commit_success",
             )
         )
         """count of successful commits. Is filled by `_commit_callback`"""
         current_offsets: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="current offsets of the consumer. Is filled by `_get_raw_event`",
+                description="current offsets of the consumer.",
                 name="confluent_kafka_input_current_offsets",
                 inject_label_values=False,
             )
@@ -107,7 +107,7 @@ class ConfluentKafkaInput(Input):
         """current offsets of the consumer. Is filled by `_get_raw_event`"""
         committed_offsets: GaugeMetric = field(
             factory=lambda: GaugeMetric(
-                description="committed offsets of the consumer. Is filled by `_commit_callback`",
+                description="committed offsets of the consumer.",
                 name="confluent_kafka_input_committed_offsets",
                 inject_label_values=False,
             )

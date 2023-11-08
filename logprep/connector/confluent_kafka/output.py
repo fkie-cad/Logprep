@@ -47,6 +47,8 @@ DEFAULTS = {
     "statistics.interval.ms": "1000",
 }
 
+DEFAULT_RETURN = 0
+
 
 class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
@@ -206,17 +208,17 @@ class ConfluentKafkaOutput(Output):
         """
 
         stats = self._decoder.decode(stats)
-        self.metrics.librdkafka_age += stats.get("age", 0)
-        self.metrics.librdkafka_msg_cnt += stats.get("msg_cnt", 0)
-        self.metrics.librdkafka_msg_size += stats.get("msg_size", 0)
-        self.metrics.librdkafka_msg_max += stats.get("msg_max", 0)
-        self.metrics.librdkafka_msg_size_max += stats.get("msg_size_max", 0)
-        self.metrics.librdkafka_tx += stats.get("tx", 0)
-        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", 0)
-        self.metrics.librdkafka_rx += stats.get("rx", 0)
-        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", 0)
-        self.metrics.librdkafka_txmsgs += stats.get("txmsgs", 0)
-        self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", 0)
+        self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
+        self.metrics.librdkafka_msg_cnt += stats.get("msg_cnt", DEFAULT_RETURN)
+        self.metrics.librdkafka_msg_size += stats.get("msg_size", DEFAULT_RETURN)
+        self.metrics.librdkafka_msg_max += stats.get("msg_max", DEFAULT_RETURN)
+        self.metrics.librdkafka_msg_size_max += stats.get("msg_size_max", DEFAULT_RETURN)
+        self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
+        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
+        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_txmsgs += stats.get("txmsgs", DEFAULT_RETURN)
+        self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
