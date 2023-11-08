@@ -85,7 +85,7 @@ class BaseComponentTestCase(ABC):
     def test_custom_metrics_adds_custom_prefix_to_metrics_name(self):
         for attribute in self.metric_attributes.values():
             assert attribute.fullname.startswith(
-                f"logprep_"
+                "logprep_"
             ), f"{attribute.fullname}, logprep_{camel_to_snake(self.object.__class__.__name__)}"
 
     def test_expected_metrics_attributes(self):

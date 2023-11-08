@@ -6,18 +6,14 @@
 # pylint: disable=no-self-use
 
 import json
-import socket
 from copy import deepcopy
-from pathlib import Path
 from unittest import mock
 
 import pytest
-from attrs import asdict
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
-from logprep.metrics.metrics import Metric
 from tests.unit.connector.base import BaseOutputTestCase
 from tests.unit.connector.test_confluent_kafka_common import (
     CommonConfluentKafkaTestCase,
