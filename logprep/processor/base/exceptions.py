@@ -4,8 +4,7 @@ from typing import TYPE_CHECKING, Any, List
 
 from logprep.factory_error import FactoryError
 
-if TYPE_CHECKING:
-    from logprep.abc.processor import Processor
+if TYPE_CHECKING:  # pragma: no cover
     from logprep.processor.base.rule import Rule
 
 

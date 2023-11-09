@@ -8,7 +8,7 @@ from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.util import getter
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc.processor import Processor
     from logprep.processor.base.rule import Rule
 

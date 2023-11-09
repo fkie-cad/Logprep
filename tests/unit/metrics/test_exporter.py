@@ -1,8 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-# pylint: disable=no-self-use
+# pylint: disable=line-too-long
 import logging
+import os.path
 from unittest import mock
 
 from prometheus_client import REGISTRY
@@ -42,3 +43,39 @@ class TestPrometheusExporter:
 
         mock_http_server.assert_has_calls([mock.call(exporter._port)])
         assert f"Prometheus Exporter started on port {exporter._port}" in caplog.text
+
+    def test_cleanup_prometheus_multiprocess_dir_deletes_temp_dir(self, tmp_path):
+        subdir = tmp_path / "foo"
+        os.makedirs(subdir, exist_ok=True)
+        test_file = subdir / "test.txt"
+        test_file.touch()
+        assert os.path.isfile(test_file)
+        assert os.path.isdir(subdir)
+        with mock.patch("os.environ", {"PROMETHEUS_MULTIPROC_DIR": tmp_path}):
+            exporter = PrometheusExporter(self.metrics_config)
+            exporter.cleanup_prometheus_multiprocess_dir()
+        assert not os.path.isfile(test_file)
+        assert not os.path.isdir(subdir)
+
+    def test_cleanup_prometheus_multiprocess_dir_does_not_delete_temp_dir_if_env_is_not_set(
+        self, tmp_path
+    ):
+        subdir = tmp_path / "foo"
+        os.makedirs(subdir, exist_ok=True)
+        test_file = subdir / "test.txt"
+        test_file.touch()
+        assert os.path.isfile(test_file)
+        assert os.path.isdir(subdir)
+        with mock.patch("os.environ", {"SOME_OTHER_ENV": tmp_path}):
+            exporter = PrometheusExporter(self.metrics_config)
+            exporter.cleanup_prometheus_multiprocess_dir()
+        assert os.path.isfile(test_file)
+        assert os.path.isdir(subdir)
+
+    @mock.patch("logprep.metrics.exporter.multiprocess")
+    def test_mark_process_dead_calls_multiprocess_mark_dead(self, mock_multiprocess):
+        exporter = PrometheusExporter(self.metrics_config)
+        test_process_id = 14
+        exporter.mark_process_dead(test_process_id)
+        mock_multiprocess.mark_process_dead.assert_called()
+        mock_multiprocess.mark_process_dead.assert_called_with(test_process_id)
