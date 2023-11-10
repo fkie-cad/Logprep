@@ -27,7 +27,11 @@ class PrometheusExporter:
         multiprocess_dir = os.environ.get("PROMETHEUS_MULTIPROC_DIR")
         if not multiprocess_dir:
             return
-        shutil.rmtree(multiprocess_dir)
+        for root, dirs, files in os.walk(multiprocess_dir):
+            for file in files:
+                os.remove(os.path.join(root, file))
+            for directory in dirs:
+                shutil.rmtree(os.path.join(root, directory), ignore_errors=True)
         self._logger.info("Cleaned up %s" % multiprocess_dir)
 
     def mark_process_dead(self, pid):
