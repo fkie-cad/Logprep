@@ -44,7 +44,9 @@ class TestPrometheusExporter:
         mock_http_server.assert_has_calls([mock.call(exporter._port)])
         assert f"Prometheus Exporter started on port {exporter._port}" in caplog.text
 
-    def test_cleanup_prometheus_multiprocess_dir_deletes_temp_dir_contents_but_not_the_dir_itself(self, tmp_path):
+    def test_cleanup_prometheus_multiprocess_dir_deletes_temp_dir_contents_but_not_the_dir_itself(
+        self, tmp_path
+    ):
         subdir = tmp_path / "foo"
         os.makedirs(subdir, exist_ok=True)
         test_file = subdir / "test.txt"

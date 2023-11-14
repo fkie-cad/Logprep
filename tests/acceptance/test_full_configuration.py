@@ -127,11 +127,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     config |= {
         "version": "my_custom_version",
         "config_refresh_interval": 300,
-        "metrics": {
-            "enabled": True,
-            "append_measurement_to_event": False,
-            "port": 8000,
-        },
+        "metrics": {"enabled": True, "port": 8000},
         "input": {
             "fileinput": {
                 "type": "file_input",

@@ -332,25 +332,8 @@ class TestComponentMetrics:
     def decorated_function(self):
         pass
 
-    def test_measure_time_measures(self):
-        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
-        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
-        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
-        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
-        self.decorated_function()
-
-        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
-        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
-        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
-        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
-        assert not re.search(
-            r"test_metric_histogram_bucket.* 2\.0", metric_output
-        )  # regex is greedy
-
-    @mock.patch("logprep.metrics.metrics.gethostname", return_value="testhost")
-    def test_measure_time_measures_and_appends(self, mock_gethostname):
-        os.environ["APPEND_TO_EVENT"] = "1"
-
+    @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
+    def test_measure_time_measures_and_appends_processing_times_but_not_hostname(self):
         @Metric.measure_time(metric_name="test_metric_histogram")
         def decorated_function_append(self, document):
             pass
@@ -370,12 +353,54 @@ class TestComponentMetrics:
             r"test_metric_histogram_bucket.* 2\.0", metric_output
         )  # regex is greedy
         assert "processing_times" in document
+        assert not "hostname" in document.get("processing_times")  # is only set by the pipeline
         assert "test_rule" in document.get("processing_times")
-        assert "hostname" in document.get("processing_times")
         assert document.get("processing_times").get("test_rule") > 0
-        mock_gethostname.assert_called_once()
+
+    @mock.patch("logprep.metrics.metrics.gethostname", return_value="testhost")
+    @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
+    def test_measure_time_measures_and_appends_pipeline_processing_times_and_hostname(self, mock_gethostname):
+        # set logprep_config to mimic an attribute of a pipeline, is used to identify pipelines
+        self._logprep_config = "some value"
+        @Metric.measure_time(metric_name="test_metric_histogram")
+        def decorated_function_append(self, document):
+            pass
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+        document = {"test": "event"}
+        decorated_function_append(self, document)
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+        assert not re.search(
+            r"test_metric_histogram_bucket.* 2\.0", metric_output
+        )  # regex is greedy
+        assert "processing_times" in document
+        assert "pipeline" in document.get("processing_times")
+        assert "hostname" in document.get("processing_times")
+        assert document.get("processing_times").get("pipeline") > 0
         assert document.get("processing_times").get("hostname") == "testhost"
-        del os.environ["APPEND_TO_EVENT"]
+        mock_gethostname.assert_called_once()
+
+    def test_measure_time_measures(self):
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+        self.decorated_function()
+
+        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+        assert not re.search(
+            r"test_metric_histogram_bucket.* 2\.0", metric_output
+        )  # regex is greedy
 
     def test_measure_time_measures_but_does_not_append_to_empty_events(self):
         os.environ["APPEND_TO_EVENT"] = "1"

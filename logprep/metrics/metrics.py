@@ -16,7 +16,6 @@ Example
 
     metrics:
       enabled: true
-      append_measurement_to_event: false
       port: 8000
 
 
@@ -32,20 +31,21 @@ enabled
 Use :code:`true` or :code:`false` to activate or deactivate the metrics exporter. Defaults to
 :code:`false`.
 
-append_measurement_to_event
----------------------------
-
-It is also possible to add processing times of each processor to the event
-itself. The processing times can then be found in the field :code:`processing_time` of each
-processed event. Additionally, the hostname of the machine on which Logprep runs is listed. Use
-:code:`true` or :code:`false` to activate or deactivate appending the processing times to
-events. Defaults to :code:`false`.
-
 port
 ----
 
 Specifies the port which should be used for the prometheus exporter endpoint. Defaults to
 :code:`8000`.
+
+Processing Times in Events
+==========================
+
+It is also possible to add processing times of each processor to the event
+itself. The processing times can then be found in the field :code:`processing_time` of each
+processed event. Additionally, the hostname of the machine on which Logprep runs is listed.
+To activate this feature you have to set the environment variable
+:code:`LOGPREP_APPEND_MEASUREMENT_TO_EVENT` with any value. This divergence of the usual
+configuration pattern is needed due to performance reasons.
 
 Metrics Overview
 ================
@@ -116,8 +116,8 @@ Processor Specific Metrics
 """
 import os
 import time
+from _socket import gethostname
 from abc import ABC, abstractmethod
-from socket import gethostname
 from typing import Union
 
 from attrs import define, field, validators
@@ -197,7 +197,7 @@ class Metric(ABC):
     def measure_time(metric_name: str = "processing_time_per_event"):
         """Decorate function to measure execution time for function and add results to event."""
 
-        if not os.environ.get("APPEND_TO_EVENT"):
+        if not os.environ.get("LOGPREP_APPEND_MEASUREMENT_TO_EVENT"):
 
             def without_append(func):
                 def inner(self, *args, **kwargs):  # nosemgrep
@@ -222,6 +222,10 @@ class Metric(ABC):
                     event = args[0]
                     if event:
                         add_field_to(event, f"processing_times.{self.rule_type}", duration)
+                if hasattr(self, "_logprep_config"):  # attribute of the Pipeline class
+                    event = args[0]
+                    if event:
+                        add_field_to(event, "processing_times.pipeline", duration)
                         add_field_to(event, "processing_times.hostname", gethostname())
                 return result
 

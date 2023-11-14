@@ -6,7 +6,6 @@ logger:
 
 metrics:
   enabled: true
-  append_measurement_to_event: false
   port: 8000
 
 pipeline:

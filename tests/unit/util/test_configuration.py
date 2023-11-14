@@ -133,24 +133,12 @@ class TestConfiguration:
         [
             (
                 "valid configuration",
-                {
-                    "metrics": {
-                        "enabled": True,
-                        "append_measurement_to_event": False,
-                        "port": 8000,
-                    }
-                },
+                {"metrics": {"enabled": True, "port": 8000}},
                 None,
             ),
             (
                 "invalid datatype in port",
-                {
-                    "metrics": {
-                        "enabled": True,
-                        "append_measurement_to_event": False,
-                        "port": "8000",
-                    }
-                },
+                {"metrics": {"enabled": True, "port": "8000"}},
                 None,
             ),
         ],

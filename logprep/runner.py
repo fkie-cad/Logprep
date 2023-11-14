@@ -2,7 +2,6 @@
 # pylint: disable=logging-fstring-interpolation
 
 import logging
-import os
 import signal
 from ctypes import c_bool
 from multiprocessing import Value, current_process
@@ -171,8 +170,6 @@ class Runner:
         self._configuration = configuration
         self._config_refresh_interval = configuration.get("config_refresh_interval")
         self.metrics.version_info.add_with_labels(1, self._metric_labels)
-        if configuration.get("metrics", {}).get("append_measurement_to_event", False):
-            os.environ["APPEND_TO_EVENT"] = "1"
 
     def start(self):
         """Start processing.
