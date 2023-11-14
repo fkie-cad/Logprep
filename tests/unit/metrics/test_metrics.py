@@ -359,9 +359,12 @@ class TestComponentMetrics:
 
     @mock.patch("logprep.metrics.metrics.gethostname", return_value="testhost")
     @mock.patch.dict("os.environ", {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}, clear=True)
-    def test_measure_time_measures_and_appends_pipeline_processing_times_and_hostname(self, mock_gethostname):
+    def test_measure_time_measures_and_appends_pipeline_processing_times_and_hostname(
+        self, mock_gethostname
+    ):
         # set logprep_config to mimic an attribute of a pipeline, is used to identify pipelines
         self._logprep_config = "some value"
+
         @Metric.measure_time(metric_name="test_metric_histogram")
         def decorated_function_append(self, document):
             pass
