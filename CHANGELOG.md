@@ -7,6 +7,9 @@
 * add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
 
 ### Improvements
+
+* improve error message on empty rule filter
+
 ### Bugfix
 
 ## v7.0.0
@@ -33,7 +36,7 @@
 
 ### Improvements
 
-* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections. 
+* `pre_detector` processor now adds the field `creation_timestamp` to pre-detections.
 It contains the time at which a pre-detection was created by the processor.
 * add `prometheus` and `grafana` to the quickstart setup to support development
 * provide confluent kafka test setup to run tests against a real kafka cluster
@@ -82,7 +85,7 @@ zone only once
 
 ### Improvements
 
-* Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule 
+* Replace rule_filter with lucene_filter in predetector output. The old internal logprep rule
 representation is not present anymore in the predetector output, the name `rule_filter` will stay
 in place of the `lucene_filter` name.
 * 'amides' processor now stores confidence values of processed events in the `amides.confidence` field.
@@ -97,7 +100,7 @@ In case of positive detection results, rule attributions are now inserted in the
 ## v6.5.1
 ### Bugfix
 
-* Fix creation of logprep temp dir 
+* Fix creation of logprep temp dir
 * Fix `dry_runner` to support extra outputs of the `selective_extractor`
 
 ## v6.5.0
@@ -108,7 +111,7 @@ In case of positive detection results, rule attributions are now inserted in the
 
 ### Bugfix
 
-* All temp files will now be stored inside the systems default temp directory 
+* All temp files will now be stored inside the systems default temp directory
 
 ## v6.4.0
 ### Improvements
@@ -135,7 +138,7 @@ grok-pattern compatibility with the normalizer and other grok tools
 notation.
 * Extend timestamper such that it can take multiple source_formats. First format that matches
 will be used, all following formats will be ignored
- 
+
 ### Improvements
 
 * Extend the `FieldManager` such that it can move/copy multiple source fields into multiple targets
@@ -202,7 +205,7 @@ between test cases.
 * Add `auto_rule_corpus_tester` to test a whole rule corpus against defined expected outputs.
 * Add shorthand for converting datatypes to `dissector` dissect pattern language
 * Add support for multiple output connectors
-* Apply processors multiple times until no new rule matches anymore. This enables applying rules on 
+* Apply processors multiple times until no new rule matches anymore. This enables applying rules on
 results of previous rules.
 
 ### Improvements
@@ -262,7 +265,7 @@ events.
 ### Breaking
 
 * Splitting the general `connector` config into `input` and `output` to compose connector config independendly
-* Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be 
+* Removal of Deprecated Feature: HMAC-Options in the connector consumer options have to be
 under the subkey `preprocessing` of the `input` processor
 * Removal of Deprecated Feature: `delete` processor was renamed to `deleter`
 * Rename `writing_output` connector to `jsonl_output`
@@ -324,7 +327,7 @@ under the subkey `preprocessing` of the `input` processor
 
 ### Features
 
-* Normalizer can now write grok failure fields to an event when no grok pattern matches and if 
+* Normalizer can now write grok failure fields to an event when no grok pattern matches and if
 `failure_target_field` is specified in the configuration
 
 ### Bugfixes
@@ -335,26 +338,26 @@ under the subkey `preprocessing` of the `input` processor
 
 ### Features
 
-* Add feature to automatically add version information to all events, configured via the 
+* Add feature to automatically add version information to all events, configured via the
 `connector > consumer > preprocessing` configuration
 * Expose logprep and config version in metric targets
-* Dry-Run accepts now a single json without brackets for input type `json` 
+* Dry-Run accepts now a single json without brackets for input type `json`
 
 ### Improvements
 
-* Move the config hmac options to the new subkey `preprocessing`, maintain backward compatibility, 
+* Move the config hmac options to the new subkey `preprocessing`, maintain backward compatibility,
 but mark old version as deprecated.
-* Make the generic adder write the SQL table to a file and load it from there instead of loading it 
+* Make the generic adder write the SQL table to a file and load it from there instead of loading it
 from the database for every process of the multiprocessing pipeline.
-Furthermore, only connect to the SQL database on checking if the database table has changed and the 
+Furthermore, only connect to the SQL database on checking if the database table has changed and the
 file is stale.
 This reduces the SQL connections.
-Before, there was permanently one connection per multiprocessing pipeline active and now there is 
-only one connection per Logprep instance active when accessing the database. 
+Before, there was permanently one connection per multiprocessing pipeline active and now there is
+only one connection per Logprep instance active when accessing the database.
 
 ### Bugfixes
 
-* Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event, 
+* Fix SelectiveExtractor output. The internal extracted list wasn't cleared between each event,
 leading to duplication in the output of the processor. Now the events are cleared such that only
 the result of the current event is returned.
 
@@ -368,7 +371,7 @@ the result of the current event is returned.
 
 * Fix performance of the metrics tracking. Due to a store metrics statement at the wrong position
 the logprep performance was dramatically decreased when tracking metrics was activated.
-* Fix Auto Rule Tester which tried to access processor stats that do not exist anymore. 
+* Fix Auto Rule Tester which tried to access processor stats that do not exist anymore.
 
 ## v3.0.0
 
@@ -391,13 +394,13 @@ version if found
 * Fix processor initialization in auto rule tester
 * Fix generation of RST-Docs
 
-### Breaking 
+### Breaking
 
-* Metrics refactoring: 
+* Metrics refactoring:
   * The json output format of the previously known status_logger has changed
   * The configuration key word is now `metrics` instead of `status_logger`
   * The configuration for the time measurement is now part of the metrics configuration
-  * The metrics tracking still includes values about how many warnings and errors happened, but 
+  * The metrics tracking still includes values about how many warnings and errors happened, but
   not of what type. For that the regular logprep logging should be consolidated.
 
 ## v2.0.1
@@ -429,4 +432,3 @@ version if found
 ### Bugfixes
 
 * remove `ujson` dependency because of CVE
-
