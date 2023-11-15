@@ -39,6 +39,93 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
+      "description": "Throughput of logprep in events per second.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100
+              },
+              {
+                "color": "green",
+                "value": 1000
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 2,
+        "x": 0,
+        "y": 1
+      },
+      "id": 116,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(rate(logprep_number_of_processed_events_total{component=\"input\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Throughput",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
       "description": "Duration of all connector and pipeline processing times combined.",
       "fieldConfig": {
         "defaults": {
@@ -77,7 +164,7 @@
       "gridPos": {
         "h": 3,
         "w": 3,
-        "x": 0,
+        "x": 2,
         "y": 1
       },
       "id": 20,
@@ -95,7 +182,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -105,7 +192,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=~\"input|output|pipeline\"}[$__range]))/sum(increase(logprep_processing_time_per_event_count{component=~\"input|output|pipeline\"}[$__range]) > 0)",
+          "expr": "sum(avg by (component)((increase(logprep_processing_time_per_event_sum{component=~\"input|output|pipeline\"}[$__range])/increase(logprep_processing_time_per_event_count{component=~\"input|output|pipeline\"}[$__range]) > 0)))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -159,7 +246,7 @@
       "gridPos": {
         "h": 3,
         "w": 3,
-        "x": 3,
+        "x": 5,
         "y": 1
       },
       "id": 38,
@@ -177,7 +264,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -187,7 +274,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"input\"}[$__range]))/sum(increase(logprep_processing_time_per_event_count{component=\"input\"}[$__range]) > 0)",
+          "expr": "avg(increase(logprep_processing_time_per_event_sum{component=\"input\"}[$__range])/increase(logprep_processing_time_per_event_count{component=\"input\"}[$__range]) > 0)",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -241,7 +328,7 @@
       "gridPos": {
         "h": 3,
         "w": 3,
-        "x": 6,
+        "x": 8,
         "y": 1
       },
       "id": 36,
@@ -259,7 +346,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -269,7 +356,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range]))/sum(increase(logprep_processing_time_per_event_count{component=\"rule\"}[$__range])) > 0",
+          "expr": "avg(increase(logprep_processing_time_per_event_sum{component=\"rule\"}[$__range])/increase(logprep_processing_time_per_event_count{component=\"rule\"}[$__range]) > 0)",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -322,8 +409,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
-        "x": 9,
+        "w": 2,
+        "x": 11,
         "y": 1
       },
       "id": 61,
@@ -341,7 +428,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -351,7 +438,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"pipeline\"}[$__range]))/sum(increase(logprep_processing_time_per_event_count{component=\"pipeline\"}[$__range]) > 0)",
+          "expr": "avg(increase(logprep_processing_time_per_event_sum{component=\"pipeline\"}[$__range])/increase(logprep_processing_time_per_event_count{component=\"pipeline\"}[$__range]) > 0)",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -404,8 +491,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
-        "x": 12,
+        "w": 2,
+        "x": 13,
         "y": 1
       },
       "id": 37,
@@ -423,7 +510,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -433,7 +520,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(increase(logprep_processing_time_per_event_sum{component=\"output\"}[$__range])/increase(logprep_processing_time_per_event_count{component=\"output\"}[$__range])) > 0",
+          "expr": "avg(increase(logprep_processing_time_per_event_sum{component=\"output\"}[$__range])/increase(logprep_processing_time_per_event_count{component=\"output\"}[$__range])) > 0",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -505,7 +592,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -575,7 +662,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -660,7 +747,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -744,7 +831,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -815,7 +902,7 @@
       "gridPos": {
         "h": 3,
         "w": 3,
-        "x": 0,
+        "x": 2,
         "y": 4
       },
       "id": 23,
@@ -833,7 +920,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -894,7 +981,7 @@
       "gridPos": {
         "h": 3,
         "w": 3,
-        "x": 3,
+        "x": 5,
         "y": 4
       },
       "id": 24,
@@ -912,7 +999,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -977,7 +1064,7 @@
       "gridPos": {
         "h": 3,
         "w": 3,
-        "x": 6,
+        "x": 8,
         "y": 4
       },
       "id": 31,
@@ -995,7 +1082,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1064,8 +1151,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
-        "x": 9,
+        "w": 2,
+        "x": 11,
         "y": 4
       },
       "id": 6,
@@ -1083,7 +1170,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -1091,7 +1178,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "count(logprep_number_of_processed_events_total{component=\"rule\"})",
+          "expr": "max(count by(pod) (logprep_number_of_processed_events_total{component=\"rule\"}))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -1132,8 +1219,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 3,
-        "x": 12,
+        "w": 2,
+        "x": 13,
         "y": 4
       },
       "id": 69,
@@ -1151,7 +1238,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -1234,7 +1321,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1273,10 +1360,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -1305,7 +1388,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -1376,7 +1459,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -1385,7 +1468,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "round(increase(logprep_number_of_config_refreshes_total[$__range]))",
+          "expr": "sum(round(increase(logprep_number_of_config_refreshes_total[$__range])))",
           "format": "time_series",
           "instant": true,
           "legendFormat": "__auto",
@@ -1445,7 +1528,7 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -1468,7 +1551,40 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
-      "description": "Shows the average processing time of the $connector_types over the selected time frame.",
+      "description": "",
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 0,
+        "y": 7
+      },
+      "id": 131,
+      "links": [],
+      "options": {
+        "alertName": "",
+        "dashboardAlerts": false,
+        "groupBy": [],
+        "groupMode": "default",
+        "maxItems": 20,
+        "sortOrder": 1,
+        "stateFilter": {
+          "error": false,
+          "firing": true,
+          "noData": false,
+          "normal": false,
+          "pending": false
+        },
+        "viewMode": "stat"
+      },
+      "title": "Active Alarms",
+      "type": "alertlist"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the average processing time of the confluent kafka input over the selected time frame.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1505,8 +1621,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 8,
-        "x": 0,
+        "w": 3,
+        "x": 2,
         "y": 7
       },
       "id": 16,
@@ -1524,8 +1640,325 @@
         },
         "textMode": "auto"
       },
-      "pluginVersion": "10.2.0",
-      "repeat": "connector_types",
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "avg(increase(logprep_processing_time_per_event_sum{type=\"confluentkafka_input\"}[$__range])/increase(logprep_processing_time_per_event_count{type=\"confluentkafka_input\"}[$__range])>0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Processing Times for kafka input",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the average processing time of the opensearch output over the selected time frame.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 5,
+        "y": 7
+      },
+      "id": 124,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "avg(increase(logprep_processing_time_per_event_sum{type=\"opensearch_output\"}[$__range])/increase(logprep_processing_time_per_event_count{type=\"opensearch_output\"}[$__range])>0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Processing Times for opensearch output",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Shows the average processing time of the confluent kafka output over the selected time frame.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 8,
+        "y": 7
+      },
+      "id": 125,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "avg(increase(logprep_processing_time_per_event_sum{type=\"confluentkafka_output\"}[$__range])/increase(logprep_processing_time_per_event_count{type=\"confluentkafka_output\"}[$__range])>0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Processing Times for kafka output",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Number of events that had an error during processing and which were send to the error output/index.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 11,
+        "y": 7
+      },
+      "id": 128,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "disableTextWrap": false,
+          "editorMode": "code",
+          "expr": "sum(increase(logprep_number_of_failed_events_total{container=~\".*logprep\"}[$__range]))",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Failed Events",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Number of garbage collections per second",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1000
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 13,
+        "y": 7
+      },
+      "id": 126,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
       "repeatDirection": "h",
       "targets": [
         {
@@ -1535,15 +1968,343 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "avg(increase(logprep_processing_time_per_event_sum{type=\"$connector_types\"}[$__range])/increase(logprep_processing_time_per_event_count{type=\"$connector_types\"}[$__range])>0)",
+          "expr": "sum(rate(python_gc_collections_total{container=~\".*logprep\"}[1m]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{type}}",
+          "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Processing Times for $connector_types",
+      "title": "GC/s",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Number of objects that were collected by the garbage collector.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 1000
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 15,
+        "y": 7
+      },
+      "id": 127,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(rate(python_gc_objects_collected_total{container=~\".*logprep\"}[1m]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "collected/s",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Currently assigned kafka partitions",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 17,
+        "y": 7
+      },
+      "id": 121,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "count(count by (description) (logprep_confluent_kafka_input_committed_offsets))",
+          "format": "time_series",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Partitions",
+      "transformations": [
+        {
+          "disabled": true,
+          "id": "seriesToRows",
+          "options": {}
+        },
+        {
+          "disabled": true,
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "Metric"
+              ],
+              "reducer": "distinctCount"
+            }
+          }
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Number of unsuccessful Kafka commits",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "null+nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 2,
+        "x": 19,
+        "y": 7
+      },
+      "id": 120,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(increase(logprep_confluent_kafka_input_commit_failure_total[$__range]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Commit failures",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
+      "description": "Number of successful Kafka commits",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "match": "nan",
+                "result": {
+                  "index": 0,
+                  "text": "0"
+                }
+              },
+              "type": "special"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 7
+      },
+      "id": 119,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "10.1.4",
+      "repeatDirection": "h",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(increase(logprep_confluent_kafka_input_commit_success_total[$__range]))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Commit success",
       "type": "stat"
     },
     {
@@ -1571,7 +2332,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1682,7 +2442,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1800,7 +2559,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1875,7 +2633,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "increase(logprep_processing_time_per_event_sum{component=\"input\"}[1m])/increase(logprep_processing_time_per_event_count{component=\"input\"}[1m])",
+          "expr": "sum by (type)(increase(logprep_processing_time_per_event_sum{component=\"input\"}[1m])/increase(logprep_processing_time_per_event_count{component=\"input\"}[1m]))",
           "instant": false,
           "legendFormat": "{{type}}",
           "range": true,
@@ -1887,7 +2645,7 @@
             "uid": "promz2394"
           },
           "editorMode": "code",
-          "expr": "increase(logprep_processing_time_per_event_sum{component=\"output\"}[1m])/increase(logprep_processing_time_per_event_count{component=\"output\"}[1m])",
+          "expr": "sum by (type)(increase(logprep_processing_time_per_event_sum{component=\"output\"}[1m])/increase(logprep_processing_time_per_event_count{component=\"output\"}[1m]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{type}}",
@@ -1916,6 +2674,199 @@
         "type": "prometheus",
         "uid": "promz2394"
       },
+      "description": "Committed and current offsets reported by the librdkafka library",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "right",
+            "cellOptions": {
+              "type": "json-view"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.001
+              },
+              {
+                "color": "red",
+                "value": 0.01
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "committed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "current"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "description"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "lag"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "gauge"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "id": 135,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "frameIndex": 1,
+        "showHeader": true
+      },
+      "pluginVersion": "10.1.4",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "logprep_confluent_kafka_input_committed_offsets",
+          "format": "table",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "promz2394"
+          },
+          "editorMode": "code",
+          "expr": "logprep_confluent_kafka_input_current_offsets",
+          "format": "table",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{description}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Offsets",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "description",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "description",
+                "Value #B",
+                "Value #A"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value #A": "current",
+              "Value #B": "committed"
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "lag",
+            "mode": "reduceRow",
+            "reduce": {
+              "include": [
+                "committed",
+                "current"
+              ],
+              "reducer": "diff"
+            },
+            "replaceFields": false
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "promz2394"
+      },
       "description": "Shows how many message the underlying kafka client received as a per-second average.",
       "fieldConfig": {
         "defaults": {
@@ -1923,7 +2874,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -1975,7 +2925,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 40
       },
       "id": 65,
       "options": {
@@ -2020,7 +2970,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2072,7 +3021,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 42
+        "y": 48
       },
       "id": 66,
       "options": {
@@ -2117,7 +3066,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2169,7 +3117,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 50
+        "y": 56
       },
       "id": 81,
       "options": {
@@ -2208,7 +3156,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 58
+        "y": 64
       },
       "id": 14,
       "panels": [],
@@ -2227,7 +3175,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2279,7 +3226,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 65
       },
       "id": 58,
       "options": {
@@ -2328,7 +3275,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2384,7 +3330,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 66
+        "y": 72
       },
       "id": 2,
       "options": {
@@ -2424,7 +3370,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 74
+        "y": 80
       },
       "id": 55,
       "panels": [],
@@ -2458,7 +3404,7 @@
         "h": 11,
         "w": 12,
         "x": 0,
-        "y": 75
+        "y": 81
       },
       "id": 77,
       "options": {
@@ -2547,7 +3493,7 @@
         "h": 11,
         "w": 12,
         "x": 12,
-        "y": 75
+        "y": 81
       },
       "id": 60,
       "options": {
@@ -2566,7 +3512,7 @@
         "showUnfilled": true,
         "valueMode": "color"
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -2644,7 +3590,7 @@
         "h": 10,
         "w": 12,
         "x": 0,
-        "y": 86
+        "y": 92
       },
       "id": 78,
       "options": {
@@ -2660,7 +3606,7 @@
         "frameIndex": 0,
         "showHeader": true
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -2745,7 +3691,7 @@
         "h": 10,
         "w": 12,
         "x": 12,
-        "y": 86
+        "y": 92
       },
       "id": 49,
       "interval": "15",
@@ -2782,7 +3728,7 @@
           "reverse": false
         }
       },
-      "pluginVersion": "10.2.0",
+      "pluginVersion": "10.1.4",
       "targets": [
         {
           "datasource": {
@@ -2807,7 +3753,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 96
+        "y": 102
       },
       "id": 74,
       "panels": [],
@@ -2826,7 +3772,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -2890,7 +3835,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 97
+        "y": 103
       },
       "id": 72,
       "options": {
@@ -2939,7 +3884,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3003,7 +3947,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 102
+        "y": 108
       },
       "id": 73,
       "options": {
@@ -3052,7 +3996,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -3116,7 +4059,7 @@
         "h": 5,
         "w": 24,
         "x": 0,
-        "y": 107
+        "y": 113
       },
       "id": 84,
       "options": {
@@ -3156,39 +4099,10 @@
   ],
   "refresh": "5s",
   "schemaVersion": 38,
-"style": "dark",
+  "style": "dark",
   "tags": [],
   "templating": {
-    "list": [
-      {
-        "allValue": "",
-        "current": {
-          "selected": false,
-          "text": "All",
-          "value": "$__all"
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "promz2394"
-        },
-        "definition": "label_values(logprep_processing_time_per_event_count{component=~\"input|output\"},type)",
-        "hide": 2,
-        "includeAll": true,
-        "label": "Connector Types",
-        "multi": false,
-        "name": "connector_types",
-        "options": [],
-        "query": {
-          "query": "label_values(logprep_processing_time_per_event_count{component=~\"input|output\"},type)",
-          "refId": "PrometheusVariableQueryEditor-VariableQuery"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      }
-    ]
+    "list": []
   },
   "time": {
     "from": "now-5m",
@@ -3198,6 +4112,6 @@
   "timezone": "",
   "title": "Logprep Overview",
   "uid": "Ijmjihx7z",
-  "version": 5,
+  "version": 4,
   "weekStart": ""
 }
