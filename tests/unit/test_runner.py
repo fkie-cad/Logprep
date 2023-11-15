@@ -409,4 +409,6 @@ class TestRunner(LogprepRunnerTest):
         self.runner._manager._pipelines[1].process_is_alive = False
         with mock.patch("logging.Logger.warning") as mock_warning:
             self.runner._loop()
-        mock_warning.assert_called_once_with("Restarted 1 failed pipeline(s)")
+        mock_warning.assert_called_once_with(
+            "Restarted 1 failed pipeline(s), with exit code(s): [-1]"
+        )

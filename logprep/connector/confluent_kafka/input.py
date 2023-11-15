@@ -219,15 +219,15 @@ class ConfluentKafkaInput(Input):
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
             ]
         )
-        """ Kafka configuration for the kafka client. 
+        """ Kafka configuration for the kafka client.
         At minimum the following keys must be set:
-        
+
         - bootstrap.servers (STRING): a comma separated list of kafka brokers
         - group.id (STRING): a unique identifier for the consumer group
-        
-        For additional configuration options and their description see: 
+
+        For additional configuration options and their description see:
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
-        
+
         .. datatemplate:import-module:: logprep.connector.confluent_kafka.input
             :template: defaults-renderer.tmpl
 
@@ -445,13 +445,18 @@ class ConfluentKafkaInput(Input):
         for message in self._last_valid_records.values():
             try:
                 offset_handler(message=message)
-            except KafkaException:
+            except KafkaException as error:
                 topic = self._consumer.list_topics(topic=self._config.topic)
                 partition_keys = list(topic.topics[self._config.topic].partitions.keys())
                 partitions = [
                     TopicPartition(self._config.topic, partition) for partition in partition_keys
                 ]
                 self._consumer.assign(partitions)
+                self._logger.warning(
+                    f"{self._consumer.memberid()} was assigned to "
+                    f"topic: {topic} | partition {partitions}, due to "
+                    f"KafkaException: {error}"
+                )
                 offset_handler(message=message)
 
     def _assign_callback(self, consumer, topic_partitions):

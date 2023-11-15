@@ -18,6 +18,7 @@ from tests.testdata.metadata import path_to_config
 
 class MultiprocessingPipelineMock(MultiprocessingPipeline):
     process_count = 0
+    exitcode = -1
 
     def __init__(self):
         self.was_started = False
@@ -157,7 +158,7 @@ class TestPipelineManager:
         failed_pipeline = self.manager._pipelines[-1]
         failed_pipeline.process_is_alive = False
         self.manager.restart_failed_pipeline()
-        logger_mock.assert_called_with("Restarted 1 failed pipeline(s)")
+        logger_mock.assert_called_with("Restarted 1 failed pipeline(s), with exit code(s): [-1]")
 
     def test_stop_terminates_processes_created(self):
         self.manager.set_count(3)

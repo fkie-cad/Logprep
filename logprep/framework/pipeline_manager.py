@@ -131,7 +131,11 @@ class PipelineManager:
 
         if failed_pipelines:
             self.set_count(self._configuration.get("process_count"))
-            self._logger.warning(f"Restarted {len(failed_pipelines)} failed pipeline(s)")
+            exit_codes = [pipeline.exitcode for pipeline in failed_pipelines]
+            self._logger.warning(
+                f"Restarted {len(failed_pipelines)} failed pipeline(s), "
+                f"with exit code(s): {exit_codes}"
+            )
 
     def stop(self):
         """Stop processing any pipelines by reducing the pipeline count to zero."""
