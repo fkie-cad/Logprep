@@ -11,7 +11,7 @@
 * reimplemented `pseudonymizer` processor
   - rewrote tests till 100% coverage
   - cleaned up code
-  - reimplemened caching using pythons `lru_cache`
+  - reimplemented caching using pythons `lru_cache`
   - add cache metrics
   - removed `max_caching_days` config option
   - add `max_cached_pseudonymized_urls` config option which defaults to 1000

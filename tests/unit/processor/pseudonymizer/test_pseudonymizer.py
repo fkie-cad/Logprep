@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-public-methods
+# pylint: disable=line-too-long
 import datetime
 import re
 from copy import deepcopy
@@ -833,7 +834,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert event["do_not_pseudo_this"] == url
         assert event["pseudo_this"] == pseudonym
 
-    def test_replace_regex_keywords_by_regex_expression_can_be_called_multiple_times(self):
+    def test_replace_regex_keywords_by_regex_expression_is_idempotent(self):
         rule_dict = {
             "filter": "event_id: 1234",
             "pseudonymizer": {"pseudonyms": {"something": "RE_WHOLE_FIELD"}},
@@ -901,7 +902,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self.object.process(event)
         # 1 subdomains -> pseudonym_cache, 1 url -> url_cache
         assert self.object.metrics.new_results == 2
-        # second url is cached, no string pseudonymizatin needed
+        # second url is cached, no string pseudonymization needed
         assert self.object.metrics.cached_results == 1
         assert self.object.metrics.num_cache_entries == 2, "same as new results"
 
@@ -972,9 +973,9 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert isinstance(extra_output[0], list)
         assert isinstance(extra_output[1], tuple)
         assert isinstance(extra_output[1][0], dict)
-        assert extra_output[1][0] == {"kafka": "topic"}, "Output is setted as in CONFIG"
+        assert extra_output[1][0] == {"kafka": "topic"}, "Output is set as in CONFIG"
         assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
-        assert extra_output[0][0].get("origin"), "encrypted origional is set"
+        assert extra_output[0][0].get("origin"), "encrypted original is set"
         assert extra_output[0][0].get("@timestamp"), "timestamp is set if present in event"
 
     def test_ignores_missing_field(self):
@@ -998,6 +999,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 },
             },
         }
-        self._load_specific_rule(rule_dict)  # First call
+        self._load_specific_rule(rule_dict)
         extra_output = self.object.process(event)
         assert extra_output[0][0].get("pseudonym"), "pseudonym is set"

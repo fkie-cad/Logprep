@@ -111,11 +111,11 @@ class Pseudonymizer(Processor):
         Logprep does therefore clear the cache.
         This caching reduces the CPU load of Logprep (no demanding encryption must be performed
         repeatedly) and the load on subsequent components (i.e. Logstash or Elasticsearch).
-        Setting. In case the cache size has been exceeded, the least recently used
-        entry is deleteted. Has to be greater than 0.
+        In case the cache size has been exceeded, the least recently used
+        entry is deleted. Has to be greater than 0.
         """
         max_cached_pseudonymized_urls: int = field(
-            validator=[validators.instance_of(int), validators.gt(0)], default=1000
+            validator=[validators.instance_of(int), validators.gt(0)], default=10000
         )
         """The maximum number of cached pseudonymized urls. Default is 10000. Has to be greater than 0."""
         tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
@@ -135,7 +135,6 @@ class Pseudonymizer(Processor):
             )
         )
         """Number urls that were pseudonymized"""
-
         new_results: int = 0
         """Number of new pseudodonyms"""
         cached_results: int = 0
