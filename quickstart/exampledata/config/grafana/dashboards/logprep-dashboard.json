@@ -1968,7 +1968,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(python_gc_collections_total{container=~\".*logprep\"}[1m]))",
+          "expr": "sum(rate(python_gc_collections_total[1m]))",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
