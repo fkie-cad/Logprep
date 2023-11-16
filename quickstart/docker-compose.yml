@@ -131,6 +131,7 @@ services:
       KEYCLOAK_BIND_ADDRESS: 127.0.0.1
   keycloak_db:
     image: bitnami/postgresql:latest
+    container_name: keycloak_db
     network_mode: host
     expose:
       - 5432
@@ -139,5 +140,10 @@ services:
       POSTGRESQL_POSTGRES_PASSWORD: bitnami
       POSTGRESQL_DATABASE: keycloak
       POSTGRESQL_USERNAME: keycloak
+    volumes:
+      # use this folder to persist your postgresql data by dumping the database to it after changes
+      # outside the container: chmod 777 quickstart/exampledata/config/postgresql
+      # inside the container: pg_dump keycloak -U keycloak -W --file /docker-entrypoint-initdb.d/keycloak_db.sql
+      - ../quickstart/exampledata/config/postgresql:/docker-entrypoint-initdb.d
 volumes:
   data:
