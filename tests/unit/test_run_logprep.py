@@ -14,7 +14,6 @@ from logprep import run_logprep
 from logprep._version import get_versions
 from logprep.run_logprep import DEFAULT_LOCATION_CONFIG
 from logprep.util.configuration import InvalidConfigurationError
-from logprep.util.getter import GetterNotFoundError
 
 
 class TestRunLogprep:
@@ -145,28 +144,27 @@ class TestRunLogprep:
     @responses.activate
     def test_version_arg_prints_with_http_config_without_exposing_secret_data(self, capsys):
         config_path = "tests/testdata/config/config.yml"
-        os.environ.update(
-            {
-                "LOGPREP_CONFIG_ATUH_USERNAME": "username",
-                "LOGPREP_CONFIG_ATUH_PASSWORD": "password",
-            }
-        )
+        mock_env = {
+            "LOGPREP_CONFIG_ATUH_USERNAME": "username",
+            "LOGPREP_CONFIG_ATUH_PASSWORD": "password",
+        }
         config_path = "quickstart/exampledata/config/pipeline.yml"
         responses.add(
             responses.GET,
             "http://localhost:32000/tests/testdata/config/config.yml",
             Path(config_path).read_text(encoding="utf8"),
         )
-        with mock.patch(
-            "sys.argv",
-            [
-                "logprep",
-                "--version",
-                f"http://localhost:32000/{config_path}",
-            ],
-        ):
-            with pytest.raises(SystemExit):
-                run_logprep.main()
+        with mock.patch("os.environ", mock_env):
+            with mock.patch(
+                "sys.argv",
+                [
+                    "logprep",
+                    "--version",
+                    f"http://localhost:32000/{config_path}",
+                ],
+            ):
+                with pytest.raises(SystemExit):
+                    run_logprep.main()
         captured = capsys.readouterr()
         lines = captured.out.strip()
         with open(config_path, "r", encoding="utf-8") as file:
@@ -178,8 +176,6 @@ class TestRunLogprep:
             f" http://localhost:32000/{config_path}"
         )
         assert lines == expected_lines
-        del os.environ["LOGPREP_CONFIG_ATUH_USERNAME"]
-        del os.environ["LOGPREP_CONFIG_ATUH_PASSWORD"]
 
     def test_no_config_error_is_printed_if_no_config_was_arg_was_given(self, capsys):
         with mock.patch("sys.argv", ["logprep"]):

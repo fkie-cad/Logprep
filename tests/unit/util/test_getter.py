@@ -306,16 +306,6 @@ second_dict:
 
 
 class TestHttpGetter:
-    def teardown_method(self):
-        if "LOGPREP_CONFIG_AUTH_METHOD" in os.environ:
-            del os.environ["LOGPREP_CONFIG_AUTH_METHOD"]
-        if "LOGPREP_CONFIG_AUTH_TOKEN" in os.environ:
-            del os.environ["LOGPREP_CONFIG_AUTH_TOKEN"]
-        if "LOGPREP_CONFIG_AUTH_USERNAME" in os.environ:
-            del os.environ["LOGPREP_CONFIG_AUTH_USERNAME"]
-        if "LOGPREP_CONFIG_AUTH_PASSWORD" in os.environ:
-            del os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"]
-
     def test_factory_returns_http_getter_for_http(self):
         http_getter = GetterFactory.from_string("http://testfile.json")
         assert isinstance(http_getter, HttpGetter)
@@ -369,8 +359,10 @@ class TestHttpGetter:
 
     @responses.activate
     def test_provides_oauth_compliant_headers_if_token_is_set_via_env(self):
-        os.environ["LOGPREP_CONFIG_AUTH_METHOD"] = "oauth"
-        os.environ["LOGPREP_CONFIG_AUTH_TOKEN"] = "ajhsdfpoweiurjdfs239487"
+        mock_env = {
+            "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
+            "LOGPREP_CONFIG_AUTH_TOKEN": "ajhsdfpoweiurjdfs239487",
+        }
 
         logprep_version = get_versions().get("version")
         responses.get(
@@ -384,8 +376,9 @@ class TestHttpGetter:
                 )
             ],
         )
-        http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
-        http_getter.get()
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
+            http_getter.get()
 
     def test_raises_on_try_to_set_credentials_from_url_string(self):
         with pytest.raises(
@@ -397,14 +390,17 @@ class TestHttpGetter:
 
     @responses.activate
     def test_provides_basic_authentication_creds_from_environment(self):
-        os.environ["LOGPREP_CONFIG_AUTH_USERNAME"] = "myusername"
-        os.environ["LOGPREP_CONFIG_AUTH_PASSWORD"] = "mypassword"
+        mock_env = {
+            "LOGPREP_CONFIG_AUTH_USERNAME": "myusername",
+            "LOGPREP_CONFIG_AUTH_PASSWORD": "mypassword",
+        }
         responses.add(
             responses.GET,
             "https://the.target.url/targetfile",
         )
-        http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
-        http_getter.get()
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
+            http_getter.get()
         assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
             "myusername", "mypassword"
         )
