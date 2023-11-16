@@ -1884,7 +1884,7 @@
           },
           "disableTextWrap": false,
           "editorMode": "code",
-          "expr": "sum(increase(logprep_number_of_failed_events_total{container=~\".*logprep\"}[$__range]))",
+          "expr": "sum(increase(logprep_number_of_failed_events_total[$__range]))",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
