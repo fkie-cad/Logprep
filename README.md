@@ -425,6 +425,19 @@ The environment can either be started with a Logprep container or without one:
     docker-compose --profile logprep up -d
     ```
 
+### Run with getting config from http server with basic authentication
+
+  * Run from within the `quickstart` directory: 
+    ```bash
+    docker-compose --profile basic_auth up -d
+    ```
+  * Run within the project root directory:
+    ```bash
+    export LOGPREP_CONFIG_AUTH_USERNAME="user"
+    export LOGPREP_CONFIG_AUTH_PASSWORD="password"
+    logprep http://localhost:8081/config/pipeline.yml
+    ```
+
 ### Interacting with the Quickstart Environment
 
 The start up takes a few seconds to complete, but once everything is up
