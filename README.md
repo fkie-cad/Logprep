@@ -439,6 +439,9 @@ Opensearch Dashboards. Following services are available after start up:
 | Opensearch Dashboards: | `localhost:5601` |
 | Grafana Dashboards: | `localhost:3000` |
 | Prometheus: | `localhost:9090` |
+| Nginx: | `localhost:8081` |
+| Keycloak: | `localhost:8080` |
+| Postgres: | `localhost:5432` |
 
 The credentials for Grafana are `admin` and `admin`.
 

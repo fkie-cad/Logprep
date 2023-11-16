@@ -105,7 +105,7 @@ services:
       - basic_auth
     network_mode: host
     expose:
-      - 8080
+      - 8081
     volumes:
       - ../quickstart/exampledata:/usr/share/nginx/html:ro
       - ../quickstart/exampledata/config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
@@ -113,7 +113,31 @@ services:
   keycloak:
     image: bitnami/keycloak:latest
     container_name: keycloak
+    network_mode: host
+    expose:
+      - 8080
     profiles:
       - oauth2
+    environment:
+      KEYCLOAK_ADMIN_USER: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KEYCLOAK_DATABASE_HOST: localhost
+      KEYCLOAK_DATABASE_PORT: 5432
+      KEYCLOAK_DATABASE_NAME: keycloak
+      KEYCLOAK_DATABASE_USER: keycloak
+      KEYCLOAK_DATABASE_PASSWORD: bitnami
+      KEYCLOAK_HTTP_PORT: 8080
+      KEYCLOAK_HTTPS_PORT: 8443
+      KEYCLOAK_BIND_ADDRESS: 127.0.0.1
+  keycloak_db:
+    image: bitnami/postgresql:latest
+    network_mode: host
+    expose:
+      - 5432
+    environment:
+      POSTGRESQL_PASSWORD: bitnami
+      POSTGRESQL_POSTGRES_PASSWORD: bitnami
+      POSTGRESQL_DATABASE: keycloak
+      POSTGRESQL_USERNAME: keycloak
 volumes:
   data:
