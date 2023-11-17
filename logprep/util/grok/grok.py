@@ -22,7 +22,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import re
 import string
 import sys
 from hashlib import md5
@@ -32,6 +31,7 @@ from re import error
 
 import numpy as np
 import pkg_resources
+import re2 as re
 from attrs import define, field, validators
 
 from logprep.util.decorators import timeout
@@ -135,7 +135,7 @@ class Grok:
             return fields
         return fields.replace("__", ".")
 
-    def _resolve_grok(self, match: re.Match) -> str:
+    def _resolve_grok(self, match) -> str:
         name = match.group(1)
         fields = match.group(3)
         pattern = self.predefined_patterns.get(name)
@@ -156,7 +156,7 @@ class Grok:
         self.field_mapper |= {fields_hash: dotted_fields}
         return rf"(?P<{fields_hash}>" rf"{pattern.regex_str})"
 
-    def _resolve_oniguruma(self, match: re.Match) -> str:
+    def _resolve_oniguruma(self, match) -> str:
         fields = match.group(1)
         pattern = match.group(2)
         dundered_fields = self._to_dundered_field(fields)
