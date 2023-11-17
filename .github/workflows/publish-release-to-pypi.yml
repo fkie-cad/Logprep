@@ -5,14 +5,9 @@ on:
     types: [published]
 
 jobs:
-  publish-latest-release-to-pypi:
+  build-wheel-and-tarball:
     runs-on: ubuntu-latest
-    name: Publish release to PyPi
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/logprep
-    permissions:
-      id-token: write
+    name: Build Logprep
     steps:
       - uses: actions/checkout@v3
         with:
@@ -30,6 +25,27 @@ jobs:
 
       - name: Build binary wheel and a source tarball
         run: python setup.py sdist bdist_wheel
+
+      - name: Upload Artifact for next job
+        uses: actions/upload-artifact@master
+        with:
+          name: logprep-build
+          path: dist
+    
+  publish-latest-release-to-pypi:
+    runs-on: ubuntu-latest
+    name: Publish release to PyPi
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/logprep
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifact from previous job
+        uses: actions/download-artifact@master
+        with:
+          name: logprep-build
+          path: dist
 
       - name: Publish package distributions to PyPI
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
