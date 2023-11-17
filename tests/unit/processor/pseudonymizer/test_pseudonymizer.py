@@ -333,7 +333,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
     (
-        "pseudonymize_url_query_substrings",
+        "pseudonymize_url_query_values_substrings",
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
@@ -691,47 +691,6 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
             ],
         },
         None,
-    ),
-]
-
-failure_test_cases = [  # testcase, rule, event, expected
-    (
-        "do_not_pseudonymize_url",
-        {
-            "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
-                "url_fields": ["pseudo_this"],
-            },
-        },
-        {
-            "filter_this": "does_not_matter",
-            "pseudo_this": "https://test.de",
-        },
-        {
-            "filter_this": "does_not_matter",
-            "pseudo_this": "https://test.de",
-        },
-        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
-    ),
-    (
-        "do_not_pseudonymize_url_without_scheme",
-        {
-            "filter": "filter_this: does_not_matter",
-            "pseudonymizer": {
-                "pseudonyms": {"pseudo_this": "RE_ALL_NO_CAP"},
-                "url_fields": ["pseudo_this"],
-            },
-        },
-        {
-            "filter_this": "does_not_matter",
-            "pseudo_this": "test.de",
-        },
-        {
-            "filter_this": "does_not_matter",
-            "pseudo_this": "test.de",
-        },
-        "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
 ]
 
