@@ -3,6 +3,16 @@
 ## next release
 ### Breaking
 
+### Features
+
+### Improvements
+
+### Bugfix
+
+
+## v8.0.0
+### Breaking
+
 * reimplemented metrics so the former metrics configuration won't work anymore
 * metric content changed and existent grafana dashboards will break
 * new rule `id` could possibly break configurations if the same rule is used in both rule trees
