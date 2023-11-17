@@ -160,5 +160,5 @@ class TemplateReplacer(Processor):
                 event[subfield] = {}
                 event = event[subfield]
             else:
-                raise FieldExistsWarning(self, event, rule, [subfield])
+                raise FieldExistsWarning(rule, event, [subfield])
         event[self._target_field_split[-1]] = replacement

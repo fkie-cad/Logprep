@@ -1,6 +1,6 @@
 [
     {
-        "filter": "random_field",
+        "filter": "another_random_field",
         "concatenator": {
             "source_fields": ["field.a", "field.b", "other_field.c"],
             "target_field": "target_field",

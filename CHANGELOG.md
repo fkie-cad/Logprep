@@ -1,11 +1,38 @@
 ## Upcoming Changes
 
 ## next release
+### Breaking
 
 ### Features
+
 ### Improvements
 
-* improve loading times for the rule tree by optimizing the rule segmentation and sorting.
+### Bugfix
+
+
+## v8.0.0
+### Breaking
+
+* reimplemented metrics so the former metrics configuration won't work anymore
+* metric content changed and existent grafana dashboards will break
+* new rule `id` could possibly break configurations if the same rule is used in both rule trees
+  - can be fixed by adding a unique `id` to each rule or delete the possibly redundant rule
+
+### Features
+
+* add possibility to convert hex to int in `calculator` processor with new added function `from_hex`
+* add metrics on rule level
+* add grafana example dashboards under `quickstart/exampledata/config/grafana/dashboards`
+* add new configuration field `id` for all rules to identify rules in metrics and logs
+  - if no `id` is given, the `id` will be generated in a stable way
+  - add verification of rule `id` uniqueness on processor level over both rule trees to ensure metrics are counted correctly on rule level
+
+### Improvements
+
+* reimplemented prometheus metrics exporter to provide gauges, histograms and counter metrics
+* removed shared counter, because it is redundant to the metrics
+* get exception stack trace by setting environment variable `DEBUG`
+* improve loading times for the rule tree by optimizing the rule segmentation and sorting
 
 ### Bugfix
 

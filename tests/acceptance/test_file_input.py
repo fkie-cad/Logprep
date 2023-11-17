@@ -2,17 +2,17 @@
 # pylint: disable=line-too-long
 import time
 from logging import DEBUG, basicConfig, getLogger
+
 import pytest
+
 from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import (
     get_default_logprep_config,
     start_logprep,
-    wait_for_output,
     stop_logprep,
+    wait_for_output,
 )
-from tests.testdata.input_logdata.file_input_logs import (
-    test_initial_log_data,
-)
+from tests.testdata.input_logdata.file_input_logs import test_initial_log_data
 
 CHECK_INTERVAL = 0.1
 
@@ -45,11 +45,10 @@ logger = getLogger("Logprep-Test")
 def config_fixture():
     pipeline = [
         {
-            "normalizername": {
-                "type": "normalizer",
-                "specific_rules": ["tests/testdata/acceptance/normalizer/rules_static/specific"],
-                "generic_rules": ["tests/testdata/acceptance/normalizer/rules_static/generic"],
-                "regex_mapping": "tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml",
+            "dissector": {
+                "type": "dissector",
+                "specific_rules": ["tests/testdata/acceptance/dissector/rules/specific"],
+                "generic_rules": ["tests/testdata/acceptance/dissector/rules/generic"],
             }
         }
     ]

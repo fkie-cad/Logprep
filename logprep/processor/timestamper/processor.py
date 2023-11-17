@@ -58,14 +58,14 @@ class Timestamper(FieldManager):
             parsed_successfully = True
             break
         if not parsed_successfully:
-            raise ProcessingWarning(self, str("Could not parse timestamp"), rule, event)
+            raise ProcessingWarning(str("Could not parse timestamp"), rule, event)
 
     def _get_source_field(self, event, rule):
         source_field = rule.source_fields[0]
         source_field_value = get_dotted_field_value(event, source_field)
         if not source_field_value:
             raise ProcessingWarning(
-                self, f"'{source_field}' does not exist or is falsy value", rule, event
+                f"'{source_field}' does not exist or is falsy value", rule, event
             )
 
         return source_field_value

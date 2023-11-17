@@ -95,9 +95,9 @@ class Grokker(Processor):
                 if not success:
                     conflicting_fields.append(dotted_field)
         if conflicting_fields:
-            raise FieldExistsWarning(self, rule, event, conflicting_fields)
+            raise FieldExistsWarning(rule, event, conflicting_fields)
         if not matches:
-            raise ProcessingWarning(self, "no grok pattern matched", rule, event)
+            raise ProcessingWarning("no grok pattern matched", rule, event)
 
     def setup(self):
         """Loads the action mapping. Has to be called before processing"""

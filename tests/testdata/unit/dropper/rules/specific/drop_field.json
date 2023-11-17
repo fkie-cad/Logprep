@@ -1,6 +1,6 @@
 [
   {
-    "filter": "drop_me",
+    "filter": "drop_me_too",
     "dropper": {
       "drop": [
         "drop_me"

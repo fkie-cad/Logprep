@@ -42,9 +42,7 @@ class StringSplitter(FieldManager):
         source_field = rule.source_fields[0]
         source_field_content = get_dotted_field_value(event, source_field)
         if not isinstance(source_field_content, str):
-            raise ProcessingWarning(
-                self, f"source_field '{source_field}' is not a string", rule, event
-            )
+            raise ProcessingWarning(f"source_field '{source_field}' is not a string", rule, event)
         result = source_field_content.split(rule.delimeter)
         successful = add_field_to(
             event=event,
@@ -54,4 +52,4 @@ class StringSplitter(FieldManager):
             overwrite_output_field=rule.overwrite_target,
         )
         if not successful:
-            raise FieldExistsWarning(self, rule, event, [target_field])
+            raise FieldExistsWarning(rule, event, [target_field])

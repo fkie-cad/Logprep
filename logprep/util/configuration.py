@@ -51,32 +51,11 @@ class RequiredConfigurationKeyMissingError(InvalidConfigurationError):
         super().__init__(f"Required option is missing: {key}")
 
 
-class InvalidLabelingSchemaError(InvalidConfigurationError):
-    """Raise if labeling schema is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid labeling schema: {message}")
-
-
-class InvalidRulesError(InvalidConfigurationError):
-    """Raise if set of rules is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid rule set: {message}")
-
-
 class InvalidProcessorConfigurationError(InvalidConfigurationError):
     """Raise if processor configuration is invalid."""
 
     def __init__(self, message: str):
         super().__init__(f"Invalid processor configuration: {message}")
-
-
-class InvalidConnectorConfigurationError(InvalidConfigurationError):
-    """Raise if connector configuration is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid connector configuration: {message}")
 
 
 class InvalidInputConnectorConfigurationError(InvalidConfigurationError):
@@ -91,13 +70,6 @@ class InvalidOutputConnectorConfigurationError(InvalidConfigurationError):
 
     def __init__(self, message: str):
         super().__init__(f"Invalid output connector configuration: {message}")
-
-
-class IncalidMetricsConfigurationError(InvalidConfigurationError):
-    """Raise if status_logger configuration is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid metrics configuration: {message}")
 
 
 class MissingEnvironmentError(InvalidConfigurationError):
@@ -344,7 +316,7 @@ class Configuration(dict):
         for processor_config in self["pipeline"]:
             processor = self._verify_processor(errors, logger, processor_config)
             try:
-                self._verify_rules_outputs(processor)
+                self._verify_rules(processor)
             except InvalidRuleDefinitionError as error:
                 errors.append(error)
             try:
@@ -393,17 +365,29 @@ class Configuration(dict):
             )
         return processor
 
-    def _verify_rules_outputs(self, processor: Processor):
-        if not processor or not hasattr(processor.rule_class, "outputs"):
+    def _verify_rules(self, processor: Processor):
+        if not processor:
             return
+        rule_ids = []
         for rule in processor.rules:
-            for output in rule.outputs:
-                for output_name, _ in output.items():
-                    if output_name not in self["output"]:
-                        raise InvalidRuleDefinitionError(
-                            f"{processor.describe()}: output"
-                            f" '{output_name}' does not exist in logprep outputs"
-                        )
+            if rule.id in rule_ids:
+                raise InvalidRuleDefinitionError(f"Duplicate rule id: {rule.id}, {rule}")
+            rule_ids.append(rule.id)
+            if not hasattr(processor.rule_class, "outputs"):
+                continue
+            self._verify_outputs(processor, rule)
+        duplicates = [item for item in rule_ids if rule_ids.count(item) > 1]
+        if duplicates:
+            raise InvalidRuleDefinitionError(f"Duplicate rule ids: {duplicates}")
+
+    def _verify_outputs(self, processor, rule):
+        for output in rule.outputs:
+            for output_name, _ in output.items():
+                if output_name not in self["output"]:
+                    raise InvalidRuleDefinitionError(
+                        f"{processor.describe()}: output"
+                        f" '{output_name}' does not exist in logprep outputs"
+                    )
 
     def _verify_processor_outputs(self, processor_config):
         processor_config = deepcopy(processor_config)
@@ -424,44 +408,10 @@ class Configuration(dict):
         metrics_config = self.get("metrics")
         if metrics_config:
             errors = []
-
             if "enabled" not in metrics_config:
                 errors.append(RequiredConfigurationKeyMissingError("metrics > enabled"))
-
-            if metrics_config.get("enabled"):
-                required_keys = [
-                    "enabled",
-                    "period",
-                    "cumulative",
-                    "aggregate_processes",
-                    "measure_time",
-                    "port",
-                ]
-
-                for key in required_keys:
-                    if key not in self["metrics"]:
-                        errors.append(RequiredConfigurationKeyMissingError(f"metrics > {key}"))
-
-            try:
-                self._verify_measure_time_config(self.get("metrics").get("measure_time"))
-            except InvalidConfigurationError as error:
-                errors.append(error)
-
             if errors:
                 raise InvalidConfigurationErrors(errors)
-
-    @staticmethod
-    def _verify_measure_time_config(measure_time_config):
-        required_keys = {"enabled", "append_to_event"}
-        given_keys = set(measure_time_config.keys())
-        missing_keys = required_keys.difference(given_keys)
-
-        if missing_keys:
-            raise RequiredConfigurationKeyMissingError(
-                f"The following option keys for the "
-                f"measure time configs are missing: "
-                f"{missing_keys}"
-            )
 
     @staticmethod
     def _print_and_raise_errors(errors: List[BaseException]):

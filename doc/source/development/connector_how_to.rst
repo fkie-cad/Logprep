@@ -60,7 +60,7 @@ An exception should be thrown if an error occurs on calling this function.
 These exceptions must inherit from the exception classes in :py:class:`~logprep.output.output.Output`.
 They should return a helpful message when calling `str(exception)`.
 Analogous to the input, exceptions that require a restart of Logprep should inherit from `FatalOutputError`.
-Exceptions that inherit from `WarningOutputError` will be logged, but they do not require any error handling.
+Exceptions that inherit from `OutputWarning` will be logged, but they do not require any error handling.
 
 :py:meth:`~logprep.output.output.Output.store_failed`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

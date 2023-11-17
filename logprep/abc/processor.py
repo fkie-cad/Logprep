@@ -1,18 +1,14 @@
 """Abstract module for processors"""
-import copy
-import time
 from abc import abstractmethod
-from functools import reduce
 from logging import DEBUG, Logger
-from multiprocessing import current_process
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
 from attr import define, field, validators
 
 from logprep.abc.component import Component
-from logprep.framework.rule_tree.rule_tree import RuleTree
-from logprep.metrics.metric import Metric, calculate_new_average
+from logprep.framework.rule_tree.rule_tree import RuleTree, RuleTreeType
+from logprep.metrics.metrics import Metric
 from logprep.processor.base.exceptions import (
     FieldExistsWarning,
     ProcessingCriticalError,
@@ -26,7 +22,6 @@ from logprep.util.helper import (
     pop_dotted_field_value,
 )
 from logprep.util.json_handling import list_json_files_in_directory
-from logprep.util.time_measurement import TimeMeasurement
 
 if TYPE_CHECKING:
     from logprep.processor.base.rule import Rule  # pragma: no cover
@@ -72,41 +67,9 @@ class Processor(Component):
         """Set if the processor should be applied multiple times. This enables further processing
         of an output with the same processor."""
 
-    @define(kw_only=True)
-    class ProcessorMetrics(Metric):
-        """Tracks statistics about this processor"""
-
-        _prefix: str = "logprep_processor_"
-
-        number_of_processed_events: int = 0
-        """Number of events that were processed by the processor"""
-        mean_processing_time_per_event: float = 0.0
-        """Mean processing time for one event"""
-        _mean_processing_time_sample_counter: int = 0
-        number_of_warnings: int = 0
-        """Number of warnings that occurred while processing events"""
-        number_of_errors: int = 0
-        """Number of errors that occurred while processing events"""
-        generic_rule_tree: RuleTree.RuleTreeMetrics
-        """Tracker of the generic rule tree metrics"""
-        specific_rule_tree: RuleTree.RuleTreeMetrics
-        """Tracker of the specific rule tree metrics"""
-
-        def update_mean_processing_time_per_event(self, new_sample):
-            """Updates the mean processing time per event"""
-            new_avg, new_sample_counter = calculate_new_average(
-                self.mean_processing_time_per_event,
-                new_sample,
-                self._mean_processing_time_sample_counter,
-            )
-            self.mean_processing_time_per_event = new_avg
-            self._mean_processing_time_sample_counter = new_sample_counter
-
     __slots__ = [
         "rule_class",
         "has_custom_tests",
-        "metrics",
-        "metric_labels",
         "_event",
         "_specific_tree",
         "_generic_tree",
@@ -114,8 +77,6 @@ class Processor(Component):
 
     rule_class: "Rule"
     has_custom_tests: bool
-    metrics: ProcessorMetrics
-    metric_labels: dict
     _event: dict
     _specific_tree: RuleTree
     _generic_tree: RuleTree
@@ -123,33 +84,21 @@ class Processor(Component):
 
     def __init__(self, name: str, configuration: "Processor.Config", logger: Logger):
         super().__init__(name, configuration, logger)
-        self.metric_labels, specific_tree_labels, generic_tree_labels = self._create_metric_labels()
         self._specific_tree = RuleTree(
-            config_path=self._config.tree_config, metric_labels=specific_tree_labels
+            processor_name=self.name,
+            processor_config=self._config,
+            rule_tree_type=RuleTreeType.SPECIFIC,
         )
         self._generic_tree = RuleTree(
-            config_path=self._config.tree_config, metric_labels=generic_tree_labels
+            processor_name=self.name,
+            processor_config=self._config,
+            rule_tree_type=RuleTreeType.GENERIC,
         )
         self.load_rules(
             generic_rules_targets=self._config.generic_rules,
             specific_rules_targets=self._config.specific_rules,
         )
-        self.metrics = self.ProcessorMetrics(
-            labels=self.metric_labels,
-            generic_rule_tree=self._generic_tree.metrics,
-            specific_rule_tree=self._specific_tree.metrics,
-        )
         self.has_custom_tests = False
-
-    def _create_metric_labels(self):
-        """Reads out the metrics from the configuration and sets up labels for the rule trees"""
-        metric_labels = self._config.metric_labels
-        metric_labels.update({"processor": self.name})
-        specif_tree_labels = copy.deepcopy(metric_labels)
-        specif_tree_labels.update({"rule_tree": "specific"})
-        generic_tree_labels = copy.deepcopy(metric_labels)
-        generic_tree_labels.update({"rule_tree": "generic"})
-        return metric_labels, specif_tree_labels, generic_tree_labels
 
     @property
     def _specific_rules(self):
@@ -181,7 +130,16 @@ class Processor(Component):
         """
         return [*self._generic_rules, *self._specific_rules]
 
-    @TimeMeasurement.measure_time()
+    @property
+    def metric_labels(self) -> dict:
+        """Return metric labels."""
+        return {
+            "component": "processor",
+            "description": self.describe(),
+            "type": self._config.type,
+            "name": self.name,
+        }
+
     def process(self, event: dict):
         """Process a log event by calling the implemented `process` method of the
         strategy object set in  `_strategy` attribute.
@@ -193,40 +151,45 @@ class Processor(Component):
 
         """
         self._logger.debug(f"{self.describe()} processing event {event}")
-        self.metrics.number_of_processed_events += 1
         self._process_rule_tree(event, self._specific_tree)
         self._process_rule_tree(event, self._generic_tree)
 
     def _process_rule_tree(self, event: dict, tree: "RuleTree"):
         applied_rules = set()
 
-        def _process_rule(event, rule):
-            begin = time.time()
+        @Metric.measure_time()
+        def _process_rule(rule, event):
             self._apply_rules_wrapper(event, rule)
-            processing_time = time.time() - begin
-            rule.metrics._number_of_matches += 1
-            rule.metrics.update_mean_processing_time(processing_time)
-            self.metrics.update_mean_processing_time_per_event(processing_time)
+            rule.metrics.number_of_processed_events += 1
             applied_rules.add(rule)
             return event
 
-        if self._config.apply_multiple_times:
+        def _process_rule_tree_multiple_times(tree, event):
             matching_rules = tree.get_matching_rules(event)
             while matching_rules:
-                reduce(_process_rule, (event, *matching_rules))
+                for rule in matching_rules:
+                    _process_rule(rule, event)
                 matching_rules = set(tree.get_matching_rules(event)).difference(applied_rules)
-        else:
-            reduce(_process_rule, (event, *tree.get_matching_rules(event)))
 
-    def _apply_rules_wrapper(self, event, rule):
+        def _process_rule_tree_once(tree, event):
+            matching_rules = tree.get_matching_rules(event)
+            for rule in matching_rules:
+                _process_rule(rule, event)
+
+        if self._config.apply_multiple_times:
+            _process_rule_tree_multiple_times(tree, event)
+        else:
+            _process_rule_tree_once(tree, event)
+
+    def _apply_rules_wrapper(self, event: dict, rule: "Rule"):
         try:
             self._apply_rules(event, rule)
         except ProcessingWarning as error:
             self._handle_warning_error(event, rule, error)
         except ProcessingCriticalError as error:
-            raise error
+            raise error  # is needed to prevent wrapping it in itself
         except BaseException as error:
-            raise ProcessingCriticalError(self, str(error), event) from error
+            raise ProcessingCriticalError(str(error), rule, event) from error
         if not hasattr(rule, "delete_source_fields"):
             return
         if rule.delete_source_fields:
@@ -282,17 +245,17 @@ class Processor(Component):
         specific_rules_targets = self.resolve_directories(specific_rules_targets)
         generic_rules_targets = self.resolve_directories(generic_rules_targets)
         for specific_rules_target in specific_rules_targets:
-            rules = self.rule_class.create_rules_from_target(specific_rules_target)
+            rules = self.rule_class.create_rules_from_target(specific_rules_target, self.name)
             for rule in rules:
                 self._specific_tree.add_rule(rule, self._logger)
         for generic_rules_target in generic_rules_targets:
-            rules = self.rule_class.create_rules_from_target(generic_rules_target)
+            rules = self.rule_class.create_rules_from_target(generic_rules_target, self.name)
             for rule in rules:
                 self._generic_tree.add_rule(rule, self._logger)
         if self._logger.isEnabledFor(DEBUG):  # pragma: no cover
-            number_specific_rules = self._specific_tree.metrics.number_of_rules
+            number_specific_rules = self._specific_tree.number_of_rules
             self._logger.debug(f"{self.describe()} loaded {number_specific_rules} specific rules")
-            number_generic_rules = self._generic_tree.metrics.number_of_rules
+            number_generic_rules = self._generic_tree.number_of_rules
             self._logger.debug(f"{self.describe()} loaded {number_generic_rules} generic rules")
 
     @staticmethod
@@ -317,7 +280,7 @@ class Processor(Component):
         if isinstance(error, ProcessingWarning):
             self._logger.warning(str(error))
         else:
-            self._logger.warning(str(ProcessingWarning(self, str(error), rule, event)))
+            self._logger.warning(str(ProcessingWarning(str(error), rule, event)))
 
     def _has_missing_values(self, event, rule, source_field_dict):
         missing_fields = list(
@@ -340,4 +303,9 @@ class Processor(Component):
             overwrite_output_field=rule.overwrite_target,
         )
         if not add_successful:
-            raise FieldExistsWarning(self, rule, event, [rule.target_field])
+            raise FieldExistsWarning(rule, event, [rule.target_field])
+
+    def setup(self):
+        super().setup()
+        for rule in self.rules:
+            _ = rule.metrics  # initialize metrics to show them on startup

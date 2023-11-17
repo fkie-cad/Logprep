@@ -1,66 +1,58 @@
 """This module contains the rule tree functionality."""
-from logging import Logger
-from typing import List, TYPE_CHECKING, Optional
 
-import numpy as np
-from attr import define, Factory
+from enum import Enum
+from logging import Logger
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from logprep.framework.rule_tree.node import Node
 from logprep.framework.rule_tree.rule_parser import RuleParser
-from logprep.metrics.metric import Metric
 from logprep.util import getter
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
+    from logprep.abc.processor import Processor
     from logprep.processor.base.rule import Rule
+
+
+class RuleTreeType(Enum):
+    """Types of rule trees."""
+
+    SPECIFIC = 1
+    """Specific rule tree that is used to match specific rules."""
+    GENERIC = 2
+    """Generic rule tree that is used to match generic rules."""
 
 
 class RuleTree:
     """Represent a set of rules using a rule tree model."""
 
-    @define(kw_only=True)
-    class RuleTreeMetrics(Metric):
-        """Tracks statistics about the current rule tree"""
-
-        number_of_rules: int = 0
-        """Number of rules configured in the current rule tree"""
-        rules: List["Rule.RuleMetrics"] = Factory(list)
-        """List of rule metrics"""
-
-        # pylint: disable=not-an-iterable
-        # pylint: disable=protected-access
-        @property
-        def number_of_matches(self):
-            """Sum of all rule matches"""
-            return np.sum([rule._number_of_matches for rule in self.rules])
-
-        @property
-        def mean_processing_time(self):
-            """Mean of all rule mean processing times"""
-            times = [rule._mean_processing_time for rule in self.rules]
-            if times:
-                return np.mean(times)
-            return 0.0
-
-        # pylint: enable=not-an-iterable
-        # pylint: enable=protected-access
-
     __slots__ = (
         "rule_parser",
-        "metrics",
         "priority_dict",
+        "_rule_tree_type",
         "_rule_mapping",
-        "_config_path",
+        "_processor_config",
+        "_processor_type",
+        "_processor_name",
         "_root",
+        "__dict__",
     )
 
     rule_parser: Optional[RuleParser]
-    metrics: RuleTreeMetrics
     priority_dict: dict
+    _rule_tree_type: Union[RuleTreeType, str]
     _rule_mapping: dict
-    _config_path: str
+    _processor_name: str
+    _processor_config: "Processor.Config"
+    _processor_type: str
     _root: Node
 
-    def __init__(self, root: Node = None, config_path: str = None, metric_labels: dict = None):
+    def __init__(
+        self,
+        root: Node = None,
+        processor_name: str = None,
+        processor_config: "Processor.Config" = None,
+        rule_tree_type: RuleTreeType = None,
+    ):
         """Rule tree initialization function.
 
         Initializes a new rule tree with a given root node and a path to the tree's optional config
@@ -71,22 +63,26 @@ class RuleTree:
         ----------
         root: Node, optional
             Node that should be used as the new rule tree's root node.
-        config_path: str, optional
-            Path to the optional configuration file that contains the new rule tree's configuration.
+        processor_config: Processor.Config, optional
+            Configuration of the processor that uses the rule tree.
 
         """
         self.rule_parser = None
         self._rule_mapping = {}
-        self._config_path = config_path
+        self._processor_config = processor_config
+        self._processor_name = processor_name if processor_name is not None else ""
+        self._rule_tree_type = rule_tree_type.name.lower() if rule_tree_type is not None else ""
+        self._processor_type = processor_config.type if processor_name is not None else ""
         self._setup()
-        if not metric_labels:
-            metric_labels = {"component": "rule_tree"}
-        self.metrics = self.RuleTreeMetrics(labels=metric_labels)
 
         if root:
             self._root = root
         else:
             self._root = Node(None)
+
+    @property
+    def number_of_rules(self) -> int:
+        return len(self._rule_mapping)
 
     def _setup(self):
         """Basic setup of rule tree.
@@ -96,8 +92,11 @@ class RuleTree:
         """
         self.priority_dict = {}
         tag_map = {}
-        if self._config_path:
-            config_data = getter.GetterFactory.from_string(self._config_path).get_json()
+
+        if self._processor_config and self._processor_config.tree_config:
+            config_data = getter.GetterFactory.from_string(
+                self._processor_config.tree_config
+            ).get_json()
             self.priority_dict = config_data["priority_dict"]
             tag_map = config_data["tag_map"]
         self.rule_parser = RuleParser(tag_map)
@@ -128,16 +127,11 @@ class RuleTree:
                 f"Ignore and continue with next rule."
             )
             return
-
-        self.metrics.number_of_rules += 1
-
         for rule_segment in parsed_rule:
             end_node = self._add_parsed_rule(rule_segment)
             if rule not in end_node.matching_rules:
                 end_node.matching_rules.append(rule)
-
-        self._rule_mapping[rule] = self.metrics.number_of_rules - 1
-        self.metrics.rules.append(rule.metrics)  # pylint: disable=no-member
+        self._rule_mapping[rule] = self.number_of_rules
 
     def _add_parsed_rule(self, parsed_rule: list):
         """Add parsed rule to rule tree.

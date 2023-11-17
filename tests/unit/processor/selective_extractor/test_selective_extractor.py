@@ -15,7 +15,6 @@ class TestSelectiveExtractor(BaseProcessorTestCase):
     }
 
     def test_selective_extractor_does_not_change_orig_doc(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"user": "test_user", "other": "field"}
         exp_document = {"user": "test_user", "other": "field"}
 

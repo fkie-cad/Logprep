@@ -122,19 +122,9 @@ However, the log message will be separately stored as failed (see :ref:`connecto
 Metrics
 ^^^^^^^
 
-By default a processor exposes metrics like the number of processed events or the mean processing
-time.
-If it is required to expose new, processor specific, metrics it is possible to extend the default
-metrics.
-To achieve this you have to implement a sub class inside the processor class which inherits from
-:code:`Processor.ProcessorMetrics`.
-The attributes or properties included in that class will be automatically exposed if the general
-metrics configuration is enabled.
-Further more the newly defined metric object has to be defined inside the :code:`__init__` method.
-It is also possible to define metrics that are private and which won't be exposed.
-These metrics have to start with an underscore.
-The purpose of this functionality is to allow the calculation of metrics which are based on
-intermediate values which aren't directly interesting to log and expose.
+To achieve implementing new processor specific metrics you have to implement a embedded class
+:code:`Metrics` inside the processor class which inherits from :code:`Component.Metrics`.
+For further information about metrics see the reference implementation in the :code:`Amides` Processor.
 
 The following code example highlights an implementation of processor specific metrics, aligned with
 the general implementation of a new processor seen in :ref:`implementing_a_new_processor`.
@@ -144,6 +134,7 @@ the general implementation of a new processor seen in :ref:`implementing_a_new_p
 
     """Processor Documentation"""
     from logprep.abc.processor import Processor
+    from logprep.metrics.metrics import CounterMetric
     from attrs import define
 
     class NewProcessor(Processor):
@@ -155,18 +146,17 @@ the general implementation of a new processor seen in :ref:`implementing_a_new_p
             ...
 
         @define(kw_only=True)
-        class NewProcessorMetrics(Processor.ProcessorMetrics):
+        class Metrics(Component.Metrics):
             """Tracks statistics about the NewProcessor"""
 
-            new_metric: int = 0
+            new_metric: CounterMetric = field(
+                factory=lambda: CounterMetric(
+                    description="Short description of this metric",
+                    name="new_metric",
+                )
+            )
             """Short description of this metric"""
-            _private_new_metric: int = 0
-            """Short description of this metric"""
-
-            @property
-            def calculated_metric(self):
-                """Calculates something"""
-                return self.new_metric + self._private_new_metric
+    
 
         __slots__ = ["processor_attribute"]
 

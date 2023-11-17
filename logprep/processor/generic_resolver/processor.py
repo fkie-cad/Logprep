@@ -121,7 +121,7 @@ class GenericResolver(Processor):
                     break
 
         if conflicting_fields:
-            raise FieldExistsWarning(self, rule, event, conflicting_fields)
+            raise FieldExistsWarning(rule, event, conflicting_fields)
 
     def ensure_rules_from_file(self, rule):
         """loads rules from file"""

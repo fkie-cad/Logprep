@@ -2,7 +2,7 @@
     {
         "filter": "field1 AND field2",
         "calculator": {
-            "calc": "%{field1} + %{field2}",
+            "calc": "${field1} + ${field2}",
             "target_field": "new_field"
         }
     }

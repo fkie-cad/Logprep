@@ -18,7 +18,6 @@ class TestPreDetector(BaseProcessorTestCase):
     uuid_pattern = re.compile(r"^[a-z0-9]{8}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{12}$")
 
     def test_perform_successful_pre_detection(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -41,7 +40,6 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
     def test_perform_pre_detection_that_fails_if_filter_children_were_slots(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"A": "foo X bar Y"}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -68,7 +66,6 @@ class TestPreDetector(BaseProcessorTestCase):
         assert detection_results is None
 
     def test_perform_successful_pre_detection_with_host_name(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "host": {"name": "Test hostname"},
             "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
@@ -95,7 +92,6 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
     def test_perform_successful_pre_detection_with_same_existing_pre_detection(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}}}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -120,7 +116,6 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
     def test_perform_successful_pre_detection_with_pre_detector_complex_rule_suceeds_msg_t1(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"tags": "test", "process": {"program": "test"}, "message": "test1*xyz"}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -144,7 +139,6 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
     def test_perform_successful_pre_detection_with_pre_detector_complex_rule_succeeds_msg_t2(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test2Xxyz"}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -168,7 +162,6 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
     def test_perform_successful_pre_detection_with_two_rules(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"first_match": "something", "second_match": "something"}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -200,8 +193,6 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
     def test_correct_star_wildcard_behavior(self):
-        assert self.object.metrics.number_of_processed_events == 0
-
         document = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test", "process": {"program": "test"}, "message": "test3*xyz"}
         self.object.process(document)
@@ -233,8 +224,6 @@ class TestPreDetector(BaseProcessorTestCase):
         assert document != expected
 
     def test_correct_questionmark_wildcard_behavior(self):
-        assert self.object.metrics.number_of_processed_events == 0
-
         document = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         expected = {"tags": "test2", "process": {"program": "test"}, "message": "test3*xyz"}
         self.object.process(document)
@@ -266,7 +255,6 @@ class TestPreDetector(BaseProcessorTestCase):
         assert document == expected
 
     def test_ignores_case(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"tags": "test", "process": {"program": "test"}, "message": "TEST2*xyz"}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -289,7 +277,6 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
     def test_ignores_case_list(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"tags": "test", "process": {"program": "test"}, "message": ["TEST2*xyz"]}
         expected = deepcopy(document)
         expected_detection_results = (
@@ -338,3 +325,11 @@ class TestPreDetector(BaseProcessorTestCase):
         )
 
         assert sorted_detection_results == sorted_expected_detection_results
+
+    def test_adds_timestamp_to_extra_data_if_provided_by_event(self):
+        document = {
+            "@timestamp": "custom timestamp",
+            "winlog": {"event_id": 123, "event_data": {"ServiceName": "VERY BAD"}},
+        }
+        detection_results = self.object.process(document)
+        assert detection_results[0][0].get("@timestamp") == "custom timestamp"
