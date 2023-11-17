@@ -579,9 +579,9 @@ class TestRuleParser:
     def test_parse_rule_param(self, rule, priority_dict, tag_map, expected_expressions):
         rule_parser = RuleParser(tag_map)
         if expected_expressions is not None:
-            assert rule_parser.parse_rule(rule, priority_dict, 10) == expected_expressions
+            assert rule_parser.parse_rule(rule, priority_dict) == expected_expressions
         else:
-            assert rule_parser.parse_rule(rule, priority_dict, 10)
+            assert rule_parser.parse_rule(rule, priority_dict)
 
     @pytest.mark.parametrize(
         "rule_list, expected",

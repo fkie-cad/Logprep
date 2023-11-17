@@ -135,24 +135,6 @@ This configuration will lead to the prioritization of `tags` and `message` in th
 }
 ```
 
-Optionally, a timeout in seconds can be set for loading rules by setting `rule_load_timeout` in the rule 
-tree configuration. This is set to 10 seconds per rule by default.
-A warning will be printed if a rule has not been loaded. 
-
-```json
-{
-  "priority_dict": {
-    "category": "01",
-    "message": "02"
-  },
-  "tag_map": {
-    "check_field_name": "check-tag"
-  },
-  "rule_load_timeout": 3
-}
-```
-
-
 Instead of writing very specific rules that apply to single log messages, it is also possible
 to define generic rules that apply to multiple messages. 
 It is possible to define a set of generic and specific rules for each processor, resulting 

@@ -51,7 +51,6 @@ class RuleTree:
         "_rule_mapping",
         "_config_path",
         "_root",
-        "rule_load_timeout",
     )
 
     rule_parser: Optional[RuleParser]
@@ -60,7 +59,6 @@ class RuleTree:
     _rule_mapping: dict
     _config_path: str
     _root: Node
-    rule_load_timeout: int
 
     def __init__(self, root: Node = None, config_path: str = None, metric_labels: dict = None):
         """Rule tree initialization function.
@@ -98,14 +96,10 @@ class RuleTree:
         """
         self.priority_dict = {}
         tag_map = {}
-        default_load_timeout = 10
         if self._config_path:
             config_data = getter.GetterFactory.from_string(self._config_path).get_json()
             self.priority_dict = config_data["priority_dict"]
             tag_map = config_data["tag_map"]
-            self.rule_load_timeout = config_data.get("rule_load_timeout", default_load_timeout)
-        else:
-            self.rule_load_timeout = default_load_timeout
         self.rule_parser = RuleParser(tag_map)
 
     def add_rule(self, rule: "Rule", logger: Logger = None):
@@ -127,9 +121,7 @@ class RuleTree:
 
         """
         try:
-            parsed_rule = self.rule_parser.parse_rule(
-                rule, self.priority_dict, self.rule_load_timeout
-            )
+            parsed_rule = self.rule_parser.parse_rule(rule, self.priority_dict)
         except Exception as error:  # pylint: disable=broad-except
             logger.warning(
                 f'Error parsing rule "{rule.file_name}.yml": {type(error).__name__}: {error}. '
