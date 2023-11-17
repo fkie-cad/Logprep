@@ -36,8 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Publish release to PyPi
     environment:
-      name: testpypi
-      url: https://test.pypi.org/p/logprep
+      name: pypi
+      url: https://pypi.org/p/logprep
     permissions:
       id-token: write
     needs: build-wheel-and-tarball
@@ -51,8 +51,6 @@ jobs:
       - name: Publish package distributions to PyPI
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
 
   containerbuild:
     strategy:
