@@ -46,7 +46,7 @@ from tldextract import TLDExtract
 from urlextract import URLExtract
 
 from logprep.abc.processor import Processor
-from logprep.metrics.metrics import CounterMetric
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.getter import GetterFactory
@@ -136,14 +136,35 @@ class Pseudonymizer(Processor):
             )
         )
         """Number urls that were pseudonymized"""
-        new_results: int = 0
+
+        new_results: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of new pseudodonyms",
+                name="pseudonymizer_new_results",
+            )
+        )
         """Number of new pseudodonyms"""
-        cached_results: int = 0
+        cached_results: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of resolved from cache pseudonyms",
+                name="pseudonymizer_cached_results",
+            )
+        )
         """Number of resolved from cache pseudonyms"""
-        num_cache_entries: int = 0
+        num_cache_entries: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of pseudonyms in cache",
+                name="pseudonymizer_num_cache_entries",
+            )
+        )
         """Number of pseudonyms in cache"""
-        cache_load: int = 0
-        """cache usage """
+        cache_load: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Relative cache load.",
+                name="pseudonymizer_cache_load",
+            )
+        )
+        """Relative cache load."""
 
     __slots__ = [
         "pseudonyms",
