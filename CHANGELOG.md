@@ -5,9 +5,7 @@
 ### Features
 ### Improvements
 
-* Improve loading times for the rule tree by optimizing the rule segmentation and sorting.
-* Add timeout of 10 seconds to the loading time for each rule and make it configurable in the tree 
-configuration file via `rule_load_timeout`. Warn if a rule was not loaded due to this.
+* improve loading times for the rule tree by optimizing the rule segmentation and sorting.
 
 ### Bugfix
 
