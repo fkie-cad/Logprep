@@ -5,9 +5,11 @@ They can be multi-processed.
 
 """
 import copy
+import gc
 import logging
 import logging.handlers
 import multiprocessing
+import os
 
 # pylint: disable=logging-fstring-interpolation
 import queue
@@ -363,6 +365,10 @@ class MultiprocessingPipeline(Process, Pipeline):
 
     def run(self) -> None:
         """Start processing the Pipeline."""
+        if "LOGPREP_GC_SETTINGS" in os.environ:
+            gc.set_threshold(
+                *[int(value) for value in os.environ["LOGPREP_GC_SETTINGS"].split(",")]
+            )
         if self._profile:
             PipelineProfiler.profile_function(Pipeline.run, self)
         else:

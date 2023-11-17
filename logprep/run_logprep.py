@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """This module can be used to start the logprep."""
 # pylint: disable=logging-fstring-interpolation
+import gc
 import inspect
 import logging
 import os
@@ -190,6 +191,8 @@ def _validate_rules(args, config: Configuration, logger: logging.Logger):
 
 def main():
     """Start the logprep runner."""
+    if "LOGPREP_GC_SETTINGS" in os.environ:
+        gc.set_threshold(*[int(value) for value in os.environ["LOGPREP_GC_SETTINGS"].split(",")])
     args = _parse_arguments()
 
     if args.version:
