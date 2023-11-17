@@ -158,10 +158,6 @@ jobs:
       - name: Upload coverage reports to Codecov with GitHub Action
         uses: codecov/codecov-action@v2
 
-      - name: Check semgrep rules
-        if: steps.changed-files.outputs.all_changed_files
-        run: semgrep -c .semgrep_rules -c r/python --error --skip-unknown-extensions ${{ steps.changed-files.outputs.all_changed_files }}
-
   containerbuild:
     strategy:
       matrix:

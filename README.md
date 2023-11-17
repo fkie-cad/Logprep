@@ -311,20 +311,6 @@ In case the requirements change, the test environments must be rebuilt with the 
 tox -e py310 -e py311 -e py312 -r
 ```
 
-### Semgrep
-
-If you want to run semgrep rules run
-
-```
-pip install semgrep
-```
-
-Afterwards you can just call the tox environment with for example 
-
-```
-tox -e py310-semgrep
-```
-
 ### Running Logprep
 
 Depending on how you have installed Logprep you have different choices to run Logprep as well.  

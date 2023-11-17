@@ -28,7 +28,6 @@ attrs==23.1.0
     # via
     #   -r ./requirements.txt
     #   aiohttp
-    #   semgrep
 black==23.11.0
     # via -r ./requirements_dev.in
 boto3==1.29.4
@@ -58,9 +57,7 @@ click==8.1.7
     #   black
     #   uvicorn
 colorama==0.4.6
-    # via
-    #   -r ./requirements.txt
-    #   semgrep
+    # via -r ./requirements.txt
 confluent-kafka==2.3.0
     # via -r ./requirements.txt
 coverage[toml]==7.3.2
@@ -213,7 +210,6 @@ pyyaml==6.0.1
     # via
     #   -r ./requirements.txt
     #   responses
-    #   semgrep
 regex==2023.10.3
     # via
     #   -r ./requirements.txt
@@ -225,7 +221,6 @@ requests==2.31.0
     #   opensearch-py
     #   requests-file
     #   responses
-    #   semgrep
     #   tldextract
 requests-file==1.5.1
     # via
@@ -251,8 +246,6 @@ scipy==1.11.4
     # via
     #   -r ./requirements.txt
     #   scikit-learn
-semgrep==0.9.0
-    # via -r ./requirements_dev.in
 six==1.16.0
     # via
     #   -r ./requirements.txt
