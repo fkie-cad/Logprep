@@ -310,7 +310,7 @@ test_cases = [  # testcase, rule, event, expected, regex_mapping
         "tests/testdata/unit/pseudonymizer/pseudonymizer_regex_mapping.yml",
     ),
     (
-        "pseudonymize_url_query",
+        "pseudonymize_url_query_values",
         {
             "filter": "filter_this: does_not_matter",
             "pseudonymizer": {
