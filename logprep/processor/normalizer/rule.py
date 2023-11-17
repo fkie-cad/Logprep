@@ -815,6 +815,7 @@ on the Grok results.
 # pylint: enable=anomalous-backslash-in-string
 
 import re
+import uuid
 from typing import Dict, List, Union
 
 from pygrok import Grok
@@ -914,11 +915,19 @@ class NormalizerRule(Rule):
         self._special_fields = None
         self.file_name = None
         self._tests = []
-        self.metrics = self.RuleMetrics(labels={"type": "rule"})
+        self.metrics = self.Metrics(
+            labels={
+                "component": "rule",
+                "description": f"{str(uuid.uuid4())} - {description}",
+                "type": "normalizer",
+                "name": "normalizer",
+            }
+        )
         self._substitutions = {}
         self._grok = {}
         self._timestamps = {}
-        self.description = description
+        self._description = description
+        self._id = str(uuid.uuid4())
 
         self._parse_normalizations(normalizations)
 
@@ -996,10 +1005,18 @@ class NormalizerRule(Rule):
     def timestamps(self) -> dict:
         return self._timestamps
 
+    @property
+    def description(self) -> str:
+        return self._description
+
+    @property
+    def id(self) -> str:
+        return self._id
+
     # pylint: enable=C0111
 
     @staticmethod
-    def _create_from_dict(rule: dict) -> "NormalizerRule":
+    def _create_from_dict(rule: dict, processor_name: str = None) -> "NormalizerRule":
         NormalizerRule._check_rule_validity(rule, "normalize")
         NormalizerRule._check_if_normalization_valid(rule)
 

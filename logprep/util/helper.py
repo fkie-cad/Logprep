@@ -60,7 +60,7 @@ def add_field_to(event, output_field, content, extends_lists=False, overwrite_ou
         Original log-event that logprep is currently processing
     output_field: str
         Dotted subfield string indicating the target of the output value, e.g. destination.ip
-    content: str, list, dict
+    content: str, float, int, list, dict
         Value that should be written into the output_field, can be a str, list or dict object
     extends_lists: bool
         Flag that determines whether output_field lists should be extended

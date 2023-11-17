@@ -98,7 +98,7 @@ class FieldManager(Processor):
             unsuccessful_targets = [
                 x for i, x in enumerate(target_fields) if i in unsuccessful_indices
             ]
-            raise FieldExistsWarning(self, rule, event, unsuccessful_targets)
+            raise FieldExistsWarning(rule, event, unsuccessful_targets)
 
     def _write_to_single_target(self, args, extend_target_list, overwrite_target, rule):
         if extend_target_list and overwrite_target:
@@ -116,7 +116,7 @@ class FieldManager(Processor):
             field_values = field_values.pop()
         successful = add_field_to(event, target_field, field_values, False, False)
         if not successful:
-            raise FieldExistsWarning(self, rule, event, [target_field])
+            raise FieldExistsWarning(rule, event, [target_field])
 
     def _overwrite_target_with_source_field_values(self, event, target_field, field_values):
         if len(field_values) == 1:

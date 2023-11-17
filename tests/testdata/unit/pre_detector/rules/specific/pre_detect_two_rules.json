@@ -2,7 +2,7 @@
   {
     "filter": "other_match",
     "pre_detector": {
-      "id": "RULE_ONE_ID",
+      "id": "a6e68f5b-fa60-4a12-ac93-3a211afd6d47",
       "title": "RULE_ONE",
       "severity": "critical",
       "mitre": [
@@ -16,7 +16,7 @@
   {
     "filter": "another_match",
     "pre_detector": {
-      "id": "RULE_TWO_ID",
+      "id": "69e0f582-0727-4e9c-853f-1e6313492672",
       "title": "RULE_TWO",
       "severity": "suspicious",
       "mitre": [

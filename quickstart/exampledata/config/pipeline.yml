@@ -2,16 +2,10 @@ version: 1
 process_count: 2
 timeout: 0.1
 logger:
-  level: DEBUG
+  level: INFO
 
 metrics:
   enabled: true
-  period: 1
-  cumulative: false
-  aggregate_processes: false
-  measure_time:
-    enabled: true
-    append_to_event: false
   port: 8000
 
 pipeline:
@@ -37,7 +31,7 @@ pipeline:
       specific_rules:
         - quickstart/exampledata/rules/dropper/specific
       generic_rules:
-        - quickstart/exampledata/rules/dropper/specific
+        - quickstart/exampledata/rules/dropper/generic
         - filter: "test_dropper"
           dropper:
             drop:

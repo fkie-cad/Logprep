@@ -1,14 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
-from logging import getLogger, DEBUG, basicConfig
+from logging import DEBUG, basicConfig, getLogger
 
 import pytest
 
 from logprep.util.json_handling import dump_config_as_file
-from tests.acceptance.util import (
-    get_default_logprep_config,
-    get_test_output,
-)
+from tests.acceptance.util import get_default_logprep_config, get_test_output
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
 logger = getLogger("Logprep-Test")
@@ -18,11 +15,10 @@ logger = getLogger("Logprep-Test")
 def get_config():
     pipeline = [
         {
-            "normalizername": {
-                "type": "normalizer",
-                "specific_rules": ["tests/testdata/acceptance/normalizer/rules_static/specific"],
-                "generic_rules": ["tests/testdata/acceptance/normalizer/rules_static/generic"],
-                "regex_mapping": "tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml",
+            "dissector": {
+                "type": "dissector",
+                "specific_rules": ["tests/testdata/acceptance/dissector/rules/specific"],
+                "generic_rules": ["tests/testdata/acceptance/dissector/rules/generic"],
             }
         }
     ]

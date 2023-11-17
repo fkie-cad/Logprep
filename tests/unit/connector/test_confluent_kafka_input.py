@@ -5,17 +5,16 @@
 # pylint: disable=attribute-defined-outside-init
 import socket
 from copy import deepcopy
-from pathlib import Path
 from unittest import mock
 
 import pytest
-from confluent_kafka import KafkaException
+from confluent_kafka import OFFSET_BEGINNING, KafkaException
 
 from logprep.abc.input import (
     CriticalInputError,
     CriticalInputParsingError,
     FatalInputError,
-    WarningInputError,
+    InputWarning,
 )
 from logprep.factory import Factory
 from logprep.factory_error import InvalidConfigurationError
@@ -33,6 +32,30 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         "kafka_config": {"bootstrap.servers": "testserver:9092", "group.id": "testgroup"},
         "topic": "test_input_raw",
     }
+
+    expected_metrics = [
+        "logprep_confluent_kafka_input_commit_failures",
+        "logprep_confluent_kafka_input_commit_success",
+        "logprep_confluent_kafka_input_current_offsets",
+        "logprep_confluent_kafka_input_committed_offsets",
+        "logprep_confluent_kafka_input_librdkafka_age",
+        "logprep_confluent_kafka_input_librdkafka_rx",
+        "logprep_confluent_kafka_input_librdkafka_rx_bytes",
+        "logprep_confluent_kafka_input_librdkafka_rxmsgs",
+        "logprep_confluent_kafka_input_librdkafka_rxmsg_bytes",
+        "logprep_confluent_kafka_input_librdkafka_cgrp_stateage",
+        "logprep_confluent_kafka_input_librdkafka_cgrp_rebalance_age",
+        "logprep_confluent_kafka_input_librdkafka_cgrp_rebalance_cnt",
+        "logprep_confluent_kafka_input_librdkafka_cgrp_assignment_size",
+        "logprep_confluent_kafka_input_librdkafka_replyq",
+        "logprep_confluent_kafka_input_librdkafka_tx",
+        "logprep_confluent_kafka_input_librdkafka_tx_bytes",
+        "logprep_processing_time_per_event",
+        "logprep_number_of_processed_events",
+        "logprep_number_of_failed_events",
+        "logprep_number_of_warnings",
+        "logprep_number_of_errors",
+    ]
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_returns_none_if_no_records(self, _):
@@ -190,21 +213,24 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
             self.object.get_next(0.01)
 
     def test_commit_callback_raises_warning_error_and_counts_failures(self):
-        with pytest.raises(WarningInputError, match="Could not commit offsets"):
+        with pytest.raises(InputWarning, match="Could not commit offsets"):
             self.object._commit_callback(BaseException, ["topic_partition"])
             assert self.object._commit_failures == 1
 
     def test_commit_callback_counts_commit_success(self):
-        assert self.object.metrics._commit_success == 0
+        self.object.metrics.commit_success = 0
         self.object._commit_callback(None, [mock.MagicMock()])
-        assert self.object.metrics._commit_success == 1
+        assert self.object.metrics.commit_success == 1
 
     def test_commit_callback_sets_committed_offsets(self):
+        mock_add = mock.MagicMock()
+        self.object.metrics.committed_offsets.add_with_labels = mock_add
         topic_partion = mock.MagicMock()
         topic_partion.partition = 99
         topic_partion.offset = 666
         self.object._commit_callback(None, [topic_partion])
-        assert self.object.metrics._committed_offsets == {99: 666}
+        call_args = 666, {"description": "topic: test_input_raw - partition: 99"}
+        mock_add.assert_called_with(*call_args)
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_default_config_is_injected(self, mock_consumer):
@@ -243,47 +269,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         mock_consumer.assert_called()
         assert mock_consumer.call_args[0][0].get("statistics.interval.ms") == "999999999"
 
-    def test_init_sets_metrics_properties(self):
-        assert self.object.metrics._consumer_group_id == "testgroup"
-        assert self.object.metrics._consumer_client_id == socket.getfqdn()
-
-    def test_metrics_expose_returns_data(self):
-        json_string = Path(KAFKA_STATS_JSON_PATH).read_text("utf8")
-        self.object._stats_callback(json_string)
-        client_id = socket.getfqdn()
-        # pylint: disable=line-too-long
-        expected = {
-            "logprep_connector_number_of_processed_events;direction:input,name:Test Instance Name,type:confluentkafka_input": 0.0,
-            "logprep_connector_mean_processing_time_per_event;direction:input,name:Test Instance Name,type:confluentkafka_input": 0.0,
-            "logprep_connector_number_of_warnings;direction:input,name:Test Instance Name,type:confluentkafka_input": 0.0,
-            "logprep_connector_number_of_errors;direction:input,name:Test Instance Name,type:confluentkafka_input": 0.0,
-            f"logprep_connector_librdkafka_consumer_ts;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 5016483227792,
-            f"logprep_connector_librdkafka_consumer_time;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 1527060869,
-            f"logprep_connector_librdkafka_consumer_replyq;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-            f"logprep_connector_librdkafka_consumer_msg_cnt;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 22710,
-            f"logprep_connector_librdkafka_consumer_msg_size;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 704010,
-            f"logprep_connector_librdkafka_consumer_msg_max;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 500000,
-            f"logprep_connector_librdkafka_consumer_msg_size_max;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 1073741824,
-            f"logprep_connector_librdkafka_consumer_simple_cnt;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-            f"logprep_connector_librdkafka_consumer_metadata_cache_cnt;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 1,
-            f"logprep_connector_librdkafka_consumer_tx;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 631,
-            f"logprep_connector_librdkafka_consumer_tx_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 168584479,
-            f"logprep_connector_librdkafka_consumer_rx;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 631,
-            f"logprep_connector_librdkafka_consumer_rx_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 31084,
-            f"logprep_connector_librdkafka_consumer_txmsgs;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 4300753,
-            f"logprep_connector_librdkafka_consumer_txmsg_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 133323343,
-            f"logprep_connector_librdkafka_consumer_rxmsgs;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-            f"logprep_connector_librdkafka_consumer_rxmsg_bytes;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-            f"logprep_connector_librdkafka_cgrp_stateage;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 996,
-            f"logprep_connector_librdkafka_cgrp_rebalance_age;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-            f"logprep_connector_librdkafka_cgrp_rebalance_cnt;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-            f"logprep_connector_librdkafka_cgrp_assignment_size;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-            f"logprep_connector_kafka_consumer_commit_failures;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-            f"logprep_connector_kafka_consumer_commit_success;direction:input,name:Test Instance Name,type:confluentkafka_input,client_id:{client_id},group_id:testgroup,topic:test_input_raw": 0,
-        }
-        # pylint: enable=line-too-long
-        assert self.object.metrics.expose() == expected
-
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_raises_fatal_input_error_if_poll_raises_runtime_error(self, _):
         self.object._consumer.poll.side_effect = RuntimeError("test error")
@@ -297,3 +282,64 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         expected_error_message = r"keys are missing: {'(bootstrap.servers|group.id)', '(bootstrap.servers|group.id)'}"  # pylint: disable=line-too-long
         with pytest.raises(InvalidConfigurationError, match=expected_error_message):
             Factory.create({"test": config}, logger=self.logger)
+
+    @pytest.mark.parametrize(
+        "metric_name",
+        [
+            "current_offsets",
+            "committed_offsets",
+        ],
+    )
+    def test_offset_metrics_not_initialized_with_default_label_values(self, metric_name):
+        metric = getattr(self.object.metrics, metric_name)
+        metric_object = metric.tracker.collect()[0]
+        assert len(metric_object.samples) == 0
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_lost_callback_reassings_to_partitions(self, mock_consumer):
+        mock_partitions = [mock.MagicMock()]
+        self.object._consumer.assign = mock.MagicMock()
+        self.object._lost_callback(mock_consumer, mock_partitions)
+        self.object._consumer.assign.assert_called_with(mock_partitions)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_lost_callback_counts_warnings(self, mock_consumer):
+        self.object.metrics.number_of_warnings = 0
+        mock_partitions = [mock.MagicMock()]
+        self.object._lost_callback(mock_consumer, mock_partitions)
+        assert self.object.metrics.number_of_warnings == 1
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_commit_callback_sets_offset_to_0_for_special_offsets(self, _):
+        self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
+        mock_partitions = [mock.MagicMock()]
+        mock_partitions[0].offset = OFFSET_BEGINNING
+        self.object._commit_callback(None, mock_partitions)
+        expected_labels = {
+            "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
+        }
+        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_assign_callback_sets_offsets_and_logs_info(self, mock_consumer):
+        self.object.metrics.committed_offsets.add_with_labels = mock.MagicMock()
+        self.object.metrics.current_offsets.add_with_labels = mock.MagicMock()
+        mock_partitions = [mock.MagicMock()]
+        mock_partitions[0].offset = OFFSET_BEGINNING
+        with mock.patch("logging.Logger.info") as mock_info:
+            self.object._assign_callback(mock_consumer, mock_partitions)
+        expected_labels = {
+            "description": f"topic: test_input_raw - partition: {mock_partitions[0].partition}"
+        }
+        mock_info.assert_called()
+        self.object.metrics.committed_offsets.add_with_labels.assert_called_with(0, expected_labels)
+        self.object.metrics.current_offsets.add_with_labels.assert_called_with(0, expected_labels)
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_revoke_callback_logs_warning_and_counts(self, mock_consumer):
+        self.object.metrics.number_of_warnings = 0
+        mock_partitions = [mock.MagicMock()]
+        with mock.patch("logging.Logger.warning") as mock_warning:
+            self.object._revoke_callback(mock_consumer, mock_partitions)
+        mock_warning.assert_called()
+        assert self.object.metrics.number_of_warnings == 1

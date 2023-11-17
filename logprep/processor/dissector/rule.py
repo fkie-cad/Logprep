@@ -197,8 +197,10 @@ class DissectorRule(FieldManagerRule):
         """Returns the failure tags"""
         return self._config.tag_on_failure
 
-    def __init__(self, filter_rule: FilterExpression, config: "DissectorRule.Config"):
-        super().__init__(filter_rule, config)
+    def __init__(
+        self, filter_rule: FilterExpression, config: "DissectorRule.Config", processor_name: str
+    ):
+        super().__init__(filter_rule, config, processor_name)
         self._set_mapping_actions()
         self._set_convert_actions()
 

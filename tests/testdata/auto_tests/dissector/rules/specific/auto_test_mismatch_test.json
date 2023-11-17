@@ -1,0 +1,14 @@
+[
+  {
+    "raw": {
+      "message": "A B",
+      "tags": ["syslog"]
+    },
+    "processed": {
+      "message": "A B",
+      "source": "A",
+      "target": "B",
+      "tags": ["syslog"]
+    }
+  }
+]

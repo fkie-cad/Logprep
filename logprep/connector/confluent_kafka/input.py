@@ -51,8 +51,9 @@ from logprep.abc.input import (
     CriticalInputParsingError,
     FatalInputError,
     Input,
-    WarningInputError,
+    InputWarning,
 )
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -72,95 +73,134 @@ SPECIAL_OFFSETS = {
     OFFSET_STORED,
 }
 
+DEFAULT_RETURN = 0
+
 
 class ConfluentKafkaInput(Input):
     """A kafka input connector."""
 
     @define(kw_only=True, slots=False)
-    class ConnectorMetrics(Input.ConnectorMetrics):
+    class Metrics(Input.Metrics):
         """Metrics for ConfluentKafkaInput"""
 
-        _prefix = "logprep_connector_input_kafka_"
-
-        _stats: dict = field(factory=dict)
-        """statistcs form librdkafka. Is filled by `_stats_callback`"""
-        _commit_failures: int = 0
-        """count of failed commits. Is filled by `_commit_callback`"""
-        _commit_success: int = 0
-        """count of successful commits. Is filled by `_commit_callback`"""
-        _current_offsets: dict = field(factory=dict)
-        """current offsets of the consumer. Is filled by `_get_raw_event`"""
-        _committed_offsets: dict = field(factory=dict)
-        """committed offsets of the consumer. Is filled by `_commit_callback`"""
-        _consumer_group_id: str = ""
-        """group id of the consumer. Is filled during initialization"""
-        _consumer_client_id: str = ""
-        """client id of the consumer. Is filled during initialization"""
-        _consumer_topic: str = ""
-        """topic of the consumer. Is filled during initialization"""
-
-        @cached_property
-        def _rdkafka_labels(self) -> str:
-            client_id = self._consumer_client_id
-            group_id = self._consumer_group_id
-            topic = self._consumer_topic
-            labels = {"client_id": client_id, "group_id": group_id, "topic": topic}
-            labels = self._labels | labels
-            labels = [":".join(item) for item in labels.items()]
-            labels = ",".join(labels)
-            return labels
-
-        def _get_kafka_input_metrics(self) -> dict:
-            exp = {
-                f"{self._prefix}kafka_consumer_current_offset;"  # nosemgrep
-                f"{self._rdkafka_labels},partition:{partition}": offset
-                for partition, offset in self._current_offsets.items()
-            }
-            exp |= {
-                f"{self._prefix}kafka_consumer_committed_offset;"  # nosemgrep
-                f"{self._rdkafka_labels},partition:{partition}": offset
-                for partition, offset in self._committed_offsets.items()
-            }
-            exp.update(
-                {
-                    f"{self._prefix}kafka_consumer_commit_failures;"
-                    f"{self._rdkafka_labels}": self._commit_failures,
-                    f"{self._prefix}kafka_consumer_commit_success;"
-                    f"{self._rdkafka_labels}": self._commit_success,
-                }
+        commit_failures: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="count of failed commits.",
+                name="confluent_kafka_input_commit_failures",
             )
-            return exp
+        )
+        """count of failed commits. Is filled by `_commit_callback`"""
+        commit_success: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="count of successful commits.",
+                name="confluent_kafka_input_commit_success",
+            )
+        )
+        """count of successful commits. Is filled by `_commit_callback`"""
+        current_offsets: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="current offsets of the consumer.",
+                name="confluent_kafka_input_current_offsets",
+                inject_label_values=False,
+            )
+        )
+        """current offsets of the consumer. Is filled by `_get_raw_event`"""
+        committed_offsets: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="committed offsets of the consumer.",
+                name="confluent_kafka_input_committed_offsets",
+                inject_label_values=False,
+            )
+        )
+        """committed offsets of the consumer. Is filled by `_commit_callback`"""
 
-        def _get_top_level_metrics(self) -> dict:
-            return {
-                f"{self._prefix}librdkafka_consumer_{stat};{self._rdkafka_labels}": value
-                for stat, value in self._stats.items()
-                if isinstance(value, (int, float))
-            }
+        librdkafka_age: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Time since this client instance was created (microseconds)",
+                name="confluent_kafka_input_librdkafka_age",
+            )
+        )
+        """Time since this client instance was created (microseconds)"""
 
-        def _get_cgrp_metrics(self) -> dict:
-            exp = {}
-            cgrp = self._stats.get("cgrp", {})
-            for stat, value in cgrp.items():
-                if isinstance(value, (int, float)):
-                    exp[f"{self._prefix}librdkafka_cgrp_{stat};{self._rdkafka_labels}"] = value
-            return exp
+        librdkafka_replyq: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()",
+                name="confluent_kafka_input_librdkafka_replyq",
+            )
+        )
+        """Number of ops (callbacks, events, etc) waiting in queue for application to serve with rd_kafka_poll()"""
+        librdkafka_tx: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of requests sent to Kafka brokers",
+                name="confluent_kafka_input_librdkafka_tx",
+            )
+        )
+        """Total number of requests sent to Kafka brokers"""
+        librdkafka_tx_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of bytes transmitted to Kafka brokers",
+                name="confluent_kafka_input_librdkafka_tx_bytes",
+            )
+        )
+        """Total number of bytes transmitted to Kafka brokers"""
 
-        def expose(self) -> dict:
-            """overload of `expose` to add kafka specific metrics
+        librdkafka_rx: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of responses received from Kafka brokers",
+                name="confluent_kafka_input_librdkafka_rx",
+            )
+        )
+        """Total number of responses received from Kafka brokers"""
+        librdkafka_rx_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of bytes received from Kafka brokers",
+                name="confluent_kafka_input_librdkafka_rx_bytes",
+            )
+        )
+        """Total number of bytes received from Kafka brokers"""
+        librdkafka_rxmsgs: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers.",
+                name="confluent_kafka_input_librdkafka_rxmsgs",
+            )
+        )
+        """Total number of messages consumed, not including ignored messages (due to offset, etc), from Kafka brokers."""
+        librdkafka_rxmsg_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of message bytes (including framing) received from Kafka brokers",
+                name="confluent_kafka_input_librdkafka_rxmsg_bytes",
+            )
+        )
+        """Total number of message bytes (including framing) received from Kafka brokers"""
 
-            Returns
-            -------
-            dict
-                metrics dictionary
-            """
-            exp = super().expose()
-            labels = [":".join(item) for item in self._labels.items()]
-            labels = ",".join(labels)
-            exp |= self._get_top_level_metrics()
-            exp |= self._get_cgrp_metrics()
-            exp |= self._get_kafka_input_metrics()
-            return exp
+        librdkafka_cgrp_stateage: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Time elapsed since last state change (milliseconds).",
+                name="confluent_kafka_input_librdkafka_cgrp_stateage",
+            )
+        )
+        """Time elapsed since last state change (milliseconds)."""
+        librdkafka_cgrp_rebalance_age: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Time elapsed since last rebalance (assign or revoke) (milliseconds).",
+                name="confluent_kafka_input_librdkafka_cgrp_rebalance_age",
+            )
+        )
+        """Time elapsed since last rebalance (assign or revoke) (milliseconds)."""
+        librdkafka_cgrp_rebalance_cnt: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of rebalances (assign or revoke).",
+                name="confluent_kafka_input_librdkafka_cgrp_rebalance_cnt",
+            )
+        )
+        """Total number of rebalances (assign or revoke)."""
+        librdkafka_cgrp_assignment_size: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Current assignment's partition count.",
+                name="confluent_kafka_input_librdkafka_cgrp_assignment_size",
+            )
+        )
+        """Current assignment's partition count."""
 
     @define(kw_only=True, slots=False)
     class Config(Input.Config):
@@ -179,15 +219,15 @@ class ConfluentKafkaInput(Input):
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
             ]
         )
-        """ Kafka configuration for the kafka client. 
+        """ Kafka configuration for the kafka client.
         At minimum the following keys must be set:
-        
+
         - bootstrap.servers (STRING): a comma separated list of kafka brokers
         - group.id (STRING): a unique identifier for the consumer group
-        
-        For additional configuration options and their description see: 
+
+        For additional configuration options and their description see:
         <https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md>
-        
+
         .. datatemplate:import-module:: logprep.connector.confluent_kafka.input
             :template: defaults-renderer.tmpl
 
@@ -199,11 +239,7 @@ class ConfluentKafkaInput(Input):
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
-        self.metric_labels = {"component": "kafka", "topic": self._config.topic}
         self._last_valid_records = {}
-        self.metrics._consumer_group_id = self._config.kafka_config["group.id"]
-        self.metrics._consumer_client_id = self._config.kafka_config.get("client.id", getfqdn())
-        self.metrics._consumer_topic = self._config.topic
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -227,6 +263,7 @@ class ConfluentKafkaInput(Input):
             [self._config.topic],
             on_assign=self._assign_callback,
             on_revoke=self._revoke_callback,
+            on_lost=self._lost_callback,
         )
         return consumer
 
@@ -240,7 +277,8 @@ class ConfluentKafkaInput(Input):
         error : KafkaException
             the error that occurred
         """
-        self._logger.warning(f"{self.describe()}: {error}")
+        self.metrics.number_of_errors += 1
+        self._logger.error(f"{self.describe()}: {error}")
 
     def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
@@ -253,7 +291,28 @@ class ConfluentKafkaInput(Input):
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
-        self.metrics._stats = self._decoder.decode(stats)  # pylint: disable=protected-access
+
+        stats = self._decoder.decode(stats)
+        self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
+        self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
+        self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
+        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_rxmsgs += stats.get("rxmsgs", DEFAULT_RETURN)
+        self.metrics.librdkafka_rxmsg_bytes += stats.get("rxmsg_bytes", DEFAULT_RETURN)
+
+        self.metrics.librdkafka_cgrp_stateage += stats.get("cgrp", {}).get(
+            "stateage", DEFAULT_RETURN
+        )
+        self.metrics.librdkafka_cgrp_rebalance_age += stats.get("cgrp", {}).get(
+            "rebalance_age", DEFAULT_RETURN
+        )
+        self.metrics.librdkafka_cgrp_rebalance_cnt += stats.get("cgrp", {}).get(
+            "rebalance_cnt", DEFAULT_RETURN
+        )
+        self.metrics.librdkafka_cgrp_assignment_size += stats.get("cgrp", {}).get(
+            "assignment_size", DEFAULT_RETURN
+        )
 
     def _commit_callback(
         self, error: Union[KafkaException, None], topic_partitions: list[TopicPartition]
@@ -274,16 +333,17 @@ class ConfluentKafkaInput(Input):
             if `error` is not None
         """
         if error is not None:
-            self.metrics._commit_failures += 1
-            raise WarningInputError(
-                self, f"Could not commit offsets for {topic_partitions}: {error}"
-            )
-        self.metrics._commit_success += 1
-        self.metrics._committed_offsets |= {
-            topic_partition.partition: topic_partition.offset
-            for topic_partition in topic_partitions
-            if topic_partition.offset not in SPECIAL_OFFSETS
-        }
+            self.metrics.commit_failures += 1
+            raise InputWarning(self, f"Could not commit offsets for {topic_partitions}: {error}")
+        self.metrics.commit_success += 1
+        for topic_partition in topic_partitions:
+            offset = topic_partition.offset
+            if offset in SPECIAL_OFFSETS:
+                offset = 0
+            labels = {
+                "description": f"topic: {self._config.topic} - partition: {topic_partition.partition}"
+            }
+            self.metrics.committed_offsets.add_with_labels(offset, labels)
 
     def describe(self) -> str:
         """Get name of Kafka endpoint and bootstrap servers.
@@ -326,8 +386,8 @@ class ConfluentKafkaInput(Input):
                 self, "A confluent-kafka record contains an error code", kafka_error
             )
         self._last_valid_records[message.partition()] = message
-        offset = {message.partition(): message.offset() + 1}
-        self.metrics._current_offsets |= offset  # pylint: disable=protected-access
+        labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}
+        self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
         return message.value()
 
     def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
@@ -336,7 +396,7 @@ class ConfluentKafkaInput(Input):
         Parameters
         ----------
         timeout : float
-           Timeout for obtaining a raw document from Kafka.
+            Timeout for obtaining a raw document from Kafka.
 
         Returns
         -------
@@ -385,31 +445,38 @@ class ConfluentKafkaInput(Input):
         for message in self._last_valid_records.values():
             try:
                 offset_handler(message=message)
-            except KafkaException:
+            except KafkaException as error:
                 topic = self._consumer.list_topics(topic=self._config.topic)
                 partition_keys = list(topic.topics[self._config.topic].partitions.keys())
                 partitions = [
                     TopicPartition(self._config.topic, partition) for partition in partition_keys
                 ]
                 self._consumer.assign(partitions)
+                self._logger.warning(
+                    f"{self._consumer.memberid()} was assigned to "
+                    f"topic: {topic} | partition {partitions}, due to "
+                    f"KafkaException: {error}"
+                )
                 offset_handler(message=message)
 
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
+            offset, partition = topic_partition.offset, topic_partition.partition
             self._logger.info(
                 f"{consumer.memberid()} was assigned to "
                 f"topic: {topic_partition.topic} | "
-                f"partition {topic_partition.partition}"
+                f"partition {partition}"
             )
-            if topic_partition.offset in SPECIAL_OFFSETS:
-                continue
-            partition_offset = {
-                topic_partition.partition: topic_partition.offset,
-            }
-            self.metrics._current_offsets |= partition_offset
+            if offset in SPECIAL_OFFSETS:
+                offset = 0
+
+            labels = {"description": f"topic: {self._config.topic} - partition: {partition}"}
+            self.metrics.committed_offsets.add_with_labels(offset, labels)
+            self.metrics.current_offsets.add_with_labels(offset, labels)
 
     def _revoke_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
+            self.metrics.number_of_warnings += 1
             self._logger.warning(
                 f"{consumer.memberid()} to be revoked from "
                 f"topic: {topic_partition.topic} | "
@@ -418,6 +485,7 @@ class ConfluentKafkaInput(Input):
 
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
+            self.metrics.number_of_warnings += 1
             self._logger.warning(
                 f"{consumer.memberid()} has lost "
                 f"topic: {topic_partition.topic} | "

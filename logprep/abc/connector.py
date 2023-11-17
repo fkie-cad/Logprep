@@ -1,57 +1,53 @@
 """ abstract module for connectors"""
-from logging import Logger
-
-from attr import define
+from attrs import define, field
 
 from logprep.abc.component import Component
-from logprep.metrics.metric import Metric, calculate_new_average
+from logprep.metrics.metrics import CounterMetric, HistogramMetric
 
 
 class Connector(Component):
     """Abstract Connector Class to define the Interface"""
 
     @define(kw_only=True)
-    class ConnectorMetrics(Metric):
+    class Metrics(Component.Metrics):
         """Tracks statistics about this connector"""
 
-        _prefix: str = "logprep_connector_"
-
-        number_of_processed_events: int = 0
-        """Number of events that were processed by the connector"""
-        mean_processing_time_per_event: float = 0.0
-        """Mean processing time for one event"""
-        _mean_processing_time_sample_counter: int = 0
-        """Helper to calculate mean processing time"""
-        number_of_warnings: int = 0
-        """Number of warnings that occurred while processing events"""
-        number_of_errors: int = 0
-        """Number of errors that occurred while processing events"""
-
-        def update_mean_processing_time_per_event(self, new_sample):
-            """Updates the mean processing time per event"""
-            new_avg, new_sample_counter = calculate_new_average(
-                self.mean_processing_time_per_event,
-                new_sample,
-                self._mean_processing_time_sample_counter,
+        number_of_processed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of events that were processed",
+                name="number_of_processed_events",
             )
-            self.mean_processing_time_per_event = new_avg
-            self._mean_processing_time_sample_counter = new_sample_counter
-
-    __slots__ = ["metrics", "metric_labels"]
-
-    metrics: ConnectorMetrics
-    metric_labels: dict
-
-    def __init__(self, name: str, configuration: "Component.Config", logger: Logger):
-        super().__init__(name, configuration, logger)
-        self.metric_labels = self._config.metric_labels
-        self.metric_labels.update(
-            {
-                "direction": "input" if self._config.type.endswith("_input") else "output",
-                "name": name,
-                "type": self._config.type,
-            }
         )
-        self.metrics = self.ConnectorMetrics(
-            labels=self.metric_labels,
+        """Number of events that were processed"""
+
+        number_of_failed_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of events that were send to error output",
+                name="number_of_failed_events",
+            )
         )
+        """Number of events that were send to error output"""
+
+        processing_time_per_event: HistogramMetric = field(
+            factory=lambda: HistogramMetric(
+                description="Time in seconds that it took to store an event",
+                name="processing_time_per_event",
+            )
+        )
+        """Time in seconds that it took to process an event"""
+
+        number_of_warnings: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of warnings that occurred while storing events",
+                name="number_of_warnings",
+            )
+        )
+        """Number of warnings that occurred while processing events"""
+
+        number_of_errors: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of errors that occurred while storing events",
+                name="number_of_errors",
+            )
+        )
+        """Number of errors that occurred while processing events"""
