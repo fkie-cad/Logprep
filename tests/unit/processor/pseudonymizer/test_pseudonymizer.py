@@ -3,7 +3,6 @@
 # pylint: disable=attribute-defined-outside-init
 # pylint: disable=too-many-public-methods
 # pylint: disable=line-too-long
-import datetime
 import re
 from copy import deepcopy
 from pathlib import Path
@@ -752,6 +751,10 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
     expected_metrics = [
         "logprep_pseudonymizer_pseudonymized_urls",
+        "logprep_pseudonymizer_new_results",
+        "logprep_pseudonymizer_cached_results",
+        "logprep_pseudonymizer_num_cache_entries",
+        "logprep_pseudonymizer_cache_load",
     ]
 
     def setup_method(self) -> None:
@@ -1002,3 +1005,4 @@ class TestPseudonymizer(BaseProcessorTestCase):
         self._load_specific_rule(rule_dict)
         extra_output = self.object.process(event)
         assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
+        assert len(extra_output[1]) == 1, "only ONE pseudonym is set"

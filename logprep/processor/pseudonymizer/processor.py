@@ -213,11 +213,6 @@ class Pseudonymizer(Processor):
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self.metrics = self.PseudonymizerMetrics(
-            labels=self.metric_labels,
-            generic_rule_tree=self._generic_tree.metrics,
-            specific_rule_tree=self._specific_tree.metrics,
-        )
         self.pseudonyms = []
 
     def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
