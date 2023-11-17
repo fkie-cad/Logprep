@@ -11,7 +11,7 @@ WORKDIR /logprep
 RUN python -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
-RUN python -m pip install --upgrade pip wheel
+RUN python -m pip install --upgrade pip wheel setuptools
 
 RUN if [ "$LOGPREP_VERSION" = "dev" ]; then python setup.py sdist bdist_wheel && pip install ./dist/logprep-*.whl;\
     elif [ "$LOGPREP_VERSION" = "latest" ]; then pip install git+https://github.com/fkie-cad/Logprep.git@latest; \
