@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 
-import os
 import re
 from unittest import mock
 
@@ -405,26 +404,29 @@ class TestComponentMetrics:
             r"test_metric_histogram_bucket.* 2\.0", metric_output
         )  # regex is greedy
 
-    def test_measure_time_measures_but_does_not_append_to_empty_events(self):
-        os.environ["APPEND_TO_EVENT"] = "1"
+    @mock.patch("time.perf_counter", side_effect=[1, 2])
+    def test_measure_time_measures_but_does_not_append_to_empty_events(self, mock_perf_counter):
+        mock_env = {"LOGPREP_APPEND_MEASUREMENT_TO_EVENT": "1"}
+        with mock.patch.dict("os.environ", mock_env):
 
-        @Metric.measure_time(metric_name="test_metric_histogram")
-        def decorated_function_append(self, document):
-            pass
+            @Metric.measure_time(metric_name="test_metric_histogram")
+            def decorated_function_append(self, document):
+                pass
 
-        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
-        assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
-        assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
-        assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
-        document = {}
-        decorated_function_append(self, document)
+            metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+            assert re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+            assert re.search(r"test_metric_histogram_count.* 0\.0", metric_output)
+            assert re.search(r"test_metric_histogram_bucket.* 0\.0", metric_output)
+            document = {}
+            decorated_function_append(self, document)
 
-        metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
-        assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
-        assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
-        assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
-        assert not re.search(
-            r"test_metric_histogram_bucket.* 2\.0", metric_output
-        )  # regex is greedy
-        assert document == {}
-        del os.environ["APPEND_TO_EVENT"]
+            metric_output = generate_latest(self.metrics.custom_registry).decode("utf-8")
+            assert not re.search(r"test_metric_histogram_sum.* 0\.0", metric_output)
+            assert re.search(r"test_metric_histogram_count.* 1\.0", metric_output)
+            assert re.search(r"test_metric_histogram_bucket.* 1\.0", metric_output)
+            assert not re.search(
+                r"test_metric_histogram_bucket.* 2\.0", metric_output
+            )  # regex is greedy
+            assert document == {}
+            # assert call on time.perf_counter to ensure that correct decorator was accessed
+            mock_perf_counter.assert_called()
