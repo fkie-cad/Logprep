@@ -148,7 +148,6 @@ class TestRunLogprep:
             "LOGPREP_CONFIG_ATUH_USERNAME": "username",
             "LOGPREP_CONFIG_ATUH_PASSWORD": "password",
         }
-        config_path = "quickstart/exampledata/config/pipeline.yml"
         responses.add(
             responses.GET,
             "http://localhost:32000/tests/testdata/config/config.yml",
