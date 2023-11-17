@@ -1800,7 +1800,6 @@ def get_cmdclass(cmdclass=None):
 
     from setuptools import Command
 
-
     class cmd_version(Command):
         description = "report generated version string"
         user_options = []
