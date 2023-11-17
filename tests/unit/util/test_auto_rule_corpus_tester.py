@@ -45,13 +45,8 @@ class TestAutoRuleTester:
             (
                 "One successful test",
                 {
-                    "input": {
-                        "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}}
-                    },
-                    "expected_output": {
-                        "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}},
-                        "test_normalized": {"test": {"field1": 1, "field2": 2}},
-                    },
+                    "input": {"message": "A B"},
+                    "expected_output": {"message": "A B", "source": "A", "target": "B"},
                     "expected_extra_output": [],
                 },
                 None,
@@ -393,12 +388,14 @@ class TestAutoRuleTester:
         corpus_tester = RuleCorpusTester(str(test_config_path), "")
         test_data = {
             "input": {
-                "message": "something",
+                "message": "A B",
                 "field1": "field 1 value",
                 "winlog": {"event_id": "2222", "event_data": {"IpAddress": "1.2.3.4"}},
             },
             "expected_output": {
-                "message": "something",
+                "message": "A B",
+                "source": "A",
+                "target": "B",
                 "field1": "field 1 value",
                 "winlog": {"event_id": "2222", "event_data": {"IpAddress": "<IGNORE_VALUE>"}},
             },
@@ -471,12 +468,14 @@ class TestAutoRuleTester:
     def test_warnings_are_printed_inside_the_detailed_reports(self, mock_exit, tmp_path, capsys):
         test_case_data = {
             "input": {
-                "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}},
-                "test_normalized": "exists already",
+                "field1": 2,
+                "field2": 2,
+                "new_field": "exists already",
             },
             "expected_output": {
-                "winlog": {"event_id": "2222", "event_data": {"Test1": 1, "Test2": 2}},
-                "test_normalized": {"test": {"field1": 1, "field2": 2}},
+                "field1": 2,
+                "field2": 2,
+                "new_field": "exists already",
             },
             "expected_extra_output": [],
         }

@@ -321,7 +321,7 @@ class FileInput(Input):
             return None, None
 
     def setup(self):
-        """Creates and starts the Thread that continously monitors the given logfile.
+        """Creates and starts the Thread that continuously monitors the given logfile.
         Right now this input connector is only started in the first process.
         It needs the class attribute pipeline_index before running setup in Pipeline
         Initiation"""

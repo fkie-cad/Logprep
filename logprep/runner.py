@@ -7,9 +7,13 @@ from ctypes import c_bool
 from multiprocessing import Value, current_process
 
 import requests
+from attrs import define, field
 from schedule import Scheduler
 
+from logprep._version import get_versions
+from logprep.abc.component import Component
 from logprep.framework.pipeline_manager import PipelineManager
+from logprep.metrics.metrics import CounterMetric, GaugeMetric
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 
 
@@ -75,6 +79,45 @@ class Runner:
 
     scheduler: Scheduler
 
+    @define(kw_only=True)
+    class Metrics(Component.Metrics):
+        """Metrics for the Logprep Runner."""
+
+        version_info: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep version information",
+                name="version_info",
+                labels={"logprep": "unset", "config": "unset"},
+                inject_label_values=False,
+            )
+        )
+        """Logprep version info."""
+        config_refresh_interval: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Logprep config refresh interval",
+                name="config_refresh_interval",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates the configuration refresh interval in seconds."""
+        number_of_config_refreshes: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Logprep config refresh interval",
+                name="number_of_config_refreshes",
+                labels={"from": "unset", "config": "unset"},
+            )
+        )
+        """Indicates how often the logprep configuration was updated."""
+
+    @property
+    def _metric_labels(self) -> dict[str, str]:
+        versions = get_versions()
+        labels = {
+            "logprep": f"{versions.get('version')}",
+            "config": f"{self._configuration.get('version', 'unset')}",
+        }
+        return labels
+
     # Use this method to obtain a runner singleton for production
     @staticmethod
     def get_runner():
@@ -87,6 +130,7 @@ class Runner:
     def __init__(self, bypass_check_to_obtain_non_singleton_instance=False):
         self._configuration = None
         self._yaml_path = None
+        self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._logger = logging.getLogger("Logprep Runner")
         self._config_refresh_interval = None
 
@@ -125,6 +169,7 @@ class Runner:
         self._yaml_path = yaml_file
         self._configuration = configuration
         self._config_refresh_interval = configuration.get("config_refresh_interval")
+        self.metrics.version_info.add_with_labels(1, self._metric_labels)
 
     def start(self):
         """Start processing.
@@ -146,6 +191,9 @@ class Runner:
             raise MustConfigureALoggerError
 
         self._create_manager()
+
+        if self._config_refresh_interval is not None:
+            self.metrics.config_refresh_interval += self._config_refresh_interval
         self._manager.set_configuration(self._configuration)
         self._manager.set_count(self._configuration["process_count"])
         self._logger.debug("Pipeline manager initiated")
@@ -190,6 +238,7 @@ class Runner:
             if isinstance(current_refresh_interval, (float, int)):
                 new_refresh_interval = current_refresh_interval / 4
                 self._config_refresh_interval = new_refresh_interval
+                self.metrics.config_refresh_interval += new_refresh_interval
             self._schedule_config_refresh_job()
             return
         if refresh:
@@ -208,13 +257,15 @@ class Runner:
             # Only reached when configuration is verified successfully
             self._configuration = new_configuration
             self._schedule_config_refresh_job()
-            self._manager.stop()
             self._manager.set_configuration(self._configuration)
-            self._manager.set_count(self._configuration["process_count"])
+            self._manager.restart()
             self._logger.info("Successfully reloaded configuration")
-            self._logger.info(
-                f"Configuration version: {self._configuration.get('version', 'unset')}"
-            )
+            config_version = self._configuration.get("version", "unset")
+            self._logger.info(f"Configuration version: {config_version}")
+            self.metrics.version_info.add_with_labels(1, self._metric_labels)
+            self.metrics.number_of_config_refreshes += 1
+            if self._config_refresh_interval is not None:
+                self.metrics.config_refresh_interval += self._config_refresh_interval
         except InvalidConfigurationError as error:
             self._logger.error(
                 "Invalid configuration, leaving old"

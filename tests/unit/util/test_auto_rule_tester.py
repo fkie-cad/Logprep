@@ -94,7 +94,7 @@ class TestAutoRuleTester:
 
     def test_does_not_run_if_no_rules_exist(self, auto_rule_tester, capsys):
         rules_pn = {
-            "normalizer_name": {
+            "dissector_name": {
                 "rules": [],
                 "type": "doesnt_matter",
             }
@@ -110,16 +110,15 @@ class TestAutoRuleTester:
     def test_does_run_if_rules_exist(self, auto_rule_tester):
         auto_rule_tester._config_yml["pipeline"] = [
             {
-                "normalizer": {
-                    "type": "normalizer",
-                    "specific_rules": ["tests/testdata/auto_tests/normalizer/rules/specific/"],
-                    "generic_rules": ["tests/testdata/auto_tests/normalizer/rules/generic/"],
-                    "regex_mapping": "tests/testdata/auto_tests/normalizer/regex_mapping.yml",
+                "dissector": {
+                    "type": "dissector",
+                    "specific_rules": ["tests/testdata/auto_tests/dissector/rules/specific/"],
+                    "generic_rules": ["tests/testdata/auto_tests/dissector/rules/generic/"],
                 }
             }
         ]
         rules_pn = {
-            "normalizer": {
+            "dissector": {
                 "rules": [
                     {
                         "file": "rule",
@@ -194,8 +193,8 @@ class TestAutoRuleTester:
             "RULES WITH TESTS:",
             "tests/testdata/auto_tests/labeler/rules/generic/auto_test_labeling_match.json",
             "tests/testdata/auto_tests/labeler/rules/specific/auto_test_labeling_mismatch.json",
-            "tests/testdata/auto_tests/normalizer/rules/generic/auto_test_normalizer_match.json",
-            "tests/testdata/auto_tests/normalizer/rules/specific/auto_test_normalizer_mismatch.json",
+            "tests/testdata/auto_tests/dissector/rules/generic/auto_test_match.json",
+            "tests/testdata/auto_tests/dissector/rules/specific/auto_test_mismatch.json",
             "tests/testdata/auto_tests/dropper/rules/generic/drop_field.json",
             "tests/testdata/auto_tests/dropper/rules/specific/drop_field.json",
             "tests/testdata/auto_tests/pre_detector/rules/generic/auto_test_pre_detector_match.json",
@@ -208,7 +207,7 @@ class TestAutoRuleTester:
         expected_rules_without_tests = [
             "RULES WITHOUT TESTS:",
             "tests/testdata/auto_tests/labeler/rules/specific/auto_test_labeling_no_test_.json",
-            "tests/testdata/auto_tests/normalizer/rules/specific/auto_test_normalizer_no_test_.json",
+            "tests/testdata/auto_tests/dissector/rules/specific/auto_test_no_test_.json",
             "tests/testdata/auto_tests/pre_detector/rules/specific/auto_test_pre_detector_no_test_.json",
             "tests/testdata/auto_tests/pseudonymizer/rules/specific/auto_test_pseudonymizer_no_test_.json",
         ]

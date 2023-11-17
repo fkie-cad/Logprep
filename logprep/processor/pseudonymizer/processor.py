@@ -47,6 +47,7 @@ from tldextract import TLDExtract
 from urlextract import URLExtract
 
 from logprep.abc.processor import Processor
+from logprep.metrics.metrics import CounterMetric
 from logprep.processor.pseudonymizer.encrypter import DualPKCS1HybridEncrypter
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 from logprep.util.cache import Cache
@@ -126,10 +127,15 @@ class Pseudonymizer(Processor):
         files the path has to be given with :code:`file:///path/to/file.dat`."""
 
     @define(kw_only=True)
-    class PseudonymizerMetrics(Processor.ProcessorMetrics):
+    class Metrics(Processor.Metrics):
         """Tracks statistics about the Pseudonymizer"""
 
-        pseudonymized_urls: int = 0
+        pseudonymized_urls: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of urls that were pseudonymized",
+                name="pseudonymizer_pseudonymized_urls",
+            )
+        )
         """Number urls that were pseudonymized"""
 
     __slots__ = [
@@ -156,16 +162,26 @@ class Pseudonymizer(Processor):
 
     def __init__(self, name: str, configuration: Processor.Config, logger: Logger):
         super().__init__(name=name, configuration=configuration, logger=logger)
-        self.metrics = self.PseudonymizerMetrics(
-            labels=self.metric_labels,
-            generic_rule_tree=self._generic_tree.metrics,
-            specific_rule_tree=self._specific_tree.metrics,
-        )
         self._regex_mapping = {}
         self._cache = None
         self.pseudonyms = []
         self.pseudonymized_fields = set()
-        self.setup()
+        self._encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
+        self._cache = Cache(
+            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
+        )
+
+    def setup(self) -> None:
+        super().setup()
+        self._cache = Cache(
+            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
+        )
+
+    def load_rules(self, specific_rules_targets, generic_rules_targets):
+        super().load_rules(specific_rules_targets, generic_rules_targets)
+        self._init_tld_extractor()
+        self._load_regex_mapping(self._config.regex_mapping)
+        self._replace_regex_keywords_by_regex_expression()
 
     @cached_property
     def _url_extractor(self):
@@ -182,15 +198,6 @@ class Pseudonymizer(Processor):
     @cached_property
     def _encrypter(self):
         return DualPKCS1HybridEncrypter()
-
-    def setup(self):
-        self._encrypter.load_public_keys(self._config.pubkey_analyst, self._config.pubkey_depseudo)
-        self._cache = Cache(
-            max_items=self._config.max_cached_pseudonyms, max_timedelta=self._cache_max_timedelta
-        )
-        self._init_tld_extractor()
-        self._load_regex_mapping(self._config.regex_mapping)
-        self._replace_regex_keywords_by_regex_expression()
 
     def _init_tld_extractor(self):
         if self._config.tld_lists is not None:

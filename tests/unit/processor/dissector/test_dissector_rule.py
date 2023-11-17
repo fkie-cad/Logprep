@@ -5,7 +5,12 @@
 import pytest
 
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
-from logprep.processor.dissector.rule import DissectorRule, add_and_overwrite, append, str_to_bool
+from logprep.processor.dissector.rule import (
+    DissectorRule,
+    add_and_overwrite,
+    append,
+    str_to_bool,
+)
 
 
 class TestDissectorRule:
@@ -479,3 +484,25 @@ class TestDissectorRule:
     )
     def test_str_to_bool_returns(self, input_str, expected):
         assert str_to_bool(input_str) == expected
+
+    def test_id_hash_generation(self):
+        rule = {
+            "filter": "message",
+            "dissector": {
+                "mapping": {"field1": "%{field2}:%{field3|int} %{field4}"},
+            },
+        }
+        rule1 = DissectorRule._create_from_dict(rule)
+        rule2 = DissectorRule._create_from_dict(rule)
+        assert rule1.id == rule2.id
+
+    def test_id_no_hash_if_set(self):
+        rule = {
+            "filter": "message",
+            "dissector": {
+                "id": "my_id",
+                "mapping": {"field1": "%{field2}:%{field3|int} %{field4}"},
+            },
+        }
+        rule = DissectorRule._create_from_dict(rule)
+        assert rule.id == "my_id"

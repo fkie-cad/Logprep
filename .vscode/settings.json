@@ -4,7 +4,6 @@
     "python.testing.pytestArgs": [
         "tests",
         "-v",
-        "--log-cli-level=DEBUG"
     ],
     "python.analysis.importFormat": "absolute",
     "editor.formatOnSave": true,

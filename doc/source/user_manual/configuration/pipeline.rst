@@ -15,5 +15,5 @@ Example
 
 .. literalinclude:: /../../quickstart/exampledata/config/pipeline.yml
    :language: yaml
-   :start-after:   level: DEBUG
+   :start-after:   port: 8000
    :end-before: input:

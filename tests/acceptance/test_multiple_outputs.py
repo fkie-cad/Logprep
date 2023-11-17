@@ -24,13 +24,10 @@ def get_config():
         "profile_pipelines": False,
         "pipeline": [
             {
-                "normalizername": {
-                    "type": "normalizer",
-                    "specific_rules": [
-                        "tests/testdata/acceptance/normalizer/rules_static/specific"
-                    ],
-                    "generic_rules": ["tests/testdata/acceptance/normalizer/rules_static/generic"],
-                    "regex_mapping": "tests/testdata/acceptance/normalizer/rules_static/regex_mapping.yml",
+                "dissector": {
+                    "type": "dissector",
+                    "specific_rules": ["tests/testdata/acceptance/dissector/rules/specific"],
+                    "generic_rules": ["tests/testdata/acceptance/dissector/rules/generic"],
                 }
             },
             {
@@ -66,8 +63,8 @@ def get_config():
                 "pre_detector": {
                     "type": "pre_detector",
                     "outputs": [{"jsonl": "pre_detector_topic"}],
-                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
-                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/"],
+                    "generic_rules": ["tests/testdata/acceptance/pre_detector/rules/generic"],
+                    "specific_rules": ["tests/testdata/acceptance/pre_detector/rules/specific"],
                     "tree_config": "tests/testdata/acceptance/pre_detector/tree_config.json",
                 }
             },

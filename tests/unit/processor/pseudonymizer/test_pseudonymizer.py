@@ -38,6 +38,10 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "max_caching_days": 1,
     }
 
+    expected_metrics = [
+        "logprep_pseudonymizer_pseudonymized_urls",
+    ]
+
     def setup_method(self) -> None:
         super().setup_method()
         self.regex_mapping = self.CONFIG.get("regex_mapping")

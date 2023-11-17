@@ -34,6 +34,13 @@ class TestDomainResolver(BaseProcessorTestCase):
         "tree_config": "tests/testdata/unit/shared_data/tree_config.json",
     }
 
+    expected_metrics = [
+        "logprep_domain_resolver_total_urls",
+        "logprep_domain_resolver_resolved_new",
+        "logprep_domain_resolver_resolved_cached",
+        "logprep_domain_resolver_timeouts",
+    ]
+
     @mock.patch("socket.gethostbyname", return_value="1.2.3.4")
     def test_domain_to_ip_resolved_and_added(self, mock_gethostbyname):
         rule = {

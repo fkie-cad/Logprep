@@ -12,11 +12,9 @@ import pytest
 
 from logprep.util.configuration import (
     Configuration,
-    IncalidMetricsConfigurationError,
     InvalidConfigurationError,
     InvalidConfigurationErrors,
     InvalidInputConnectorConfigurationError,
-    InvalidOutputConnectorConfigurationError,
     InvalidProcessorConfigurationError,
     RequiredConfigurationKeyMissingError,
 )
@@ -74,8 +72,8 @@ class TestConfiguration:
     def test_verify_passes_for_valid_configuration(self):
         try:
             self.config.verify(logger)
-        except InvalidConfigurationError:
-            pytest.fail("The verification should pass for a valid configuration.")
+        except InvalidConfigurationError as error:
+            pytest.fail(f"The verification should pass for a valid configuration.: {error}")
 
     def test_verify_pipeline_only_passes_for_valid_configuration(self):
         try:
@@ -84,7 +82,10 @@ class TestConfiguration:
             pytest.fail("The verification should pass for a valid configuration.")
 
     def test_verify_fails_on_missing_required_value(self):
+        not_required_keys = ["version"]
         for key in list(self.config.keys()):
+            if key in not_required_keys:
+                continue
             config = deepcopy(self.config)
             del config[key]
 
@@ -132,58 +133,13 @@ class TestConfiguration:
         [
             (
                 "valid configuration",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "port": 8000,
-                    }
-                },
+                {"metrics": {"enabled": True, "port": 8000}},
                 None,
             ),
             (
-                "key period is missing",
-                {
-                    "metrics": {
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "port": 8000,
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
-            ),
-            (
-                "valid configuration",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
-                        "port": 8000,
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
-            ),
-            (
-                "measure_time enabled key is missing",
-                {
-                    "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"append_to_event": False},
-                        "port": 8000,
-                    }
-                },
-                RequiredConfigurationKeyMissingError,
+                "invalid datatype in port",
+                {"metrics": {"enabled": True, "port": "8000"}},
+                None,
             ),
         ],
     )
@@ -515,30 +471,22 @@ class TestConfiguration:
                     "metrics": {
                         "period": 10,
                         "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"enabled": True, "append_to_event": False},
                         "port": 8000,
                     }
                 },
                 [],
             ),
             (
-                "measure_time enabled key is missing",
+                "metrics enabled",
                 {
                     "metrics": {
-                        "period": 10,
-                        "enabled": True,
-                        "cumulative": True,
-                        "aggregate_processes": True,
-                        "measure_time": {"append_to_event": False},
                         "port": 8000,
                     }
                 },
                 [
                     (
                         RequiredConfigurationKeyMissingError,
-                        "Required option is missing: The following option keys for the measure time configs are missing: {'enabled'}",
+                        "Required option is missing: metrics > enabled",
                     )
                 ],
             ),
@@ -829,3 +777,70 @@ output:
             config.verify_pipeline_without_processor_outputs(logger=logger)
         except InvalidConfigurationErrors as error:
             assert False, f"Shouldn't raise output does not exist error: '{error}'"
+
+    def test_duplicate_rule_id_per_processor_raises(self):
+        config = Configuration()
+        pipeline = [
+            {
+                "my dissector": {
+                    "type": "dissector",
+                    "specific_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{new_field} %{next_field}"},
+                            },
+                        },
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{other_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                    "generic_rules": [],
+                }
+            },
+        ]
+        config.update({"pipeline": pipeline, "output": {}})
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config._verify_pipeline(logger=logger)
+        assert len(raised.value.errors) == 1
+        for error in raised.value.errors:
+            assert "Duplicate rule id: same id" in error.args[0]
+
+    def test_duplicate_rule_id_in_different_rule_trees_per_processor_raises(self):
+        config = Configuration()
+        pipeline = [
+            {
+                "my dissector": {
+                    "type": "dissector",
+                    "specific_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{new_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                    "generic_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{other_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                }
+            },
+        ]
+        config.update({"pipeline": pipeline, "output": {}})
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config._verify_pipeline(logger=logger)
+        assert len(raised.value.errors) == 1
+        for error in raised.value.errors:
+            assert "Duplicate rule id: same id" in error.args[0]

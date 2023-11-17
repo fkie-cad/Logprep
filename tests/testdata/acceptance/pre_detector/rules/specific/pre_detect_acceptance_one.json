@@ -1,0 +1,12 @@
+[{
+  "filter": "winlog.provider_name: \"Service Control Manager\"",
+  "pre_detector": {
+    "id": "01e33e73-9320-459c-8af5-cc82fca988b2",
+    "title": "RULE_ONE",
+    "severity": "critical",
+    "mitre": ["mitre1", "mitre2"],
+    "case_condition": "directly"
+  },
+  "sigma_fields": true,
+  "description": ""
+}]

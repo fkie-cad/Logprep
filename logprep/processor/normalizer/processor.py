@@ -348,7 +348,7 @@ class Normalizer(Processor):
                 f"Could not parse source timestamp "
                 f"{source_timestamp}' with formats '{source_formats}'"
             )
-            raise NormalizerError(self, error_message, rule, event)
+            raise NormalizerError(error_message, rule, event)
         return timestamp
 
     def _convert_timezone(self, timestamp, timestamp_normalization):
@@ -377,7 +377,7 @@ class Normalizer(Processor):
 
     def _raise_warning_if_fields_already_existed(self, rule, event):
         if self._conflicting_fields:
-            raise FieldExistsWarning(self, rule, event, self._conflicting_fields)
+            raise FieldExistsWarning(rule, event, self._conflicting_fields)
 
     def shut_down(self):
         """

@@ -28,7 +28,6 @@ Example
 import json
 from datetime import datetime
 from functools import cached_property, partial
-from logging import Logger
 from socket import getfqdn
 from typing import Optional
 
@@ -36,6 +35,7 @@ from attrs import define, field, validators
 from confluent_kafka import KafkaException, Producer
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
+from logprep.metrics.metrics import GaugeMetric, Metric
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -47,51 +47,97 @@ DEFAULTS = {
     "statistics.interval.ms": "1000",
 }
 
+DEFAULT_RETURN = 0
+
 
 class ConfluentKafkaOutput(Output):
     """A kafka connector that serves as output connector."""
 
     @define(kw_only=True, slots=False)
-    class ConnectorMetrics(Output.ConnectorMetrics):
+    class Metrics(Output.Metrics):
         """Metrics for ConfluentKafkaOutput"""
 
-        _prefix = "logprep_connector_output_kafka_"
-
-        _producer_client_id: str = ""
-        """client id of the producer. Is filled during initialization."""
-
-        _stats: dict = field(factory=dict)
-        """statistcs form librdkafka. Is filled by `_stats_callback`."""
-
-        @cached_property
-        def _rdkafka_labels(self) -> str:
-            client_id = self._producer_client_id
-            labels = {"client_id": client_id}
-            labels = self._labels | labels
-            labels = [":".join(item) for item in labels.items()]
-            labels = ",".join(labels)
-            return labels
-
-        def _get_top_level_metrics(self) -> dict:
-            return {
-                f"{self._prefix}librdkafka_producer_{stat};{self._rdkafka_labels}": value
-                for stat, value in self._stats.items()
-                if isinstance(value, (int, float))
-            }
-
-        def expose(self) -> dict:
-            """overload of `expose` to add kafka specific metrics
-
-            Returns
-            -------
-            dict
-                metrics dictionary
-            """
-            exp = super().expose()
-            labels = [":".join(item) for item in self._labels.items()]
-            labels = ",".join(labels)
-            exp |= self._get_top_level_metrics()
-            return exp
+        librdkafka_age: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Time since this client instance was created (microseconds)",
+                name="confluent_kafka_output_librdkafka_age",
+            )
+        )
+        """Time since this client instance was created (microseconds)"""
+        librdkafka_msg_cnt: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Current number of messages in producer queues",
+                name="confluent_kafka_output_librdkafka_msg_cnt",
+            )
+        )
+        """Current number of messages in producer queues"""
+        librdkafka_msg_size: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Current total size of messages in producer queues",
+                name="confluent_kafka_output_librdkafka_msg_size",
+            )
+        )
+        """Current total size of messages in producer queues"""
+        librdkafka_msg_max: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Threshold: maximum number of messages allowed allowed on the "
+                "producer queues",
+                name="confluent_kafka_output_librdkafka_msg_max",
+            )
+        )
+        """Threshold - maximum number of messages allowed allowed on the producer queues"""
+        librdkafka_msg_size_max: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Threshold: maximum total size of messages allowed on the "
+                "producer queues",
+                name="confluent_kafka_output_librdkafka_msg_size_max",
+            )
+        )
+        """Threshold - maximum total size of messages allowed on the producer queues"""
+        librdkafka_tx: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of requests sent to Kafka brokers",
+                name="confluent_kafka_output_librdkafka_tx",
+            )
+        )
+        """Total number of requests sent to Kafka brokers"""
+        librdkafka_tx_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of bytes transmitted to Kafka brokers",
+                name="confluent_kafka_output_librdkafka_tx_bytes",
+            )
+        )
+        """Total number of bytes transmitted to Kafka brokers"""
+        librdkafka_rx: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of responses received from Kafka brokers",
+                name="confluent_kafka_output_librdkafka_rx",
+            )
+        )
+        """Total number of responses received from Kafka brokers"""
+        librdkafka_rx_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of bytes received from Kafka brokers",
+                name="confluent_kafka_output_librdkafka_rx_bytes",
+            )
+        )
+        """Total number of bytes received from Kafka brokers"""
+        librdkafka_txmsgs: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of messages transmitted (produced) to Kafka brokers",
+                name="confluent_kafka_output_librdkafka_txmsgs",
+            )
+        )
+        """Total number of messages transmitted (produced) to Kafka brokers"""
+        librdkafka_txmsg_bytes: GaugeMetric = field(
+            factory=lambda: GaugeMetric(
+                description="Total number of message bytes (including framing, such as per-Message "
+                "framing and MessageSet/batch framing) transmitted to Kafka brokers",
+                name="confluent_kafka_output_librdkafka_txmsg_bytes",
+            )
+        )
+        """Total number of message bytes (including framing, such as per-Message framing and
+        MessageSet/batch framing) transmitted to Kafka brokers"""
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
@@ -136,10 +182,6 @@ class ConfluentKafkaOutput(Output):
         self._config.kafka_config = DEFAULTS | self._config.kafka_config
         return Producer(self._config.kafka_config | injected_config)
 
-    def __init__(self, name: str, configuration: Config, logger: Logger):
-        super().__init__(name, configuration, logger)
-        self.metrics._producer_client_id = self._config.kafka_config.get("client.id", getfqdn())
-
     def _error_callback(self, error: KafkaException):
         """Callback for generic/global error events, these errors are typically
         to be considered informational since the client will automatically try to recover.
@@ -150,9 +192,10 @@ class ConfluentKafkaOutput(Output):
         error : KafkaException
             the error that occurred
         """
-        self._logger.warning(f"{self.describe()}: {error}")
+        self.metrics.number_of_errors += 1
+        self._logger.error(f"{self.describe()}: {error}")
 
-    def _stats_callback(self, stats: str):
+    def _stats_callback(self, stats: str) -> None:
         """Callback for statistics data. This callback is triggered by poll()
         or flush every `statistics.interval.ms` (needs to be configured separately)
 
@@ -163,7 +206,19 @@ class ConfluentKafkaOutput(Output):
             details about the data can be found here:
             https://github.com/confluentinc/librdkafka/blob/master/STATISTICS.md
         """
-        self.metrics._stats = self._decoder.decode(stats)  # pylint: disable=protected-access
+
+        stats = self._decoder.decode(stats)
+        self.metrics.librdkafka_age += stats.get("age", DEFAULT_RETURN)
+        self.metrics.librdkafka_msg_cnt += stats.get("msg_cnt", DEFAULT_RETURN)
+        self.metrics.librdkafka_msg_size += stats.get("msg_size", DEFAULT_RETURN)
+        self.metrics.librdkafka_msg_max += stats.get("msg_max", DEFAULT_RETURN)
+        self.metrics.librdkafka_msg_size_max += stats.get("msg_size_max", DEFAULT_RETURN)
+        self.metrics.librdkafka_tx += stats.get("tx", DEFAULT_RETURN)
+        self.metrics.librdkafka_tx_bytes += stats.get("tx_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_rx += stats.get("rx", DEFAULT_RETURN)
+        self.metrics.librdkafka_rx_bytes += stats.get("rx_bytes", DEFAULT_RETURN)
+        self.metrics.librdkafka_txmsgs += stats.get("txmsgs", DEFAULT_RETURN)
+        self.metrics.librdkafka_txmsg_bytes += stats.get("txmsg_bytes", DEFAULT_RETURN)
 
     def describe(self) -> str:
         """Get name of Kafka endpoint with the bootstrap server.
@@ -191,10 +246,10 @@ class ConfluentKafkaOutput(Output):
         configured input
         """
         self.store_custom(document, self._config.topic)
-        self.metrics.number_of_processed_events += 1
         if self.input_connector:
             self.input_connector.batch_finished_callback()
 
+    @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:
         """Write document to Kafka into target topic.
 
@@ -213,6 +268,7 @@ class ConfluentKafkaOutput(Output):
         try:
             self._producer.produce(target, value=self._encoder.encode(document))
             self._producer.poll(self._config.send_timeout)
+            self.metrics.number_of_processed_events += 1
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
@@ -221,6 +277,7 @@ class ConfluentKafkaOutput(Output):
                 self, f"Error storing output document -> {error}", document
             ) from error
 
+    @Metric.measure_time()
     def store_failed(
         self, error_message: str, document_received: dict, document_processed: dict
     ) -> None:
@@ -236,6 +293,7 @@ class ConfluentKafkaOutput(Output):
             Document after processing until an error occurred.
 
         """
+        self.metrics.number_of_failed_events += 1
         value = {
             "error": error_message,
             "original": document_received,

@@ -2,7 +2,7 @@
   {
     "filter": "winlog.event_id: 123 AND winlog.event_data.ServiceName: \"VERY BAD\"",
     "pre_detector": {
-      "id": "RULE_ONE_ID",
+      "id": "ac1f47e4-9f6f-4cd4-8738-795df8bd5d4f",
       "title": "RULE_ONE",
       "severity": "critical",
       "mitre": [

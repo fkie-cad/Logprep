@@ -4,16 +4,16 @@
 # pylint: disable=missing-function-docstring
 # pylint: disable=attribute-defined-outside-init
 import json
+import os
 from copy import deepcopy
 from functools import partial
 from logging import Logger
-from os.path import join, split
 from unittest import mock
 
 from pytest import raises
 from requests.exceptions import HTTPError, SSLError
 
-from logprep.processor.labeler.labeling_schema import LabelingSchemaError
+from logprep._version import get_versions
 from logprep.runner import (
     CannotReloadWhenConfigIsUnsetError,
     MustConfigureBeforeRunningError,
@@ -22,14 +22,10 @@ from logprep.runner import (
     Runner,
     UseGetRunnerToCreateRunnerSingleton,
 )
-from logprep.util.configuration import InvalidConfigurationErrors
-from tests.testdata.ConfigurationForTest import ConfigurationForTest
 from tests.testdata.metadata import (
     path_to_alternative_config,
     path_to_config,
     path_to_invalid_config,
-    path_to_invalid_rules,
-    path_to_schema2,
 )
 from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
 
@@ -82,34 +78,10 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
         with raises(MustConfigureBeforeRunningError):
             self.runner.start()
 
-    def test_fails_when_rules_are_invalid(self):
-        with raises(
-            InvalidConfigurationErrors,
-            match=r"Could not verify configuration for processor instance 'labelername', "
-            r"because it has invalid rules\.",
-        ):
-            with ConfigurationForTest(
-                inject_changes=[
-                    {
-                        "pipeline": {
-                            1: {
-                                "labelername": {
-                                    "specific_rules": [path_to_invalid_rules],
-                                    "generic_rules": [path_to_invalid_rules],
-                                }
-                            }
-                        }
-                    }
-                ]
-            ) as path:
-                self.runner.load_configuration(path)
-
-    def test_fails_when_schema_and_rules_are_inconsistent(self):
-        with raises(LabelingSchemaError):
-            with ConfigurationForTest(
-                inject_changes=[{"pipeline": {1: {"labelername": {"schema": path_to_schema2}}}}]
-            ) as path:
-                self.runner.load_configuration(path)
+    @mock.patch("logprep.util.configuration.Configuration.verify")
+    def test_load_configuration_calls_verify_on_config(self, mock_verify):
+        self.runner.load_configuration(path_to_config)
+        mock_verify.assert_called()
 
     def test_fails_when_calling_reload_configuration_when_config_is_unset(self):
         with raises(CannotReloadWhenConfigIsUnsetError):
@@ -142,6 +114,12 @@ class TestRunner(LogprepRunnerTest):
         self.runner.reload_configuration()
         assert self.runner._manager.get_count() == 2
 
+    def test_reload_configuration_counts_config_refreshes_if_successful(self):
+        self.runner.metrics.number_of_config_refreshes = 0
+        self.runner._yaml_path = path_to_alternative_config
+        self.runner.reload_configuration()
+        assert self.runner.metrics.number_of_config_refreshes == 1
+
     def test_reload_configuration_leaves_old_configuration_in_place_if_new_config_is_invalid(self):
         old_configuration = deepcopy(self.runner._configuration)
 
@@ -159,6 +137,14 @@ class TestRunner(LogprepRunnerTest):
             in mock_error.call_args[0][0]
         )
 
+    def test_reload_configuration_does_not_count_config_refresh_if_new_configuration_is_invalid(
+        self,
+    ):
+        self.runner.metrics.number_of_config_refreshes = 0
+        self.runner._yaml_path = path_to_invalid_config
+        self.runner.reload_configuration()
+        assert self.runner.metrics.number_of_config_refreshes == 0
+
     def test_reload_configuration_creates_new_logprep_instances_with_new_configuration(self):
         self.runner._manager.set_count(3)
         old_logprep_instances = list(self.runner._manager._pipelines)
@@ -167,9 +153,6 @@ class TestRunner(LogprepRunnerTest):
 
         assert set(old_logprep_instances).isdisjoint(set(self.runner._manager._pipelines))
         assert len(self.runner._manager._pipelines) == 3
-
-    def get_path(self, filename):
-        return join(split(__path__), filename)
 
     def test_start_sets_config_refresh_interval_to_a_minimum_of_5_seconds(self):
         self.runner._keep_iterating = partial(mock_keep_iterating, 1)
@@ -210,6 +193,7 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 0
 
     def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(self, tmp_path):
+        self.runner.metrics.config_refresh_interval = 0
         assert len(self.runner.scheduler.jobs) == 0
         config_path = tmp_path / "config.yml"
         config_update = {"config_refresh_interval": 5, "version": "current version"}
@@ -220,6 +204,7 @@ class TestRunner(LogprepRunnerTest):
         self.runner._yaml_path = str(config_path)
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
+        assert self.runner.metrics.config_refresh_interval == 5
 
     def test_reload_configuration_reschedules_job_with_new_refresh_interval(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
@@ -257,6 +242,17 @@ class TestRunner(LogprepRunnerTest):
         mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 10
+
+    @mock.patch("logprep.abc.getter.Getter.get")
+    def test_reload_configuration_sets_config_refresh_interval_metric_with_a_quarter_of_the_time(
+        self, mock_get
+    ):
+        mock_get.side_effect = HTTPError(404)
+        assert len(self.runner.scheduler.jobs) == 0
+        self.runner._config_refresh_interval = 40
+        self.runner.metrics.config_refresh_interval = 0
+        self.runner.reload_configuration(refresh=True)
+        assert self.runner.metrics.config_refresh_interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_logs_filenotfounderror_and_schedules_new_refresh_with_a_quarter_the_time(
@@ -338,7 +334,7 @@ class TestRunner(LogprepRunnerTest):
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 12
 
-    def test_reload_configuration_logs_new_version(self, tmp_path):
+    def test_reload_configuration_logs_new_version_and_sets_metric(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
         config_path = tmp_path / "config.yml"
         config_update = {"config_refresh_interval": 5, "version": "current version"}
@@ -348,8 +344,13 @@ class TestRunner(LogprepRunnerTest):
         config_path.write_text(json.dumps(config_update))
         self.runner._yaml_path = str(config_path)
         with mock.patch("logging.Logger.info") as mock_info:
-            self.runner.reload_configuration(refresh=True)
+            with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
+                self.runner.reload_configuration(refresh=True)
         mock_info.assert_called_with("Configuration version: new version")
+        mock_add.assert_called()
+        mock_add.assert_has_calls(
+            (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": "new version"}),)
+        )
 
     def test_reload_configuration_decreases_processes_after_increase(self, tmp_path):
         self.runner._manager.set_configuration(self.runner._configuration)
@@ -379,6 +380,28 @@ class TestRunner(LogprepRunnerTest):
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner._manager._pipelines) == 1
 
+    @mock.patch(
+        "logprep.framework.pipeline_manager.PrometheusExporter.cleanup_prometheus_multiprocess_dir"
+    )
+    def test_reload_configuration_does_not_call_prometheus_clean_up_method(
+        self, prometheus, tmp_path, tmpdir
+    ):
+        os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
+        config_path = tmp_path / "config.yml"
+        config_update = {
+            "config_refresh_interval": 5,
+            "version": "current version",
+            "metrics": {"enabled": True},
+        }
+        self.runner._configuration.update(config_update)
+        config_update = deepcopy(self.runner._configuration)
+        config_update.update({"config_refresh_interval": 5, "version": "new version"})
+        config_path.write_text(json.dumps(config_update))
+        self.runner._yaml_path = str(config_path)
+        self.runner.reload_configuration(refresh=True)
+        prometheus.assert_not_called()
+        del os.environ["PROMETHEUS_MULTIPROC_DIR"]
+
     def test_loop_restarts_failed_pipelines(self):
         self.runner._manager.set_configuration(self.runner._configuration)
         self.runner._manager.set_count(self.runner._configuration["process_count"])
@@ -386,4 +409,6 @@ class TestRunner(LogprepRunnerTest):
         self.runner._manager._pipelines[1].process_is_alive = False
         with mock.patch("logging.Logger.warning") as mock_warning:
             self.runner._loop()
-        mock_warning.assert_called_once_with("Restarted 1 failed pipeline(s)")
+        mock_warning.assert_called_once_with(
+            "Restarted 1 failed pipeline(s), with exit code(s): [-1]"
+        )

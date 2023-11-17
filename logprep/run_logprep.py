@@ -3,6 +3,7 @@
 # pylint: disable=logging-fstring-interpolation
 import inspect
 import logging
+import os
 import sys
 import warnings
 from argparse import ArgumentParser
@@ -21,7 +22,6 @@ from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.helper import print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
-from logprep.util.time_measurement import TimeMeasurement
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
@@ -98,7 +98,10 @@ def _run_logprep(arguments, logger: logging.Logger):
         runner.start()
     # pylint: disable=broad-except
     except BaseException as error:
-        logger.critical(f"A critical error occurred: {error}")
+        if os.environ.get("DEBUG", False):
+            logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
+        else:
+            logger.critical(f"A critical error occurred: {error}")
         if runner:
             runner.stop()
         sys.exit(1)
@@ -167,16 +170,6 @@ def _load_configuration(args):
     return config
 
 
-def _setup_metrics_and_time_measurement(args, config, logger):
-    measure_time_config = config.get("metrics", {}).get("measure_time", {})
-    TimeMeasurement.TIME_MEASUREMENT_ENABLED = measure_time_config.get("enabled", False)
-    TimeMeasurement.APPEND_TO_EVENT = measure_time_config.get("append_to_event", False)
-
-    logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
-    logger.debug(f"Time measurement enabled: {TimeMeasurement.TIME_MEASUREMENT_ENABLED}")
-    logger.debug(f"Config path: {args.config}")
-
-
 def _validate_rules(args, config: Configuration, logger: logging.Logger):
     try:
         config.verify_pipeline_only(logger)
@@ -208,10 +201,10 @@ def main():
 
     if args.validate_rules or args.auto_test:
         _validate_rules(args, config, logger)
-    _setup_metrics_and_time_measurement(args, config, logger)
+    logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
+    logger.debug(f"Config path: {args.config}")
 
     if args.auto_test:
-        TimeMeasurement.TIME_MEASUREMENT_ENABLED = False
         auto_rule_tester = AutoRuleTester(args.config)
         auto_rule_tester.run()
     elif args.dry_run:

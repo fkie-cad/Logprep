@@ -34,7 +34,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         return self.CONFIG.get("specific_rules")
 
     def test_replace_message_via_template(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "message": "foo",
@@ -46,7 +45,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         assert document["message"] == "Test %1 Test %2"
 
     def test_replace_non_existing_message_via_template(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
 
         self.object.process(document)
@@ -55,7 +53,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         assert document["message"] == "Test %1 Test %2"
 
     def test_replace_with_additional_hyphen(self):
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test-Test", "event_id": 123},
             "message": "foo",
@@ -67,8 +64,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         assert document["message"] == "Test %1 Test %2 Test %3"
 
     def test_replace_fails_because_it_does_not_map_to_anything(self):
-        assert self.object.metrics.number_of_processed_events == 0
-
         document = {
             "winlog": {"channel": "System", "provider_name": "Test-Test", "event_id": 923},
             "message": "foo",
@@ -87,7 +82,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
         self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": "foo"},
@@ -103,7 +97,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
         self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
         document = {"winlog": {"channel": "System", "provider_name": "Test", "event_id": 123}}
 
         self.object.process(document)
@@ -116,7 +109,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
         self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"bar": "foo"},
@@ -133,7 +125,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
         self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": {"message": {"foo": "bar"}},
@@ -149,7 +140,6 @@ class TestTemplateReplacer(BaseProcessorTestCase):
         config = deepcopy(self.CONFIG)
         config.get("pattern").update({"target_field": "dotted.message"})
         self.object = Factory.create({"test instance": config}, self.logger)
-        assert self.object.metrics.number_of_processed_events == 0
         document = {
             "winlog": {"channel": "System", "provider_name": "Test", "event_id": 123},
             "dotted": "foo",
