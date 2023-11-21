@@ -314,6 +314,31 @@ logprep test config $CONFIG
 Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the
 [configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
 
+### Validating Labeling-Schema and Rules
+
+The following command can be executed to validate the schema and the rules:
+
+```
+logprep --validate-rules $CONFIG
+```
+
+Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the
+[configuration](https://logprep.readthedocs.io/en/latest/user_manual/configuration/index.html)).
+
+Alternatively, the validation can be performed directly. Assuming you have cloned the repository
+from git.
+
+```
+PYTHONPATH="." python3 logprep/util/schema_and_rule_checker.py --labeling-schema $LABELING_SCHEMA --labeling-rules $LABELING_RULES
+```
+
+Where `$LABELING_SCHEMA` is the path to a labeling-schema (JSON file) and `$LABELING_RULES` is
+the path to a directory with rule files (JSON/YML files, see Rules.md, subdirectories
+are permitted)
+
+Analogously, `--normalization-rules` and `--pseudonymizer-rules` can be used.
+
+Validation does also perform a verification of the pipeline section of the Logprep configuration.
 
 ### Reload the Configuration
 
@@ -378,18 +403,19 @@ The start up takes a few seconds to complete, but once everything is up
 and running it is possible to write JSON events into Kafka and read the processed events in
 Opensearch Dashboards. Following services are available after start up:
 
-| Service                | Location | Credentials |
-|:-----------------------|:----|:-----|
-| Kafka:                 | `localhost:9092` | |
-| Kafka Exporter:        | `localhost:9308` | |
-| Logprep metrics:       | `localhost:8000` | |
-| Opensearch:            | `localhost:9200` | |
-| Opensearch Dashboards: | `localhost:5601` | |
-| Grafana Dashboards:    | `localhost:3000` | admin:admin |
-| Prometheus:            | `localhost:9090` | |
-| Nginx:                 | `localhost:8081` | user:password |
-| Keycloak:              | `localhost:8080` | admin:admin |
-| Postgres:              | `localhost:5432` | keycloak:bitnami |
+| Service                | Location         | User     | Password |
+|:-----------------------|:-----------------|:---------|:---------|
+| Kafka:                 | `localhost:9092` | /        | /        |
+| Kafka Exporter:        | `localhost:9308` | /        | /        |
+| Logprep metrics:       | `localhost:8001` | /        | /        |
+| Opensearch:            | `localhost:9200` | /        | /        |
+| Opensearch Dashboards: | `localhost:5601` | /        | /        |
+| Grafana Dashboards:    | `localhost:3000` | admin    | admin    |
+| Prometheus:            | `localhost:9090` | /        | /        |
+| Nginx:                 | `localhost:8081` | user     | password |
+| Keycloak:              | `localhost:8080` | admin    | admin    |
+| Keycloak Postgres:     | `localhost:5432` | keycloak | bitnami  |
+| FDA:                   | `localhost:8002` | logprep  | logprep  |
 
 The example rules that are used in the docker instance of Logprep can be found
 in `quickstart/exampledata/rules`.
