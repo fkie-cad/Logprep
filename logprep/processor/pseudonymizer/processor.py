@@ -118,7 +118,7 @@ class Pseudonymizer(Processor):
             validator=[validators.instance_of(int), validators.gt(0)], default=10000
         )
         """The maximum number of cached pseudonymized urls. Default is 10000. 
-        Behaves similarly to the mac_cached_pseudonyms. Has to be greater than 0."""
+        Behaves similarly to the max_cached_pseudonyms. Has to be greater than 0."""
         tld_lists: Optional[list] = field(default=None, validator=[list_of_urls_validator])
         """Optional list of path to files with top-level domain lists
         (like https://publicsuffix.org/list/public_suffix_list.dat). If no path is given,
