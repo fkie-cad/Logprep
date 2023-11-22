@@ -8,6 +8,14 @@
 ### Improvements
 
 * improve error message on empty rule filter
+* reimplemented `pseudonymizer` processor
+  - rewrote tests till 100% coverage
+  - cleaned up code
+  - reimplemented caching using pythons `lru_cache`
+  - add cache metrics
+  - removed `max_caching_days` config option
+  - add `max_cached_pseudonymized_urls` config option which defaults to 1000
+  - add lru caching for peudonymizatin of urls
 
 ### Bugfix
 

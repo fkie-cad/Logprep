@@ -73,7 +73,6 @@ pipeline:
       generic_rules:
         - quickstart/exampledata/rules/pseudonymizer/generic/
       max_cached_pseudonyms: 1000000
-      max_caching_days: 1
 
   - calculator:
       type: calculator

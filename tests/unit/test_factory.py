@@ -85,7 +85,6 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
                 "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
                 "outputs": [{"kafka": "topic"}],
                 "max_cached_pseudonyms": 1000000,
-                "max_caching_days": 1,
             }
         },
         logger,
