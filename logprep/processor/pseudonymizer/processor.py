@@ -229,11 +229,11 @@ class Pseudonymizer(Processor):
                 continue
             if isinstance(field_value, list):
                 field_value = [
-                    self._pseudonymize_string_field(rule, dotted_field, regex, str(value))
+                    self._pseudonymize_field(rule, dotted_field, regex, str(value))
                     for value in field_value
                 ]
             else:
-                field_value = self._pseudonymize_string_field(
+                field_value = self._pseudonymize_field(
                     rule, dotted_field, regex, field_value
                 )
             _ = add_field_to(event, dotted_field, field_value, overwrite_output_field=True)
@@ -242,7 +242,7 @@ class Pseudonymizer(Processor):
                 pseudonym["@timestamp"] = event["@timestamp"]
         self._update_cache_metrics()
 
-    def _pseudonymize_string_field(
+    def _pseudonymize_field(
         self, rule: PseudonymizerRule, dotted_field: str, regex: Pattern, field_value: str
     ) -> str:
         if regex.groups <= 1:
