@@ -28,6 +28,16 @@
 * new rule `id` could possibly break configurations if the same rule is used in both rule trees
   - can be fixed by adding a unique `id` to each rule or delete the possibly redundant rule
 
+### Breaking
+
+* remove possibility to inject auth credentials via url string, because of the risk leaking credentials in logs
+    - if you want to use basic auth, then you have to set the environment variables
+        * :code:`LOGPREP_CONFIG_AUTH_USERNAME=<your_username>`
+        * :code:`LOGPREP_CONFIG_AUTH_PASSWORD=<your_password>`
+    - if you want to use oauth, then you have to set the environment variables
+        * :code:`LOGPREP_CONFIG_AUTH_TOKEN=<your_token>`
+        * :code:`LOGPREP_CONFIG_AUTH_METHOD=oauth`
+
 ### Features
 
 * add possibility to convert hex to int in `calculator` processor with new added function `from_hex`

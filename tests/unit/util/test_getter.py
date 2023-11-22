@@ -8,9 +8,11 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+import requests
 import responses
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import Timeout
+from responses import matchers
 from ruamel.yaml import YAML
 
 from logprep._version import get_versions
@@ -38,10 +40,6 @@ class TestGetterFactory:
             ("my/file", "file", "my/file"),
             ("http://my/file", "http", "my/file"),
             ("https://my/file", "https", "my/file"),
-            ("http://user:password@my/file", "http", "my/file"),
-            ("https://user:password@my/file", "https", "my/file"),
-            ("http://oauth:ajpf0q9vrfásdjlk__234d@my/file", "http", "my/file"),
-            ("https://oauth:ajpf0q9vrfásdjlk__234d@my/file", "https", "my/file"),
         ],
     )
     def test_from_string_sets_protocol_and_target(
@@ -52,12 +50,9 @@ class TestGetterFactory:
         assert my_getter.target == expected_target
 
     def test_getter_expands_from_environment(self):
-        os.environ["PYTEST_TEST_TOKEN"] = "mytesttoken"
         os.environ["PYTEST_TEST_TARGET"] = "the-web-target"
-        url = "https://oauth:${PYTEST_TEST_TOKEN}@${PYTEST_TEST_TARGET}"
+        url = "https://${PYTEST_TEST_TARGET}"
         my_getter = GetterFactory.from_string(url)
-        assert my_getter._username == "oauth"
-        assert my_getter._password == "mytesttoken"
         assert my_getter.target == "the-web-target"
 
     def test_getter_expands_not_set_environment_to_blank(self):
@@ -363,32 +358,49 @@ class TestHttpGetter:
         http_getter.get()
 
     @responses.activate
-    def test_provides_oauth_compliant_headers(self):
+    def test_provides_oauth_compliant_headers_if_token_is_set_via_env(self):
+        mock_env = {
+            "LOGPREP_CONFIG_AUTH_METHOD": "oauth",
+            "LOGPREP_CONFIG_AUTH_TOKEN": "ajhsdfpoweiurjdfs239487",
+        }
+
         logprep_version = get_versions().get("version")
-        responses.add(
-            responses.GET,
-            "https://the.target.url/targetfile",
-            "",
-            {
-                "User-Agent": f"Logprep version {logprep_version}",
-                "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
-            },
+        responses.get(
+            url="https://the.target.url/targetfile",
+            match=[
+                matchers.header_matcher(
+                    {
+                        "User-Agent": f"Logprep version {logprep_version}",
+                        "Authorization": "Bearer ajhsdfpoweiurjdfs239487",
+                    }
+                )
+            ],
         )
-        http_getter = GetterFactory.from_string(
-            "https://oauth:ajhsdfpoweiurjdfs239487@the.target.url/targetfile"
-        )
-        http_getter.get()
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
+            http_getter.get()
+
+    def test_raises_on_try_to_set_credentials_from_url_string(self):
+        with pytest.raises(
+            NotImplementedError, match="Basic auth credentials via commandline are not supported"
+        ):
+            _ = GetterFactory.from_string(
+                "https://oauth:ajhsdfpoweiurjdfs239487@the.target.url/targetfile"
+            )
 
     @responses.activate
-    def test_provides_basic_authentication(self):
+    def test_provides_basic_authentication_creds_from_environment(self):
+        mock_env = {
+            "LOGPREP_CONFIG_AUTH_USERNAME": "myusername",
+            "LOGPREP_CONFIG_AUTH_PASSWORD": "mypassword",
+        }
         responses.add(
             responses.GET,
             "https://the.target.url/targetfile",
         )
-        http_getter = GetterFactory.from_string(
-            "https://myusername:mypassword@the.target.url/targetfile"
-        )
-        http_getter.get()
+        with mock.patch.dict("os.environ", mock_env):
+            http_getter = GetterFactory.from_string("https://the.target.url/targetfile")
+            http_getter.get()
         assert http_getter._sessions["the.target.url"].auth == HTTPBasicAuth(
             "myusername", "mypassword"
         )
