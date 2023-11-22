@@ -220,7 +220,7 @@ class Pseudonymizer(Processor):
     def process(self, event: dict):
         self.pseudonyms = []
         super().process(event)
-        return (self.pseudonyms, self._config.outputs) if self.pseudonyms != [] else None
+        return (self.pseudonyms, self._config.outputs) if self.pseudonyms else None
 
     def _apply_rules(self, event: dict, rule: PseudonymizerRule):
         for dotted_field, regex in rule.pseudonyms.items():
