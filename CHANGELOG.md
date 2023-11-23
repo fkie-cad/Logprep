@@ -7,8 +7,11 @@
 
 ### Improvements
 
+* improve loading times for the rule tree by optimizing the rule segmentation and sorting
+
 ### Bugfix
 
+* fix the rule tree parsing some rules incorrectly, potentially resulting in more matches
 
 ## v8.0.0
 ### Breaking
@@ -32,11 +35,9 @@
 * reimplemented prometheus metrics exporter to provide gauges, histograms and counter metrics
 * removed shared counter, because it is redundant to the metrics
 * get exception stack trace by setting environment variable `DEBUG`
-* improve loading times for the rule tree by optimizing the rule segmentation and sorting
 
 ### Bugfix
 
-* Fix the rule tree parsing some rules incorrectly, potentially resulting in more matches.
 
 ## v7.0.0
 ### Breaking
