@@ -1,10 +1,6 @@
 {
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestArgs": [
-        "tests",
-        "-v",
-    ],
     "python.analysis.importFormat": "absolute",
     "editor.formatOnSave": true,
     "editor.rulers": [

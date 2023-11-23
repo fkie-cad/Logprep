@@ -25,6 +25,7 @@
   - add `max_cached_pseudonymized_urls` config option which defaults to 1000
   - add lru caching for peudonymizatin of urls
 * improve loading times for the rule tree by optimizing the rule segmentation and sorting
+* add support for python 3.12 and remove support for python 3.9
 
 ### Bugfix
 

@@ -1,7 +1,6 @@
 .devcontainer
 .github
 .venv
-.semgrep_rules
 .vscode
 htmlcov
 logs
