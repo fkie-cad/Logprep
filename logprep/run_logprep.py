@@ -195,8 +195,12 @@ def main():
     if args.version:
         print(get_versions_string(args))
         sys.exit(0)
+    try:
+        config = _load_configuration(args)
+    except BaseException as error:  # pylint: disable=broad-except
+        logging.getLogger("Logprep").error(error)
+        sys.exit(1)
 
-    config = _load_configuration(args)
     logger = _setup_logger(args, config)
 
     if args.validate_rules or args.auto_test:

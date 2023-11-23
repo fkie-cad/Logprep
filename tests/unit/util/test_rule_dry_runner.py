@@ -41,7 +41,6 @@ class TestRunLogprep:
               generic_rules:
                 - tests/testdata/unit/pseudonymizer/rules/generic/
               max_cached_pseudonyms: 1000000
-              max_caching_days: 1
           - predetectorname:
               type: pre_detector
               specific_rules:

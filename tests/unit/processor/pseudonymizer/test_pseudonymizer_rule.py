@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 import pytest
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.pseudonymizer.rule import PseudonymizerRule
 
 
@@ -20,6 +21,45 @@ def get_specific_rule_definition():
 
 
 class TestPseudonomyzerRule:
+    @pytest.mark.parametrize(
+        ["rule", "error", "message"],
+        [
+            (
+                {"filter": "message", "pseudonym": "I'm not under pseudonymizer"},
+                InvalidRuleDefinitionError,
+                "config not under key pseudonymizer",
+            ),
+            (
+                {"filter": "message", "pseudonymizer": "I'm not a dict"},
+                InvalidRuleDefinitionError,
+                "config is not a dict",
+            ),
+            (
+                {"filter": "message", "pseudonymizer": {"pseudonyms": {}}},
+                ValueError,
+                "Length of 'pseudonyms' must be => 1",
+            ),
+            (
+                {
+                    "filter": "message",
+                    "pseudonymizer": {"pseudonyms": {"field": "regex"}},
+                },
+                None,
+                None,
+            ),
+        ],
+    )
+    def test_create_from_dict_validates_config(self, rule, error, message):
+        if error:
+            with pytest.raises(error, match=message):
+                PseudonymizerRule._create_from_dict(rule)
+        else:
+            rule_instance = PseudonymizerRule._create_from_dict(rule)
+            assert hasattr(rule_instance, "_config")
+            for key, value in rule.get("pseudonymizer").items():
+                assert hasattr(rule_instance._config, key)
+                assert value == getattr(rule_instance._config, key)
+
     @pytest.mark.parametrize(
         "testcase, other_rule_definition, is_equal",
         [

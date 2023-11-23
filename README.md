@@ -425,22 +425,36 @@ The environment can either be started with a Logprep container or without one:
     docker-compose --profile logprep up -d
     ```
 
+### Run with getting config from http server with basic authentication
+
+  * Run from within the `quickstart` directory: 
+    ```bash
+    docker-compose --profile basic_auth up -d
+    ```
+  * Run within the project root directory:
+    ```bash
+    export LOGPREP_CONFIG_AUTH_USERNAME="user"
+    export LOGPREP_CONFIG_AUTH_PASSWORD="password"
+    logprep http://localhost:8081/config/pipeline.yml
+    ```
+
 ### Interacting with the Quickstart Environment
 
 The start up takes a few seconds to complete, but once everything is up
 and running it is possible to write JSON events into Kafka and read the processed events in
 Opensearch Dashboards. Following services are available after start up:
 
-| Service | Location |
-|:----------|:----|
-| Kafka: | `localhost:9092` |
-| Logprep metrics: | `localhost:8000` |
-| Opensearch: | `localhost:9200` |
-| Opensearch Dashboards: | `localhost:5601` |
-| Grafana Dashboards: | `localhost:3000` |
-| Prometheus: | `localhost:9090` |
-
-The credentials for Grafana are `admin` and `admin`.
+| Service | Location | Credentials |
+|:----------|:----|:-----|
+| Kafka: | `localhost:9092` | |
+| Logprep metrics: | `localhost:8000` | |
+| Opensearch: | `localhost:9200` | |
+| Opensearch Dashboards: | `localhost:5601` | |
+| Grafana Dashboards: | `localhost:3000` | admin:admin |
+| Prometheus: | `localhost:9090` | |
+| Nginx: | `localhost:8081` | user:password |
+| Keycloak: | `localhost:8080` | admin:admin |
+| Postgres: | `localhost:5432` | keycloak:bitnami |
 
 The example rules that are used in the docker instance of Logprep can be found 
 in `quickstart/exampledata/rules`.
