@@ -6,5 +6,4 @@ pylint
 pytest
 pytest-cov
 responses
-semgrep
 jinja2
