@@ -2,7 +2,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 # pylint: disable=too-many-statements
-
 import pytest
 
 from logprep.filter.expression.filter_expression import StringFilterExpression, Not, Exists
@@ -439,10 +438,6 @@ class TestRuleParser:
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C2"]), Exists(["D1"])],
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C2"]), Exists(["D2"])],
-                    [Exists(["A1"]), Exists(["C1"]), Exists(["D1"])],
-                    [Exists(["A1"]), Exists(["C1"]), Exists(["D2"])],
-                    [Exists(["A1"]), Exists(["C2"]), Exists(["D1"])],
-                    [Exists(["A1"]), Exists(["C2"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C1"]), Exists(["D1"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C2"]), Exists(["D1"])],
@@ -451,10 +446,50 @@ class TestRuleParser:
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C2"]), Exists(["D1"])],
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C2"]), Exists(["D2"])],
-                    [Exists(["A2"]), Exists(["C1"]), Exists(["D1"])],
-                    [Exists(["A2"]), Exists(["C1"]), Exists(["D2"])],
-                    [Exists(["A2"]), Exists(["C2"]), Exists(["D1"])],
-                    [Exists(["A2"]), Exists(["C2"]), Exists(["D2"])],
+                ],
+            ),
+            (
+                PreDetectorRule._create_from_dict(
+                    {
+                        "filter": "(A1 OR A2) AND (B1 OR (C1 AND C2))",
+                        "pre_detector": {
+                            "id": 1,
+                            "title": "1",
+                            "severity": "0",
+                            "case_condition": "directly",
+                            "mitre": [],
+                        },
+                    }
+                ),
+                {},
+                {},
+                [
+                    [Exists(["A1"]), Exists(["B1"])],
+                    [Exists(["A1"]), Exists(["C1"]), Exists(["C2"])],
+                    [Exists(["A2"]), Exists(["B1"])],
+                    [Exists(["A2"]), Exists(["C1"]), Exists(["C2"])],
+                ],
+            ),
+            (
+                PreDetectorRule._create_from_dict(
+                    {
+                        "filter": "((A1 OR A2) AND (B1 OR B2)) AND C1",
+                        "pre_detector": {
+                            "id": 1,
+                            "title": "1",
+                            "severity": "0",
+                            "case_condition": "directly",
+                            "mitre": [],
+                        },
+                    }
+                ),
+                {},
+                {},
+                [
+                    [Exists(["A1"]), Exists(["B1"]), Exists(["C1"])],
+                    [Exists(["A1"]), Exists(["B2"]), Exists(["C1"])],
+                    [Exists(["A2"]), Exists(["B1"]), Exists(["C1"])],
+                    [Exists(["A2"]), Exists(["B2"]), Exists(["C1"])],
                 ],
             ),
             (

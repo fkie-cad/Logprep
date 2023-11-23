@@ -4,7 +4,6 @@ Goal of this module is to parse each rule into a list of less complex rules with
 behavior, allowing a simpler construction of the rule tree.
 
 """
-
 from typing import TYPE_CHECKING
 
 from logprep.filter.expression.filter_expression import (
@@ -106,7 +105,6 @@ class RuleParser:
         RuleSorter.sort_rule_segments(dnf_rule_segments, priority_dict)
         self._add_exists_filter(dnf_rule_segments)
         self._rule_tagger.add(dnf_rule_segments)
-
         return dnf_rule_segments
 
     @staticmethod

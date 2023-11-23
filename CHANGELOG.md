@@ -24,10 +24,12 @@
   - removed `max_caching_days` config option
   - add `max_cached_pseudonymized_urls` config option which defaults to 1000
   - add lru caching for peudonymizatin of urls
+* improve loading times for the rule tree by optimizing the rule segmentation and sorting
 * add support for python 3.12 and remove support for python 3.9
 
 ### Bugfix
 
+* fix the rule tree parsing some rules incorrectly, potentially resulting in more matches
 
 ## v8.0.0
 ### Breaking
@@ -53,6 +55,7 @@
 * get exception stack trace by setting environment variable `DEBUG`
 
 ### Bugfix
+
 
 ## v7.0.0
 ### Breaking
