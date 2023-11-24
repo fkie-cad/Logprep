@@ -4,10 +4,15 @@
 # pylint: disable=too-many-statements
 import pytest
 
-from logprep.filter.expression.filter_expression import StringFilterExpression, Not, Exists, \
-    RegExFilterExpression
+from logprep.filter.expression.filter_expression import (
+    StringFilterExpression,
+    Not,
+    Exists,
+    RegExFilterExpression,
+)
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.processor.pre_detector.rule import PreDetectorRule
+
 
 pytest.importorskip("logprep.processor.pre_detector")
 
@@ -654,12 +659,12 @@ class TestRuleParser:
                 [[Not(Exists(["foo"]))]],
             ),
             (
-                    [[RegExFilterExpression(["foo"], "bar")]],
-                    [[Exists(["foo"]), RegExFilterExpression(["foo"], "bar")]],
+                [[RegExFilterExpression(["foo"], "bar")]],
+                [[Exists(["foo"]), RegExFilterExpression(["foo"], "bar")]],
             ),
             (
-                    [[Not(RegExFilterExpression(["foo"], "bar"))]],
-                    [[Exists(["foo"]), Not(RegExFilterExpression(["foo"], "bar"))]],
+                [[Not(RegExFilterExpression(["foo"], "bar"))]],
+                [[Exists(["foo"]), Not(RegExFilterExpression(["foo"], "bar"))]],
             ),
             (
                 [[string_filter_expression_1, Exists(["key1"])], [string_filter_expression_1]],
