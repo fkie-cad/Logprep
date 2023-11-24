@@ -13,7 +13,8 @@ from logprep.filter.expression.filter_expression import (
     And,
     Null,
     Always,
-    Exists, Not,
+    Exists,
+    Not,
 )
 
 
