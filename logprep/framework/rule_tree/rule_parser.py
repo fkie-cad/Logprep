@@ -4,12 +4,14 @@ Goal of this module is to parse each rule into a list of less complex rules with
 behavior, allowing a simpler construction of the rule tree.
 
 """
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from logprep.filter.expression.filter_expression import (
     Always,
     Exists,
     Not,
+    KeyValueBasedFilterExpression,
+    FilterExpression,
 )
 
 from logprep.framework.rule_tree.demorgan_resolver import DeMorganResolver
@@ -116,6 +118,8 @@ class RuleParser:
         checks if the given field even exists. Like this unnecessary comparisons can be prevented
         when the tree would check each of the values the field can have even when the field does
         not exist in the current event.
+        It also adds an exists filter to negated key value based expressions,
+        so that matching a value always requires the existence of the field.
 
         Parameters
         ----------
@@ -126,15 +130,36 @@ class RuleParser:
         for parsed_rule in parsed_rules:
             temp_parsed_rule = parsed_rule.copy()
             skipped_counter = 0
-
-            for segment_index, segment in enumerate(temp_parsed_rule):
-                if isinstance(segment, (Exists, Not, Always)):
+            for segment_idx, segment in enumerate(temp_parsed_rule):
+                if isinstance(segment, (Exists, Always)):
                     skipped_counter += 1
                     continue
 
-                exists_filter = Exists(segment.key)
-                if exists_filter in parsed_rule:
+                exists_filter = RuleParser._get_exists_filter(segment)
+                if exists_filter is None or exists_filter in parsed_rule:
                     skipped_counter += 1
-                    continue
+                else:
+                    parsed_rule.insert(segment_idx * 2 - skipped_counter, exists_filter)
 
-                parsed_rule.insert(segment_index * 2 - skipped_counter, exists_filter)
+    @staticmethod
+    def _get_exists_filter(segment: FilterExpression) -> Optional[Exists]:
+        """Get Exists filter expression based in segment.
+
+        Parameters
+        ----------
+        segment: FilterExpression
+            Filter expressions segment.
+
+        Returns
+        -------
+        Optional[Exists]
+            Returns an Exists FilterExpression from a KeyValueBased FilterExpression or None.
+
+        """
+        if isinstance(segment, Not):
+            not_child = segment.children[0]
+            if isinstance(not_child, KeyValueBasedFilterExpression):
+                return Exists(not_child.key)
+        elif isinstance(segment, KeyValueBasedFilterExpression):
+            return Exists(segment.key)
+        return None
