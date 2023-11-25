@@ -186,6 +186,8 @@ class Pipeline:
         self.logger.debug("Creating connectors")
         for _, output in self._output.items():
             output.input_connector = self._input
+            if output.default:
+                self._input.output_connector = output
         self.logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{[output.describe() for _, output in self._output.items()]}'"
