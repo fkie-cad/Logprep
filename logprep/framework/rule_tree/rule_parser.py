@@ -129,17 +129,17 @@ class RuleParser:
         """
         for parsed_rule in parsed_rules:
             temp_parsed_rule = parsed_rule.copy()
-            skipped_counter = 0
+            added_segments = 0
             for segment_idx, segment in enumerate(temp_parsed_rule):
                 if isinstance(segment, (Exists, Always)):
-                    skipped_counter += 1
                     continue
-
                 exists_filter = RuleParser._get_exists_filter(segment)
-                if exists_filter is None or exists_filter in parsed_rule:
-                    skipped_counter += 1
-                else:
-                    parsed_rule.insert(segment_idx * 2 - skipped_counter, exists_filter)
+                if exists_filter is None:
+                    continue
+                if exists_filter in parsed_rule:
+                    continue
+                parsed_rule.insert(segment_idx + added_segments, exists_filter)
+                added_segments += 1
 
     @staticmethod
     def _get_exists_filter(segment: FilterExpression) -> Optional[Exists]:
@@ -157,9 +157,7 @@ class RuleParser:
 
         """
         if isinstance(segment, Not):
-            not_child = segment.children[0]
-            if isinstance(not_child, KeyValueBasedFilterExpression):
-                return Exists(not_child.key)
-        elif isinstance(segment, KeyValueBasedFilterExpression):
+            segment = segment.children[0]
+        if isinstance(segment, KeyValueBasedFilterExpression):
             return Exists(segment.key)
         return None
