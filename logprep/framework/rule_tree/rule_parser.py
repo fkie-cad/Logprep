@@ -129,7 +129,7 @@ class RuleParser:
         """
         for parsed_rule in parsed_rules:
             temp_parsed_rule = parsed_rule.copy()
-            added_segments = 0
+            added_exists_filter_count = 0
             for segment_idx, segment in enumerate(temp_parsed_rule):
                 if isinstance(segment, (Exists, Always)):
                     continue
@@ -138,8 +138,8 @@ class RuleParser:
                     continue
                 if exists_filter in parsed_rule:
                     continue
-                parsed_rule.insert(segment_idx + added_segments, exists_filter)
-                added_segments += 1
+                parsed_rule.insert(segment_idx + added_exists_filter_count, exists_filter)
+                added_exists_filter_count += 1
 
     @staticmethod
     def _get_exists_filter(segment: FilterExpression) -> Optional[Exists]:
