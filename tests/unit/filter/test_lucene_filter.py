@@ -13,6 +13,8 @@ from logprep.filter.expression.filter_expression import (
     And,
     Null,
     Always,
+    Exists,
+    Not,
 )
 
 
@@ -213,6 +215,14 @@ class TestLueceneFilter:
     def test_creates_filter_match_all(self):
         lucene_filter = LuceneFilter.create("*")
         assert lucene_filter == Always(True)
+
+    def test_creates_filter_exists(self):
+        lucene_filter = LuceneFilter.create("foo")
+        assert lucene_filter == Exists(["foo"])
+
+    def test_creates_filter_not_exists(self):
+        lucene_filter = LuceneFilter.create("NOT foo")
+        assert lucene_filter == Not(Exists(["foo"]))
 
     escape_ends_of_expressions_test_cases = [
         ("Empty string", "", ""),
