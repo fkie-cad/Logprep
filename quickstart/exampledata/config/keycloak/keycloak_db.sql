@@ -3000,7 +3000,7 @@ c01bc375-b5f9-4936-8251-7c7be8a94b04	String	jsonType.label
 
 COPY public.realm (id, access_code_lifespan, user_action_lifespan, access_token_lifespan, account_theme, admin_theme, email_theme, enabled, events_enabled, events_expiration, login_theme, name, not_before, password_policy, registration_allowed, remember_me, reset_password_allowed, social, ssl_required, sso_idle_timeout, sso_max_lifespan, update_profile_on_soc_login, verify_email, master_admin_client, login_lifespan, internationalization_enabled, default_locale, reg_email_as_username, admin_events_enabled, admin_events_details_enabled, edit_username_allowed, otp_policy_counter, otp_policy_window, otp_policy_period, otp_policy_digits, otp_policy_alg, otp_policy_type, browser_flow, registration_flow, direct_grant_flow, reset_credentials_flow, client_auth_flow, offline_session_idle_timeout, revoke_refresh_token, access_token_life_implicit, login_with_email_allowed, duplicate_emails_allowed, docker_auth_flow, refresh_token_max_reuse, allow_user_managed_access, sso_max_lifespan_remember_me, sso_idle_timeout_remember_me, default_role) FROM stdin;
 ccf97ff2-0fd1-472a-8041-b05bbe3ab0ff	60	300	60	\N	\N	\N	t	f	0	\N	master	0	\N	f	f	f	f	EXTERNAL	1800	36000	f	f	7054aec7-dafe-46ea-b752-855f1626b97a	1800	f	\N	f	f	f	f	0	1	30	6	HmacSHA1	totp	261ee39e-ad77-4d9d-8e56-15ec77ea611b	071c0a54-e2e9-4791-bb7e-72853915e371	b31ebba6-89c4-4d34-bd26-18f958560753	0b110242-a5a9-40bd-8ac7-78fec175f3b8	ecb294d1-bb2c-458b-96e6-257a74ee42de	2592000	f	900	t	f	b55b3700-7400-4d72-ab70-ca291b03af2c	0	f	0	0	9248d8ff-8fdf-483f-911c-b400a4715be0
-192c7eba-98c5-4d87-9f5f-059ac8515a9f	60	300	300	\N	\N	\N	t	f	0	\N	logprep	0	\N	f	f	f	f	EXTERNAL	1800	36000	f	f	4528294a-48c5-4295-ba48-015c67ad0632	1800	f	\N	f	f	f	f	0	1	30	6	HmacSHA1	totp	655f64bb-8cbd-47fa-b9be-6e4a1ed839ff	519e4a95-50cf-47d1-acde-02dd118e38b0	7b8d49df-024a-4b85-81f0-069c60e8709a	fe832423-ee2e-4105-ad54-2172427ec038	74053835-0f48-4577-843f-ed24711091f7	2592000	f	900	t	f	f1004845-6e8d-4138-9b1e-d98774accaf2	0	f	0	0	355d504e-2e39-4d69-b225-04074afc8263
+192c7eba-98c5-4d87-9f5f-059ac8515a9f	60	300	432000	\N	\N	\N	t	f	0	\N	logprep	0	\N	f	f	f	f	EXTERNAL	1800	36000	f	f	4528294a-48c5-4295-ba48-015c67ad0632	1800	f	\N	f	f	f	f	0	1	30	6	HmacSHA1	totp	655f64bb-8cbd-47fa-b9be-6e4a1ed839ff	519e4a95-50cf-47d1-acde-02dd118e38b0	7b8d49df-024a-4b85-81f0-069c60e8709a	fe832423-ee2e-4105-ad54-2172427ec038	74053835-0f48-4577-843f-ed24711091f7	2592000	f	900	t	f	f1004845-6e8d-4138-9b1e-d98774accaf2	0	f	0	0	355d504e-2e39-4d69-b225-04074afc8263
 \.
 
 
@@ -3009,6 +3009,56 @@ ccf97ff2-0fd1-472a-8041-b05bbe3ab0ff	60	300	60	\N	\N	\N	t	f	0	\N	master	0	\N	f	f
 --
 
 COPY public.realm_attribute (name, realm_id, value) FROM stdin;
+shortVerificationUri	192c7eba-98c5-4d87-9f5f-059ac8515a9f	
+actionTokenGeneratedByUserLifespan-verify-email	192c7eba-98c5-4d87-9f5f-059ac8515a9f	
+actionTokenGeneratedByUserLifespan-idp-verify-account-via-email	192c7eba-98c5-4d87-9f5f-059ac8515a9f	
+actionTokenGeneratedByUserLifespan-reset-credentials	192c7eba-98c5-4d87-9f5f-059ac8515a9f	
+actionTokenGeneratedByUserLifespan-execute-actions	192c7eba-98c5-4d87-9f5f-059ac8515a9f	
+cibaBackchannelTokenDeliveryMode	192c7eba-98c5-4d87-9f5f-059ac8515a9f	poll
+cibaExpiresIn	192c7eba-98c5-4d87-9f5f-059ac8515a9f	120
+cibaAuthRequestedUserHint	192c7eba-98c5-4d87-9f5f-059ac8515a9f	login_hint
+parRequestUriLifespan	192c7eba-98c5-4d87-9f5f-059ac8515a9f	60
+cibaInterval	192c7eba-98c5-4d87-9f5f-059ac8515a9f	5
+bruteForceProtected	192c7eba-98c5-4d87-9f5f-059ac8515a9f	false
+permanentLockout	192c7eba-98c5-4d87-9f5f-059ac8515a9f	false
+maxFailureWaitSeconds	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+minimumQuickLoginWaitSeconds	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+waitIncrementSeconds	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+quickLoginCheckMilliSeconds	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+maxDeltaTimeSeconds	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+failureFactor	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+actionTokenGeneratedByAdminLifespan	192c7eba-98c5-4d87-9f5f-059ac8515a9f	43200
+actionTokenGeneratedByUserLifespan	192c7eba-98c5-4d87-9f5f-059ac8515a9f	300
+oauth2DeviceCodeLifespan	192c7eba-98c5-4d87-9f5f-059ac8515a9f	600
+oauth2DevicePollingInterval	192c7eba-98c5-4d87-9f5f-059ac8515a9f	5
+defaultSignatureAlgorithm	192c7eba-98c5-4d87-9f5f-059ac8515a9f	RS256
+offlineSessionMaxLifespanEnabled	192c7eba-98c5-4d87-9f5f-059ac8515a9f	false
+offlineSessionMaxLifespan	192c7eba-98c5-4d87-9f5f-059ac8515a9f	5184000
+clientSessionIdleTimeout	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+clientSessionMaxLifespan	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+clientOfflineSessionIdleTimeout	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+clientOfflineSessionMaxLifespan	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+realmReusableOtpCode	192c7eba-98c5-4d87-9f5f-059ac8515a9f	false
+webAuthnPolicyRpEntityName	192c7eba-98c5-4d87-9f5f-059ac8515a9f	keycloak
+webAuthnPolicySignatureAlgorithms	192c7eba-98c5-4d87-9f5f-059ac8515a9f	ES256
+webAuthnPolicyRpId	192c7eba-98c5-4d87-9f5f-059ac8515a9f	
+webAuthnPolicyAttestationConveyancePreference	192c7eba-98c5-4d87-9f5f-059ac8515a9f	not specified
+webAuthnPolicyAuthenticatorAttachment	192c7eba-98c5-4d87-9f5f-059ac8515a9f	not specified
+webAuthnPolicyRequireResidentKey	192c7eba-98c5-4d87-9f5f-059ac8515a9f	not specified
+webAuthnPolicyUserVerificationRequirement	192c7eba-98c5-4d87-9f5f-059ac8515a9f	not specified
+webAuthnPolicyCreateTimeout	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+webAuthnPolicyAvoidSameAuthenticatorRegister	192c7eba-98c5-4d87-9f5f-059ac8515a9f	false
+webAuthnPolicyRpEntityNamePasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	keycloak
+webAuthnPolicySignatureAlgorithmsPasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	ES256
+webAuthnPolicyRpIdPasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	
+webAuthnPolicyAttestationConveyancePreferencePasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	not specified
+webAuthnPolicyAuthenticatorAttachmentPasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	not specified
+webAuthnPolicyRequireResidentKeyPasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	not specified
+webAuthnPolicyUserVerificationRequirementPasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	not specified
+webAuthnPolicyCreateTimeoutPasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	0
+webAuthnPolicyAvoidSameAuthenticatorRegisterPasswordless	192c7eba-98c5-4d87-9f5f-059ac8515a9f	false
+client-policies.profiles	192c7eba-98c5-4d87-9f5f-059ac8515a9f	{"profiles":[]}
+client-policies.policies	192c7eba-98c5-4d87-9f5f-059ac8515a9f	{"policies":[]}
 \.
 
 

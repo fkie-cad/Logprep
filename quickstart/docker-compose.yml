@@ -27,7 +27,6 @@ services:
     volumes:
       - data:/usr/share/opensearch/data
     network_mode: host
-
   dashboards:
     image: public.ecr.aws/opensearchproject/opensearch-dashboards:2
     container_name: dashboards
@@ -39,7 +38,6 @@ services:
     expose:
       - 5601
     network_mode: host
-
   kafka:
     image: bitnami/kafka:3.4
     container_name: kafka
@@ -67,7 +65,6 @@ services:
           "CMD-SHELL",
           "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
         ]
-
   kafka-exporter:
     image: bitnami/kafka-exporter
     container_name: kafkaexporter
@@ -78,7 +75,6 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-
   logprep:
     build:
       context: ..
@@ -92,13 +88,11 @@ services:
     depends_on:
       - kafka
       - opensearch
-
     volumes:
       - ../quickstart/:/home/logprep/quickstart/
     entrypoint:
       - logprep
       - /home/logprep/quickstart/exampledata/config/pipeline.yml
-
   grafana:
     image: bitnami/grafana:latest
     container_name: grafana
@@ -162,7 +156,7 @@ services:
       POSTGRESQL_USERNAME: keycloak
     volumes:
       # use this folder to persist your postgresql data by dumping the database to it after changes
-      # outside the container: chmod 777 quickstart/exampledata/config/postgresql
+      # outside the container: chmod 777 quickstart/exampledata/config/keycloak
       # inside the container: pg_dump keycloak -U keycloak -W --file /docker-entrypoint-initdb.d/keycloak_db.sql
       - ../quickstart/exampledata/config/keycloak:/docker-entrypoint-initdb.d
   fda-api:
@@ -185,7 +179,7 @@ services:
       KEYCLOAK_CLIENT_ID: fda-backend
       KEYCLOAK_CLIENT_SECRET: tYfkKygb1g2Hf6fmAInoq3XPK1OILbSp
       KEYCLOAK_CLIENT_ID_FOR_AUTHZ_ROLES: fda
-      SERVICE_BASE_URL: 'http://localhost:8000/api/v1'  # env needed, but value ony when DISABLE_AUTHENTICATION=False
+      SERVICE_BASE_URL: 'http://localhost:8000/'
     depends_on:
       fda-db:
         condition: service_healthy
