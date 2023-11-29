@@ -442,6 +442,7 @@ class ConfluentKafkaInput(Input):
         self._last_valid_records.clear()
 
     def _handle_offsets(self, offset_handler: Callable) -> None:
+        """handles kafka offsets for each partition"""
         for message in self._last_valid_records.values():
             try:
                 offset_handler(message=message)
