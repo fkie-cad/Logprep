@@ -123,8 +123,8 @@ class RuleTree:
             parsed_rule = self.rule_parser.parse_rule(rule, self.priority_dict)
         except Exception as error:  # pylint: disable=broad-except
             logger.warning(
-                f'Error parsing rule "{rule.filter}": {type(error).__name__}: {error}.'
-                f"\nIgnore and continue with next rule."
+                f'Error parsing rule "{rule.file_name}.yml": {type(error).__name__}: {error}. '
+                f"Ignore and continue with next rule."
             )
             return
         for rule_segment in parsed_rule:

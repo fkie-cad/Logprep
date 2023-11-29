@@ -318,19 +318,16 @@ class FloatRangeFilterExpression(RangeBasedFilterExpression):
         return self._lower_bound <= value <= self._upper_bound
 
 
-class RegExFilterExpression(KeyBasedFilterExpression):
+class RegExFilterExpression(KeyValueBasedFilterExpression):
     """Filter expression that matches a value using regex."""
 
     match_escaping_pattern = re.compile(r".*?(?P<escaping>\\*)\$$")
     match_parts_pattern = re.compile(r"^(?P<flag>\(\?\w\))?(?P<start>\^)?(?P<pattern>.*)")
 
     def __init__(self, key: List[str], regex: str):
-        super().__init__(key)
         self._regex = self._normalize_regex(regex)
         self._matcher = re.compile(self._regex)
-
-    def __repr__(self) -> str:
-        return f"{self.key_as_dotted_string}:/{self._regex.strip('^$')}/"
+        super().__init__(key, f"/{self._regex.strip('^$')}/")
 
     @staticmethod
     def _normalize_regex(regex: str) -> str:

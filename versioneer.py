@@ -1,3 +1,4 @@
+# pylint:disable-all
 # Version: 0.22
 
 """The Versioneer - like a rocketeer, but for versions.
@@ -281,13 +282,13 @@ https://img.shields.io/travis/com/python-versioneer/python-versioneer.svg
 
 import configparser
 import errno
+import functools
 import json
 import os
 import re
 import subprocess
 import sys
 from typing import Callable, Dict
-import functools
 
 
 class VersioneerConfig:
@@ -1798,11 +1799,7 @@ def get_cmdclass(cmdclass=None):
 
     cmds = {} if cmdclass is None else cmdclass.copy()
 
-    # we add "version" to both distutils and setuptools
-    try:
-        from setuptools import Command
-    except ImportError:
-        from distutils.core import Command
+    from setuptools import Command
 
     class cmd_version(Command):
         description = "report generated version string"

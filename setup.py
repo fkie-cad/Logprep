@@ -1,7 +1,7 @@
 # pylint: disable=missing-module-docstring
 from pathlib import Path
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 import versioneer
 
@@ -36,7 +36,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=["setuptools"] + requirements,
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     entry_points={
         "console_scripts": [
             "logprep = logprep.run_logprep:main",

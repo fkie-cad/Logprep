@@ -347,7 +347,6 @@ class TestConfiguration:
                                 ],
                                 "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
                                 "max_cached_pseudonyms": 1000000,
-                                "max_caching_days": 1,
                             }
                         },
                     ],
@@ -748,7 +747,6 @@ output:
                     "generic_rules": ["tests/testdata/unit/pseudonymizer/rules/generic/"],
                     "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
                     "max_cached_pseudonyms": 1000000,
-                    "max_caching_days": 1,
                 }
             },
         ]

@@ -3,8 +3,8 @@
 from unittest import mock
 
 import pytest
-from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 
+from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.processor.base.rule import Rule
 
 
@@ -20,6 +20,15 @@ class TestRule:
                 description: this is a test rule
                 """,
                 None,
+            ),
+            (
+                b"""
+                filter:
+                rule:
+                    regex_fields: []
+                description: this is a test rule
+                """,
+                (InvalidRuleDefinitionError, "no filter defined"),
             ),
             (
                 b"""

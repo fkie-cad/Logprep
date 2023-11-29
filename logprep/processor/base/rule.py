@@ -387,7 +387,7 @@ class Rule:
     @classmethod
     def _create_filter_expression(cls, rule: dict) -> FilterExpression:
         special_fields = cls._get_special_fields_for_rule_matching(rule)
-        if "filter" not in rule:
+        if rule.get("filter") is None:
             raise InvalidRuleDefinitionError("no filter defined")
         return LuceneFilter.create(rule["filter"], special_fields)
 

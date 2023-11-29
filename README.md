@@ -236,7 +236,7 @@ Details about the rule language and how to write rules for the processors can be
 
 ### Installation
 
-Python should be present on the system, currently supported are the versions 3.9 - 3.11.
+Python should be present on the system, currently supported are the versions 3.10 - 3.12.
 
 To install Logprep you have following options:
 
@@ -283,16 +283,16 @@ Those can be executed via: `tox -e [name of the test environment]`.
 For Example:
 
 ```
-tox -e py39-all
+tox -e py310-all
 ```
 
 This runs all tests, calculates the test coverage and evaluates the code quality for the python 
-3.9 version.
+3.10 version.
 
 Multiple environments can be tested within one call: 
 
 ```
-tox -e py39-all -e py310-all -e py311-all
+tox -e py310-all -e py311-all -e py312-all
 ```
 
 If you want to run them in parallel attach the option `-p`.
@@ -308,21 +308,7 @@ tox -av
 In case the requirements change, the test environments must be rebuilt with the parameter `-r`:
 
 ```
-tox -e py39 -e py310 -e py311 -r
-```
-
-### Semgrep
-
-If you want to run semgrep rules run
-
-```
-pip install semgrep
-```
-
-Afterwards you can just call the tox environment with for example 
-
-```
-tox -e py39-semgrep
+tox -e py310 -e py311 -e py312 -r
 ```
 
 ### Running Logprep
@@ -425,22 +411,36 @@ The environment can either be started with a Logprep container or without one:
     docker-compose --profile logprep up -d
     ```
 
+### Run with getting config from http server with basic authentication
+
+  * Run from within the `quickstart` directory: 
+    ```bash
+    docker-compose --profile basic_auth up -d
+    ```
+  * Run within the project root directory:
+    ```bash
+    export LOGPREP_CONFIG_AUTH_USERNAME="user"
+    export LOGPREP_CONFIG_AUTH_PASSWORD="password"
+    logprep http://localhost:8081/config/pipeline.yml
+    ```
+
 ### Interacting with the Quickstart Environment
 
 The start up takes a few seconds to complete, but once everything is up
 and running it is possible to write JSON events into Kafka and read the processed events in
 Opensearch Dashboards. Following services are available after start up:
 
-| Service | Location |
-|:----------|:----|
-| Kafka: | `localhost:9092` |
-| Logprep metrics: | `localhost:8000` |
-| Opensearch: | `localhost:9200` |
-| Opensearch Dashboards: | `localhost:5601` |
-| Grafana Dashboards: | `localhost:3000` |
-| Prometheus: | `localhost:9090` |
-
-The credentials for Grafana are `admin` and `admin`.
+| Service | Location | Credentials |
+|:----------|:----|:-----|
+| Kafka: | `localhost:9092` | |
+| Logprep metrics: | `localhost:8000` | |
+| Opensearch: | `localhost:9200` | |
+| Opensearch Dashboards: | `localhost:5601` | |
+| Grafana Dashboards: | `localhost:3000` | admin:admin |
+| Prometheus: | `localhost:9090` | |
+| Nginx: | `localhost:8081` | user:password |
+| Keycloak: | `localhost:8080` | admin:admin |
+| Postgres: | `localhost:5432` | keycloak:bitnami |
 
 The example rules that are used in the docker instance of Logprep can be found 
 in `quickstart/exampledata/rules`.
@@ -465,7 +465,7 @@ Building the documentation is done by executing the following command from withi
 the project root directory:
 
 ```
-tox -e py39-docs
+tox -e py310-docs
 ```
 
 A HTML documentation can be then found in `doc/_build/html/index.html`.

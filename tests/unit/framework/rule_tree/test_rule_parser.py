@@ -2,12 +2,17 @@
 # pylint: disable=missing-docstring
 # pylint: disable=line-too-long
 # pylint: disable=too-many-statements
-
 import pytest
 
-from logprep.filter.expression.filter_expression import StringFilterExpression, Not, Exists
+from logprep.filter.expression.filter_expression import (
+    StringFilterExpression,
+    Not,
+    Exists,
+    RegExFilterExpression,
+)
 from logprep.framework.rule_tree.rule_parser import RuleParser
 from logprep.processor.pre_detector.rule import PreDetectorRule
+
 
 pytest.importorskip("logprep.processor.pre_detector")
 
@@ -164,6 +169,7 @@ class TestRuleParser:
                     [
                         Exists(["EventID"]),
                         StringFilterExpression(["EventID"], "17"),
+                        Exists(["Image"]),
                         Not(StringFilterExpression(["Image"], "*\\powershell.exe")),
                         Exists(["PipeName"]),
                         StringFilterExpression(["PipeName"], "\\PSHost*"),
@@ -290,6 +296,7 @@ class TestRuleParser:
                     [
                         Exists(["bar"]),
                         StringFilterExpression(["bar"], "foo"),
+                        Exists(["foo"]),
                         Not(StringFilterExpression(["foo"], "bar")),
                     ]
                 ],
@@ -333,10 +340,12 @@ class TestRuleParser:
                 {},
                 {},
                 [
-                    [Not(StringFilterExpression(["foo"], "bar"))],
+                    [Exists(["foo"]), Not(StringFilterExpression(["foo"], "bar"))],
                     [
+                        Exists(["msg"]),
                         Not(StringFilterExpression(["msg"], "123")),
                         Not(StringFilterExpression(["msg"], "456")),
+                        Exists(["test"]),
                         Not(StringFilterExpression(["test"], "ok")),
                     ],
                 ],
@@ -411,6 +420,7 @@ class TestRuleParser:
                         Not(Not(Exists(["AImphash"]))),
                         Exists(["EventID"]),
                         StringFilterExpression(["EventID"], "15"),
+                        Exists(["Imphash"]),
                         Not(StringFilterExpression(["Imphash"], "000")),
                     ]
                 ],
@@ -439,10 +449,6 @@ class TestRuleParser:
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C2"]), Exists(["D1"])],
                     [Exists(["A1"]), Exists(["B2"]), Exists(["C2"]), Exists(["D2"])],
-                    [Exists(["A1"]), Exists(["C1"]), Exists(["D1"])],
-                    [Exists(["A1"]), Exists(["C1"]), Exists(["D2"])],
-                    [Exists(["A1"]), Exists(["C2"]), Exists(["D1"])],
-                    [Exists(["A1"]), Exists(["C2"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C1"]), Exists(["D1"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B1"]), Exists(["C2"]), Exists(["D1"])],
@@ -451,10 +457,50 @@ class TestRuleParser:
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C1"]), Exists(["D2"])],
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C2"]), Exists(["D1"])],
                     [Exists(["A2"]), Exists(["B2"]), Exists(["C2"]), Exists(["D2"])],
-                    [Exists(["A2"]), Exists(["C1"]), Exists(["D1"])],
-                    [Exists(["A2"]), Exists(["C1"]), Exists(["D2"])],
-                    [Exists(["A2"]), Exists(["C2"]), Exists(["D1"])],
-                    [Exists(["A2"]), Exists(["C2"]), Exists(["D2"])],
+                ],
+            ),
+            (
+                PreDetectorRule._create_from_dict(
+                    {
+                        "filter": "(A1 OR A2) AND (B1 OR (C1 AND C2))",
+                        "pre_detector": {
+                            "id": 1,
+                            "title": "1",
+                            "severity": "0",
+                            "case_condition": "directly",
+                            "mitre": [],
+                        },
+                    }
+                ),
+                {},
+                {},
+                [
+                    [Exists(["A1"]), Exists(["B1"])],
+                    [Exists(["A1"]), Exists(["C1"]), Exists(["C2"])],
+                    [Exists(["A2"]), Exists(["B1"])],
+                    [Exists(["A2"]), Exists(["C1"]), Exists(["C2"])],
+                ],
+            ),
+            (
+                PreDetectorRule._create_from_dict(
+                    {
+                        "filter": "((A1 OR A2) AND (B1 OR B2)) AND C1",
+                        "pre_detector": {
+                            "id": 1,
+                            "title": "1",
+                            "severity": "0",
+                            "case_condition": "directly",
+                            "mitre": [],
+                        },
+                    }
+                ),
+                {},
+                {},
+                [
+                    [Exists(["A1"]), Exists(["B1"]), Exists(["C1"])],
+                    [Exists(["A1"]), Exists(["B2"]), Exists(["C1"])],
+                    [Exists(["A2"]), Exists(["B1"]), Exists(["C1"])],
+                    [Exists(["A2"]), Exists(["B2"]), Exists(["C1"])],
                 ],
             ),
             (
@@ -604,7 +650,22 @@ class TestRuleParser:
                     [Exists(["key3"]), string_filter_expression_3],
                 ],
             ),
-            ([[Not(string_filter_expression_1)]], [[Not(string_filter_expression_1)]]),
+            (
+                [[Not(string_filter_expression_1)]],
+                [[Exists(["key1"]), Not(string_filter_expression_1)]],
+            ),
+            (
+                [[Not(Exists(["foo"]))]],
+                [[Not(Exists(["foo"]))]],
+            ),
+            (
+                [[RegExFilterExpression(["foo"], "bar")]],
+                [[Exists(["foo"]), RegExFilterExpression(["foo"], "bar")]],
+            ),
+            (
+                [[Not(RegExFilterExpression(["foo"], "bar"))]],
+                [[Exists(["foo"]), Not(RegExFilterExpression(["foo"], "bar"))]],
+            ),
             (
                 [[string_filter_expression_1, Exists(["key1"])], [string_filter_expression_1]],
                 [

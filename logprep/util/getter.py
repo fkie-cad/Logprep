@@ -8,9 +8,10 @@ from pathlib import Path
 from string import Template
 from typing import Tuple
 from urllib.parse import urlparse
+
 import requests
+from attrs import define, field, validators
 from requests.auth import HTTPBasicAuth
-from attrs import field, validators, define
 
 from logprep._version import get_versions
 from logprep.abc.getter import Getter
@@ -91,9 +92,16 @@ class HttpGetter(Getter):
 
     * Simple http target: :code:`http://your.target/file.yml`
     * Simple https target: :code:`https://your.target/file.json`
-    * Target with asic authentication: :code:`https://username:password@your_web_target`
-    * Target with oauth compliant authentication with bearer token header:
-      :code:`https://oauth:<your bearer token>@your_web_target`
+
+    if you want to use basic auth, then you have to set the environment variables
+
+        * :code:`LOGPREP_CONFIG_AUTH_USERNAME=<your_username>`
+        * :code:`LOGPREP_CONFIG_AUTH_PASSWORD=<your_password>`
+
+    if you want to use oauth, then you have to set the environment variables
+
+        * :code:`LOGPREP_CONFIG_AUTH_TOKEN=<your_token>`
+        * :code:`LOGPREP_CONFIG_AUTH_METHOD=oauth`
 
     """
 
@@ -101,23 +109,36 @@ class HttpGetter(Getter):
 
     _username: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
     _password: str = field(validator=validators.optional(validators.instance_of(str)), default=None)
+    _headers: dict = field(validator=validators.instance_of(dict), factory=dict)
 
     def __attrs_post_init__(self):
+        user_agent = f"Logprep version {get_versions().get('version')}"
+        self._headers |= {"User-Agent": user_agent}
         target = self.target
-        auth_match = re.match(r"^((?P<username>.+):(?P<password>.+)@)?(?P<target>.+)", target)
-        self.target = auth_match.group("target")
-        self._username = auth_match.group("username")
-        self._password = auth_match.group("password")
+        target_match = re.match(r"^((?P<username>.+):(?P<password>.+)@)?(?P<target>.+)", target)
+        self.target = target_match.group("target")
+        if target_match.group("username") or target_match.group("password"):
+            raise NotImplementedError(
+                "Basic auth credentials via commandline are not supported."
+                "Please use environment variables "
+                "LOGPREP_CONFIG_AUTH_USERNAME and LOGPREP_CONFIG_AUTH_PASSWORD instead."
+            )
+        self._set_credentials()
+
+    def _set_credentials(self):
+        if os.environ.get("LOGPREP_CONFIG_AUTH_METHOD") == "oauth":
+            if token := os.environ.get("LOGPREP_CONFIG_AUTH_TOKEN"):
+                self._headers.update({"Authorization": f"Bearer {token}"})
+                self._username = None
+                self._password = None
+        self._username = os.environ.get("LOGPREP_CONFIG_AUTH_USERNAME")
+        self._password = os.environ.get("LOGPREP_CONFIG_AUTH_PASSWORD")
 
     def get_raw(self) -> bytearray:
         """gets the content from a http server via uri"""
-        user_agent = f"Logprep version {get_versions().get('version')}"
-        headers = {"User-Agent": user_agent}
         basic_auth = None
         username, password = self._username, self._password
-        if username == "oauth":
-            headers.update({"Authorization": f"Bearer {password}"})
-        if username is not None and username != "oauth":
+        if username is not None:
             basic_auth = HTTPBasicAuth(username, password)
         url = f"{self.protocol}://{self.target}"
         domain = urlparse(url).netloc
@@ -135,7 +156,7 @@ class HttpGetter(Getter):
                     url=url,
                     timeout=5,
                     allow_redirects=True,
-                    headers=headers,
+                    headers=self._headers,
                 )
             except requests.exceptions.RequestException as error:
                 retries -= 1

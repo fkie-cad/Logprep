@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
+import os
 import sys
 from pathlib import Path
 from unittest import mock
@@ -13,7 +14,6 @@ from logprep import run_logprep
 from logprep._version import get_versions
 from logprep.run_logprep import DEFAULT_LOCATION_CONFIG
 from logprep.util.configuration import InvalidConfigurationError
-from logprep.util.getter import GetterNotFoundError
 
 
 class TestRunLogprep:
@@ -58,7 +58,7 @@ class TestRunLogprep:
             with pytest.raises(SystemExit, match="0"):
                 run_logprep.main()
 
-    def test_raises_getter_error_for_not_existing_protocol(self):
+    def test_exits_after_getter_error_for_not_existing_protocol(self):
         with mock.patch(
             "sys.argv",
             [
@@ -68,9 +68,7 @@ class TestRunLogprep:
                 "almighty_protocol://tests/testdata/config/config.yml",
             ],
         ):
-            with pytest.raises(
-                GetterNotFoundError, match="No getter for protocol 'almighty_protocol'"
-            ):
+            with pytest.raises(SystemExit, match="1"):
                 run_logprep.main()
 
     @responses.activate
@@ -146,21 +144,26 @@ class TestRunLogprep:
     @responses.activate
     def test_version_arg_prints_with_http_config_without_exposing_secret_data(self, capsys):
         config_path = "tests/testdata/config/config.yml"
+        mock_env = {
+            "LOGPREP_CONFIG_ATUH_USERNAME": "username",
+            "LOGPREP_CONFIG_ATUH_PASSWORD": "password",
+        }
         responses.add(
             responses.GET,
             "http://localhost:32000/tests/testdata/config/config.yml",
             Path(config_path).read_text(encoding="utf8"),
         )
-        with mock.patch(
-            "sys.argv",
-            [
-                "logprep",
-                "--version",
-                f"http://username:password@localhost:32000/{config_path}",
-            ],
-        ):
-            with pytest.raises(SystemExit):
-                run_logprep.main()
+        with mock.patch("os.environ", mock_env):
+            with mock.patch(
+                "sys.argv",
+                [
+                    "logprep",
+                    "--version",
+                    f"http://localhost:32000/{config_path}",
+                ],
+            ):
+                with pytest.raises(SystemExit):
+                    run_logprep.main()
         captured = capsys.readouterr()
         lines = captured.out.strip()
         with open(config_path, "r", encoding="utf-8") as file:

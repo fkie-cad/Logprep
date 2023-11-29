@@ -1,15 +1,14 @@
 # pylint: disable=missing-docstring
-from logging import getLogger, DEBUG, basicConfig
+from logging import DEBUG, basicConfig, getLogger
 from os import path
 
 import pytest
 
-from logprep.util.json_handling import dump_config_as_file
-from logprep.util.json_handling import parse_jsonl
+from logprep.util.json_handling import dump_config_as_file, parse_jsonl
 from tests.acceptance.util import (
     get_default_logprep_config,
-    get_test_output,
     get_difference,
+    get_test_output,
 )
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")
@@ -30,7 +29,6 @@ def get_config():
                 "generic_rules": ["tests/testdata/acceptance/pseudonymizer/rules_static/generic"],
                 "regex_mapping": "tests/testdata/acceptance/pseudonymizer/rules_static/regex_mapping.yml",
                 "max_cached_pseudonyms": 1000000,
-                "max_caching_days": 1,
             }
         }
     ]
