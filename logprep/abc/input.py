@@ -19,7 +19,7 @@ from logprep.util.helper import add_field_to, get_dotted_field_value
 from logprep.util.time import UTC, TimeParser
 from logprep.util.validators import dict_structure_validator
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from logprep.abc.output import Output
 
 
