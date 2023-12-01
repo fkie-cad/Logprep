@@ -31,6 +31,7 @@
 ### Bugfix
 
 * fix the rule tree parsing some rules incorrectly, potentially resulting in more matches
+* fix `confluent_kafka` commit issue after kafka did some rebalancing, fixes also negative offsets
 
 ## v8.0.0
 ### Breaking
