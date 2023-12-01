@@ -1,0 +1,5 @@
+confluent-kafka
+pyyaml
+pydantic
+ndjson
+arrow
