@@ -127,7 +127,7 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         ],
     )
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
-    def test_batch_finished_callback_reassigns_partition_and_calls_again_on_kafka_exception(
+    def test_batch_finished_callback_raises_input_warning_on_kafka_exception(
         self, _, settings, handler
     ):
         input_config = deepcopy(self.CONFIG)
@@ -141,14 +141,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
         getattr(kafka_consumer, handler).side_effect = raise_generator(return_sequence)
         kafka_input._last_valid_records = {0: "message"}
-        with pytest.raises(KafkaException):
+        with pytest.raises(InputWarning):
             kafka_input.batch_finished_callback()
-        kafka_consumer.assign.assert_called()
-        getattr(kafka_consumer, handler).assert_called()
-        getattr(kafka_consumer, handler).assert_called_with(
-            message=kafka_input._last_valid_records.get(0)
-        )
-        assert getattr(kafka_consumer, handler).call_count == 2
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_error_if_not_a_dict(self, _):
@@ -338,8 +332,18 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_revoke_callback_logs_warning_and_counts(self, mock_consumer):
         self.object.metrics.number_of_warnings = 0
+        self.object.output_connector = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
             self.object._revoke_callback(mock_consumer, mock_partitions)
         mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
+
+    @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
+    def test_revoke_callback_writes_output_backlog_and_calls_batch_finished_callback(self, mock_consumer):
+        self.object.output_connector = mock.MagicMock()
+        self.object.batch_finished_callback = mock.MagicMock()
+        mock_partitions = [mock.MagicMock()]
+        self.object._revoke_callback(mock_consumer, mock_partitions)
+        self.object.output_connector._write_backlog.assert_called()
+        self.object.batch_finished_callback.assert_called()
