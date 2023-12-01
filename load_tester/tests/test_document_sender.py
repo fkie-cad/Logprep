@@ -64,9 +64,7 @@ class TestDocumentSender:
         )
         assert count == 1
         self._assert_uuid4_was_added_and_remove_it()
-        assert self._document_sender._kafka_producer._producer.produced == [
-            {"foo": "1"}
-        ]
+        assert self._document_sender._kafka_producer._producer.produced == [{"foo": "1"}]
 
     @mock.patch("load_tester.document_sender.perf_counter")
     def test_send_multiple(self, time_mock):
