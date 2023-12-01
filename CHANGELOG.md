@@ -76,6 +76,8 @@
 
 ### Features
 
+* add a load-tester that can send records to Kafka using data from a file or from Kafka
+
 ### Improvements
 
 * improve error message on empty rule filter
