@@ -992,6 +992,7 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 COPY public.auth_user (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined) FROM stdin;
 1	pbkdf2_sha256$320000$O0gR9mM2zgGEyV8Bf2e1lP$uGW9IAixXw5d79u7yFrQH+q/Bb/shNu2k1hAqKLcK54=	\N	f	dev			dev@example.de	f	f	2023-11-21 09:57:30.484551+00
 2	pbkdf2_sha256$320000$HwWpALN1OA1RQHaFjKzpkw$4QO1ABfJuNVwgtYFBdEWjtfTfb2KDHwCLQUk7f1c2lU=	\N	f	system			system@example.de	f	f	2023-11-21 09:57:31.366661+00
+3	!OhqiXIPnQtcW8kXXTLl6tNsPCZLLvehpSWMNoKau	\N	f	logprep				f	t	2023-12-04 08:51:40.939417+00
 \.
 
 
@@ -1173,6 +1174,7 @@ COPY public.fda_ecsmultifield_ecs_fields (id, ecsmultifield_id, ecsfield_id) FRO
 
 COPY public.fda_ecsversion (id, created, updated, version_major, version_minor, created_by_id, updated_by_id) FROM stdin;
 18f6b7af-a59a-4e17-8361-1928341f17a8	2023-11-21 09:57:30.559794+00	\N	0	0	1	\N
+4aff3b7b-2060-45ad-af71-20ef9e16f6b8	2023-12-04 08:54:12.439767+00	\N	0	0	3	\N
 \.
 
 
@@ -1181,6 +1183,7 @@ COPY public.fda_ecsversion (id, created, updated, version_major, version_minor, 
 --
 
 COPY public.fda_exampleevent (id, created, updated, is_custom, name, document, created_by_id, log_class_id, log_source_id, updated_by_id) FROM stdin;
+33582d54-5273-491e-a79f-807b8b7cabc3	2023-12-04 09:01:33.084696+00	\N	t	Example Event	{\n  "@timestamp": "1699211755000",\n  "message": "2023-11-5-20-13-17+0100 This is an example message for a request. Source: [127.0.0.1:8000], Target: [22:156.21:AS:CD:EG:12:98:ff]. Some more infos: (SystemA-SystemB-SystemC) (Server1 Server2 Server3)",\n  "meta": {\n    "provider": {\n      "name": "provider",\n      "id": "ABF"\n    }\n  }\n}	3	270fd502-ad78-48fb-ae9d-3066b882f0bf	\N	\N
 \.
 
 
@@ -1189,11 +1192,17 @@ COPY public.fda_exampleevent (id, created, updated, is_custom, name, document, c
 --
 
 COPY public.fda_grokpattern (id, type, pattern, category_id) FROM stdin;
+ELB_URIPATHPARAM	ecs	%{ELB_URIPATHQUERY}	aws
+BACULA_LOG_VSS	ecs	(Generate )?VSS (Writer)?	bacula
+BIND9	ecs	%{BIND9_QUERYLOG}	bind
+BRO_BOOL	ecs	[TF]	bro
+BRO_DATA	ecs	[^\\t]+	bro
+CISCO_INTERVAL	ecs	first hit|%{INT}-second interval	firewalls
+CISCO_XLATE_TYPE	ecs	static|dynamic	firewalls
 S3_REQUEST_LINE	ecs	(?:%{WORD:[http][request][method]} %{NOTSPACE:[url][original]}(?: HTTP/%{NUMBER:[http][version]})?)	aws
 S3_ACCESS_LOG	ecs	%{WORD:[aws][s3access][bucket_owner]} %{NOTSPACE:[aws][s3access][bucket]} \\[%{HTTPDATE:timestamp}\\] (?:-|%{IP:[client][ip]}) (?:-|%{NOTSPACE:[client][user][id]}) %{NOTSPACE:[aws][s3access][request_id]} %{NOTSPACE:[aws][s3access][operation]} (?:-|%{NOTSPACE:[aws][s3access][key]}) (?:-|"%{S3_REQUEST_LINE:[aws][s3access][request_uri]}") (?:-|%{INT:[http][response][status_code]:int}) (?:-|%{NOTSPACE:[aws][s3access][error_code]}) (?:-|%{INT:[aws][s3access][bytes_sent]:int}) (?:-|%{INT:[aws][s3access][object_size]:int}) (?:-|%{INT:[aws][s3access][total_time]:int}) (?:-|%{INT:[aws][s3access][turn_around_time]:int}) "(?:-|%{DATA:[http][request][referrer]})" "(?:-|%{DATA:[user_agent][original]})" (?:-|%{NOTSPACE:[aws][s3access][version_id]})(?: (?:-|%{NOTSPACE:[aws][s3access][host_id]}) (?:-|%{NOTSPACE:[aws][s3access][signature_version]}) (?:-|%{NOTSPACE:[tls][cipher]}) (?:-|%{NOTSPACE:[aws][s3access][authentication_type]}) (?:-|%{NOTSPACE:[aws][s3access][host_header]}) (?:-|%{NOTSPACE:[aws][s3access][tls_version]}))?	aws
 ELB_URIHOST	ecs	%{IPORHOST:[url][domain]}(?::%{POSINT:[url][port]:int})?	aws
 ELB_URIPATHQUERY	ecs	%{URIPATH:[url][path]}(?:\\?%{URIQUERY:[url][query]})?	aws
-ELB_URIPATHPARAM	ecs	%{ELB_URIPATHQUERY}	aws
 ELB_URI	ecs	%{URIPROTO:[url][scheme]}://(?:%{USER:[url][username]}(?::[^@]*)?@)?(?:%{ELB_URIHOST})?(?:%{ELB_URIPATHQUERY})?	aws
 ELB_REQUEST_LINE	ecs	(?:%{WORD:[http][request][method]} %{ELB_URI:[url][original]}(?: HTTP/%{NUMBER:[http][version]})?)	aws
 ELB_V1_HTTP_LOG	ecs	%{TIMESTAMP_ISO8601:timestamp} %{NOTSPACE:[aws][elb][name]} %{IP:[source][ip]}:%{INT:[source][port]:int} (?:-|(?:%{IP:[aws][elb][backend][ip]}:%{INT:[aws][elb][backend][port]:int})) (?:-1|%{NUMBER:[aws][elb][request_processing_time][sec]:float}) (?:-1|%{NUMBER:[aws][elb][backend_processing_time][sec]:float}) (?:-1|%{NUMBER:[aws][elb][response_processing_time][sec]:float}) %{INT:[http][response][status_code]:int} (?:-|%{INT:[aws][elb][backend][http][response][status_code]:int}) %{INT:[http][request][body][bytes]:int} %{INT:[http][response][body][bytes]:int} "%{ELB_REQUEST_LINE}"(?: "(?:-|%{DATA:[user_agent][original]})" (?:-|%{NOTSPACE:[tls][cipher]}) (?:-|%{NOTSPACE:[aws][elb][ssl_protocol]}))?	aws
@@ -1208,6 +1217,8 @@ BACULA_DEVICEPATH	ecs	%{UNIXPATH}	bacula
 BACULA_CAPACITY	ecs	%{INT}{1,3}(,%{INT}{3})*	bacula
 BACULA_VERSION	ecs	%{USER}	bacula
 BACULA_JOB	ecs	%{USER}	bacula
+POSINT	ecs	\\b(?:[1-9][0-9]*)\\b	grok-patterns
+NONNEGINT	ecs	\\b(?:[0-9]+)\\b	grok-patterns
 BACULA_LOG_MAX_CAPACITY	ecs	User defined maximum volume capacity %{BACULA_CAPACITY:[bacula][volume][max_capacity]} exceeded on device \\"%{BACULA_DEVICE:[bacula][volume][device]}\\" \\(%{BACULA_DEVICEPATH:[bacula][volume][path]}\\).?	bacula
 BACULA_LOG_END_VOLUME	ecs	End of medium on Volume \\"%{BACULA_VOLUME:[bacula][volume][name]}\\" Bytes=%{BACULA_CAPACITY:[bacula][volume][bytes]} Blocks=%{BACULA_CAPACITY:[bacula][volume][blocks]} at %{BACULA_TIMESTAMP:[bacula][timestamp]}.	bacula
 BACULA_LOG_NEW_VOLUME	ecs	Created new Volume \\"%{BACULA_VOLUME:[bacula][volume][name]}\\" in catalog.	bacula
@@ -1236,7 +1247,6 @@ BACULA_LOG_READYAPPEND	ecs	Ready to append to end of Volume \\"%{BACULA_VOLUME:[
 BACULA_LOG_CANCELLING	ecs	Cancelling duplicate JobId=%{INT:[bacula][job][other_id]}.	bacula
 BACULA_LOG_MARKCANCEL	ecs	JobId %{INT:[bacula][job][id]}, Job %{BACULA_JOB:[bacula][job][name]} marked to be canceled.	bacula
 BACULA_LOG_CLIENT_RBJ	ecs	shell command: run ClientRunBeforeJob \\"%{GREEDYDATA:[bacula][job][client_run_before_command]}\\"	bacula
-BACULA_LOG_VSS	ecs	(Generate )?VSS (Writer)?	bacula
 BACULA_LOG_MAXSTART	ecs	Fatal [eE]rror: Job canceled because max start delay time exceeded.	bacula
 BACULA_LOG_DUPLICATE	ecs	Fatal [eE]rror: JobId %{INT:[bacula][job][other_id]} already running. Duplicate job not allowed.	bacula
 BACULA_LOG_NOJOBSTAT	ecs	Fatal [eE]rror: No Job status returned from FD.	bacula
@@ -1253,13 +1263,9 @@ BIND9_DNSTYPE	ecs	(?:A|AAAA|CAA|CDNSKEY|CDS|CERT|CNAME|CSYNC|DLV|DNAME|DNSKEY|DS
 BIND9_CATEGORY	ecs	(?:queries)	bind
 BIND9_QUERYLOGBASE	ecs	client(:? @0x(?:[0-9A-Fa-f]+))? %{IP:[client][ip]}#%{POSINT:[client][port]:int} \\(%{GREEDYDATA:[bind][log][question][name]}\\): query: %{GREEDYDATA:[dns][question][name]} (?<[dns][question][class]>IN) %{BIND9_DNSTYPE:[dns][question][type]}(:? %{DATA:[bind][log][question][flags]})? \\(%{IP:[server][ip]}\\)	bind
 BIND9_QUERYLOG	ecs	%{BIND9_TIMESTAMP:timestamp} %{BIND9_CATEGORY:[bind][log][category]}: %{LOGLEVEL:[log][level]}: %{BIND9_QUERYLOGBASE}	bind
-BIND9	ecs	%{BIND9_QUERYLOG}	bind
-BRO_BOOL	ecs	[TF]	bro
-BRO_DATA	ecs	[^\\t]+	bro
 BRO_HTTP	ecs	%{NUMBER:timestamp}\\t%{NOTSPACE:[zeek][session_id]}\\t%{IP:[source][ip]}\\t%{INT:[source][port]:int}\\t%{IP:[destination][ip]}\\t%{INT:[destination][port]:int}\\t%{INT:[zeek][http][trans_depth]:int}\\t(?:-|%{WORD:[http][request][method]})\\t(?:-|%{BRO_DATA:[url][domain]})\\t(?:-|%{BRO_DATA:[url][original]})\\t(?:-|%{BRO_DATA:[http][request][referrer]})\\t(?:-|%{BRO_DATA:[user_agent][original]})\\t(?:-|%{NUMBER:[http][request][body][bytes]:int})\\t(?:-|%{NUMBER:[http][response][body][bytes]:int})\\t(?:-|%{POSINT:[http][response][status_code]:int})\\t(?:-|%{DATA:[zeek][http][status_msg]})\\t(?:-|%{POSINT:[zeek][http][info_code]:int})\\t(?:-|%{DATA:[zeek][http][info_msg]})\\t(?:-|%{BRO_DATA:[zeek][http][filename]})\\t(?:\\(empty\\)|%{BRO_DATA:[zeek][http][tags]})\\t(?:-|%{BRO_DATA:[url][username]})\\t(?:-|%{BRO_DATA:[url][password]})\\t(?:-|%{BRO_DATA:[zeek][http][proxied]})\\t(?:-|%{BRO_DATA:[zeek][http][orig_fuids]})\\t(?:-|%{BRO_DATA:[http][request][mime_type]})\\t(?:-|%{BRO_DATA:[zeek][http][resp_fuids]})\\t(?:-|%{BRO_DATA:[http][response][mime_type]})	bro
 BRO_DNS	ecs	%{NUMBER:timestamp}\\t%{NOTSPACE:[zeek][session_id]}\\t%{IP:[source][ip]}\\t%{INT:[source][port]:int}\\t%{IP:[destination][ip]}\\t%{INT:[destination][port]:int}\\t%{WORD:[network][transport]}\\t(?:-|%{INT:[dns][id]:int})\\t(?:-|%{BRO_DATA:[dns][question][name]})\\t(?:-|%{INT:[zeek][dns][qclass]:int})\\t(?:-|%{BRO_DATA:[zeek][dns][qclass_name]})\\t(?:-|%{INT:[zeek][dns][qtype]:int})\\t(?:-|%{BRO_DATA:[dns][question][type]})\\t(?:-|%{INT:[zeek][dns][rcode]:int})\\t(?:-|%{BRO_DATA:[dns][response_code]})\\t(?:-|%{BRO_BOOL:[zeek][dns][AA]})\\t(?:-|%{BRO_BOOL:[zeek][dns][TC]})\\t(?:-|%{BRO_BOOL:[zeek][dns][RD]})\\t(?:-|%{BRO_BOOL:[zeek][dns][RA]})\\t(?:-|%{NONNEGINT:[zeek][dns][Z]:int})\\t(?:-|%{BRO_DATA:[zeek][dns][answers]})\\t(?:-|%{DATA:[zeek][dns][TTLs]})\\t(?:-|%{BRO_BOOL:[zeek][dns][rejected]})	bro
 BRO_CONN	ecs	%{NUMBER:timestamp}\\t%{NOTSPACE:[zeek][session_id]}\\t%{IP:[source][ip]}\\t%{INT:[source][port]:int}\\t%{IP:[destination][ip]}\\t%{INT:[destination][port]:int}\\t%{WORD:[network][transport]}\\t(?:-|%{BRO_DATA:[network][protocol]})\\t(?:-|%{NUMBER:[zeek][connection][duration]:float})\\t(?:-|%{INT:[zeek][connection][orig_bytes]:int})\\t(?:-|%{INT:[zeek][connection][resp_bytes]:int})\\t(?:-|%{BRO_DATA:[zeek][connection][state]})\\t(?:-|%{BRO_BOOL:[zeek][connection][local_orig]})\\t(?:(?:-|%{BRO_BOOL:[zeek][connection][local_resp]})\\t)?(?:-|%{INT:[zeek][connection][missed_bytes]:int})\\t(?:-|%{BRO_DATA:[zeek][connection][history]})\\t(?:-|%{INT:[source][packets]:int})\\t(?:-|%{INT:[source][bytes]:int})\\t(?:-|%{INT:[destination][packets]:int})\\t(?:-|%{INT:[destination][bytes]:int})\\t(?:\\(empty\\)|%{BRO_DATA:[zeek][connection][tunnel_parents]})	bro
-PATH	ecs	(?:%{UNIXPATH}|%{WINPATH})	grok-patterns
 BRO_FILES	ecs	%{NUMBER:timestamp}\\t%{NOTSPACE:[zeek][files][fuid]}\\t(?:-|%{IP:[server][ip]})\\t(?:-|%{IP:[client][ip]})\\t(?:-|%{BRO_DATA:[zeek][files][session_ids]})\\t(?:-|%{BRO_DATA:[zeek][files][source]})\\t(?:-|%{INT:[zeek][files][depth]:int})\\t(?:-|%{BRO_DATA:[zeek][files][analyzers]})\\t(?:-|%{BRO_DATA:[file][mime_type]})\\t(?:-|%{BRO_DATA:[file][name]})\\t(?:-|%{NUMBER:[zeek][files][duration]:float})\\t(?:-|%{BRO_DATA:[zeek][files][local_orig]})\\t(?:-|%{BRO_BOOL:[zeek][files][is_orig]})\\t(?:-|%{INT:[zeek][files][seen_bytes]:int})\\t(?:-|%{INT:[file][size]:int})\\t(?:-|%{INT:[zeek][files][missing_bytes]:int})\\t(?:-|%{INT:[zeek][files][overflow_bytes]:int})\\t(?:-|%{BRO_BOOL:[zeek][files][timedout]})\\t(?:-|%{BRO_DATA:[zeek][files][parent_fuid]})\\t(?:-|%{BRO_DATA:[file][hash][md5]})\\t(?:-|%{BRO_DATA:[file][hash][sha1]})\\t(?:-|%{BRO_DATA:[file][hash][sha256]})\\t(?:-|%{BRO_DATA:[zeek][files][extracted]})	bro
 EXIM_MSGID	ecs	[0-9A-Za-z]{6}-[0-9A-Za-z]{6}-[0-9A-Za-z]{2}	exim
 EXIM_FLAGS	ecs	(?:<=|=>|->|\\*>|\\*\\*|==|<>|>>)	exim
@@ -1285,8 +1291,6 @@ CISCOTAG	ecs	[A-Z0-9]+-%{INT}-(?:[A-Z0-9_]+)	firewalls
 CISCO_ACTION	ecs	Built|Teardown|Deny|Denied|denied|requested|permitted|denied by ACL|discarded|est-allowed|Dropping|created|deleted	firewalls
 CISCO_REASON	ecs	Duplicate TCP SYN|Failed to locate egress interface|Invalid transport field|No matching connection|DNS Response|DNS Query|(?:%{WORD}\\s*)*	firewalls
 CISCO_DIRECTION	ecs	Inbound|inbound|Outbound|outbound	firewalls
-CISCO_INTERVAL	ecs	first hit|%{INT}-second interval	firewalls
-CISCO_XLATE_TYPE	ecs	static|dynamic	firewalls
 CISCO_HITCOUNT_INTERVAL	ecs	hit-cnt %{INT:[cisco][asa][hit_count]:int} (?:first hit|%{INT:[cisco][asa][interval]:int}-second interval)	firewalls
 CISCO_SRC_IP_USER	ecs	%{NOTSPACE:[observer][ingress][interface][name]}:%{IP:[source][ip]}(?:\\(%{DATA:[source][user][name]}\\))?	firewalls
 CISCO_DST_IP_USER	ecs	%{NOTSPACE:[observer][egress][interface][name]}:%{IP:[destination][ip]}(?:\\(%{DATA:[destination][user][name]}\\))?	firewalls
@@ -1301,8 +1305,6 @@ CISCOFW105004	ecs	\\((?:Primary|Secondary)\\) Monitoring on [Ii]nterface %{NOTSP
 CISCOFW105005	ecs	\\((?:Primary|Secondary)\\) Lost Failover communications with mate on [Ii]nterface %{NOTSPACE:[network][interface][name]}	firewalls
 CISCOFW105008	ecs	\\((?:Primary|Secondary)\\) Testing [Ii]nterface %{NOTSPACE:[network][interface][name]}	firewalls
 CISCOFW105009	ecs	\\((?:Primary|Secondary)\\) Testing on [Ii]nterface %{NOTSPACE:[network][interface][name]} (?:Passed|Failed)	firewalls
-IPV4	ecs	(?<![0-9])(?:(?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5]))(?![0-9])	grok-patterns
-IP	ecs	(?:%{IPV6}|%{IPV4})	grok-patterns
 CISCOFW106001	ecs	%{CISCO_DIRECTION:[cisco][asa][network][direction]} %{WORD:[cisco][asa][network][transport]} connection %{CISCO_ACTION:[cisco][asa][outcome]} from %{IP:[source][ip]}/%{INT:[source][port]:int} to %{IP:[destination][ip]}/%{INT:[destination][port]:int} flags %{DATA:[cisco][asa][tcp_flags]} on interface %{NOTSPACE:[observer][egress][interface][name]}	firewalls
 CISCOFW106006_106007_106010	ecs	%{CISCO_ACTION:[cisco][asa][outcome]} %{CISCO_DIRECTION:[cisco][asa][network][direction]} %{WORD:[cisco][asa][network][transport]} (?:from|src) %{IP:[source][ip]}/%{INT:[source][port]:int}(?:\\(%{DATA:[source][user][name]}\\))? (?:to|dst) %{IP:[destination][ip]}/%{INT:[destination][port]:int}(?:\\(%{DATA:[destination][user][name]}\\))? (?:(?:on interface %{NOTSPACE:[observer][egress][interface][name]})|(?:due to %{CISCO_REASON:[event][reason]}))	firewalls
 CISCOFW106014	ecs	%{CISCO_ACTION:[cisco][asa][outcome]} %{CISCO_DIRECTION:[cisco][asa][network][direction]} %{WORD:[cisco][asa][network][transport]} src %{CISCO_SRC_IP_USER} dst %{CISCO_DST_IP_USER}\\s?\\(type %{INT:[cisco][asa][icmp_type]:int}, code %{INT:[cisco][asa][icmp_code]:int}\\)	firewalls
@@ -1316,15 +1318,17 @@ CISCOFW110002	ecs	%{CISCO_REASON:[event][reason]} for %{WORD:[cisco][asa][networ
 CISCOFW302010	ecs	%{INT:[cisco][asa][connections][in_use]:int} in use, %{INT:[cisco][asa][connections][most_used]:int} most used	firewalls
 CISCOFW302013_302014_302015_302016	ecs	%{CISCO_ACTION:[cisco][asa][outcome]}(?: %{CISCO_DIRECTION:[cisco][asa][network][direction]})? %{WORD:[cisco][asa][network][transport]} connection %{INT:[cisco][asa][connection_id]} for %{NOTSPACE:[observer][ingress][interface][name]}:%{IP:[source][ip]}/%{INT:[source][port]:int}(?: \\(%{IP:[source][nat][ip]}/%{INT:[source][nat][port]:int}\\))?(?:\\(%{DATA:[source][user][name]}\\))? to %{NOTSPACE:[observer][egress][interface][name]}:%{IP:[destination][ip]}/%{INT:[destination][port]:int}( \\(%{IP:[destination][nat][ip]}/%{INT:[destination][nat][port]:int}\\))?(?:\\(%{DATA:[destination][user][name]}\\))?( duration %{TIME:[cisco][asa][duration]} bytes %{INT:[network][bytes]:int})?(?: %{CISCO_REASON:[event][reason]})?(?: \\(%{DATA:[user][name]}\\))?	firewalls
 CISCOFW302020_302021	ecs	%{CISCO_ACTION:[cisco][asa][outcome]}(?: %{CISCO_DIRECTION:[cisco][asa][network][direction]})? %{WORD:[cisco][asa][network][transport]} connection for faddr %{IP:[destination][ip]}/%{INT:[cisco][asa][icmp_seq]:int}(?:\\(%{DATA:[destination][user][name]}\\))? gaddr %{IP:[source][nat][ip]}/%{INT:[cisco][asa][icmp_type]:int} laddr %{IP:[source][ip]}/%{INT}(?: \\(%{DATA:[source][user][name]}\\))?	firewalls
+WORD	ecs	\\b\\w+\\b	grok-patterns
+NOTSPACE	ecs	\\S+	grok-patterns
+SPACE	ecs	\\s*	grok-patterns
+DATA	ecs	.*?	grok-patterns
+GREEDYDATA	ecs	.*	grok-patterns
 CISCOFW305011	ecs	%{CISCO_ACTION:[cisco][asa][outcome]} %{CISCO_XLATE_TYPE} %{WORD:[cisco][asa][network][transport]} translation from %{DATA:[observer][ingress][interface][name]}:%{IP:[source][ip]}(/%{INT:[source][port]:int})?(?:\\(%{DATA:[source][user][name]}\\))? to %{DATA:[observer][egress][interface][name]}:%{IP:[destination][ip]}/%{INT:[destination][port]:int}	firewalls
 CISCOFW313001_313004_313008	ecs	%{CISCO_ACTION:[cisco][asa][outcome]} %{WORD:[cisco][asa][network][transport]} type=%{INT:[cisco][asa][icmp_type]:int}, code=%{INT:[cisco][asa][icmp_code]:int} from %{IP:[source][ip]} on interface %{NOTSPACE:[observer][egress][interface][name]}(?: to %{IP:[destination][ip]})?	firewalls
 CISCOFW313005	ecs	%{CISCO_REASON:[event][reason]} for %{WORD:[cisco][asa][network][transport]} error message: %{WORD} src %{CISCO_SRC_IP_USER} dst %{CISCO_DST_IP_USER} \\(type %{INT:[cisco][asa][icmp_type]:int}, code %{INT:[cisco][asa][icmp_code]:int}\\) on %{NOTSPACE} interface\\.\\s+Original IP payload: %{WORD:[cisco][asa][original_ip_payload][network][transport]} src %{IP:[cisco][asa][original_ip_payload][source][ip]}/%{INT:[cisco][asa][original_ip_payload][source][port]:int}(?:\\(%{DATA:[cisco][asa][original_ip_payload][source][user][name]}\\))? dst %{IP:[cisco][asa][original_ip_payload][destination][ip]}/%{INT:[cisco][asa][original_ip_payload][destination][port]:int}(?:\\(%{DATA:[cisco][asa][original_ip_payload][destination][user][name]}\\))?	firewalls
 CISCOFW321001	ecs	Resource '%{DATA:[cisco][asa][resource][name]}' limit of %{POSINT:[cisco][asa][resource][limit]:int} reached for system	firewalls
 CISCOFW402117	ecs	%{WORD:[cisco][asa][network][type]}: Received a non-IPSec packet \\(protocol=\\s?%{WORD:[cisco][asa][network][transport]}\\) from %{IP:[source][ip]} to %{IP:[destination][ip]}\\.?	firewalls
 CISCOFW402119	ecs	%{WORD:[cisco][asa][network][type]}: Received an %{WORD:[cisco][asa][ipsec][protocol]} packet \\(SPI=\\s?%{DATA:[cisco][asa][ipsec][spi]}, sequence number=\\s?%{DATA:[cisco][asa][ipsec][seq_num]}\\) from %{IP:[source][ip]} \\(user=\\s?%{DATA:[source][user][name]}\\) to %{IP:[destination][ip]} that failed anti-replay checking\\.?	firewalls
-HOSTNAME	ecs	\\b(?:[0-9A-Za-z][0-9A-Za-z-]{0,62})(?:\\.(?:[0-9A-Za-z][0-9A-Za-z-]{0,62}))*(\\.?|\\b)	grok-patterns
-IPORHOST	ecs	(?:%{IP}|%{HOSTNAME})	grok-patterns
-HOSTPORT	ecs	%{IPORHOST}:%{POSINT}	grok-patterns
 CISCOFW419001	ecs	%{CISCO_ACTION:[cisco][asa][outcome]} %{WORD:[cisco][asa][network][transport]} packet from %{NOTSPACE:[observer][ingress][interface][name]}:%{IP:[source][ip]}/%{INT:[source][port]:int} to %{NOTSPACE:[observer][egress][interface][name]}:%{IP:[destination][ip]}/%{INT:[destination][port]:int}, reason: %{GREEDYDATA:[event][reason]}	firewalls
 CISCOFW419002	ecs	%{CISCO_REASON:[event][reason]} from %{DATA:[observer][ingress][interface][name]}:%{IP:[source][ip]}/%{INT:[source][port]:int} to %{DATA:[observer][egress][interface][name]}:%{IP:[destination][ip]}/%{INT:[destination][port]:int} with different initial sequence number	firewalls
 CISCOFW500004	ecs	%{CISCO_REASON:[event][reason]} for protocol=%{WORD:[cisco][asa][network][transport]}, from %{IP:[source][ip]}/%{INT:[source][port]:int} to %{IP:[destination][ip]}/%{INT:[destination][port]:int}	firewalls
@@ -1350,13 +1354,6 @@ BASE10NUM	ecs	(?<![0-9.+-])(?>[+-]?(?:(?:[0-9]+(?:\\.[0-9]+)?)|(?:\\.[0-9]+)))	g
 NUMBER	ecs	(?:%{BASE10NUM})	grok-patterns
 BASE16NUM	ecs	(?<![0-9A-Fa-f])(?:[+-]?(?:0x)?(?:[0-9A-Fa-f]+))	grok-patterns
 BASE16FLOAT	ecs	\\b(?<![0-9A-Fa-f.])(?:[+-]?(?:0x)?(?:(?:[0-9A-Fa-f]+(?:\\.[0-9A-Fa-f]*)?)|(?:\\.[0-9A-Fa-f]+)))\\b	grok-patterns
-POSINT	ecs	\\b(?:[1-9][0-9]*)\\b	grok-patterns
-NONNEGINT	ecs	\\b(?:[0-9]+)\\b	grok-patterns
-WORD	ecs	\\b\\w+\\b	grok-patterns
-NOTSPACE	ecs	\\S+	grok-patterns
-SPACE	ecs	\\s*	grok-patterns
-DATA	ecs	.*?	grok-patterns
-GREEDYDATA	ecs	.*	grok-patterns
 QUOTEDSTRING	ecs	(?>(?<!\\\\)(?>"(?>\\\\.|[^\\\\"]+)+"|""|(?>'(?>\\\\.|[^\\\\']+)+')|''|(?>`(?>\\\\.|[^\\\\`]+)+`)|``))	grok-patterns
 UUID	ecs	[A-Fa-f0-9]{8}-(?:[A-Fa-f0-9]{4}-){3}[A-Fa-f0-9]{12}	grok-patterns
 URN	ecs	urn:[0-9A-Za-z][0-9A-Za-z-]{0,31}:(?:%[0-9a-fA-F]{2}|[0-9A-Za-z()+,.:=@;$_!*'/?#-])+	grok-patterns
@@ -1365,6 +1362,12 @@ CISCOMAC	ecs	(?:(?:[A-Fa-f0-9]{4}\\.){2}[A-Fa-f0-9]{4})	grok-patterns
 WINDOWSMAC	ecs	(?:(?:[A-Fa-f0-9]{2}-){5}[A-Fa-f0-9]{2})	grok-patterns
 COMMONMAC	ecs	(?:(?:[A-Fa-f0-9]{2}:){5}[A-Fa-f0-9]{2})	grok-patterns
 IPV6	ecs	((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}))|:)))(%.+)?	grok-patterns
+IPV4	ecs	(?<![0-9])(?:(?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5]))(?![0-9])	grok-patterns
+IP	ecs	(?:%{IPV6}|%{IPV4})	grok-patterns
+HOSTNAME	ecs	\\b(?:[0-9A-Za-z][0-9A-Za-z-]{0,62})(?:\\.(?:[0-9A-Za-z][0-9A-Za-z-]{0,62}))*(\\.?|\\b)	grok-patterns
+IPORHOST	ecs	(?:%{IP}|%{HOSTNAME})	grok-patterns
+HOSTPORT	ecs	%{IPORHOST}:%{POSINT}	grok-patterns
+PATH	ecs	(?:%{UNIXPATH}|%{WINPATH})	grok-patterns
 UNIXPATH	ecs	(/[[[:alnum:]]_%!$@:.,+~-]*)+	grok-patterns
 TTY	ecs	(?:/dev/(pts|tty([pq])?)(\\w+)?/?(?:[0-9]+))	grok-patterns
 WINPATH	ecs	(?>[A-Za-z]+:|\\\\)(?:\\\\[^\\\\?*]*)+	grok-patterns
@@ -1412,12 +1415,12 @@ HAPROXYCAPTUREDREQUESTHEADERS	ecs	%{DATA:[haproxy][http][request][captured_heade
 HAPROXYCAPTUREDRESPONSEHEADERS	ecs	%{DATA:[haproxy][http][response][captured_headers]}	haproxy
 HAPROXYURI	ecs	(?:%{URIPROTO:[url][scheme]}://)?(?:%{USER:[url][username]}(?::[^@]*)?@)?(?:%{IPORHOST:[url][domain]}(?::%{POSINT:[url][port]:int})?)?(?:%{URIPATH:[url][path]}(?:\\?%{URIQUERY:[url][query]})?)?	haproxy
 HAPROXYHTTPREQUESTLINE	ecs	(?:<BADREQ>|(?:%{WORD:[http][request][method]} %{HAPROXYURI:[url][original]}(?: HTTP/%{NUMBER:[http][version]})?))	haproxy
+REDISLOG	ecs	\\[%{POSINT:[process][pid]:int}\\] %{REDISTIMESTAMP:timestamp} \\*	redis
 HAPROXYHTTPBASE	ecs	%{IP:[source][address]}:%{INT:[source][port]:int} \\[%{HAPROXYDATE:[haproxy][request_date]}\\] %{NOTSPACE:[haproxy][frontend_name]} %{NOTSPACE:[haproxy][backend_name]}/(?:<NOSRV>|%{NOTSPACE:[haproxy][server_name]}) (?:-1|%{INT:[haproxy][http][request][time_wait_ms]:int})/(?:-1|%{INT:[haproxy][total_waiting_time_ms]:int})/(?:-1|%{INT:[haproxy][connection_wait_time_ms]:int})/(?:-1|%{INT:[haproxy][http][request][time_wait_without_data_ms]:int})/%{NOTSPACE:[haproxy][total_time_ms]} %{INT:[http][response][status_code]:int} %{INT:[source][bytes]:int} (?:-|%{DATA:[haproxy][http][request][captured_cookie]}) (?:-|%{DATA:[haproxy][http][response][captured_cookie]}) %{NOTSPACE:[haproxy][termination_state]} %{INT:[haproxy][connections][active]:int}/%{INT:[haproxy][connections][frontend]:int}/%{INT:[haproxy][connections][backend]:int}/%{INT:[haproxy][connections][server]:int}/%{INT:[haproxy][connections][retries]:int} %{INT:[haproxy][server_queue]:int}/%{INT:[haproxy][backend_queue]:int}(?: \\{%{HAPROXYCAPTUREDREQUESTHEADERS}\\}(?: \\{%{HAPROXYCAPTUREDRESPONSEHEADERS}\\})?)?(?: "%{HAPROXYHTTPREQUESTLINE}"?)?	haproxy
 HAPROXYHTTP	ecs	(?:%{SYSLOGTIMESTAMP:timestamp}|%{TIMESTAMP_ISO8601:timestamp}) %{IPORHOST:[host][hostname]} %{SYSLOGPROG}: %{HAPROXYHTTPBASE}	haproxy
 HAPROXYTCP	ecs	(?:%{SYSLOGTIMESTAMP:timestamp}|%{TIMESTAMP_ISO8601:timestamp}) %{IPORHOST:[host][hostname]} %{SYSLOGPROG}: %{IP:[source][address]}:%{INT:[source][port]:int} \\[%{HAPROXYDATE:[haproxy][request_date]}\\] %{NOTSPACE:[haproxy][frontend_name]} %{NOTSPACE:[haproxy][backend_name]}/(?:<NOSRV>|%{NOTSPACE:[haproxy][server_name]}) (?:-1|%{INT:[haproxy][total_waiting_time_ms]:int})/(?:-1|%{INT:[haproxy][connection_wait_time_ms]:int})/%{NOTSPACE:[haproxy][total_time_ms]} %{INT:[source][bytes]:int} %{NOTSPACE:[haproxy][termination_state]} %{INT:[haproxy][connections][active]:int}/%{INT:[haproxy][connections][frontend]:int}/%{INT:[haproxy][connections][backend]:int}/%{INT:[haproxy][connections][server]:int}/%{INT:[haproxy][connections][retries]:int} %{INT:[haproxy][server_queue]:int}/%{INT:[haproxy][backend_queue]:int}	haproxy
 HTTPDUSER	ecs	%{EMAILADDRESS}|%{USER}	httpd
 HTTPDERROR_DATE	ecs	%{DAY} %{MONTH} %{MONTHDAY} %{TIME} %{YEAR}	httpd
-NAGIOS_EC_LINE_DISABLE_HOST_CHECK	ecs	%{NAGIOS_TYPE_EXTERNAL_COMMAND:[nagios][log][type]}: %{NAGIOS_EC_DISABLE_HOST_CHECK:[nagios][log][command]};%{DATA:[host][hostname]}	nagios
 HTTPD_COMMONLOG	ecs	%{IPORHOST:[source][address]} (?:-|%{HTTPDUSER:[apache][access][user][identity]}) (?:-|%{HTTPDUSER:[user][name]}) \\[%{HTTPDATE:timestamp}\\] "(?:%{WORD:[http][request][method]} %{NOTSPACE:[url][original]}(?: HTTP/%{NUMBER:[http][version]})?|%{DATA})" (?:-|%{INT:[http][response][status_code]:int}) (?:-|%{INT:[http][response][body][bytes]:int})	httpd
 HTTPD_COMBINEDLOG	ecs	%{HTTPD_COMMONLOG} "(?:-|%{DATA:[http][request][referrer]})" "(?:-|%{DATA:[user_agent][original]})"	httpd
 HTTPD20_ERRORLOG	ecs	\\[%{HTTPDERROR_DATE:timestamp}\\] \\[%{LOGLEVEL:[log][level]}\\] (?:\\[client %{IPORHOST:[source][address]}\\] )?%{GREEDYDATA:message}	httpd
@@ -1447,6 +1450,7 @@ RT_FLOW_TAG	ecs	(?:RT_FLOW_SESSION_CREATE|RT_FLOW_SESSION_CLOSE|RT_FLOW_SESSION_
 RT_FLOW_EVENT	ecs	RT_FLOW_TAG	junos
 RT_FLOW1	ecs	%{RT_FLOW_TAG:[juniper][srx][tag]}: %{GREEDYDATA:[juniper][srx][reason]}: %{IP:[source][ip]}/%{INT:[source][port]:int}->%{IP:[destination][ip]}/%{INT:[destination][port]:int} %{DATA:[juniper][srx][service_name]} %{IP:[source][nat][ip]}/%{INT:[source][nat][port]:int}->%{IP:[destination][nat][ip]}/%{INT:[destination][nat][port]:int} (?:(?:None)|(?:%{DATA:[juniper][srx][src_nat_rule_name]})) (?:(?:None)|(?:%{DATA:[juniper][srx][dst_nat_rule_name]})) %{INT:[network][iana_number]} %{DATA:[rule][name]} %{DATA:[observer][ingress][zone]} %{DATA:[observer][egress][zone]} %{INT:[juniper][srx][session_id]} \\d+\\(%{INT:[source][bytes]:int}\\) \\d+\\(%{INT:[destination][bytes]:int}\\) %{INT:[juniper][srx][elapsed_time]:int} .*	junos
 RT_FLOW2	ecs	%{RT_FLOW_TAG:[juniper][srx][tag]}: session created %{IP:[source][ip]}/%{INT:[source][port]:int}->%{IP:[destination][ip]}/%{INT:[destination][port]:int} %{DATA:[juniper][srx][service_name]} %{IP:[source][nat][ip]}/%{INT:[source][nat][port]:int}->%{IP:[destination][nat][ip]}/%{INT:[destination][nat][port]:int} (?:(?:None)|(?:%{DATA:[juniper][srx][src_nat_rule_name]})) (?:(?:None)|(?:%{DATA:[juniper][srx][dst_nat_rule_name]})) %{INT:[network][iana_number]} %{DATA:[rule][name]} %{DATA:[observer][ingress][zone]} %{DATA:[observer][egress][zone]} %{INT:[juniper][srx][session_id]} .*	junos
+NAGIOS_HOST_ALERT	ecs	%{NAGIOS_TYPE_HOST_ALERT:[nagios][log][type]}: %{DATA:[host][hostname]};%{DATA:[service][state]};%{DATA:[nagios][log][state_type]};%{INT:[nagios][log][attempt]:int};%{GREEDYDATA:message}	nagios
 RT_FLOW3	ecs	%{RT_FLOW_TAG:[juniper][srx][tag]}: session denied %{IP:[source][ip]}/%{INT:[source][port]:int}->%{IP:[destination][ip]}/%{INT:[destination][port]:int} %{DATA:[juniper][srx][service_name]} %{INT:[network][iana_number]}\\(\\d\\) %{DATA:[rule][name]} %{DATA:[observer][ingress][zone]} %{DATA:[observer][egress][zone]} .*	junos
 SYSLOG5424PRINTASCII	ecs	[!-~]+	linux-syslog
 SYSLOGBASE2	ecs	(?:%{SYSLOGTIMESTAMP:timestamp}|%{TIMESTAMP_ISO8601:timestamp})(?: %{SYSLOGFACILITY})?(?: %{SYSLOGHOST:[host][hostname]})?(?: %{SYSLOGPROG}:)?	linux-syslog
@@ -1505,7 +1509,7 @@ NAGIOS_CURRENT_HOST_STATE	ecs	%{NAGIOS_TYPE_CURRENT_HOST_STATE:[nagios][log][typ
 NAGIOS_SERVICE_NOTIFICATION	ecs	%{NAGIOS_TYPE_SERVICE_NOTIFICATION:[nagios][log][type]}: %{DATA:[user][name]};%{DATA:[host][hostname]};%{DATA:[service][name]};%{DATA:[service][state]};%{DATA:[nagios][log][notification_command]};%{GREEDYDATA:message}	nagios
 NAGIOS_HOST_NOTIFICATION	ecs	%{NAGIOS_TYPE_HOST_NOTIFICATION:[nagios][log][type]}: %{DATA:[user][name]};%{DATA:[host][hostname]};%{DATA:[service][state]};%{DATA:[nagios][log][notification_command]};%{GREEDYDATA:message}	nagios
 NAGIOS_SERVICE_ALERT	ecs	%{NAGIOS_TYPE_SERVICE_ALERT:[nagios][log][type]}: %{DATA:[host][hostname]};%{DATA:[service][name]};%{DATA:[service][state]};%{DATA:[nagios][log][state_type]};%{INT:[nagios][log][attempt]:int};%{GREEDYDATA:message}	nagios
-NAGIOS_HOST_ALERT	ecs	%{NAGIOS_TYPE_HOST_ALERT:[nagios][log][type]}: %{DATA:[host][hostname]};%{DATA:[service][state]};%{DATA:[nagios][log][state_type]};%{INT:[nagios][log][attempt]:int};%{GREEDYDATA:message}	nagios
+REDISTIMESTAMP	ecs	%{MONTHDAY} %{MONTH} %{TIME}	redis
 NAGIOS_SERVICE_FLAPPING_ALERT	ecs	%{NAGIOS_TYPE_SERVICE_FLAPPING_ALERT:[nagios][log][type]}: %{DATA:[host][hostname]};%{DATA:[service][name]};%{DATA:[service][state]};%{GREEDYDATA:message}	nagios
 NAGIOS_HOST_FLAPPING_ALERT	ecs	%{NAGIOS_TYPE_HOST_FLAPPING_ALERT:[nagios][log][type]}: %{DATA:[host][hostname]};%{DATA:[service][state]};%{GREEDYDATA:message}	nagios
 NAGIOS_SERVICE_DOWNTIME_ALERT	ecs	%{NAGIOS_TYPE_SERVICE_DOWNTIME_ALERT:[nagios][log][type]}: %{DATA:[host][hostname]};%{DATA:[service][name]};%{DATA:[service][state]};%{GREEDYDATA:[nagios][log][comment]}	nagios
@@ -1516,6 +1520,7 @@ NAGIOS_SERVICE_EVENT_HANDLER	ecs	%{NAGIOS_TYPE_SERVICE_EVENT_HANDLER:[nagios][lo
 NAGIOS_HOST_EVENT_HANDLER	ecs	%{NAGIOS_TYPE_HOST_EVENT_HANDLER:[nagios][log][type]}: %{DATA:[host][hostname]};%{DATA:[service][state]};%{DATA:[nagios][log][state_type]};%{DATA:[nagios][log][event_handler_name]}	nagios
 NAGIOS_TIMEPERIOD_TRANSITION	ecs	%{NAGIOS_TYPE_TIMEPERIOD_TRANSITION:[nagios][log][type]}: %{DATA:[service][name]};%{NUMBER:[nagios][log][period_from]:int};%{NUMBER:[nagios][log][period_to]:int}	nagios
 NAGIOS_EC_LINE_DISABLE_SVC_CHECK	ecs	%{NAGIOS_TYPE_EXTERNAL_COMMAND:[nagios][log][type]}: %{NAGIOS_EC_DISABLE_SVC_CHECK:[nagios][log][command]};%{DATA:[host][hostname]};%{DATA:[service][name]}	nagios
+NAGIOS_EC_LINE_DISABLE_HOST_CHECK	ecs	%{NAGIOS_TYPE_EXTERNAL_COMMAND:[nagios][log][type]}: %{NAGIOS_EC_DISABLE_HOST_CHECK:[nagios][log][command]};%{DATA:[host][hostname]}	nagios
 NAGIOS_EC_LINE_ENABLE_SVC_CHECK	ecs	%{NAGIOS_TYPE_EXTERNAL_COMMAND:[nagios][log][type]}: %{NAGIOS_EC_ENABLE_SVC_CHECK:[nagios][log][command]};%{DATA:[host][hostname]};%{DATA:[service][name]}	nagios
 NAGIOS_EC_LINE_ENABLE_HOST_CHECK	ecs	%{NAGIOS_TYPE_EXTERNAL_COMMAND:[nagios][log][type]}: %{NAGIOS_EC_ENABLE_HOST_CHECK:[nagios][log][command]};%{DATA:[host][hostname]}	nagios
 NAGIOS_EC_LINE_PROCESS_SERVICE_CHECK_RESULT	ecs	%{NAGIOS_TYPE_EXTERNAL_COMMAND:[nagios][log][type]}: %{NAGIOS_EC_PROCESS_SERVICE_CHECK_RESULT:[nagios][log][command]};%{DATA:[host][hostname]};%{DATA:[service][name]};%{DATA:[service][state]};%{GREEDYDATA:[nagios][log][check_result]}	nagios
@@ -1536,8 +1541,6 @@ RPROCESSING	ecs	\\W*Processing by %{RCONTROLLER} as (?<[rails][request][format]>
 RAILS3FOOT	ecs	Completed %{POSINT:[http][response][status_code]:int}%{DATA} in %{NUMBER:[rails][request][duration][total]:float}ms %{RAILS3PROFILE}%{GREEDYDATA}	rails
 RAILS3PROFILE	ecs	(?:\\(Views: %{NUMBER:[rails][request][duration][view]:float}ms \\| ActiveRecord: %{NUMBER:[rails][request][duration][active_record]:float}ms|\\(ActiveRecord: %{NUMBER:[rails][request][duration][active_record]:float}ms)?	rails
 RAILS3	ecs	%{RAILS3HEAD}(?:%{RPROCESSING})?(?<[rails][request][explain][original]>(?:%{DATA}\\n)*)(?:%{RAILS3FOOT})?	rails
-REDISTIMESTAMP	ecs	%{MONTHDAY} %{MONTH} %{TIME}	redis
-REDISLOG	ecs	\\[%{POSINT:[process][pid]:int}\\] %{REDISTIMESTAMP:timestamp} \\*	redis
 REDISMONLOG	ecs	%{NUMBER:timestamp} \\[%{INT:[redis][database][id]} %{IP:[client][ip]}:%{POSINT:[client][port]:int}\\] "%{WORD:[redis][command][name]}"\\s?%{GREEDYDATA:[redis][command][args]}	redis
 RUBY_LOGLEVEL	ecs	(?:DEBUG|FATAL|ERROR|WARN|INFO)	ruby
 RUBY_LOGGER	ecs	[DFEWI], \\[%{TIMESTAMP_ISO8601:timestamp} #%{POSINT:[process][pid]:int}\\] *%{RUBY_LOGLEVEL:[log][level]} -- +%{DATA:[process][name]}: %{GREEDYDATA:message}	ruby
@@ -1589,6 +1592,7 @@ zeek	ecs
 --
 
 COPY public.fda_logclass (id, created, updated, name, description, contact_person, created_by_id, log_class_status_id, release_id, updated_by_id) FROM stdin;
+270fd502-ad78-48fb-ae9d-3066b882f0bf	2023-12-04 08:54:29.178546+00	\N	ExampleClass		logprep@logprep.com	3	f51800f5-d2ca-4c79-888e-bd7ea0186245	1b6f9268-be4d-4422-98c0-edd807f99d5d	\N
 \.
 
 
@@ -1597,6 +1601,7 @@ COPY public.fda_logclass (id, created, updated, name, description, contact_perso
 --
 
 COPY public.fda_logclassmapping (id, created, updated, created_by_id, log_class_id, updated_by_id, output_keys) FROM stdin;
+2236adc1-b737-4544-8f4d-3a2fbb9d7db5	2023-12-04 08:54:29.184932+00	\N	3	270fd502-ad78-48fb-ae9d-3066b882f0bf	\N	{@timestamp,message,meta.provider.name,meta.provider.id,meta.provider,meta,ingested,event.time,event.source,event.target,event.systems,event.server,event,provider.name,provider.id,provider}
 \.
 
 
@@ -1632,6 +1637,10 @@ datalake	{@timestamp,tags,client.domain,client.ip,destination.domain,destination
 --
 
 COPY public.fda_mappingfunction (id, created, updated, processor_type, configuration, "position", source_field, created_by_id, logclass_mapping_id, updated_by_id, parent_function_id) FROM stdin;
+cf9a4cda-93b8-4f6d-b702-c3e483c2ca56	2023-12-04 09:03:19.428669+00	\N	generic_adder	{"generic_rules": [{"filter": "@timestamp", "generic_adder": {"add": {"ingested": "yes"}}}]}	0	@timestamp	3	2236adc1-b737-4544-8f4d-3a2fbb9d7db5	\N	\N
+8efb7596-b41c-48fd-af63-918f6d1a8e1e	2023-12-04 09:06:51.635262+00	\N	dissector	{"generic_rules": [{"filter": "message", "dissector": {"tests": [], "mapping": {"message": "%{event.time} This is an example message for a request. Source: %{event.source}, Target: %{event.target}. Some more infos: (%{event.systems}) (%{event.server})"}, "regex_fields": [], "tag_on_failure": [], "convert_datatype": {}, "overwrite_target": false, "extend_target_list": false, "delete_source_fields": false}, "description": ""}], "specific_rules": [], "apply_multiple_times": false}	1	message	3	2236adc1-b737-4544-8f4d-3a2fbb9d7db5	\N	\N
+d2e5c3f8-831a-4777-aa0e-023daaba7acf	2023-12-04 09:10:45.088802+00	\N	field_manager	{"generic_rules": [{"filter": "meta.provider.name", "description": "", "field_manager": {"tests": [], "regex_fields": [], "target_field": "provider.name", "source_fields": ["meta.provider.name"], "tag_on_failure": [], "overwrite_target": false, "extend_target_list": false, "delete_source_fields": false}}], "specific_rules": [], "apply_multiple_times": false}	2	meta.provider.name	3	2236adc1-b737-4544-8f4d-3a2fbb9d7db5	\N	\N
+5bfeedeb-4dab-4877-86ca-8563604710e1	2023-12-04 09:11:15.638522+00	\N	field_manager	{"generic_rules": [{"filter": "meta.provider.id", "description": "", "field_manager": {"tests": [], "regex_fields": [], "target_field": "provider.id", "source_fields": ["meta.provider.id"], "tag_on_failure": [], "overwrite_target": false, "extend_target_list": false, "delete_source_fields": false}}], "specific_rules": [], "apply_multiple_times": false}	3	meta.provider.id	3	2236adc1-b737-4544-8f4d-3a2fbb9d7db5	\N	\N
 \.
 
 
@@ -1683,6 +1692,7 @@ ecs.fieldset.footnote	ecs	fieldset	f	footnote	Additional remarks regarding the f
 
 COPY public.fda_release (id, created, updated, version_major, version_minor, base_release_id, created_by_id, ecs_version_id, release_status_id, stage_id, updated_by_id) FROM stdin;
 09a3ae44-748e-4cfd-b0a6-ed262fe73868	2023-11-21 09:57:30.561503+00	\N	0	0	\N	1	18f6b7af-a59a-4e17-8361-1928341f17a8	721c779c-7ade-43bb-b83e-3117f7fbb8c4	dev	\N
+1b6f9268-be4d-4422-98c0-edd807f99d5d	2023-12-04 08:54:12.442495+00	\N	1	0	09a3ae44-748e-4cfd-b0a6-ed262fe73868	3	4aff3b7b-2060-45ad-af71-20ef9e16f6b8	721c779c-7ade-43bb-b83e-3117f7fbb8c4	dev	\N
 \.
 
 
@@ -1740,7 +1750,7 @@ SELECT pg_catalog.setval('public.auth_user_groups_id_seq', 1, false);
 -- Name: auth_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: fda
 --
 
-SELECT pg_catalog.setval('public.auth_user_id_seq', 2, true);
+SELECT pg_catalog.setval('public.auth_user_id_seq', 3, true);
 
 
 --
