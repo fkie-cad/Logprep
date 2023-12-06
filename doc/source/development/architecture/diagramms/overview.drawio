@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="dLlubgwYXh7pxlaa3Xrq" name="Page-1">
-        <mxGraphModel dx="2381" dy="804" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="1922" dy="563" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -80,7 +80,7 @@
                     <mxGeometry x="-25" y="1180" width="1305" height="212" as="geometry"/>
                 </mxCell>
                 <mxCell id="49" value="shutdown() terminates the pipeline" style="ellipse;whiteSpace=wrap;html=1;rounded=1;shadow=0;glass=0;sketch=0;" parent="32" vertex="1">
-                    <mxGeometry x="1123" y="-424" width="120" height="80" as="geometry"/>
+                    <mxGeometry x="1115" y="-424" width="120" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="61" value="failed event is stored in Output list" style="whiteSpace=wrap;html=1;fillColor=#a20025;strokeColor=#6F0000;fontColor=#ffffff;" parent="32" vertex="1">
                     <mxGeometry x="233" y="115" width="120" height="60" as="geometry"/>
@@ -145,9 +145,9 @@
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="59" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="51" target="49" edge="1">
+                <mxCell id="59" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="51" target="69" edge="1">
                     <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="1063.5" y="623.5" as="targetPoint"/>
+                        <mxPoint x="1090" y="624" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="60" value="no" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="59" vertex="1" connectable="0">
@@ -176,6 +176,12 @@
                     <mxGeometry x="-0.0503" y="5" relative="1" as="geometry">
                         <mxPoint y="-135" as="offset"/>
                     </mxGeometry>
+                </mxCell>
+                <mxCell id="70" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="69" target="49">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="69" value="&amp;nbsp;after processing batch of one or more records" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" vertex="1" parent="1">
+                    <mxGeometry x="1090" y="1235" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
