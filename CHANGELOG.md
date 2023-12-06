@@ -3,6 +3,16 @@
 ## next release
 ### Breaking
 
+### Features
+
+### Improvements
+
+### Bugfix
+
+
+## v9.0.0
+### Breaking
+
 * remove possibility to inject auth credentials via url string, because of the risk leaking credentials in logs
     - if you want to use basic auth, then you have to set the environment variables
         * :code:`LOGPREP_CONFIG_AUTH_USERNAME=<your_username>`
