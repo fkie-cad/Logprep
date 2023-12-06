@@ -10,8 +10,6 @@ jobs:
     name: Build Logprep
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
 
       - name: Initialize Python
         uses: actions/setup-python@v1
