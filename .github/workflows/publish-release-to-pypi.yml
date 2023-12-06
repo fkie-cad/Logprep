@@ -10,14 +10,11 @@ jobs:
     name: Build Logprep
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: ${{ github.ref }}
 
       - name: Initialize Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.10
-          cache: "pip"
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
