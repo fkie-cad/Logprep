@@ -444,6 +444,10 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         assert self.pipeline._output["dummy"].input_connector == self.pipeline._input
 
+    def test_setup_connects_input_with_output(self, _):
+        self.pipeline._setup()
+        assert self.pipeline._input.output_connector == self.pipeline._output["dummy"]
+
     def test_pipeline_does_not_call_batch_finished_callback_if_output_store_does_not_return_true(
         self, _
     ):

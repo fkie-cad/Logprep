@@ -77,6 +77,7 @@ class TestKafkaConnection:
             },
         }
         self.kafka_input = Factory.create({"test input": input_config}, logger=logging.getLogger())
+        self.kafka_input.output_connector = mock.MagicMock()
 
     def teardown_method(self):
         self.kafka_input.shut_down()

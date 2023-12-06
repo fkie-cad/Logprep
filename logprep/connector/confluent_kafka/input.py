@@ -446,18 +446,7 @@ class ConfluentKafkaInput(Input):
             try:
                 offset_handler(message=message)
             except KafkaException as error:
-                topic = self._consumer.list_topics(topic=self._config.topic)
-                partition_keys = list(topic.topics[self._config.topic].partitions.keys())
-                partitions = [
-                    TopicPartition(self._config.topic, partition) for partition in partition_keys
-                ]
-                self._consumer.assign(partitions)
-                self._logger.warning(
-                    f"{self._consumer.memberid()} was assigned to "
-                    f"topic: {topic} | partition {partitions}, due to "
-                    f"KafkaException: {error}"
-                )
-                offset_handler(message=message)
+                raise InputWarning(self, f"{error}, {message}") from error
 
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
@@ -482,6 +471,8 @@ class ConfluentKafkaInput(Input):
                 f"topic: {topic_partition.topic} | "
                 f"partition {topic_partition.partition}"
             )
+        self.output_connector._write_backlog()
+        self.batch_finished_callback()
 
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
