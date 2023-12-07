@@ -912,7 +912,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
             "pseudonymizer": {
                 "pseudonyms": {
                     "winlog.event_data.param1": "RE_WHOLE_FIELD",
-                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
                 }
             },
         }
@@ -923,7 +922,6 @@ class TestPseudonymizer(BaseProcessorTestCase):
                 "provider_name": "Test456",
                 "event_data": {
                     "param1": "Pseudonymize me!",
-                    "param2": "Pseudonymize me!",
                 },
             },
         }
@@ -936,9 +934,93 @@ class TestPseudonymizer(BaseProcessorTestCase):
         assert isinstance(extra_output[1], tuple)
         assert isinstance(extra_output[1][0], dict)
         assert extra_output[1][0] == {"kafka": "topic"}, "Output is set as in CONFIG"
+        assert len(extra_output[0]) == 1, "Should contain only one pseudonym"
         assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
         assert extra_output[0][0].get("origin"), "encrypted original is set"
         assert extra_output[0][0].get("@timestamp"), "timestamp is set if present in event"
+
+    def test_extra_output_contains_only_one_pseudonym_even_if_pseudonym_appears_multiple_times_in_event(
+        self,
+    ):
+        rule_dict = {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
+            },
+        }
+        event = {
+            "@timestamp": "custom timestamp",
+            "winlog": {
+                "event_id": 1234,
+                "provider_name": "Test456",
+                "event_data": {
+                    "param1": "Pseudonymize me - appears twice!",
+                    "param2": "Pseudonymize me - appears twice!",
+                },
+            },
+        }
+        self._load_specific_rule(rule_dict)  # First call
+        extra_output = self.object.process(event)
+        assert extra_output
+        assert isinstance(extra_output, tuple)
+        assert len(extra_output) == 2
+        assert isinstance(extra_output[0], list)
+        assert isinstance(extra_output[1], tuple)
+        assert isinstance(extra_output[1][0], dict)
+        assert extra_output[1][0] == {"kafka": "topic"}, "Output is set as in CONFIG"
+        assert (
+            len(extra_output[0]) == 1
+        ), "Should contain only one pseudonym, as the value for both is the same"
+        assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
+        assert extra_output[0][0].get("origin"), "encrypted original is set"
+        assert extra_output[0][0].get("@timestamp"), "timestamp is set if present in event"
+
+    def test_extra_output_contains_different_pseudonyms_for_different_values(self):
+        rule_dict = {
+            "filter": "winlog.event_id: 1234 AND winlog.provider_name: Test456",
+            "pseudonymizer": {
+                "pseudonyms": {
+                    "winlog.event_data.param1": "RE_WHOLE_FIELD",
+                    "winlog.event_data.param2": "RE_WHOLE_FIELD",
+                }
+            },
+        }
+        event = {
+            "@timestamp": "custom timestamp",
+            "winlog": {
+                "event_id": 1234,
+                "provider_name": "Test456",
+                "event_data": {
+                    "param1": "Pseudonymize me - first!",
+                    "param2": "Pseudonymize me - second!",
+                },
+            },
+        }
+        self._load_specific_rule(rule_dict)  # First call
+        extra_output = self.object.process(event)
+        assert extra_output
+        assert isinstance(extra_output, tuple)
+        assert len(extra_output) == 2
+        assert isinstance(extra_output[0], list)
+        assert isinstance(extra_output[1], tuple)
+        assert isinstance(extra_output[1][0], dict)
+        assert extra_output[1][0] == {"kafka": "topic"}, "Output is set as in CONFIG"
+        assert len(extra_output[0]) == 2, "Should contain two pseudonyms, for each value one"
+        assert extra_output[0][0].get("pseudonym"), "pseudonym is set"
+        assert extra_output[0][0].get("origin"), "encrypted original is set"
+        assert extra_output[0][0].get("@timestamp"), "timestamp is set if present in event"
+        assert extra_output[0][1].get("pseudonym"), "pseudonym is set"
+        assert extra_output[0][1].get("origin"), "encrypted original is set"
+        assert extra_output[0][1].get("@timestamp"), "timestamp is set if present in event"
+        assert extra_output[0][0].get("pseudonym") != extra_output[0][1].get(
+            "pseudonym"
+        ), "pseudonyms should differ"
+        assert extra_output[0][0].get("origin") != extra_output[0][1].get(
+            "origin"
+        ), "origins should differ"
 
     def test_ignores_missing_field(self):
         rule_dict = {
