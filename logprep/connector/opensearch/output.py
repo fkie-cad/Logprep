@@ -69,7 +69,7 @@ class OpensearchOutput(ElasticsearchOutput):
 
     def _bulk(self, *args, **kwargs):
         try:
-            helpers.bulk(*args, **kwargs)
+            helpers.parallel_bulk(*args, **kwargs)
         except search.SerializationError as error:
             self._handle_serialization_error(error)
         except search.ConnectionError as error:

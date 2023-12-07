@@ -7,6 +7,8 @@
 
 ### Improvements
 
+* use parallel_bulk api for opensearch output connector
+
 ### Bugfix
 
 
