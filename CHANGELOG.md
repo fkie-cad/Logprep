@@ -9,6 +9,10 @@
 
 ### Bugfix
 
+## v9.0.2
+
+### Bugfix
+
 * remove duplicate pseudonyms in extra outputs of pseudonymizer
 
 ## v9.0.1
