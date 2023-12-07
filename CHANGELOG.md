@@ -7,6 +7,15 @@
 
 ### Improvements
 
+### Bugfix
+
+## v9.0.1
+### Breaking
+
+### Features
+
+### Improvements
+
 * use parallel_bulk api for opensearch output connector
 
 ### Bugfix
