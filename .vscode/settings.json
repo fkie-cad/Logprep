@@ -13,7 +13,7 @@
         120
     ],
     "editor.codeActionsOnSave": {
-        "source.organizeImports": true
+        "source.organizeImports": "explicit"
     },
     "autoDocstring.docstringFormat": "numpy",
     "files.exclude": {
