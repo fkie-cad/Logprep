@@ -5,7 +5,7 @@
 
 ### Features
 
-* make thread_count configurable for parallel_bulk in  opensearch output connector
+* make thread_count configurable for parallel_bulk in opensearch output connector
 
 ### Improvements
 
