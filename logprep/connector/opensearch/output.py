@@ -34,16 +34,27 @@ import logging
 from functools import cached_property
 
 import opensearchpy as search
+from attrs import define, field, validators
 from opensearchpy import helpers
 
 from logprep.abc.output import Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
+from logprep.metrics.metrics import Metric
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
 
 
 class OpensearchOutput(ElasticsearchOutput):
     """An OpenSearch output connector."""
+
+    @define(kw_only=True, slots=False)
+    class Config(ElasticsearchOutput.Config):
+        """Config for OpensearchOutput."""
+
+        thread_count: int = field(
+            default=4, validator=[validators.instance_of(int), validators.gt(1)]
+        )
+        """Number of threads to use for bulk requests."""
 
     @cached_property
     def _search_context(self):
@@ -66,6 +77,20 @@ class OpensearchOutput(ElasticsearchOutput):
         """
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self._config.hosts}"
+
+    @Metric.measure_time()
+    def _write_backlog(self):
+        if not self._message_backlog:
+            return
+
+        self._bulk(
+            self._search_context,
+            self._message_backlog,
+            max_retries=self._config.max_retries,
+            chunk_size=len(self._message_backlog) / self._config.thread_count,
+            thread_count=self._config.thread_count,
+        )
+        self._message_backlog.clear()
 
     def _bulk(self, *args, **kwargs):
         try:
