@@ -21,6 +21,10 @@ Interaction
 
 (Sequence-) Diagramm of the interaction between the components.
 
+To see how Logprep starts and what the interactions are at the start have a look at the following diagram:
+
+.. raw:: html
+    :file: ../../development/architecture/diagramms/logprep_start.svg
 
 Expandability
 =============
