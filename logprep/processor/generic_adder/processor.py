@@ -52,13 +52,6 @@ from logprep.processor.generic_adder.rule import GenericAdderRule
 from logprep.util.helper import add_field_to, get_dotted_field_value
 
 
-class GenericAdderError(BaseException):
-    """Base class for GenericAdder related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"GenericAdder ({name}): {message}")
-
-
 def sql_config_validator(_, attribute, value):
     """validate if a subfield of a dict is valid"""
     if attribute.name == "sql_config" and isinstance(value, dict):
