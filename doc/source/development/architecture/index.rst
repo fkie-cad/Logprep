@@ -9,12 +9,17 @@ Logprep is designed to receive, process and forward log messages.
 It consists of several interconnected components that work together to make this possible.
 
 .. raw:: html
-    :file: ../../development/architecture/diagramms/overview.svg
 
-Components
-==========
+    <object data="../../_static/architecture_logprep_start.svg" type="image/svg+xml" width="100%"></object>
+    
+ 
 
-Description of Logprep components.
+Pipeline
+========
+
+.. raw:: html
+
+    <object data="../../_static/architecture_pipeline.svg" type="image/svg+xml" width="100%"></object>
 
 Interaction
 ===========

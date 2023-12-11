@@ -61,6 +61,7 @@ extensions = [
     "nbsphinx",
     "IPython.sphinxext.ipython_console_highlighting",
     "sphinx_copybutton",
+    "sphinxcontrib.images",
 ]
 
 extensions.append("sphinx.ext.todo")
@@ -208,3 +209,5 @@ html_style = "css/custom_theme.css"
 autodoc_class_signature = "separated"
 autodoc_member_order = "bysource"
 # nbsphinx_allow_errors = True
+
+images_config = {"override_image_directive": True}
