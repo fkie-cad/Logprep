@@ -37,7 +37,7 @@ import opensearchpy as search
 from attrs import define, field, validators
 from opensearchpy import helpers
 
-from logprep.abc.output import Output
+from logprep.abc.output import FatalOutputError, Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.metrics.metrics import Metric
 
@@ -88,13 +88,24 @@ class OpensearchOutput(ElasticsearchOutput):
             self._message_backlog,
             max_retries=self._config.max_retries,
             chunk_size=len(self._message_backlog) / self._config.thread_count,
-            thread_count=self._config.thread_count,
+            # thread_count=self._config.thread_count,
         )
         self._message_backlog.clear()
 
     def _bulk(self, *args, **kwargs):
         try:
-            helpers.parallel_bulk(*args, **kwargs)
+            for success, item in helpers.parallel_bulk(
+                self._search_context,
+                actions=self._message_backlog,
+                chunk_size=len(self._message_backlog) / self._config.thread_count,
+                queue_size=self._config.message_backlog_size,
+                raise_on_error=True,
+                raise_on_exception=False,
+            ):
+                if not success:
+                    result = item[list(item.keys())[0]]
+                    if "error" in result:
+                        raise result.get("error")
         except search.SerializationError as error:
             self._handle_serialization_error(error)
         except search.ConnectionError as error:
