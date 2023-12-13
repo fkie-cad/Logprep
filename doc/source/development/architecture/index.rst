@@ -7,30 +7,48 @@ Overview
 
 Logprep is designed to receive, process and forward log messages.
 It consists of several interconnected components that work together to make this possible.
+The following diagramm shows how Logprep behaves at the start. 
 
-.. .. raw:: html
+.. raw:: html
    :file: ../../development/architecture/diagramms/logprep_start.drawio.html
+
+
+Pipeline
+========
+This diagram shows the flow of the Pipeline. The starting-point is the creating of the PipelineManager and therefore thr start oft the MultiprocessingPipeline.
+
+.. raw:: html
+   :file: ../../development/architecture/diagramms/pipeline.drawio.html
+
+Input
+=====
+
 
 Processor
 =========
 
+Below is a visualization of all available processors of Logprep. These diagrams also show which processors inherit from what. 
+The first of these diagrams describes the process up to the actual application of the rule that is implemented in the respective processors.
+
 .. raw:: html
    :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/process-Combined.drawio.html
 
-Pipeline
-========
+Output
+======
 
-.. image:: ../../_static/architecture_pipeline.svg
 
-Interaction
-===========
+Event flow
+==========
 
-(Sequence-) Diagramm of the interaction between the components.
-
-To see how Logprep starts and what the interactions are at the start have a look at the following diagram:
+To make the flow and processing of a single event more comprehensible, this has been simplified in this diagram.
 
 .. raw:: html
-    :file: /home/vagrant/external_work/Logprep/doc/source/_static/architecture_logprep_start.svg
+   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/event_flow.drawio.html
+
+
+Multiprocessing
+===============
+
 
 Expandability
 =============
