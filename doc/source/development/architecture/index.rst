@@ -8,14 +8,14 @@ Overview
 Logprep is designed to receive, process and forward log messages.
 It consists of several interconnected components that work together to make this possible.
 
-.. raw:: html
+.. .. raw:: html
    :file: ../../development/architecture/diagramms/logprep_start.drawio.html
 
 Processor
 =========
 
 .. raw:: html
-   :file: ../../development/architecture/diagramms/process-Combined.drawio.html
+   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/process-Combined.drawio.html
 
 Pipeline
 ========
@@ -30,7 +30,7 @@ Interaction
 To see how Logprep starts and what the interactions are at the start have a look at the following diagram:
 
 .. raw:: html
-    :file: ../../development/architecture/diagramms/logprep_start.svg
+    :file: /home/vagrant/external_work/Logprep/doc/source/_static/architecture_logprep_start.svg
 
 Expandability
 =============
