@@ -1,40 +1,40 @@
 <mxfile host="65bd71144e">
     <diagram id="Ktq9n4MecwvDrbKD-2N5" name="Page-1">
-        <mxGraphModel dx="832" dy="307" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="832" dy="563" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;" edge="1" parent="1" source="2" target="3">
+                <mxCell id="4" value="" style="edgeStyle=none;html=1;dashed=1;" parent="1" source="2" target="3" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="8" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="2" target="7">
+                <mxCell id="8" value="" style="edgeStyle=none;html=1;" parent="1" source="2" target="7" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="2" value="set up input connector in pipeline by calling the _setup() Method&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="2" value="set up input connector in pipeline by calling the _setup() Method&amp;nbsp;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="40" y="40" width="160" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;" edge="1" parent="1" source="3" target="5">
+                <mxCell id="6" value="" style="edgeStyle=none;html=1;dashed=1;" parent="1" source="3" target="5" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="3" value="get input configuration via the Logprep config" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="3" value="get input configuration via the Logprep config" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="40" y="200" width="160" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="5" value="setup method returns instance of input via Factory.create()" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="5" value="setup method returns input via Factory.create()" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="40" y="360" width="160" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="10" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="7" target="9">
+                <mxCell id="10" value="" style="edgeStyle=none;html=1;" parent="1" source="7" target="9" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="12" value="" style="edgeStyle=none;html=1;dashed=1;" edge="1" parent="1" source="7" target="11">
+                <mxCell id="12" value="" style="edgeStyle=none;html=1;dashed=1;" parent="1" source="7" target="11" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="7" value="after the setup the pipeline gets the event from the input via get_event() which call the get_next() method from the input connector" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="7" value="after the setup the pipeline gets the event from the input via get_event() which call the get_next() method from the input connector" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="280" y="40" width="160" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="9" value="after processing and storing batch of one or more records the output connector calls the batch_finished_callback() method to inform the input" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="9" value="after processing and storing batch of one or more records the output connector calls the batch_finished_callback() method to inform the input" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="520" y="40" width="160" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="11" value="if the event is not None this method fills the event with information and returns the event (next document) and a non critical error msg&amp;nbsp;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="11" value="if the event is not None this method fills the event with information and returns the event (next document) and a non critical error msg&amp;nbsp;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="280" y="200" width="160" height="80" as="geometry"/>
                 </mxCell>
             </root>
