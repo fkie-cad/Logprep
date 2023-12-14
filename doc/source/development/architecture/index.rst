@@ -23,6 +23,10 @@ This diagram shows the flow of the Pipeline. The starting-point is the creating 
 Input
 =====
 
+.. raw:: html
+   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/input.drawio.html
+
+
 
 Processor
 =========
@@ -33,8 +37,20 @@ The first of these diagrams describes the process up to the actual application o
 .. raw:: html
    :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/process-Combined.drawio.html
 
+
+Ruletree
+========
+
+.. raw:: html
+   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/ruleTree.drawio.html
+
+
 Output
 ======
+
+.. raw:: html
+   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/output.drawio.html
+
 
 
 Event flow
