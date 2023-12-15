@@ -20,7 +20,6 @@
   "fiscalYearStartMonth": 0,
   "gnetId": 7589,
   "graphTooltip": 0,
-  "id": 5,
   "links": [
     {
       "asDropdown": true,
@@ -560,14 +559,17 @@
           "type": "prometheus",
           "uid": "promz2394"
         },
-        "definition": "",
+        "definition": "label_values(kafka_topic_partitions,job)",
         "hide": 0,
         "includeAll": false,
         "label": "Job",
         "multi": false,
         "name": "job",
         "options": [],
-        "query": "label_values(kafka_consumergroup_current_offset, job)",
+        "query": {
+          "query": "label_values(kafka_topic_partitions,job)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -587,14 +589,17 @@
           "type": "prometheus",
           "uid": "promz2394"
         },
-        "definition": "",
+        "definition": "label_values(kafka_topic_partitions{job=~\"$job\"},instance)",
         "hide": 0,
         "includeAll": false,
         "label": "Instance",
         "multi": false,
         "name": "instance",
         "options": [],
-        "query": "label_values(kafka_consumergroup_current_offset{job=~\"$job\"}, instance)",
+        "query": {
+          "query": "label_values(kafka_topic_partitions{job=~\"$job\"},instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -668,6 +673,6 @@
   "timezone": "browser",
   "title": "Kafka Exporter Overview",
   "uid": "jwPKIsniz",
-  "version": 8,
+  "version": 1,
   "weekStart": ""
 }
