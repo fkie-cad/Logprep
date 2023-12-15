@@ -5,7 +5,7 @@
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
                 <mxCell id="16" value="" style="swimlane;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=20;horizontalStack=0;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="20" y="43" width="1680" height="590" as="geometry"/>
+                    <mxGeometry x="20" y="43" width="1680" height="630" as="geometry"/>
                 </mxCell>
                 <mxCell id="17" value="Input" style="swimlane;startSize=20;horizontal=0;html=1;" parent="16" vertex="1">
                     <mxGeometry y="20" width="1680" height="120" as="geometry"/>
@@ -62,7 +62,7 @@
                 <mxCell id="80" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.25;entryDx=0;entryDy=0;dashed=1;opacity=20;" parent="27" source="79" target="77" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="79" value="revise for loops&lt;br&gt;-&amp;gt; iterate only over outputs and pass all documents as batch" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" parent="27" vertex="1">
+                <mxCell id="79" value="revise for loops&lt;br&gt;&amp;nbsp;iterate only over outputs and pass all documents as batch" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" parent="27" vertex="1">
                     <mxGeometry x="940" y="20" width="160" height="90" as="geometry"/>
                 </mxCell>
                 <mxCell id="54" value="" style="edgeStyle=none;html=1;dashed=1;entryX=0.25;entryY=0;entryDx=0;entryDy=0;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" parent="27" source="51" target="53" edge="1">
@@ -77,7 +77,7 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="34" value="Output" style="swimlane;startSize=20;horizontal=0;html=1;" parent="16" vertex="1">
-                    <mxGeometry y="360" width="1680" height="230" as="geometry"/>
+                    <mxGeometry y="360" width="1680" height="270" as="geometry"/>
                 </mxCell>
                 <mxCell id="49" value="__init__()" style="whiteSpace=wrap;html=1;fillColor=#60a917;strokeColor=#2D7600;fontColor=#ffffff;" parent="34" vertex="1">
                     <mxGeometry x="210" y="40" width="120" height="60" as="geometry"/>
@@ -130,7 +130,8 @@
                 <mxCell id="67" value="no" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" parent="16" source="61" target="51" edge="1">
                     <mxGeometry x="-0.7635" relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="360" y="571"/>
+                            <mxPoint x="1080" y="587"/>
+                            <mxPoint x="360" y="587"/>
                             <mxPoint x="360" y="205"/>
                         </Array>
                         <mxPoint as="offset"/>

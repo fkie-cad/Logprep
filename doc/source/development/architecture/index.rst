@@ -19,7 +19,7 @@ Pipeline Manager
 This diagram shows the creation of Multiprocessing Pipelines and the shutdown of failed Pipelines.
 
 .. raw:: html
-   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/pipelineManager.drawio.html
+   :file: ../../development/architecture/diagramms/pipelineManager.drawio.html
 
 
 Pipeline
@@ -37,7 +37,7 @@ In this diagram, some parts are specific for the ConfluentKafkaInput Connector.
 These was deemed to be important enough to be part of the diagram.
 
 .. raw:: html
-   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/input.drawio.html
+   :file: ../../development/architecture/diagramms/input.drawio.html
 
 
 
@@ -50,7 +50,7 @@ The first of these diagrams describes the process up to the
 actual application of the rule that is implemented in the respective processors.
 
 .. raw:: html
-   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/process-Combined.drawio.html
+   :file: ../../development/architecture/diagramms/process-Combined.drawio.html
 
 
 Ruletree
@@ -59,7 +59,7 @@ Ruletree
 The Ruletree diagramm shows how the matching rules for a given event are searched for and found.
 
 .. raw:: html
-   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/ruleTree.drawio.html
+   :file: ../../development/architecture/diagramms/ruleTree.drawio.html
 
 
 Output
@@ -69,7 +69,7 @@ In this diagram, the last part about the backlog is specific for the Elasticsear
 This was deemed to be important enough to be part of the diagram.
 
 .. raw:: html
-   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/output.drawio.html
+   :file: ../../development/architecture/diagramms/output.drawio.html
 
 
 
@@ -79,11 +79,11 @@ Event flow
 The following diagram illustrates the flow of a single event to make it more comprehensible.
 
 .. raw:: html
-   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/event_flow.drawio.html
+   :file: ../../development/architecture/diagramms/event_flow.drawio.html
 
 
 Legend
 ======
 
 .. raw:: html
-   :file: /home/vagrant/external_work/Logprep/doc/source/development/architecture/diagramms/legend.drawio.html
+   :file: ../../development/architecture/diagramms/legend.drawio.html
