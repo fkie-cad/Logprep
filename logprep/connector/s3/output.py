@@ -63,7 +63,7 @@ from botocore.exceptions import (
 )
 
 from logprep.abc.output import Output
-from logprep.metrics.metrics import Metric
+from logprep.metrics.metrics import Metric, CounterMetric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 
@@ -116,6 +116,18 @@ class S3Output(Output):
         )
         """The input callback is called after the maximum backlog size has been reached 
         if this is set to True (optional)"""
+
+    @define(kw_only=True)
+    class Metrics(Output.Metrics):
+        """Tracks statistics about this output"""
+
+        number_of_successful_writes: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of events that were successfully written to s3",
+                name="number_of_successful_writes",
+            )
+        )
+        """Number of events that were successfully written to s3"""
 
     __slots__ = ["_message_backlog", "_current_backlog_count", "_index_cache"]
 
@@ -245,6 +257,7 @@ class S3Output(Output):
         self._logger.debug(f'Writing "{identifier}" to s3 bucket "{self._config.bucket}"')
         s3_obj = self.s3_resource.Object(self._config.bucket, identifier)
         s3_obj.put(Body=self._encoder.encode(document_batch), ContentType="application/json")
+        self.metrics.number_of_successful_writes += len(document_batch)
 
     def store(self, document: dict):
         """Store a document into s3 bucket.

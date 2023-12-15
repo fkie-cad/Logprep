@@ -41,6 +41,15 @@ class TestS3Output(BaseOutputTestCase):
         "message_backlog_size": 1,
     }
 
+    expected_metrics = [
+        "logprep_processing_time_per_event",
+        "logprep_number_of_processed_events",
+        "logprep_number_of_failed_events",
+        "logprep_number_of_warnings",
+        "logprep_number_of_errors",
+        "logprep_number_of_successful_writes",
+    ]
+
     def test_describe_returns_s3_output(self):
         assert (
             self.object.describe() == "S3Output (Test Instance Name) - S3 Output: http://host:123"
