@@ -230,13 +230,16 @@ class S3Output(Output):
             self._write_to_s3(document_batch, identifier)
         except EndpointConnectionError:
             self._logger.warning(f"{self.describe()}: Could not connect to the endpoint URL")
+            self.metrics.number_of_warnings += 1
         except ConnectionClosedError:
             self._logger.warning(
                 f"{self.describe()}: "
                 f"Connection was closed before we received a valid response from endpoint URL"
             )
+            self.metrics.number_of_warnings += 1
         except (BotoCoreError, ClientError) as error:
             self._logger.warning(f"{self.describe()}: {error}")
+            self.metrics.number_of_warnings += 1
 
     def _write_to_s3(self, document_batch: dict, identifier: str):
         self._logger.debug(f'Writing "{identifier}" to s3 bucket "{self._config.bucket}"')
