@@ -6,10 +6,15 @@
 ### Features
 
 * make thread_count configurable for parallel_bulk in opensearch output connector
+* add a `number_of_successful_writes` metric to the s3 connector, which counts how many events were successfully written to s3
 
 ### Improvements
 
 ### Bugfix
+
+* make the s3 connector work with the new `_write_backlog` method introduced by the `confluent_kafka` commit bugfix in v9.0.0
+* make the s3 connector actually use the `max_retries` parameter
+* make the s3 connector increase the `number_of_warnings` metric
 
 ## v9.0.2
 
