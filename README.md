@@ -430,17 +430,18 @@ The start up takes a few seconds to complete, but once everything is up
 and running it is possible to write JSON events into Kafka and read the processed events in
 Opensearch Dashboards. Following services are available after start up:
 
-| Service | Location | Credentials |
-|:----------|:----|:-----|
-| Kafka: | `localhost:9092` | |
-| Logprep metrics: | `localhost:8000` | |
-| Opensearch: | `localhost:9200` | |
+| Service                | Location | Credentials |
+|:-----------------------|:----|:-----|
+| Kafka:                 | `localhost:9092` | |
+| Kafka Exporter:        | `localhost:9308` | |
+| Logprep metrics:       | `localhost:8000` | |
+| Opensearch:            | `localhost:9200` | |
 | Opensearch Dashboards: | `localhost:5601` | |
-| Grafana Dashboards: | `localhost:3000` | admin:admin |
-| Prometheus: | `localhost:9090` | |
-| Nginx: | `localhost:8081` | user:password |
-| Keycloak: | `localhost:8080` | admin:admin |
-| Postgres: | `localhost:5432` | keycloak:bitnami |
+| Grafana Dashboards:    | `localhost:3000` | admin:admin |
+| Prometheus:            | `localhost:9090` | |
+| Nginx:                 | `localhost:8081` | user:password |
+| Keycloak:              | `localhost:8080` | admin:admin |
+| Postgres:              | `localhost:5432` | keycloak:bitnami |
 
 The example rules that are used in the docker instance of Logprep can be found 
 in `quickstart/exampledata/rules`.
