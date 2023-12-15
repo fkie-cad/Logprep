@@ -36,12 +36,31 @@ from functools import cached_property
 import opensearchpy as search
 from attrs import define, field, validators
 from opensearchpy import helpers
+from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.output import Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.metrics.metrics import Metric
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
+
+
+class MSGPECSerializer(JSONSerializer):
+    """A MSGPEC serializer"""
+
+    def __init__(self, output_connector: Output, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._encoder = output_connector._encoder
+        self._decoder = output_connector._decoder
+
+    def dumps(self, data):
+        # don't serialize strings
+        if isinstance(data, str):
+            return data
+        return self._encoder.encode(data).decode("utf-8")
+
+    def loads(self, data):
+        return self._decoder.decode(data)
 
 
 class OpensearchOutput(ElasticsearchOutput):
@@ -74,6 +93,7 @@ class OpensearchOutput(ElasticsearchOutput):
             http_auth=self.http_auth,
             ssl_context=self.ssl_context,
             timeout=self._config.timeout,
+            serializer=MSGPECSerializer(self),
         )
 
     def describe(self) -> str:
