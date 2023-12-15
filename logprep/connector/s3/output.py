@@ -147,7 +147,8 @@ class S3Output(Output):
             region_name=self._config.region_name,
         )
         config = boto3.session.Config(
-            connect_timeout=self._config.connect_timeout, retries={"max_attempts": 0}
+            connect_timeout=self._config.connect_timeout,
+            retries={"max_attempts": self._config.max_retries},
         )
         self._s3_resource = session.resource(
             "s3",
