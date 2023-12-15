@@ -129,11 +129,9 @@ class S3Output(Output):
         )
         """Number of events that were successfully written to s3"""
 
-    __slots__ = ["_message_backlog", "_current_backlog_count", "_index_cache"]
+    __slots__ = ["_message_backlog", "_index_cache"]
 
     _message_backlog: DefaultDict
-
-    _current_backlog_count: int
 
     _writing_thread: Optional[threading.Thread]
 
@@ -146,7 +144,6 @@ class S3Output(Output):
     def __init__(self, name: str, configuration: "S3Output.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self._message_backlog = defaultdict(list)
-        self._current_backlog_count = 0
         self._writing_thread = None
         self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
         self._s3_resource = None
@@ -208,34 +205,41 @@ class S3Output(Output):
         ----------
         document : dict
            Document to store.
-
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
         """
         prefix = self._add_dates(prefix)
         prefix = f"{self._base_prefix}{prefix}"
         self._message_backlog[prefix].append(document)
 
-        backlog_count = self._current_backlog_count + 1
-        if backlog_count == self._config.message_backlog_size:
-            if self._writing_thread is None or not self._writing_thread.is_alive():
-                message_backlog = deepcopy(self._message_backlog)
-                self._writing_thread = threading.Thread(
-                    target=self._write_document_batches, args=(message_backlog,)
-                )
-                self._writing_thread.start()
-                return True
-        self._current_backlog_count = backlog_count
-        return False
+        if self._get_backlog_size(self._message_backlog) >= self._config.message_backlog_size:
+            self._write_backlog()
 
-    def _write_document_batches(self, message_backlog):
-        self._logger.info(f"Writing {self._current_backlog_count + 1} documents to s3")
+    @staticmethod
+    def _get_backlog_size(message_backlog: dict):
+        return sum(len(values) for values in message_backlog.values())
+
+    def _write_backlog(self):
+        """Write to s3 if it is not already writing."""
+        if not self._message_backlog or self._writing_thread_is_running():
+            return
+
+        message_backlog = deepcopy(self._message_backlog)
+        self._writing_thread = threading.Thread(target=self._bulk, args=(message_backlog,))
+        self._writing_thread.start()
+
+    def _writing_thread_is_running(self):
+        return self._writing_thread is not None and self._writing_thread.is_alive()
+
+    def _bulk(self, message_backlog: dict):
+        self._logger.info("Writing %s documents to s3", self._get_backlog_size(message_backlog))
         for prefix_mb, document_batch in message_backlog.items():
             self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
         self._message_backlog.clear()
-        self._current_backlog_count = 0
+
+        if not self._config.call_input_callback:
+            return
+
+        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
+            self.input_connector.batch_finished_callback()
 
     def _write_document_batch(self, document_batch: dict, identifier: str):
         try:
@@ -276,9 +280,7 @@ class S3Output(Output):
             )
             prefix_value = self._config.default_prefix
 
-        batch_finished = self._write_to_s3_resource(document, prefix_value)
-        if self._config.call_input_callback and batch_finished and self.input_connector:
-            self.input_connector.batch_finished_callback()
+        self._write_to_s3_resource(document, prefix_value)
 
     @staticmethod
     def _build_no_prefix_document(message_document: dict, reason: str):
@@ -327,3 +329,9 @@ class S3Output(Output):
             "@timestamp": TimeParser.now().isoformat(),
         }
         self._write_to_s3_resource(error_document, self._config.error_prefix)
+
+    def shut_down(self) -> None:
+        """Wait for thread to finish writing before shutting down."""
+        if self._writing_thread_is_running():
+            self._writing_thread.join(5)
+        super().shut_down()
