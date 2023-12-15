@@ -78,7 +78,7 @@
                         <mxPoint x="313" y="180" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="22" value="wrong action consindere using exception not BaseException" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#666600;opacity=50;" parent="5" vertex="1">
+                <mxCell id="22" value="wrong action consindere using exception not BaseException" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" parent="5" vertex="1">
                     <mxGeometry x="1069" y="30" width="110.00000000000001" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="23" style="edgeStyle=orthogonalEdgeStyle;jumpStyle=arc;html=1;dashed=1;opacity=20;" parent="5" source="22" edge="1">

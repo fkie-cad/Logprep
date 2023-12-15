@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="dLlubgwYXh7pxlaa3Xrq" name="Page-1">
-        <mxGraphModel dx="1513" dy="558" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="832" dy="307" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -35,9 +35,6 @@
                 </mxCell>
                 <mxCell id="85" value="setup processor" style="whiteSpace=wrap;html=1;fillColor=#60a917;strokeColor=#2D7600;fontColor=#ffffff;rounded=0;" parent="31" vertex="1">
                     <mxGeometry x="375" y="58" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="117" value="use one ruletree with all rules?" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" parent="31" vertex="1">
-                    <mxGeometry x="925" y="55" width="110.00000000000001" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="37" value="processes event through different processors in pipeline" style="whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="31" vertex="1">
                     <mxGeometry x="715" y="65" width="120" height="60" as="geometry"/>
@@ -226,9 +223,6 @@
                     <mxGeometry x="898" y="125" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="106" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="32" source="45" target="105" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="118" style="edgeStyle=none;html=1;entryX=0.75;entryY=0;entryDx=0;entryDy=0;opacity=20;dashed=1;" parent="28" source="117" target="39" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="36" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;jumpStyle=arc;" parent="28" source="94" target="34" edge="1">
