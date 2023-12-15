@@ -256,6 +256,35 @@ class TestS3Output(BaseOutputTestCase):
 
         assert expected_prefix == resulting_prefix
 
+    def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):
+        self.object._config.message_backlog_size = 2
+        assert len(self.object._message_backlog) == 0
+        with mock.patch(
+            "logprep.connector.s3.output.S3Output._write_backlog"
+        ) as mock_write_backlog:
+            self.object.store({"test": "event"})
+        mock_write_backlog.assert_not_called()
+
+    def test_write_backlog_starts_writing_thread_which_acquires_lock_for_its_duration(self):
+        self.object._config.message_backlog_size = 1
+        self.object._message_backlog = {"foo": {"test": "event"}}
+        assert self.object._writing_thread is None
+        assert not self.object._lock.locked()
+
+        self.object._write_backlog()
+        assert self.object._lock.locked()
+        assert self.object._writing_thread
+
+        self._wait_for_writing_thread(self.object)
+        assert not self.object._lock.locked()
+
+    def test_write_backlog_does_not_start_writing_thread_if_lock_is_locked(self):
+        self.object._config.message_backlog_size = 1
+        self.object._message_backlog = {"foo": {"test": "event"}}
+        with self.object._lock:
+            self.object._write_backlog()
+            assert self.object._writing_thread is None
+
     @staticmethod
     def _wait_for_writing_thread(s3_output):
         if s3_output._writing_thread is not None:

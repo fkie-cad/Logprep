@@ -131,6 +131,8 @@ class S3Output(Output):
 
     __slots__ = ["_message_backlog", "_index_cache"]
 
+    _lock: threading.Lock
+
     _message_backlog: DefaultDict
 
     _writing_thread: Optional[threading.Thread]
@@ -143,6 +145,7 @@ class S3Output(Output):
 
     def __init__(self, name: str, configuration: "S3Output.Config", logger: Logger):
         super().__init__(name, configuration, logger)
+        self._lock = threading.Lock()
         self._message_backlog = defaultdict(list)
         self._writing_thread = None
         self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
@@ -219,27 +222,25 @@ class S3Output(Output):
 
     def _write_backlog(self):
         """Write to s3 if it is not already writing."""
-        if not self._message_backlog or self._writing_thread_is_running():
+        if not self._message_backlog or self._lock.locked():
             return
 
         message_backlog = deepcopy(self._message_backlog)
         self._writing_thread = threading.Thread(target=self._bulk, args=(message_backlog,))
         self._writing_thread.start()
 
-    def _writing_thread_is_running(self):
-        return self._writing_thread is not None and self._writing_thread.is_alive()
-
     def _bulk(self, message_backlog: dict):
-        self._logger.info("Writing %s documents to s3", self._get_backlog_size(message_backlog))
-        for prefix_mb, document_batch in message_backlog.items():
-            self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
-        self._message_backlog.clear()
+        with self._lock:
+            self._logger.info("Writing %s documents to s3", self._get_backlog_size(message_backlog))
+            for prefix_mb, document_batch in message_backlog.items():
+                self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
+            self._message_backlog.clear()
 
-        if not self._config.call_input_callback:
-            return
+            if not self._config.call_input_callback:
+                return
 
-        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
+            if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
+                self.input_connector.batch_finished_callback()
 
     def _write_document_batch(self, document_batch: dict, identifier: str):
         try:
@@ -332,6 +333,6 @@ class S3Output(Output):
 
     def shut_down(self) -> None:
         """Wait for thread to finish writing before shutting down."""
-        if self._writing_thread_is_running():
+        if self._lock.locked():
             self._writing_thread.join(5)
         super().shut_down()
