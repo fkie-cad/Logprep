@@ -59,7 +59,12 @@ class OpensearchOutput(ElasticsearchOutput):
         queue_size: int = field(
             default=4, validator=[validators.instance_of(int), validators.gt(1)]
         )
-        """Number of threads to use for bulk requests."""
+        """Number of queue size to use for bulk requests."""
+
+        chunk_size: int = field(
+            default=500, validator=[validators.instance_of(int), validators.gt(1)]
+        )
+        """Chunk size to use for bulk requests."""
 
     @cached_property
     def _search_context(self):
@@ -83,26 +88,12 @@ class OpensearchOutput(ElasticsearchOutput):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
-    @Metric.measure_time()
-    def _write_backlog(self):
-        if not self._message_backlog:
-            return
-
-        self._bulk(
-            self._search_context,
-            self._message_backlog,
-            max_retries=self._config.max_retries,
-            chunk_size=len(self._message_backlog) / self._config.thread_count,
-            # thread_count=self._config.thread_count,
-        )
-        self._message_backlog.clear()
-
     def _bulk(self, *args, **kwargs):
         try:
             for success, item in helpers.parallel_bulk(
                 self._search_context,
                 actions=self._message_backlog,
-                chunk_size=int(len(self._message_backlog) / self._config.thread_count),
+                chunk_size=self._config.chunk_size,
                 queue_size=self._config.queue_size,
                 raise_on_error=True,
                 raise_on_exception=True,
