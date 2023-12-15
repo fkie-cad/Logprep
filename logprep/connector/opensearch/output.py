@@ -37,7 +37,7 @@ import opensearchpy as search
 from attrs import define, field, validators
 from opensearchpy import helpers
 
-from logprep.abc.output import FatalOutputError, Output
+from logprep.abc.output import Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
 from logprep.metrics.metrics import Metric
 
@@ -52,6 +52,11 @@ class OpensearchOutput(ElasticsearchOutput):
         """Config for OpensearchOutput."""
 
         thread_count: int = field(
+            default=4, validator=[validators.instance_of(int), validators.gt(1)]
+        )
+        """Number of threads to use for bulk requests."""
+
+        queue_size: int = field(
             default=4, validator=[validators.instance_of(int), validators.gt(1)]
         )
         """Number of threads to use for bulk requests."""
@@ -97,10 +102,10 @@ class OpensearchOutput(ElasticsearchOutput):
             for success, item in helpers.parallel_bulk(
                 self._search_context,
                 actions=self._message_backlog,
-                chunk_size=len(self._message_backlog) / self._config.thread_count,
-                queue_size=self._config.message_backlog_size,
+                chunk_size=int(len(self._message_backlog) / self._config.thread_count),
+                queue_size=self._config.queue_size,
                 raise_on_error=True,
-                raise_on_exception=False,
+                raise_on_exception=True,
             ):
                 if not success:
                     result = item[list(item.keys())[0]]
