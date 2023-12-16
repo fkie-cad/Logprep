@@ -15,7 +15,7 @@ import warnings
 from ctypes import c_bool
 from functools import cached_property
 from multiprocessing import Lock, Process, Value, current_process
-from typing import Any, List, Tuple
+from typing import Any, Generator, List, Tuple
 
 import attrs
 import msgspec
@@ -246,6 +246,12 @@ class Pipeline:
         extra_outputs = []
         event = None
         try:
+            for event in self._get_event():
+                if event:
+                    extra_outputs = self.process_event(event)
+                if event and self._output:
+                    self._store_event(event)
+                return event, extra_outputs
             event = self._get_event()
         except CriticalInputParsingError as error:
             input_data = error.raw_input
@@ -254,11 +260,6 @@ class Pipeline:
             error_event = self._encoder.encode({"invalid_json": input_data})
             self._store_failed_event(error, "", error_event)
             self.logger.error(f"{error}, event was written to error output")
-        if event:
-            extra_outputs = self.process_event(event)
-        if event and self._output:
-            self._store_event(event)
-        return event, extra_outputs
 
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
@@ -271,13 +272,13 @@ class Pipeline:
             if output.default:
                 output.store_failed(str(error), self._decoder.decode(event_received), event)
 
-    def _get_event(self) -> dict:
+    def _get_event(self) -> Generator:
         event, non_critical_error_msg = self._input.get_next(self._timeout)
         if non_critical_error_msg and self._output:
             for _, output in self._output.items():
                 if output.default:
                     output.store_failed(non_critical_error_msg, event, None)
-        return event
+        yield event
 
     @Metric.measure_time()
     def process_event(self, event: dict):

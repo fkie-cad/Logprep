@@ -235,11 +235,14 @@ class ConfluentKafkaInput(Input):
 
     _last_valid_records: dict
 
-    __slots__ = ["_last_valid_records"]
+    _message_backlog: list[dict]
+
+    __slots__ = ["_last_valid_records", "_message_backlog"]
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
         self._last_valid_records = {}
+        self._message_backlog = []
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -375,7 +378,13 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
         try:
-            message = self._consumer.poll(timeout=timeout)
+            if not self._message_backlog and self.output_connector:
+                self._message_backlog = [
+                    self._consumer.poll(timeout=timeout),
+                    *self._consumer.consume(self.output_connector._config.message_backlog_size - 1),
+                ]
+            message = self._message_backlog.pop(0)
+
         except RuntimeError as error:
             raise FatalInputError(self, str(error)) from error
         if message is None:
