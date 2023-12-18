@@ -15,7 +15,7 @@ import warnings
 from ctypes import c_bool
 from functools import cached_property
 from multiprocessing import Lock, Process, Value, current_process
-from typing import Any, Generator, List, Tuple
+from typing import Any, List, Tuple
 
 import attrs
 import msgspec
