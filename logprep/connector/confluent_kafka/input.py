@@ -235,14 +235,11 @@ class ConfluentKafkaInput(Input):
 
     _last_valid_records: dict
 
-    _message_backlog: list[dict]
-
-    __slots__ = ["_last_valid_records", "_message_backlog"]
+    __slots__ = ["_last_valid_records"]
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
         self._last_valid_records = {}
-        self._message_backlog = []
 
     @cached_property
     def _consumer(self) -> Consumer:

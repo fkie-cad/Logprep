@@ -271,7 +271,7 @@ class Pipeline:
             if output.default:
                 output.store_failed(str(error), self._decoder.decode(event_received), event)
 
-    def _get_event(self) -> Generator:
+    def _get_event(self) -> dict:
         event, non_critical_error_msg = self._input.get_next(self._timeout)
         if non_critical_error_msg and self._output:
             for _, output in self._output.items():
