@@ -246,12 +246,6 @@ class Pipeline:
         extra_outputs = []
         event = None
         try:
-            for event in self._get_event():
-                if event:
-                    extra_outputs = self.process_event(event)
-                if event and self._output:
-                    self._store_event(event)
-                return event, extra_outputs
             event = self._get_event()
         except CriticalInputParsingError as error:
             input_data = error.raw_input
@@ -260,6 +254,11 @@ class Pipeline:
             error_event = self._encoder.encode({"invalid_json": input_data})
             self._store_failed_event(error, "", error_event)
             self.logger.error(f"{error}, event was written to error output")
+        if event:
+            extra_outputs = self.process_event(event)
+        if event and self._output:
+            self._store_event(event)
+        return event, extra_outputs
 
     def _store_event(self, event: dict) -> None:
         for output_name, output in self._output.items():
@@ -278,7 +277,7 @@ class Pipeline:
             for _, output in self._output.items():
                 if output.default:
                     output.store_failed(non_critical_error_msg, event, None)
-        yield event
+        return event
 
     @Metric.measure_time()
     def process_event(self, event: dict):

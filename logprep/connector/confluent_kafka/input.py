@@ -378,13 +378,7 @@ class ConfluentKafkaInput(Input):
             Raises if an input is invalid or if it causes an error.
         """
         try:
-            if not self._message_backlog and self.output_connector:
-                self._message_backlog = [
-                    self._consumer.poll(timeout=timeout),
-                    *self._consumer.consume(self.output_connector._config.message_backlog_size - 1),
-                ]
-            message = self._message_backlog.pop(0)
-
+            message = self._consumer.poll(timeout=timeout)
         except RuntimeError as error:
             raise FatalInputError(self, str(error)) from error
         if message is None:
