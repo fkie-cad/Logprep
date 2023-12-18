@@ -7,6 +7,15 @@ Overview
 
 Logprep is designed to receive, process and forward log messages.
 It consists of several interconnected components that work together to make this possible.
+
+.. raw:: html
+   :file: ../../development/architecture/diagramms/overview.drawio.html
+
+
+
+Starting Logprep
+================
+
 The following diagramm shows the starting behaviour of Logprep. 
 
 .. raw:: html
