@@ -108,11 +108,11 @@ class OpensearchOutput(ElasticsearchOutput):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
-    def _bulk(self, *args, **kwargs):
+    def _bulk(self, client, actions, *args, **kwargs):
         try:
             for success, item in helpers.parallel_bulk(
-                self._search_context,
-                actions=self._message_backlog,
+                client,
+                actions=actions,
                 chunk_size=self._config.chunk_size,
                 queue_size=self._config.queue_size,
                 raise_on_error=True,

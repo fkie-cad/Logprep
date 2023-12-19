@@ -313,9 +313,9 @@ class ElasticsearchOutput(Output):
         )
         self._message_backlog.clear()
 
-    def _bulk(self, *args, **kwargs):
+    def _bulk(self, client, actions, *args, **kwargs):
         try:
-            helpers.bulk(*args, **kwargs)
+            helpers.bulk(client, actions, *args, **kwargs)
         except search.SerializationError as error:
             self._handle_serialization_error(error)
         except search.ConnectionError as error:

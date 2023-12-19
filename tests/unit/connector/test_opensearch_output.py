@@ -32,7 +32,7 @@ class NotJsonSerializableMock:
 
 in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
 
-# helpers.bulk = mock.MagicMock()
+helpers.parallel_bulk = mock.MagicMock()
 
 
 class TestOpenSearchOutput(BaseOutputTestCase):
@@ -48,7 +48,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_describe_returns_output(self):
         assert (
             self.object.describe()
-            == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['host:123']"
+            == "OpensearchOutput (Test Instance Name) - Opensearch Output: ['localhost:9200']"
         )
 
     def test_store_sends_to_default_index(self):
@@ -200,8 +200,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             }
         ]
         self.object._handle_bulk_index_error(mock_bulk_index_error)
-        call_args = fake_bulk.call_args[0][1]
-        error_document = call_args[0]
+        error_document = fake_bulk.call_args.kwargs.get("actions").pop()
         assert "reason" in error_document
         assert "@timestamp" in error_document
         assert "_index" in error_document
@@ -368,7 +367,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
         self.object.store({"event": "test_event"})
         assert len(self.object._message_backlog) == 0
 
-    @pytest.mark.skipif(in_ci, reason="requires opensearch")
+    @pytest.mark.skip(reason="This test is only for local debugging")
     def test_opensearch_parallel_bulk(self):
         config = {
             "type": "opensearch_output",
