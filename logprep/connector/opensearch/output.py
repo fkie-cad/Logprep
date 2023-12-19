@@ -40,7 +40,6 @@ from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.output import Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
-from logprep.metrics.metrics import Metric
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
 
@@ -57,7 +56,10 @@ class MSGPECSerializer(JSONSerializer):
         # don't serialize strings
         if isinstance(data, str):
             return data
-        return self._encoder.encode(data).decode("utf-8")
+        try:
+            return self._encoder.encode(data).decode("utf-8")
+        except (ValueError, TypeError) as e:
+            raise search.exceptions.SerializationError(data, e)
 
     def loads(self, data):
         return self._decoder.decode(data)
