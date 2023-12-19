@@ -90,8 +90,19 @@ input:
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
       group.id: cgroup3
-      enable.auto.commit: "false"
+      enable.auto.commit: "true"
+      auto.commit.interval.ms: "10000"
       enable.auto.offset.store: "false"
+      queued.min.messages: "100000"
+      queued.max.messages.kbytes: "65536"
+      statistics.interval.ms: "60000"
+    preprocessing:
+      version_info_target_field: Logprep_version_info
+      log_arrival_time_target_field: event.ingested
+      hmac:
+        target: <RAW_MSG>
+        key: "thisisasecureandrandomkey"
+        output_field: Full_event
 
 output:
   opensearch:
@@ -100,10 +111,13 @@ output:
       - 127.0.0.1:9200
     default_index: processed
     error_index: errors
-    message_backlog_size: 1000
+    message_backlog_size: 16000
     timeout: 10000
     flush_timeout: 60
     max_retries: 3
+    thread_count: 16
+    queue_size: 32
+    chunk_size: 500
     user: admin
     secret: admin
   kafka:
@@ -114,3 +128,4 @@ output:
     flush_timeout: 300
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
+      statistics.interval.ms: "60000"

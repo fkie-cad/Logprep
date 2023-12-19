@@ -36,12 +36,33 @@ from functools import cached_property
 import opensearchpy as search
 from attrs import define, field, validators
 from opensearchpy import helpers
+from opensearchpy.serializer import JSONSerializer
 
 from logprep.abc.output import Output
 from logprep.connector.elasticsearch.output import ElasticsearchOutput
-from logprep.metrics.metrics import Metric
 
 logging.getLogger("opensearch").setLevel(logging.WARNING)
+
+
+class MSGPECSerializer(JSONSerializer):
+    """A MSGPEC serializer"""
+
+    def __init__(self, output_connector: Output, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._encoder = output_connector._encoder
+        self._decoder = output_connector._decoder
+
+    def dumps(self, data):
+        # don't serialize strings
+        if isinstance(data, str):
+            return data
+        try:
+            return self._encoder.encode(data).decode("utf-8")
+        except (ValueError, TypeError) as e:
+            raise search.exceptions.SerializationError(data, e)
+
+    def loads(self, data):
+        return self._decoder.decode(data)
 
 
 class OpensearchOutput(ElasticsearchOutput):
@@ -56,6 +77,16 @@ class OpensearchOutput(ElasticsearchOutput):
         )
         """Number of threads to use for bulk requests."""
 
+        queue_size: int = field(
+            default=4, validator=[validators.instance_of(int), validators.gt(1)]
+        )
+        """Number of queue size to use for bulk requests."""
+
+        chunk_size: int = field(
+            default=500, validator=[validators.instance_of(int), validators.gt(1)]
+        )
+        """Chunk size to use for bulk requests."""
+
     @cached_property
     def _search_context(self):
         return search.OpenSearch(
@@ -64,6 +95,7 @@ class OpensearchOutput(ElasticsearchOutput):
             http_auth=self.http_auth,
             ssl_context=self.ssl_context,
             timeout=self._config.timeout,
+            serializer=MSGPECSerializer(self),
         )
 
     def describe(self) -> str:
@@ -78,23 +110,20 @@ class OpensearchOutput(ElasticsearchOutput):
         base_description = Output.describe(self)
         return f"{base_description} - Opensearch Output: {self._config.hosts}"
 
-    @Metric.measure_time()
-    def _write_backlog(self):
-        if not self._message_backlog:
-            return
-
-        self._bulk(
-            self._search_context,
-            self._message_backlog,
-            max_retries=self._config.max_retries,
-            chunk_size=len(self._message_backlog) / self._config.thread_count,
-            thread_count=self._config.thread_count,
-        )
-        self._message_backlog.clear()
-
-    def _bulk(self, *args, **kwargs):
+    def _bulk(self, client, actions, *args, **kwargs):
         try:
-            helpers.parallel_bulk(*args, **kwargs)
+            for success, item in helpers.parallel_bulk(
+                client,
+                actions=actions,
+                chunk_size=self._config.chunk_size,
+                queue_size=self._config.queue_size,
+                raise_on_error=True,
+                raise_on_exception=True,
+            ):
+                if not success:
+                    result = item[list(item.keys())[0]]
+                    if "error" in result:
+                        raise result.get("error")
         except search.SerializationError as error:
             self._handle_serialization_error(error)
         except search.ConnectionError as error:

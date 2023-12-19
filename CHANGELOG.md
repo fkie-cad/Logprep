@@ -5,11 +5,23 @@
 
 ### Features
 
-* make thread_count configurable for parallel_bulk in opensearch output connector
+### Improvements
+
+### Bugfix
+
+
+## v9.0.3
+### Breaking
+
+### Features
+
+* make `thread_count`, `queue_size` and `chunk_size` configurable for `parallel_bulk` in opensearch output connector
 
 ### Improvements
 
 ### Bugfix
+
+* fix `parallel_bulk` implementation not delivering messages to opensearch
 
 ## v9.0.2
 
