@@ -1,0 +1,148 @@
+<mxfile host="65bd71144e">
+    <diagram id="a03-Ii1XNDp9HGae31oh" name="Page-1">
+        <mxGraphModel dx="832" dy="307" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="22" value="" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=20;horizontalStack=0;whiteSpace=wrap;" parent="1" vertex="1">
+                    <mxGeometry x="68" y="40" width="1340" height="850" as="geometry">
+                        <mxRectangle x="70" y="40" width="70" height="30" as="alternateBounds"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="23" value="Input Connector" style="swimlane;html=1;startSize=20;horizontal=0;" parent="22" vertex="1">
+                    <mxGeometry y="20" width="1340" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="with call of get_event() handed over to pipeline for processing" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="23" vertex="1">
+                    <mxGeometry x="202" y="20" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="Pipeline" style="swimlane;html=1;startSize=20;horizontal=0;" parent="22" vertex="1">
+                    <mxGeometry y="140" width="1340" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="27" value="method process_event() is called within that method the processor.process method is called" style="whiteSpace=wrap;html=1;rounded=0;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="24" vertex="1">
+                    <mxGeometry x="197" y="20" width="175" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="58" value="start and call of get_event()" style="ellipse;whiteSpace=wrap;html=1;" parent="24" vertex="1">
+                    <mxGeometry x="40" y="20" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="60" value="calls the store_event() method" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="24" vertex="1">
+                    <mxGeometry x="1117" y="30" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" value="Processor" style="swimlane;html=1;startSize=20;horizontal=0;" parent="22" vertex="1">
+                    <mxGeometry y="260" width="1340" height="330" as="geometry"/>
+                </mxCell>
+                <mxCell id="39" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="25" source="33" target="34" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="method _process_ruletree_multiple&lt;br&gt;_times / _process_ruletree_once is called&amp;nbsp;" style="whiteSpace=wrap;html=1;rounded=0;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="25" vertex="1">
+                    <mxGeometry x="407" y="20" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="41" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="25" source="34" target="40" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" value="_process_rule is called which therefore calls the apply_rules_wrapper method&amp;nbsp;" style="whiteSpace=wrap;html=1;rounded=0;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="25" vertex="1">
+                    <mxGeometry x="614" y="20" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="43" value="" style="edgeStyle=none;html=1;" parent="25" source="40" target="42" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="40" value="call of apply_rules method which is implemented in the respective processor and processing of event&amp;nbsp;&amp;nbsp;" style="whiteSpace=wrap;html=1;rounded=0;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="25" vertex="1">
+                    <mxGeometry x="863" y="20" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="44" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;jumpStyle=arc;" parent="25" source="42" target="34" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="45" value="yes" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="44" vertex="1" connectable="0">
+                    <mxGeometry x="-0.6078" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="42" value="apply multiple &lt;br&gt;times?" style="rhombus;whiteSpace=wrap;html=1;rounded=0;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="25" vertex="1">
+                    <mxGeometry x="883" y="150" width="119" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="Output Connector" style="swimlane;html=1;startSize=20;horizontal=0;" parent="22" vertex="1">
+                    <mxGeometry y="590" width="1340" height="260" as="geometry"/>
+                </mxCell>
+                <mxCell id="64" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="30" source="48" target="63" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="67" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" parent="30" source="48" target="66" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="68" value="CriticalOutputError" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="67" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2405" y="-1" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="48" value="processed event is stored in the given output connector" style="whiteSpace=wrap;html=1;rounded=0;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="30" vertex="1">
+                    <mxGeometry x="1098" y="20" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="52" value="failed event is stored in list of outputs" style="whiteSpace=wrap;html=1;fillColor=#a20025;strokeColor=#6F0000;fontColor=#ffffff;" parent="30" vertex="1">
+                    <mxGeometry x="326" y="30" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="63" value="event processed" style="ellipse;whiteSpace=wrap;html=1;" parent="30" vertex="1">
+                    <mxGeometry x="1118" y="154" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="66" value="if occurs this error is being logged" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#a20025;fontColor=#ffffff;strokeColor=#6F0000;" parent="30" vertex="1">
+                    <mxGeometry x="812" y="30" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="22" source="26" target="27" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="36" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="22" source="27" target="33" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="405.9999999999998" y="320" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="49" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="22" source="42" target="60" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="51" value="no" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="49" vertex="1" connectable="0">
+                    <mxGeometry x="-0.7303" y="1" relative="1" as="geometry">
+                        <mxPoint x="-12" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="53" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;" parent="22" source="26" target="52" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="385" y="80"/>
+                            <mxPoint x="385" y="610"/>
+                        </Array>
+                        <mxPoint x="327.5" y="80" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="54" value="InputParsingError" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="53" vertex="1" connectable="0">
+                    <mxGeometry x="0.4867" y="3" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="55" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;dashed=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;" parent="22" source="40" target="52" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="817" y="340"/>
+                            <mxPoint x="817" y="400"/>
+                            <mxPoint x="471" y="400"/>
+                            <mxPoint x="471" y="650"/>
+                        </Array>
+                        <mxPoint x="223" y="665" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="56" value="ProcessingCriticalError" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="55" vertex="1" connectable="0">
+                    <mxGeometry x="-0.1141" y="-1" relative="1" as="geometry">
+                        <mxPoint x="4" y="-1" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="59" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" parent="22" source="58" target="26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="61" style="edgeStyle=orthogonalEdgeStyle;html=1;" parent="22" source="60" target="48" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="65" style="edgeStyle=orthogonalEdgeStyle;html=1;" parent="22" source="63" target="58" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="-123" y="240" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

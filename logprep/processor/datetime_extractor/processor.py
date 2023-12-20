@@ -34,13 +34,6 @@ from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
 
 
-class DateTimeExtractorError(BaseException):
-    """Base class for DateTimeExtractor related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"DateTimeExtractor ({name}): {message}")
-
-
 class DatetimeExtractor(Processor):
     """Split timestamps into fields containing their parts."""
 

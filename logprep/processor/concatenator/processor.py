@@ -31,13 +31,6 @@ from logprep.processor.field_manager.processor import FieldManager
 from logprep.util.helper import get_dotted_field_value
 
 
-class ConcatenatorError(BaseException):
-    """Base class for Concatenator related exceptions."""
-
-    def __init__(self, name: str, message: str):
-        super().__init__(f"Concatenator ({name}): {message}")
-
-
 class Concatenator(FieldManager):
     """Concatenates a list of source fields into a new target field."""
 
