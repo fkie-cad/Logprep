@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="lxmM-i-9KvldtpuMjnhC" name="Page-1">
-        <mxGraphModel dx="1189" dy="439" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="924" dy="626" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -26,21 +26,21 @@
                     <mxGeometry x="19.999999999999545" y="80" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="12" value="used_server_ports" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" parent="9" vertex="1">
-                    <mxGeometry x="-160" y="351" width="329" height="40" as="geometry"/>
+                    <mxGeometry x="-320" y="351" width="489" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="16" value="lock" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" parent="9" vertex="1">
-                    <mxGeometry x="-158.5" y="591" width="327.5" height="40" as="geometry"/>
+                    <mxGeometry x="-320" y="591" width="489" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="17" value="log_queue" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" parent="9" vertex="1">
-                    <mxGeometry x="-160" y="429" width="331" height="40" as="geometry"/>
+                    <mxGeometry x="-320" y="429" width="491" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="19" value="continue_iterating&lt;span style=&quot;color: rgba(0, 0, 0, 0); font-family: monospace; font-size: 0px; text-align: start;&quot;&gt;%3CmxGraphModel%3E%3Croot%3E%3CmxCell%20id%3D%220%22%2F%3E%3CmxCell%20id%3D%221%22%20parent%3D%220%22%2F%3E%3CmxCell%20id%3D%222%22%20value%3D%22used_server_ports%22%20style%3D%22shape%3Dstep%3Bperimeter%3DstepPerimeter%3BwhiteSpace%3Dwrap%3Bhtml%3D1%3BfixedSize%3D1%3BfillColor%3Dnone%3B%22%20vertex%3D%221%22%20parent%3D%221%22%3E%3CmxGeometry%20x%3D%22208%22%20y%3D%22200%22%20width%3D%22150%22%20height%3D%2240%22%20as%3D%22geometry%22%2F%3E%3C%2FmxCell%3E%3C%2Froot%3E%3C%2FmxGraphModel%3E&lt;/span&gt;" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" parent="9" vertex="1">
-                    <mxGeometry x="-159" y="510" width="329" height="40" as="geometry"/>
+                    <mxGeometry x="-320" y="510" width="490" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="20" value="current_process" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" vertex="1" parent="9">
                     <mxGeometry x="-316" y="270" width="488" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="21" value="_logprep_config" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" vertex="1" parent="9">
+                <mxCell id="21" value="config (logprep_config)" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" vertex="1" parent="9">
                     <mxGeometry x="-319" y="191" width="488" height="40" as="geometry"/>
                 </mxCell>
             </root>
