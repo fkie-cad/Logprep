@@ -5,28 +5,28 @@
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
                 <mxCell id="6" value="" style="swimlane;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;startSize=0;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="200" y="10" width="492" height="750" as="geometry"/>
+                    <mxGeometry x="200" y="10" width="492" height="670" as="geometry"/>
                 </mxCell>
                 <mxCell id="7" value="Process 1" style="swimlane;startSize=20;html=1;" parent="6" vertex="1">
-                    <mxGeometry width="160" height="750" as="geometry"/>
+                    <mxGeometry width="160" height="670" as="geometry"/>
                 </mxCell>
                 <mxCell id="2" value="main()" style="rounded=0;whiteSpace=wrap;html=1;" parent="7" vertex="1">
                     <mxGeometry x="15" y="80" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="8" value="Process 2" style="swimlane;startSize=20;html=1;" parent="6" vertex="1">
-                    <mxGeometry x="160" width="160" height="750" as="geometry"/>
+                    <mxGeometry x="160" width="160" height="670" as="geometry"/>
                 </mxCell>
                 <mxCell id="3" value="pipeline1" style="rounded=0;whiteSpace=wrap;html=1;" parent="8" vertex="1">
                     <mxGeometry x="20" y="80" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="9" value="Process n" style="swimlane;startSize=20;html=1;" parent="6" vertex="1">
-                    <mxGeometry x="320" width="172" height="750" as="geometry"/>
+                    <mxGeometry x="320" width="172" height="670" as="geometry"/>
                 </mxCell>
                 <mxCell id="4" value="pipeline n" style="rounded=0;whiteSpace=wrap;html=1;" parent="9" vertex="1">
                     <mxGeometry x="19.999999999999545" y="80" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="12" value="used_server_ports" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" parent="9" vertex="1">
-                    <mxGeometry x="-316" y="190" width="485" height="40" as="geometry"/>
+                    <mxGeometry x="-160" y="351" width="329" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="16" value="lock" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" parent="9" vertex="1">
                     <mxGeometry x="-158.5" y="591" width="327.5" height="40" as="geometry"/>
@@ -38,10 +38,10 @@
                     <mxGeometry x="-159" y="510" width="329" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="20" value="current_process" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" vertex="1" parent="9">
-                    <mxGeometry x="-318" y="270" width="488" height="40" as="geometry"/>
+                    <mxGeometry x="-316" y="270" width="488" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="21" value="_logprep_config" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#6d8764;fontColor=#ffffff;strokeColor=#3A5431;" vertex="1" parent="9">
-                    <mxGeometry x="-319" y="350" width="488" height="40" as="geometry"/>
+                    <mxGeometry x="-319" y="191" width="488" height="40" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

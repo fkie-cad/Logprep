@@ -12,7 +12,6 @@ It consists of several interconnected components that work together to make this
    :file: ../../development/architecture/diagramms/overview.drawio.html
 
 
-
 Starting Logprep
 ================
 
@@ -39,6 +38,7 @@ PipelineManager and therefore the start of the MultiprocessingPipeline.
 .. raw:: html
    :file: ../../development/architecture/diagramms/pipeline.drawio.html
 
+
 Input
 =====
 
@@ -47,7 +47,6 @@ These was deemed to be important enough to be part of the diagram.
 
 .. raw:: html
    :file: ../../development/architecture/diagramms/input.drawio.html
-
 
 
 Processor
@@ -81,7 +80,6 @@ This was deemed to be important enough to be part of the diagram.
    :file: ../../development/architecture/diagramms/output.drawio.html
 
 
-
 Event flow
 ==========
 
@@ -94,6 +92,14 @@ The following diagrams illustrate the flow of a single event to make it more com
 .. raw:: html
    :file: ../../development/architecture/diagramms/event.drawio.html
 
+
+Shared ressources within Multiprocessing
+========================================
+
+This diagram shows what ressources are shared within the multiprocessing processes.
+
+.. raw:: html
+   :file: ../../development/architecture/diagramms/multiprocessing.drawio.html
 
 Legend
 ======

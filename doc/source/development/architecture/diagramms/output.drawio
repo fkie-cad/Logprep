@@ -59,7 +59,7 @@
                 <mxCell id="77" value="_store_extra_data()" style="whiteSpace=wrap;html=1;fillColor=#60a917;strokeColor=#2D7600;fontColor=#ffffff;" parent="27" vertex="1">
                     <mxGeometry x="740" y="20" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="80" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=1;entryY=0.25;entryDx=0;entryDy=0;dashed=1;opacity=20;" parent="27" source="79" target="77" edge="1">
+                <mxCell id="80" style="html=1;entryX=1;entryY=0.25;entryDx=0;entryDy=0;dashed=1;opacity=20;" parent="27" source="79" target="77" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="79" value="revise for loops&lt;br&gt;&amp;nbsp;iterate only over outputs and pass all documents as batch" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" parent="27" vertex="1">

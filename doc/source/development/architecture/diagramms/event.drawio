@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="CprJfZTJ5oxMJRHnkWTq" name="Page-1">
-        <mxGraphModel dx="1072" dy="307" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="832" dy="307" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -10,7 +10,7 @@
                 <mxCell id="25" value="Kafka TopicPartition" style="swimlane;html=1;startSize=20;horizontal=0;" parent="24" vertex="1">
                     <mxGeometry width="1070" height="170" as="geometry"/>
                 </mxCell>
-                <mxCell id="56" value="&lt;span style=&quot;color: rgb(255, 255, 255);&quot;&gt;event is written to kafka topic&lt;/span&gt;" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="25">
+                <mxCell id="56" value="&lt;font style=&quot;background-color: rgb(255, 255, 255);&quot; color=&quot;#000000&quot;&gt;event is written to kafka topic&lt;/font&gt;" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="25">
                     <mxGeometry x="56" y="45" width="120" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="34" value="librdkafka" style="swimlane;html=1;startSize=20;horizontal=0;" parent="24" vertex="1">
