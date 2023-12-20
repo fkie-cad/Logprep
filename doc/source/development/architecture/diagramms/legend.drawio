@@ -4,9 +4,9 @@
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="unwxUYylMrVXpR_ENPoR-2" value="Legend" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=20;horizontalStack=0;whiteSpace=wrap;" parent="1" vertex="1" collapsed="1">
-                    <mxGeometry x="40" y="46" width="80" height="30" as="geometry">
-                        <mxRectangle x="40" y="46" width="820" height="530" as="alternateBounds"/>
+                <mxCell id="unwxUYylMrVXpR_ENPoR-2" value="Legend" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=20;horizontalStack=0;whiteSpace=wrap;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="46" width="820" height="530" as="geometry">
+                        <mxRectangle x="40" y="46" width="80" height="30" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="unwxUYylMrVXpR_ENPoR-3" value="event flow" style="swimlane;html=1;startSize=20;horizontal=0;" parent="unwxUYylMrVXpR_ENPoR-2" vertex="1">
@@ -39,7 +39,7 @@
                         <mxPoint x="520.0000000000002" y="158.99999999999977" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="jUpPP1JXqRc3SLJDzfIx-2" value="Chronological Sequence" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=none;fontFamily=Helvetica;fontSize=12;fontColor=#FFFFFF;" parent="unwxUYylMrVXpR_ENPoR-3" vertex="1">
+                <mxCell id="jUpPP1JXqRc3SLJDzfIx-2" value="Chronological Sequence" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=#FFFFFF;fontFamily=Helvetica;fontSize=12;fontColor=#000000;" parent="unwxUYylMrVXpR_ENPoR-3" vertex="1">
                     <mxGeometry x="519" y="145" width="81" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="2" value="shared ressource" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="unwxUYylMrVXpR_ENPoR-3" vertex="1">
@@ -54,7 +54,7 @@
                         <mxPoint x="120.00000000000023" y="58.99999999999977" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="unwxUYylMrVXpR_ENPoR-7" value="raised errors" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=none;fontFamily=Helvetica;fontSize=12;fontColor=#FFFFFF;" parent="unwxUYylMrVXpR_ENPoR-4" vertex="1">
+                <mxCell id="unwxUYylMrVXpR_ENPoR-7" value="raised errors" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=#FFFFFF;fontFamily=Helvetica;fontSize=12;fontColor=#000000;" parent="unwxUYylMrVXpR_ENPoR-4" vertex="1">
                     <mxGeometry x="119" y="45" width="81" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="ZTVlnvCu1oPu2bua0lhl-4" value="raised Error" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e51400;fontColor=#ffffff;strokeColor=#B20000;" parent="unwxUYylMrVXpR_ENPoR-4" vertex="1">

@@ -85,10 +85,14 @@ This was deemed to be important enough to be part of the diagram.
 Event flow
 ==========
 
-The following diagram illustrates the flow of a single event to make it more comprehensible.
+The following diagrams illustrate the flow of a single event to make it more comprehensible.
 
 .. raw:: html
    :file: ../../development/architecture/diagramms/event_flow.drawio.html
+
+
+.. raw:: html
+   :file: ../../development/architecture/diagramms/event.drawio.html
 
 
 Legend
