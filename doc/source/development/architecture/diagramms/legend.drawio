@@ -1,12 +1,12 @@
 <mxfile host="65bd71144e" pages="31">
     <diagram id="tes6gjWIuB-Xw_XX2HSq" name="Legend">
-        <mxGraphModel dx="832" dy="563" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+        <mxGraphModel dx="832" dy="307" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="unwxUYylMrVXpR_ENPoR-2" value="Legend" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=20;horizontalStack=0;whiteSpace=wrap;" parent="1" vertex="1">
-                    <mxGeometry x="40" y="46" width="820" height="530" as="geometry">
-                        <mxRectangle x="40" y="46" width="80" height="30" as="alternateBounds"/>
+                <mxCell id="unwxUYylMrVXpR_ENPoR-2" value="Legend" style="swimlane;html=1;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=20;horizontalStack=0;whiteSpace=wrap;" parent="1" vertex="1" collapsed="1">
+                    <mxGeometry x="40" y="46" width="80" height="30" as="geometry">
+                        <mxRectangle x="40" y="46" width="820" height="530" as="alternateBounds"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="unwxUYylMrVXpR_ENPoR-3" value="event flow" style="swimlane;html=1;startSize=20;horizontal=0;" parent="unwxUYylMrVXpR_ENPoR-2" vertex="1">
@@ -42,7 +42,7 @@
                 <mxCell id="jUpPP1JXqRc3SLJDzfIx-2" value="Chronological Sequence" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;labelBackgroundColor=none;fontFamily=Helvetica;fontSize=12;fontColor=#FFFFFF;" parent="unwxUYylMrVXpR_ENPoR-3" vertex="1">
                     <mxGeometry x="519" y="145" width="81" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="2" value="shared ressource" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" vertex="1" parent="unwxUYylMrVXpR_ENPoR-3">
+                <mxCell id="2" value="shared ressource" style="shape=step;perimeter=stepPerimeter;whiteSpace=wrap;html=1;fixedSize=1;" parent="unwxUYylMrVXpR_ENPoR-3" vertex="1">
                     <mxGeometry x="55" y="214" width="150" height="40" as="geometry"/>
                 </mxCell>
                 <mxCell id="unwxUYylMrVXpR_ENPoR-4" value="Error/ Warning" style="swimlane;html=1;startSize=20;horizontal=0;" parent="unwxUYylMrVXpR_ENPoR-2" vertex="1">
