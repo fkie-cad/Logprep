@@ -1,0 +1,76 @@
+<mxfile host="65bd71144e">
+    <diagram id="wefnNX_0ZhHSLamJSvFP" name="Page-1">
+        <mxGraphModel dx="292" dy="198" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="14" value="" style="swimlane;childLayout=stackLayout;resizeParent=1;resizeParentMax=0;horizontal=1;startSize=20;horizontalStack=0;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="10" y="20" width="760" height="500" as="geometry"/>
+                </mxCell>
+                <mxCell id="18" value="Processor" style="swimlane;startSize=20;horizontal=0;html=1;" parent="14" vertex="1">
+                    <mxGeometry y="20" width="760" height="110" as="geometry"/>
+                </mxCell>
+                <mxCell id="19" value="_process_ruletree_once()/&lt;br&gt;_process_ruletree_multiple_times()" style="ellipse;whiteSpace=wrap;html=1;" parent="18" vertex="1">
+                    <mxGeometry x="40" y="30" width="205" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="31" value="iterate recursively through RuleTree" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#666600;opacity=50;" parent="18" vertex="1">
+                    <mxGeometry x="380" y="15" width="110.00000000000001" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" value="RuleTree" style="swimlane;startSize=20;horizontal=0;html=1;" parent="14" vertex="1">
+                    <mxGeometry y="130" width="760" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" value="get_matching_rules()" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="15" vertex="1">
+                    <mxGeometry x="83" y="60" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="_retrive_matching_rules()" style="whiteSpace=wrap;html=1;rounded=0;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="15" vertex="1">
+                    <mxGeometry x="280" y="60" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;" parent="15" source="23" target="26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="30" value="return matches" style="ellipse;whiteSpace=wrap;html=1;" parent="15" vertex="1">
+                    <mxGeometry x="610" y="50" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="25" style="edgeStyle=orthogonalEdgeStyle;html=1;" parent="15" source="26" target="30" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="890" y="130" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="16" value="Node" style="swimlane;startSize=20;horizontal=0;html=1;" parent="14" vertex="1">
+                    <mxGeometry y="360" width="760" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="29" value="does_match()?" style="rhombus;whiteSpace=wrap;html=1;rounded=0;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" parent="16" vertex="1">
+                    <mxGeometry x="450" y="20" width="100" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="35" value="" style="edgeStyle=none;html=1;dashed=1;opacity=20;" edge="1" parent="16" source="33" target="29">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="33" value="event given to every node in the ruletree" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#666600;opacity=50;" vertex="1" parent="16">
+                    <mxGeometry x="590" y="30" width="140" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="34" value="represents partial filter expression" style="shape=note;strokeWidth=2;fontSize=14;size=20;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#666600;opacity=50;" vertex="1" parent="16">
+                    <mxGeometry x="60" y="30" width="110.00000000000001" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="14" source="19" target="23" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="142.5" y="180" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="27" style="edgeStyle=orthogonalEdgeStyle;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="14" source="29" target="26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="28" value="yes" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="27" vertex="1" connectable="0">
+                    <mxGeometry x="-0.816" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="24" style="edgeStyle=orthogonalEdgeStyle;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="14" source="26" target="29" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="32" style="html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;opacity=20;" parent="14" source="31" target="26" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

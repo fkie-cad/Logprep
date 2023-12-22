@@ -60,7 +60,24 @@ services:
       - ALLOW_PLAINTEXT_LISTENER=yes
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: sh -c "((sleep 15 && echo 'kafka up' && kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 3 --topic consumer)&) && /opt/bitnami/scripts/kafka/run.sh"
+    command: sh -c "((sleep 15 && echo 'kafka up' && kafka-topics.sh --create --if-not-exists --bootstrap-server 127.0.0.1:9092 --replication-factor 1 --partitions 4 --topic consumer)&) && /opt/bitnami/scripts/kafka/run.sh"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --topic consumer --describe"
+        ]
+
+  kafka-exporter:
+    image: bitnami/kafka-exporter
+    container_name: kafkaexporter
+    command: [ "--kafka.server=127.0.0.1:9092" ]
+    network_mode: host
+    expose:
+      - 9308
+    depends_on:
+      kafka:
+        condition: service_healthy
 
   logprep:
     build:
@@ -75,6 +92,7 @@ services:
     depends_on:
       - kafka
       - opensearch
+
     volumes:
       - ../quickstart/:/home/logprep/quickstart/
     entrypoint:
@@ -149,3 +167,6 @@ services:
       - ../quickstart/exampledata/config/postgresql:/docker-entrypoint-initdb.d
 volumes:
   data:
+
+networks:
+  opensearch-net:

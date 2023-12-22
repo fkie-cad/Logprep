@@ -5,7 +5,6 @@
 
 ### Features
 
-* make thread_count configurable for parallel_bulk in opensearch output connector
 * add a `number_of_successful_writes` metric to the s3 connector, which counts how many events were successfully written to s3
 * make the s3 connector work with the new `_write_backlog` method introduced by the `confluent_kafka` commit bugfix in v9.0.0
 
@@ -17,6 +16,19 @@
 ### Bugfix
 
 * make the s3 connector actually use the `max_retries` parameter
+
+## v9.0.3
+### Breaking
+
+### Features
+
+* make `thread_count`, `queue_size` and `chunk_size` configurable for `parallel_bulk` in opensearch output connector
+
+### Improvements
+
+### Bugfix
+
+* fix `parallel_bulk` implementation not delivering messages to opensearch
 
 ## v9.0.2
 
@@ -63,6 +75,7 @@
 * improve loading times for the rule tree by optimizing the rule segmentation and sorting
 * add support for python 3.12 and remove support for python 3.9
 * always check the existence of a field for negated key-value based lucene filter expressions
+* add kafka exporter to quickstart setup
 
 ### Bugfix
 
