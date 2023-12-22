@@ -4,9 +4,6 @@ S3Output
 
 This section contains the connection settings for the AWS s3 output connector.
 
-This connector is non-blocking and may skip sending data if previous data has not finished sending.
-It doesn't crash if a connection couldn't be established, but sends a warning.
-
 The target bucket is defined by the :code:`bucket` configuration parameter.
 The prefix is defined by the value in the field :code:`prefix_field` in the document.
 
@@ -42,9 +39,7 @@ Example
 """
 import json
 import re
-import threading
 from collections import defaultdict
-from copy import deepcopy
 from functools import cached_property
 from logging import Logger
 from time import time
@@ -62,7 +57,7 @@ from botocore.exceptions import (
     EndpointConnectionError,
 )
 
-from logprep.abc.output import Output
+from logprep.abc.output import Output, FatalOutputError
 from logprep.metrics.metrics import Metric, CounterMetric
 from logprep.util.helper import get_dotted_field_value
 from logprep.util.time import TimeParser
@@ -131,11 +126,7 @@ class S3Output(Output):
 
     __slots__ = ["_message_backlog", "_index_cache"]
 
-    _lock: threading.Lock
-
     _message_backlog: DefaultDict
-
-    _writing_thread: Optional[threading.Thread]
 
     _s3_resource: Optional["boto3.resources.factory.s3.ServiceResource"]
 
@@ -145,7 +136,6 @@ class S3Output(Output):
 
     def __init__(self, name: str, configuration: "S3Output.Config", logger: Logger):
         super().__init__(name, configuration, logger)
-        self._lock = threading.Lock()
         self._message_backlog = defaultdict(list)
         self._writing_thread = None
         self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
@@ -222,41 +212,37 @@ class S3Output(Output):
 
     def _write_backlog(self):
         """Write to s3 if it is not already writing."""
-        if not self._message_backlog or self._lock.locked():
+        if not self._message_backlog:
             return
 
-        message_backlog = deepcopy(self._message_backlog)
-        self._writing_thread = threading.Thread(target=self._bulk, args=(message_backlog,))
-        self._writing_thread.start()
+        self._bulk()
 
-    def _bulk(self, message_backlog: dict):
-        with self._lock:
-            self._logger.info("Writing %s documents to s3", self._get_backlog_size(message_backlog))
-            for prefix_mb, document_batch in message_backlog.items():
-                self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
-            self._message_backlog.clear()
+    def _bulk(self):
+        self._logger.info(
+            "Writing %s documents to s3", self._get_backlog_size(self._message_backlog)
+        )
+        for prefix_mb, document_batch in self._message_backlog.items():
+            self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
+        self._message_backlog.clear()
 
-            if not self._config.call_input_callback:
-                return
+        if not self._config.call_input_callback:
+            return
 
-            if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-                self.input_connector.batch_finished_callback()
+        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
+            self.input_connector.batch_finished_callback()
 
     def _write_document_batch(self, document_batch: dict, identifier: str):
         try:
             self._write_to_s3(document_batch, identifier)
-        except EndpointConnectionError:
-            self._logger.warning(f"{self.describe()}: Could not connect to the endpoint URL")
-            self.metrics.number_of_warnings += 1
-        except ConnectionClosedError:
-            self._logger.warning(
-                f"{self.describe()}: "
-                f"Connection was closed before we received a valid response from endpoint URL"
-            )
-            self.metrics.number_of_warnings += 1
+        except EndpointConnectionError as error:
+            raise FatalOutputError(self, "Could not connect to the endpoint URL") from error
+        except ConnectionClosedError as error:
+            raise FatalOutputError(
+                self,
+                "Connection was closed before we received a valid response from endpoint URL",
+            ) from error
         except (BotoCoreError, ClientError) as error:
-            self._logger.warning(f"{self.describe()}: {error}")
-            self.metrics.number_of_warnings += 1
+            raise FatalOutputError(self, str(error)) from error
 
     def _write_to_s3(self, document_batch: dict, identifier: str):
         self._logger.debug(f'Writing "{identifier}" to s3 bucket "{self._config.bucket}"')
@@ -330,9 +316,3 @@ class S3Output(Output):
             "@timestamp": TimeParser.now().isoformat(),
         }
         self._write_to_s3_resource(error_document, self._config.error_prefix)
-
-    def shut_down(self) -> None:
-        """Wait for thread to finish writing before shutting down."""
-        if self._lock.locked():
-            self._writing_thread.join(5)
-        super().shut_down()

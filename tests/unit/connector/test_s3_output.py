@@ -4,7 +4,6 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 import logging
-import re
 from copy import deepcopy
 from datetime import datetime
 from math import isclose
@@ -18,6 +17,7 @@ from botocore.exceptions import (
     EndpointConnectionError,
 )
 
+from logprep.abc.output import FatalOutputError
 from logprep.factory import Factory
 from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
@@ -181,8 +181,8 @@ class TestS3Output(BaseOutputTestCase):
                 "logprep.connector.s3.output.S3Output._write_to_s3",
                 side_effect=error,
             ):
-                self.object._write_document_batch({"dummy": "event"}, "dummy_identifier")
-            assert re.match(message, caplog.text)
+                with pytest.raises(FatalOutputError, match=message):
+                    self.object._write_document_batch({"dummy": "event"}, "dummy_identifier")
 
     def test_write_to_s3_resource_sets_current_backlog_count_and_below_max_backlog(self):
         s3_config = deepcopy(self.CONFIG)
@@ -251,6 +251,7 @@ class TestS3Output(BaseOutputTestCase):
 
     def test_write_to_s3_resource_replaces_dates(self):
         expected_prefix = f'base_prefix/prefix-{TimeParser.now().strftime("%y:%m:%d")}'
+        self.object._write_backlog = mock.MagicMock()
         self.object._write_to_s3_resource({"foo": "bar"}, "base_prefix/prefix-%{%y:%m:%d}")
         resulting_prefix = next(iter(self.object._message_backlog.keys()))
 
@@ -265,25 +266,9 @@ class TestS3Output(BaseOutputTestCase):
             self.object.store({"test": "event"})
         mock_write_backlog.assert_not_called()
 
-    def test_write_backlog_starts_writing_thread_which_acquires_lock_for_its_duration(self):
-        self.object._config.message_backlog_size = 1
-        self.object._message_backlog = {"foo": {"test": "event"}}
-        assert self.object._writing_thread is None
-        assert not self.object._lock.locked()
-
-        self.object._write_backlog()
-        assert self.object._lock.locked()
-        assert self.object._writing_thread
-
-        self._wait_for_writing_thread(self.object)
-        assert not self.object._lock.locked()
-
-    def test_write_backlog_does_not_start_writing_thread_if_lock_is_locked(self):
-        self.object._config.message_backlog_size = 1
-        self.object._message_backlog = {"foo": {"test": "event"}}
-        with self.object._lock:
-            self.object._write_backlog()
-            assert self.object._writing_thread is None
+    def test_store_failed_counts_failed_events(self):
+        self.object._write_backlog = mock.MagicMock()
+        super().test_store_failed_counts_failed_events()
 
     @staticmethod
     def _wait_for_writing_thread(s3_output):
