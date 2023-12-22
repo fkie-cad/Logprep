@@ -14,7 +14,8 @@
 
 * make the s3 connector work with the new `_write_backlog` method introduced by the `confluent_kafka` commit bugfix in v9.0.0
 * make the s3 connector actually use the `max_retries` parameter
-* make the s3 connector increase the `number_of_warnings` metric
+* make the s3 connector raise `FatalOutputError` instead of warnings
+* make the s3 connector blocking by removing threading
 
 ## v9.0.2
 
