@@ -5,6 +5,5 @@
 htmlcov
 logs
 coverage.xml
-.tox
 notebooks
 

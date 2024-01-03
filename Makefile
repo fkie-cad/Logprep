@@ -14,4 +14,4 @@ install-packages:
 
 # Test in a fresh virtual environment if tests pass with current requirements(_dev).txt
 test:
-	tox -e all -r
+	pytest ./tests --cov=logprep --cov-report=xml -vvv
