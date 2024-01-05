@@ -106,3 +106,6 @@ class DummyOutput(Output):
             return
         self.metrics.number_of_failed_events += 1
         self.failed_events.append((error_message, document_received, document_processed))
+
+    def shut_down(self):
+        self.shut_down_called_count += 1
