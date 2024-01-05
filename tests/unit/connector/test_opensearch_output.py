@@ -33,6 +33,7 @@ class NotJsonSerializableMock:
 in_ci = os.environ.get("GITHUB_ACTIONS") == "true"
 
 helpers.parallel_bulk = mock.MagicMock()
+helpers.bulk = mock.MagicMock()
 
 
 class TestOpenSearchOutput(BaseOutputTestCase):
@@ -349,8 +350,7 @@ class TestOpenSearchOutput(BaseOutputTestCase):
 
     def test_setup_registers_flush_timout_tasks(self):
         job_count = len(Component._scheduler.jobs)
-        with pytest.raises(FatalOutputError):
-            self.object.setup()
+        self.object.setup()
         assert len(Component._scheduler.jobs) == job_count + 1
 
     def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):

@@ -126,10 +126,8 @@ class OpensearchOutput(ElasticsearchOutput):
             self._handle_bulk_index_error(error)
         except search.exceptions.TransportError as error:
             self._handle_transport_error(error)
-        if self.input_connector:
-            self.input_connector.batch_finished_callback()
 
-    def _parallel_bulk(self, client, actions):
+    def _parallel_bulk(self, client, actions, *args, **kwargs):
         for success, item in helpers.parallel_bulk(
             client,
             actions=actions,
