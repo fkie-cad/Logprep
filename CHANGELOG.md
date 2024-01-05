@@ -5,6 +5,8 @@
 
 ### Features
 
+* add option to Opensearch Output Connector to use parallel bulk implementation (default is True)
+
 ### Improvements
 
 ### Bugfix
