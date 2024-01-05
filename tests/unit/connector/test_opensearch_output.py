@@ -349,8 +349,10 @@ class TestOpenSearchOutput(BaseOutputTestCase):
             self.object.setup()
 
     def test_setup_registers_flush_timout_tasks(self):
+        # this test fails if opensearch is running on localhost
         job_count = len(Component._scheduler.jobs)
-        self.object.setup()
+        with pytest.raises(FatalOutputError):
+            self.object.setup()
         assert len(Component._scheduler.jobs) == job_count + 1
 
     def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):
