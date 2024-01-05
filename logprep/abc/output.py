@@ -93,3 +93,6 @@ class Output(Connector):
     @abstractmethod
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Store an event when an error occurred during the processing."""
+
+    def _write_backlog(self):
+        """Write the backlog to the output destination."""
