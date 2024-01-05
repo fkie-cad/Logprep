@@ -7,6 +7,8 @@
 
 ### Improvements
 
+* a do nothing option do dummy output to ensure dummy does not fill memory
+
 ### Bugfix
 
 
