@@ -7,7 +7,6 @@ ENV HTTPS_PROXY "$PROXY"
 RUN apt-get update && apt-get install python3-pip wget openjdk-11-jdk -y
 
 RUN pip3 install --upgrade pip
-RUN pip3 install tox
 RUN pip3 install ansible
 RUN pip3 install deepdiff
 

@@ -22,7 +22,6 @@ Pinned package versions in requirements(_dev).txt can be updated via :code:`pip-
 After updating the packages :code:`pip-sync` should be executed.
 It removes all unused packages from the current virtual Python environment and then installs the requirements.
 pip-tools itself should be installed in the virtual environment and not globally.
-Alternatively, :code:`tox -e all -r` can be executed to create a fresh virtual environment and perform all tests within it.
 The updated requirements can be committed if all tests were successful.
 
 Helper Scripts
