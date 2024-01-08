@@ -12,6 +12,6 @@ upgrade-requirements:
 install-packages:
 	pip-sync
 
-# Test in a fresh virtual environment if tests pass with current requirements(_dev).txt
+# Test all pytests
 test:
 	pytest ./tests --cov=logprep --cov-report=xml -vvv
