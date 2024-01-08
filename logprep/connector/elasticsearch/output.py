@@ -311,6 +311,8 @@ class ElasticsearchOutput(Output):
             max_retries=self._config.max_retries,
             chunk_size=len(self._message_backlog),
         )
+        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
+            self.input_connector.batch_finished_callback()
         self._message_backlog.clear()
 
     def _bulk(self, client, actions, *args, **kwargs):
@@ -324,8 +326,6 @@ class ElasticsearchOutput(Output):
             self._handle_bulk_index_error(error)
         except search.exceptions.TransportError as error:
             self._handle_transport_error(error)
-        if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
 
     def _handle_serialization_error(self, error: search.SerializationError):
         """Handle serialization error for elasticsearch bulk indexing.

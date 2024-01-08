@@ -274,41 +274,13 @@ docker run logprep --help
 
 ### Testing
 
-Tox can be used to perform unit and acceptance tests (install tox via `pip3 install tox`).
-Tests are started by executing `tox` in the project root directory.
-This creates a virtual test environment and executes tests within it.
+We use `pytest` as our testing framework. We have unittests located in `./tests/unit` and
+acceptance tests located in `./tests/acceptance`.
 
-Multiple different test environments were defined for tox.
-Those can be executed via: `tox -e [name of the test environment]`.
-For Example:
+Run all tests with:
 
 ```
-tox -e py310-all
-```
-
-This runs all tests, calculates the test coverage and evaluates the code quality for the python 
-3.10 version.
-
-Multiple environments can be tested within one call: 
-
-```
-tox -e py310-all -e py311-all -e py312-all
-```
-
-If you want to run them in parallel attach the option `-p`.
-This can lead to side effects in I/O operations though, like concurrences in writing or reading
-files.
- 
-An overview of the test environments can be obtained by executing:
-
-```
-tox -av
-```
-
-In case the requirements change, the test environments must be rebuilt with the parameter `-r`:
-
-```
-tox -e py310 -e py311 -e py312 -r
+pytest ./tests --cov=logprep --cov-report=xml -vvv
 ```
 
 ### Running Logprep
@@ -461,12 +433,13 @@ The environment can be stopped via `docker-compose down`.
 ## Documentation
 
 The documentation for Logprep is online at https://logprep.readthedocs.io/en/latest/ or it can 
-be built locally via tox (install via `pip3 install tox`). 
-Building the documentation is done by executing the following command from within 
-the project root directory:
+be built locally via:
 
 ```
-tox -e py310-docs
+sudo apt install pandoc
+cd ./doc/
+pip install -r ./requirements.txt
+make html
 ```
 
 A HTML documentation can be then found in `doc/_build/html/index.html`.
