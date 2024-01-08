@@ -72,6 +72,9 @@ class OpensearchOutput(ElasticsearchOutput):
     class Config(ElasticsearchOutput.Config):
         """Config for OpensearchOutput."""
 
+        parallel_bulk: bool = field(default=True, validator=validators.instance_of(bool))
+        """Configure if all events in the backlog should be send, in parallel, via multiple threads
+        to Opensearch. (Default: :code:`True`)"""
         thread_count: int = field(
             default=4, validator=[validators.instance_of(int), validators.gt(1)]
         )
@@ -112,18 +115,10 @@ class OpensearchOutput(ElasticsearchOutput):
 
     def _bulk(self, client, actions, *args, **kwargs):
         try:
-            for success, item in helpers.parallel_bulk(
-                client,
-                actions=actions,
-                chunk_size=self._config.chunk_size,
-                queue_size=self._config.queue_size,
-                raise_on_error=True,
-                raise_on_exception=True,
-            ):
-                if not success:
-                    result = item[list(item.keys())[0]]
-                    if "error" in result:
-                        raise result.get("error")
+            if self._config.parallel_bulk:
+                self._parallel_bulk(client, actions, *args, **kwargs)
+                return
+            helpers.bulk(client, actions, *args, **kwargs)
         except search.SerializationError as error:
             self._handle_serialization_error(error)
         except search.ConnectionError as error:
@@ -132,5 +127,17 @@ class OpensearchOutput(ElasticsearchOutput):
             self._handle_bulk_index_error(error)
         except search.exceptions.TransportError as error:
             self._handle_transport_error(error)
-        if self.input_connector:
-            self.input_connector.batch_finished_callback()
+
+    def _parallel_bulk(self, client, actions, *args, **kwargs):
+        for success, item in helpers.parallel_bulk(
+            client,
+            actions=actions,
+            chunk_size=self._config.chunk_size,
+            queue_size=self._config.queue_size,
+            raise_on_error=True,
+            raise_on_exception=True,
+        ):
+            if not success:
+                result = item[list(item.keys())[0]]
+                if "error" in result:
+                    raise result.get("error")
