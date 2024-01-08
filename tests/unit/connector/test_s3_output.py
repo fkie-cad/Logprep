@@ -4,11 +4,9 @@
 # pylint: disable=wrong-import-order
 # pylint: disable=attribute-defined-outside-init
 import logging
-import re
 from copy import deepcopy
 from datetime import datetime
 from math import isclose
-from time import sleep
 from unittest import mock
 
 import pytest
@@ -19,6 +17,7 @@ from botocore.exceptions import (
     EndpointConnectionError,
 )
 
+from logprep.abc.output import FatalOutputError
 from logprep.factory import Factory
 from logprep.util.time import TimeParser
 from tests.unit.connector.base import BaseOutputTestCase
@@ -40,6 +39,15 @@ class TestS3Output(BaseOutputTestCase):
         "error_prefix": "foo_error_prefix",
         "message_backlog_size": 1,
     }
+
+    expected_metrics = [
+        "logprep_processing_time_per_event",
+        "logprep_number_of_processed_events",
+        "logprep_number_of_failed_events",
+        "logprep_number_of_warnings",
+        "logprep_number_of_errors",
+        "logprep_number_of_successful_writes",
+    ]
 
     def test_describe_returns_s3_output(self):
         assert (
@@ -173,18 +181,18 @@ class TestS3Output(BaseOutputTestCase):
                 "logprep.connector.s3.output.S3Output._write_to_s3",
                 side_effect=error,
             ):
-                self.object._write_document_batch({"dummy": "event"}, "dummy_identifier")
-            assert re.match(message, caplog.text)
+                with pytest.raises(FatalOutputError, match=message):
+                    self.object._write_document_batch({"dummy": "event"}, "dummy_identifier")
 
     def test_write_to_s3_resource_sets_current_backlog_count_and_below_max_backlog(self):
         s3_config = deepcopy(self.CONFIG)
         message_backlog_size = 5
         s3_config.update({"message_backlog_size": message_backlog_size})
         s3_output = Factory.create({"s3": s3_config}, self.logger)
-        assert s3_output._current_backlog_count == 0
+        assert self._calculate_backlog_size(s3_output) == 0
         for idx in range(1, message_backlog_size):
             s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-            assert s3_output._current_backlog_count == idx
+            assert self._calculate_backlog_size(s3_output) == idx
 
     def test_write_to_s3_resource_sets_current_backlog_count_and_is_max_backlog(self):
         s3_config = deepcopy(self.CONFIG)
@@ -198,28 +206,28 @@ class TestS3Output(BaseOutputTestCase):
         # Backlog not full
         for idx in range(message_backlog_size - 1):
             s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-            sleep(0.1)  # nosemgrep
-            assert s3_output._current_backlog_count == idx + 1
+            self._wait_for_writing_thread(s3_output)
+            assert self._calculate_backlog_size(s3_output) == idx + 1
         s3_output._write_document_batch.assert_not_called()
 
         # Backlog full then cleared
         s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-        sleep(0.1)  # nosemgrep
+        self._wait_for_writing_thread(s3_output)
         s3_output._write_document_batch.assert_called_once()
-        assert s3_output._current_backlog_count == 0
+        assert self._calculate_backlog_size(s3_output) == 0
 
         # Backlog not full
         for idx in range(message_backlog_size - 1):
             s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-            sleep(0.1)  # nosemgrep
-            assert s3_output._current_backlog_count == idx + 1
+            self._wait_for_writing_thread(s3_output)
+            assert self._calculate_backlog_size(s3_output) == idx + 1
         s3_output._write_document_batch.assert_called_once()
 
         # Backlog full then cleared
         s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-        sleep(0.1)  # nosemgrep
+        self._wait_for_writing_thread(s3_output)
         assert s3_output._write_document_batch.call_count == 2
-        assert s3_output._current_backlog_count == 0
+        assert self._calculate_backlog_size(s3_output) == 0
 
     def test_store_counts_processed_events(self):
         self.object._s3_resource = mock.MagicMock()
@@ -227,7 +235,10 @@ class TestS3Output(BaseOutputTestCase):
 
     def test_store_calls_batch_finished_callback(self):
         self.object._s3_resource = mock.MagicMock()
-        super().test_store_calls_batch_finished_callback()
+        self.object.input_connector = mock.MagicMock()
+        self.object.store({"message": "my event message"})
+        self._wait_for_writing_thread(self.object)
+        self.object.input_connector.batch_finished_callback.assert_called()
 
     def test_store_does_not_call_batch_finished_callback_if_disabled(self):
         s3_config = deepcopy(self.CONFIG)
@@ -240,7 +251,30 @@ class TestS3Output(BaseOutputTestCase):
 
     def test_write_to_s3_resource_replaces_dates(self):
         expected_prefix = f'base_prefix/prefix-{TimeParser.now().strftime("%y:%m:%d")}'
+        self.object._write_backlog = mock.MagicMock()
         self.object._write_to_s3_resource({"foo": "bar"}, "base_prefix/prefix-%{%y:%m:%d}")
         resulting_prefix = next(iter(self.object._message_backlog.keys()))
 
         assert expected_prefix == resulting_prefix
+
+    def test_message_backlog_is_not_written_if_message_backlog_size_not_reached(self):
+        self.object._config.message_backlog_size = 2
+        assert len(self.object._message_backlog) == 0
+        with mock.patch(
+            "logprep.connector.s3.output.S3Output._write_backlog"
+        ) as mock_write_backlog:
+            self.object.store({"test": "event"})
+        mock_write_backlog.assert_not_called()
+
+    def test_store_failed_counts_failed_events(self):
+        self.object._write_backlog = mock.MagicMock()
+        super().test_store_failed_counts_failed_events()
+
+    @staticmethod
+    def _wait_for_writing_thread(s3_output):
+        if s3_output._writing_thread is not None:
+            s3_output._writing_thread.join()
+
+    @staticmethod
+    def _calculate_backlog_size(s3_output):
+        return sum(len(values) for values in s3_output._message_backlog.values())
