@@ -165,6 +165,10 @@ class S3Output(Output):
         """Return s3 resource"""
         return self._s3_resource
 
+    @property
+    def _backlog_size(self):
+        return sum(map(len, self._message_backlog.values()))
+
     @cached_property
     def _replace_pattern(self):
         return re.compile(r"%{\S+?}")
@@ -203,12 +207,8 @@ class S3Output(Output):
         prefix = f"{self._base_prefix}{prefix}"
         self._message_backlog[prefix].append(document)
 
-        if self._get_backlog_size(self._message_backlog) >= self._config.message_backlog_size:
+        if self._backlog_size >= self._config.message_backlog_size:
             self._write_backlog()
-
-    @staticmethod
-    def _get_backlog_size(message_backlog: dict):
-        return sum(len(values) for values in message_backlog.values())
 
     def _write_backlog(self):
         """Write to s3 if it is not already writing."""
@@ -218,9 +218,7 @@ class S3Output(Output):
         self._bulk()
 
     def _bulk(self):
-        self._logger.info(
-            "Writing %s documents to s3", self._get_backlog_size(self._message_backlog)
-        )
+        self._logger.info("Writing %s documents to s3", self._backlog_size)
         for prefix_mb, document_batch in self._message_backlog.items():
             self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
         self._message_backlog.clear()
