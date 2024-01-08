@@ -277,7 +277,7 @@ docker run logprep --help
 We use `pytest` as our testing framework. We have unittests located in `./tests/unit` and
 acceptance tests located in `./tests/acceptance`.
 
-Run all tests in a fresh venv with:
+Run all tests with:
 
 ```
 pytest ./tests --cov=logprep --cov-report=xml -vvv
