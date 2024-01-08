@@ -73,7 +73,8 @@ class OpensearchOutput(ElasticsearchOutput):
         """Config for OpensearchOutput."""
 
         parallel_bulk: bool = field(default=True, validator=validators.instance_of(bool))
-
+        """Configure if all events in the backlog should be send, in parallel, via multiple threads
+        to Opensearch. (Default: :code:`True`)"""
         thread_count: int = field(
             default=4, validator=[validators.instance_of(int), validators.gt(1)]
         )
