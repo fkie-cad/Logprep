@@ -3,6 +3,8 @@
 ## next release
 ### Breaking
 
+* remove `call_input_callback` parameter from s3 output connector
+
 ### Features
 
 
@@ -15,6 +17,9 @@
 
 * make the s3 connector raise `FatalOutputError` instead of warnings
 * make the s3 connector blocking by removing threading
+* do not call `batch_finished_callback` for extra data in s3, elasticsearch and opensearch output to prevent updating offsets for not fully processed events
+* do not call `batch_finished_callback` on `revoke_callback` in confluent kafka input to prevent possible data loss for not fully processed events
+* allow multiple default output connectors per input and ensure that the offset is only set for events that all outputs have written 
 
 ### Bugfix
 
