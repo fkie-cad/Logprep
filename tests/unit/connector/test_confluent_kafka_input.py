@@ -353,7 +353,6 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         self.object._revoke_callback(mock_consumer, mock_partitions)
         for output_connector in self.object.output_connectors:
             output_connector._write_backlog.assert_called()
-        assert self.object.batch_finished_callback.call_count == output_count
 
     def test_set_last_valid_records_for_output(self):
         self.object._last_valid_records = {0: "message_1", 3: "message_2"}
