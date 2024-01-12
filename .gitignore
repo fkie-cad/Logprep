@@ -8,7 +8,6 @@ doc/source/module_reference/
 *.pex
 *.out
 .coverage*
-.tox/
 tests/testdata/external/
 .profile/
 *.prof
