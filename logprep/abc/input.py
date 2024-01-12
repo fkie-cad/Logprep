@@ -9,7 +9,7 @@ import zlib
 from abc import abstractmethod
 from functools import partial
 from hmac import HMAC
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple, List
 
 from attrs import define, field, validators
 
@@ -183,8 +183,8 @@ class Input(Connector):
         )
 
     pipeline_index: int
-    output_connector: Optional["Output"]
-    __slots__ = ["pipeline_index", "output_connector"]
+    output_connectors: List["Output"]
+    __slots__ = ["pipeline_index", "output_connectors"]
 
     @property
     def _add_hmac(self):
@@ -295,7 +295,7 @@ class Input(Connector):
             self._add_env_enrichment_to_event(event)
         return event, non_critical_error_msg
 
-    def batch_finished_callback(self):
+    def batch_finished_callback(self, output_name: str):
         """Can be called by output connectors after processing a batch of one or more records."""
 
     def _add_env_enrichment_to_event(self, event: dict):

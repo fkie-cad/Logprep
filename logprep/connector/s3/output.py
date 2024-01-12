@@ -218,7 +218,7 @@ class S3Output(Output):
         self._message_backlog.clear()
 
         if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
+            self.input_connector.batch_finished_callback(self.name)
 
     def _write_document_batch(self, document_batch: dict, identifier: str):
         try:

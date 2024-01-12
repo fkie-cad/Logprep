@@ -433,7 +433,7 @@ class TestPipeline(ConfigurationForTests):
 
     def test_setup_adds_versions_information_to_input_connector_config(self, mock_create):
         self.pipeline._setup()
-        called_input_config = mock_create.call_args_list[1][0][0]["dummy"]
+        called_input_config = mock_create.call_args_list[0][0][0]["dummy"]
         assert "version_information" in called_input_config, "ensure version_information is added"
         assert "logprep" in called_input_config.get("version_information"), "ensure logprep key"
         assert "configuration" in called_input_config.get("version_information"), "ensure config"
@@ -446,7 +446,17 @@ class TestPipeline(ConfigurationForTests):
 
     def test_setup_connects_input_with_output(self, _):
         self.pipeline._setup()
-        assert self.pipeline._input.output_connector == self.pipeline._output["dummy"]
+        assert self.pipeline._input.output_connectors == [self.pipeline._output["dummy"]]
+
+    def test_setup_connects_input_with_multiple_outputs(self, _):
+        self.pipeline._logprep_config.update(
+            {"output": {"dummy": {"type": "dummy_output"}, "dummy2": {"type": "dummy_output"}}}
+        )
+        self.pipeline._setup()
+        assert self.pipeline._input.output_connectors == [
+            self.pipeline._output["dummy"],
+            self.pipeline._output["dummy2"],
+        ]
 
     def test_pipeline_does_not_call_batch_finished_callback_if_output_store_does_not_return_true(
         self, _

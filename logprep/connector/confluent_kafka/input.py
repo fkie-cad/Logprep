@@ -240,6 +240,7 @@ class ConfluentKafkaInput(Input):
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
         self._last_valid_records = {}
+        self._last_valid_records_per_output = {}
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -429,17 +430,47 @@ class ConfluentKafkaInput(Input):
     def _enable_auto_commit(self) -> bool:
         return self._config.kafka_config.get("enable.auto.commit") == "true"
 
-    def batch_finished_callback(self) -> None:
+    def batch_finished_callback(self, output_name: str) -> None:
         """Store offsets for each kafka partition in `self._last_valid_records`
         and if configured commit them. Should be called by output connectors if
         they are finished processing a batch of records.
+
+        Store the last valid messages for the output that called the callback.
+        Only update offset or commit if all default outputs have written their backlog.
+        Use the messages with the smallest offsets between all outputs to perform the update.
+        This ensures that no messages will be lost on any output.
         """
         if self._enable_auto_offset_store:
             return
+
+        self._remember_last_valid_records_for_output(output_name)
+
+        output_names = [output_connector.name for output_connector in self.output_connectors]
+        if any(name not in self._last_valid_records_per_output for name in output_names):
+            return
+
+        self._last_valid_records = self._get_record_with_smallest_offset_per_partition()
+
         self._handle_offsets(self._consumer.store_offsets)
         if not self._enable_auto_commit:
             self._handle_offsets(self._consumer.commit)
         self._last_valid_records.clear()
+        self._last_valid_records_per_output.clear()
+
+    def _remember_last_valid_records_for_output(self, output_name):
+        self._last_valid_records_per_output[output_name] = {}
+        for partition, message in self._last_valid_records.items():
+            self._last_valid_records_per_output[output_name][partition] = message
+
+    def _get_record_with_smallest_offset_per_partition(self):
+        smallest_offsets_per_partition = {}
+        for offsets_by_partition in self._last_valid_records_per_output.values():
+            for partition, message in offsets_by_partition.items():
+                if partition not in smallest_offsets_per_partition:
+                    smallest_offsets_per_partition[partition] = message
+                elif smallest_offsets_per_partition[partition].offset() > message.offset():
+                    smallest_offsets_per_partition[partition] = message
+        return smallest_offsets_per_partition
 
     def _handle_offsets(self, offset_handler: Callable) -> None:
         for message in self._last_valid_records.values():
@@ -471,8 +502,9 @@ class ConfluentKafkaInput(Input):
                 f"topic: {topic_partition.topic} | "
                 f"partition {topic_partition.partition}"
             )
-        self.output_connector._write_backlog()
-        self.batch_finished_callback()
+        for output_connector in self.output_connectors:
+            output_connector._write_backlog()
+            self.batch_finished_callback(output_connector.name)
 
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:

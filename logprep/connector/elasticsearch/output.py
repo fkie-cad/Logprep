@@ -312,7 +312,7 @@ class ElasticsearchOutput(Output):
             chunk_size=len(self._message_backlog),
         )
         if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
-            self.input_connector.batch_finished_callback()
+            self.input_connector.batch_finished_callback(self.name)
         self._message_backlog.clear()
 
     def _bulk(self, client, actions, *args, **kwargs):

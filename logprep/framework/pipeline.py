@@ -184,10 +184,11 @@ class Pipeline:
     @_handle_pipeline_error
     def _setup(self):
         self.logger.debug("Creating connectors")
+        self._input.output_connectors = []
         for _, output in self._output.items():
             output.input_connector = self._input
             if output.default:
-                self._input.output_connector = output
+                self._input.output_connectors.append(output)
         self.logger.debug(
             f"Created connectors -> input: '{self._input.describe()}',"
             f" output -> '{[output.describe() for _, output in self._output.items()]}'"

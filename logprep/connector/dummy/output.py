@@ -90,7 +90,7 @@ class DummyOutput(Output):
         self.events.append(document)
         self.metrics.number_of_processed_events += 1
         if self.input_connector:
-            self.input_connector.batch_finished_callback()
+            self.input_connector.batch_finished_callback(self.name)
 
     def store_custom(self, document: dict, target: str):
         """Store additional data in a custom location inside the output destination."""

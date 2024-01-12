@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 import socket
 from copy import deepcopy
+from itertools import permutations
 from unittest import mock
 
 import pytest
@@ -110,7 +111,8 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
         kafka_consumer = kafka_input._consumer
         message = "test message"
         kafka_input._last_valid_records = {0: message}
-        kafka_input.batch_finished_callback()
+        kafka_input.output_connectors = []
+        kafka_input.batch_finished_callback("test_output")
         if handlers is None:
             assert kafka_consumer.commit.call_count == 0
             assert kafka_consumer.store_offsets.call_count == 0
@@ -141,8 +143,9 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
 
         getattr(kafka_consumer, handler).side_effect = raise_generator(return_sequence)
         kafka_input._last_valid_records = {0: "message"}
+        kafka_input.output_connectors = []
         with pytest.raises(InputWarning):
-            kafka_input.batch_finished_callback()
+            kafka_input.batch_finished_callback("test_output")
 
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_get_next_raises_critical_input_error_if_not_a_dict(self, _):
@@ -332,20 +335,60 @@ class TestConfluentKafkaInput(BaseInputTestCase, CommonConfluentKafkaTestCase):
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_revoke_callback_logs_warning_and_counts(self, mock_consumer):
         self.object.metrics.number_of_warnings = 0
-        self.object.output_connector = mock.MagicMock()
+        self.object.output_connectors = [mock.MagicMock()]
         mock_partitions = [mock.MagicMock()]
         with mock.patch("logging.Logger.warning") as mock_warning:
             self.object._revoke_callback(mock_consumer, mock_partitions)
         mock_warning.assert_called()
         assert self.object.metrics.number_of_warnings == 1
 
+    @pytest.mark.parametrize("output_count", [1, 2, 5])
     @mock.patch("logprep.connector.confluent_kafka.input.Consumer")
     def test_revoke_callback_writes_output_backlog_and_calls_batch_finished_callback(
-        self, mock_consumer
+        self, mock_consumer, output_count
     ):
-        self.object.output_connector = mock.MagicMock()
+        self.object.output_connectors = [mock.MagicMock()] * output_count
         self.object.batch_finished_callback = mock.MagicMock()
         mock_partitions = [mock.MagicMock()]
         self.object._revoke_callback(mock_consumer, mock_partitions)
-        self.object.output_connector._write_backlog.assert_called()
-        self.object.batch_finished_callback.assert_called()
+        for output_connector in self.object.output_connectors:
+            output_connector._write_backlog.assert_called()
+        assert self.object.batch_finished_callback.call_count == output_count
+
+    def test_set_last_valid_records_for_output(self):
+        self.object._last_valid_records = {0: "message_1", 3: "message_2"}
+        self.object._set_last_valid_records_for_output("output_1")
+        assert self.object._last_valid_records_per_output == {
+            "output_1": {0: "message_1", 3: "message_2"}
+        }
+
+        self.object._set_last_valid_records_for_output("output_2")
+        assert self.object._last_valid_records_per_output == {
+            "output_1": {0: "message_1", 3: "message_2"},
+            "output_2": {0: "message_1", 3: "message_2"},
+        }
+
+        self.object._last_valid_records = {0: "message_3", 3: "message_2", 4: "message_3"}
+        self.object._set_last_valid_records_for_output("output_1")
+        assert self.object._last_valid_records_per_output == {
+            "output_1": {0: "message_3", 3: "message_2", 4: "message_3"},
+            "output_2": {0: "message_1", 3: "message_2"},
+        }
+
+    @pytest.mark.parametrize("offsets", list(permutations([1, 2, 3])))
+    def test_get_record_with_smallest_offset_per_partition(self, offsets: tuple):
+        class Message:
+            def __init__(self, offset):
+                self._offset = offset
+
+            def offset(self):
+                return self._offset
+
+        self.object._last_valid_records_per_output = {
+            "output_1": {0: Message(offsets[0]), 1: Message(offsets[2])},
+            "output_2": {0: Message(offsets[1]), 1: Message(offsets[1])},
+            "output_3": {0: Message(offsets[2]), 1: Message(offsets[0])},
+        }
+        min_offset_per_partition = self.object._get_record_with_smallest_offset_per_partition()
+        for message in min_offset_per_partition.values():
+            assert message.offset() == min(offsets)
