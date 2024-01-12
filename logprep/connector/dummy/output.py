@@ -37,6 +37,8 @@ class DummyOutput(Output):
     class Config(Output.Config):
         """Common Configurations"""
 
+        do_nothing: bool = field(default=False)
+
         exceptions: List[str] = field(
             validator=validators.deep_iterable(
                 member_validator=validators.instance_of((str, type(None))),
@@ -83,6 +85,8 @@ class DummyOutput(Output):
         document : dict
            Processed log event that will be stored.
         """
+        if self._config.do_nothing:
+            return
         if self._exceptions:
             exception = self._exceptions.pop(0)
             if exception is not None:
@@ -98,6 +102,8 @@ class DummyOutput(Output):
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Store an event when an error occurred during the processing."""
+        if self._config.do_nothing:
+            return
         self.metrics.number_of_failed_events += 1
         self.failed_events.append((error_message, document_received, document_processed))
 

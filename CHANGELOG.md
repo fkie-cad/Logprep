@@ -13,6 +13,7 @@
 
 ### Improvements
 
+* a do nothing option do dummy output to ensure dummy does not fill memory
 * make the s3 connector raise `FatalOutputError` instead of warnings
 * make the s3 connector blocking by removing threading
 
