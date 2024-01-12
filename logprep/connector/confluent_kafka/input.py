@@ -443,7 +443,7 @@ class ConfluentKafkaInput(Input):
         if self._enable_auto_offset_store:
             return
 
-        self._remember_last_valid_records_for_output(output_name)
+        self._set_last_valid_records_for_output(output_name)
 
         output_names = [output_connector.name for output_connector in self.output_connectors]
         if any(name not in self._last_valid_records_per_output for name in output_names):
@@ -457,7 +457,7 @@ class ConfluentKafkaInput(Input):
         self._last_valid_records.clear()
         self._last_valid_records_per_output.clear()
 
-    def _remember_last_valid_records_for_output(self, output_name):
+    def _set_last_valid_records_for_output(self, output_name):
         self._last_valid_records_per_output[output_name] = {}
         for partition, message in self._last_valid_records.items():
             self._last_valid_records_per_output[output_name][partition] = message
