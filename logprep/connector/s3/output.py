@@ -33,7 +33,6 @@ Example
         aws_secret_access_key:
         ca_cert: /path/to/cert.crt
         use_ssl:
-        call_input_callback:
         region_name:
 
 """
@@ -106,11 +105,6 @@ class S3Output(Output):
         """The path to a SSL ca certificate to verify the ssl context (optional)"""
         use_ssl: Optional[bool] = field(validator=validators.instance_of(bool), default=True)
         """Use SSL or not. Is set to true by default (optional)"""
-        call_input_callback: Optional[bool] = field(
-            validator=validators.instance_of(bool), default=True
-        )
-        """The input callback is called after the maximum backlog size has been reached 
-        if this is set to True (optional)"""
 
     @define(kw_only=True)
     class Metrics(Output.Metrics):
@@ -222,9 +216,6 @@ class S3Output(Output):
         for prefix_mb, document_batch in self._message_backlog.items():
             self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
         self._message_backlog.clear()
-
-        if not self._config.call_input_callback:
-            return
 
         if self.input_connector and hasattr(self.input_connector, "batch_finished_callback"):
             self.input_connector.batch_finished_callback()
