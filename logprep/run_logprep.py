@@ -4,10 +4,6 @@ import logging
 import os
 import sys
 import warnings
-from argparse import ArgumentParser
-from functools import reduce
-from os.path import basename
-from pathlib import Path
 
 import click
 import requests
@@ -75,10 +71,12 @@ def _setup_logger(config: Configuration):
 
 def _load_configuration(config_paths: list[str]):
     try:
-        configs = (Configuration.create_from_yaml(config) for config in config_paths)
-        merged_config = Configuration(reduce(lambda x, y: x | y, configs))
+        return Configuration.create_from_yamls(config_paths)
     except FileNotFoundError:
-        print(f"The given config file(s) does not exist: {config_paths}", file=sys.stderr)
+        print(
+            f"One or more of the given config file(s) does not exist: {', '.join(config_paths)}",
+            file=sys.stderr,
+        )
         print(
             "Create the configuration or change the path. Use '--help' for more information.",
             file=sys.stderr,
@@ -88,8 +86,7 @@ def _load_configuration(config_paths: list[str]):
         print(f"{error}", file=sys.stderr)
     except requests.RequestException as error:
         print(f"{error}", file=sys.stderr)
-        sys.exit(1)
-    return merged_config
+    return None
 
 
 @click.group(name="logprep")
