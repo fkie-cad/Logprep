@@ -11,13 +11,16 @@ import responses
 from click.testing import CliRunner
 
 from logprep._version import get_versions
-from logprep.run_logprep import cli
+from logprep.run_logprep import cli, Configuration
 from logprep.util.configuration import InvalidConfigurationError
 
 
 class TestRunLogprepCli:
     def setup_method(self):
         self.cli_runner = CliRunner()
+
+    def teardown_method(self):
+        Configuration._getters.clear()
 
     @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_starts_runner_with_config(self, mock_runner):
