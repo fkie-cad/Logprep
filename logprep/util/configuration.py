@@ -3,6 +3,8 @@
 import re
 import sys
 from copy import deepcopy
+from functools import reduce
+from itertools import chain
 from logging import Logger
 from pathlib import Path
 from typing import List
@@ -124,6 +126,24 @@ class Configuration(dict):
         config.update(config_dict)
         return config
 
+    @classmethod
+    def create_from_yamls(cls, paths: list[str]) -> "Configuration":
+        """Create configuration from a list of YAML files.
+
+        Parameters
+        ----------
+        paths : list[str]
+            List of paths of files to create configuration from.
+
+        Returns
+        -------
+        config : Configuration
+            Configuration object based on dictionary.
+
+        """
+        configs = (Configuration.create_from_yaml(config) for config in paths)
+        return Configuration(reduce(lambda x, y: x | y, configs))
+
     @staticmethod
     def patch_yaml_with_json_connectors(
         original_config_path: str, output_dir: str, input_file_path: str = None
@@ -243,8 +263,9 @@ class Configuration(dict):
         return errors
 
     def _verify_environment(self):
-        if self._getter.missing_env_vars:
-            missing_env_error = MissingEnvironmentError(", ".join(self._getter.missing_env_vars))
+        missing_env_vars = tuple(chain(*[getter.missing_env_vars for getter in self._getters]))
+        if missing_env_vars:
+            missing_env_error = MissingEnvironmentError(", ".join(missing_env_vars))
             raise InvalidConfigurationErrors([missing_env_error])
 
     def _verify_required_keys_exist(self):

@@ -129,7 +129,6 @@ class Runner:
     # For production, use the get_runner method to create/get access to a singleton!
     def __init__(self, bypass_check_to_obtain_non_singleton_instance=False):
         self._configuration = None
-        self._yaml_path = None
         self.metrics = self.Metrics(labels={"logprep": "unset", "config": "unset"})
         self._logger = logging.getLogger("Logprep Runner")
         self._config_refresh_interval = None
@@ -144,7 +143,7 @@ class Runner:
         if not bypass_check_to_obtain_non_singleton_instance:
             raise UseGetRunnerToCreateRunnerSingleton
 
-    def load_configuration(self, yaml_file: str):
+    def load_configuration(self, yaml_files: list[str]) -> None:
         """Load the configuration from a YAML file (cf. documentation).
 
         This will raise an exception if the configuration is not valid.
@@ -163,10 +162,9 @@ class Runner:
         if self._configuration is not None:
             raise MustNotConfigureTwiceError
 
-        configuration = Configuration.create_from_yaml(yaml_file)
+        configuration = Configuration.create_from_yamls(yaml_files)
         configuration.verify(self._logger)
 
-        self._yaml_path = yaml_file
         self._configuration = configuration
         self._config_refresh_interval = configuration.get("config_refresh_interval")
         self.metrics.version_info.add_with_labels(1, self._metric_labels)
@@ -229,7 +227,7 @@ class Runner:
         if self._configuration is None:
             raise CannotReloadWhenConfigIsUnsetError
         try:
-            new_configuration = Configuration.create_from_yaml(self._yaml_path)
+            new_configuration = Configuration.create_from_yamls(self._configuration.paths)
             self._config_refresh_interval = new_configuration.get("config_refresh_interval")
             self._schedule_config_refresh_job()
         except (requests.RequestException, FileNotFoundError) as error:
@@ -269,7 +267,7 @@ class Runner:
         except InvalidConfigurationError as error:
             self._logger.error(
                 "Invalid configuration, leaving old"
-                f" configuration in place: {self._yaml_path}: {str(error)}"
+                f" configuration in place: {', '.join(self._configuration.paths)}: {str(error)}"
             )
 
     def _schedule_config_refresh_job(self):
