@@ -58,7 +58,7 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
     def test_fails_when_calling_create_manager_more_than_once(self):
         runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
-        runner.load_configuration(path_to_config)
+        runner.load_configuration([path_to_config])
 
         runner._create_manager()
         with raises(MustNotCreateMoreThanOneManagerError):
@@ -66,13 +66,17 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
     def test_fails_when_calling_load_configuration_with_non_existing_path(self):
         with raises(FileNotFoundError):
-            self.runner.load_configuration("non-existing-file")
+            self.runner.load_configuration(["non-existing-file"])
+
+    def test_fails_if_file_path_is_not_a_list(self):
+        with raises(TypeError):
+            self.runner.load_configuration("this-is-not-a-list")
 
     def test_fails_when_calling_load_configuration_more_than_once(self):
-        self.runner.load_configuration(path_to_config)
+        self.runner.load_configuration([path_to_config])
 
         with raises(MustNotConfigureTwiceError):
-            self.runner.load_configuration(path_to_config)
+            self.runner.load_configuration([path_to_config])
 
     def test_fails_when_called_without_configuring_first(self):
         with raises(MustConfigureBeforeRunningError):
@@ -80,7 +84,7 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
     @mock.patch("logprep.util.configuration.Configuration.verify")
     def test_load_configuration_calls_verify_on_config(self, mock_verify):
-        self.runner.load_configuration(path_to_config)
+        self.runner.load_configuration([path_to_config])
         mock_verify.assert_called()
 
     def test_fails_when_calling_reload_configuration_when_config_is_unset(self):
@@ -93,7 +97,7 @@ class TestRunner(LogprepRunnerTest):
         self.logger = Logger("test")
 
         self.runner = RunnerForTesting()
-        self.runner.load_configuration(path_to_config)
+        self.runner.load_configuration([path_to_config])
         self.runner._create_manager()
 
     def test_get_runner_returns_the_same_runner_on_all_calls(self):
@@ -110,27 +114,27 @@ class TestRunner(LogprepRunnerTest):
     def test_reload_configuration_reduces_logprep_instance_count_to_new_value(self):
         self.runner._manager.set_count(3)
 
-        self.runner._yaml_path = path_to_alternative_config
+        self.runner._configuration.paths = [path_to_alternative_config]
         self.runner.reload_configuration()
         assert self.runner._manager.get_count() == 2
 
     def test_reload_configuration_counts_config_refreshes_if_successful(self):
         self.runner.metrics.number_of_config_refreshes = 0
-        self.runner._yaml_path = path_to_alternative_config
+        self.runner._configuration.paths = [path_to_alternative_config]
         self.runner.reload_configuration()
         assert self.runner.metrics.number_of_config_refreshes == 1
 
     def test_reload_configuration_leaves_old_configuration_in_place_if_new_config_is_invalid(self):
         old_configuration = deepcopy(self.runner._configuration)
 
-        self.runner._yaml_path = path_to_invalid_config
+        self.runner._configuration.paths = [path_to_invalid_config]
         self.runner.reload_configuration()
 
         assert self.runner._configuration == old_configuration
 
     @mock.patch("logging.Logger.error")
     def test_reload_configuration_logs_error_when_new_configuration_is_invalid(self, mock_error):
-        self.runner._yaml_path = path_to_invalid_config
+        self.runner._configuration.paths = [path_to_invalid_config]
         self.runner.reload_configuration()
         assert (
             "Invalid configuration, leaving old configuration in place:"
@@ -141,7 +145,7 @@ class TestRunner(LogprepRunnerTest):
         self,
     ):
         self.runner.metrics.number_of_config_refreshes = 0
-        self.runner._yaml_path = path_to_invalid_config
+        self.runner._configuration.paths = [path_to_invalid_config]
         self.runner.reload_configuration()
         assert self.runner.metrics.number_of_config_refreshes == 0
 
@@ -201,7 +205,7 @@ class TestRunner(LogprepRunnerTest):
         config_update = deepcopy(self.runner._configuration)
         config_update.update({"config_refresh_interval": 5, "version": "new version"})
         config_path.write_text(json.dumps(config_update))
-        self.runner._yaml_path = str(config_path)
+        self.runner._configuration.paths = [str(config_path)]
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.metrics.config_refresh_interval == 5
@@ -216,14 +220,14 @@ class TestRunner(LogprepRunnerTest):
         # first refresh
         config_update.update({"config_refresh_interval": 5, "version": "new version"})
         config_path.write_text(json.dumps(config_update))
-        self.runner._yaml_path = str(config_path)
+        self.runner._configuration.paths = [str(config_path)]
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 5
         # second refresh with new refresh interval
         config_update.update({"config_refresh_interval": 10, "version": "newer version"})
         config_path.write_text(json.dumps(config_update))
-        self.runner._yaml_path = str(config_path)
+        self.runner._configuration.paths = [str(config_path)]
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner.scheduler.jobs) == 1
         assert self.runner.scheduler.jobs[0].interval == 10
@@ -305,7 +309,7 @@ class TestRunner(LogprepRunnerTest):
         config_update = deepcopy(self.runner._configuration)
         config_update.update({"config_refresh_interval": 60, "version": "new version"})
         config_path.write_text(json.dumps(config_update))
-        self.runner._yaml_path = str(config_path)
+        self.runner._configuration.paths = [str(config_path)]
         with mock.patch("logprep.abc.getter.Getter.get") as mock_get:
             mock_get.side_effect = HTTPError(404)
             self.runner.reload_configuration(refresh=True)
@@ -324,7 +328,7 @@ class TestRunner(LogprepRunnerTest):
         config_path = tmp_path / "config.yml"
         config_update = deepcopy(self.runner._configuration)
         config_path.write_text(json.dumps(config_update))
-        self.runner._yaml_path = str(config_path)
+        self.runner._configuration.paths = [str(config_path)]
         with mock.patch("logprep.abc.getter.Getter.get") as mock_get:
             mock_get.side_effect = HTTPError(404)
             self.runner.reload_configuration(refresh=True)
@@ -342,7 +346,7 @@ class TestRunner(LogprepRunnerTest):
         config_update = deepcopy(self.runner._configuration)
         config_update.update({"config_refresh_interval": 5, "version": "new version"})
         config_path.write_text(json.dumps(config_update))
-        self.runner._yaml_path = str(config_path)
+        self.runner._configuration.paths = [str(config_path)]
         with mock.patch("logging.Logger.info") as mock_info:
             with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
                 self.runner.reload_configuration(refresh=True)
@@ -365,7 +369,7 @@ class TestRunner(LogprepRunnerTest):
         self.runner.reload_configuration(refresh=True)
         assert len(self.runner._manager._pipelines) == 3
         config_path = tmp_path / "config.yml"
-        self.runner._yaml_path = str(config_path)
+        self.runner._configuration.paths = [str(config_path)]
         config_update = deepcopy(self.runner._configuration)
         config_update.update(
             {"config_refresh_interval": 5, "version": "new version", "process_count": 4}

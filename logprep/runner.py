@@ -162,6 +162,9 @@ class Runner:
         if self._configuration is not None:
             raise MustNotConfigureTwiceError
 
+        if not isinstance(yaml_files, list):
+            raise TypeError(f"yaml_files must be a list, but is {type(yaml_files)}")
+
         configuration = Configuration.create_from_yamls(yaml_files)
         configuration.verify(self._logger)
 

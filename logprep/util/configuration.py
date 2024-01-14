@@ -89,12 +89,12 @@ class Configuration(dict):
     @property
     def paths(self):
         """returns the path of the configuration"""
-        return [f"{getter.protocol}://{getter.target}" for getter in self._getters]
+        return [f"{getter.protocol}://{getter.target}" for getter in Configuration._getters]
 
     @paths.setter
-    def path(self, path):
+    def paths(self, paths: list[str]) -> None:
         """sets the path and getter"""
-        self._getter = GetterFactory.from_string(path)
+        Configuration._getters = [GetterFactory.from_string(path) for path in paths]
 
     @classmethod
     def create_from_yaml(cls, path: str) -> "Configuration":
