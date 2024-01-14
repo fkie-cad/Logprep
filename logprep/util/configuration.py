@@ -87,7 +87,7 @@ class Configuration(dict):
     _getters: list[Getter] = []
 
     @property
-    def paths(self):
+    def paths(self) -> list[str]:
         """returns the path of the configuration"""
         return [f"{getter.protocol}://{getter.target}" for getter in Configuration._getters]
 

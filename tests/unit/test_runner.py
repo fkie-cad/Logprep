@@ -22,6 +22,7 @@ from logprep.runner import (
     Runner,
     UseGetRunnerToCreateRunnerSingleton,
 )
+from logprep.util.configuration import Configuration
 from tests.testdata.metadata import (
     path_to_alternative_config,
     path_to_config,
@@ -44,6 +45,9 @@ class LogprepRunnerTest:
 
         self.runner = RunnerForTesting()
         self.runner._create_manager()
+
+    def teardown_method(self, _):
+        self.runner._configuration._getters.clear()
 
 
 def mock_keep_iterating(iterations):
@@ -94,11 +98,8 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
 class TestRunner(LogprepRunnerTest):
     def setup_method(self, _):
-        self.logger = Logger("test")
-
-        self.runner = RunnerForTesting()
+        super().setup_method(_)
         self.runner.load_configuration([path_to_config])
-        self.runner._create_manager()
 
     def test_get_runner_returns_the_same_runner_on_all_calls(self):
         runner = Runner.get_runner()
