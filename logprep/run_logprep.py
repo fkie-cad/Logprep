@@ -4,6 +4,10 @@ import logging
 import os
 import sys
 import warnings
+from argparse import ArgumentParser
+from functools import reduce
+from os.path import basename
+from pathlib import Path
 
 import click
 import requests
@@ -40,7 +44,7 @@ def get_versions_string(config=None) -> str:
     version_string = f"{'logprep version:'.ljust(padding)}{versions['version']}"
     version_string += f"\n{'python version:'.ljust(padding)}{sys.version.split()[0]}"
     if config:
-        config_version = f"{config.get('version', 'unset')}, {config.path}"
+        config_version = f"{config.get('version', 'unset')}, {', '.join(config.paths)}"
     else:
         config_version = "no configuration found"
     version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
@@ -69,11 +73,12 @@ def _setup_logger(config: Configuration):
     return logger
 
 
-def _load_configuration(config):
+def _load_configuration(config_paths: list[str]):
     try:
-        config = Configuration().create_from_yaml(config)
+        configs = (Configuration.create_from_yaml(config) for config in config_paths)
+        merged_config = Configuration(reduce(lambda x, y: x | y, configs))
     except FileNotFoundError:
-        print(f"The given config file does not exist: {config}", file=sys.stderr)
+        print(f"The given config file(s) does not exist: {config_paths}", file=sys.stderr)
         print(
             "Create the configuration or change the path. Use '--help' for more information.",
             file=sys.stderr,
@@ -84,7 +89,7 @@ def _load_configuration(config):
     except requests.RequestException as error:
         print(f"{error}", file=sys.stderr)
         sys.exit(1)
-    return config
+    return merged_config
 
 
 @click.group(name="logprep")
@@ -97,7 +102,7 @@ def cli():
 
 
 @cli.command(short_help="Run logprep to process log messages", epilog=EPILOG_STR)
-@click.argument("config")
+@click.argument("config", nargs=-1, required=True)
 @click.option(
     "--version",
     is_flag=True,

@@ -82,14 +82,14 @@ class MissingEnvironmentError(InvalidConfigurationError):
 class Configuration(dict):
     """Used to create and verify a configuration dict parsed from a YAML file."""
 
-    _getter: Getter
+    _getters: list[Getter] = []
 
     @property
-    def path(self):
+    def paths(self):
         """returns the path of the configuration"""
-        return f"{self._getter.protocol}://{self._getter.target}"
+        return [f"{getter.protocol}://{getter.target}" for getter in self._getters]
 
-    @path.setter
+    @paths.setter
     def path(self, path):
         """sets the path and getter"""
         self._getter = GetterFactory.from_string(path)
@@ -110,6 +110,7 @@ class Configuration(dict):
 
         """
         config_getter = GetterFactory.from_string(path)
+        cls._getters.append(config_getter)
         try:
             config_dict = config_getter.get_json()
         except ValueError:

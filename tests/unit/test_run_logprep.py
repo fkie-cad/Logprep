@@ -31,6 +31,17 @@ class TestRunLogprepCli:
         runner_instance.load_configuration.assert_called_with(config_file_path)
 
     @mock.patch("logprep.run_logprep.Runner")
+    def test_cli_run_starts_runner_with_config(self, mock_runner):
+        runner_instance = mock.MagicMock()
+        mock_runner.get_runner.return_value = runner_instance
+        args = ["run", "tests/testdata/config/config.yml", "tests/testdata/config/config.yml"]
+        result = self.cli_runner.invoke(cli, args)
+        assert result.exit_code == 0
+        runner_instance.start.assert_called()
+        config_file_path = "tests/testdata/config/config.yml"
+        runner_instance.load_configuration.assert_called_with(config_file_path)
+
+    @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_uses_getter_to_get_config(self, mock_runner):
         runner_instance = mock.MagicMock()
         mock_runner.get_runner.return_value = runner_instance
