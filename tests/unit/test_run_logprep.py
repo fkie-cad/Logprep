@@ -158,8 +158,9 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, ["run", non_existing_config_file])
         assert result.exit_code == 1
         expected_lines = (
-            f"The given config file does not exist: {non_existing_config_file}\nCreate the "
-            f"configuration or change the path. Use '--help' for more information."
+            f"One or more of the given config file(s) does not exist: "
+            f"{non_existing_config_file}\n"
+            f"Create the configuration or change the path. Use '--help' for more information."
         )
         assert expected_lines in result.output
 

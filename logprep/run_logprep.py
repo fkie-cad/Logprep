@@ -21,7 +21,7 @@ from logprep.util.rule_dry_runner import DryRunner
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
 
-DEFAULT_LOCATION_CONFIG = "file:///etc/logprep/pipeline.yml"
+DEFAULT_LOCATION_CONFIG = ["file:///etc/logprep/pipeline.yml"]
 logging.getLogger("filelock").setLevel(logging.ERROR)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
 logging.getLogger("elasticsearch").setLevel(logging.ERROR)
