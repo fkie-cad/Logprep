@@ -47,7 +47,8 @@ class LogprepRunnerTest:
         self.runner._create_manager()
 
     def teardown_method(self, _):
-        self.runner._configuration._getters.clear()
+        if self.runner._configuration is not None:
+            self.runner._configuration._getters.clear()
 
 
 def mock_keep_iterating(iterations):
