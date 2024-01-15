@@ -1,14 +1,17 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
+import re
 from unittest import mock
 
 import pytest
 
+from logprep.util.configuration import Configuration
 from logprep.util.helper import (
     camel_to_snake,
-    snake_to_camel,
     get_dotted_field_value,
+    get_versions_string,
     pop_dotted_field_value,
+    snake_to_camel,
 )
 from logprep.util.json_handling import is_json
 
@@ -221,3 +224,20 @@ class TestPopDottedFieldValue:
         value = pop_dotted_field_value(event, dotted_field)
         assert value == {"field": "value"}
         assert not event
+
+
+class TestGetVersionString:
+    def test_get_version_string(self):
+        config = Configuration(
+            {
+                "version": "0.1.0",
+            }
+        )
+        expected_pattern = (
+            r"python version:\s+3\.\d+\.\d+\n"
+            r"logprep version:\s+\d+\.\d+\.\d+.*\n"
+            r"configuration version:\s+0\.1\.0"
+        )
+
+        result = get_versions_string(config)
+        assert re.search(expected_pattern, result)

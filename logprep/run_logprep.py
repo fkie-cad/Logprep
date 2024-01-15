@@ -9,42 +9,23 @@ import click
 import requests
 from colorama import Fore
 
-from logprep._version import get_versions
 from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.getter import GetterNotFoundError
-from logprep.util.helper import print_fcolor
+from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
 
-DEFAULT_LOCATION_CONFIG = ["file:///etc/logprep/pipeline.yml"]
 logging.getLogger("filelock").setLevel(logging.ERROR)
 logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
 logging.getLogger("elasticsearch").setLevel(logging.ERROR)
 
 
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
-
-
-def get_versions_string(config=None) -> str:
-    """
-    Prints the version and exists. If a configuration was found then it's version
-    is printed as well
-    """
-    versions = get_versions()
-    padding = 25
-    version_string = f"{'logprep version:'.ljust(padding)}{versions['version']}"
-    version_string += f"\n{'python version:'.ljust(padding)}{sys.version.split()[0]}"
-    if config:
-        config_version = f"{config.get('version', 'unset')}, {', '.join(config.paths)}"
-    else:
-        config_version = "no configuration found"
-    version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
-    return version_string
 
 
 def print_version_and_exit(config):

@@ -3,10 +3,16 @@ import re
 import sys
 from functools import lru_cache, partial, reduce
 from os import remove
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
+
+from logprep.util.defaults import DEFAULT_LOCATION_CONFIG
+from versioneer import get_versions
+
+if TYPE_CHECKING:  # pragma: no cover
+    from logprep.util.configuration import Configuration
 
 
 def color_print_line(
@@ -308,3 +314,20 @@ def get_dict_size_in_byte(dictionary: dict) -> int:
         elements_size = sum(map(get_dict_size_in_byte, dictionary))
         return size + elements_size
     return size
+
+
+def get_versions_string(config: "Configuration") -> str:
+    """
+    Prints the version and exists. If a configuration was found then it's version
+    is printed as well
+    """
+    versions = get_versions()
+    padding = 25
+    version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
+    version_string += f"\n{'logprep version:'.ljust(padding)}{versions['version']}"
+    if config:
+        config_version = f"{config.get('version', 'unset')}, {', '.join(config.paths)}"
+    else:
+        config_version = f"no configuration found in '{DEFAULT_LOCATION_CONFIG}'"
+    version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
+    return version_string
