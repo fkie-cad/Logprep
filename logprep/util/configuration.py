@@ -26,7 +26,7 @@ from logprep.util.helper import print_fcolor
 from logprep.util.json_handling import dump_config_as_file
 
 
-class InvalidConfigurationError(BaseException):
+class InvalidConfigurationError(Exception):
     """Base class for Configuration related exceptions."""
 
     def __init__(self, unprefixed_message: str = None, message: str = None):
