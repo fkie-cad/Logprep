@@ -236,8 +236,34 @@ class TestGetVersionString:
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
             r"logprep version:\s+\d+\.\d+\.\d+.*\n"
-            r"configuration version:\s+0\.1\.0"
+            r"configuration version:\s+0\.1\.0, None"
         )
 
         result = get_versions_string(config)
+        assert re.search(expected_pattern, result)
+
+    def test_get_version_string_with_config_source(self):
+        config = Configuration(
+            {
+                "version": "0.1.0",
+            }
+        )
+        config.paths = ["path1", "path2"]
+        expected_pattern = (
+            r"python version:\s+3\.\d+\.\d+\n"
+            r"logprep version:\s+\d+\.\d+\.\d+.*\n"
+            r"configuration version:\s+0\.1\.0, file://path1, file://path2"
+        )
+
+        result = get_versions_string(config)
+        assert re.search(expected_pattern, result)
+
+    def test_get_version_string_without_config(self):
+        expected_pattern = (
+            r"python version:\s+3\.\d+\.\d+\n"
+            r"logprep version:\s+\d+\.\d+\.\d+.*\n"
+            r"configuration version:\s+no configuration found in file:///etc/logprep/pipeline.yml"
+        )
+
+        result = get_versions_string(None)
         assert re.search(expected_pattern, result)

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Optional, Union
 from colorama import Back, Fore
 from colorama.ansi import AnsiBack, AnsiFore
 
-from logprep.util.defaults import DEFAULT_LOCATION_CONFIG
+from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from versioneer import get_versions
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -326,8 +326,8 @@ def get_versions_string(config: "Configuration") -> str:
     version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
     version_string += f"\n{'logprep version:'.ljust(padding)}{versions['version']}"
     if config:
-        config_version = f"{config.get('version', 'unset')}, {', '.join(config.paths)}"
+        config_version = f"{config.get('version', 'unset')}, {', '.join(config.paths) if config.paths else 'None'}"
     else:
-        config_version = f"no configuration found in '{DEFAULT_LOCATION_CONFIG}'"
+        config_version = f"no configuration found in {', '.join(DEFAULT_CONFIG_LOCATION)}"
     version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
     return version_string

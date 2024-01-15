@@ -1,2 +1,2 @@
 """Default values for logprep."""
-DEFAULT_LOCATION_CONFIG = ["file:///etc/logprep/pipeline.yml"]
+DEFAULT_CONFIG_LOCATION = ["file:///etc/logprep/pipeline.yml"]

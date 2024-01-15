@@ -20,7 +20,7 @@ from logprep.util.configuration import (
     InvalidConfigurationErrors,
 )
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.defaults import DEFAULT_LOCATION_CONFIG
+from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 
