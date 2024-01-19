@@ -1,0 +1,119 @@
+version: 1
+process_count: 2
+timeout: 0.1
+logger:
+  level: INFO
+
+metrics:
+  enabled: true
+  port: 8000
+
+pipeline:
+  - labelername:
+      type: labeler
+      schema: quickstart/exampledata/rules/labeler/schema.json
+      include_parent_labels: true
+      specific_rules:
+        - quickstart/exampledata/rules/labeler/specific
+      generic_rules:
+        - quickstart/exampledata/rules/labeler/generic
+
+  - normalizer:
+      type: normalizer
+      specific_rules:
+        - quickstart/exampledata/rules/normalizer/specific/
+      generic_rules:
+        - quickstart/exampledata/rules/normalizer/generic/
+      regex_mapping: quickstart/exampledata/rules/normalizer/normalizer_regex_mapping.yml
+
+  - dropper:
+      type: dropper
+      specific_rules:
+        - quickstart/exampledata/rules/dropper/specific
+      generic_rules:
+        - quickstart/exampledata/rules/dropper/generic
+        - filter: "test_dropper"
+          dropper:
+            drop:
+              - drop_me
+          description: "..."
+
+  - pre_detector:
+      type: pre_detector
+      specific_rules:
+        - quickstart/exampledata/rules/pre_detector/specific
+      generic_rules:
+        - quickstart/exampledata/rules/pre_detector/generic
+      outputs:
+        - opensearch: sre
+      tree_config: quickstart/exampledata/rules/pre_detector/tree_config.json
+      alert_ip_list_path: quickstart/exampledata/rules/pre_detector/alert_ips.yml
+
+  - amides:
+      type: amides
+      specific_rules:
+        - quickstart/exampledata/rules/amides/specific
+      generic_rules:
+        - quickstart/exampledata/rules/amides/generic
+      models_path: quickstart/exampledata/models/model.zip
+      num_rule_attributions: 10
+      max_cache_entries: 1000000
+      decision_threshold: 0.32
+
+  - pseudonymizer:
+      type: pseudonymizer
+      pubkey_analyst: quickstart/exampledata/rules/pseudonymizer/example_analyst_pub.pem
+      pubkey_depseudo: quickstart/exampledata/rules/pseudonymizer/example_depseudo_pub.pem
+      regex_mapping: quickstart/exampledata/rules/pseudonymizer/regex_mapping.yml
+      hash_salt: a_secret_tasty_ingredient
+      outputs:
+        - opensearch: pseudonyms
+      specific_rules:
+        - quickstart/exampledata/rules/pseudonymizer/specific/
+      generic_rules:
+        - quickstart/exampledata/rules/pseudonymizer/generic/
+      max_cached_pseudonyms: 1000000
+
+  - calculator:
+      type: calculator
+      specific_rules:
+        - filter: "test_label: execute"
+          calculator:
+            target_field: "calculation"
+            calc: "1 + 1"
+      generic_rules: []
+
+input:
+  httpinput:
+      type: http_input
+      uvicorn_config:
+          host: 0.0.0.0
+          port: 9000
+      endpoints:
+          /firstendpoint: json
+          /secondendpoint: plaintext
+          /thirdendpoint: jsonl
+
+output:
+  opensearch:
+    type: opensearch_output
+    hosts:
+      - 127.0.0.1:9200
+    default_index: processed
+    error_index: errors
+    message_backlog_size: 10000
+    timeout: 10000
+    flush_timeout: 60
+    max_retries: 3
+    parallel_bulk: false
+    user: admin
+    secret: admin
+  kafka:
+    type: confluentkafka_output
+    default: false
+    topic: producer
+    error_topic: errors
+    flush_timeout: 300
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      statistics.interval.ms: "60000"
