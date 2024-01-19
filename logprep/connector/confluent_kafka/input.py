@@ -214,7 +214,7 @@ class ConfluentKafkaInput(Input):
                 validators.instance_of(dict),
                 validators.deep_mapping(
                     key_validator=validators.instance_of(str),
-                    value_validator=validators.instance_of(str),
+                    value_validator=validators.instance_of((str, bool)),
                 ),
                 partial(keys_in_validator, expected_keys=["bootstrap.servers", "group.id"]),
             ]
