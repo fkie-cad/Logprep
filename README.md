@@ -397,6 +397,23 @@ The environment can either be started with a Logprep container or without one:
     logprep http://localhost:8081/config/pipeline.yml
     ```
 
+### Run with getting config from FDA with basic authentication
+
+In order to run logprep with the FDA configuration it is necessary to set the following environment
+variables:
+
+- `LOGPREP_CONFIG_AUTH_METHOD=oauth`
+- `LOGPREP_CONFIG_AUTH_TOKEN=<TOKEN>` (can be intercepted from the FDA<->Keycloak http requests)
+- `LOGPREP_INPUT=<INPUT_CONNECTOR_CONFIG>`
+- `LOGPREP_OUTPUT=<OUTPUT_CONNECTOR_CONFIG>`
+- `LOGPREP_OPTIONS=<GENERAL_LOGPREP_CONFIG>`
+
+Once they are set logprep can be started with:
+
+```bash
+logprep "http://localhost:8000/api/v1/pipelines?stage=prod&logclass=ExampleClass"
+```
+
 ### Interacting with the Quickstart Environment
 
 The start up takes a few seconds to complete, but once everything is up
