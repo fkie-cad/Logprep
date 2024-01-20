@@ -87,9 +87,13 @@ class MissingEnvironmentError(InvalidConfigurationError):
 class NewConfiguration:
     _version: str = field(validator=validators.instance_of(str), converter=str, default="undefined")
     """Version of the configuration file. Defaults to `undefined`."""
-    _process_count: int = field(validator=validators.instance_of(int), default=1)
+    _process_count: int = field(
+        validator=[validators.instance_of(int), validators.ge(1)], default=1
+    )
     """Number of logprep processes to start. Defaults to `1`."""
-    _timeout: float = field(validator=validators.instance_of(float), default=5.0)
+    _timeout: float = field(
+        validator=[validators.instance_of(float), validators.gt(0)], default=5.0
+    )
     """Timeout in seconds for each logprep process. Defaults to `5.0`."""
     _logger: dict = field(validator=validators.instance_of(dict), default={"level": "INFO"})
     """Logger configuration. Defaults to `{"level": "INFO"}`."""

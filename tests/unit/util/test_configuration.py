@@ -80,6 +80,22 @@ class TestNewConfiguration:
         config._configs = (NewConfiguration(**first_config), NewConfiguration(**second_config))
         assert getattr(config, attribute) == second_value
 
+    @pytest.mark.parametrize(
+        "attribute, value, expected_error, expected_message",
+        [
+            ("process_count", -1, ValueError, "must be >= 1"),
+            ("pipeline", {}, TypeError, "must be <class 'list'>"),
+            ("timeout", "foo", TypeError, "must be <class 'float'>"),
+            ("timeout", -0.1, ValueError, "must be > 0"),
+        ],
+    )
+    def test_validation(self, attribute, value, expected_error, expected_message):
+        if expected_error is None:
+            NewConfiguration(**{attribute: value})
+        else:
+            with pytest.raises(expected_error, match=expected_message):
+                NewConfiguration(**{attribute: value})
+
     def test_pipeline_property_is_merged_from_configs(self):
         first_config = {"pipeline": [{"foo": "bar"}]}
         second_config = {"pipeline": [{"bar": "foo"}]}
