@@ -9,7 +9,7 @@ from logging import Logger
 from pathlib import Path
 from typing import List
 
-from attr import asdict, define, field, validators
+from attr import define, field, validators
 from colorama import Fore
 from ruamel.yaml.scanner import ScannerError
 
@@ -114,48 +114,59 @@ class NewConfiguration:
         factory=tuple,
     )
 
+    def _get_last_value(self, attribute: str) -> property:
+        if self._configs:
+            values = [
+                getattr(config, attribute) for config in self._configs if getattr(config, attribute)
+            ]
+            return values[-1]
+        return getattr(self, attribute)
+
     @property
     def version(self) -> str:
         """Version of the configuration file."""
-        return self._version
+        return self._get_last_value("_version")
 
     @property
     def process_count(self) -> int:
         """Number of logprep processes to start."""
-        return self._process_count
+        return self._get_last_value("_process_count")
 
     @property
     def timeout(self) -> float:
         """Timeout in seconds for each logprep process."""
-        return self._timeout
+        return self._get_last_value("_timeout")
 
     @property
     def logger(self) -> dict:
         """Logger configuration."""
-        return self._logger
+        return self._get_last_value("_logger")
 
     @property
     def input(self) -> dict:
         """Input connector configuration."""
-        return self._input
+        return self._get_last_value("_input")
 
     @property
     def output(self) -> dict:
         """Output connector configuration."""
-        return self._output
+        return self._get_last_value("_output")
 
     @property
     def pipeline(self) -> list[dict]:
         """Pipeline configuration."""
-        return self._pipeline
+        # pylint: disable=protected-access
+        pipelines = (config._pipeline for config in self._configs if config._pipeline)
+        # pylint: enable=protected-access
+        return list(chain(*pipelines))
 
     @property
     def metrics(self) -> dict:
         """Metrics configuration."""
-        return self._metrics
+        return self._get_last_value("_metrics")
 
     @classmethod
-    def create_from_yaml(cls, path: str) -> "NewConfiguration":
+    def _create_from_source(cls, path: str) -> "NewConfiguration":
         """Create configuration from a YAML file.
 
         Parameters
@@ -182,22 +193,22 @@ class NewConfiguration:
         return config
 
     @classmethod
-    def create_from_yamls(cls, config_paths: list[str]) -> "NewConfiguration":
-        """Create configuration from a list of YAML files.
+    def create_from_sources(cls, config_paths: list[str]) -> "NewConfiguration":
+        """Creates configuration from a list of configuration sources.
 
         Parameters
         ----------
         paths : list[str]
-            List of paths of files to create configuration from.
+            List of configuration sources (URI) to create configuration from.
 
         Returns
         -------
         config : Configuration
-            Configuration object based on dictionary.
+            resulting configuration object.
 
         """
         configs = tuple(
-            NewConfiguration.create_from_yaml(config_path) for config_path in config_paths
+            NewConfiguration._create_from_source(config_path) for config_path in config_paths
         )
         config = NewConfiguration()
         config._configs = configs

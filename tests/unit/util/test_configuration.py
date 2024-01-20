@@ -46,17 +46,45 @@ class TestNewConfiguration:
         assert isinstance(getattr(config, attribute), attribute_type)
         assert getattr(config, attribute) == default
 
-    def test_create_from_yaml_creates_configuration(self):
-        config = NewConfiguration.create_from_yaml(path_to_config)
+    def test_create_from_source_creates_configuration(self):
+        config = NewConfiguration._create_from_source(path_to_config)
         assert isinstance(config, NewConfiguration)
 
-    def test_create_from_yaml_adds_getter(self):
-        config = NewConfiguration.create_from_yaml(path_to_config)
+    def test_create_from_source_adds_getter(self):
+        config = NewConfiguration._create_from_source(path_to_config)
         assert isinstance(config._getter, FileGetter)
 
-    def test_create_from_yamls_adds_configs(self):
-        config = NewConfiguration.create_from_yamls([path_to_config, path_to_config])
+    def test_create_from_sources_adds_configs(self):
+        config = NewConfiguration.create_from_sources([path_to_config, path_to_config])
         assert isinstance(config, NewConfiguration)
+        assert isinstance(config._configs, tuple)
+        assert isinstance(config._configs[0], NewConfiguration)
+
+    @pytest.mark.parametrize(
+        "attribute, first_value, second_value",
+        [
+            ("version", "1", "2"),
+            ("process_count", 1, 2),
+            ("timeout", 1.0, 2.0),
+            ("logger", {"level": "INFO"}, {"level": "DEBUG"}),
+            ("input", {"foo": "bar"}, {"bar": "foo"}),
+            ("output", {"foo": "bar"}, {"bar": "foo"}),
+            ("metrics", {"enabled": False, "port": 8000}, {"enabled": True, "port": 9000}),
+        ],
+    )
+    def test_get_get_last_value(self, attribute, first_value, second_value):
+        first_config = {attribute: first_value}
+        second_config = {attribute: second_value}
+        config = NewConfiguration()
+        config._configs = (NewConfiguration(**first_config), NewConfiguration(**second_config))
+        assert getattr(config, attribute) == second_value
+
+    def test_pipeline_attribute_is_merged(self):
+        first_config = {"pipeline": [{"foo": "bar"}]}
+        second_config = {"pipeline": [{"bar": "foo"}]}
+        config = NewConfiguration()
+        config._configs = (NewConfiguration(**first_config), NewConfiguration(**second_config))
+        assert config.pipeline == [{"foo": "bar"}, {"bar": "foo"}]
 
 
 class TestConfiguration:
