@@ -70,16 +70,17 @@ class TestNewConfiguration:
             ("input", {"foo": "bar"}, {"bar": "foo"}),
             ("output", {"foo": "bar"}, {"bar": "foo"}),
             ("metrics", {"enabled": False, "port": 8000}, {"enabled": True, "port": 9000}),
+            ("metrics", {"enabled": False, "port": 8000}, {"enabled": True, "port": 9000}),
         ],
     )
-    def test_get_get_last_value(self, attribute, first_value, second_value):
+    def test_get_last_value(self, attribute, first_value, second_value):
         first_config = {attribute: first_value}
         second_config = {attribute: second_value}
         config = NewConfiguration()
         config._configs = (NewConfiguration(**first_config), NewConfiguration(**second_config))
         assert getattr(config, attribute) == second_value
 
-    def test_pipeline_attribute_is_merged(self):
+    def test_pipeline_property_is_merged_from_configs(self):
         first_config = {"pipeline": [{"foo": "bar"}]}
         second_config = {"pipeline": [{"bar": "foo"}]}
         config = NewConfiguration()
