@@ -10,19 +10,53 @@ from unittest import mock
 
 import pytest
 
+from logprep.abc.getter import Getter
 from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
     InvalidConfigurationErrors,
     InvalidInputConnectorConfigurationError,
     InvalidProcessorConfigurationError,
+    NewConfiguration,
     RequiredConfigurationKeyMissingError,
 )
-from logprep.util.getter import GetterFactory
+from logprep.util.getter import FileGetter, GetterFactory
 from logprep.util.json_handling import dump_config_as_file
 from tests.testdata.metadata import path_to_config
 
 logger = getLogger()
+
+
+class TestNewConfiguration:
+    @pytest.mark.parametrize(
+        "attribute, attribute_type, default",
+        [
+            ("version", str, "undefined"),
+            ("process_count", int, 1),
+            ("timeout", float, 5.0),
+            ("logger", dict, {"level": "INFO"}),
+            ("pipeline", list, []),
+            ("input", dict, {}),
+            ("output", dict, {}),
+            ("metrics", dict, {"enabled": False, "port": 8000}),
+        ],
+    )
+    def test_configuration_init(self, attribute, attribute_type, default):
+        config = NewConfiguration()
+        assert isinstance(getattr(config, attribute), attribute_type)
+        assert getattr(config, attribute) == default
+
+    def test_create_from_yaml_creates_configuration(self):
+        config = NewConfiguration.create_from_yaml(path_to_config)
+        assert isinstance(config, NewConfiguration)
+
+    def test_create_from_yaml_adds_getter(self):
+        config = NewConfiguration.create_from_yaml(path_to_config)
+        assert isinstance(config._getter, FileGetter)
+
+    def test_create_from_yamls_adds_configs(self):
+        config = NewConfiguration.create_from_yamls([path_to_config, path_to_config])
+        assert isinstance(config, NewConfiguration)
 
 
 class TestConfiguration:

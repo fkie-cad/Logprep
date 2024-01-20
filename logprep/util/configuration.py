@@ -9,6 +9,7 @@ from logging import Logger
 from pathlib import Path
 from typing import List
 
+from attr import asdict, define, field, validators
 from colorama import Fore
 from ruamel.yaml.scanner import ScannerError
 
@@ -21,6 +22,7 @@ from logprep.factory_error import (
 )
 from logprep.factory_error import UnknownComponentTypeError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import print_fcolor
 from logprep.util.json_handling import dump_config_as_file
@@ -81,24 +83,145 @@ class MissingEnvironmentError(InvalidConfigurationError):
         super().__init__(f"Environment variable(s) used, but not set: {message}")
 
 
+@define(kw_only=True)
+class NewConfiguration:
+    _version: str = field(validator=validators.instance_of(str), converter=str, default="undefined")
+    """Version of the configuration file. Defaults to `undefined`."""
+    _process_count: int = field(validator=validators.instance_of(int), default=1)
+    """Number of logprep processes to start. Defaults to `1`."""
+    _timeout: float = field(validator=validators.instance_of(float), default=5.0)
+    """Timeout in seconds for each logprep process. Defaults to `5.0`."""
+    _logger: dict = field(validator=validators.instance_of(dict), default={"level": "INFO"})
+    """Logger configuration. Defaults to `{"level": "INFO"}`."""
+    _input: dict = field(validator=validators.instance_of(dict), factory=dict)
+    """Input connector configuration. Defaults to `{}`."""
+    _output: dict = field(validator=validators.instance_of(dict), factory=dict)
+    """Output connector configuration. Defaults to `{}`."""
+    _pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list)
+    """Pipeline configuration. Defaults to `[]`."""
+    _metrics: dict = field(
+        validator=validators.instance_of(dict), default={"enabled": False, "port": 8000}
+    )
+    """Metrics configuration. Defaults to `{"enabled": False, "port": 8000}`."""
+
+    _getter: Getter = field(
+        validator=validators.instance_of(Getter),
+        default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
+    )
+
+    _configs: tuple["NewConfiguration"] = field(
+        validator=validators.instance_of(tuple),
+        factory=tuple,
+    )
+
+    @property
+    def version(self) -> str:
+        """Version of the configuration file."""
+        return self._version
+
+    @property
+    def process_count(self) -> int:
+        """Number of logprep processes to start."""
+        return self._process_count
+
+    @property
+    def timeout(self) -> float:
+        """Timeout in seconds for each logprep process."""
+        return self._timeout
+
+    @property
+    def logger(self) -> dict:
+        """Logger configuration."""
+        return self._logger
+
+    @property
+    def input(self) -> dict:
+        """Input connector configuration."""
+        return self._input
+
+    @property
+    def output(self) -> dict:
+        """Output connector configuration."""
+        return self._output
+
+    @property
+    def pipeline(self) -> list[dict]:
+        """Pipeline configuration."""
+        return self._pipeline
+
+    @property
+    def metrics(self) -> dict:
+        """Metrics configuration."""
+        return self._metrics
+
+    @classmethod
+    def create_from_yaml(cls, path: str) -> "NewConfiguration":
+        """Create configuration from a YAML file.
+
+        Parameters
+        ----------
+        path : str
+            Path of file to create configuration from.
+
+        Returns
+        -------
+        config : Configuration
+            Configuration object based on dictionary.
+
+        """
+        config_getter = GetterFactory.from_string(path)
+        try:
+            config_dict = config_getter.get_json()
+        except ValueError:
+            try:
+                config_dict = config_getter.get_yaml()
+            except ScannerError as error:
+                print_fcolor(Fore.RED, f"Error parsing YAML file: {path}\n{error}")
+                sys.exit(1)
+        config = NewConfiguration(**config_dict, getter=config_getter)
+        return config
+
+    @classmethod
+    def create_from_yamls(cls, config_paths: list[str]) -> "NewConfiguration":
+        """Create configuration from a list of YAML files.
+
+        Parameters
+        ----------
+        paths : list[str]
+            List of paths of files to create configuration from.
+
+        Returns
+        -------
+        config : Configuration
+            Configuration object based on dictionary.
+
+        """
+        configs = tuple(
+            NewConfiguration.create_from_yaml(config_path) for config_path in config_paths
+        )
+        config = NewConfiguration()
+        config._configs = configs
+        return config
+
+
 class Configuration(dict):
     """Used to create and verify a configuration dict parsed from a YAML file."""
 
-    _getters: list[Getter]
+    getters: list[Getter]
 
     @property
     def paths(self) -> list[str]:
         """returns the path of the configuration"""
-        return [f"{getter.protocol}://{getter.target}" for getter in self._getters]
+        return [f"{getter.protocol}://{getter.target}" for getter in self.getters]
 
     @paths.setter
     def paths(self, paths: list[str]) -> None:
         """sets the path and getter"""
-        self._getters = [GetterFactory.from_string(path) for path in paths]
+        self.getters = [GetterFactory.from_string(path) for path in paths]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._getters = []
+        self.getters = []
 
     @classmethod
     def create_from_yaml(cls, path: str) -> "Configuration":
@@ -125,7 +248,7 @@ class Configuration(dict):
                 print_fcolor(Fore.RED, f"Error parsing YAML file: {path}\n{error}")
                 sys.exit(1)
         config = Configuration()
-        config._getters.append(config_getter)
+        config.getters.append(config_getter)
         config.update(config_dict)
         return config
 
@@ -145,7 +268,9 @@ class Configuration(dict):
 
         """
         configs = (Configuration.create_from_yaml(config) for config in paths)
-        return Configuration(reduce(lambda x, y: x | y, configs))
+        merged_config = Configuration(reduce(lambda x, y: x | y, configs))
+        merged_config.getters = [getter for config in configs for getter in config.getters]
+        return merged_config
 
     @staticmethod
     def patch_yaml_with_json_connectors(
@@ -266,7 +391,7 @@ class Configuration(dict):
         return errors
 
     def _verify_environment(self):
-        missing_env_vars = tuple(chain(*[getter.missing_env_vars for getter in self._getters]))
+        missing_env_vars = tuple(chain(*[getter.missing_env_vars for getter in self.getters]))
         if missing_env_vars:
             missing_env_error = MissingEnvironmentError(", ".join(missing_env_vars))
             raise InvalidConfigurationErrors([missing_env_error])
