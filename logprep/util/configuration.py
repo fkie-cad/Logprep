@@ -187,7 +187,7 @@ class NewConfiguration:
             try:
                 config_dict = config_getter.get_yaml()
             except ScannerError as error:
-                print_fcolor(Fore.RED, f"Error parsing YAML file: {path}\n{error}")
+                print_fcolor(Fore.RED, f"Error parsing YAML file: \n{config_getter}\n{error}")
                 sys.exit(1)
         config = NewConfiguration(**config_dict, getter=config_getter)
         return config

@@ -87,6 +87,16 @@ class TestNewConfiguration:
         config._configs = (NewConfiguration(**first_config), NewConfiguration(**second_config))
         assert config.pipeline == [{"foo": "bar"}, {"bar": "foo"}]
 
+    @mock.patch("logprep.util.configuration.print_fcolor")
+    def test_invalid_yml_prints_formatted_error(self, mock_print_fcolor, tmp_path):
+        broken_config_path = Path(tmp_path / "test_config")
+        broken_config_path.write_text("process_count: 5\ninvalid_yaml", encoding="utf8")
+        with pytest.raises(SystemExit, match="1"):
+            NewConfiguration._create_from_source(str(broken_config_path))
+        mock_print_fcolor.assert_called()
+        call_msg = str(mock_print_fcolor.call_args_list[0][0][1])
+        assert call_msg.startswith("Error parsing YAML file")
+
 
 class TestConfiguration:
     config: dict
