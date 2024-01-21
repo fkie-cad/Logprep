@@ -103,15 +103,125 @@ class TestNewConfiguration:
         config._configs = (NewConfiguration(**first_config), NewConfiguration(**second_config))
         assert config.pipeline == [{"foo": "bar"}, {"bar": "foo"}]
 
-    @mock.patch("logprep.util.configuration.print_fcolor")
-    def test_invalid_yml_prints_formatted_error(self, mock_print_fcolor, tmp_path):
-        broken_config_path = Path(tmp_path / "test_config")
-        broken_config_path.write_text("process_count: 5\ninvalid_yaml", encoding="utf8")
-        with pytest.raises(SystemExit, match="1"):
-            NewConfiguration._create_from_source(str(broken_config_path))
-        mock_print_fcolor.assert_called()
-        call_msg = str(mock_print_fcolor.call_args_list[0][0][1])
-        assert call_msg.startswith("Error parsing YAML file")
+    def test_create_from_sources_collects_errors(self, tmp_path):
+        first_config = """---
+process_count: -1
+"""
+        second_config = """---
+pipeline: "wrong_type"
+"""
+        first_file_path = Path(tmp_path / "first_config")
+        first_file_path.write_text(first_config, encoding="utf8")
+        second_file_path = Path(tmp_path / "second_config")
+        second_file_path.write_text(second_config, encoding="utf8")
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config = NewConfiguration.create_from_sources(
+                [str(first_file_path), str(second_file_path)]
+            )
+            assert len(raised.value.errors) == 2
+            assert isinstance(config, NewConfiguration)
+            assert isinstance(config._configs, tuple)
+
+    def test_verify_passes_for_valid_configuration(self):
+        try:
+            config = NewConfiguration.create_from_sources([path_to_config])
+            config.verify()
+        except InvalidConfigurationError as error:
+            pytest.fail(f"The verification should pass for a valid configuration.: {error}")
+
+    @pytest.mark.parametrize(
+        "test_case,failure_config, error_count",
+        [
+            (
+                "str as processor definition",
+                {"pipeline": [{"processor_name": "should be a dict"}]},
+                1,
+            ),
+            (
+                "unknown processor type",
+                {"pipeline": [{"processor_name": {"type": "unknown"}}]},
+                1,
+            ),
+            (
+                "incomplete processor definition",
+                {"pipeline": [{"processor_name": {"type": "labeler"}}]},
+                1,
+            ),
+            (
+                "failure in rule definition",
+                {
+                    "pipeline": [
+                        {
+                            "processor_name": {
+                                "type": "dissector",
+                                "specific_rules": [
+                                    {
+                                        "filter": "message",
+                                        "dissector": {
+                                            "mapping": {"message": "%{source} %{target}"}
+                                        },
+                                        "description": "do nothing rule for dissector",
+                                    }
+                                ],
+                                "generic_rules": [
+                                    {
+                                        "filter": "message",
+                                        "dissector": "THIS SHOULD BE A DICT",
+                                        "description": "do nothing rule for dissector",
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                },
+                1,
+            ),
+            (
+                "collects multiple errors",
+                {
+                    "pipeline": [
+                        {
+                            "error_processor": "THIS SHOULD BE A DICT",
+                        },
+                        {
+                            "processor_name": {
+                                "type": "dissector",
+                                "specific_rules": [
+                                    {
+                                        "filter": "message",
+                                        "dissector": {
+                                            "mapping": {"message": "%{source} %{target}"}
+                                        },
+                                        "description": "do nothing rule for dissector",
+                                    }
+                                ],
+                                "generic_rules": [
+                                    {
+                                        "filter": "message",
+                                        "dissector": "THIS SHOULD BE A DICT",
+                                        "description": "do nothing rule for dissector",
+                                    }
+                                ],
+                            },
+                        },
+                        {
+                            "another_error_processor": {"type": "unknown"},
+                        },
+                    ]
+                },
+                3,
+            ),
+        ],
+    )
+    def test_verify_fails_on_wrong_processor_config(
+        self, tmp_path, test_case, failure_config, error_count
+    ):
+        failure_config_path = str(tmp_path / "failure-config.yml")
+        dump_config_as_file(failure_config_path, failure_config)
+        config = NewConfiguration.create_from_sources([path_to_config, failure_config_path])
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config.verify()
+        assert len(raised.value.errors) == error_count, test_case
 
 
 class TestConfiguration:

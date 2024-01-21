@@ -171,30 +171,25 @@ class NewConfiguration:
 
     @classmethod
     def _create_from_source(cls, path: str) -> "NewConfiguration":
-        """Create configuration from a YAML file.
+        """Create configuration from an uri source.
 
         Parameters
         ----------
         path : str
-            Path of file to create configuration from.
+            uri of file to create configuration from.
 
         Returns
         -------
         config : Configuration
-            Configuration object based on dictionary.
+            Configuration object attrs class.
 
         """
         config_getter = GetterFactory.from_string(path)
         try:
             config_dict = config_getter.get_json()
         except ValueError:
-            try:
-                config_dict = config_getter.get_yaml()
-            except ScannerError as error:
-                print_fcolor(Fore.RED, f"Error parsing YAML file: \n{config_getter}\n{error}")
-                sys.exit(1)
-        config = NewConfiguration(**config_dict, getter=config_getter)
-        return config
+            config_dict = config_getter.get_yaml()
+        return NewConfiguration(**config_dict, getter=config_getter)
 
     @classmethod
     def create_from_sources(cls, config_paths: list[str]) -> "NewConfiguration":
@@ -211,12 +206,38 @@ class NewConfiguration:
             resulting configuration object.
 
         """
-        configs = tuple(
-            NewConfiguration._create_from_source(config_path) for config_path in config_paths
-        )
+        errors = []
+        configs = []
+        for config_path in config_paths:
+            try:
+                config = NewConfiguration._create_from_source(config_path)
+                configs.append(config)
+            except (ValueError, ScannerError, TypeError) as error:
+                errors.append(error)
+        if errors:
+            raise InvalidConfigurationErrors(errors)
         config = NewConfiguration()
-        config._configs = configs
+        config._configs = tuple(configs)
         return config
+
+    def verify(self):
+        """Verify the configuration."""
+        errors = []
+        try:
+            input_connector = Factory.create(self.input)
+        except Exception as error:  # pylint: disable=broad-except
+            errors.append(error)
+        try:
+            output_connector = Factory.create(self.output)
+        except Exception as error:  # pylint: disable=broad-except
+            errors.append(error)
+        for processor_config in self.pipeline:
+            try:
+                processor = Factory.create(processor_config)
+            except Exception as error:  # pylint: disable=broad-except
+                errors.append(error)
+        if errors:
+            raise InvalidConfigurationErrors(errors)
 
 
 class Configuration(dict):

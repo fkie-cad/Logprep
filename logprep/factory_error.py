@@ -1,7 +1,7 @@
 """This module contains errors related to ProcessorFactory."""
 
 
-class FactoryError(BaseException):
+class FactoryError(Exception):
     """Base class for ProcessorFactory related exceptions."""
 
 

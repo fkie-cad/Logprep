@@ -8,7 +8,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from logprep.processor.base.rule import Rule
 
 
-class RuleError(BaseException):
+class RuleError(Exception):
     """Base class for Rule related exceptions."""
 
 
