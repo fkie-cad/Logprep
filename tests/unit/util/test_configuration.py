@@ -447,6 +447,77 @@ $LOGPREP_OUTPUT
         ):
             config.verify()
 
+    def test_duplicate_rule_id_per_processor_raises(self):
+        config = NewConfiguration()
+        pipeline = [
+            {
+                "my dissector": {
+                    "type": "dissector",
+                    "specific_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{new_field} %{next_field}"},
+                            },
+                        },
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{other_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                    "generic_rules": [],
+                }
+            },
+        ]
+        config.pipeline = pipeline
+        config.output = {"dummy": {"type": "dummy_output"}}
+        config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config.verify()
+        assert len(raised.value.errors) == 1
+        for error in raised.value.errors:
+            assert "Duplicate rule id: same id" in error.args[0]
+
+    def test_duplicate_rule_id_in_different_rule_trees_per_processor_raises(self):
+        config = NewConfiguration()
+        pipeline = [
+            {
+                "my dissector": {
+                    "type": "dissector",
+                    "specific_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{new_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                    "generic_rules": [
+                        {
+                            "filter": "message",
+                            "dissector": {
+                                "id": "same id",
+                                "mapping": {"message": "%{other_field} %{next_field}"},
+                            },
+                        },
+                    ],
+                }
+            },
+        ]
+        config.pipeline = pipeline
+        config.output = {"dummy": {"type": "dummy_output"}}
+        config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+        with pytest.raises(InvalidConfigurationErrors) as raised:
+            config.verify()
+        assert len(raised.value.errors) == 1
+        for error in raised.value.errors:
+            assert "Duplicate rule id: same id" in error.args[0]
+
 
 class TestConfiguration:
     config: dict

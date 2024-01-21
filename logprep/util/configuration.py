@@ -151,10 +151,20 @@ class NewConfiguration:
         """Input connector configuration."""
         return self._get_last_value("_input")
 
+    @input.setter
+    def input(self, input: dict) -> None:
+        """Setter for input connector configuration."""
+        self._input = input
+
     @property
     def output(self) -> dict:
         """Output connector configuration."""
         return self._get_last_value("_output")
+
+    @output.setter
+    def output(self, output: dict) -> None:
+        """Setter for Output connector configuration."""
+        self._output = output
 
     @property
     def pipeline(self) -> list[dict]:
@@ -162,7 +172,12 @@ class NewConfiguration:
         # pylint: disable=protected-access
         pipelines = (config._pipeline for config in self._configs if config._pipeline)
         # pylint: enable=protected-access
-        return list(chain(*pipelines))
+        return list(chain(self._pipeline, *pipelines))
+
+    @pipeline.setter
+    def pipeline(self, pipeline: list[dict]) -> None:
+        """Pipeline configuration."""
+        self._pipeline = pipeline
 
     @property
     def metrics(self) -> dict:
@@ -228,18 +243,24 @@ class NewConfiguration:
         except MissingEnvironmentError as error:
             errors.append(error)
         try:
+            if not self.input:
+                raise RequiredConfigurationKeyMissingError("input")
             Factory.create(self.input)
         except Exception as error:  # pylint: disable=broad-except
             errors.append(error)
-        for output_name, output_config in self.output.items():
-            try:
-                Factory.create({output_name: output_config})
-            except Exception as error:  # pylint: disable=broad-except
-                errors.append(error)
+        if not self.output:
+            errors.append(RequiredConfigurationKeyMissingError("output"))
+        else:
+            for output_name, output_config in self.output.items():
+                try:
+                    Factory.create({output_name: output_config})
+                except Exception as error:  # pylint: disable=broad-except
+                    errors.append(error)
         for processor_config in self.pipeline:
             try:
-                Factory.create(processor_config)
+                processor = Factory.create(processor_config)
                 self._verify_processor_outputs(processor_config)
+                self._verify_rules(processor)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
         if errors:
@@ -255,7 +276,7 @@ class NewConfiguration:
             for output_name, _ in output.items():
                 if output_name not in self.output:
                     raise InvalidProcessorConfigurationError(
-                        f"{processor_name}: output '{output_name}' does not exist in logprep outputs"
+                        f"{processor_name}: output '{output_name}' does not exist in logprep outputs"  # pylint: disable=line-too-long
                     )
 
     def _verify_environment(self):
@@ -266,6 +287,30 @@ class NewConfiguration:
         if missing_env_vars:
             missing_env_error = MissingEnvironmentError(", ".join(missing_env_vars))
             raise InvalidConfigurationErrors([missing_env_error])
+
+    def _verify_rules(self, processor: Processor) -> None:
+        if not processor:
+            return
+        rule_ids = []
+        for rule in processor.rules:
+            if rule.id in rule_ids:
+                raise InvalidRuleDefinitionError(f"Duplicate rule id: {rule.id}, {rule}")
+            rule_ids.append(rule.id)
+            if not hasattr(processor.rule_class, "outputs"):
+                continue
+            self._verify_outputs(processor, rule)
+        duplicates = [item for item in rule_ids if rule_ids.count(item) > 1]
+        if duplicates:
+            raise InvalidRuleDefinitionError(f"Duplicate rule ids: {duplicates}")
+
+    def _verify_outputs(self, processor: Processor, rule) -> None:
+        for output in rule.outputs:
+            for output_name, _ in output.items():
+                if output_name not in self["output"]:
+                    raise InvalidRuleDefinitionError(
+                        f"{processor.describe()}: output"
+                        f" '{output_name}' does not exist in logprep outputs"
+                    )
 
 
 class Configuration(dict):
