@@ -518,6 +518,43 @@ $LOGPREP_OUTPUT
         for error in raised.value.errors:
             assert "Duplicate rule id: same id" in error.args[0]
 
+    @pytest.mark.parametrize(
+        "test_case, metrics_config_dict, raised_error",
+        [
+            (
+                "valid configuration",
+                {"enabled": True, "port": 8000},
+                None,
+            ),
+            (
+                "invalid datatype in port is tolerated",
+                {"enabled": True, "port": "8000"},
+                None,
+            ),
+            (
+                "unknown option",
+                {"enabled": True, "port": 8000, "unknown_option": "foo"},
+                InvalidConfigurationError,
+            ),
+        ],
+    )
+    def test_verify_metrics_config(
+        self, metrics_config_dict, raised_error, test_case
+    ):  # pylint: disable=unused-argument
+        config = NewConfiguration()
+        config.metrics = metrics_config_dict
+        config.output = {"dummy": {"type": "dummy_output"}}
+        config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+        if raised_error is not None:
+            try:
+                config.verify()
+            except InvalidConfigurationErrors as error:
+                assert any(
+                    (isinstance(error, raised_error) for error in error.errors)
+                ), f"No '{raised_error.__name__}' raised for test case '{test_case}'!"
+        else:
+            config.verify()
+
 
 class TestConfiguration:
     config: dict

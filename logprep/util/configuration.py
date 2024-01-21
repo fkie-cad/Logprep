@@ -7,7 +7,7 @@ from functools import reduce
 from itertools import chain
 from logging import Logger
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 from attr import define, field, validators
 from colorama import Fore
@@ -118,10 +118,15 @@ class NewConfiguration:
         factory=tuple,
     )
 
-    def _get_last_value(self, attribute: str) -> property:
+    def _get_last_value(self, attribute: str) -> Any:
         if self._configs:
             values = [
-                getattr(config, attribute) for config in self._configs if getattr(config, attribute)
+                getattr(self, attribute),
+                *[
+                    getattr(config, attribute)
+                    for config in self._configs
+                    if getattr(config, attribute)
+                ],
             ]
             return values[-1]
         return getattr(self, attribute)
@@ -152,9 +157,9 @@ class NewConfiguration:
         return self._get_last_value("_input")
 
     @input.setter
-    def input(self, input: dict) -> None:
+    def input(self, input_config: dict) -> None:
         """Setter for input connector configuration."""
-        self._input = input
+        self._input = input_config
 
     @property
     def output(self) -> dict:
@@ -183,6 +188,11 @@ class NewConfiguration:
     def metrics(self) -> dict:
         """Metrics configuration."""
         return self._get_last_value("_metrics")
+
+    @metrics.setter
+    def metrics(self, metrics: dict) -> None:
+        """Setter for metrics configuration."""
+        self._metrics = metrics
 
     @classmethod
     def _create_from_source(cls, path: str) -> "NewConfiguration":
@@ -263,6 +273,10 @@ class NewConfiguration:
                 self._verify_rules(processor)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
+        try:
+            self._verify_metrics_config()
+        except Exception as error:  # pylint: disable=broad-except
+            errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
 
@@ -311,6 +325,16 @@ class NewConfiguration:
                         f"{processor.describe()}: output"
                         f" '{output_name}' does not exist in logprep outputs"
                     )
+
+    def _verify_metrics_config(self):
+        errors = []
+        for key in self.metrics:
+            if key not in ["enabled", "port"]:
+                errors.append(InvalidConfigurationError(f"Unknown metrics option: {key}"))
+        if "enabled" not in self.metrics:
+            errors.append(RequiredConfigurationKeyMissingError("metrics > enabled"))
+        if errors:
+            raise InvalidConfigurationErrors(errors)
 
 
 class Configuration(dict):
