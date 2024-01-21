@@ -224,16 +224,17 @@ class NewConfiguration:
         """Verify the configuration."""
         errors = []
         try:
-            input_connector = Factory.create(self.input)
+            Factory.create(self.input)
         except Exception as error:  # pylint: disable=broad-except
             errors.append(error)
-        try:
-            output_connector = Factory.create(self.output)
-        except Exception as error:  # pylint: disable=broad-except
-            errors.append(error)
+        for output_name, output_config in self.output.items():
+            try:
+                Factory.create({output_name: output_config})
+            except Exception as error:  # pylint: disable=broad-except
+                errors.append(error)
         for processor_config in self.pipeline:
             try:
-                processor = Factory.create(processor_config)
+                Factory.create(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
         if errors:

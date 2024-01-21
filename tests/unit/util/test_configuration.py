@@ -87,6 +87,12 @@ class TestNewConfiguration:
             ("pipeline", {}, TypeError, "must be <class 'list'>"),
             ("timeout", "foo", TypeError, "must be <class 'float'>"),
             ("timeout", -0.1, ValueError, "must be > 0"),
+            (
+                "output",
+                {"dummy1": {"type": "dummy_output"}, "dummy2": {"type": "dummy_output"}},
+                None,
+                None,
+            ),
         ],
     )
     def test_validation(self, attribute, value, expected_error, expected_message):
@@ -130,7 +136,7 @@ pipeline: "wrong_type"
             pytest.fail(f"The verification should pass for a valid configuration.: {error}")
 
     @pytest.mark.parametrize(
-        "test_case,failure_config, error_count",
+        "test_case, test_config, error_count",
         [
             (
                 "str as processor definition",
@@ -211,17 +217,40 @@ pipeline: "wrong_type"
                 },
                 3,
             ),
+            ("verifies input config", {"input": {"random_name": {"type": "unknown"}}}, 1),
+            ("verifies output config", {"output": {"random_name": {"type": "unknown"}}}, 1),
+            (
+                "multiple output config failures",
+                {
+                    "output": {
+                        "dummy": {"type": "wrong_type"},
+                        "dummy2": {"type": "dummy_output"},
+                    },
+                },
+                1,
+            ),
+            (
+                "multiple output configs success",
+                {
+                    "output": {
+                        "dummy1": {"type": "dummy_output"},
+                        "dummy2": {"type": "dummy_output"},
+                    }
+                },
+                0,
+            ),
         ],
     )
-    def test_verify_fails_on_wrong_processor_config(
-        self, tmp_path, test_case, failure_config, error_count
-    ):
-        failure_config_path = str(tmp_path / "failure-config.yml")
-        dump_config_as_file(failure_config_path, failure_config)
-        config = NewConfiguration.create_from_sources([path_to_config, failure_config_path])
-        with pytest.raises(InvalidConfigurationErrors) as raised:
+    def test_verify_verifies_config(self, tmp_path, test_case, test_config, error_count):
+        test_config_path = str(tmp_path / "failure-config.yml")
+        dump_config_as_file(test_config_path, test_config)
+        config = NewConfiguration.create_from_sources([path_to_config, test_config_path])
+        if error_count:
+            with pytest.raises(InvalidConfigurationErrors) as raised:
+                config.verify()
+            assert len(raised.value.errors) == error_count, test_case
+        else:
             config.verify()
-        assert len(raised.value.errors) == error_count, test_case
 
 
 class TestConfiguration:
