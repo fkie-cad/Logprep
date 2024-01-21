@@ -224,6 +224,10 @@ class NewConfiguration:
         """Verify the configuration."""
         errors = []
         try:
+            self._verify_environment()
+        except MissingEnvironmentError as error:
+            errors.append(error)
+        try:
             Factory.create(self.input)
         except Exception as error:  # pylint: disable=broad-except
             errors.append(error)
@@ -235,10 +239,33 @@ class NewConfiguration:
         for processor_config in self.pipeline:
             try:
                 Factory.create(processor_config)
+                self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
+
+    def _verify_processor_outputs(self, processor_config):
+        processor_config = deepcopy(processor_config)
+        processor_name, processor_config = processor_config.popitem()
+        if "outputs" not in processor_config:
+            return
+        outputs = processor_config.get("outputs")
+        for output in outputs:
+            for output_name, _ in output.items():
+                if output_name not in self.output:
+                    raise InvalidProcessorConfigurationError(
+                        f"{processor_name}: output '{output_name}' does not exist in logprep outputs"
+                    )
+
+    def _verify_environment(self):
+        # pylint: disable=protected-access
+        getters = (config._getter for config in self._configs if config._getter)
+        # pylint: enable=protected-access
+        missing_env_vars = tuple(chain(*[getter.missing_env_vars for getter in getters]))
+        if missing_env_vars:
+            missing_env_error = MissingEnvironmentError(", ".join(missing_env_vars))
+            raise InvalidConfigurationErrors([missing_env_error])
 
 
 class Configuration(dict):

@@ -218,13 +218,13 @@ pipeline: "wrong_type"
                 3,
             ),
             ("verifies input config", {"input": {"random_name": {"type": "unknown"}}}, 1),
-            ("verifies output config", {"output": {"random_name": {"type": "unknown"}}}, 1),
+            ("verifies output config", {"output": {"kafka_output": {"type": "unknown"}}}, 1),
             (
                 "multiple output config failures",
                 {
                     "output": {
                         "dummy": {"type": "wrong_type"},
-                        "dummy2": {"type": "dummy_output"},
+                        "kafka_output": {"type": "dummy_output"},
                     },
                 },
                 1,
@@ -233,11 +233,126 @@ pipeline: "wrong_type"
                 "multiple output configs success",
                 {
                     "output": {
-                        "dummy1": {"type": "dummy_output"},
-                        "dummy2": {"type": "dummy_output"},
+                        "dummy": {"type": "dummy_output"},
+                        "kafka_output": {"type": "dummy_output"},
                     }
                 },
                 0,
+            ),
+            (
+                "processor does not exist",
+                {
+                    "pipeline": [
+                        {
+                            "some_processor_name": {
+                                "type": "does_not_exist",
+                            }
+                        }
+                    ]
+                },
+                1,
+            ),
+            (
+                "generic_rules missing from processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                            }
+                        }
+                    ]
+                },
+                1,
+            ),
+            (
+                "unknown option without spaces in processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "some_unknown_option": "foo",
+                            }
+                        }
+                    ]
+                },
+                1,
+            ),
+            (
+                "unknown option with spaces in processor",
+                {
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "some unknown option": "foo",
+                            }
+                        }
+                    ]
+                },
+                1,
+            ),
+            (
+                "two processor do not exist",
+                {
+                    "pipeline": [
+                        {
+                            "some_processor_name": {
+                                "type": "does_not_exist",
+                            }
+                        },
+                        {"another_processor_name": {"type": "does_not_exist"}},
+                    ]
+                },
+                2,
+            ),
+            (
+                "processor error for config and output does not exists",
+                {
+                    "output": {},
+                    "pipeline": [
+                        {
+                            "labelername": {
+                                "type": "labeler",
+                                "schema": "quickstart/exampledata/rules/labeler/schema.json",
+                                "include_parent_labels": "on",
+                                "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
+                                "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
+                                "some unknown option": "foo",
+                            }
+                        },
+                        {
+                            "pseudo": {
+                                "type": "pseudonymizer",
+                                "outputs": [{"kafka": "topic"}],
+                                "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
+                                "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
+                                "hash_salt": "a_secret_tasty_ingredient",
+                                "specific_rules": [
+                                    "tests/testdata/unit/pseudonymizer/rules/specific/"
+                                ],
+                                "generic_rules": [
+                                    "tests/testdata/unit/pseudonymizer/rules/generic/"
+                                ],
+                                "regex_mapping": "tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml",
+                                "max_cached_pseudonyms": 1000000,
+                            }
+                        },
+                    ],
+                },
+                2,
             ),
         ],
     )
@@ -250,6 +365,86 @@ pipeline: "wrong_type"
                 config.verify()
             assert len(raised.value.errors) == error_count, test_case
         else:
+            config.verify()
+
+    patch = mock.patch(
+        "os.environ",
+        {
+            "LOGPREP_VERSION": "1",
+            "LOGPREP_PROCESS_COUNT": "16",
+            "LOGPREP_LOG_LEVEL": "DEBUG",
+            "LOGPREP_PIPELINE": """
+pipeline:
+    - labelername:
+        type: labeler
+        schema: quickstart/exampledata/rules/labeler/schema.json
+        include_parent_labels: true
+        specific_rules:
+            - quickstart/exampledata/rules/labeler/specific
+        generic_rules:
+            - quickstart/exampledata/rules/labeler/generic
+""",
+            "LOGPREP_OUTPUT": """
+output:
+    kafka:
+        type: confluentkafka_output
+        topic: producer
+        error_topic: producer_error
+        flush_timeout: 30
+        send_timeout: 2
+        kafka_config:
+            bootstrap.servers: "172.21.0.5:9092"
+            acks: "-1"
+            compression.type: "none"
+""",
+            "LOGPREP_INPUT": "input:\n    kafka:\n        type: confluentkafka_input\n        topic: consumer\n        kafka_config:\n          bootstrap.servers: localhost:9092\n          group.id: testgroup\n",
+        },
+    )
+
+    @patch
+    def test_config_gets_enriched_by_environment(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+version: $LOGPREP_VERSION
+process_count: $LOGPREP_PROCESS_COUNT
+timeout: 0.1
+logger:
+    level: $LOGPREP_LOG_LEVEL
+$LOGPREP_PIPELINE
+$LOGPREP_INPUT
+$LOGPREP_OUTPUT
+"""
+        )
+        config = NewConfiguration.create_from_sources([str(config_path)])
+        config.verify()
+        assert config.version == "1"
+        assert config.process_count == 16
+        assert config.output["kafka"]["topic"] == "producer"
+        assert config.input["kafka"]["topic"] == "consumer"
+        assert len(config.pipeline) == 1
+
+    @patch
+    def test_config_gets_enriched_by_environment_with_non_existent_variable(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+version: $LOGPREP_VERSION
+process_count: $LOGPREP_PROCESS_COUNT
+timeout: 0.1
+logger:
+    level: $LOGPREP_LOG_LEVEL
+$LOGPREP_I_DO_NOT_EXIST
+$LOGPREP_PIPELINE
+$LOGPREP_INPUT
+$LOGPREP_OUTPUT
+"""
+        )
+        config = NewConfiguration.create_from_sources([str(config_path)])
+        with pytest.raises(
+            InvalidConfigurationErrors,
+            match=r"Environment variable\(s\) used, but not set: LOGPREP_I_DO_NOT_EXIST",
+        ):
             config.verify()
 
 
