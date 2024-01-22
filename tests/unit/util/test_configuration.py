@@ -24,7 +24,7 @@ class TestConfiguration:
     @pytest.mark.parametrize(
         "attribute, attribute_type, default",
         [
-            ("version", str, "undefined"),
+            ("version", str, "unset"),
             ("config_refresh_interval", int, 0),
             ("process_count", int, 1),
             ("timeout", float, 5.0),
@@ -41,15 +41,15 @@ class TestConfiguration:
         assert getattr(config, attribute) == default
 
     def test_create_from_source_creates_configuration(self):
-        config = Configuration._create_from_source(path_to_config)
+        config = Configuration.from_source(path_to_config)
         assert isinstance(config, Configuration)
 
     def test_create_from_source_adds_getter(self):
-        config = Configuration._create_from_source(path_to_config)
+        config = Configuration.from_source(path_to_config)
         assert isinstance(config._getter, FileGetter)
 
     def test_create_from_sources_adds_configs(self):
-        config = Configuration.create_from_sources([path_to_config, path_to_config])
+        config = Configuration.from_sources([path_to_config, path_to_config])
         assert isinstance(config, Configuration)
         assert isinstance(config._configs, tuple)
         assert isinstance(config._configs[0], Configuration)
@@ -77,7 +77,7 @@ class TestConfiguration:
             return configs.pop(0)
 
         with mock.patch("logprep.abc.getter.Getter.get_json", new=mock_get_yaml):
-            config = Configuration.create_from_sources(["mockpath", "mockpath"])
+            config = Configuration.from_sources(["mockpath", "mockpath"])
             assert getattr(config, attribute) == second_value
 
     @pytest.mark.parametrize(
@@ -111,7 +111,7 @@ class TestConfiguration:
             return configs.pop(0)
 
         with mock.patch("logprep.abc.getter.Getter.get_json", new=mock_get_yaml):
-            config = Configuration.create_from_sources(["mockpath", "mockpath"])
+            config = Configuration.from_sources(["mockpath", "mockpath"])
         assert config.pipeline == [{"foo": "bar"}, {"bar": "foo"}]
 
     def test_create_from_sources_collects_errors(self, tmp_path):
@@ -126,16 +126,14 @@ pipeline: "wrong_type"
         second_file_path = Path(tmp_path / "second_config")
         second_file_path.write_text(second_config, encoding="utf8")
         with pytest.raises(InvalidConfigurationErrors) as raised:
-            config = Configuration.create_from_sources(
-                [str(first_file_path), str(second_file_path)]
-            )
+            config = Configuration.from_sources([str(first_file_path), str(second_file_path)])
             assert len(raised.value.errors) == 2
             assert isinstance(config, Configuration)
             assert isinstance(config._configs, tuple)
 
     def test_verify_passes_for_valid_configuration(self):
         try:
-            config = Configuration.create_from_sources([path_to_config])
+            config = Configuration.from_sources([path_to_config])
             config.verify()
         except InvalidConfigurationError as error:
             pytest.fail(f"The verification should pass for a valid configuration.: {error}")
@@ -364,7 +362,7 @@ pipeline: "wrong_type"
     def test_verify_verifies_config(self, tmp_path, test_case, test_config, error_count):
         test_config_path = str(tmp_path / "failure-config.yml")
         dump_config_as_file(test_config_path, test_config)
-        config = Configuration.create_from_sources([test_config_path])
+        config = Configuration.from_sources([test_config_path])
         if "input" not in test_config:
             config.input = {"dummy": {"type": "dummy_input", "documents": []}}
         if "output" not in test_config:
@@ -425,7 +423,7 @@ $LOGPREP_INPUT
 $LOGPREP_OUTPUT
 """
         )
-        config = Configuration.create_from_sources([str(config_path)])
+        config = Configuration.from_sources([str(config_path)])
         config.verify()
         assert config.version == "1"
         assert config.process_count == 16
@@ -449,7 +447,7 @@ $LOGPREP_INPUT
 $LOGPREP_OUTPUT
 """
         )
-        config = Configuration.create_from_sources([str(config_path)])
+        config = Configuration.from_sources([str(config_path)])
         with pytest.raises(
             InvalidConfigurationErrors,
             match=r"Environment variable\(s\) used, but not set: LOGPREP_I_DO_NOT_EXIST",
@@ -563,3 +561,141 @@ $LOGPREP_OUTPUT
                 ), f"No '{raised_error.__name__}' raised for test case '{test_case}'!"
         else:
             config.verify()
+
+    def test_reload_reloads_complete_config(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+version: first_version
+process_count: 2
+timeout: 0.1
+logger:
+    level: DEBUG
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+"""
+        )
+        config = Configuration.from_sources([str(config_path)])
+        assert config.version == "first_version"
+        config_path.write_text(
+            """
+version: second_version
+process_count: 2
+timeout: 0.1
+logger:
+    level: DEBUG
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+"""
+        )
+        config.reload()
+        assert config.version == "second_version"
+
+    def test_reload_raises_on_invalid_config(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+version: first_version
+process_count: 2
+timeout: 0.1
+logger:
+    level: DEBUG
+"""
+        )
+        config = Configuration.from_sources([str(config_path)])
+        assert config.version == "first_version"
+        config_path.write_text(
+            """
+version: second_version
+process_count: THIS SHOULD BE AN INT
+timeout: 0.1
+logger:
+    level: DEBUG
+"""
+        )
+        with pytest.raises(InvalidConfigurationError):
+            config.reload()
+        assert config.version == "first_version"
+
+    def test_reload_raises_on_invalid_processor_config(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+version: first_version
+process_count: 2
+timeout: 0.1
+logger:
+    level: DEBUG
+pipeline:
+    - labelername:
+        type: labeler
+        schema: quickstart/exampledata/rules/labeler/schema.json
+        include_parent_labels: true
+        specific_rules: []
+        generic_rules: []
+"""
+        )
+        config = Configuration.from_sources([str(config_path)])
+        assert config.version == "first_version"
+        config_path.write_text(
+            """
+version: second_version
+process_count: 2
+timeout: 0.1
+logger:
+    level: DEBUG
+pipeline:
+    - labelername:
+        type: labeler
+        schema: quickstart/exampledata/rules/labeler/schema.json
+        include_parent_labels: true
+        specific_rules: []
+        generic_rules: []
+    - new_processor:
+        type: THIS SHOULD BE A VALID PROCESSOR
+"""
+        )
+        with pytest.raises(InvalidConfigurationError):
+            config.reload()
+        assert config.version == "first_version"
+
+    def test_reload_raises_on_same_version(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+version: first_version
+process_count: 2
+timeout: 0.1
+logger:
+    level: DEBUG
+"""
+        )
+        config = Configuration.from_sources([str(config_path)])
+        assert config.version == "first_version"
+        config_path.write_text(
+            """
+version: first_version
+process_count: 2
+timeout: 0.1
+logger:
+    level: DEBUG
+pipeline:
+    - new_processor:
+        type: THIS SHOULD BE A VALID PROCESSOR
+"""
+        )
+        with pytest.raises(
+            InvalidConfigurationError, match="Configuration version has not changed"
+        ):
+            config.reload()
+        assert config.version == "first_version"

@@ -47,8 +47,8 @@ class MissingEnvironmentError(InvalidConfigurationError):
 
 @define(kw_only=True)
 class Configuration:
-    version: str = field(validator=validators.instance_of(str), converter=str, default="undefined")
-    """Version of the configuration file. Defaults to `undefined`."""
+    version: str = field(validator=validators.instance_of(str), converter=str, default="unset")
+    """Version of the configuration file. Defaults to `unset`."""
     config_refresh_interval: int = field(validator=validators.instance_of(int), default=0)
     """Interval in seconds to refresh the configuration. Defaults to `0`."""
     process_count: int = field(validator=[validators.instance_of(int), validators.ge(1)], default=1)
@@ -93,7 +93,7 @@ class Configuration:
         return [f"{protocol}://{target}" for protocol, target in targets]
 
     @classmethod
-    def _create_from_source(cls, path: str) -> "Configuration":
+    def from_source(cls, path: str) -> "Configuration":
         """Create configuration from an uri source.
 
         Parameters
@@ -109,13 +109,18 @@ class Configuration:
         """
         config_getter = GetterFactory.from_string(path)
         try:
-            config_dict = config_getter.get_json()
-        except ValueError:
-            config_dict = config_getter.get_yaml()
-        return Configuration(**config_dict, getter=config_getter)
+            try:
+                config_dict = config_getter.get_json()
+            except ValueError:
+                config_dict = config_getter.get_yaml()
+            config = Configuration(**config_dict, getter=config_getter)
+        except (ScannerError, ValueError, TypeError) as error:
+            raise InvalidConfigurationError(f"Invalid configuration file: {path}") from error
+        config._configs = (config,)
+        return config
 
     @classmethod
-    def create_from_sources(cls, config_paths: list[str]) -> "Configuration":
+    def from_sources(cls, config_paths: list[str]) -> "Configuration":
         """Creates configuration from a list of configuration sources.
 
         Parameters
@@ -133,26 +138,35 @@ class Configuration:
         configs = []
         for config_path in config_paths:
             try:
-                config = Configuration._create_from_source(config_path)
+                config = Configuration.from_source(config_path)
                 configs.append(config)
-            except (ValueError, ScannerError, TypeError) as error:
+            except InvalidConfigurationError as error:
                 errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
         configuration = Configuration()
         configuration._configs = tuple(configs)
         cls._set_attributes_from_configs(configuration)
-        pipelines = (config.pipeline for config in configuration._configs if config.pipeline)
-        configuration.pipeline = list(chain(*pipelines))
         return configuration
 
-    def _set_attributes_from_configs(self):
+    def reload(self) -> None:
+        """Reload the configuration."""
+        new_config = Configuration.from_sources(self.paths)
+        if new_config.version == self.version:
+            raise InvalidConfigurationError("Configuration version has not changed")
+        new_config.verify()
+        self._configs = new_config._configs  # pylint: disable=protected-access
+        self._set_attributes_from_configs()
+
+    def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, self.__attrs_attrs__):
             setattr(
                 self,
                 attribute.name,
                 self._get_last_value(self._configs, attribute.name),
             )
+        pipelines = (config.pipeline for config in self._configs if config.pipeline)
+        self.pipeline = list(chain(*pipelines))
 
     @staticmethod
     def _get_last_value(configs: list["Configuration"], attribute: str) -> Any:

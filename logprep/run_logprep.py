@@ -51,7 +51,7 @@ def _get_logger(logger_config: dict):
 
 def _load_configuration(config_paths: list[str]):
     try:
-        return Configuration.create_from_sources(config_paths)
+        return Configuration.from_sources(config_paths)
     except FileNotFoundError:
         print(
             f"One or more of the given config file(s) does not exist: {', '.join(config_paths)}",
