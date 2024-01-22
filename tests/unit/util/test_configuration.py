@@ -15,7 +15,7 @@ from logprep.util.configuration import (
 )
 from logprep.util.getter import FileGetter
 from logprep.util.json_handling import dump_config_as_file
-from tests.testdata.metadata import path_to_config
+from tests.testdata.metadata import path_to_config, path_to_only_output_config
 
 logger = getLogger()
 
@@ -113,6 +113,10 @@ class TestConfiguration:
         with mock.patch("logprep.abc.getter.Getter.get_json", new=mock_get_yaml):
             config = Configuration.from_sources(["mockpath", "mockpath"])
         assert config.pipeline == [{"foo": "bar"}, {"bar": "foo"}]
+
+    def test_create_from_sources_with_incomplete_second_config(self):
+        config = Configuration.from_sources([path_to_config, path_to_only_output_config])
+        assert config.output.get("dummy_output").get("type") == "dummy_output"
 
     def test_create_from_sources_collects_errors(self, tmp_path):
         first_config = """---
@@ -699,3 +703,19 @@ pipeline:
         ):
             config.reload()
         assert config.version == "first_version"
+
+    def test_as_dict_returns_config(self):
+        config = Configuration.from_sources([path_to_config, path_to_only_output_config])
+        assert isinstance(config.as_dict(), dict)
+        assert config.as_dict()["output"]["dummy_output"]["type"] == "dummy_output"
+        assert len(config.as_dict()["output"]) == 1, "only last output should be in config"
+
+    def test_as_json_returns_json(self):
+        config = Configuration.from_sources([path_to_config, path_to_only_output_config])
+        assert isinstance(config.as_json(), str)
+        assert '"type": "dummy_output"' in config.as_json()
+
+    def test_as_yaml_returns_yaml(self):
+        config = Configuration.from_sources([path_to_config, path_to_only_output_config])
+        assert isinstance(config.as_yaml(), str)
+        assert "type: dummy_output" in config.as_yaml()

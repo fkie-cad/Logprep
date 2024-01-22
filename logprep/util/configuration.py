@@ -1,10 +1,14 @@
 """This module is used to create the configuration for the runner."""
 
+import json
 from copy import deepcopy
 from itertools import chain
 from typing import Any, List
 
 from attr import define, field, validators
+from attrs import asdict
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
 
 from logprep.abc.getter import Getter
@@ -14,6 +18,20 @@ from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.getter import GetterFactory
+
+
+class MyYAML(YAML):
+    def dump(self, data, stream=None, **kw):
+        inefficient = False
+        if stream is None:
+            inefficient = True
+            stream = StringIO()
+        YAML.dump(self, data, stream, **kw)
+        if inefficient:
+            return stream.getvalue()
+
+
+yaml = MyYAML(typ="unsafe", pure=True)
 
 
 class InvalidConfigurationErrors(InvalidConfigurationError):
@@ -148,6 +166,20 @@ class Configuration:
         configuration._configs = tuple(configs)
         cls._set_attributes_from_configs(configuration)
         return configuration
+
+    def as_dict(self) -> dict:
+        """Return the configuration as dict."""
+        return asdict(
+            self, filter=lambda attribute, _: attribute.name not in ("_getter", "_configs")
+        )
+
+    def as_json(self, indent=None) -> str:
+        """Return the configuration as json string."""
+        return json.dumps(self.as_dict(), indent=indent)
+
+    def as_yaml(self) -> str:
+        """Return the configuration as yaml string."""
+        return yaml.dump(self.as_dict())
 
     def reload(self) -> None:
         """Reload the configuration."""

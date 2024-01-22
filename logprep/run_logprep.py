@@ -227,7 +227,11 @@ def print_config(config, output):
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    raise NotImplementedError
+    config = _load_configuration(config)
+    if output == "json":
+        print(config.as_json(indent=2))
+    else:
+        print(config.as_yaml())
 
 
 if __name__ == "__main__":
