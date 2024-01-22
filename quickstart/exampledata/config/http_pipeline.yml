@@ -31,10 +31,11 @@ input:
 output:
   kafka:
     type: confluentkafka_output
-    default: false
     topic: consumer
     error_topic: errors
-    flush_timeout: 300
+    flush_timeout: 0.2
+    send_timeout: 0
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
+      compression.type: gzip
       statistics.interval.ms: "60000"
