@@ -1,13 +1,13 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+import json
 from logging import getLogger
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-from logprep.abc.getter import Getter
 from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
@@ -15,7 +15,11 @@ from logprep.util.configuration import (
 )
 from logprep.util.getter import FileGetter
 from logprep.util.json_handling import dump_config_as_file
-from tests.testdata.metadata import path_to_config, path_to_only_output_config
+from tests.testdata.metadata import (
+    path_to_config,
+    path_to_invalid_config,
+    path_to_only_output_config,
+)
 
 logger = getLogger()
 
@@ -62,23 +66,40 @@ class TestConfiguration:
             ("process_count", 1, 2),
             ("timeout", 1.0, 2.0),
             ("logger", {"level": "INFO"}, {"level": "DEBUG"}),
-            ("input", {"foo": "bar"}, {"bar": "foo"}),
-            ("output", {"foo": "bar"}, {"bar": "foo"}),
             ("metrics", {"enabled": False, "port": 8000}, {"enabled": True, "port": 9000}),
             ("metrics", {"enabled": False, "port": 8000}, {"enabled": True, "port": 9000}),
         ],
     )
-    def test_get_last_value(self, attribute, first_value, second_value):
-        first_config = {attribute: first_value}
-        second_config = {attribute: second_value}
-        configs = [first_config, second_config]
+    def test_get_last_value(self, tmp_path, attribute, first_value, second_value):
+        first_config = tmp_path / "pipeline.yml"
+        first_config.write_text(
+            f"""
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+{attribute}: {first_value}
+"""
+        )
+        second_config = tmp_path / "pipeline2.yml"
+        second_config.write_text(
+            f"""
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+{attribute}: {second_value}
+"""
+        )
 
-        def mock_get_yaml(_) -> dict:
-            return configs.pop(0)
-
-        with mock.patch("logprep.abc.getter.Getter.get_json", new=mock_get_yaml):
-            config = Configuration.from_sources(["mockpath", "mockpath"])
-            assert getattr(config, attribute) == second_value
+        config = Configuration.from_sources([str(first_config), str(second_config)])
+        assert getattr(config, attribute) == second_value
 
     @pytest.mark.parametrize(
         "attribute, value, expected_error, expected_message",
@@ -102,43 +123,74 @@ class TestConfiguration:
             with pytest.raises(expected_error, match=expected_message):
                 Configuration(**{attribute: value})
 
-    def test_pipeline_property_is_merged_from_configs(self):
-        first_config = {"pipeline": [{"foo": "bar"}]}
-        second_config = {"pipeline": [{"bar": "foo"}]}
-        configs = [first_config, second_config]
-
-        def mock_get_yaml(_) -> dict:
-            return configs.pop(0)
-
-        with mock.patch("logprep.abc.getter.Getter.get_json", new=mock_get_yaml):
-            config = Configuration.from_sources(["mockpath", "mockpath"])
-        assert config.pipeline == [{"foo": "bar"}, {"bar": "foo"}]
+    def test_pipeline_property_is_merged_from_configs(self, tmp_path):
+        first_config = tmp_path / "pipeline.yml"
+        first_config.write_text(
+            """
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+pipeline:
+    - labelername:
+        type: labeler
+        schema: quickstart/exampledata/rules/labeler/schema.json
+        include_parent_labels: true
+        specific_rules: []
+        generic_rules: []
+"""
+        )
+        second_config = tmp_path / "pipeline2.yml"
+        second_config.write_text(
+            """
+pipeline:
+    - dissectorname:
+        type: dissector
+        specific_rules: []
+        generic_rules: []
+"""
+        )
+        config = Configuration.from_sources([str(first_config), str(second_config)])
+        assert isinstance(config.pipeline, list)
+        assert len(config.pipeline) == 2
+        assert config.pipeline[0]["labelername"]["type"] == "labeler"
+        assert config.pipeline[1]["dissectorname"]["type"] == "dissector"
 
     def test_create_from_sources_with_incomplete_second_config(self):
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
-        assert config.output.get("dummy_output").get("type") == "dummy_output"
+        assert config.output.get("kafka_output").get("type") == "dummy_output"
 
-    def test_create_from_sources_collects_errors(self, tmp_path):
-        first_config = """---
-process_count: -1
-"""
-        second_config = """---
-pipeline: "wrong_type"
-"""
-        first_file_path = Path(tmp_path / "first_config")
-        first_file_path.write_text(first_config, encoding="utf8")
-        second_file_path = Path(tmp_path / "second_config")
-        second_file_path.write_text(second_config, encoding="utf8")
+    def test_create_from_sources_collects_errors(self):
         with pytest.raises(InvalidConfigurationErrors) as raised:
-            config = Configuration.from_sources([str(first_file_path), str(second_file_path)])
+            config = Configuration.from_sources([path_to_invalid_config, path_to_invalid_config])
             assert len(raised.value.errors) == 2
             assert isinstance(config, Configuration)
             assert isinstance(config._configs, tuple)
 
+    def test_create_from_sources_loads_processors(self):
+        config = Configuration.from_sources([path_to_config])
+        labeler = config.pipeline[2]
+        assert isinstance(labeler, dict)
+        assert isinstance(labeler["labelername"], dict)
+        assert isinstance(labeler["labelername"]["type"], str)
+        assert labeler["labelername"]["type"] == "labeler"
+
+    def test_create_from_sources_loads_rules(self):
+        config = Configuration.from_sources([path_to_config])
+        labeler = config.pipeline[2]
+        assert isinstance(labeler, dict)
+        assert isinstance(labeler["labelername"], dict)
+        assert isinstance(labeler["labelername"]["specific_rules"], list)
+        assert isinstance(labeler["labelername"]["generic_rules"], list)
+        assert isinstance(labeler["labelername"]["specific_rules"][0], dict)
+        assert isinstance(labeler["labelername"]["generic_rules"][0], dict)
+
     def test_verify_passes_for_valid_configuration(self):
         try:
-            config = Configuration.from_sources([path_to_config])
-            config.verify()
+            Configuration.from_sources([path_to_config])
         except InvalidConfigurationError as error:
             pytest.fail(f"The verification should pass for a valid configuration.: {error}")
 
@@ -218,7 +270,7 @@ pipeline: "wrong_type"
                             },
                         },
                         {
-                            "another_error_processor": {"type": "unknown"},
+                            "another_error_processor": {"type": "UNKNOWN"},
                         },
                     ]
                 },
@@ -365,18 +417,17 @@ pipeline: "wrong_type"
     )
     def test_verify_verifies_config(self, tmp_path, test_case, test_config, error_count):
         test_config_path = str(tmp_path / "failure-config.yml")
-        dump_config_as_file(test_config_path, test_config)
-        config = Configuration.from_sources([test_config_path])
         if "input" not in test_config:
-            config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+            test_config["input"] = {"dummy": {"type": "dummy_input", "documents": []}}
         if "output" not in test_config:
-            config.output = {"dummy": {"type": "dummy_output"}}
+            test_config["output"] = {"dummy": {"type": "dummy_output"}}
+        dump_config_as_file(test_config_path, test_config)
         if error_count:
             with pytest.raises(InvalidConfigurationErrors) as raised:
-                config.verify()
+                Configuration.from_sources([test_config_path])
             assert len(raised.value.errors) == error_count, test_case
         else:
-            config.verify()
+            Configuration.from_sources([test_config_path])
 
     patch = mock.patch(
         "os.environ",
@@ -451,80 +502,76 @@ $LOGPREP_INPUT
 $LOGPREP_OUTPUT
 """
         )
-        config = Configuration.from_sources([str(config_path)])
         with pytest.raises(
             InvalidConfigurationErrors,
             match=r"Environment variable\(s\) used, but not set: LOGPREP_I_DO_NOT_EXIST",
         ):
-            config.verify()
+            Configuration.from_sources([str(config_path)])
 
-    def test_duplicate_rule_id_per_processor_raises(self):
-        config = Configuration()
-        pipeline = [
-            {
-                "my dissector": {
-                    "type": "dissector",
-                    "specific_rules": [
-                        {
-                            "filter": "message",
-                            "dissector": {
-                                "id": "same id",
-                                "mapping": {"message": "%{new_field} %{next_field}"},
-                            },
-                        },
-                        {
-                            "filter": "message",
-                            "dissector": {
-                                "id": "same id",
-                                "mapping": {"message": "%{other_field} %{next_field}"},
-                            },
-                        },
-                    ],
-                    "generic_rules": [],
-                }
-            },
-        ]
-        config.pipeline = pipeline
-        config.output = {"dummy": {"type": "dummy_output"}}
-        config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+    def test_duplicate_rule_id_per_processor_raises(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+pipeline:
+    - my dissector:
+        type: dissector
+        specific_rules:
+            - filter: message
+              dissector:
+                id: same id
+                mapping:
+                  message: "%{new_field} %{next_field}"
+            - filter: message
+              dissector:
+                id: same id
+                mapping:
+                  message: "%{other_field} %{next_field}"
+        generic_rules: []
+"""
+        )
         with pytest.raises(InvalidConfigurationErrors) as raised:
-            config.verify()
+            Configuration.from_sources([str(config_path)])
         assert len(raised.value.errors) == 1
         for error in raised.value.errors:
             assert "Duplicate rule id: same id" in error.args[0]
 
-    def test_duplicate_rule_id_in_different_rule_trees_per_processor_raises(self):
-        config = Configuration()
-        pipeline = [
-            {
-                "my dissector": {
-                    "type": "dissector",
-                    "specific_rules": [
-                        {
-                            "filter": "message",
-                            "dissector": {
-                                "id": "same id",
-                                "mapping": {"message": "%{new_field} %{next_field}"},
-                            },
-                        },
-                    ],
-                    "generic_rules": [
-                        {
-                            "filter": "message",
-                            "dissector": {
-                                "id": "same id",
-                                "mapping": {"message": "%{other_field} %{next_field}"},
-                            },
-                        },
-                    ],
-                }
-            },
-        ]
-        config.pipeline = pipeline
-        config.output = {"dummy": {"type": "dummy_output"}}
-        config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+    def test_duplicate_rule_id_in_different_rule_trees_per_processor_raises(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(
+            """
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
+pipeline:
+    - my dissector:
+        type: dissector
+        specific_rules:
+            - filter: message
+              dissector:
+                id: same id
+                mapping:
+                  message: "%{new_field} %{next_field}"
+        generic_rules:
+            - filter: message
+              dissector:
+                id: same id
+                mapping:
+                  message: "%{other_field} %{next_field}"
+"""
+        )
         with pytest.raises(InvalidConfigurationErrors) as raised:
-            config.verify()
+            Configuration.from_sources([str(config_path)])
         assert len(raised.value.errors) == 1
         for error in raised.value.errors:
             assert "Duplicate rule id: same id" in error.args[0]
@@ -614,6 +661,13 @@ process_count: 2
 timeout: 0.1
 logger:
     level: DEBUG
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
 """
         )
         config = Configuration.from_sources([str(config_path)])
@@ -625,6 +679,13 @@ process_count: THIS SHOULD BE AN INT
 timeout: 0.1
 logger:
     level: DEBUG
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
 """
         )
         with pytest.raises(InvalidConfigurationError):
@@ -647,6 +708,13 @@ pipeline:
         include_parent_labels: true
         specific_rules: []
         generic_rules: []
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
 """
         )
         config = Configuration.from_sources([str(config_path)])
@@ -667,6 +735,13 @@ pipeline:
         generic_rules: []
     - new_processor:
         type: THIS SHOULD BE A VALID PROCESSOR
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
 """
         )
         with pytest.raises(InvalidConfigurationError):
@@ -682,6 +757,13 @@ process_count: 2
 timeout: 0.1
 logger:
     level: DEBUG
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
 """
         )
         config = Configuration.from_sources([str(config_path)])
@@ -694,8 +776,19 @@ timeout: 0.1
 logger:
     level: DEBUG
 pipeline:
-    - new_processor:
-        type: THIS SHOULD BE A VALID PROCESSOR
+    - labelername:
+        type: labeler
+        schema: quickstart/exampledata/rules/labeler/schema.json
+        include_parent_labels: true
+        specific_rules: []
+        generic_rules: []
+input:
+    dummy:
+        type: dummy_input
+        documents: []
+output:
+    dummy:
+        type: dummy_output
 """
         )
         with pytest.raises(
@@ -706,9 +799,14 @@ pipeline:
 
     def test_as_dict_returns_config(self):
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
-        assert isinstance(config.as_dict(), dict)
-        assert config.as_dict()["output"]["dummy_output"]["type"] == "dummy_output"
-        assert len(config.as_dict()["output"]) == 1, "only last output should be in config"
+        config_dict = config.as_dict()
+        assert isinstance(config_dict, dict)
+        assert config_dict["output"]["kafka_output"]["type"] == "dummy_output"
+        assert len(config_dict["output"]) == 1, "only last output should be in config"
+        assert len(config_dict["pipeline"]) == 4, "all processors should be in config"
+        labeler = config_dict["pipeline"][2]["labelername"]
+        assert len(labeler["specific_rules"]) == 1
+        assert isinstance(labeler["specific_rules"][0], dict)
 
     def test_as_json_returns_json(self):
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])

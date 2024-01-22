@@ -3,6 +3,7 @@
 import json
 from copy import deepcopy
 from itertools import chain
+from pathlib import Path
 from typing import Any, List
 
 from attr import define, field, validators
@@ -14,10 +15,12 @@ from ruamel.yaml.scanner import ScannerError
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.factory_error import InvalidConfigurationError
+from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
+from logprep.util import getter
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.getter import GetterFactory
+from logprep.util.json_handling import list_json_files_in_directory
 
 
 class MyYAML(YAML):
@@ -31,7 +34,7 @@ class MyYAML(YAML):
             return stream.getvalue()
 
 
-yaml = MyYAML(typ="unsafe", pure=True)
+yaml = MyYAML(pure=True)
 
 
 class InvalidConfigurationErrors(InvalidConfigurationError):
@@ -129,7 +132,7 @@ class Configuration:
         try:
             try:
                 config_dict = config_getter.get_json()
-            except ValueError:
+            except (json.JSONDecodeError, ValueError):
                 config_dict = config_getter.get_yaml()
             config = Configuration(**config_dict, getter=config_getter)
         except (ScannerError, ValueError, TypeError) as error:
@@ -160,17 +163,26 @@ class Configuration:
                 configs.append(config)
             except InvalidConfigurationError as error:
                 errors.append(error)
-        if errors:
-            raise InvalidConfigurationErrors(errors)
         configuration = Configuration()
         configuration._configs = tuple(configs)
-        cls._set_attributes_from_configs(configuration)
+        try:
+            cls._set_attributes_from_configs(configuration)
+        except InvalidConfigurationErrors as error:
+            errors = [*errors, *error.errors]
+        try:
+            configuration.verify()
+        except InvalidConfigurationErrors as error:
+            errors = [*errors, *error.errors]
+        if errors:
+            raise InvalidConfigurationErrors(errors)
         return configuration
 
     def as_dict(self) -> dict:
         """Return the configuration as dict."""
         return asdict(
-            self, filter=lambda attribute, _: attribute.name not in ("_getter", "_configs")
+            self,
+            filter=lambda attribute, _: attribute.name not in ("_getter", "_configs"),
+            recurse=True,
         )
 
     def as_json(self, indent=None) -> str:
@@ -183,29 +195,104 @@ class Configuration:
 
     def reload(self) -> None:
         """Reload the configuration."""
-        new_config = Configuration.from_sources(self.paths)
-        if new_config.version == self.version:
-            raise InvalidConfigurationError("Configuration version has not changed")
-        new_config.verify()
-        self._configs = new_config._configs  # pylint: disable=protected-access
-        self._set_attributes_from_configs()
+        errors = []
+        try:
+            new_config = Configuration.from_sources(self.paths)
+            if new_config.version == self.version:
+                raise InvalidConfigurationError("Configuration version has not changed")
+            self._configs = new_config._configs  # pylint: disable=protected-access
+            self._set_attributes_from_configs()
+        except InvalidConfigurationErrors as error:
+            errors = [*errors, *error.errors]
+        if errors:
+            raise InvalidConfigurationErrors(errors)
 
     def _set_attributes_from_configs(self) -> None:
         for attribute in filter(lambda x: x.repr, self.__attrs_attrs__):
             setattr(
                 self,
                 attribute.name,
-                self._get_last_value(self._configs, attribute.name),
+                self._get_last_non_falsy_value(self._configs, attribute.name),
             )
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
-        self.pipeline = list(chain(*pipelines))
+        pipeline = list(chain(*pipelines))
+        errors = []
+        pipeline_with_loaded_rules = []
+        for processor_definition in pipeline:
+            try:
+                processor_definition_with_rules = self._load_rule_definitions(processor_definition)
+                pipeline_with_loaded_rules.append(processor_definition_with_rules)
+            except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
+                errors.append(error)
+        if errors:
+            raise InvalidConfigurationErrors(errors)
+        self.pipeline = pipeline_with_loaded_rules
+
+    def _load_rule_definitions(self, processor_definition: dict) -> dict:
+        _ = Factory.create(deepcopy(processor_definition))
+        processor_name, processor_config = processor_definition.popitem()
+        for rule_tree_name in ("specific_rules", "generic_rules"):
+            rules_targets = self.resolve_directories(processor_config.get(rule_tree_name, []))
+            rules_definitions = list(
+                chain(*[self._get_dict_list_from_target(target) for target in rules_targets])
+            )
+            processor_config[rule_tree_name] = rules_definitions
+        return {processor_name: processor_config}
 
     @staticmethod
-    def _get_last_value(configs: list["Configuration"], attribute: str) -> Any:
+    def _get_dict_list_from_target(rule_target: str | dict) -> list[dict]:
+        """Create a rule from a file."""
+        if isinstance(rule_target, dict):
+            return [rule_target]
+        content = GetterFactory.from_string(rule_target).get()
+        try:
+            rule_data = json.loads(content)
+        except ValueError:
+            rule_data = yaml.load_all(content)
+        if isinstance(rule_data, dict):
+            return [rule_data]
+        return list(rule_data)
+
+    @staticmethod
+    def resolve_directories(rule_sources: list) -> list:
+        """resolves directories to a list of files or rule definitions
+
+        Parameters
+        ----------
+        rule_sources : list
+            a list of files, directories or rule definitions
+
+        Returns
+        -------
+        list
+            a list of files and rule definitions
+        """
+        resolved_sources = []
+        for rule_source in rule_sources:
+            if isinstance(rule_source, dict):
+                resolved_sources.append(rule_source)
+                continue
+            getter_instance = getter.GetterFactory.from_string(rule_source)
+            if getter_instance.protocol == "file":
+                if Path(getter_instance.target).is_dir():
+                    paths = list_json_files_in_directory(getter_instance.target)
+                    for file_path in paths:
+                        resolved_sources.append(file_path)
+                else:
+                    resolved_sources.append(rule_source)
+            else:
+                resolved_sources.append(rule_source)
+        return resolved_sources
+
+    @staticmethod
+    def _get_last_non_falsy_value(configs: list["Configuration"], attribute: str) -> Any:
         if configs:
             values = [getattr(config, attribute) for config in configs]
+            for value in reversed(values):
+                if value:
+                    return value
             return values[-1]
-        return None
+        return getattr(Configuration(), attribute)
 
     def verify(self):
         """Verify the configuration."""
@@ -230,9 +317,13 @@ class Configuration:
                     errors.append(error)
         for processor_config in self.pipeline:
             try:
-                processor = Factory.create(processor_config)
-                self._verify_processor_outputs(processor_config)
+                processor = Factory.create(deepcopy(processor_config))
                 self._verify_rules(processor)
+            except (FactoryError, TypeError, ValueError, InvalidRuleDefinitionError) as error:
+                if "Duplicate rule id" in str(error):
+                    errors.append(error)
+            try:
+                self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
         try:
