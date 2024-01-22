@@ -40,19 +40,12 @@ def print_version_and_exit(config):
     sys.exit(0)
 
 
-def _setup_logger(config: Configuration):
-    try:
-        log_level = config.logger.get("level", "INFO")
-        logging.basicConfig(
-            level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
-        )
-        logger = logging.getLogger("Logprep")
-        logger.info(f"Log level set to '{log_level}'")
-        for version in get_versions_string(config).split("\n"):
-            logger.info(version)
-    except BaseException as error:  # pylint: disable=broad-except
-        logging.getLogger("Logprep").exception(error)
-        sys.exit(1)
+def _get_logger(logger_config: dict):
+    log_level = logger_config.get("level", "INFO")
+    logging.basicConfig(
+        level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
+    )
+    logger = logging.getLogger("Logprep")
     return logger
 
 
@@ -102,7 +95,10 @@ def run(config: str, version=None):
     config_obj = _load_configuration(config)
     if version:
         print_version_and_exit(config_obj)
-    logger = _setup_logger(config_obj)
+    logger = _get_logger(config_obj.logger)
+    logger.info(f"Log level set to '{logger.level}'")
+    for version in get_versions_string(config).split("\n"):
+        logger.info(version)
     logger.debug(f'Metric export enabled: {config_obj.get("metrics", {}).get("enabled", False)}')
     logger.debug(f"Config path: {config}")
     runner = None
