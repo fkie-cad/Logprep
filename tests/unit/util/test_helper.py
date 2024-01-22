@@ -14,6 +14,7 @@ from logprep.util.helper import (
     snake_to_camel,
 )
 from logprep.util.json_handling import is_json
+from tests.testdata.metadata import path_to_alternative_config, path_to_config
 
 
 class TestCamelToSnake:
@@ -228,11 +229,8 @@ class TestPopDottedFieldValue:
 
 class TestGetVersionString:
     def test_get_version_string(self):
-        config = Configuration(
-            {
-                "version": "0.1.0",
-            }
-        )
+        config = Configuration()
+        config.version = "0.1.0"
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
             r"logprep version:\s+\d+\.\d+\.\d+.*\n"
@@ -243,16 +241,11 @@ class TestGetVersionString:
         assert re.search(expected_pattern, result)
 
     def test_get_version_string_with_config_source(self):
-        config = Configuration(
-            {
-                "version": "0.1.0",
-            }
-        )
-        config.paths = ["path1", "path2"]
+        config = Configuration.create_from_sources([path_to_config, path_to_alternative_config])
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
             r"logprep version:\s+\d+\.\d+\.\d+.*\n"
-            r"configuration version:\s+0\.1\.0, file://path1, file://path2"
+            r"configuration version:\s+alternative, file://[^\s]+/config\.yml, file://[^\s]+/config2\.yml"
         )
 
         result = get_versions_string(config)

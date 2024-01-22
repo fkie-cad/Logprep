@@ -1,6 +1,6 @@
 process_count: 2
 timeout: 0.1
-
+version: alternative
 pipeline:
   - labelername:
       type: labeler

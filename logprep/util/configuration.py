@@ -1,43 +1,19 @@
 """This module is used to create the configuration for the runner."""
 
-import re
-import sys
 from copy import deepcopy
-from functools import reduce
 from itertools import chain
-from logging import Logger
-from pathlib import Path
 from typing import Any, List
 
 from attr import define, field, validators
-from colorama import Fore
 from ruamel.yaml.scanner import ScannerError
 
 from logprep.abc.getter import Getter
 from logprep.abc.processor import Processor
 from logprep.factory import Factory
-from logprep.factory_error import FactoryError
-from logprep.factory_error import (
-    InvalidConfigurationError as FactoryInvalidConfigurationError,
-)
-from logprep.factory_error import UnknownComponentTypeError
+from logprep.factory_error import InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.getter import GetterFactory
-from logprep.util.helper import print_fcolor
-from logprep.util.json_handling import dump_config_as_file
-
-
-class InvalidConfigurationError(Exception):
-    """Base class for Configuration related exceptions."""
-
-    def __init__(self, unprefixed_message: str = None, message: str = None):
-        if unprefixed_message is not None:
-            super().__init__(unprefixed_message)
-        elif message is not None:
-            super().__init__(f"Invalid Configuration: {message}")
-        else:
-            super().__init__("Invalid Configuration.")
 
 
 class InvalidConfigurationErrors(InvalidConfigurationError):
@@ -60,20 +36,6 @@ class InvalidProcessorConfigurationError(InvalidConfigurationError):
 
     def __init__(self, message: str):
         super().__init__(f"Invalid processor configuration: {message}")
-
-
-class InvalidInputConnectorConfigurationError(InvalidConfigurationError):
-    """Raise if input connector configuration is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid input connector configuration: {message}")
-
-
-class InvalidOutputConnectorConfigurationError(InvalidConfigurationError):
-    """Raise if output connector configuration is invalid."""
-
-    def __init__(self, message: str):
-        super().__init__(f"Invalid output connector configuration: {message}")
 
 
 class MissingEnvironmentError(InvalidConfigurationError):
@@ -132,9 +94,26 @@ class Configuration:
         return getattr(self, attribute)
 
     @property
+    def paths(self) -> list[str]:
+        """Paths of the configuration files."""
+        # pylint: disable=protected-access
+        targets = (
+            (config._getter.protocol, config._getter.target)
+            for config in self._configs
+            if config._getter
+        )
+        # pylint: enable=protected-access
+        return [f"{protocol}://{target}" for protocol, target in targets]
+
+    @property
     def version(self) -> str:
         """Version of the configuration file."""
         return self._get_last_value("_version")
+
+    @version.setter
+    def version(self, version: str) -> None:
+        """Setter for version."""
+        self._version = version
 
     @property
     def process_count(self) -> int:

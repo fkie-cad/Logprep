@@ -59,7 +59,7 @@ def _setup_logger(config: Configuration):
 
 def _load_configuration(config_paths: list[str]):
     try:
-        return Configuration.create_from_yamls(config_paths)
+        return Configuration.create_from_sources(config_paths)
     except FileNotFoundError:
         print(
             f"One or more of the given config file(s) does not exist: {', '.join(config_paths)}",
