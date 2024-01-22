@@ -76,7 +76,7 @@ class PipelineManager:
 
         manager = multiprocessing.Manager()
         self._used_server_ports = manager.dict()
-        prometheus_config = configuration.get("metrics", {})
+        prometheus_config = configuration.metrics
         if prometheus_config.get("enabled", False) and not self.prometheus_exporter:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
 
@@ -130,7 +130,7 @@ class PipelineManager:
                 self.prometheus_exporter.mark_process_dead(failed_pipeline.pid)
 
         if failed_pipelines:
-            self.set_count(self._configuration.get("process_count"))
+            self.set_count(self._configuration.process_count)
             exit_codes = [pipeline.exitcode for pipeline in failed_pipelines]
             self._logger.warning(
                 f"Restarted {len(failed_pipelines)} failed pipeline(s), "
@@ -146,7 +146,7 @@ class PipelineManager:
     def restart(self):
         """Restarts all pipelines"""
         self._decrease_to_count(0)
-        self._increase_to_count(self._configuration.get("process_count"))
+        self._increase_to_count(self._configuration.process_count)
 
     def _create_pipeline(self, index) -> MultiprocessingPipeline:
         if self._configuration is None:

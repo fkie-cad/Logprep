@@ -114,7 +114,7 @@ class Runner:
         versions = get_versions()
         labels = {
             "logprep": f"{versions.get('version')}",
-            "config": f"{self._configuration.get('version', 'unset')}",
+            "config": f"{self._configuration.version}",
         }
         return labels
 
@@ -165,7 +165,7 @@ class Runner:
         if not isinstance(yaml_files, list):
             raise TypeError(f"yaml_files must be a list, but is {type(yaml_files)}")
 
-        configuration = Configuration.create_from_sources(yaml_files)
+        configuration = Configuration.from_sources(yaml_files)
         configuration.verify()
 
         self._configuration = configuration
@@ -230,10 +230,11 @@ class Runner:
         if self._configuration is None:
             raise CannotReloadWhenConfigIsUnsetError
         try:
-            new_configuration = Configuration.create_from_sources(self._configuration.paths)
-            self._config_refresh_interval = new_configuration.get("config_refresh_interval")
+            new_configuration = Configuration.from_sources(self._configuration.paths)
+            new_configuration.verify()
+            self._config_refresh_interval = new_configuration.config_refresh_interval
             self._schedule_config_refresh_job()
-        except (requests.RequestException, FileNotFoundError) as error:
+        except (requests.RequestException, FileNotFoundError, InvalidConfigurationError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
             current_refresh_interval = self._config_refresh_interval
             if isinstance(current_refresh_interval, (float, int)):
@@ -243,17 +244,15 @@ class Runner:
             self._schedule_config_refresh_job()
             return
         if refresh:
-            version_differ = new_configuration.get("version") != self._configuration.get("version")
+            version_differ = new_configuration.version != self._configuration.version
             if not version_differ:
                 self._logger.info(
                     "Configuration version didn't change. Continue running with current version."
                 )
-                self._logger.info(
-                    f"Configuration version: {self._configuration.get('version', 'unset')}"
-                )
+                self._logger.info(f"Configuration version: {self._configuration.version}")
                 return
         try:
-            new_configuration.verify(self._logger)
+            new_configuration.verify()
 
             # Only reached when configuration is verified successfully
             self._configuration = new_configuration
@@ -261,7 +260,7 @@ class Runner:
             self._manager.set_configuration(self._configuration)
             self._manager.restart()
             self._logger.info("Successfully reloaded configuration")
-            config_version = self._configuration.get("version", "unset")
+            config_version = self._configuration.version
             self._logger.info(f"Configuration version: {config_version}")
             self.metrics.version_info.add_with_labels(1, self._metric_labels)
             self.metrics.number_of_config_refreshes += 1

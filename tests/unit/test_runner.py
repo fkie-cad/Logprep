@@ -46,10 +46,6 @@ class LogprepRunnerTest:
         self.runner = RunnerForTesting()
         self.runner._create_manager()
 
-    def teardown_method(self, _):
-        if self.runner._configuration is not None:
-            self.runner._configuration._getters.clear()
-
 
 def mock_keep_iterating(iterations):
     for _ in range(iterations):
@@ -116,20 +112,19 @@ class TestRunner(LogprepRunnerTest):
     def test_reload_configuration_reduces_logprep_instance_count_to_new_value(self):
         self.runner._manager.set_count(3)
 
-        self.runner._configuration.paths = [path_to_alternative_config]
+        self.runner._configuration = Configuration.from_source(path_to_alternative_config)
         self.runner.reload_configuration()
         assert self.runner._manager.get_count() == 2
 
     def test_reload_configuration_counts_config_refreshes_if_successful(self):
         self.runner.metrics.number_of_config_refreshes = 0
-        self.runner._configuration.paths = [path_to_alternative_config]
+        self.runner._configuration = Configuration.from_source(path_to_alternative_config)
         self.runner.reload_configuration()
         assert self.runner.metrics.number_of_config_refreshes == 1
 
     def test_reload_configuration_leaves_old_configuration_in_place_if_new_config_is_invalid(self):
-        old_configuration = deepcopy(self.runner._configuration)
-
-        self.runner._configuration.paths = [path_to_invalid_config]
+        old_configuration = self.runner._configuration
+        self.runner._configuration = Configuration.from_source(path_to_invalid_config)
         self.runner.reload_configuration()
 
         assert self.runner._configuration == old_configuration
