@@ -357,14 +357,18 @@ pipeline: "wrong_type"
                         },
                     ],
                 },
-                2,
+                3,
             ),
         ],
     )
     def test_verify_verifies_config(self, tmp_path, test_case, test_config, error_count):
         test_config_path = str(tmp_path / "failure-config.yml")
         dump_config_as_file(test_config_path, test_config)
-        config = Configuration.create_from_sources([path_to_config, test_config_path])
+        config = Configuration.create_from_sources([test_config_path])
+        if "input" not in test_config:
+            config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+        if "output" not in test_config:
+            config.output = {"dummy": {"type": "dummy_output"}}
         if error_count:
             with pytest.raises(InvalidConfigurationErrors) as raised:
                 config.verify()

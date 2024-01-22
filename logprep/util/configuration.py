@@ -80,19 +80,6 @@ class Configuration:
         repr=False,
     )
 
-    def _get_last_value(self, attribute: str) -> Any:
-        if self._configs:
-            values = [
-                getattr(self, attribute),
-                *[
-                    getattr(config, attribute)
-                    for config in self._configs
-                    if getattr(config, attribute)
-                ],
-            ]
-            return values[-1]
-        return getattr(self, attribute)
-
     @property
     def paths(self) -> list[str]:
         """Paths of the configuration files."""
@@ -154,11 +141,25 @@ class Configuration:
             raise InvalidConfigurationErrors(errors)
         configuration = Configuration()
         configuration._configs = tuple(configs)
-        for attribute in filter(lambda x: x.repr, configuration.__attrs_attrs__):
-            setattr(configuration, attribute.name, configuration._get_last_value(attribute.name))
+        cls._set_attributes_from_configs(configuration)
         pipelines = (config.pipeline for config in configuration._configs if config.pipeline)
         configuration.pipeline = list(chain(*pipelines))
         return configuration
+
+    def _set_attributes_from_configs(self):
+        for attribute in filter(lambda x: x.repr, self.__attrs_attrs__):
+            setattr(
+                self,
+                attribute.name,
+                self._get_last_value(self._configs, attribute.name),
+            )
+
+    @staticmethod
+    def _get_last_value(configs: list["Configuration"], attribute: str) -> Any:
+        if configs:
+            values = [getattr(config, attribute) for config in configs]
+            return values[-1]
+        return None
 
     def verify(self):
         """Verify the configuration."""
