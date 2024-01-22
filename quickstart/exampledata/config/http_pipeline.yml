@@ -33,7 +33,7 @@ output:
     type: confluentkafka_output
     topic: consumer
     error_topic: errors
-    flush_timeout: 0.2
+    flush_timeout: 300
     send_timeout: 0
     kafka_config:
       bootstrap.servers: 127.0.0.1:9092
