@@ -42,8 +42,7 @@ def print_version_and_exit(config):
 
 def _setup_logger(config: Configuration):
     try:
-        log_config = config.get("logger", {})
-        log_level = log_config.get("level", "INFO")
+        log_level = config.logger.get("level", "INFO")
         logging.basicConfig(
             level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
         )

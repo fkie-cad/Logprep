@@ -47,25 +47,23 @@ class MissingEnvironmentError(InvalidConfigurationError):
 
 @define(kw_only=True)
 class Configuration:
-    _version: str = field(validator=validators.instance_of(str), converter=str, default="undefined")
+    version: str = field(validator=validators.instance_of(str), converter=str, default="undefined")
     """Version of the configuration file. Defaults to `undefined`."""
-    _process_count: int = field(
-        validator=[validators.instance_of(int), validators.ge(1)], default=1
-    )
+    config_refresh_interval: int = field(validator=validators.instance_of(int), default=0)
+    """Interval in seconds to refresh the configuration. Defaults to `0`."""
+    process_count: int = field(validator=[validators.instance_of(int), validators.ge(1)], default=1)
     """Number of logprep processes to start. Defaults to `1`."""
-    _timeout: float = field(
-        validator=[validators.instance_of(float), validators.gt(0)], default=5.0
-    )
+    timeout: float = field(validator=[validators.instance_of(float), validators.gt(0)], default=5.0)
     """Timeout in seconds for each logprep process. Defaults to `5.0`."""
-    _logger: dict = field(validator=validators.instance_of(dict), default={"level": "INFO"})
+    logger: dict = field(validator=validators.instance_of(dict), default={"level": "INFO"})
     """Logger configuration. Defaults to `{"level": "INFO"}`."""
-    _input: dict = field(validator=validators.instance_of(dict), factory=dict)
+    input: dict = field(validator=validators.instance_of(dict), factory=dict)
     """Input connector configuration. Defaults to `{}`."""
-    _output: dict = field(validator=validators.instance_of(dict), factory=dict)
+    output: dict = field(validator=validators.instance_of(dict), factory=dict)
     """Output connector configuration. Defaults to `{}`."""
-    _pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list)
+    pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list)
     """Pipeline configuration. Defaults to `[]`."""
-    _metrics: dict = field(
+    metrics: dict = field(
         validator=validators.instance_of(dict), default={"enabled": False, "port": 8000}
     )
     """Metrics configuration. Defaults to `{"enabled": False, "port": 8000}`."""
@@ -73,11 +71,13 @@ class Configuration:
     _getter: Getter = field(
         validator=validators.instance_of(Getter),
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
+        repr=False,
     )
 
     _configs: tuple["Configuration"] = field(
         validator=validators.instance_of(tuple),
         factory=tuple,
+        repr=False,
     )
 
     def _get_last_value(self, attribute: str) -> Any:
@@ -104,74 +104,6 @@ class Configuration:
         )
         # pylint: enable=protected-access
         return [f"{protocol}://{target}" for protocol, target in targets]
-
-    @property
-    def version(self) -> str:
-        """Version of the configuration file."""
-        return self._get_last_value("_version")
-
-    @version.setter
-    def version(self, version: str) -> None:
-        """Setter for version."""
-        self._version = version
-
-    @property
-    def process_count(self) -> int:
-        """Number of logprep processes to start."""
-        return self._get_last_value("_process_count")
-
-    @property
-    def timeout(self) -> float:
-        """Timeout in seconds for each logprep process."""
-        return self._get_last_value("_timeout")
-
-    @property
-    def logger(self) -> dict:
-        """Logger configuration."""
-        return self._get_last_value("_logger")
-
-    @property
-    def input(self) -> dict:
-        """Input connector configuration."""
-        return self._get_last_value("_input")
-
-    @input.setter
-    def input(self, input_config: dict) -> None:
-        """Setter for input connector configuration."""
-        self._input = input_config
-
-    @property
-    def output(self) -> dict:
-        """Output connector configuration."""
-        return self._get_last_value("_output")
-
-    @output.setter
-    def output(self, output: dict) -> None:
-        """Setter for Output connector configuration."""
-        self._output = output
-
-    @property
-    def pipeline(self) -> list[dict]:
-        """Pipeline configuration."""
-        # pylint: disable=protected-access
-        pipelines = (config._pipeline for config in self._configs if config._pipeline)
-        # pylint: enable=protected-access
-        return list(chain(self._pipeline, *pipelines))
-
-    @pipeline.setter
-    def pipeline(self, pipeline: list[dict]) -> None:
-        """Pipeline configuration."""
-        self._pipeline = pipeline
-
-    @property
-    def metrics(self) -> dict:
-        """Metrics configuration."""
-        return self._get_last_value("_metrics")
-
-    @metrics.setter
-    def metrics(self, metrics: dict) -> None:
-        """Setter for metrics configuration."""
-        self._metrics = metrics
 
     @classmethod
     def _create_from_source(cls, path: str) -> "Configuration":
@@ -220,9 +152,13 @@ class Configuration:
                 errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
-        config = Configuration()
-        config._configs = tuple(configs)
-        return config
+        configuration = Configuration()
+        configuration._configs = tuple(configs)
+        for attribute in filter(lambda x: x.repr, configuration.__attrs_attrs__):
+            setattr(configuration, attribute.name, configuration._get_last_value(attribute.name))
+        pipelines = (config.pipeline for config in configuration._configs if config.pipeline)
+        configuration.pipeline = list(chain(*pipelines))
+        return configuration
 
     def verify(self):
         """Verify the configuration."""

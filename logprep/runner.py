@@ -165,11 +165,11 @@ class Runner:
         if not isinstance(yaml_files, list):
             raise TypeError(f"yaml_files must be a list, but is {type(yaml_files)}")
 
-        configuration = Configuration.create_from_yamls(yaml_files)
-        configuration.verify(self._logger)
+        configuration = Configuration.create_from_sources(yaml_files)
+        configuration.verify()
 
         self._configuration = configuration
-        self._config_refresh_interval = configuration.get("config_refresh_interval")
+        self._config_refresh_interval = configuration.config_refresh_interval
         self.metrics.version_info.add_with_labels(1, self._metric_labels)
 
     def start(self):
@@ -230,7 +230,7 @@ class Runner:
         if self._configuration is None:
             raise CannotReloadWhenConfigIsUnsetError
         try:
-            new_configuration = Configuration.create_from_yamls(self._configuration.paths)
+            new_configuration = Configuration.create_from_sources(self._configuration.paths)
             self._config_refresh_interval = new_configuration.get("config_refresh_interval")
             self._schedule_config_refresh_job()
         except (requests.RequestException, FileNotFoundError) as error:

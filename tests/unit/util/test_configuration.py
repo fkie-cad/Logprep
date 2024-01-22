@@ -7,6 +7,7 @@ from unittest import mock
 
 import pytest
 
+from logprep.abc.getter import Getter
 from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
@@ -24,6 +25,7 @@ class TestConfiguration:
         "attribute, attribute_type, default",
         [
             ("version", str, "undefined"),
+            ("config_refresh_interval", int, 0),
             ("process_count", int, 1),
             ("timeout", float, 5.0),
             ("logger", dict, {"level": "INFO"}),
@@ -56,6 +58,7 @@ class TestConfiguration:
         "attribute, first_value, second_value",
         [
             ("version", "1", "2"),
+            ("config_refresh_interval", 0, 900),
             ("process_count", 1, 2),
             ("timeout", 1.0, 2.0),
             ("logger", {"level": "INFO"}, {"level": "DEBUG"}),
@@ -68,9 +71,14 @@ class TestConfiguration:
     def test_get_last_value(self, attribute, first_value, second_value):
         first_config = {attribute: first_value}
         second_config = {attribute: second_value}
-        config = Configuration()
-        config._configs = (Configuration(**first_config), Configuration(**second_config))
-        assert getattr(config, attribute) == second_value
+        configs = [first_config, second_config]
+
+        def mock_get_yaml(_) -> dict:
+            return configs.pop(0)
+
+        with mock.patch("logprep.abc.getter.Getter.get_json", new=mock_get_yaml):
+            config = Configuration.create_from_sources(["mockpath", "mockpath"])
+            assert getattr(config, attribute) == second_value
 
     @pytest.mark.parametrize(
         "attribute, value, expected_error, expected_message",
@@ -97,8 +105,13 @@ class TestConfiguration:
     def test_pipeline_property_is_merged_from_configs(self):
         first_config = {"pipeline": [{"foo": "bar"}]}
         second_config = {"pipeline": [{"bar": "foo"}]}
-        config = Configuration()
-        config._configs = (Configuration(**first_config), Configuration(**second_config))
+        configs = [first_config, second_config]
+
+        def mock_get_yaml(_) -> dict:
+            return configs.pop(0)
+
+        with mock.patch("logprep.abc.getter.Getter.get_json", new=mock_get_yaml):
+            config = Configuration.create_from_sources(["mockpath", "mockpath"])
         assert config.pipeline == [{"foo": "bar"}, {"bar": "foo"}]
 
     def test_create_from_sources_collects_errors(self, tmp_path):
