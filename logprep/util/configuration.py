@@ -166,7 +166,11 @@ class Configuration:
         configuration = Configuration()
         configuration._configs = tuple(configs)
         try:
-            cls._set_attributes_from_configs(configuration)
+            configuration._set_attributes_from_configs()
+        except InvalidConfigurationErrors as error:
+            errors = [*errors, *error.errors]
+        try:
+            configuration._build_merged_pipeline()
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         try:
@@ -214,6 +218,8 @@ class Configuration:
                 attribute.name,
                 self._get_last_non_falsy_value(self._configs, attribute.name),
             )
+
+    def _build_merged_pipeline(self):
         pipelines = (config.pipeline for config in self._configs if config.pipeline)
         pipeline = list(chain(*pipelines))
         errors = []

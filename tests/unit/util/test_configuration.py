@@ -1,9 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
-import json
 from logging import getLogger
-from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -817,3 +815,28 @@ output:
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
         assert isinstance(config.as_yaml(), str)
         assert "type: dummy_output" in config.as_yaml()
+
+    def test_returned_json_is_valid_config(self, tmp_path):
+        config = Configuration.from_sources([path_to_config])
+        config.version = "super_custom_version"
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(config.as_json())
+        newconfig = Configuration.from_sources([str(config_path)])
+        assert newconfig.version == "super_custom_version"
+
+    def test_returned_yaml_is_valid_config(self, tmp_path):
+        config = Configuration.from_sources([path_to_config])
+        config.version = "super_custom_version"
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(config.as_yaml())
+        newconfig = Configuration.from_sources([str(config_path)])
+        assert newconfig.version == "super_custom_version"
+
+    def test_reload_loads_generated_config(self, tmp_path):
+        config = Configuration.from_sources([path_to_config])
+        config_path = tmp_path / "pipeline.yml"
+        config_path.write_text(config.as_yaml())
+        test_config = Configuration.from_sources([str(config_path)])
+        config.version = "super_new_version"
+        config_path.write_text(config.as_yaml())
+        test_config.reload()
