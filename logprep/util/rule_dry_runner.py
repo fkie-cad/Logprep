@@ -50,7 +50,9 @@ from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline
-from logprep.util.auto_rule_tester.auto_rule_corpus_tester import align_extra_output_formats
+from logprep.util.auto_rule_tester.auto_rule_corpus_tester import (
+    align_extra_output_formats,
+)
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare
@@ -73,7 +75,7 @@ class DryRunner:
             input_file_path=self._input_file_path,
         )
         config = Configuration.create_from_yaml(patched_config_path)
-        config.verify_pipeline_without_processor_outputs(self._logger)
+        config.verify_pipeline_without_processor_outputs()
         del config["output"]
         return Pipeline(config=config)
 

@@ -1,7 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import re
-from logging import getLogger
 from unittest import mock
 from unittest.mock import call
 
@@ -23,8 +21,7 @@ class TestSpecificGenericProcessStrategy:
                     "generic_rules": [],
                     "specific_rules": [],
                 }
-            },
-            mock.MagicMock(),
+            }
         )
         processor.process({})
         mock_process_rule_tree.assert_called()
@@ -39,8 +36,7 @@ class TestSpecificGenericProcessStrategy:
                     "generic_rules": [],
                     "specific_rules": [],
                 }
-            },
-            mock.MagicMock(),
+            }
         )
         processor.process({})
         assert mock_process_rule_tree.call_count == 2
@@ -57,7 +53,7 @@ class TestSpecificGenericProcessStrategy:
             "generic_rules": [],
             "apply_multiple_times": True,
         }
-        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
+        processor = Factory.create({"custom_lister": config})
         rule_one_dict = {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{time} [%{protocol}] %{url}"}},
@@ -84,7 +80,7 @@ class TestSpecificGenericProcessStrategy:
 
     def test_apply_processor_multiple_times_not_enabled(self):
         config = {"type": "dissector", "specific_rules": [], "generic_rules": []}
-        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
+        processor = Factory.create({"custom_lister": config})
         rule_one_dict = {
             "filter": "message",
             "dissector": {"mapping": {"message": "%{time} [%{protocol}] %{url}"}},
@@ -110,7 +106,7 @@ class TestSpecificGenericProcessStrategy:
     @pytest.mark.parametrize("execution_number", range(5))  # repeat test to ensure determinism
     def test_strategy_applies_rules_in_deterministic_order(self, execution_number):
         config = {"type": "generic_adder", "specific_rules": [], "generic_rules": []}
-        processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
+        processor = Factory.create({"custom_lister": config})
         rule_one_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
         rule_two_dict = {"filter": "NOT something", "generic_adder": {"add": {"something": "else"}}}
         rule_one = GenericAdderRule._create_from_dict(rule_one_dict)

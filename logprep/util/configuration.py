@@ -177,38 +177,38 @@ class Configuration(dict):
         dump_config_as_file(str(patched_config_path), configuration)
         return str(patched_config_path)
 
-    def verify(self, logger: Logger):
+    def verify(self):
         """Verify the configuration."""
-        errors = self._check_for_errors(logger)
+        errors = self._check_for_errors()
         self._print_and_raise_errors(errors)
         for error in errors:
             raise error
 
-    def verify_pipeline_only(self, logger: Logger):
+    def verify_pipeline_only(self):
         """Verify the configuration only for the pipeline.
 
         This is used to check rules where it is not necessary to start the whole framework.
         """
         errors = []
         try:
-            self._verify_pipeline(logger)
+            self._verify_pipeline()
         except InvalidConfigurationError as error:
             errors.append(error)
         self._print_and_raise_errors(errors)
 
-    def verify_pipeline_without_processor_outputs(self, logger: Logger):
+    def verify_pipeline_without_processor_outputs(self):
         """Verify the configuration only for the pipeline, but ignore processor output errors.
         This is used to check if the configuration is valid inside the auto rule tester and the
         rule corpus tester, as the configuration does not have an output there.
         """
         errors = []
         try:
-            self._verify_pipeline_without_processor_outputs(logger)
+            self._verify_pipeline_without_processor_outputs()
         except InvalidConfigurationError as error:
             errors.append(error)
         self._print_and_raise_errors(errors)
 
-    def _check_for_errors(self, logger: Logger) -> List[InvalidConfigurationError]:
+    def _check_for_errors(self) -> List[InvalidConfigurationError]:
         errors = []
         try:
             self._verify_environment()
@@ -223,15 +223,15 @@ class Configuration(dict):
         except InvalidConfigurationError as error:
             errors.append(error)
         try:
-            self._verify_input(logger)
+            self._verify_input()
         except InvalidConfigurationError as error:
             errors.append(error)
         try:
-            self._verify_output(logger)
+            self._verify_output()
         except InvalidConfigurationError as error:
             errors.append(error)
         try:
-            self._verify_pipeline(logger)
+            self._verify_pipeline()
         except InvalidConfigurationError as error:
             errors.append(error)
         if self.get("metrics", {}):
@@ -273,9 +273,9 @@ class Configuration(dict):
         if errors:
             raise InvalidConfigurationErrors(errors)
 
-    def _verify_input(self, logger):
+    def _verify_input(self):
         try:
-            _ = Factory.create(self["input"], logger)
+            _ = Factory.create(self["input"])
         except FactoryError as error:
             raise InvalidInputConnectorConfigurationError(str(error)) from error
         except TypeError as error:
@@ -284,13 +284,13 @@ class Configuration(dict):
         except KeyError as error:
             raise RequiredConfigurationKeyMissingError("input") from error
 
-    def _verify_output(self, logger):
+    def _verify_output(self):
         try:
             output_configs = self.get("output")
             output_names = list(output_configs.keys())
             for output_name in output_names:
                 output_config = output_configs.get(output_name)
-                Factory.create({output_name: output_config}, logger)
+                Factory.create({output_name: output_config})
         except FactoryError as error:
             raise InvalidOutputConnectorConfigurationError(str(error)) from error
         except TypeError as error:
@@ -310,11 +310,11 @@ class Configuration(dict):
             msg = f"Unknown option: {parameter}."
         return msg
 
-    def _verify_pipeline(self, logger: Logger):
+    def _verify_pipeline(self):
         self._verify_pipeline_key()
         errors = []
         for processor_config in self["pipeline"]:
-            processor = self._verify_processor(errors, logger, processor_config)
+            processor = self._verify_processor(errors, processor_config)
             try:
                 self._verify_rules(processor)
             except InvalidRuleDefinitionError as error:
@@ -326,11 +326,11 @@ class Configuration(dict):
         if errors:
             raise InvalidConfigurationErrors(errors)
 
-    def _verify_pipeline_without_processor_outputs(self, logger: Logger):
+    def _verify_pipeline_without_processor_outputs(self):
         self._verify_pipeline_key()
         errors = []
         for processor_config in self["pipeline"]:
-            self._verify_processor(errors, logger, processor_config)
+            self._verify_processor(errors, processor_config)
         if errors:
             raise InvalidConfigurationErrors(errors)
 
@@ -343,10 +343,10 @@ class Configuration(dict):
             )
             raise InvalidConfigurationErrors([error])
 
-    def _verify_processor(self, errors, logger, processor_config):
+    def _verify_processor(self, errors, processor_config):
         processor = None
         try:
-            processor = Factory.create(processor_config, logger)
+            processor = Factory.create(processor_config)
         except (FactoryInvalidConfigurationError, UnknownComponentTypeError) as error:
             errors.append(
                 InvalidProcessorConfigurationError(f"{list(processor_config.keys())[0]} - {error}")

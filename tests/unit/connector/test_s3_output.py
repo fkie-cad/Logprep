@@ -72,7 +72,7 @@ class TestS3Output(BaseOutputTestCase):
         }
         s3_config = deepcopy(self.CONFIG)
         s3_config.update({"message_backlog_size": 2, "base_prefix": base_prefix})
-        s3_output = Factory.create({"s3": s3_config}, self.logger)
+        s3_output = Factory.create({"s3": s3_config})
 
         s3_output.store(event)
 
@@ -94,7 +94,7 @@ class TestS3Output(BaseOutputTestCase):
         }
         s3_config = deepcopy(self.CONFIG)
         s3_config.update({"default_prefix": default_prefix, "message_backlog_size": 2})
-        s3_output = Factory.create({"s3": s3_config}, self.logger)
+        s3_output = Factory.create({"s3": s3_config})
 
         s3_output.store(event)
 
@@ -109,7 +109,7 @@ class TestS3Output(BaseOutputTestCase):
 
         s3_config = deepcopy(self.CONFIG)
         s3_config.update({"message_backlog_size": 2})
-        s3_output = Factory.create({"s3": s3_config}, self.logger)
+        s3_output = Factory.create({"s3": s3_config})
 
         s3_output.store_custom(event, custom_prefix)
         assert s3_output._message_backlog[custom_prefix][0] == expected
@@ -128,7 +128,7 @@ class TestS3Output(BaseOutputTestCase):
         }
         s3_config = deepcopy(self.CONFIG)
         s3_config.update({"error_prefix": error_prefix, "message_backlog_size": 2})
-        s3_output = Factory.create({"s3": s3_config}, self.logger)
+        s3_output = Factory.create({"s3": s3_config})
 
         s3_output.store_failed(error_message, event_received, event)
 
@@ -188,7 +188,7 @@ class TestS3Output(BaseOutputTestCase):
         s3_config = deepcopy(self.CONFIG)
         message_backlog_size = 5
         s3_config.update({"message_backlog_size": message_backlog_size})
-        s3_output = Factory.create({"s3": s3_config}, self.logger)
+        s3_output = Factory.create({"s3": s3_config})
         assert self._calculate_backlog_size(s3_output) == 0
         for idx in range(1, message_backlog_size):
             s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
@@ -198,7 +198,7 @@ class TestS3Output(BaseOutputTestCase):
         s3_config = deepcopy(self.CONFIG)
         message_backlog_size = 5
         s3_config.update({"message_backlog_size": message_backlog_size})
-        s3_output = Factory.create({"s3": s3_config}, self.logger)
+        s3_output = Factory.create({"s3": s3_config})
 
         s3_output._write_document_batch = mock.MagicMock()
         s3_output._write_document_batch.assert_not_called()
@@ -243,7 +243,7 @@ class TestS3Output(BaseOutputTestCase):
     def test_store_does_not_call_batch_finished_callback_if_disabled(self):
         s3_config = deepcopy(self.CONFIG)
         s3_config.update({"call_input_callback": False})
-        s3_output = Factory.create({"s3": s3_config}, self.logger)
+        s3_output = Factory.create({"s3": s3_config})
         s3_output._s3_resource = mock.MagicMock()
         s3_output.input_connector = mock.MagicMock()
         s3_output.store({"message": "my event message"})

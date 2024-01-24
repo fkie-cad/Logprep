@@ -164,7 +164,7 @@ class Runner:
             raise MustNotConfigureTwiceError
 
         configuration = Configuration.create_from_yaml(yaml_file)
-        configuration.verify(self._logger)
+        configuration.verify()
 
         self._yaml_path = yaml_file
         self._configuration = configuration
@@ -252,7 +252,7 @@ class Runner:
                 )
                 return
         try:
-            new_configuration.verify(self._logger)
+            new_configuration.verify()
 
             # Only reached when configuration is verified successfully
             self._configuration = new_configuration

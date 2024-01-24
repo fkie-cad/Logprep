@@ -58,7 +58,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         assert connector._add_hmac is True
 
     def test_add_hmac_to_adds_hmac(self):
@@ -74,7 +74,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         processed_event, non_critical_error_msg = connector._add_hmac_to(
             {"message": "test message"}, b"test message"
         )
@@ -101,7 +101,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         processed_event, non_critical_error_msg = connector._add_hmac_to(
             {"message": "test message"}, None
         )
@@ -129,7 +129,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": "with_content"}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -164,7 +164,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -200,7 +200,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -234,7 +234,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": "with_content"}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -275,7 +275,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"message": {"with_subfield": "content"}}
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
@@ -291,7 +291,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         connector_config = deepcopy(self.CONFIG)
         assert not connector_config.get("preprocessing", {}).get("hmac")
         test_event = {"message": "with_content"}
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         raw_encoded_test_event = json.dumps(test_event, separators=(",", ":")).encode("utf-8")
         connector._get_event = mock.MagicMock(
             return_value=(test_event.copy(), raw_encoded_test_event)
@@ -309,7 +309,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -325,7 +325,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "version_info": "something random"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -339,7 +339,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "version_info": "something random"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -370,7 +370,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         connector._get_event = mock.MagicMock(return_value=({"any": "content"}, None))
         result, _ = connector.get_next(0.01)
         target_field = preprocessing_config.get("preprocessing", {}).get(
@@ -390,7 +390,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "arrival_time": "does not matter"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -408,7 +408,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content", "@timestamp": "1999-09-09T09:09:09.448319+02:00"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -434,7 +434,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -449,7 +449,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -468,7 +468,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
         result, _ = connector.get_next(0.01)
@@ -484,7 +484,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         os.environ["TEST_ENV_VARIABLE"] = "test_value"
         connector._get_event = mock.MagicMock(return_value=(test_event, None))
@@ -502,7 +502,7 @@ class BaseInputTestCase(BaseConnectorTestCase):
         }
         connector_config = deepcopy(self.CONFIG)
         connector_config.update(preprocessing_config)
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         test_event = {"any": "content"}
         os.environ["TEST_ENV_VARIABLE_FOO"] = "test_value_foo"
         os.environ["TEST_ENV_VARIABLE_BAR"] = "test_value_bar"

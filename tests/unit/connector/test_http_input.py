@@ -1,13 +1,14 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
-from copy import deepcopy
 import json
+from copy import deepcopy
 
 import requests
 import uvicorn
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
 from logprep.connector.http.input import HttpConnector
 from logprep.factory import Factory
 from tests.unit.connector.base import BaseInputTestCase
@@ -134,7 +135,7 @@ class TestHttpConnector(BaseInputTestCase):
                 }
             }
         )
-        connector = Factory.create({"test connector": connector_config}, logger=self.logger)
+        connector = Factory.create({"test connector": connector_config})
         connector.setup()
         test_event = "the content"
         with connector.server.run_in_thread():

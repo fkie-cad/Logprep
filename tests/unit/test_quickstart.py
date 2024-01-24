@@ -12,7 +12,7 @@ class TestQuickstart:
 
     def test_validity_of_quickstart_config(self):
         config = Configuration().create_from_yaml(self.QUICKSTART_CONFIG_PATH)
-        config.verify(getLogger("test-logger"))
+        config.verify()
 
     def test_quickstart_rules_are_valid(self):
         """ensures the quickstart rules are valid"""

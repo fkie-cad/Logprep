@@ -167,7 +167,7 @@ class Pipeline:
         outputs = {}
         for output_name in output_names:
             output_config = output_configs.get(output_name)
-            outputs |= {output_name: Factory.create({output_name: output_config}, self.logger)}
+            outputs |= {output_name: Factory.create({output_name: output_config})}
         return outputs
 
     @cached_property
@@ -179,7 +179,7 @@ class Pipeline:
         input_connector_config[connector_name].update(
             {"version_information": self._event_version_information}
         )
-        return Factory.create(input_connector_config, self.logger)
+        return Factory.create(input_connector_config)
 
     @_handle_pipeline_error
     def _setup(self):
@@ -207,7 +207,7 @@ class Pipeline:
         self.logger.info("Finished building pipeline")
 
     def _create_processor(self, entry: dict) -> "Processor":
-        processor = Factory.create(entry, self.logger)
+        processor = Factory.create(entry)
         processor.setup()
         self.logger.debug(f"Created '{processor}' processor")
         return processor

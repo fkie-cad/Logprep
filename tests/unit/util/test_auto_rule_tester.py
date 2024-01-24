@@ -153,9 +153,7 @@ class TestAutoRuleTester:
             "max_cached_pseudonyms": 1000000,
         }
         mock_replace_regex_keywords_by_regex_expression.assert_not_called()
-        processor = auto_rule_tester._get_processor_instance(
-            "pseudonymizer", pseudonymizer_cfg, LOGGER
-        )
+        processor = auto_rule_tester._get_processor_instance("pseudonymizer", pseudonymizer_cfg)
         auto_rule_tester._reset_trees(
             processor
         )  # Called every time by auto tester before adding rules
@@ -175,9 +173,7 @@ class TestAutoRuleTester:
             "list_search_base_path": "tests/testdata/unit/list_comparison/rules",
         }
         mock_setup.assert_not_called()
-        processor = auto_rule_tester._get_processor_instance(
-            "list_comparison", list_comparison_cfg, LOGGER
-        )
+        processor = auto_rule_tester._get_processor_instance("list_comparison", list_comparison_cfg)
         auto_rule_tester._reset_trees(
             processor
         )  # Called every time by auto tester before adding rules instead

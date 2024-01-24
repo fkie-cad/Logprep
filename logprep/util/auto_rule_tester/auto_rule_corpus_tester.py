@@ -96,7 +96,7 @@ from pathlib import Path
 from pprint import pprint
 from typing import List
 
-from attr import define, validators, field, Factory
+from attr import Factory, define, field, validators
 from colorama import Fore, Style
 from deepdiff import DeepDiff, grep
 
@@ -193,7 +193,7 @@ class RuleCorpusTester:
             self._original_config_path, self._tmp_dir, str(merged_input_file_path)
         )
         config = Configuration.create_from_yaml(path_to_patched_config)
-        config.verify_pipeline_without_processor_outputs(getLogger("logprep"))
+        config.verify_pipeline_without_processor_outputs()
         del config["output"]
         pipeline = Pipeline(config=config)
         pipeline.logger = self._logprep_logger

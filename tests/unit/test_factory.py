@@ -54,7 +54,7 @@ logger = getLogger()
 def test_create_from_dict_validates_config(configs, error, message):
     for config in configs:
         with raises(error) as exception_info:
-            Factory.create(config, logger)
+            Factory.create(config)
         value = str(exception_info.value)
         assertion_error_message = (
             f'Error message of "{error.__name__}" did not match regex for test input '
@@ -69,7 +69,7 @@ def test_create_fails_for_unknown_type():
         "".join(sample(ascii_letters, 6)) for i in range(5)
     ]:
         with raises(UnknownComponentTypeError):
-            Factory.create({"processorname": {"type": type_name}}, logger)
+            Factory.create({"processorname": {"type": type_name}})
 
 
 def test_create_pseudonymizer_returns_pseudonymizer_processor():
@@ -87,7 +87,6 @@ def test_create_pseudonymizer_returns_pseudonymizer_processor():
                 "max_cached_pseudonyms": 1000000,
             }
         },
-        logger,
     )
 
     assert isinstance(processor, Pseudonymizer)
@@ -103,7 +102,6 @@ def test_create_clusterer_returns_clusterer_processor():
                 "generic_rules": ["tests/testdata/unit/clusterer/rules/generic"],
             }
         },
-        logger,
     )
 
     assert isinstance(processor, Clusterer)
@@ -115,7 +113,7 @@ def test_fails_when_section_contains_more_than_one_element():
         match=r"Found multiple component definitions \(first, second\), "
         r"but there must be exactly one\.",
     ):
-        Factory.create({"first": mock.MagicMock(), "second": mock.MagicMock()}, logger)
+        Factory.create({"first": mock.MagicMock(), "second": mock.MagicMock()})
 
 
 def test_create_labeler_creates_labeler_processor():
@@ -128,7 +126,6 @@ def test_create_labeler_creates_labeler_processor():
                 "specific_rules": [path_to_single_rule],
             }
         },
-        logger,
     )
 
     assert isinstance(processor, Labeler)
@@ -153,7 +150,6 @@ def test_creates_calculator_with_inline_rules():
                 ],
             }
         },
-        logger,
     )
     assert len(processor._generic_rules) == 1
     assert len(processor._specific_rules) == 1
@@ -180,7 +176,6 @@ def test_creates_calculator_with_inline_rules_and_files():
                 ],
             }
         },
-        logger,
     )
     assert len(processor._generic_rules) == 2
     assert len(processor._specific_rules) == 2
@@ -209,7 +204,6 @@ def test_creates_calculator_with_inline_rules_and_file_and_directory():
                 ],
             }
         },
-        logger,
     )
     assert len(processor._generic_rules) == 2
     assert len(processor._specific_rules) == 2
@@ -218,7 +212,6 @@ def test_creates_calculator_with_inline_rules_and_file_and_directory():
 def test_dummy_input_creates_dummy_input_connector():
     processor = Factory.create(
         {"labelername": {"type": "dummy_input", "documents": [{}, {}]}},
-        logger,
     )
 
     assert isinstance(processor, Input)

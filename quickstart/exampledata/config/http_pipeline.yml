@@ -1,0 +1,43 @@
+version: 1
+process_count: 2
+timeout: 0.1
+logger:
+  level: INFO
+
+metrics:
+  enabled: true
+  port: 8000
+
+pipeline: []
+
+input:
+  httpinput:
+      type: http_input
+      uvicorn_config:
+          host: 0.0.0.0
+          port: 9000
+      endpoints:
+          /sap/123/ABC/auditlog: jsonl
+          /sap/123/ABC/auditlog-definition: jsonl
+          /sap/123/ABC/custom-alerts: jsonl
+          /sap/123/ABC/heartbeat: jsonl
+          /sap/123/ABC/profile-parameter-changes: jsonl
+          /sap/123/ABC/profile-parameters: jsonl
+          /sap/123/ABC/sap-kernel: jsonl
+          /sap/123/ABC/security-notes: jsonl
+          /sap/123/ABC/software-components: jsonl
+          /sap/123/ABC/software-updates: jsonl
+          /sap/123/ABC/syslog: jsonl
+          /sap/123/ABC/syslog-definition: jsonl
+
+output:
+  kafka:
+    type: confluentkafka_output
+    topic: consumer
+    error_topic: errors
+    flush_timeout: 0.2
+    send_timeout: 0
+    kafka_config:
+      bootstrap.servers: 127.0.0.1:9092
+      compression.type: gzip
+      statistics.interval.ms: "60000"

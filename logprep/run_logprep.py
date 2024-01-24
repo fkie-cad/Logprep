@@ -172,7 +172,7 @@ def _load_configuration(args):
 
 def _validate_rules(args, config: Configuration, logger: logging.Logger):
     try:
-        config.verify_pipeline_only(logger)
+        config.verify_pipeline_only()
     except InvalidConfigurationError as error:
         logger.critical(error)
         sys.exit(1)
@@ -219,7 +219,7 @@ def main():
         dry_runner.run()
     elif args.verify_config:
         try:
-            config.verify(logger)
+            config.verify()
         except InvalidConfigurationError as error:
             logger.critical(error)
             sys.exit(1)

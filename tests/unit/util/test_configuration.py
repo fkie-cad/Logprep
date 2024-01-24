@@ -57,7 +57,7 @@ class TestConfiguration:
         parent[key] = value
 
         with pytest.raises(InvalidConfigurationError, match=expected_message):
-            config.verify(logger)
+            config.verify()
 
     @mock.patch("logprep.util.configuration.print_fcolor")
     def test_invalid_yml_prints_formatted_error(self, mock_print_fcolor, tmp_path):
@@ -71,13 +71,13 @@ class TestConfiguration:
 
     def test_verify_passes_for_valid_configuration(self):
         try:
-            self.config.verify(logger)
+            self.config.verify()
         except InvalidConfigurationError as error:
             pytest.fail(f"The verification should pass for a valid configuration.: {error}")
 
     def test_verify_pipeline_only_passes_for_valid_configuration(self):
         try:
-            self.config.verify_pipeline_only(logger)
+            self.config.verify_pipeline_only()
         except InvalidConfigurationError:
             pytest.fail("The verification should pass for a valid configuration.")
 
@@ -90,18 +90,18 @@ class TestConfiguration:
             del config[key]
 
             with pytest.raises(InvalidConfigurationError):
-                config.verify(logger)
+                config.verify()
 
     def test_verify_pipeline_only_fails_on_missing_pipeline_value(self):
         for key in list(key for key in self.config.keys() if key != "pipeline"):
             config = deepcopy(self.config)
             del config[key]
-            config.verify_pipeline_only(logger)
+            config.verify_pipeline_only()
 
         config = deepcopy(self.config)
         del config["pipeline"]
         with pytest.raises(InvalidConfigurationError):
-            config.verify(logger)
+            config.verify()
 
     def test_verify_fails_on_low_process_count(self):
         for i in range(0, -10, -1):
@@ -369,7 +369,7 @@ class TestConfiguration:
         config.update(config_dict)
         if raised_errors is not None:
             with pytest.raises(InvalidConfigurationErrors) as e_info:
-                config.verify(logger)
+                config.verify()
             errors_set = [(type(err), str(err)) for err in e_info.value.errors]
             assert len(raised_errors) == len(errors_set), test_case
             zipped_errors = zip(raised_errors, errors_set)
@@ -495,7 +495,7 @@ class TestConfiguration:
         config = deepcopy(self.config)
         config.update(config_dict)
         if raised_errors is not None:
-            errors = config._check_for_errors(logger)
+            errors = config._check_for_errors()
             collected_errors = []
             for error in errors:
                 collected_errors += error.errors
@@ -514,7 +514,7 @@ class TestConfiguration:
         with pytest.raises(
             RequiredConfigurationKeyMissingError, match="Required option is missing: input"
         ):
-            config._verify_input(logger)
+            config._verify_input()
 
     def test_verify_input_raises_type_error(self):
         config = deepcopy(self.config)
@@ -526,7 +526,7 @@ class TestConfiguration:
                 + "'topic'."
             ),
         ):
-            config._verify_input(logger)
+            config._verify_input()
 
     def test_verify_output_raises_missing_output_key(self):
         config = deepcopy(self.config)
@@ -534,7 +534,7 @@ class TestConfiguration:
         with pytest.raises(
             RequiredConfigurationKeyMissingError, match="Required option is missing: output"
         ):
-            config._verify_output(logger)
+            config._verify_output()
 
     def test_patch_yaml_with_json_connectors_inserts_json_input_connector(self, tmp_path):
         regular_config = GetterFactory.from_string(path_to_config).get_yaml()
@@ -659,7 +659,7 @@ output:
             "LOGPREP_INPUT"
         ] = "input:\n    kafka:\n        type: confluentkafka_input\n        topic: consumer\n        kafka_config:\n          bootstrap.servers: localhost:9092\n          group.id: testgroup\n"
         config = Configuration.create_from_yaml(str(config_path))
-        config.verify(mock.MagicMock())
+        config.verify()
 
     def test_config_gets_enriched_by_environment_with_non_existent_variable(self, tmp_path):
         config_path = tmp_path / "pipeline.yml"
@@ -715,7 +715,7 @@ output:
             InvalidConfigurationErrors,
             match=r"Environment variable\(s\) used, but not set: LOGPREP_I_DO_NOT_EXIST",
         ):
-            config.verify(mock.MagicMock())
+            config.verify()
 
     def test_verifies_processor_configs_against_defined_outputs(self):
         config = Configuration()
@@ -752,7 +752,7 @@ output:
         ]
         config.update({"pipeline": pipeline, "output": {}})
         with pytest.raises(InvalidConfigurationErrors) as raised:
-            config._verify_pipeline(logger=logger)
+            config._verify_pipeline()
         assert len(raised.value.errors) == 3
         for error in raised.value.errors:
             assert "output 'kafka' does not exist in logprep outputs" in error.args[0]
@@ -772,7 +772,7 @@ output:
         ]
         config.update({"pipeline": pipeline, "output": {}})
         try:
-            config.verify_pipeline_without_processor_outputs(logger=logger)
+            config.verify_pipeline_without_processor_outputs()
         except InvalidConfigurationErrors as error:
             assert False, f"Shouldn't raise output does not exist error: '{error}'"
 
@@ -804,7 +804,7 @@ output:
         ]
         config.update({"pipeline": pipeline, "output": {}})
         with pytest.raises(InvalidConfigurationErrors) as raised:
-            config._verify_pipeline(logger=logger)
+            config._verify_pipeline()
         assert len(raised.value.errors) == 1
         for error in raised.value.errors:
             assert "Duplicate rule id: same id" in error.args[0]
@@ -838,7 +838,7 @@ output:
         ]
         config.update({"pipeline": pipeline, "output": {}})
         with pytest.raises(InvalidConfigurationErrors) as raised:
-            config._verify_pipeline(logger=logger)
+            config._verify_pipeline()
         assert len(raised.value.errors) == 1
         for error in raised.value.errors:
             assert "Duplicate rule id: same id" in error.args[0]

@@ -32,7 +32,7 @@ class TestFatalOutputError(ExceptionBaseTest):
 
     def setup_method(self):
         self.object = Factory.create(
-            {"test connector": {"type": "dummy_output", "default": False}}, logger=getLogger()
+            {"test connector": {"type": "dummy_output", "default": False}}
         )
         self.exception_args = (self.object, "the error message")
 
@@ -47,7 +47,6 @@ class TestCriticalOutputError(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_output", "default": False}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message", b"raw input")
 
@@ -62,7 +61,6 @@ class TestOutputError(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_output", "default": False}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message")
 
@@ -77,7 +75,6 @@ class TestOutputWarning(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_output", "default": False}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message")
 
@@ -92,7 +89,6 @@ class TestInputError(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message")
 
@@ -107,7 +103,6 @@ class TestCriticalInputError(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message", b"raw input")
 
@@ -122,7 +117,6 @@ class TestCriticalInputParsingError(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message", b"raw input")
 
@@ -137,7 +131,6 @@ class TestFatalInputError(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message")
 
@@ -152,7 +145,6 @@ class TestInputWarning(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message")
 
@@ -167,6 +159,5 @@ class TestSourceDisconnectedWarning(ExceptionBaseTest):
     def setup_method(self):
         self.object = Factory.create(
             {"test connector": {"type": "dummy_input", "documents": []}},
-            logger=getLogger(),
         )
         self.exception_args = (self.object, "the error message")
