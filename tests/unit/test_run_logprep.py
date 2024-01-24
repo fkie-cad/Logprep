@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+import logging
 import sys
 from pathlib import Path
 from unittest import mock
@@ -187,3 +188,30 @@ class TestRunLogprepCli:
             config_path = "http://localhost/does-not-exists"
             result = self.cli_runner.invoke(cli, ["run", config_path])
             assert result.exit_code == 1
+
+    @mock.patch("logprep.util.rule_dry_runner.DryRunner.run")
+    def test_dry_run_starts_dry_runner(self, mock_dry_runner):
+        config_path = "tests/testdata/config/config.yml"
+        events_path = "quickstart/exampledata/input_logdata/test_input.jsonl"
+        result = self.cli_runner.invoke(cli, ["dry-run", config_path, events_path])
+        assert result.exit_code == 0
+        mock_dry_runner.assert_called()
+
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run")
+    def test_test_rules_starts_auto_rule_tester(self, mock_tester):
+        config_path = "tests/testdata/config/config.yml"
+        result = self.cli_runner.invoke(cli, ["test-rules", config_path])
+        assert result.exit_code == 0
+        mock_tester.assert_called()
+        # the AutoRuleTester deactivates the logger which then has side effects on other tests
+        # so the logger is being activated here again.
+        logger = logging.getLogger()
+        logger.disabled = False
+
+    @mock.patch("logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run")
+    def test_test_ruleset_starts_rule_corpus_tester(self, mock_tester):
+        config_path = "tests/testdata/config/config.yml"
+        test_data_path = "path/to/testset"
+        result = self.cli_runner.invoke(cli, ["test-ruleset", config_path, test_data_path])
+        assert result.exit_code == 0
+        mock_tester.assert_called()
