@@ -14,6 +14,7 @@
 * add option to Opensearch Output Connector to use parallel bulk implementation (default is True)
 * add feature to logprep to load config from multiple sources (files or uris)
 * add feature to logprep to print the resulting configruation with `logprep print json|yaml <Path to config>` in json or yaml
+* add a load-tester that can send records to Kafka using data from a file or from Kafka
 
 ### Improvements
 
@@ -75,8 +76,6 @@
         * :code:`LOGPREP_CONFIG_AUTH_METHOD=oauth`
 
 ### Features
-
-* add a load-tester that can send records to Kafka using data from a file or from Kafka
 
 ### Improvements
 
