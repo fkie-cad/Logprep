@@ -3,6 +3,8 @@
 ## next release
 ### Breaking
 
+* reimplement the logprep CLI, see `logprep --help` for more information.
+
 ### Features
 
 
