@@ -247,7 +247,7 @@ def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:
         env = {}
     env.update({"PYTHONPATH": "."})
     return subprocess.Popen(  # nosemgrep
-        f"{sys.executable} logprep/run_logprep.py {config_path}",
+        f"{sys.executable} logprep/run_logprep.py run {config_path}",
         shell=True,
         env=env,
         stdin=subprocess.PIPE,
