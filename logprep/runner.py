@@ -162,7 +162,7 @@ class Runner:
         if self._configuration is not None:
             raise MustNotConfigureTwiceError
 
-        if not isinstance(yaml_files, list):
+        if not isinstance(yaml_files, (list, tuple)):
             raise TypeError(f"yaml_files must be a list, but is {type(yaml_files)}")
 
         configuration = Configuration.from_sources(yaml_files)
@@ -196,7 +196,7 @@ class Runner:
         if self._config_refresh_interval is not None:
             self.metrics.config_refresh_interval += self._config_refresh_interval
         self._manager.set_configuration(self._configuration)
-        self._manager.set_count(self._configuration["process_count"])
+        self._manager.set_count(self._configuration.process_count)
         self._logger.debug("Pipeline manager initiated")
 
         with self._continue_iterating.get_lock():

@@ -316,7 +316,7 @@ def get_dict_size_in_byte(dictionary: dict) -> int:
     return size
 
 
-def get_versions_string(config: "Configuration") -> str:
+def get_versions_string(config: "Configuration" = None) -> str:
     """
     Prints the version and exists. If a configuration was found then it's version
     is printed as well

@@ -14,13 +14,6 @@ from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTest
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
 from logprep.util.getter import GetterNotFoundError
-from logprep.util.configuration import (
-    Configuration,
-    InvalidConfigurationError,
-    InvalidConfigurationErrors,
-)
-from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 
@@ -52,9 +45,9 @@ def _get_logger(logger_config: dict):
 def _load_configuration(config_paths: list[str]):
     try:
         return Configuration.from_sources(config_paths)
-    except FileNotFoundError:
+    except FileNotFoundError as error:
         print(
-            f"One or more of the given config file(s) does not exist: {', '.join(config_paths)}",
+            f"One or more of the given config file(s) does not exist: {error.filename}",
             file=sys.stderr,
         )
         print(
@@ -96,10 +89,10 @@ def run(config: str, version=None):
     if version:
         print_version_and_exit(config_obj)
     logger = _get_logger(config_obj.logger)
-    logger.info(f"Log level set to '{logger.level}'")
-    for version in get_versions_string(config).split("\n"):
+    logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
+    for version in get_versions_string(config_obj).split("\n"):
         logger.info(version)
-    logger.debug(f'Metric export enabled: {config_obj.get("metrics", {}).get("enabled", False)}')
+    logger.debug(f'Metric export enabled: {config_obj.metrics.get("enabled", False)}')
     logger.debug(f"Config path: {config}")
     runner = None
     try:
@@ -127,7 +120,7 @@ def test():
 
 
 @test.command(name="config")
-@click.argument("config")
+@click.argument("config", nargs=-1)
 def test_config(config):
     """
     Verify the configuration file
@@ -135,9 +128,9 @@ def test_config(config):
     CONFIG is a path to configuration file (filepath or URL).
     """
     config = _load_configuration(config)
-    logger = _setup_logger(config)
+    logger = _get_logger(config.logger)
     try:
-        config.verify(logger=logger)
+        config.verify()
     except InvalidConfigurationError as error:
         logger.critical(error)
         sys.exit(1)
@@ -145,7 +138,7 @@ def test_config(config):
 
 
 @test.command(short_help="Execute a dry run against a configuration and selected events")
-@click.argument("config")
+@click.argument("config", nargs=-1)
 @click.argument("events")
 @click.option(
     "--input-type",
@@ -176,7 +169,7 @@ def dry_run(config, events, input_type, full_output):
 
 
 @test.command(short_help="Run the rule tests of the given configuration", name="unit")
-@click.argument("config")
+@click.argument("config", nargs=-1)
 def test_rules(config):
     """
     Test rules against their respective test files
@@ -190,7 +183,7 @@ def test_rules(config):
 @test.command(
     short_help="Run the rule corpus tester against a given configuration", name="integration"
 )
-@click.argument("config")
+@click.argument("config", nargs=-1)
 @click.argument("testdata")
 def test_ruleset(config, testdata):
     """Test the given ruleset against specified test data
@@ -213,7 +206,7 @@ def generate():
 
 
 @cli.command(short_help="Print a complete configuration file [Not Yet Implemented]", name="print")
-@click.argument("config")
+@click.argument("config", nargs=-1, required=True)
 @click.option(
     "--output",
     type=click.Choice(["json", "yaml"]),
