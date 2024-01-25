@@ -235,7 +235,7 @@ def generate():
     default="yaml",
     help="What output format to use",
 )
-def print_config(output):
+def print_config(config, output):
     """
     Prints the given configuration as a combined yaml or json file, with all rules and options
     included.
