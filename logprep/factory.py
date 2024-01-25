@@ -21,7 +21,7 @@ class Factory:
     _logger: "Logger" = logging.getLogger(__name__)
 
     @classmethod
-    def create(cls, configuration: dict) -> "Component":
+    def create(cls, configuration: dict, logger: "Logger") -> "Component":
         """Create component."""
         if configuration == {} or configuration is None:
             raise InvalidConfigurationError("The component definition is empty.")
@@ -47,4 +47,4 @@ class Factory:
                 component_name, component_configuration_dict
             )
             component_configuration.metric_labels = copy.deepcopy(metric_labels)
-            return component(component_name, component_configuration, cls._logger)
+            return component(component_name, component_configuration, logger)
