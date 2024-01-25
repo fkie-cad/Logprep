@@ -406,6 +406,7 @@ and *pseudonyms* should be available in Opensearch Dashboards.
 The environment can be stopped via `docker-compose down`.
 
 ## Load Generator
+### Kafka
 The load-tester can send a configurable amount of documents to Kafka.
 The documents that are being send can be obtained either from Kafka or from a file with JSON lines.
 
@@ -451,6 +452,9 @@ kafka:
       password: STRING # Optional
 ```
 Unused parameters must be removed or commented.
+
+### Http
+
 
 ## Documentation
 

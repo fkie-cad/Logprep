@@ -11,6 +11,8 @@ from pathlib import Path
 import click
 from colorama import Fore
 
+from logprep.load_generator.http.controller import Controller
+from logprep.load_generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
@@ -206,11 +208,88 @@ def generate_kafka(config, file):
 
 
 @generate.command(name="http")
-@click.argument("kafka")
-def generate_http(config):
-    """
-    Generate to Http.
-    """
+@click.help_option()
+@click.option("--input-dir", help="Path to the root input directory", required=True, type=str)
+@click.option(
+    "--target-domain",
+    help="Target domain where the events should be send to",
+    required=True,
+    type=str,
+)
+@click.option("--user", help="Username for the target domain", required=True, type=str)
+@click.option(
+    "--password", help="Credentials for the user of the target domain", required=True, type=str
+)
+@click.option(
+    "--batch-size",
+    help="Number of events that should be loaded and send as a batch. Exact number of events "
+    "per request will differ as they are separated by log class. If a log class has more "
+    "samples than another log class, it will also have a larger request size.",
+    required=False,
+    default=500,
+    type=int,
+)
+@click.option(
+    "--events",
+    help="Total number of events that should be send to the target.",
+    required=False,
+    default=None,
+    type=int,
+)
+@click.option(
+    "--shuffle",
+    help="Shuffle the events before sending them to the target.",
+    required=False,
+    default=False,
+    type=bool,
+)
+@click.option(
+    "--thread_count",
+    help="Number of threads that should be used to send events in parallel to the target. If "
+    "thread_count is set to '1' then multithreading is deactivated and the main process will "
+    "be used.",
+    required=False,
+    default=1,
+    type=int,
+)
+@click.option(
+    "--replace-timestamp",
+    help="Defines if timestamps should be replaced with the current timestamp.",
+    required=False,
+    default=True,
+    type=bool,
+)
+@click.option(
+    "--tag",
+    help="Tag that should be written into the events.",
+    required=False,
+    default="loadtest",
+    type=str,
+)
+@click.option(
+    "--loglevel",
+    help="Sets the log level for the logger.",
+    type=click.Choice(logging._levelToName.values()),
+    required=False,
+    default="INFO",
+)
+@click.option(
+    "--report",
+    help="Whether or not detailed statistics with a markdown report should be generated or not.",
+    required=False,
+    default=True,
+    type=bool,
+)
+def generate_http(**kwargs):
+    """Run Generator with the configured parameters"""
+    log_level = kwargs.get("loglevel")
+    logging.basicConfig(
+        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    logger = logging.getLogger("generator")
+    logger.info(f"Log level set to '{log_level}'")
+    generator = Controller(**kwargs)
+    generator.run()
 
 
 @cli.command(short_help="Print a complete configuration file [Not Yet Implemented]", name="print")
