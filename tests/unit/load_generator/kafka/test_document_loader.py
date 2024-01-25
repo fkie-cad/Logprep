@@ -5,15 +5,15 @@
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
 # pylint: disable=attribute-defined-outside-init
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import List, Optional
 from unittest.mock import MagicMock, patch
 
-from load_tester.document_loader import DocumentLoader
-from load_tester.kafka_connector import KafkaConsumer
-from load_tester.logger import create_logger
-from tests.test_data.kafka_config_dict import get_config
+from logprep.load_generator.kafka.document_loader import DocumentLoader
+from logprep.load_generator.kafka.kafka_connector import KafkaConsumer
+from logprep.load_generator.kafka.logger import create_logger
+from tests.testdata.load_generator.kafka.kafka_config_dict import get_config
 
 
 class MockedRecord:
@@ -48,7 +48,9 @@ class TestDocumentLoader:
         logger = create_logger(config.logging_level)
         mocked_kafka = MagicMock()
         mocked_kafka.Consumer = MockedConsumer
-        with patch("load_tester.kafka_connector.Consumer", return_value=mocked_kafka):
+        with patch(
+            "logprep.load_generator.kafka.kafka_connector.Consumer", return_value=mocked_kafka
+        ):
             self._document_loader = DocumentLoader(config, logger)
 
     def test_init(self):
@@ -57,12 +59,16 @@ class TestDocumentLoader:
         assert isinstance(self._document_loader._kafka_consumer, KafkaConsumer)
 
     def test_get_from_file(self):
-        self._document_loader._source_file = Path("tests/test_data/wineventlog_raw.jsonl")
+        self._document_loader._source_file = Path(
+            "tests/testdata/load_generator/kafka/wineventlog_raw.jsonl"
+        )
         documents = self._document_loader._get_from_file()
         assert len(documents) == 500
 
     def test_get_raw_documents_from_file_if_source_file_set(self):
-        self._document_loader._source_file = Path("tests/test_data/wineventlog_raw.jsonl")
+        self._document_loader._source_file = Path(
+            "tests/testdata/load_generator/kafka/wineventlog_raw.jsonl"
+        )
         documents = self._document_loader._get_raw_documents()
         assert len(documents) == 500
 

@@ -1,0 +1,30 @@
+"""Main module for the load-tester"""
+from argparse import ArgumentParser
+from multiprocessing import Manager
+from pathlib import Path
+
+from logprep.load_generator.kafka.configuration import load_config
+from logprep.load_generator.kafka.logger import create_logger
+from logprep.load_generator.kafka.process_runner import run_processes
+from logprep.load_generator.kafka.util import print_results, print_startup_info
+
+
+class LoadTester:
+    """Load Tester to generate events from kafka to kafka."""
+
+    def __init__(self, config, file):
+        self.config = Path(config)
+        self.file = file
+
+    def run(self):
+        """Start function for the load-tester"""
+        config = load_config(self.config, self.file)
+        logger = create_logger(config.logging_level)
+
+        print_startup_info(config, logger)
+
+        manager = Manager()
+        shared_dict = manager.dict()
+
+        run_processes(config, shared_dict, logger)
+        print_results(config, logger, shared_dict)

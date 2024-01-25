@@ -1,12 +1,12 @@
 """For loading documents from Kafka or from file and preparing them for sending"""
 import json
-from logging import Logger
 from datetime import datetime
+from logging import Logger
 
 import ndjson
 
-from load_tester.configuration import Configuration
-from load_tester.kafka_connector import KafkaConsumer
+from logprep.load_generator.kafka.configuration import Configuration
+from logprep.load_generator.kafka.kafka_connector import KafkaConsumer
 
 
 class DocumentLoader:

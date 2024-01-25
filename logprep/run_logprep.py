@@ -184,13 +184,33 @@ def test_ruleset(configs: tuple[str], testdata: str):
     tester.run()
 
 
-@cli.command(short_help="Generate load for a running logprep instance [Not Yet Implemented]")
-def generate() -> None:
+@cli.group(short_help="Generate load for a running logprep instance")
+def generate():
     """
     Generate load offers two different options to create sample events for a running
     logprep instance.
     """
-    raise NotImplementedError
+
+
+@generate.command(name="kafka")
+@click.argument("config")
+@click.option("--file", help="Path to file with documents", default=False, is_flag=True)
+def generate_kafka(config, file):
+    """
+    Generate from and to Kafka.
+
+    CONFIG is a path to a configuration file for the load generation.
+    """
+    load_tester = LoadTester(config, file)
+    load_tester.run()
+
+
+@generate.command(name="http")
+@click.argument("kafka")
+def generate_http(config):
+    """
+    Generate to Http.
+    """
 
 
 @cli.command(short_help="Print a complete configuration file [Not Yet Implemented]", name="print")

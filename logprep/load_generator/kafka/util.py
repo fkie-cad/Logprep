@@ -4,7 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
-from load_tester.configuration import Configuration
+from logprep.load_generator.kafka.configuration import Configuration
 
 
 def get_avg_size_mb(source_file: Path) -> float:

@@ -4,7 +4,7 @@ from typing import Optional
 
 from confluent_kafka import Consumer, Producer
 
-from load_tester.configuration import Kafka
+from logprep.load_generator.kafka.configuration import Kafka
 
 
 class KafkaProducer:

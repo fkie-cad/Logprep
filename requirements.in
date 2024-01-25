@@ -34,3 +34,6 @@ wheel
 deepdiff
 msgspec
 boto3
+pydantic
+ndjson
+arrow
