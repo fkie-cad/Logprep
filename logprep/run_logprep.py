@@ -87,7 +87,7 @@ def _load_configuration(config):
     return config
 
 
-@click.group(chain=True, name="logprep")
+@click.group(name="logprep")
 @click.version_option(version=get_versions_string(), message="%(version)s")
 def cli():
     """
@@ -134,9 +134,16 @@ def run(config: str, version=None):
     # pylint: enable=broad-except
 
 
-@cli.command()
+@cli.group(name="test", short_help="Execute tests against a given configuration")
+def test():
+    """
+    Execute certain tests like unit and integration tests. Can also verify the configuration.
+    """
+
+
+@test.command(name="config")
 @click.argument("config")
-def verify_config(config):
+def test_config(config):
     """
     Verify the configuration file
 
@@ -152,7 +159,7 @@ def verify_config(config):
     print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
 
 
-@cli.command(short_help="Dry run the configuration against selected events")
+@test.command(short_help="Execute a dry run against a configuration and selected events")
 @click.argument("config")
 @click.argument("events")
 @click.option(
@@ -174,6 +181,7 @@ def dry_run(config, events, input_type, full_output):
     Execute a logprep dry run with the given configuration against a set of events. The results of
     the processing will be printed in the terminal.
 
+    \b
     CONFIG is a path to configuration file (filepath or URL).
     EVENTS is a path to a 'json' or 'jsonl' file.
     """
@@ -182,7 +190,7 @@ def dry_run(config, events, input_type, full_output):
     dry_runner.run()
 
 
-@cli.command(short_help="Run the rule tests of the given config")
+@test.command(short_help="Run the rule tests of the given configuration", name="unit")
 @click.argument("config")
 def test_rules(config):
     """
@@ -194,12 +202,15 @@ def test_rules(config):
     tester.run()
 
 
-@cli.command(short_help="Run the rule corpus tester against the given ruleset")
+@test.command(
+    short_help="Run the rule corpus tester against a given configuration", name="integration"
+)
 @click.argument("config")
 @click.argument("testdata")
 def test_ruleset(config, testdata):
     """Test the given ruleset against specified test data
 
+    \b
     CONFIG is a path to configuration file (filepath or URL).
     TESTDATA is a path to a set of test files.
     """
@@ -207,11 +218,29 @@ def test_ruleset(config, testdata):
     tester.run()
 
 
-@cli.command(short_help="Generate load for a running logprep instance")
-def generate_load():
+@cli.command(short_help="Generate load for a running logprep instance [Not Yet Implemented]")
+def generate():
     """
     Generate load offers two different options to create sample events for a running
     logprep instance.
+    """
+    raise NotImplementedError
+
+
+@cli.command(short_help="Print a complete configuration file [Not Yet Implemented]", name="print")
+@click.argument("config")
+@click.option(
+    "--output",
+    type=click.Choice(["json", "yaml"]),
+    default="yaml",
+    help="What output format to use",
+)
+def print_config(output):
+    """
+    Prints the given configuration as a combined yaml or json file, with all rules and options
+    included.
+
+    CONFIG is a path to configuration file (filepath or URL).
     """
     raise NotImplementedError
 

@@ -48,17 +48,17 @@ class TestRunLogprepCli:
         assert "No getter for protocol 'almighty_protocol'" in result.output
 
     @mock.patch("logprep.util.configuration.Configuration.verify")
-    def test_cli_verify_config_verifies_configuration_successfully(self, mock_verify):
-        args = ["verify-config", "tests/testdata/config/config.yml"]
+    def test_test_config_verifies_configuration_successfully(self, mock_verify):
+        args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
         mock_verify.assert_called()
         assert "The verification of the configuration was successful" in result.stdout
 
     @mock.patch("logprep.util.configuration.Configuration.verify")
-    def test_cli_verify_config_verifies_configuration_unsuccessfully(self, mock_verify):
+    def test_test_config_verifies_configuration_unsuccessfully(self, mock_verify):
         mock_verify.side_effect = InvalidConfigurationError
-        args = ["verify-config", "tests/testdata/config/config.yml"]
+        args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 1
         mock_verify.assert_called()
@@ -68,7 +68,7 @@ class TestRunLogprepCli:
     def test_gets_config_from_https(self):
         pipeline_config = Path("tests/testdata/config/config.yml").read_text(encoding="utf8")
         responses.add(responses.GET, "https://does.not.exits/pipline.yml", pipeline_config)
-        args = ["verify-config", "https://does.not.exits/pipline.yml"]
+        args = ["test", "config", "https://does.not.exits/pipline.yml"]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
 
@@ -190,17 +190,17 @@ class TestRunLogprepCli:
             assert result.exit_code == 1
 
     @mock.patch("logprep.util.rule_dry_runner.DryRunner.run")
-    def test_dry_run_starts_dry_runner(self, mock_dry_runner):
+    def test_test_dry_run_starts_dry_runner(self, mock_dry_runner):
         config_path = "tests/testdata/config/config.yml"
         events_path = "quickstart/exampledata/input_logdata/test_input.jsonl"
-        result = self.cli_runner.invoke(cli, ["dry-run", config_path, events_path])
+        result = self.cli_runner.invoke(cli, ["test", "dry-run", config_path, events_path])
         assert result.exit_code == 0
         mock_dry_runner.assert_called()
 
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run")
     def test_test_rules_starts_auto_rule_tester(self, mock_tester):
         config_path = "tests/testdata/config/config.yml"
-        result = self.cli_runner.invoke(cli, ["test-rules", config_path])
+        result = self.cli_runner.invoke(cli, ["test", "unit", config_path])
         assert result.exit_code == 0
         mock_tester.assert_called()
         # the AutoRuleTester deactivates the logger which then has side effects on other tests
@@ -212,6 +212,6 @@ class TestRunLogprepCli:
     def test_test_ruleset_starts_rule_corpus_tester(self, mock_tester):
         config_path = "tests/testdata/config/config.yml"
         test_data_path = "path/to/testset"
-        result = self.cli_runner.invoke(cli, ["test-ruleset", config_path, test_data_path])
+        result = self.cli_runner.invoke(cli, ["test", "integration", config_path, test_data_path])
         assert result.exit_code == 0
         mock_tester.assert_called()
