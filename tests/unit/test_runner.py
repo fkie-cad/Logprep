@@ -8,8 +8,10 @@ import os
 from copy import deepcopy
 from functools import partial
 from logging import Logger
+from pathlib import Path
 from unittest import mock
 
+import pytest
 from pytest import raises
 from requests.exceptions import HTTPError, SSLError
 
@@ -90,24 +92,71 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
 
     def test_fails_when_calling_reload_configuration_when_config_is_unset(self):
         with raises(CannotReloadWhenConfigIsUnsetError):
-            self.runner.reload_configuration()
+            self.runner.reload()
 
 
-class TestRunner(LogprepRunnerTest):
-    def setup_method(self, _):
-        super().setup_method(_)
-        self.runner.load_configuration([path_to_config])
+@pytest.fixture(name="config_path")
+def fixture_config_path(tmp_path) -> Path:
+    config_path = tmp_path / "config.yml"
+    configuration = Configuration.from_sources([path_to_config])
+    config_path.write_text(configuration.as_yaml())
+    return config_path
+
+
+@pytest.fixture(name="configuration")
+def fixture_configuration(config_path: Path) -> Configuration:
+    return Configuration.from_sources([str(config_path)])
+
+
+@pytest.fixture(name="runner")
+def fixture_runner(configuration) -> Runner:
+    return Runner.get_runner(configuration)
+
+
+class TestRunner:
+    def test_runner_sets_configuration(self):
+        configuration = Configuration.from_sources([path_to_config])
+        runner = Runner.get_runner(configuration)
+        assert isinstance(runner._configuration, Configuration)
+        assert runner._configuration == configuration
 
     def test_get_runner_returns_the_same_runner_on_all_calls(self):
-        runner = Runner.get_runner()
+        configuration = Configuration.from_sources([path_to_config])
+        runner = Runner.get_runner(configuration)
 
         for _ in range(10):
-            assert runner == Runner.get_runner()
+            assert runner is Runner.get_runner(configuration)
 
     @mock.patch("logging.Logger.info")
-    def test_reload_configuration_logs_info_when_reloading_config_was_successful(self, mock_info):
-        self.runner.reload_configuration()
+    def test_reload_configuration_logs_info_when_reloading_config_was_successful(
+        self, mock_info, config_path, runner
+    ):
+        runner.metrics.number_of_config_refreshes = 0
+        runner._configuration.version = "very old version"
+        runner.reload_configuration()
         mock_info.assert_has_calls([mock.call("Successfully reloaded configuration")])
+        assert runner.metrics.number_of_config_refreshes == 1
+
+    @mock.patch("logging.Logger.info")
+    def test_reload_configuration_logs_info_if_config_does_not_change(self, mock_info, runner):
+        runner.metrics.number_of_config_refreshes = 0
+        runner.metrics.number_of_config_refresh_failures = 0
+        runner.reload_configuration()
+        mock_info.assert_has_calls([mock.call("Configuration version did not change")])
+        assert runner.metrics.number_of_config_refreshes == 0
+        assert runner.metrics.number_of_config_refresh_failures == 0
+
+    @mock.patch("logging.Logger.error")
+    def test_reload_configuration_logs_error_on_invalid_config(
+        self, mock_error, runner, config_path
+    ):
+        runner.metrics.number_of_config_refreshes = 0
+        runner.metrics.number_of_config_refresh_failures = 0
+        config_path.write_text("invalid config")
+        runner.reload_configuration()
+        mock_error.assert_called()
+        assert runner.metrics.number_of_config_refreshes == 0
+        assert runner.metrics.number_of_config_refresh_failures == 1
 
     def test_reload_configuration_reduces_logprep_instance_count_to_new_value(self):
         self.runner._manager.set_count(3)
@@ -115,12 +164,6 @@ class TestRunner(LogprepRunnerTest):
         self.runner._configuration = Configuration.from_source(path_to_alternative_config)
         self.runner.reload_configuration()
         assert self.runner._manager.get_count() == 2
-
-    def test_reload_configuration_counts_config_refreshes_if_successful(self):
-        self.runner.metrics.number_of_config_refreshes = 0
-        self.runner._configuration = Configuration.from_source(path_to_alternative_config)
-        self.runner.reload_configuration()
-        assert self.runner.metrics.number_of_config_refreshes == 1
 
     def test_reload_configuration_leaves_old_configuration_in_place_if_new_config_is_invalid(self):
         old_configuration = self.runner._configuration

@@ -789,9 +789,7 @@ output:
         type: dummy_output
 """
         )
-        with pytest.raises(
-            InvalidConfigurationError, match="Configuration version has not changed"
-        ):
+        with pytest.raises(InvalidConfigurationError, match="Configuration version did not change"):
             config.reload()
         assert config.version == "first_version"
 

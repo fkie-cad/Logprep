@@ -46,6 +46,13 @@ class InvalidConfigurationErrors(InvalidConfigurationError):
         super().__init__("\n".join([str(error) for error in self.errors]))
 
 
+class ConfigVersionDidNotChangeError(InvalidConfigurationError):
+    """Raise if configuration version did not change."""
+
+    def __init__(self):
+        super().__init__("Configuration version did not change")
+
+
 class RequiredConfigurationKeyMissingError(InvalidConfigurationError):
     """Raise if required option is missing in configuration."""
 
@@ -204,7 +211,7 @@ class Configuration:
         try:
             new_config = Configuration.from_sources(self.paths)
             if new_config.version == self.version:
-                raise InvalidConfigurationError("Configuration version has not changed")
+                raise ConfigVersionDidNotChangeError()
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
         except InvalidConfigurationErrors as error:
