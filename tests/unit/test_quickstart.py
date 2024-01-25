@@ -20,7 +20,8 @@ class TestQuickstart:
             "sys.argv",
             [
                 "logprep",
-                "verify-config",
+                "test",
+                "config",
                 self.QUICKSTART_CONFIG_PATH,
             ],
         ):
