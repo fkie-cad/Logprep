@@ -291,6 +291,9 @@ class TestPipeline(ConfigurationForTests):
             str(CriticalInputError(self.pipeline._input, "mock input error", input_event))
         )
         assert self.pipeline._output["dummy"].store_failed.call_count == 1, "one error is stored"
+        self.pipeline._output["dummy"].store_failed.assert_called_with(
+            str(self.pipeline), input_event, {}
+        )
         assert self.pipeline._output["dummy"].store.call_count == 0, "no event is stored"
 
     @mock.patch("logging.Logger.warning")
