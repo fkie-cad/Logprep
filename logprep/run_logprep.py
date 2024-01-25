@@ -1,27 +1,22 @@
-#!/usr/bin/python3
-"""This module can be used to start the logprep."""
 # pylint: disable=logging-fstring-interpolation
-import inspect
+"""This module can be used to start the logprep."""
 import logging
 import os
 import sys
 import warnings
-from argparse import ArgumentParser
-from os.path import basename
-from pathlib import Path
 
+import click
 import requests
 from colorama import Fore
 
 from logprep._version import get_versions
-from logprep.processor.base.rule import Rule
 from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.getter import GetterNotFoundError
 from logprep.util.helper import print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
-from logprep.util.schema_and_rule_checker import SchemaAndRuleChecker
 
 warnings.simplefilter("always", DeprecationWarning)
 logging.captureWarnings(True)
@@ -32,68 +27,99 @@ logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
 logging.getLogger("elasticsearch").setLevel(logging.ERROR)
 
 
-def _parse_arguments():
-    argument_parser = ArgumentParser()
-    argument_parser.add_argument(
-        "--version",
-        help="print the current version and exit",
-        action="store_true",
-    )
-    argument_parser.add_argument(
-        "config",
-        nargs="?",
-        help=f"Path to configuration file, if not given then "
-        f"the default path '{DEFAULT_LOCATION_CONFIG}' is used",
-        default=DEFAULT_LOCATION_CONFIG,
-    )
-    argument_parser.add_argument("--disable-logging", help="Disable logging", action="store_true")
-    argument_parser.add_argument(
-        "--validate-rules",
-        help="Validate Labeler Rules (if well-formed" " and valid against given schema)",
-        action="store_true",
-    )
-    argument_parser.add_argument(
-        "--verify-config",
-        help="Verify the configuration file",
-        action="store_true",
-    )
-    argument_parser.add_argument(
-        "--dry-run",
-        help="Dry run pipeline with events in given " "path and print results",
-        metavar="PATH_TO_JSON_LINE_FILE_WITH_EVENTS",
-    )
-    argument_parser.add_argument(
-        "--dry-run-input-type",
-        choices=["json", "jsonl"],
-        default="json",
-        help="Specify input type for dry-run",
-    )
-    argument_parser.add_argument(
-        "--dry-run-full-output",
-        help="Print full dry-run output, including " "all extra output",
-        action="store_true",
-    )
-    argument_parser.add_argument("--auto-test", help="Run rule-tests", action="store_true")
-    argument_parser.add_argument(
-        "--auto-corpus-test", help="Run rule-corpus-test", action="store_true"
-    )
-    argument_parser.add_argument(
-        "--corpus-testdata", help="Directory to the test data for the rule-corpus-test"
-    )
-    arguments = argument_parser.parse_args()
-
-    requires_dry_run = arguments.dry_run_full_output or arguments.dry_run_input_type == "jsonl"
-    if requires_dry_run and not arguments.dry_run:
-        argument_parser.error("--dry-run-input-type and --dry-run-full-output require --dry-run")
-
-    return arguments
+EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 
 
-def _run_logprep(arguments, logger: logging.Logger):
+def get_versions_string(config=None) -> str:
+    """
+    Prints the version and exists. If a configuration was found then it's version
+    is printed as well
+    """
+    versions = get_versions()
+    padding = 25
+    version_string = f"{'logprep version:'.ljust(padding)}{versions['version']}"
+    version_string += f"\n{'python version:'.ljust(padding)}{sys.version.split()[0]}"
+    if config:
+        config_version = f"{config.get('version', 'unset')}, {config.path}"
+    else:
+        config_version = "no configuration found"
+    version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
+    return version_string
+
+
+def print_version_and_exit(config):
+    print(get_versions_string(config))
+    sys.exit(0)
+
+
+def _setup_logger(config: Configuration):
+    try:
+        log_config = config.get("logger", {})
+        log_level = log_config.get("level", "INFO")
+        logging.basicConfig(
+            level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
+        )
+        logger = logging.getLogger("Logprep")
+        logger.info(f"Log level set to '{log_level}'")
+        for version in get_versions_string(config).split("\n"):
+            logger.info(version)
+    except BaseException as error:  # pylint: disable=broad-except
+        logging.getLogger("Logprep").exception(error)
+        sys.exit(1)
+    return logger
+
+
+def _load_configuration(config):
+    try:
+        config = Configuration().create_from_yaml(config)
+    except FileNotFoundError:
+        print(f"The given config file does not exist: {config}", file=sys.stderr)
+        print(
+            "Create the configuration or change the path. Use '--help' for more information.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    except GetterNotFoundError as error:
+        print(f"{error}", file=sys.stderr)
+    except requests.RequestException as error:
+        print(f"{error}", file=sys.stderr)
+        sys.exit(1)
+    return config
+
+
+@click.group(name="logprep")
+@click.version_option(version=get_versions_string(), message="%(version)s")
+def cli():
+    """
+    Logprep allows to collect, process and forward log messages from various data sources.
+    Log messages are being read and written by so-called connectors.
+    """
+
+
+@cli.command(short_help="Run logprep to process log messages", epilog=EPILOG_STR)
+@click.argument("config")
+@click.option(
+    "--version",
+    is_flag=True,
+    default=False,
+    help="Print version and exit (includes also congfig version)",
+)
+def run(config: str, version=None):
+    """
+    Run Logprep with the given configuration.
+
+    CONFIG is a path to configuration file (filepath or URL).
+    """
+    config_obj = _load_configuration(config)
+    if version:
+        print_version_and_exit(config_obj)
+    logger = _setup_logger(config_obj)
+    logger.debug(f'Metric export enabled: {config_obj.get("metrics", {}).get("enabled", False)}')
+    logger.debug(f"Config path: {config}")
     runner = None
     try:
         runner = Runner.get_runner()
-        runner.load_configuration(arguments.config)
+        runner.load_configuration(config)
         logger.debug("Configuration loaded")
         runner.start()
     # pylint: disable=broad-except
@@ -108,134 +134,116 @@ def _run_logprep(arguments, logger: logging.Logger):
     # pylint: enable=broad-except
 
 
-def get_processor_type_and_rule_class() -> dict:  # pylint: disable=missing-docstring
-    return {
-        basename(Path(inspect.getfile(rule_class)).parent): rule_class
-        for rule_class in Rule.__subclasses__()
-    }
-
-
-def get_versions_string(args) -> str:
+@cli.group(name="test", short_help="Execute tests against a given configuration")
+def test():
     """
-    Prints the version and exists. If a configuration was found then it's version
-    is printed as well
+    Execute certain tests like unit and integration tests. Can also verify the configuration.
     """
-    versions = get_versions()
-    padding = 25
-    version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
-    version_string += f"\n{'logprep version:'.ljust(padding)}{versions['version']}"
+
+
+@test.command(name="config")
+@click.argument("config")
+def test_config(config):
+    """
+    Verify the configuration file
+
+    CONFIG is a path to configuration file (filepath or URL).
+    """
+    config = _load_configuration(config)
+    logger = _setup_logger(config)
     try:
-        config = Configuration().create_from_yaml(args.config)
-    except FileNotFoundError:
-        config = Configuration()
-        config.path = args.config
-    if config:
-        config_version = f"{config.get('version', 'unset')}, {config.path}"
-    else:
-        config_version = f"no configuration found in '{config.path}'"
-    version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"
-    return version_string
-
-
-def _setup_logger(args, config: Configuration):
-    try:
-        log_config = config.get("logger", {})
-        log_level = log_config.get("level", "INFO")
-        logging.basicConfig(
-            level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
-        )
-        logger = logging.getLogger("Logprep")
-        logger.info(f"Log level set to '{log_level}'")
-        for version in get_versions_string(args).split("\n"):
-            logger.info(version)
-    except BaseException as error:  # pylint: disable=broad-except
-        logging.getLogger("Logprep").exception(error)
-        sys.exit(1)
-    return logger
-
-
-def _load_configuration(args):
-    try:
-        config = Configuration().create_from_yaml(args.config)
-    except FileNotFoundError:
-        print(f"The given config file does not exist: {args.config}", file=sys.stderr)
-        print(
-            "Create the configuration or change the path. Use '--help' for more information.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    except requests.RequestException as error:
-        print(f"{error}", file=sys.stderr)
-        sys.exit(1)
-    return config
-
-
-def _validate_rules(args, config: Configuration, logger: logging.Logger):
-    try:
-        config.verify_pipeline_only(logger)
+        config.verify(logger=logger)
     except InvalidConfigurationError as error:
         logger.critical(error)
         sys.exit(1)
-    type_rule_map = get_processor_type_and_rule_class()
-    rules_valid = []
-    for processor_type, rule_class in type_rule_map.items():
-        rules_valid.append(
-            SchemaAndRuleChecker().validate_rules(args.config, processor_type, rule_class, logger)
-        )
-    if not all(rules_valid):
-        sys.exit(1)
-    if not args.auto_test:
-        sys.exit(0)
+    print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
 
 
-def main():
-    """Start the logprep runner."""
-    args = _parse_arguments()
+@test.command(short_help="Execute a dry run against a configuration and selected events")
+@click.argument("config")
+@click.argument("events")
+@click.option(
+    "--input-type",
+    help="Specifies the input type.",
+    type=click.Choice(["json", "jsonl"]),
+    default="jsonl",
+    show_default=True,
+)
+@click.option(
+    "--full-output",
+    help="Print full dry-run output, including all extra output",
+    default=True,
+    type=click.BOOL,
+    show_default=True,
+)
+def dry_run(config, events, input_type, full_output):
+    """
+    Execute a logprep dry run with the given configuration against a set of events. The results of
+    the processing will be printed in the terminal.
 
-    if args.version:
-        print(get_versions_string(args))
-        sys.exit(0)
-    try:
-        config = _load_configuration(args)
-    except BaseException as error:  # pylint: disable=broad-except
-        logging.getLogger("Logprep").error(error)
-        sys.exit(1)
+    \b
+    CONFIG is a path to configuration file (filepath or URL).
+    EVENTS is a path to a 'json' or 'jsonl' file.
+    """
+    json_input = input_type == "json"
+    dry_runner = DryRunner(events, config, full_output, json_input, logging.getLogger("DryRunner"))
+    dry_runner.run()
 
-    logger = _setup_logger(args, config)
 
-    if args.validate_rules or args.auto_test:
-        _validate_rules(args, config, logger)
-    logger.debug(f'Metric export enabled: {config.get("metrics", {}).get("enabled", False)}')
-    logger.debug(f"Config path: {args.config}")
+@test.command(short_help="Run the rule tests of the given configuration", name="unit")
+@click.argument("config")
+def test_rules(config):
+    """
+    Test rules against their respective test files
 
-    if args.auto_test:
-        auto_rule_tester = AutoRuleTester(args.config)
-        auto_rule_tester.run()
-    elif args.dry_run:
-        json_input = args.dry_run_input_type == "json"
-        dry_runner = DryRunner(
-            args.dry_run, args.config, args.dry_run_full_output, json_input, logger
-        )
-        dry_runner.run()
-    elif args.verify_config:
-        try:
-            config.verify(logger)
-        except InvalidConfigurationError as error:
-            logger.critical(error)
-            sys.exit(1)
-        print_fcolor(Fore.GREEN, "The verification of the configuration was successful")
-    elif args.auto_corpus_test:
-        if args.corpus_testdata is None:
-            logger.error(
-                "In order to start the auto-rule-corpus-tester you have to configure the "
-                "directory to the test data with '--corpus-testdata'. See '--help' for "
-                "more information."
-            )
-            sys.exit(1)
-        RuleCorpusTester(args.config, args.corpus_testdata).run()
-    else:
-        _run_logprep(args, logger)
+    CONFIG is a path to configuration file (filepath or URL).
+    """
+    tester = AutoRuleTester(config)
+    tester.run()
+
+
+@test.command(
+    short_help="Run the rule corpus tester against a given configuration", name="integration"
+)
+@click.argument("config")
+@click.argument("testdata")
+def test_ruleset(config, testdata):
+    """Test the given ruleset against specified test data
+
+    \b
+    CONFIG is a path to configuration file (filepath or URL).
+    TESTDATA is a path to a set of test files.
+    """
+    tester = RuleCorpusTester(config, testdata)
+    tester.run()
+
+
+@cli.command(short_help="Generate load for a running logprep instance [Not Yet Implemented]")
+def generate():
+    """
+    Generate load offers two different options to create sample events for a running
+    logprep instance.
+    """
+    raise NotImplementedError
+
+
+@cli.command(short_help="Print a complete configuration file [Not Yet Implemented]", name="print")
+@click.argument("config")
+@click.option(
+    "--output",
+    type=click.Choice(["json", "yaml"]),
+    default="yaml",
+    help="What output format to use",
+)
+def print_config(config, output):
+    """
+    Prints the given configuration as a combined yaml or json file, with all rules and options
+    included.
+
+    CONFIG is a path to configuration file (filepath or URL).
+    """
+    raise NotImplementedError
 
 
 if __name__ == "__main__":
-    main()
+    cli()

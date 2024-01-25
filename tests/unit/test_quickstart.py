@@ -20,11 +20,11 @@ class TestQuickstart:
             "sys.argv",
             [
                 "logprep",
-                "--disable-logging",
-                "--validate-rules",
+                "test",
+                "config",
                 self.QUICKSTART_CONFIG_PATH,
             ],
         ):
             with pytest.raises(SystemExit) as e_info:
-                run_logprep.main()
+                run_logprep.cli()
         assert e_info.value.code == 0
