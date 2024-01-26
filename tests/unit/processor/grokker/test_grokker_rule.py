@@ -24,7 +24,7 @@ class TestGrokkerRule:
                     "grokker": {"mapping": {}},
                 },
                 ValueError,
-                "'mapping' must be => 1",
+                "Length of 'mapping' must be >= 1: 0",
             ),
             (
                 {

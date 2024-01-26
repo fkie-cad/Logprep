@@ -37,7 +37,7 @@ class TestPseudonomyzerRule:
             (
                 {"filter": "message", "pseudonymizer": {"pseudonyms": {}}},
                 ValueError,
-                "Length of 'pseudonyms' must be => 1",
+                "Length of 'pseudonyms' must be >= 1: 0",
             ),
             (
                 {

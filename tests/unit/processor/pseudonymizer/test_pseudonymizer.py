@@ -724,7 +724,7 @@ class TestPseudonymizer(BaseProcessorTestCase):
         "config_change, error, msg",
         [
             ({"outputs": [{"kafka": "topic"}]}, None, None),
-            ({"outputs": []}, ValueError, "Length of 'outputs' must be => 1"),
+            ({"outputs": []}, ValueError, "Length of 'outputs' must be >= 1: 0"),
             (
                 {"outputs": [{"kafka": 1}]},
                 TypeError,

@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 import pytest
+
 from logprep.processor.calculator.rule import CalculatorRule
 
 
@@ -30,7 +31,7 @@ class TestCalculatorRule:
                     "calculator": {"calc": "", "target_field": "new_field"},
                 },
                 ValueError,
-                "Length of 'calc' must be => 3",
+                "Length of 'calc' must be >= 3: 0",
             ),
             (
                 {
