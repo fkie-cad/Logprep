@@ -76,24 +76,32 @@ class MissingEnvironmentError(InvalidConfigurationError):
 
 @define(kw_only=True)
 class Configuration:
-    version: str = field(validator=validators.instance_of(str), converter=str, default="unset")
+    version: str = field(
+        validator=validators.instance_of(str), converter=str, default="unset", eq=True
+    )
     """Version of the configuration file. Defaults to `unset`."""
-    config_refresh_interval: int = field(validator=validators.instance_of(int), default=0)
+    config_refresh_interval: int = field(validator=validators.instance_of(int), default=0, eq=False)
     """Interval in seconds to refresh the configuration. Defaults to `0`."""
-    process_count: int = field(validator=[validators.instance_of(int), validators.ge(1)], default=1)
+    process_count: int = field(
+        validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
+    )
     """Number of logprep processes to start. Defaults to `1`."""
-    timeout: float = field(validator=[validators.instance_of(float), validators.gt(0)], default=5.0)
+    timeout: float = field(
+        validator=[validators.instance_of(float), validators.gt(0)], default=5.0, eq=False
+    )
     """Timeout in seconds for each logprep process. Defaults to `5.0`."""
-    logger: dict = field(validator=validators.instance_of(dict), default={"level": "INFO"})
+    logger: dict = field(
+        validator=validators.instance_of(dict), default={"level": "INFO"}, eq=False
+    )
     """Logger configuration. Defaults to `{"level": "INFO"}`."""
-    input: dict = field(validator=validators.instance_of(dict), factory=dict)
+    input: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
     """Input connector configuration. Defaults to `{}`."""
-    output: dict = field(validator=validators.instance_of(dict), factory=dict)
+    output: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
     """Output connector configuration. Defaults to `{}`."""
-    pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list)
+    pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
     """Pipeline configuration. Defaults to `[]`."""
     metrics: dict = field(
-        validator=validators.instance_of(dict), default={"enabled": False, "port": 8000}
+        validator=validators.instance_of(dict), default={"enabled": False, "port": 8000}, eq=False
     )
     """Metrics configuration. Defaults to `{"enabled": False, "port": 8000}`."""
 
@@ -101,12 +109,11 @@ class Configuration:
         validator=validators.instance_of(Getter),
         default=GetterFactory.from_string(DEFAULT_CONFIG_LOCATION),
         repr=False,
+        eq=False,
     )
 
     _configs: tuple["Configuration"] = field(
-        validator=validators.instance_of(tuple),
-        factory=tuple,
-        repr=False,
+        validator=validators.instance_of(tuple), factory=tuple, repr=False, eq=False
     )
 
     @property
@@ -210,7 +217,7 @@ class Configuration:
         errors = []
         try:
             new_config = Configuration.from_sources(self.paths)
-            if new_config.version == self.version:
+            if new_config == self:
                 raise ConfigVersionDidNotChangeError()
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()

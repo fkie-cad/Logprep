@@ -838,3 +838,12 @@ output:
         config.version = "super_new_version"
         config_path.write_text(config.as_yaml())
         test_config.reload()
+
+    def test_configurations_are_equal_if_version_is_equal(self):
+        config = Configuration.from_sources([path_to_config])
+        config2 = Configuration.from_sources([path_to_config])
+        assert config is not config2
+        assert config.version == config2.version
+        config.config_refresh_interval = 99
+        assert config.config_refresh_interval != config2.config_refresh_interval
+        assert config == config2
