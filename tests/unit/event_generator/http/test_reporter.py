@@ -9,7 +9,7 @@ import pandas as pd
 import yaml
 from pandas import DatetimeIndex
 
-from logprep.load_generator.http.reporter import Reporter
+from logprep.event_generator.http.reporter import Reporter
 
 
 class TestReporter:

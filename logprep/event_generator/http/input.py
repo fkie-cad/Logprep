@@ -15,7 +15,7 @@ import msgspec
 import yaml
 from attr import define, field, validators
 
-from logprep.load_generator.http.manipulator import Manipulator
+from logprep.event_generator.http.manipulator import Manipulator
 
 
 @define(kw_only=True)

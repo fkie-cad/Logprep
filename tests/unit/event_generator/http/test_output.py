@@ -2,7 +2,7 @@
 import pytest
 import responses
 
-from logprep.load_generator.http.output import Output
+from logprep.event_generator.http.output import Output
 
 TARGET_DOMAIN = "https://www.test.de"
 

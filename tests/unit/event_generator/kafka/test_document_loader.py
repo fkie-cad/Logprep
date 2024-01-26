@@ -10,10 +10,11 @@ from pathlib import Path
 from typing import List, Optional
 from unittest.mock import MagicMock, patch
 
-from logprep.load_generator.kafka.document_loader import DocumentLoader
-from logprep.load_generator.kafka.kafka_connector import KafkaConsumer
-from logprep.load_generator.kafka.logger import create_logger
-from tests.testdata.load_generator.kafka.kafka_config_dict import get_config
+from tests.testdata.event_generator.kafka.kafka_config_dict import get_config
+
+from logprep.event_generator.kafka.document_loader import DocumentLoader
+from logprep.event_generator.kafka.kafka_connector import KafkaConsumer
+from logprep.event_generator.kafka.logger import create_logger
 
 
 class MockedRecord:
@@ -49,7 +50,7 @@ class TestDocumentLoader:
         mocked_kafka = MagicMock()
         mocked_kafka.Consumer = MockedConsumer
         with patch(
-            "logprep.load_generator.kafka.kafka_connector.Consumer", return_value=mocked_kafka
+            "logprep.event_generator.kafka.kafka_connector.Consumer", return_value=mocked_kafka
         ):
             self._document_loader = DocumentLoader(config, logger)
 
@@ -60,14 +61,14 @@ class TestDocumentLoader:
 
     def test_get_from_file(self):
         self._document_loader._source_file = Path(
-            "tests/testdata/load_generator/kafka/wineventlog_raw.jsonl"
+            "tests/testdata/event_generator/kafka/wineventlog_raw.jsonl"
         )
         documents = self._document_loader._get_from_file()
         assert len(documents) == 500
 
     def test_get_raw_documents_from_file_if_source_file_set(self):
         self._document_loader._source_file = Path(
-            "tests/testdata/load_generator/kafka/wineventlog_raw.jsonl"
+            "tests/testdata/event_generator/kafka/wineventlog_raw.jsonl"
         )
         documents = self._document_loader._get_raw_documents()
         assert len(documents) == 500

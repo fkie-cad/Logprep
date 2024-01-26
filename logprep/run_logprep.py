@@ -11,8 +11,8 @@ from pathlib import Path
 import click
 from colorama import Fore
 
-from logprep.load_generator.http.controller import Controller
-from logprep.load_generator.kafka.run_load_tester import LoadTester
+from logprep.event_generator.http.controller import Controller
+from logprep.event_generator.kafka.run_load_tester import LoadTester
 from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
@@ -189,8 +189,8 @@ def test_ruleset(configs: tuple[str], testdata: str):
 @cli.group(short_help="Generate load for a running logprep instance")
 def generate():
     """
-    Generate load offers two different options to create sample events for a running
-    logprep instance.
+    Generate events offers two different options to create sample events that can be send to either
+    a kafka instance or a http endpoint.
     """
 
 
@@ -199,9 +199,9 @@ def generate():
 @click.option("--file", help="Path to file with documents", default=False, is_flag=True)
 def generate_kafka(config, file):
     """
-    Generate from and to Kafka.
+    Generate events by taking them from kafka or a jsonl file and sending them to Kafka.
 
-    CONFIG is a path to a configuration file for the load generation.
+    CONFIG is a path to a configuration file for the event generation.
     """
     load_tester = LoadTester(config, file)
     load_tester.run()
@@ -280,7 +280,10 @@ def generate_kafka(config, file):
     type=bool,
 )
 def generate_http(**kwargs):
-    """Run Generator with the configured parameters"""
+    """
+    Generates events based on templated sample files stored inside a dataset directory.
+    The events will be sent to a http endpoint.
+    """
     log_level = kwargs.get("loglevel")
     logging.basicConfig(
         level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"

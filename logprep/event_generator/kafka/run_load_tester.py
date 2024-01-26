@@ -1,12 +1,11 @@
 """Main module for the load-tester"""
-from argparse import ArgumentParser
 from multiprocessing import Manager
 from pathlib import Path
 
-from logprep.load_generator.kafka.configuration import load_config
-from logprep.load_generator.kafka.logger import create_logger
-from logprep.load_generator.kafka.process_runner import run_processes
-from logprep.load_generator.kafka.util import print_results, print_startup_info
+from logprep.event_generator.kafka.configuration import load_config
+from logprep.event_generator.kafka.logger import create_logger
+from logprep.event_generator.kafka.process_runner import run_processes
+from logprep.event_generator.kafka.util import print_results, print_startup_info
 
 
 class LoadTester:

@@ -9,9 +9,9 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from logging import Logger
 
-from logprep.load_generator.http.input import Input
-from logprep.load_generator.http.output import Output
-from logprep.load_generator.http.reporter import Reporter
+from logprep.event_generator.http.input import Input
+from logprep.event_generator.http.output import Output
+from logprep.event_generator.http.reporter import Reporter
 
 
 class Controller:

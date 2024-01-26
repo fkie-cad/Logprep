@@ -4,8 +4,8 @@ from logging import Logger
 from time import perf_counter
 from uuid import uuid4
 
-from logprep.load_generator.kafka.configuration import Configuration
-from logprep.load_generator.kafka.kafka_connector import KafkaProducer
+from logprep.event_generator.kafka.configuration import Configuration
+from logprep.event_generator.kafka.kafka_connector import KafkaProducer
 
 
 class DocumentSender:

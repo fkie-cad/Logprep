@@ -7,9 +7,9 @@ from time import time
 
 import numpy as np
 
-from logprep.load_generator.kafka.configuration import Configuration
-from logprep.load_generator.kafka.document_loader import DocumentLoader
-from logprep.load_generator.kafka.document_sender import DocumentSender
+from logprep.event_generator.kafka.configuration import Configuration
+from logprep.event_generator.kafka.document_loader import DocumentLoader
+from logprep.event_generator.kafka.document_sender import DocumentSender
 
 
 def get_record_cnt_for_process(config: Configuration, idx: int) -> int:
