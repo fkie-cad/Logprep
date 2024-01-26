@@ -153,7 +153,7 @@ class Runner:
         self._logger = logging.getLogger("Logprep Runner")
         self._config_refresh_interval = None
 
-        self._manager = None
+        self._manager = PipelineManager(configuration)
         self.scheduler = Scheduler()
 
         # noinspection PyTypeChecker
@@ -212,6 +212,7 @@ class Runner:
             self._configuration.reload()
             self._logger.info("Successfully reloaded configuration")
             self.metrics.number_of_config_refreshes += 1
+            self._manager.restart()
         except ConfigVersionDidNotChangeError as error:
             self._logger.info(str(error))
         except InvalidConfigurationError as error:
@@ -270,11 +271,6 @@ class Runner:
             refresh_interval = 5 if refresh_interval < 5 else refresh_interval
             scheduler.every(refresh_interval).seconds.do(self.reload, refresh=True)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
-
-    def _create_manager(self):
-        if self._manager is not None:
-            raise MustNotCreateMoreThanOneManagerError
-        self._manager = PipelineManager()
 
     def stop(self):
         """Stop the current process"""

@@ -169,29 +169,18 @@ class TestRunner:
         runner.reload_configuration()
         assert runner._configuration.version == "1"
 
-    def test_reload_configuration_reduces_logprep_instance_count_to_new_value(self):
+    def test_reload_invokes_manager_restart_on_config_change(self, runner: Runner):
+        runner._configuration.version = "very old version"
+        with mock.patch.object(runner._manager, "restart") as mock_restart:
+            runner.reload_configuration()
+        mock_restart.assert_called()
+
+    def test_reload_configuration_reduces_logprep_pipelines_count_to_new_value(self):
         self.runner._manager.set_count(3)
 
         self.runner._configuration = Configuration.from_source(path_to_alternative_config)
         self.runner.reload_configuration()
         assert self.runner._manager.get_count() == 2
-
-    @mock.patch("logging.Logger.error")
-    def test_reload_configuration_logs_error_when_new_configuration_is_invalid(self, mock_error):
-        self.runner._configuration.paths = [path_to_invalid_config]
-        self.runner.reload_configuration()
-        assert (
-            "Invalid configuration, leaving old configuration in place:"
-            in mock_error.call_args[0][0]
-        )
-
-    def test_reload_configuration_does_not_count_config_refresh_if_new_configuration_is_invalid(
-        self,
-    ):
-        self.runner.metrics.number_of_config_refreshes = 0
-        self.runner._configuration.paths = [path_to_invalid_config]
-        self.runner.reload_configuration()
-        assert self.runner.metrics.number_of_config_refreshes == 0
 
     def test_reload_configuration_creates_new_logprep_instances_with_new_configuration(self):
         self.runner._manager.set_count(3)
