@@ -263,7 +263,7 @@ class TestInput:
         else:
             EventClassConfig(**config)
 
-    def test_load_returns_event_in_sorted_order(self, tmp_path):
+    def test_load_returns_events_in_sorted_order(self, tmp_path):
         example_event = {"some": "event"}
         number_of_events = 150
         dataset_path = tmp_path / "dataset"

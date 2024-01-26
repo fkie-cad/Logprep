@@ -208,7 +208,6 @@ def generate_kafka(config, file):
 
 
 @generate.command(name="http")
-@click.help_option()
 @click.option("--input-dir", help="Path to the root input directory", required=True, type=str)
 @click.option(
     "--target-domain",

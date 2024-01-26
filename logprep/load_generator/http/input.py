@@ -115,7 +115,9 @@ class Input:
         )
         start_time = time.perf_counter()
         events = []
-        for event_class_dir in os.listdir(self.input_root_path):
+        event_classes = os.listdir(self.input_root_path)
+        event_classes = sorted(event_classes)
+        for event_class_dir in event_classes:
             file_paths, log_class_config = self._retrieve_log_files(event_class_dir)
             self._populate_events_list(events, file_paths, log_class_config)
         if events:
