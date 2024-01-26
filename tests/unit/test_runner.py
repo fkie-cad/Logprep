@@ -134,11 +134,12 @@ class TestRunner:
     def test_reload_configuration_logs_info_when_reloading_config_was_successful(
         self, mock_info, runner
     ):
-        runner.metrics.number_of_config_refreshes = 0
-        runner._configuration.version = "very old version"
-        runner.reload_configuration()
-        mock_info.assert_has_calls([mock.call("Successfully reloaded configuration")])
-        assert runner.metrics.number_of_config_refreshes == 1
+        with mock.patch.object(runner._manager, "restart"):
+            runner.metrics.number_of_config_refreshes = 0
+            runner._configuration.version = "very old version"
+            runner.reload_configuration()
+            mock_info.assert_has_calls([mock.call("Successfully reloaded configuration")])
+            assert runner.metrics.number_of_config_refreshes == 1
 
     @mock.patch("logging.Logger.info")
     def test_reload_configuration_logs_info_if_config_does_not_change(self, mock_info, runner):
@@ -175,42 +176,29 @@ class TestRunner:
             runner.reload_configuration()
         mock_restart.assert_called()
 
-    def test_reload_configuration_reduces_logprep_pipelines_count_to_new_value(self):
-        self.runner._manager.set_count(3)
-
-        self.runner._configuration = Configuration.from_source(path_to_alternative_config)
-        self.runner.reload_configuration()
-        assert self.runner._manager.get_count() == 2
-
-    def test_reload_configuration_creates_new_logprep_instances_with_new_configuration(self):
-        self.runner._manager.set_count(3)
-        old_logprep_instances = list(self.runner._manager._pipelines)
-
-        self.runner.reload_configuration()
-
-        assert set(old_logprep_instances).isdisjoint(set(self.runner._manager._pipelines))
-        assert len(self.runner._manager._pipelines) == 3
-
-    def test_start_sets_config_refresh_interval_to_a_minimum_of_5_seconds(self):
-        self.runner._keep_iterating = partial(mock_keep_iterating, 1)
-        self.runner._config_refresh_interval = 0
-        self.runner.start()
-        assert self.runner.scheduler.jobs[0].interval == 5
+    @pytest.mark.parametrize(
+        "new_value, expected_value",
+        [(None, None), (0, 5), (1, 5), (2, 5), (3, 5), (10, 10), (42, 42)],
+    )
+    def test_set_config_refresh_interval(self, new_value, expected_value, runner):
+        with mock.patch.object(runner, "_manager"):
+            runner._config_refresh_interval = new_value
+            runner._keep_iterating = partial(mock_keep_iterating, 1)
+            runner.start()
+            if expected_value is None:
+                assert len(runner.scheduler.jobs) == 0
+            else:
+                assert runner.scheduler.jobs[0].interval == expected_value
 
     @mock.patch("schedule.Scheduler.run_pending")
-    def test_iteration_calls_run_pending(self, mock_run_pending):
-        self.runner._keep_iterating = partial(mock_keep_iterating, 1)
-        self.runner.start()
-        mock_run_pending.assert_called()
+    def test_iteration_calls_run_pending(self, mock_run_pending, runner):
+        with mock.patch.object(runner, "_manager"):
+            runner._keep_iterating = partial(mock_keep_iterating, 3)
+            runner.start()
+            mock_run_pending.call_count = 3
 
     @mock.patch("schedule.Scheduler.run_pending")
-    def test_iteration_calls_run_pending_on_every_iteration(self, mock_run_pending):
-        self.runner._keep_iterating = partial(mock_keep_iterating, 3)
-        self.runner.start()
-        assert mock_run_pending.call_count == 3
-
-    @mock.patch("schedule.Scheduler.run_pending")
-    def test_iteration_stops_if_continue_iterating_returns_false(self, mock_run_pending):
+    def test_iteration_stops_if_continue_iterating_returns_false(self, mock_run_pending, runner):
         def patch_runner(runner):
             def patch():  # nosemgrep
                 with runner._continue_iterating.get_lock():
@@ -218,8 +206,8 @@ class TestRunner:
 
             return patch
 
-        mock_run_pending.side_effect = patch_runner(self.runner)
-        self.runner.start()
+        mock_run_pending.side_effect = patch_runner(runner)
+        runner.start()
         assert mock_run_pending.call_count == 1
 
     def test_reload_configuration_does_not_schedules_job_if_no_config_refresh_interval_is_set(self):

@@ -138,6 +138,24 @@ class Runner:
         }
         return labels
 
+    @property
+    def _config_refresh_interval(self) -> int:
+        """Indicates the configuration refresh interval in seconds."""
+        return self._configuration.config_refresh_interval
+
+    @_config_refresh_interval.setter
+    def _config_refresh_interval(self, value: int) -> None:
+        """Set the configuration refresh interval in seconds."""
+        if value is None:
+            self._configuration.config_refresh_interval = None
+            self.metrics.config_refresh_interval += 0
+        elif value <= 5:
+            self._configuration.config_refresh_interval = 5
+            self.metrics.config_refresh_interval += 5
+        else:
+            self._configuration.config_refresh_interval = value
+            self.metrics.config_refresh_interval += value
+
     # Use this method to obtain a runner singleton for production
     @staticmethod
     def get_runner(configuration: Configuration) -> "Runner":
@@ -165,42 +183,26 @@ class Runner:
 
         This runs until an SIGTERM, SIGINT or KeyboardInterrupt signal is received, or an unhandled
         error occurs.
-
-        Raises
-        ------
-        MustConfigureBeforeRunningError
-            If '_configuration' was not set before starting the Runner.
-        MustConfigureALoggerError
-            If '_logger' was not set before reloading the configuration.
-
         """
-        if self._configuration is None:
-            raise MustConfigureBeforeRunningError
-        if self._logger is None:
-            raise MustConfigureALoggerError
-
-        self._create_manager()
-
-        if self._config_refresh_interval is not None:
-            self.metrics.config_refresh_interval += self._config_refresh_interval
-        self._manager.set_configuration(self._configuration)
-        self._manager.set_count(self._configuration.process_count)
-        self._logger.debug("Pipeline manager initiated")
 
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = True
-        self._schedule_config_refresh_job()
-        if self._manager.prometheus_exporter:
-            self._manager.prometheus_exporter.run()
-        self._logger.info("Startup complete")
-        self._logger.debug("Runner iterating")
+
         for _ in self._keep_iterating():
             self._loop()
-        self.stop()
 
-        self._logger.info("Initiated shutdown")
-        self._manager.stop()
-        self._logger.info("Shutdown complete")
+        self._schedule_config_refresh_job()
+        # if self._manager.prometheus_exporter:
+        #     self._manager.prometheus_exporter.run()
+        # self._logger.info("Startup complete")
+        # self._logger.debug("Runner iterating")
+        # for _ in self._keep_iterating():
+        #     self._loop()
+        # self.stop()
+
+        # self._logger.info("Initiated shutdown")
+        # self._manager.stop()
+        # self._logger.info("Shutdown complete")
 
     def _loop(self):
         self.scheduler.run_pending()
@@ -269,7 +271,7 @@ class Runner:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, (float, int)):
             refresh_interval = 5 if refresh_interval < 5 else refresh_interval
-            scheduler.every(refresh_interval).seconds.do(self.reload, refresh=True)
+            scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 
     def stop(self):

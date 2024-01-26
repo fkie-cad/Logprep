@@ -5,9 +5,9 @@ from copy import deepcopy
 from itertools import chain
 from logging import getLogger
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Optional
 
-from attr import define, field, validators
+from attr import converters, define, field, validators
 from attrs import asdict
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
@@ -80,8 +80,11 @@ class Configuration:
         validator=validators.instance_of(str), converter=str, default="unset", eq=True
     )
     """Version of the configuration file. Defaults to `unset`."""
-    config_refresh_interval: int = field(validator=validators.instance_of(int), default=0, eq=False)
-    """Interval in seconds to refresh the configuration. Defaults to `0`."""
+    config_refresh_interval: Optional[int] = field(
+        validator=validators.instance_of((int, type(None))), default=None, eq=False
+    )
+    """Interval in seconds to refresh the configuration. Defaults to `None`, which
+    means that the configuration will not be refreshed."""
     process_count: int = field(
         validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
     )
