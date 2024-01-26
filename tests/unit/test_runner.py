@@ -5,6 +5,7 @@
 # pylint: disable=attribute-defined-outside-init
 import json
 import os
+import uuid
 from copy import deepcopy
 from functools import partial
 from logging import Logger
@@ -95,9 +96,9 @@ class TestRunnerExpectedFailures(LogprepRunnerTest):
             self.runner.reload()
 
 
-@pytest.fixture(name="config_path")
-def fixture_config_path(tmp_path) -> Path:
-    config_path = tmp_path / "config.yml"
+@pytest.fixture(name="config_path", scope="function")
+def fixture_config_path(tmp_path: Path) -> Path:
+    config_path = tmp_path / uuid.uuid4().hex
     configuration = Configuration.from_sources([path_to_config])
     config_path.write_text(configuration.as_yaml())
     return config_path
@@ -109,8 +110,10 @@ def fixture_configuration(config_path: Path) -> Configuration:
 
 
 @pytest.fixture(name="runner")
-def fixture_runner(configuration) -> Runner:
-    return Runner.get_runner(configuration)
+def fixture_runner(configuration: Configuration) -> Runner:
+    runner = Runner.get_runner(configuration)
+    runner._configuration = configuration
+    return runner
 
 
 class TestRunner:
@@ -161,10 +164,10 @@ class TestRunner:
     def test_reload_configuration_leaves_old_configuration_in_place_if_new_config_is_invalid(
         self, runner, config_path
     ):
-        runner._configuration
+        assert runner._configuration.version == "1"
+        config_path.write_text("invalid config")
         runner.reload_configuration()
-
-        assert self.runner._configuration == old_configuration
+        assert runner._configuration.version == "1"
 
     def test_reload_configuration_reduces_logprep_instance_count_to_new_value(self):
         self.runner._manager.set_count(3)
