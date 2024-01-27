@@ -79,6 +79,8 @@ class Runner:
 
     """
 
+    scheduler: Scheduler
+
     _runner = None
 
     _configuration: Configuration
@@ -148,13 +150,10 @@ class Runner:
         """Set the configuration refresh interval in seconds."""
         if value is None:
             self._configuration.config_refresh_interval = None
-            self.metrics.config_refresh_interval += 0
         elif value <= 5:
             self._configuration.config_refresh_interval = 5
-            self.metrics.config_refresh_interval += 5
         else:
             self._configuration.config_refresh_interval = value
-            self.metrics.config_refresh_interval += value
 
     # Use this method to obtain a runner singleton for production
     @staticmethod
@@ -215,6 +214,7 @@ class Runner:
             self._logger.info("Successfully reloaded configuration")
             self.metrics.number_of_config_refreshes += 1
             self._manager.restart()
+            self._schedule_config_refresh_job()
         except ConfigVersionDidNotChangeError as error:
             self._logger.info(str(error))
         except InvalidConfigurationError as error:
@@ -270,7 +270,7 @@ class Runner:
         if scheduler.jobs:
             scheduler.cancel_job(scheduler.jobs[0])
         if isinstance(refresh_interval, (float, int)):
-            refresh_interval = 5 if refresh_interval < 5 else refresh_interval
+            self.metrics.config_refresh_interval += refresh_interval
             scheduler.every(refresh_interval).seconds.do(self.reload_configuration, refresh=True)
             self._logger.info(f"Config refresh interval is set to: {refresh_interval} seconds")
 

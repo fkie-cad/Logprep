@@ -210,26 +210,27 @@ class TestRunner:
         runner.start()
         assert mock_run_pending.call_count == 1
 
-    def test_reload_configuration_does_not_schedules_job_if_no_config_refresh_interval_is_set(self):
-        assert len(self.runner.scheduler.jobs) == 0
-        if "config_refresh_interval" in self.runner._configuration:
-            self.runner._configuration.pop("config_refresh_interval")
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner.scheduler.jobs) == 0
+    def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(
+        self, runner: Runner, configuration: Configuration, config_path: Path
+    ):
+        runner.metrics.config_refresh_interval = 0
+        assert len(runner.scheduler.jobs) == 0
+        configuration.config_refresh_interval = 60
+        config_path.write_text(configuration.as_yaml())
+        runner._configuration.version = "very old version"
+        with mock.patch.object(runner._manager, "restart"):
+            runner.reload_configuration()
+        assert len(runner.scheduler.jobs) == 1
+        assert runner.metrics.config_refresh_interval == 60
 
-    def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(self, tmp_path):
-        self.runner.metrics.config_refresh_interval = 0
-        assert len(self.runner.scheduler.jobs) == 0
-        config_path = tmp_path / "config.yml"
-        config_update = {"config_refresh_interval": 5, "version": "current version"}
-        self.runner._configuration.update(config_update)
-        config_update = deepcopy(self.runner._configuration)
-        config_update.update({"config_refresh_interval": 5, "version": "new version"})
-        config_path.write_text(json.dumps(config_update))
-        self.runner._configuration.paths = [str(config_path)]
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.metrics.config_refresh_interval == 5
+    def test_reload_configuration_does_not_schedules_job_if_no_config_refresh_interval_is_set(
+        self, runner: Runner
+    ) -> None:
+        assert len(runner.scheduler.jobs) == 0
+        if runner._configuration.config_refresh_interval is not None:
+            runner._configuration.config_refresh_interval = None
+        runner.reload_configuration()
+        assert len(runner.scheduler.jobs) == 0
 
     def test_reload_configuration_reschedules_job_with_new_refresh_interval(self, tmp_path):
         assert len(self.runner.scheduler.jobs) == 0
