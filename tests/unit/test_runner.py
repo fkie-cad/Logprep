@@ -258,6 +258,7 @@ class TestRunner:
         [
             (HTTPError(404), "404"),
             (FileNotFoundError("no such file or directory"), "no such file or directory"),
+            (SSLError("SSL context"), "SSL context"),
         ],
     )
     @mock.patch("logprep.abc.getter.Getter.get")
@@ -287,82 +288,50 @@ class TestRunner:
         assert runner.metrics.config_refresh_interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_logs_sslerror_and_schedules_new_refresh_with_a_quarter_the_time(
-        self, mock_get
+    def test_reload_configuration_does_not_set_refresh_interval_below_5_seconds(
+        self, mock_get, runner: Runner
     ):
-        mock_get.side_effect = SSLError("SSL context")
-        assert len(self.runner.scheduler.jobs) == 0
-        self.runner._config_refresh_interval = 40
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            with mock.patch("logging.Logger.info") as mock_info:
-                self.runner.reload_configuration(refresh=True)
-        mock_warning.assert_called_with("Failed to load configuration: SSL context")
-        mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.scheduler.jobs[0].interval == 10
-
-    @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_does_not_set_refresh_interval_below_5_seconds(self, mock_get):
         mock_get.side_effect = HTTPError(404)
-        assert len(self.runner.scheduler.jobs) == 0
-        self.runner._config_refresh_interval = 12
+        assert len(runner.scheduler.jobs) == 0
+        runner._config_refresh_interval = 12
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
-                self.runner.reload_configuration(refresh=True)
+                runner.reload_configuration()
         mock_warning.assert_called_with("Failed to load configuration: 404")
         mock_info.assert_called_with("Config refresh interval is set to: 5 seconds")
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.scheduler.jobs[0].interval == 5
+        assert len(runner.scheduler.jobs) == 1
+        assert runner.scheduler.jobs[0].interval == 5
 
     def test_reload_configuration_sets_refresh_interval_on_successful_reload_after_request_exception(
-        self, tmp_path
+        self, runner: Runner, config_path: Path
     ):
-        self.runner._config_refresh_interval = 12
-        config_path = tmp_path / "config.yml"
-        config_update = deepcopy(self.runner._configuration)
-        config_update.update({"config_refresh_interval": 60, "version": "new version"})
-        config_path.write_text(json.dumps(config_update))
-        self.runner._configuration.paths = [str(config_path)]
+        runner._config_refresh_interval = 12
+        new_config = Configuration.from_sources([str(config_path)])
+        new_config.config_refresh_interval = 60
+        new_config.version = "new version"
+        config_path.write_text(new_config.as_yaml())
         with mock.patch("logprep.abc.getter.Getter.get") as mock_get:
             mock_get.side_effect = HTTPError(404)
-            self.runner.reload_configuration(refresh=True)
-            assert len(self.runner.scheduler.jobs) == 1
-            assert self.runner.scheduler.jobs[0].interval == 5
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.scheduler.jobs[0].interval == 60
+            runner.reload_configuration()
+            assert len(runner.scheduler.jobs) == 1
+            assert runner.scheduler.jobs[0].interval == 5
+        with mock.patch.object(runner._manager, "restart"):
+            runner.reload_configuration()
+        assert len(runner.scheduler.jobs) == 1
+        assert runner.scheduler.jobs[0].interval == 60
 
-    def test_reload_configuration_sets_refresh_interval_after_request_exception_without_new_config(
-        self, tmp_path
+    def test_reload_configuration_logs_new_version_and_sets_metric(
+        self, runner: Runner, config_path: Path
     ):
-        config_update = {"config_refresh_interval": 12, "version": "current version"}
-        self.runner._config_refresh_interval = 12
-        self.runner._configuration.update(config_update)
-        config_path = tmp_path / "config.yml"
-        config_update = deepcopy(self.runner._configuration)
-        config_path.write_text(json.dumps(config_update))
-        self.runner._configuration.paths = [str(config_path)]
-        with mock.patch("logprep.abc.getter.Getter.get") as mock_get:
-            mock_get.side_effect = HTTPError(404)
-            self.runner.reload_configuration(refresh=True)
-            assert len(self.runner.scheduler.jobs) == 1
-            assert self.runner.scheduler.jobs[0].interval == 5
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.scheduler.jobs[0].interval == 12
-
-    def test_reload_configuration_logs_new_version_and_sets_metric(self, tmp_path):
-        assert len(self.runner.scheduler.jobs) == 0
-        config_path = tmp_path / "config.yml"
-        config_update = {"config_refresh_interval": 5, "version": "current version"}
-        self.runner._configuration.update(config_update)
-        config_update = deepcopy(self.runner._configuration)
-        config_update.update({"config_refresh_interval": 5, "version": "new version"})
-        config_path.write_text(json.dumps(config_update))
-        self.runner._configuration.paths = [str(config_path)]
+        assert len(runner.scheduler.jobs) == 0
+        new_config = Configuration.from_sources([str(config_path)])
+        new_config.config_refresh_interval = 5
+        new_config.version = "new version"
+        config_path.write_text(new_config.as_yaml())
         with mock.patch("logging.Logger.info") as mock_info:
             with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
-                self.runner.reload_configuration(refresh=True)
+                with mock.patch.object(runner._manager, "restart"):
+                    runner.reload_configuration()
         mock_info.assert_called_with("Configuration version: new version")
         mock_add.assert_called()
         mock_add.assert_has_calls(
