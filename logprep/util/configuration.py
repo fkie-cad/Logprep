@@ -224,6 +224,7 @@ class Configuration:
                 raise ConfigVersionDidNotChangeError()
             self._configs = new_config._configs  # pylint: disable=protected-access
             self._set_attributes_from_configs()
+            self.pipeline = new_config.pipeline
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         if errors:

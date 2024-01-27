@@ -1,7 +1,9 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+import uuid
 from logging import getLogger
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -20,6 +22,14 @@ from tests.testdata.metadata import (
 )
 
 logger = getLogger()
+
+
+@pytest.fixture(name="config_path", scope="function")
+def fixture_config_path(tmp_path: Path) -> Path:
+    config_path = tmp_path / uuid.uuid4().hex
+    configuration = Configuration.from_sources([path_to_config])
+    config_path.write_text(configuration.as_yaml())
+    return config_path
 
 
 class TestConfiguration:
@@ -814,47 +824,52 @@ output:
         assert isinstance(config.as_yaml(), str)
         assert "type: dummy_output" in config.as_yaml()
 
-    def test_returned_json_is_valid_config(self, tmp_path):
-        config = Configuration.from_sources([path_to_config])
+    def test_returned_json_is_valid_config(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
         config.version = "super_custom_version"
-        config_path = tmp_path / "pipeline.yml"
         config_path.write_text(config.as_json())
         newconfig = Configuration.from_sources([str(config_path)])
         assert newconfig.version == "super_custom_version"
 
-    def test_returned_yaml_is_valid_config(self, tmp_path):
-        config = Configuration.from_sources([path_to_config])
+    def test_returned_yaml_is_valid_config(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
         config.version = "super_custom_version"
-        config_path = tmp_path / "pipeline.yml"
         config_path.write_text(config.as_yaml())
         newconfig = Configuration.from_sources([str(config_path)])
         assert newconfig.version == "super_custom_version"
 
-    def test_reload_loads_generated_config(self, tmp_path):
-        config = Configuration.from_sources([path_to_config])
-        config_path = tmp_path / "pipeline.yml"
+    def test_reload_loads_generated_config(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
         config_path.write_text(config.as_yaml())
-        test_config = Configuration.from_sources([str(config_path)])
-        config.version = "super_new_version"
-        config_path.write_text(config.as_yaml())
-        test_config.reload()
+        config.version = "very old version"
+        config.reload()
+        assert config.version == "1"
 
-    def test_reload_loads_generated_config_multiple_times(self, tmp_path):
-        config_path = tmp_path / "pipeline.yml"
-        config = Configuration.from_sources([path_to_config])
-        config_path.write_text(config.as_yaml())
+    def test_reload_sets_pipeline(self, config_path):
         config = Configuration.from_sources([str(config_path)])
         config.config_refresh_interval = 5
         config_path.write_text(config.as_yaml())
         config.version = "older version"
         config.reload()
-        assert config.config_refresh_interval == 5
-        # second refresh with new refresh interval
-        config.config_refresh_interval = 10
+        assert config.pipeline[2]["labelername"]["type"] == "labeler"
+
+    def test_reload_sets_new_pipline(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        assert len(config.pipeline) == 4
+        config.pipeline.append(
+            {
+                "new_processor": {
+                    "type": "field_manager",
+                    "generic_rules": [],
+                    "specific_rules": [],
+                }
+            }
+        )
         config_path.write_text(config.as_yaml())
-        config.version = "even older version"
+        config.version = "older version"
         config.reload()
-        assert config.config_refresh_interval == 10
+        assert len(config.pipeline) == 5
+        assert config.pipeline[4]["new_processor"]["type"] == "field_manager"
 
     def test_configurations_are_equal_if_version_is_equal(self):
         config = Configuration.from_sources([path_to_config])
