@@ -215,6 +215,11 @@ class Runner:
             self.metrics.number_of_config_refreshes += 1
             self._manager.restart()
             self._schedule_config_refresh_job()
+        except (requests.RequestException, FileNotFoundError) as error:
+            self._logger.warning(f"Failed to load configuration: {error}")
+            self.metrics.number_of_config_refresh_failures += 1
+            self._config_refresh_interval = int(self._config_refresh_interval / 4)
+            self._schedule_config_refresh_job()
         except ConfigVersionDidNotChangeError as error:
             self._logger.info(str(error))
         except InvalidConfigurationError as error:

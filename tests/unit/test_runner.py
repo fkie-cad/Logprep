@@ -255,18 +255,18 @@ class TestRunner:
 
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_logs_request_exception_and_schedules_new_refresh_with_a_quarter_the_time(
-        self, mock_get
+        self, mock_get, runner: Runner
     ):
         mock_get.side_effect = HTTPError(404)
-        assert len(self.runner.scheduler.jobs) == 0
-        self.runner._config_refresh_interval = 40
+        assert len(runner.scheduler.jobs) == 0
+        runner._config_refresh_interval = 40
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
-                self.runner.reload_configuration(refresh=True)
+                runner.reload_configuration()
         mock_warning.assert_called_with("Failed to load configuration: 404")
-        mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.scheduler.jobs[0].interval == 10
+        mock_info.assert_called_with("Config refresh interval is set to: 10 seconds")
+        assert len(runner.scheduler.jobs) == 1
+        assert runner.scheduler.jobs[0].interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_sets_config_refresh_interval_metric_with_a_quarter_of_the_time(
