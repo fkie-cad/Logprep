@@ -111,7 +111,7 @@ def fixture_configuration(config_path: Path) -> Configuration:
 
 @pytest.fixture(name="runner")
 def fixture_runner(configuration: Configuration) -> Runner:
-    runner = Runner.get_runner(configuration)
+    runner = Runner(configuration)  # we want to have a fresh runner for each test
     runner._configuration = configuration
     return runner
 
@@ -232,27 +232,26 @@ class TestRunner:
         runner.reload_configuration()
         assert len(runner.scheduler.jobs) == 0
 
-    def test_reload_configuration_reschedules_job_with_new_refresh_interval(self, tmp_path):
-        assert len(self.runner.scheduler.jobs) == 0
-        config_path = tmp_path / "config.yml"
-        # set current state
-        config_update = deepcopy(self.runner._configuration)
-        config_update.update({"config_refresh_interval": 5, "version": "current version"})
-        self.runner._configuration.update(config_update)
+    def test_reload_configuration_reschedules_job_with_new_refresh_interval(
+        self, runner: Runner, configuration: Configuration, config_path: Path
+    ) -> None:
+        assert len(runner.scheduler.jobs) == 0
         # first refresh
-        config_update.update({"config_refresh_interval": 5, "version": "new version"})
-        config_path.write_text(json.dumps(config_update))
-        self.runner._configuration.paths = [str(config_path)]
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.scheduler.jobs[0].interval == 5
+        configuration.config_refresh_interval = 5
+        config_path.write_text(configuration.as_yaml())
+        runner._configuration.version = "very old version"
+        with mock.patch.object(runner._manager, "restart"):
+            runner.reload_configuration()
+        assert len(runner.scheduler.jobs) == 1
+        assert runner.scheduler.jobs[0].interval == 5
         # second refresh with new refresh interval
-        config_update.update({"config_refresh_interval": 10, "version": "newer version"})
-        config_path.write_text(json.dumps(config_update))
-        self.runner._configuration.paths = [str(config_path)]
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.scheduler.jobs[0].interval == 10
+        configuration.config_refresh_interval = 10
+        config_path.write_text(configuration.as_yaml())
+        runner._configuration.version = "even older version"
+        with mock.patch.object(runner._manager, "restart"):
+            runner.reload_configuration()
+        assert len(runner.scheduler.jobs) == 1
+        assert runner.scheduler.jobs[0].interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_logs_request_exception_and_schedules_new_refresh_with_a_quarter_the_time(

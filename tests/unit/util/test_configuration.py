@@ -27,7 +27,7 @@ class TestConfiguration:
         "attribute, attribute_type, default",
         [
             ("version", str, "unset"),
-            ("config_refresh_interval", int, 0),
+            ("config_refresh_interval", type(None), None),
             ("process_count", int, 1),
             ("timeout", float, 5.0),
             ("logger", dict, {"level": "INFO"}),
@@ -838,6 +838,23 @@ output:
         config.version = "super_new_version"
         config_path.write_text(config.as_yaml())
         test_config.reload()
+
+    def test_reload_loads_generated_config_multiple_times(self, tmp_path):
+        config_path = tmp_path / "pipeline.yml"
+        config = Configuration.from_sources([path_to_config])
+        config_path.write_text(config.as_yaml())
+        config = Configuration.from_sources([str(config_path)])
+        config.config_refresh_interval = 5
+        config_path.write_text(config.as_yaml())
+        config.version = "older version"
+        config.reload()
+        assert config.config_refresh_interval == 5
+        # second refresh with new refresh interval
+        config.config_refresh_interval = 10
+        config_path.write_text(config.as_yaml())
+        config.version = "even older version"
+        config.reload()
+        assert config.config_refresh_interval == 10
 
     def test_configurations_are_equal_if_version_is_equal(self):
         config = Configuration.from_sources([path_to_config])
