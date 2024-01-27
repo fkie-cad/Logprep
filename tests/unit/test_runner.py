@@ -253,46 +253,38 @@ class TestRunner:
         assert len(runner.scheduler.jobs) == 1
         assert runner.scheduler.jobs[0].interval == 10
 
+    @pytest.mark.parametrize(
+        "exception, log_message",
+        [
+            (HTTPError(404), "404"),
+            (FileNotFoundError("no such file or directory"), "no such file or directory"),
+        ],
+    )
     @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_logs_request_exception_and_schedules_new_refresh_with_a_quarter_the_time(
-        self, mock_get, runner: Runner
+    def test_reload_configuration_logs_exception_and_schedules_new_refresh_with_a_quarter_the_time(
+        self, mock_get, runner: Runner, exception, log_message
     ):
-        mock_get.side_effect = HTTPError(404)
+        mock_get.side_effect = exception
         assert len(runner.scheduler.jobs) == 0
         runner._config_refresh_interval = 40
         with mock.patch("logging.Logger.warning") as mock_warning:
             with mock.patch("logging.Logger.info") as mock_info:
                 runner.reload_configuration()
-        mock_warning.assert_called_with("Failed to load configuration: 404")
+        mock_warning.assert_called_with(f"Failed to load configuration: {log_message}")
         mock_info.assert_called_with("Config refresh interval is set to: 10 seconds")
         assert len(runner.scheduler.jobs) == 1
         assert runner.scheduler.jobs[0].interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_sets_config_refresh_interval_metric_with_a_quarter_of_the_time(
-        self, mock_get
+        self, mock_get, runner: Runner
     ):
         mock_get.side_effect = HTTPError(404)
-        assert len(self.runner.scheduler.jobs) == 0
-        self.runner._config_refresh_interval = 40
-        self.runner.metrics.config_refresh_interval = 0
-        self.runner.reload_configuration(refresh=True)
-        assert self.runner.metrics.config_refresh_interval == 10
-
-    @mock.patch("logprep.abc.getter.Getter.get")
-    def test_reload_configuration_logs_filenotfounderror_and_schedules_new_refresh_with_a_quarter_the_time(
-        self, mock_get
-    ):
-        mock_get.side_effect = FileNotFoundError("no such file or directory")
-        assert len(self.runner.scheduler.jobs) == 0
-        self.runner._config_refresh_interval = 40
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            with mock.patch("logging.Logger.info") as mock_info:
-                self.runner.reload_configuration(refresh=True)
-        mock_warning.assert_called_with("Failed to load configuration: no such file or directory")
-        mock_info.assert_called_with("Config refresh interval is set to: 10.0 seconds")
-        assert len(self.runner.scheduler.jobs) == 1
-        assert self.runner.scheduler.jobs[0].interval == 10
+        assert len(runner.scheduler.jobs) == 0
+        runner._config_refresh_interval = 40
+        runner.metrics.config_refresh_interval = 0
+        runner.reload_configuration()
+        assert runner.metrics.config_refresh_interval == 10
 
     @mock.patch("logprep.abc.getter.Getter.get")
     def test_reload_configuration_logs_sslerror_and_schedules_new_refresh_with_a_quarter_the_time(
