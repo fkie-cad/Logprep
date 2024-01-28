@@ -2,6 +2,7 @@
 """This module can be used to start the logprep."""
 import logging
 import os
+import signal
 import sys
 import warnings
 
@@ -42,7 +43,7 @@ def _get_logger(logger_config: dict):
     return logger
 
 
-def _load_configuration(config_paths: list[str]):
+def _get_configuration(config_paths: list[str]) -> Configuration:
     try:
         return Configuration.from_sources(config_paths)
     except FileNotFoundError as error:
@@ -72,42 +73,41 @@ def cli():
 
 
 @cli.command(short_help="Run logprep to process log messages", epilog=EPILOG_STR)
-@click.argument("config", nargs=-1, required=True)
+@click.argument("config_path", nargs=-1, required=True)
 @click.option(
     "--version",
     is_flag=True,
     default=False,
     help="Print version and exit (includes also congfig version)",
 )
-def run(config: str, version=None):
+def run(config_path: str, version=None):
     """
     Run Logprep with the given configuration.
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    config_obj = _load_configuration(config)
+    configuration = _get_configuration(config_path)
     if version:
-        print_version_and_exit(config_obj)
-    logger = _get_logger(config_obj.logger)
+        print_version_and_exit(configuration)
+    logger = _get_logger(configuration.logger)
     logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
-    for version in get_versions_string(config_obj).split("\n"):
+    for version in get_versions_string(configuration).split("\n"):
         logger.info(version)
-    logger.debug(f'Metric export enabled: {config_obj.metrics.get("enabled", False)}')
-    logger.debug(f"Config path: {config}")
+    logger.debug(f'Metric export enabled: {configuration.metrics.get("enabled", False)}')
+    logger.debug(f"Config path: {config_path}")
     runner = None
     try:
-        runner = Runner.get_runner()
-        runner.load_configuration(config)
+        runner = Runner.get_runner(configuration)
         logger.debug("Configuration loaded")
         runner.start()
     # pylint: disable=broad-except
-    except BaseException as error:
+    except Exception as error:
         if os.environ.get("DEBUG", False):
             logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
         else:
             logger.critical(f"A critical error occurred: {error}")
-        if runner:
-            runner.stop()
+        # if runner:
+        #     runner.stop()
         sys.exit(1)
     # pylint: enable=broad-except
 
@@ -127,7 +127,7 @@ def test_config(config):
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    config = _load_configuration(config)
+    config = _get_configuration(config)
     logger = _get_logger(config.logger)
     try:
         config.verify()
@@ -220,12 +220,25 @@ def print_config(config, output):
 
     CONFIG is a path to configuration file (filepath or URL).
     """
-    config = _load_configuration(config)
+    config = _get_configuration(config)
     if output == "json":
         print(config.as_json(indent=2))
     else:
         print(config.as_yaml())
 
 
+def signal_handler(signal_number: int, _):
+    """Handle signals for stopping the runner and reloading the configuration."""
+    if signal_number == signal.SIGUSR1:
+        print("Info: Reloading config")
+        Runner.get_runner(Configuration()).reload_configuration()
+    else:
+        Runner.get_runner(Configuration()).stop()
+        sys.exit(0)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGUSR1, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     cli()

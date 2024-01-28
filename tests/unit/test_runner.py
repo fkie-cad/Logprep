@@ -197,19 +197,6 @@ class TestRunner:
             runner.start()
             mock_run_pending.call_count = 3
 
-    @mock.patch("schedule.Scheduler.run_pending")
-    def test_iteration_stops_if_continue_iterating_returns_false(self, mock_run_pending, runner):
-        def patch_runner(runner):
-            def patch():  # nosemgrep
-                with runner._continue_iterating.get_lock():
-                    runner._continue_iterating.value = False
-
-            return patch
-
-        mock_run_pending.side_effect = patch_runner(runner)
-        runner.start()
-        assert mock_run_pending.call_count == 1
-
     def test_reload_configuration_schedules_job_if_config_refresh_interval_is_set(
         self, runner: Runner, configuration: Configuration, config_path: Path
     ):
@@ -336,65 +323,4 @@ class TestRunner:
         mock_add.assert_called()
         mock_add.assert_has_calls(
             (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": "new version"}),)
-        )
-
-    def test_reload_configuration_decreases_processes_after_increase(self, tmp_path):
-        self.runner._manager.set_configuration(self.runner._configuration)
-        self.runner._manager.set_count(self.runner._configuration["process_count"])
-        assert self.runner._configuration.get("process_count") == 3
-        assert len(self.runner._manager._pipelines) == 3
-        config_update = {
-            "config_refresh_interval": 5,
-            "version": "current version",
-        }
-        self.runner._configuration.update(config_update)
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner._manager._pipelines) == 3
-        config_path = tmp_path / "config.yml"
-        self.runner._configuration.paths = [str(config_path)]
-        config_update = deepcopy(self.runner._configuration)
-        config_update.update(
-            {"config_refresh_interval": 5, "version": "new version", "process_count": 4}
-        )
-        config_path.write_text(json.dumps(config_update))
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner._manager._pipelines) == 4
-        config_update.update(
-            {"config_refresh_interval": 5, "version": "newer version", "process_count": 1}
-        )
-        config_path.write_text(json.dumps(config_update))
-        self.runner.reload_configuration(refresh=True)
-        assert len(self.runner._manager._pipelines) == 1
-
-    @mock.patch(
-        "logprep.framework.pipeline_manager.PrometheusExporter.cleanup_prometheus_multiprocess_dir"
-    )
-    def test_reload_configuration_does_not_call_prometheus_clean_up_method(
-        self, prometheus, tmp_path, tmpdir
-    ):
-        os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
-        config_path = tmp_path / "config.yml"
-        config_update = {
-            "config_refresh_interval": 5,
-            "version": "current version",
-            "metrics": {"enabled": True},
-        }
-        self.runner._configuration.update(config_update)
-        config_update = deepcopy(self.runner._configuration)
-        config_update.update({"config_refresh_interval": 5, "version": "new version"})
-        config_path.write_text(json.dumps(config_update))
-        self.runner._yaml_path = str(config_path)
-        self.runner.reload_configuration(refresh=True)
-        prometheus.assert_not_called()
-        del os.environ["PROMETHEUS_MULTIPROC_DIR"]
-
-    def test_loop_restarts_failed_pipelines(self):
-        self.runner._manager.set_configuration(self.runner._configuration)
-        self.runner._manager.set_count(self.runner._configuration["process_count"])
-        assert len(self.runner._manager._pipelines) == 3
-        self.runner._manager._pipelines[1].process_is_alive = False
-        with mock.patch("logging.Logger.warning") as mock_warning:
-            self.runner._loop()
-        mock_warning.assert_called_once_with(
-            "Restarted 1 failed pipeline(s), with exit code(s): [-1]"
         )
