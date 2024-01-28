@@ -14,17 +14,6 @@ from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
 
 
-class PipelineManagerError(Exception):
-    """Base class for pipeline related exceptions."""
-
-
-class MustSetConfigurationFirstError(PipelineManagerError):
-    """Raise if configuration was not set."""
-
-    def __init__(self, what_failed: str):
-        super().__init__(f"Failed to {what_failed}: Configuration is unset")
-
-
 class PipelineManager:
     """Manage pipelines via multi-processing."""
 
@@ -150,9 +139,6 @@ class PipelineManager:
         self._increase_to_count(self._configuration.process_count)
 
     def _create_pipeline(self, index) -> MultiprocessingPipeline:
-        if self._configuration is None:
-            raise MustSetConfigurationFirstError("create new pipeline")
-
         self._logger.info("Created new pipeline")
         return MultiprocessingPipeline(
             pipeline_index=index,
