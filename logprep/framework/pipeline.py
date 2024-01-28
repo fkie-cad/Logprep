@@ -18,6 +18,7 @@ from multiprocessing import Lock, Process, Value, current_process
 from typing import Any, List, Tuple
 
 import attrs
+from logprep.util.configuration import Configuration
 import msgspec
 
 from logprep._version import get_versions
@@ -86,7 +87,7 @@ class Pipeline:
         )
         """Time in seconds that it took to process an event"""
 
-    _logprep_config: dict
+    _logprep_config: Configuration
     """ the logprep configuration dict """
 
     _log_queue: multiprocessing.Queue
@@ -106,7 +107,7 @@ class Pipeline:
 
     def __init__(
         self,
-        config: dict,
+        config: Configuration,
         pipeline_index: int = None,
         log_queue: multiprocessing.Queue = None,
         lock: Lock = None,
@@ -116,7 +117,7 @@ class Pipeline:
         self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
         self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
         self._logprep_config = config
-        self._timeout = config.get("timeout")
+        self._timeout = config.timeout
         self._continue_iterating = Value(c_bool)
 
         self._lock = lock
@@ -138,7 +139,7 @@ class Pipeline:
     def _event_version_information(self) -> dict:
         return {
             "logprep": get_versions().get("version"),
-            "configuration": self._logprep_config.get("version", "unset"),
+            "configuration": self._logprep_config.version,
         }
 
     @property
@@ -154,13 +155,13 @@ class Pipeline:
     @cached_property
     def _pipeline(self) -> tuple:
         self.logger.debug(f"Building '{self._process_name}'")
-        pipeline = [self._create_processor(entry) for entry in self._logprep_config.get("pipeline")]
+        pipeline = [self._create_processor(entry) for entry in self._logprep_config.pipeline]
         self.logger.debug("Finished building pipeline")
         return pipeline
 
     @cached_property
     def _output(self) -> dict[str, Output]:
-        output_configs = self._logprep_config.get("output")
+        output_configs = self._logprep_config.output
         if not output_configs:
             return None
         output_names = list(output_configs.keys())
@@ -172,7 +173,7 @@ class Pipeline:
 
     @cached_property
     def _input(self) -> Input:
-        input_connector_config = self._logprep_config.get("input")
+        input_connector_config = self._logprep_config.input
         if input_connector_config is None:
             return None
         connector_name = list(input_connector_config.keys())[0]
@@ -343,12 +344,12 @@ class MultiprocessingPipeline(Process, Pipeline):
     def __init__(
         self,
         pipeline_index: int,
-        config: dict,
+        config: Configuration,
         log_queue: multiprocessing.Queue,
         lock: Lock,
         used_server_ports: dict,
     ) -> None:
-        self._profile = config.get("profile_pipelines", False)
+        self._profile = config.profile_pipelines
 
         Pipeline.__init__(
             self,

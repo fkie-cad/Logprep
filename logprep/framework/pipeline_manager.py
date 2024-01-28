@@ -69,6 +69,7 @@ class PipelineManager:
 
         self._lock = multiprocessing.Lock()
         self._used_server_ports = None
+        self.restart()
 
     def set_configuration(self, configuration: Configuration):
         """set the verified config"""

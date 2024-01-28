@@ -107,6 +107,8 @@ class Configuration:
         validator=validators.instance_of(dict), default={"enabled": False, "port": 8000}, eq=False
     )
     """Metrics configuration. Defaults to `{"enabled": False, "port": 8000}`."""
+    profile_pipelines: bool = field(default=False, eq=False)
+    """Start the profiler to profile the pipeline. Defaults to `False`."""
 
     _getter: Getter = field(
         validator=validators.instance_of(Getter),
