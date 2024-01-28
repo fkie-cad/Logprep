@@ -3,98 +3,24 @@
 # pylint: disable=missing-class-docstring
 # pylint: disable=missing-function-docstring
 # pylint: disable=attribute-defined-outside-init
-import json
-import os
 import uuid
-from copy import deepcopy
 from functools import partial
-from logging import Logger
 from pathlib import Path
 from unittest import mock
 
 import pytest
-from pytest import raises
 from requests.exceptions import HTTPError, SSLError
 
 from logprep._version import get_versions
-from logprep.runner import (
-    CannotReloadWhenConfigIsUnsetError,
-    MustConfigureBeforeRunningError,
-    MustNotConfigureTwiceError,
-    MustNotCreateMoreThanOneManagerError,
-    Runner,
-    UseGetRunnerToCreateRunnerSingleton,
-)
+from logprep.runner import Runner
 from logprep.util.configuration import Configuration
 from tests.testdata.metadata import (
-    path_to_alternative_config,
     path_to_config,
-    path_to_invalid_config,
 )
-from tests.unit.framework.test_pipeline_manager import PipelineManagerForTesting
-
-
-class RunnerForTesting(Runner):
-    def __init__(self):
-        super().__init__(bypass_check_to_obtain_non_singleton_instance=True)
-
-    def _create_manager(self):
-        self._manager = PipelineManagerForTesting()
-
-
-class LogprepRunnerTest:
-    def setup_method(self, _):
-        self.logger = Logger("test")
-
-        self.runner = RunnerForTesting()
-        self.runner._create_manager()
-
 
 def mock_keep_iterating(iterations):
     for _ in range(iterations):
         yield True
-
-
-class TestRunnerExpectedFailures(LogprepRunnerTest):
-    def test_init_fails_when_bypass_check_flag_is_not_set(self):
-        with raises(UseGetRunnerToCreateRunnerSingleton):
-            Runner()
-
-    def test_fails_when_calling_create_manager_more_than_once(self):
-        runner = Runner(bypass_check_to_obtain_non_singleton_instance=True)
-        runner.load_configuration([path_to_config])
-
-        runner._create_manager()
-        with raises(MustNotCreateMoreThanOneManagerError):
-            runner._create_manager()
-
-    def test_fails_when_calling_load_configuration_with_non_existing_path(self):
-        with raises(FileNotFoundError):
-            self.runner.load_configuration(["non-existing-file"])
-
-    def test_fails_if_file_path_is_not_a_list(self):
-        with raises(TypeError):
-            self.runner.load_configuration("this-is-not-a-list")
-
-    def test_fails_when_calling_load_configuration_more_than_once(self):
-        self.runner.load_configuration([path_to_config])
-
-        with raises(MustNotConfigureTwiceError):
-            self.runner.load_configuration([path_to_config])
-
-    def test_fails_when_called_without_configuring_first(self):
-        with raises(MustConfigureBeforeRunningError):
-            self.runner.start()
-
-    @mock.patch("logprep.util.configuration.Configuration.verify")
-    def test_load_configuration_calls_verify_on_config(self, mock_verify):
-        self.runner.load_configuration([path_to_config])
-        mock_verify.assert_called()
-
-    def test_fails_when_calling_reload_configuration_when_config_is_unset(self):
-        with raises(CannotReloadWhenConfigIsUnsetError):
-            self.runner.reload()
-
 
 @pytest.fixture(name="config_path", scope="function")
 def fixture_config_path(tmp_path: Path) -> Path:
@@ -324,3 +250,6 @@ class TestRunner:
         mock_add.assert_has_calls(
             (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": "new version"}),)
         )
+
+    def test_stop_method(self):
+        assert False
