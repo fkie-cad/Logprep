@@ -125,16 +125,13 @@ class RuleParser:
         """
         for parsed_rule in parsed_rules:
             temp_parsed_rule = parsed_rule.copy()
-            skipped_counter = 0
-
-            for segment_index, segment in enumerate(temp_parsed_rule):
+            added_exists_filter_count = 0
+            for segment_idx, segment in enumerate(temp_parsed_rule):
                 if isinstance(segment, (Exists, Not, Always)):
-                    skipped_counter += 1
                     continue
 
                 exists_filter = Exists(segment.key)
                 if exists_filter in parsed_rule:
-                    skipped_counter += 1
                     continue
-
-                parsed_rule.insert(segment_index * 2 - skipped_counter, exists_filter)
+                parsed_rule.insert(segment_idx + added_exists_filter_count, exists_filter)
+                added_exists_filter_count += 1
