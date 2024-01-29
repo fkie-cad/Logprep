@@ -53,12 +53,11 @@ class PipelineManager:
         self._queue_listener = logging.handlers.QueueListener(self.log_queue)
         self._queue_listener.start()
 
-        self._pipelines = []
+        self._pipelines: list[multiprocessing.Process] = []
         self._configuration = configuration
 
         self._lock = multiprocessing.Lock()
         self._used_server_ports = None
-        self.restart()
 
     def set_configuration(self, configuration: Configuration):
         """set the verified config"""
@@ -132,6 +131,7 @@ class PipelineManager:
         self._decrease_to_count(0)
         if self.prometheus_exporter:
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
+        self._queue_listener.stop()
 
     def restart(self):
         """Restarts all pipelines"""

@@ -50,6 +50,8 @@ class Runner:
 
     _metrics: "Runner.Metrics"
 
+    _exit_received: bool = False
+
     scheduler: Scheduler
 
     @define(kw_only=True)
@@ -149,11 +151,18 @@ class Runner:
         self._schedule_config_refresh_job()
         if self._manager.prometheus_exporter:
             self._manager.prometheus_exporter.run()
+        self._manager.restart()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")
         for _ in self._keep_iterating():
+            if self._exit_received:
+                break
             self.scheduler.run_pending()
             self._manager.restart_failed_pipeline()
+        self._logger.info("Shutting down")
+        self._logger.info("Initiated shutdown")
+        self._manager.stop()
+        self._logger.info("Shutdown complete")
 
     def reload_configuration(self):
         """Reloads the configuration"""
@@ -181,12 +190,7 @@ class Runner:
 
     def stop(self):
         """Stop the current process"""
-        if current_process().name == "MainProcess":
-            if self._logger is not None:
-                self._logger.info("Shutting down")
-                self._logger.info("Initiated shutdown")
-                self._manager.stop()
-                self._logger.info("Shutdown complete")
+        self._exit_received = True
 
     def _schedule_config_refresh_job(self):
         refresh_interval = self._config_refresh_interval

@@ -229,16 +229,10 @@ def print_config(config, output):
 
 def signal_handler(signal_number: int, _):
     """Handle signals for stopping the runner and reloading the configuration."""
-    if signal_number == signal.SIGUSR1:
-        print("Info: Reloading config")
-        Runner.get_runner(Configuration()).reload_configuration()
-    else:
-        Runner.get_runner(Configuration()).stop()
-        sys.exit(0)
+    Runner.get_runner(Configuration()).stop()
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGUSR1, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
     cli()

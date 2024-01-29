@@ -18,7 +18,6 @@ from multiprocessing import Lock, Process, Value, current_process
 from typing import Any, List, Tuple
 
 import attrs
-from logprep.util.configuration import Configuration
 import msgspec
 
 from logprep._version import get_versions
@@ -41,6 +40,7 @@ from logprep.abc.processor import Processor
 from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
+from logprep.util.configuration import Configuration
 from logprep.util.pipeline_profiler import PipelineProfiler
 
 
@@ -215,7 +215,8 @@ class Pipeline:
 
     def run(self) -> None:
         """Start processing processors in the Pipeline."""
-        self._enable_iteration()
+        with self._continue_iterating.get_lock():
+            self._continue_iterating.value = True
         assert self._input, "Pipeline should not be run without input connector"
         assert self._output, "Pipeline should not be run without output connector"
         with self._lock:
@@ -225,19 +226,16 @@ class Pipeline:
         self.logger.debug("Start iterating")
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
-                while self._iterate():
+                while 1:
+                    if not self._continue_iterating.value:
+                        break
                     self.process_pipeline()
         else:
-            while self._iterate():
+            while 1:
+                if not self._continue_iterating.value:
+                    break
                 self.process_pipeline()
         self._shut_down()
-
-    def _iterate(self) -> bool:
-        return self._continue_iterating.value
-
-    def _enable_iteration(self) -> None:
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = True
 
     @_handle_pipeline_error
     def process_pipeline(self) -> Tuple[dict, list]:
@@ -359,9 +357,7 @@ class MultiprocessingPipeline(Process, Pipeline):
             lock=lock,
             used_server_ports=used_server_ports,
         )
-
         self._continue_iterating = Value(c_bool)
-        self.stop()
         Process.__init__(self)
 
     def run(self) -> None:
@@ -370,16 +366,3 @@ class MultiprocessingPipeline(Process, Pipeline):
             PipelineProfiler.profile_function(Pipeline.run, self)
         else:
             Pipeline.run(self)
-
-    def _enable_iteration(self) -> None:
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = True
-
-    def _iterate(self) -> Value:
-        with self._continue_iterating.get_lock():
-            return self._continue_iterating.value
-
-    def stop(self) -> None:
-        """Stop processing the Pipeline."""
-        with self._continue_iterating.get_lock():
-            self._continue_iterating.value = False
