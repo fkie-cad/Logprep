@@ -80,7 +80,6 @@
   - add lru caching for peudonymizatin of urls
 * improve loading times for the rule tree by optimizing the rule segmentation and sorting
 * add support for python 3.12 and remove support for python 3.9
-* always check the existence of a field for negated key-value based lucene filter expressions
 * add kafka exporter to quickstart setup
 
 ### Bugfix
