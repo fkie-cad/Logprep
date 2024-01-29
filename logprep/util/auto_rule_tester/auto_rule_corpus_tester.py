@@ -96,7 +96,7 @@ from pathlib import Path
 from pprint import pprint
 from typing import List
 
-from attr import define, validators, field, Factory
+from attr import Factory, define, field, validators
 from colorama import Fore, Style
 from deepdiff import DeepDiff, grep
 
@@ -189,13 +189,19 @@ class RuleCorpusTester:
         merged_input_file_path = Path(self._tmp_dir) / "input.json"
         inputs = [test_case.input_document for test_case in self._test_cases.values()]
         merged_input_file_path.write_text(json.dumps(inputs), encoding="utf8")
-        path_to_patched_config = Configuration.patch_yaml_with_json_connectors(
-            self._original_config_path, self._tmp_dir, str(merged_input_file_path)
-        )
-        config = Configuration.create_from_yaml(path_to_patched_config)
-        config.verify_pipeline_without_processor_outputs(getLogger("logprep"))
-        del config["output"]
-        pipeline = Pipeline(config=config)
+        patched_config = Configuration()
+        patched_config.input = {
+            "patched_input": {"type": "json_input", "documents_path": str(merged_input_file_path)}
+        }
+        config = Configuration.from_sources([self._original_config_path])
+        input_config = config.input
+        connector_name = list(input_config.keys())[0]
+        if "preprocessing" in input_config[connector_name]:
+            patched_config.input["patched_input"] |= {
+                "preprocessing": input_config[connector_name]["preprocessing"]
+            }
+        patched_config.pipeline = config.pipeline
+        pipeline = Pipeline(config=patched_config)
         pipeline.logger = self._logprep_logger
         return pipeline
 
