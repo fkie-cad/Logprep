@@ -14,13 +14,13 @@ from requests.exceptions import HTTPError, SSLError
 from logprep._version import get_versions
 from logprep.runner import Runner
 from logprep.util.configuration import Configuration
-from tests.testdata.metadata import (
-    path_to_config,
-)
+from tests.testdata.metadata import path_to_config
+
 
 def mock_keep_iterating(iterations):
     for _ in range(iterations):
         yield True
+
 
 @pytest.fixture(name="config_path", scope="function")
 def fixture_config_path(tmp_path: Path) -> Path:
@@ -38,7 +38,6 @@ def fixture_configuration(config_path: Path) -> Configuration:
 @pytest.fixture(name="runner")
 def fixture_runner(configuration: Configuration) -> Runner:
     runner = Runner(configuration)  # we want to have a fresh runner for each test
-    runner._configuration = configuration
     return runner
 
 
@@ -239,16 +238,17 @@ class TestRunner:
         assert len(runner.scheduler.jobs) == 0
         new_config = Configuration.from_sources([str(config_path)])
         new_config.config_refresh_interval = 5
-        new_config.version = "new version"
+        version = str(uuid.uuid4().hex)
+        new_config.version = version
         config_path.write_text(new_config.as_yaml())
         with mock.patch("logging.Logger.info") as mock_info:
             with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
                 with mock.patch.object(runner._manager, "restart"):
                     runner.reload_configuration()
-        mock_info.assert_called_with("Configuration version: new version")
+        mock_info.assert_called_with(f"Configuration version: {version}")
         mock_add.assert_called()
         mock_add.assert_has_calls(
-            (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": "new version"}),)
+            (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": version}),)
         )
 
     def test_stop_method(self):

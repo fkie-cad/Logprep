@@ -8,10 +8,7 @@ from unittest import mock
 from pytest import raises
 
 from logprep.framework.pipeline import MultiprocessingPipeline
-from logprep.framework.pipeline_manager import (
-    MustSetConfigurationFirstError,
-    PipelineManager,
-)
+from logprep.framework.pipeline_manager import PipelineManager
 from logprep.util.configuration import Configuration
 from tests.testdata.metadata import path_to_config
 

@@ -109,7 +109,7 @@ class Runner:
         return self._configuration.config_refresh_interval
 
     @_config_refresh_interval.setter
-    def _config_refresh_interval(self, value: int|None) -> None:
+    def _config_refresh_interval(self, value: int | None) -> None:
         """Set the configuration refresh interval in seconds."""
         if value is None:
             self._configuration.config_refresh_interval = None
@@ -164,6 +164,10 @@ class Runner:
             self._manager.restart()
             self._schedule_config_refresh_job()
             self._logger.info(f"Configuration version: {self._configuration.version}")
+            self.metrics.version_info.add_with_labels(
+                1,
+                {"logprep": f"{get_versions()['version']}", "config": self._configuration.version},
+            )
         except (requests.RequestException, FileNotFoundError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
             self.metrics.number_of_config_refresh_failures += 1
