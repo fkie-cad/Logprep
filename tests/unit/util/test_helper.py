@@ -241,11 +241,22 @@ class TestGetVersionString:
         assert re.search(expected_pattern, result)
 
     def test_get_version_string_with_config_source(self):
-        config = Configuration.from_sources([path_to_config, path_to_alternative_config])
+        config = Configuration.from_sources([path_to_config])
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
             r"logprep version:\s+\d+\.\d+\.\d+.*\n"
-            r"configuration version:\s+alternative, file://[^\s]+/config\.yml, file://[^\s]+/config2\.yml"
+            r"configuration version:\s+1,\s+file://[^\s]+/config\.yml"
+        )
+
+        result = get_versions_string(config)
+        assert re.search(expected_pattern, result)
+
+    def test_get_version_string_with_multiple_config_sources(self):
+        config = Configuration.from_sources([path_to_config, path_to_config])
+        expected_pattern = (
+            r"python version:\s+3\.\d+\.\d+\n"
+            r"logprep version:\s+\d+\.\d+\.\d+.*\n"
+            r"configuration version:\s+1,\s+file://[^\s]+/config\.yml,\s+file://[^\s]+/config\.yml"
         )
 
         result = get_versions_string(config)

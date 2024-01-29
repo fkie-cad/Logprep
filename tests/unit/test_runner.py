@@ -251,5 +251,7 @@ class TestRunner:
             (mock.call(1, {"logprep": f"{get_versions()['version']}", "config": version}),)
         )
 
-    def test_stop_method(self):
-        assert False
+    def test_stop_method(self, runner: Runner):
+        assert not runner._exit_received
+        runner.stop()
+        assert runner._exit_received

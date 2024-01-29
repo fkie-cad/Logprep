@@ -12,7 +12,7 @@ from click.testing import CliRunner
 
 from logprep._version import get_versions
 from logprep.run_logprep import cli
-from logprep.util.configuration import InvalidConfigurationError
+from logprep.util.configuration import Configuration, InvalidConfigurationError
 
 
 class TestRunLogprepCli:
@@ -22,35 +22,26 @@ class TestRunLogprepCli:
     @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_starts_runner_with_config(self, mock_runner):
         runner_instance = mock.MagicMock()
+        config_file_path = ("tests/testdata/config/config.yml",)
+        expected_config = Configuration.from_sources(config_file_path)
         mock_runner.get_runner.return_value = runner_instance
-        args = ["run", "tests/testdata/config/config.yml"]
+        args = ["run", *config_file_path]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
+        mock_runner.get_runner.assert_called_with(expected_config)
         runner_instance.start.assert_called()
-        config_file_path = ("tests/testdata/config/config.yml",)
-        runner_instance.load_configuration.assert_called_with(config_file_path)
 
     @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_starts_runner_with_multiple_configs(self, mock_runner):
         runner_instance = mock.MagicMock()
         mock_runner.get_runner.return_value = runner_instance
-        args = ["run", "tests/testdata/config/config.yml", "tests/testdata/config/config.yml"]
-        result = self.cli_runner.invoke(cli, args)
-        assert result.exit_code == 0
-        runner_instance.start.assert_called()
         config_file_path = ("tests/testdata/config/config.yml", "tests/testdata/config/config.yml")
-        runner_instance.load_configuration.assert_called_with(config_file_path)
-
-    @mock.patch("logprep.run_logprep.Runner")
-    def test_cli_run_uses_getter_to_get_config(self, mock_runner):
-        runner_instance = mock.MagicMock()
-        mock_runner.get_runner.return_value = runner_instance
-        args = ["run", "file://tests/testdata/config/config.yml"]
+        expected_config = Configuration.from_sources(config_file_path)
+        args = ["run", *config_file_path]
         result = self.cli_runner.invoke(cli, args)
         assert result.exit_code == 0
+        mock_runner.get_runner.assert_called_with(expected_config)
         runner_instance.start.assert_called()
-        config_file_path = ("file://tests/testdata/config/config.yml",)
-        runner_instance.load_configuration.assert_called_with(config_file_path)
 
     def test_exits_after_getter_error_for_not_existing_protocol(self):
         args = ["run", "almighty_protocol://tests/testdata/config/config.yml"]
@@ -164,14 +155,13 @@ class TestRunLogprepCli:
         )
         assert expected_lines in result.output
 
-    @mock.patch("logprep.runner.Runner.start")
-    @mock.patch("logprep.runner.Runner.stop")
-    def test_main_calls_runner_stop_on_any_exception(self, mock_stop, mock_start):
-        mock_start.side_effect = Exception
+    @mock.patch("logprep.runner.Runner._runner")
+    def test_main_calls_runner_stop_on_any_exception(self, mock_runner):
+        mock_runner.start.side_effect = Exception
         config_path = "tests/testdata/config/config.yml"
         result = self.cli_runner.invoke(cli, ["run", config_path])
         assert result.exit_code == 1
-        mock_stop.assert_called()
+        mock_runner.stop.assert_called()
 
     def test_logprep_exits_on_invalid_configuration(self):
         with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:

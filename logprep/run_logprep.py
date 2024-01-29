@@ -106,8 +106,8 @@ def run(config_path: str, version=None):
             logger.exception(f"A critical error occurred: {error}")  # pragma: no cover
         else:
             logger.critical(f"A critical error occurred: {error}")
-        # if runner:
-        #     runner.stop()
+        if runner:
+            runner.stop()
         sys.exit(1)
     # pylint: enable=broad-except
 
