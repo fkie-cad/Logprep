@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
-import re
 from logging import getLogger
 from unittest import mock
 from unittest.mock import call
@@ -11,9 +10,10 @@ from logprep.factory import Factory
 from logprep.framework.pipeline import Pipeline
 from logprep.processor.dissector.rule import DissectorRule
 from logprep.processor.generic_adder.rule import GenericAdderRule
+from logprep.util.configuration import Configuration
 
 
-class TestSpecificGenericProcessStrategy:
+class TestSpecificGenericProcessing:
     @mock.patch("logprep.abc.processor.Processor._process_rule_tree")
     def test_process(self, mock_process_rule_tree):
         processor = Factory.create(
@@ -108,7 +108,7 @@ class TestSpecificGenericProcessStrategy:
         assert expected_event == event
 
     @pytest.mark.parametrize("execution_number", range(5))  # repeat test to ensure determinism
-    def test_strategy_applies_rules_in_deterministic_order(self, execution_number):
+    def test_applies_rules_in_deterministic_order(self, execution_number):
         config = {"type": "generic_adder", "specific_rules": [], "generic_rules": []}
         processor = Factory.create({"custom_lister": config}, getLogger("test-logger"))
         rule_one_dict = {"filter": "val", "generic_adder": {"add": {"some": "value"}}}
@@ -124,14 +124,11 @@ class TestSpecificGenericProcessStrategy:
             mock_callback.assert_has_calls(expected_call_order, any_order=False)
 
     @mock.patch("logging.Logger.warning")
-    def test_strategy_processes_generic_rules_after_processor_error_in_specific_rules(
-        self, mock_warning
-    ):
-        config = {
-            "pipeline": [
-                {"adder": {"type": "generic_adder", "specific_rules": [], "generic_rules": []}}
-            ]
-        }
+    def test_processes_generic_rules_after_processor_error_in_specific_rules(self, mock_warning):
+        config = Configuration()
+        config.pipeline = [
+            {"adder": {"type": "generic_adder", "specific_rules": [], "generic_rules": []}}
+        ]
         specific_rule_one_dict = {
             "filter": "val",
             "generic_adder": {"add": {"first": "value", "second": "value"}},
