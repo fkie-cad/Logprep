@@ -50,7 +50,9 @@ from colorama import Back, Fore
 from ruamel.yaml import YAML
 
 from logprep.framework.pipeline import Pipeline
-from logprep.util.auto_rule_tester.auto_rule_corpus_tester import align_extra_output_formats
+from logprep.util.auto_rule_tester.auto_rule_corpus_tester import (
+    align_extra_output_formats,
+)
 from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 from logprep.util.helper import color_print_line, color_print_title, recursive_compare
@@ -67,15 +69,19 @@ class DryRunner:
 
     @cached_property
     def _pipeline(self):
-        patched_config_path = Configuration.patch_yaml_with_json_connectors(
-            original_config_path=self._config_path,
-            output_dir=self._tmp_path,
-            input_file_path=self._input_file_path,
-        )
-        config = Configuration.create_from_yaml(patched_config_path)
-        config.verify_pipeline_without_processor_outputs(self._logger)
-        del config["output"]
-        return Pipeline(config=config)
+        patched_config = Configuration()
+        patched_config.input = {
+            "patched_input": {"type": "json_input", "documents_path": str(self._input_file_path)}
+        }
+        config = Configuration.from_sources([self._config_path])
+        input_config = config.input
+        connector_name = list(input_config.keys())[0]
+        if "preprocessing" in input_config[connector_name]:
+            patched_config.input["patched_input"] |= {
+                "preprocessing": input_config[connector_name]["preprocessing"]
+            }
+        patched_config.pipeline = config.pipeline
+        return Pipeline(config=patched_config)
 
     @cached_property
     def _input_documents(self):
