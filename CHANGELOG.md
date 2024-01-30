@@ -22,6 +22,7 @@
 ### Bugfix
 
 * make the s3 connector actually use the `max_retries` parameter
+* fixed a bug which leads to a `FatalOutputError` on handling `CriticalInputError` in pipeline
 
 ## v9.0.3
 ### Breaking
