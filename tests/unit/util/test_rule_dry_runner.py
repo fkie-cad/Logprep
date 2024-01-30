@@ -4,7 +4,9 @@ import json
 import logging
 import os
 import tempfile
+from pathlib import Path
 
+from logprep.util.configuration import Configuration
 from logprep.util.rule_dry_runner import DryRunner
 
 
@@ -18,8 +20,7 @@ class TestRunLogprep:
               type: dissector
               specific_rules:
                 - tests/testdata/unit/dissector/
-              generic_rules:
-                - tests/testdata/unit/dissector/
+              generic_rules: []
           - labelername:
               type: labeler
               schema: tests/testdata/unit/labeler/schemas/schema3.json
@@ -35,7 +36,7 @@ class TestRunLogprep:
               regex_mapping: tests/testdata/unit/pseudonymizer/rules/regex_mapping.yml
               hash_salt: a_secret_tasty_ingredient
               outputs:
-                - patched_output: pseudonyms
+                - kafka_output: pseudonyms
               specific_rules:
                 - tests/testdata/unit/pseudonymizer/rules/specific/
               generic_rules:
@@ -48,17 +49,24 @@ class TestRunLogprep:
               generic_rules:
                 - tests/testdata/unit/pre_detector/rules/generic/
               outputs:
-                - patched_output: sre_topic
+                - kafka_output: sre_topic
           - selective_extractor:
               type: selective_extractor
               specific_rules:
                 - tests/testdata/unit/selective_extractor/rules/specific/
               generic_rules:
                 - tests/testdata/unit/selective_extractor/rules/generic/
+        input:
+            kafka_input:
+                type: dummy_input
+                documents: []
+        output:
+            kafka_output:
+                type: dummy_output
         """
-        self.config_path = os.path.join(tempfile.gettempdir(), "dry-run-config.yml")
-        with open(self.config_path, "w", encoding="utf8") as config_file:
-            config_file.write(config)
+        self.config_path = Path(tempfile.gettempdir()) / "dry-run-config.yml"
+        self.config_path.write_text(config)
+        self.config = Configuration.from_sources([str(self.config_path)])
 
     def teardown_method(self):
         os.remove(self.config_path)
@@ -71,7 +79,7 @@ class TestRunLogprep:
 
         dry_runner = DryRunner(
             input_file_path=input_json_file,
-            config_path=self.config_path,
+            config=self.config,
             full_output=True,
             use_json=True,
             logger=logging.getLogger("test-logger"),
@@ -91,7 +99,7 @@ class TestRunLogprep:
 
         dry_runner = DryRunner(
             input_file_path=input_json_file,
-            config_path=self.config_path,
+            config=self.config,
             full_output=True,
             use_json=True,
             logger=logging.getLogger("test-logger"),
@@ -111,7 +119,7 @@ class TestRunLogprep:
 
         dry_runner = DryRunner(
             input_file_path=input_jsonl_file,
-            config_path=self.config_path,
+            config=self.config,
             full_output=True,
             use_json=False,
             logger=logging.getLogger("test-logger"),
@@ -140,7 +148,7 @@ class TestRunLogprep:
 
         dry_runner = DryRunner(
             input_file_path=input_json_file,
-            config_path=self.config_path,
+            config=self.config,
             full_output=True,
             use_json=True,
             logger=logging.getLogger("test-logger"),
@@ -166,7 +174,7 @@ class TestRunLogprep:
 
         dry_runner = DryRunner(
             input_file_path=input_json_file,
-            config_path=self.config_path,
+            config=self.config,
             full_output=True,
             use_json=True,
             logger=logging.getLogger("test-logger"),

@@ -45,6 +45,7 @@ import tempfile
 from copy import deepcopy
 from difflib import ndiff
 from functools import cached_property
+from pathlib import Path
 
 from colorama import Back, Fore
 from ruamel.yaml import YAML
@@ -71,17 +72,20 @@ class DryRunner:
     def _pipeline(self):
         patched_config = Configuration()
         patched_config.input = {
-            "patched_input": {"type": "json_input", "documents_path": str(self._input_file_path)}
+            "patched_input": {
+                "type": f"{'json' if self._use_json else 'jsonl'}_input",
+                "documents_path": str(self._input_file_path),
+            }
         }
-        config = Configuration.from_sources([self._config_path])
-        input_config = config.input
+        input_config = self._config.input
         connector_name = list(input_config.keys())[0]
         if "preprocessing" in input_config[connector_name]:
             patched_config.input["patched_input"] |= {
                 "preprocessing": input_config[connector_name]["preprocessing"]
             }
-        patched_config.pipeline = config.pipeline
-        return Pipeline(config=patched_config)
+        patched_config.pipeline = self._config.pipeline
+        pipeline = Pipeline(config=patched_config)
+        return pipeline
 
     @cached_property
     def _input_documents(self):
@@ -91,10 +95,10 @@ class DryRunner:
         return document_getter.get_jsonl()
 
     def __init__(
-        self, input_file_path: str, config_path: str, full_output: bool, use_json: bool, logger
+        self, input_file_path: str, config: Configuration, full_output: bool, use_json: bool, logger
     ):
         self._input_file_path = input_file_path
-        self._config_path = config_path
+        self._config = config
         self._full_output = full_output
         self._use_json = use_json
         self._logger = logger
