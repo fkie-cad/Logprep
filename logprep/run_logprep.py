@@ -42,6 +42,7 @@ def _get_logger(logger_config: dict) -> logging.Logger:
         level=log_level, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s"
     )
     logger = logging.getLogger("Logprep")
+    logger.setLevel(log_level)
     return logger
 
 

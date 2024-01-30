@@ -71,7 +71,13 @@ class TestRunner:
         runner.metrics.number_of_config_refreshes = 0
         runner.metrics.number_of_config_refresh_failures = 0
         runner.reload_configuration()
-        mock_info.assert_has_calls([mock.call("Configuration version did not change")])
+        mock_info.assert_has_calls(
+            [
+                mock.call(
+                    "Configuration version didn't change. Continue running with current version."
+                )
+            ]
+        )
         assert runner.metrics.number_of_config_refreshes == 0
         assert runner.metrics.number_of_config_refresh_failures == 0
 

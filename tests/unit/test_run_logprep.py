@@ -2,6 +2,7 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import logging
+import re
 import sys
 from pathlib import Path
 from unittest import mock
@@ -11,6 +12,7 @@ import requests
 import responses
 from click.testing import CliRunner
 
+from logprep import run_logprep
 from logprep._version import get_versions
 from logprep.run_logprep import cli
 from logprep.util.configuration import Configuration, InvalidConfigurationError
@@ -267,3 +269,12 @@ class TestRunLogprepCli:
         result = self.cli_runner.invoke(cli, ["test", "integration", config_path, test_data_path])
         assert result.exit_code == 0
         mock_tester.assert_called()
+
+    @mock.patch("logging.Logger.info")
+    def test_run_logprep_logs_log_level(self, mock_info):
+        config = Configuration.from_sources(("tests/testdata/config/config.yml",))
+        assert config.logger.get("level") == "INFO"
+        with mock.patch("logprep.run_logprep.Runner"):
+            with pytest.raises(SystemExit):
+                run_logprep.run(("tests/testdata/config/config.yml",))
+        mock_info.assert_has_calls([mock.call("Log level set to 'INFO'")])

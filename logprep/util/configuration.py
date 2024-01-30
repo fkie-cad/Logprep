@@ -51,7 +51,9 @@ class ConfigVersionDidNotChangeError(InvalidConfigurationError):
     """Raise if configuration version did not change."""
 
     def __init__(self):
-        super().__init__("Configuration version did not change")
+        super().__init__(
+            "Configuration version didn't change. Continue running with current version."
+        )
 
 
 class RequiredConfigurationKeyMissingError(InvalidConfigurationError):
