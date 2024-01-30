@@ -1,13 +1,14 @@
 """This module is used to create the configuration for the runner."""
 
 import json
+import os
 from copy import deepcopy
 from itertools import chain
 from logging import getLogger
 from pathlib import Path
 from typing import Any, List, Optional
 
-from attr import converters, define, field, validators
+from attr import define, field, validators
 from attrs import asdict
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
@@ -381,6 +382,12 @@ class Configuration:
         if missing_env_vars:
             missing_env_error = MissingEnvironmentError(", ".join(missing_env_vars))
             raise InvalidConfigurationErrors([missing_env_error])
+        if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
+            if not Path(os.environ["PROMETHEUS_MULTIPROC_DIR"]).exists():
+                raise InvalidConfigurationError(
+                    "PROMETHEUS_MULTIPROC_DIR is set, but does not exist"
+                )
+            return
 
     def _verify_rules(self, processor: Processor) -> None:
         if not processor:

@@ -60,6 +60,9 @@ def _get_configuration(config_paths: list[str]) -> Configuration:
         print(f"{error}", file=sys.stderr)
     except requests.RequestException as error:
         print(f"{error}", file=sys.stderr)
+    except InvalidConfigurationError as error:
+        print(f"InvalidConfigurationError: {error}", file=sys.stderr)
+        sys.exit(1)
     return None
 
 

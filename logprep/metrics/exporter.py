@@ -13,7 +13,7 @@ class PrometheusExporter:
         self._logger = getLogger("Prometheus Exporter")
         self.configuration = status_logger_config
         self._port = status_logger_config.get("port", 8000)
-        self._prepare_multiprocessing()
+        # self._prepare_multiprocessing()
 
     def _prepare_multiprocessing(self):
         """

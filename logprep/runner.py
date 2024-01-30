@@ -2,8 +2,6 @@
 # pylint: disable=logging-fstring-interpolation
 
 import logging
-from ctypes import c_bool
-from multiprocessing import Value, current_process
 from typing import Generator
 
 import requests
@@ -137,10 +135,6 @@ class Runner:
         self._manager = PipelineManager(configuration)
         self.scheduler = Scheduler()
 
-        # noinspection PyTypeChecker
-        self._continue_iterating = Value(c_bool)
-        self._continue_iterating.value = False
-
     def start(self):
         """Start processing.
 
@@ -149,8 +143,8 @@ class Runner:
         """
 
         self._schedule_config_refresh_job()
-        if self._manager.prometheus_exporter:
-            self._manager.prometheus_exporter.run()
+        # if self._manager.prometheus_exporter:
+        #     self._manager.prometheus_exporter.run()
         self._manager.restart()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")

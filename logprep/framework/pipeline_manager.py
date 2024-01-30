@@ -59,15 +59,16 @@ class PipelineManager:
         self._lock = multiprocessing.Lock()
         self._used_server_ports = None
 
-    def set_configuration(self, configuration: Configuration):
-        """set the verified config"""
-        self._configuration = configuration
+    # TODO: kill me plz
+    # def set_configuration(self, configuration: Configuration):
+    #     """set the verified config"""
+    #     self._configuration = configuration
 
-        manager = multiprocessing.Manager()
-        self._used_server_ports = manager.dict()
-        prometheus_config = configuration.metrics
-        if prometheus_config.get("enabled", False) and not self.prometheus_exporter:
-            self.prometheus_exporter = PrometheusExporter(prometheus_config)
+    #     manager = multiprocessing.Manager()
+    #     self._used_server_ports = manager.dict()
+    #     prometheus_config = configuration.metrics
+    #     if prometheus_config.get("enabled", False) and not self.prometheus_exporter:
+    #         self.prometheus_exporter = PrometheusExporter(prometheus_config)
 
     def get_count(self) -> int:
         """Get the pipeline count.
