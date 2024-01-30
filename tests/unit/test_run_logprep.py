@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from unittest import mock
 
+import pytest
 import requests
 import responses
 from click.testing import CliRunner
@@ -18,6 +19,62 @@ from logprep.util.configuration import Configuration, InvalidConfigurationError
 class TestRunLogprepCli:
     def setup_method(self):
         self.cli_runner = CliRunner()
+
+    @pytest.mark.parametrize(
+        "command, target",
+        [
+            ("run tests/testdata/config/config.yml", "logprep.run_logprep.Runner.start"),
+            (
+                "test config tests/testdata/config/config.yml",
+                "logprep.run_logprep._get_configuration",
+            ),
+            (
+                "test unit tests/testdata/config/config.yml",
+                "logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run",
+            ),
+            (
+                "print tests/testdata/config/config.yml",
+                "logprep.util.configuration.Configuration.as_yaml",
+            ),
+            (
+                "run tests/testdata/config/config.yml tests/testdata/config/config.yml",
+                "logprep.run_logprep.Runner.start",
+            ),
+            (
+                "test config tests/testdata/config/config.yml tests/testdata/config/config.yml",
+                "logprep.run_logprep._get_configuration",
+            ),
+            (
+                "test unit tests/testdata/config/config.yml tests/testdata/config/config.yml",
+                "logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run",
+            ),
+            (
+                "print tests/testdata/config/config.yml tests/testdata/config/config.yml",
+                "logprep.util.configuration.Configuration.as_yaml",
+            ),
+            (
+                "test dry-run tests/testdata/config/config.yml quickstart/exampledata/input_logdata/test_input.jsonl",
+                "logprep.util.rule_dry_runner.DryRunner.run",
+            ),
+            (
+                "test integration tests/testdata/config/config.yml path/to/testset",
+                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run",
+            ),
+            (
+                "test dry-run tests/testdata/config/config.yml tests/testdata/config/config.yml asdfsdv",
+                "logprep.util.rule_dry_runner.DryRunner.run",
+            ),
+            (
+                "test integration tests/testdata/config/config.yml tests/testdata/config/config.yml path/to/testset",
+                "logprep.util.auto_rule_tester.auto_rule_corpus_tester.RuleCorpusTester.run",
+            ),
+        ],
+    )
+    def test_cli_commands_with_configs(self, command: str, target: str):
+        with mock.patch(target) as mocked_target:
+            result = self.cli_runner.invoke(cli, command.split())
+        mocked_target.assert_called()
+        assert result.exit_code == 0, f"{result.exc_info}"
 
     @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_starts_runner_with_config(self, mock_runner):
