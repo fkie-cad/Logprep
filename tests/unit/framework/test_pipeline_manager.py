@@ -9,6 +9,7 @@ from pytest import raises
 
 from logprep.framework.pipeline import MultiprocessingPipeline
 from logprep.framework.pipeline_manager import PipelineManager
+from logprep.metrics.exporter import PrometheusExporter
 from logprep.util.configuration import Configuration
 from tests.testdata.metadata import path_to_config
 
@@ -51,24 +52,13 @@ class PipelineManagerForTesting(PipelineManager):
 
 class TestPipelineManager:
     def setup_class(self):
-        self.config = Configuration.create_from_yaml(path_to_config)
+        self.config = Configuration.from_sources([path_to_config])
         self.logger = Logger("test")
 
-        self.manager = PipelineManagerForTesting()
-        self.manager.set_configuration(self.config)
+        self.manager = PipelineManagerForTesting(self.config)
 
     def teardown_method(self):
         self.manager._pipelines = []
-
-    def test_create_pipeline_fails_if_config_is_unset(self):
-        manager = PipelineManager()
-
-        with raises(
-            MustSetConfigurationFirstError,
-            match="Failed to create new pipeline: Configuration is unset",
-        ):
-            pipeline_index = 1
-            manager._create_pipeline(pipeline_index)
 
     def test_get_count_returns_count_of_pipelines(self):
         for count in range(5):
@@ -169,36 +159,41 @@ class TestPipelineManager:
             assert logprep_instance.was_started and logprep_instance.was_stopped
 
     def test_restart_failed_pipelines_calls_prometheus_cleanup_method(self, tmpdir):
-        os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
-        failed_pipeline = mock.MagicMock()
-        failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
-        failed_pipeline.is_alive.return_value = False  # nosemgrep
-        failed_pipeline.pid = 42
-        manager = PipelineManager()
-        manager.set_configuration({"metrics": {"enabled": True}, "process_count": 2})
-        prometheus_exporter_mock = mock.MagicMock()
-        manager.prometheus_exporter = prometheus_exporter_mock
-        manager._pipelines = [failed_pipeline]
-        manager.restart_failed_pipeline()
-        prometheus_exporter_mock.mark_process_dead.assert_called()
-        prometheus_exporter_mock.mark_process_dead.assert_called_with(42)
-        del os.environ["PROMETHEUS_MULTIPROC_DIR"]
+        with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
+            failed_pipeline = mock.MagicMock()
+            failed_pipeline.is_alive = mock.MagicMock()
+            failed_pipeline.is_alive.return_value = False
+            failed_pipeline.pid = 42
+            self.config.metrics["enabled"] = True
+            self.config.process_count = 2
+            manager = PipelineManager(self.config)
+            prometheus_exporter_mock = mock.MagicMock()
+            manager.prometheus_exporter = prometheus_exporter_mock
+            manager._pipelines = [failed_pipeline]
+            manager.restart_failed_pipeline()
+            prometheus_exporter_mock.mark_process_dead.assert_called()
+            prometheus_exporter_mock.mark_process_dead.assert_called_with(42)
 
     def test_restart_failed_pipelines_increases_number_of_failed_pipelines_metrics(self):
         failed_pipeline = mock.MagicMock()
-        failed_pipeline.is_alive = mock.MagicMock()  # nosemgrep
-        failed_pipeline.is_alive.return_value = False  # nosemgrep
+        failed_pipeline.is_alive = mock.MagicMock()
+        failed_pipeline.is_alive.return_value = False
         self.manager._pipelines = [failed_pipeline]
         self.manager.metrics.number_of_failed_pipelines = 0
         self.manager.restart_failed_pipeline()
         assert self.manager.metrics.number_of_failed_pipelines == 1
 
     def test_stop_calls_prometheus_cleanup_method(self, tmpdir):
-        os.environ["PROMETHEUS_MULTIPROC_DIR"] = str(tmpdir)
-        manager = PipelineManager()
-        manager.set_configuration({"metrics": {"enabled": True}, "process_count": 2})
-        prometheus_exporter_mock = mock.MagicMock()
-        manager.prometheus_exporter = prometheus_exporter_mock
-        manager.stop()
-        prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
-        del os.environ["PROMETHEUS_MULTIPROC_DIR"]
+        with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
+            self.config.metrics["enabled"] = True
+            self.config.process_count = 2
+            manager = PipelineManager(self.config)
+            prometheus_exporter_mock = mock.MagicMock()
+            manager.prometheus_exporter = prometheus_exporter_mock
+            manager.stop()
+            prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
+
+    def test_prometheus_exporter_is_instanciated_if_metrics_enabled(self):
+        self.config.metrics["enabled"] = True
+        manager = PipelineManager(self.config)
+        assert isinstance(manager.prometheus_exporter, PrometheusExporter)
