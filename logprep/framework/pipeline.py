@@ -105,27 +105,6 @@ class Pipeline:
     pipeline_index: int
     """ the index of this pipeline """
 
-    def __init__(
-        self,
-        config: Configuration,
-        pipeline_index: int = None,
-        log_queue: multiprocessing.Queue = None,
-        lock: Lock = None,
-        used_server_ports: dict = None,
-    ) -> None:
-        self._log_queue = log_queue
-        self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
-        self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
-        self._logprep_config = config
-        self._timeout = config.timeout
-        self._continue_iterating = Value(c_bool)
-
-        self._lock = lock
-        self._used_server_ports = used_server_ports
-        self.pipeline_index = pipeline_index
-        self._encoder = msgspec.msgpack.Encoder()
-        self._decoder = msgspec.msgpack.Decoder()
-
     @cached_property
     def metrics(self):
         """create and return metrics object"""
@@ -182,6 +161,27 @@ class Pipeline:
         )
         return Factory.create(input_connector_config, self.logger)
 
+    def __init__(
+        self,
+        config: Configuration,
+        pipeline_index: int = None,
+        log_queue: multiprocessing.Queue = None,
+        lock: Lock = None,
+        used_server_ports: dict = None,
+    ) -> None:
+        self._log_queue = log_queue
+        self.logger = logging.getLogger(f"Logprep Pipeline {pipeline_index}")
+        self.logger.addHandler(logging.handlers.QueueHandler(log_queue))
+        self._logprep_config = config
+        self._timeout = config.timeout
+        self._continue_iterating = Value(c_bool)
+
+        self._lock = lock
+        self._used_server_ports = used_server_ports
+        self.pipeline_index = pipeline_index
+        self._encoder = msgspec.msgpack.Encoder()
+        self._decoder = msgspec.msgpack.Decoder()
+
     @_handle_pipeline_error
     def _setup(self):
         self.logger.debug("Creating connectors")
@@ -226,21 +226,16 @@ class Pipeline:
         self.logger.debug("Start iterating")
         if hasattr(self._input, "server"):
             with self._input.server.run_in_thread():
-                while 1:
-                    if not self._continue_iterating.value:
-                        break
+                while self._continue_iterating.value:
                     self.process_pipeline()
         else:
-            while 1:
-                if not self._continue_iterating.value:
-                    break
+            while self._continue_iterating.value:
                 self.process_pipeline()
         self._shut_down()
 
     @_handle_pipeline_error
     def process_pipeline(self) -> Tuple[dict, list]:
         """Retrieve next event, process event with full pipeline and store or return results"""
-        assert self._input, "Run process_pipeline only with an valid input connector"
         Component.run_pending_tasks()
         extra_outputs = []
         event = None

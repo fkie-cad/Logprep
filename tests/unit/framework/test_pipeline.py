@@ -570,6 +570,21 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline.process_pipeline()
         self.pipeline._output["dummy"].store_failed.assert_called()
 
+    def test_stop_breaks_while_loop_and_shutdown_is_called(self, _):
+        iterations = [None, None, 1]
+        self.pipeline._shut_down = mock.MagicMock()
+
+        def continue_iterating_mock():
+            effect = iterations.pop(0)
+            if effect is None:
+                return True
+            self.pipeline.stop()
+
+        self.pipeline.process_pipeline = mock.MagicMock()
+        self.pipeline.process_pipeline.side_effect = continue_iterating_mock
+        self.pipeline.run()
+        self.pipeline._shut_down.assert_called()
+
 
 class TestPipelineWithActualInput:
     def setup_method(self):
