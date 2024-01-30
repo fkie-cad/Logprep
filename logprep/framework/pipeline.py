@@ -174,7 +174,7 @@ class Pipeline:
     @cached_property
     def _input(self) -> Input:
         input_connector_config = self._logprep_config.input
-        if input_connector_config is None:
+        if not input_connector_config:
             return None
         connector_name = list(input_connector_config.keys())[0]
         input_connector_config[connector_name].update(

@@ -27,20 +27,26 @@ from logprep.factory import Factory
 from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
+from logprep.util.configuration import Configuration
 from logprep.util.getter import GetterFactory
 
 original_create = Factory.create
 
 
 class ConfigurationForTests:
-    logprep_config = {
-        "version": 1,
-        "timeout": 0.001,
-        "input": {"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
-        "output": {"dummy": {"type": "dummy_output"}},
-        "pipeline": [{"mock_processor1": {"proc": "conf"}}, {"mock_processor2": {"proc": "conf"}}],
-        "metrics": {"period": 300, "enabled": False},
-    }
+    logprep_config = Configuration(
+        **{
+            "version": 1,
+            "timeout": 0.001,
+            "input": {"dummy": {"type": "dummy_input", "documents": [{"test": "empty"}]}},
+            "output": {"dummy": {"type": "dummy_output"}},
+            "pipeline": [
+                {"mock_processor1": {"proc": "conf"}},
+                {"mock_processor2": {"proc": "conf"}},
+            ],
+            "metrics": {"period": 300, "enabled": False},
+        }
+    )
     lock = Lock()
 
 
@@ -85,7 +91,7 @@ class TestPipeline(ConfigurationForTests):
         self.pipeline._setup()
         self.pipeline._input.get_next.return_value = ({}, {})
         self.pipeline.process_pipeline()
-        timeout = self.logprep_config.get("timeout")
+        timeout = self.logprep_config.timeout
         self.pipeline._input.get_next.assert_called_with(timeout)
 
     def test_empty_documents_are_not_forwarded_to_other_processors(self, _):
@@ -156,15 +162,6 @@ class TestPipeline(ConfigurationForTests):
         }
         self.pipeline.run()
         assert self.pipeline._output["dummy"].events == expected_output_data
-
-    def test_enable_iteration_sets_iterate_to_true_stop_to_false(self, _):
-        assert not self.pipeline._iterate()
-
-        self.pipeline._enable_iteration()
-        assert self.pipeline._iterate()
-
-        self.pipeline.stop()
-        assert not self.pipeline._iterate()
 
     @mock.patch("logging.Logger.error")
     def test_critical_output_error_is_logged_and_stored_as_failed(self, mock_error, _):
@@ -531,13 +528,13 @@ class TestPipeline(ConfigurationForTests):
 
     def test_multiple_outputs(self, _):
         output_config = {"kafka_output": {}, "opensearch_output": {}}
-        self.pipeline._logprep_config.update({"output": output_config})
+        self.pipeline._logprep_config.output = output_config
         self.pipeline._setup()
         assert isinstance(self.pipeline._output, dict)
         assert len(self.pipeline._output) == 2
 
     def test_output_creates_real_outputs(self, _):
-        self.pipeline._logprep_config["output"] = {
+        self.pipeline._logprep_config.output = {
             "dummy1": {"type": "dummy_output", "default": False},
             "dummy2": {"type": "dummy_output"},
         }
@@ -549,7 +546,7 @@ class TestPipeline(ConfigurationForTests):
         assert not self.pipeline._output["dummy1"].default
 
     def test_process_pipeline_runs_scheduled_tasks(self, _):
-        self.pipeline._logprep_config["output"] = {
+        self.pipeline._logprep_config.output = {
             "dummy": {"type": "dummy_output"},
         }
         with mock.patch("logprep.factory.Factory.create", original_create):
@@ -576,10 +573,10 @@ class TestPipeline(ConfigurationForTests):
 
 class TestPipelineWithActualInput:
     def setup_method(self):
-        self.config = GetterFactory.from_string("tests/testdata/config/config.yml").get_yaml()
-        del self.config["output"]
-        self.config["process_count"] = 1
-        self.config["input"] = {
+        self.config = Configuration.from_sources(["tests/testdata/config/config.yml"])
+        self.config.output = {}
+        self.config.process_count = 1
+        self.config.input = {
             "test_input": {
                 "type": "dummy_input",
                 "documents": [],
@@ -588,7 +585,7 @@ class TestPipelineWithActualInput:
         }
 
     def test_pipeline_without_output_connector_and_one_input_event_and_preprocessors(self):
-        self.config["input"]["test_input"]["documents"] = [{"applyrule": "yes"}]
+        self.config.input["test_input"]["documents"] = [{"applyrule": "yes"}]
         pipeline = Pipeline(config=self.config)
         assert pipeline._output is None
         event, extra_outputs = pipeline.process_pipeline()
@@ -596,10 +593,10 @@ class TestPipelineWithActualInput:
         assert "arrival_time" in event
         assert extra_outputs == []
 
-    def test_pipeline_without_connectors_and_with_that_no_preprocessors(self):
+    def test_process_event_processes_without_input_and_without_output(self):
         event = {"applyrule": "yes"}
         expected_event = {"applyrule": "yes", "label": {"reporter": ["windows"]}}
-        del self.config["input"]
+        self.config.input = {}
         pipeline = Pipeline(config=self.config)
         assert pipeline._output is None
         assert pipeline._input is None
@@ -611,7 +608,7 @@ class TestPipelineWithActualInput:
             {"applyrule": "yes"},
             {"winlog": {"event_data": {"IpAddress": "123.132.113.123"}}},
         ]
-        self.config["input"]["test_input"]["documents"] = input_events
+        self.config.input["test_input"]["documents"] = input_events
         pipeline = Pipeline(config=self.config)
         assert pipeline._output is None
         event, extra_outputs = pipeline.process_pipeline()
@@ -624,8 +621,8 @@ class TestPipelineWithActualInput:
         assert len(extra_outputs) == 1
 
     def test_pipeline_hmac_error_message_without_output_connector(self):
-        self.config["input"]["test_input"]["documents"] = [{"applyrule": "yes"}]
-        self.config["input"]["test_input"]["preprocessing"] = {
+        self.config.input["test_input"]["documents"] = [{"applyrule": "yes"}]
+        self.config.input["test_input"]["preprocessing"] = {
             "hmac": {"target": "non_existing_field", "key": "secret", "output_field": "hmac"}
         }
         pipeline = Pipeline(config=self.config)
@@ -634,7 +631,7 @@ class TestPipelineWithActualInput:
         assert event["hmac"]["hmac"] == "error"
 
     def test_pipeline_run_raises_assertion_when_run_without_input(self):
-        del self.config["input"]
+        self.config.input = {}
         pipeline = Pipeline(config=self.config)
         with pytest.raises(
             AssertionError, match="Pipeline should not be run without input connector"
@@ -649,12 +646,18 @@ class TestPipelineWithActualInput:
             pipeline.run()
 
     def test_process_pipeline_raises_assertion_when_no_input_connector_is_set(self):
-        del self.config["input"]
+        self.config.input = {}
         pipeline = Pipeline(config=self.config)
         with pytest.raises(
             AssertionError, match="Run process_pipeline only with an valid input connector"
         ):
             pipeline.process_pipeline()
+
+    def test_stop_sets_continue_iterating_to_false(self):
+        pipeline = Pipeline(config=self.config)
+        pipeline._continue_iterating.value = True
+        pipeline.stop()
+        assert not pipeline._continue_iterating.value
 
 
 class TestMultiprocessingPipeline(ConfigurationForTests):
@@ -685,22 +688,6 @@ class TestMultiprocessingPipeline(ConfigurationForTests):
         children_after = active_children()
 
         assert len(children_after) == (len(children_running) - 1)
-
-    def test_enable_iteration_sets_iterate_to_true_stop_to_false(self):
-        pipeline = MultiprocessingPipeline(
-            pipeline_index=1,
-            config=self.logprep_config,
-            log_queue=mock.MagicMock(),
-            lock=self.lock,
-            used_server_ports=mock.MagicMock(),
-        )
-        assert not pipeline._iterate()
-
-        pipeline._enable_iteration()
-        assert pipeline._iterate()
-
-        pipeline.stop()
-        assert not pipeline._iterate()
 
     def test_graceful_shutdown_of_pipeline_on_source_disconnected_error(self, capfd):
         pipeline = MultiprocessingPipeline(
