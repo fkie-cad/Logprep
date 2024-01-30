@@ -10,6 +10,7 @@ from unittest import mock
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
+from logprep.util.configuration import Configuration
 
 LOGGER = logging.getLogger()
 

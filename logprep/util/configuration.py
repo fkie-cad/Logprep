@@ -110,6 +110,8 @@ class Configuration:
     """Metrics configuration. Defaults to `{"enabled": False, "port": 8000}`."""
     profile_pipelines: bool = field(default=False, eq=False)
     """Start the profiler to profile the pipeline. Defaults to `False`."""
+    print_auto_test_stack_trace: bool = field(default=False, eq=False)
+    """Print stack trace when auto test fails. Defaults to `False`."""
 
     _getter: Getter = field(
         validator=validators.instance_of(Getter),

@@ -186,15 +186,15 @@ class TestRunLogprepCli:
 
     @mock.patch("logprep.util.rule_dry_runner.DryRunner.run")
     def test_test_dry_run_starts_dry_runner(self, mock_dry_runner):
-        config_path = "tests/testdata/config/config.yml"
+        config_path = ("tests/testdata/config/config.yml",)
         events_path = "quickstart/exampledata/input_logdata/test_input.jsonl"
-        result = self.cli_runner.invoke(cli, ["test", "dry-run", config_path, events_path])
+        result = self.cli_runner.invoke(cli, ["test", "dry-run", *config_path, events_path])
         assert result.exit_code == 0
         mock_dry_runner.assert_called()
 
     @mock.patch("logprep.util.auto_rule_tester.auto_rule_tester.AutoRuleTester.run")
     def test_test_rules_starts_auto_rule_tester(self, mock_tester):
-        config_path = ("tests/testdata/config/config.yml",)
+        config_path = "tests/testdata/config/config.yml"
         result = self.cli_runner.invoke(cli, ["test", "unit", config_path])
         assert result.exit_code == 0
         mock_tester.assert_called()
