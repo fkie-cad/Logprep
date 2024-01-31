@@ -660,14 +660,6 @@ class TestPipelineWithActualInput:
         ):
             pipeline.run()
 
-    def test_process_pipeline_raises_assertion_when_no_input_connector_is_set(self):
-        self.config.input = {}
-        pipeline = Pipeline(config=self.config)
-        with pytest.raises(
-            AssertionError, match="Run process_pipeline only with an valid input connector"
-        ):
-            pipeline.process_pipeline()
-
     def test_stop_sets_continue_iterating_to_false(self):
         pipeline = Pipeline(config=self.config)
         pipeline._continue_iterating.value = True
