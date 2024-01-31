@@ -1,4 +1,98 @@
-"""This module is used to create the configuration for the runner."""
+"""
+Configuration File
+==================
+
+Configuration is done via YAML or JSON files or http api ressources.
+Logprep searches for the file :code:`/etc/logprep/pipeline.yml` if no
+configuration file is passed.
+
+You can pass multiple configuration files via valid file paths or urls.
+
+..  code-block:: bash
+
+    logprep run /different/path/file.yml
+
+or
+
+..  code-block:: bash
+    
+    logprep run http://url-to-our-yaml-file-or-api
+
+or
+
+..  code-block:: bash
+    
+    logprep run \
+        http://api/v1/pipeline \
+        http://api/v1/addition_processor_pipline \
+        /path/to/conector.yaml
+
+The options under :code:`input`, :code:`output` and :code:`pipeline` are passed
+to factories in Logprep.
+They contain settings for each separate processor and connector.
+Details for configuring connectors are described in
+:ref:`output` and :ref:`input` and for processors in :ref:`processors` .
+General information about the configuration of the pipeline can be found
+in :ref:`pipeline_config` .
+
+It is possible to use environment variables in all configuration
+and rules files in all places.
+Environment variables have to be set in uppercase and prefixed
+with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or
+:code:`CI_`. Lowercase variables are ignored. Forbidden
+variable names are: :code:`["LOGPREP_LIST"]`
+
+The following config file will be valid by setting the given environment variables:
+
+..  code-block:: yaml
+    :caption: pipeline.yml config file
+
+    version: $LOGPREP_VERSION
+    process_count: $LOGPREP_PROCESS_COUNT
+    timeout: 0.1
+    logger:
+        level: $LOGPREP_LOG_LEVEL
+    $LOGPREP_PIPELINE
+    $LOGPREP_INPUT
+    $LOGPREP_OUTPUT
+
+
+.. code-block:: bash
+    :caption: setting the bash environment variables
+
+    export LOGPREP_VERSION="1"
+    export LOGPREP_PROCESS_COUNT="1"
+    export LOGPREP_LOG_LEVEL="DEBUG"
+    export LOGPREP_PIPELINE="
+    pipeline:
+        - labelername:
+            type: labeler
+            schema: quickstart/exampledata/rules/labeler/schema.json
+            include_parent_labels: true
+            specific_rules:
+                - quickstart/exampledata/rules/labeler/specific
+            generic_rules:
+                - quickstart/exampledata/rules/labeler/generic"
+    export LOGPREP_OUTPUT="
+    output:
+        kafka:
+            type: confluentkafka_output
+            topic: producer
+            error_topic: producer_error
+            flush_timeout: 30
+            send_timeout: 2
+            kafka_config:
+                bootstrap.servers: localhost:9092"
+    export LOGPREP_INPUT="
+    input:
+        kafka:
+            type: confluentkafka_input
+            topic: consumer
+            offset_reset_policy: smallest
+            kafka_config:
+                bootstrap.servers: localhost:9092
+                group.id: test"
+"""
 
 import json
 import os
@@ -107,7 +201,15 @@ class Configuration:
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
     """Pipeline configuration. Defaults to `[]`."""
     metrics: dict = field(
-        validator=validators.instance_of(dict), default={"enabled": False, "port": 8000}, eq=False
+        validator=[
+            validators.instance_of(dict),
+            validators.deep_mapping(
+                key_validator=validators.in_(("enabled", "port")),
+                value_validator=validators.instance_of((int, bool)),
+            ),
+        ],
+        default={"enabled": False, "port": 8000},
+        eq=False,
     )
     """Metrics configuration. Defaults to `{"enabled": False, "port": 8000}`."""
     profile_pipelines: bool = field(default=False, eq=False)

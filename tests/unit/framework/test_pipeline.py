@@ -28,7 +28,6 @@ from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.configuration import Configuration
-from logprep.util.getter import GetterFactory
 
 original_create = Factory.create
 
@@ -44,7 +43,7 @@ class ConfigurationForTests:
                 {"mock_processor1": {"proc": "conf"}},
                 {"mock_processor2": {"proc": "conf"}},
             ],
-            "metrics": {"period": 300, "enabled": False},
+            "metrics": {"enabled": False},
         }
     )
     lock = Lock()

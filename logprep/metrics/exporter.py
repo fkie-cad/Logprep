@@ -15,7 +15,6 @@ class PrometheusExporter:
         self._logger.debug("Initializing Prometheus Exporter")
         self.configuration = status_logger_config
         self._port = status_logger_config.get("port", 8000)
-        self._prepare_multiprocessing()
 
     def _prepare_multiprocessing(self):
         """
@@ -50,6 +49,7 @@ class PrometheusExporter:
 
     def run(self):
         """Starts the default prometheus http endpoint"""
+        self._prepare_multiprocessing()
         start_http_server(self._port)
         self._logger.info(f"Prometheus Exporter started on port {self._port}")
         self.is_running = True

@@ -46,7 +46,6 @@ class PipelineManager:
         """Number of failed pipelines"""
 
     def __init__(self, configuration: Configuration):
-        self.prometheus_exporter = None
         self.metrics = self.Metrics(labels={"component": "manager"})
         self._logger = logging.getLogger("Logprep PipelineManager")
         self.log_queue = multiprocessing.Queue(-1)
@@ -61,6 +60,8 @@ class PipelineManager:
         prometheus_config = self._configuration.metrics
         if prometheus_config.get("enabled", False):
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
+        else:
+            self.prometheus_exporter = None
         manager = multiprocessing.Manager()
         self._used_server_ports = manager.dict()
 
