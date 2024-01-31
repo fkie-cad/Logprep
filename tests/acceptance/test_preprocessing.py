@@ -1,9 +1,11 @@
 # pylint: disable=missing-docstring
 # pylint: disable=no-self-use
 from logging import DEBUG, basicConfig, getLogger
+from pathlib import Path
 
 import pytest
 
+from logprep.util.configuration import Configuration
 from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import get_default_logprep_config, get_test_output
 
@@ -12,7 +14,7 @@ logger = getLogger("Logprep-Test")
 
 
 @pytest.fixture(name="config")
-def get_config():
+def get_config() -> Configuration:
     pipeline = [
         {
             "dissector": {
@@ -26,17 +28,17 @@ def get_config():
 
 
 class TestVersionInfoTargetField:
-    def test_preprocessor_adds_version_information(self, tmp_path, config):
-        config["input"]["jsonl"].update(
+    def test_preprocessor_adds_version_information(self, tmp_path: Path, config: Configuration):
+        config.input["jsonl"].update(
             {
                 "documents_path": "tests/testdata/input_logdata/selective_extractor_events.jsonl",
                 "preprocessing": {"version_info_target_field": "version_info"},
             }
         )
 
-        config_path = str(tmp_path / "generated_config.yml")
-        dump_config_as_file(config_path, config)
-        test_output, _, __ = get_test_output(config_path)
+        config_path = tmp_path / "generated_config.yml"
+        config_path.write_text(config.as_yaml())
+        test_output, _, __ = get_test_output(str(config_path))
         assert test_output, "should not be empty"
         processed_event = test_output[0]
         assert processed_event.get("version_info", {}).get(

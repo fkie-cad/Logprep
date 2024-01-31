@@ -4,7 +4,8 @@ from os import path
 
 import pytest
 
-from logprep.util.json_handling import dump_config_as_file, parse_jsonl
+from logprep.util.configuration import Configuration
+from logprep.util.json_handling import parse_jsonl
 from tests.acceptance.util import (
     get_default_logprep_config,
     get_difference,
@@ -35,7 +36,7 @@ def get_config():
     return get_default_logprep_config(pipeline, with_hmac=False)
 
 
-def test_events_pseudonymized_correctly(tmp_path, config):
+def test_events_pseudonymized_correctly(tmp_path, config: Configuration):
     expected_output_file_name = "pseudonymized_win_event_log.jsonl"
     expected_output_path = path.join(
         "tests/testdata/acceptance/expected_result", expected_output_file_name
@@ -48,19 +49,17 @@ def test_events_pseudonymized_correctly(tmp_path, config):
         event for event in expected_output if "pseudonym" in event.keys()
     ]
 
-    config["input"]["jsonl"][
-        "documents_path"
-    ] = "tests/testdata/input_logdata/wineventlog_raw.jsonl"
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
+    config.input["jsonl"]["documents_path"] = "tests/testdata/input_logdata/wineventlog_raw.jsonl"
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml())
 
-    logprep_output, logprep_extra_output, logprep_error_output = get_test_output(config_path)
+    logprep_output, logprep_extra_output, logprep_error_output = get_test_output(str(config_path))
     assert logprep_output, "should not be empty"
     assert len(logprep_error_output) == 0, "There shouldn't be any logprep errors"
     result = get_difference(logprep_output, expected_logprep_outputs)
     assert (
         result["difference"][0] == result["difference"][1]
-    ), "Missmatch in event at line {}!".format(result["event_line_no"])
+    ), f"Missmatch in event at line {result['event_line_no']}!"
 
     # FIXME: Test is only testing for the logprep outputs with the pseudonym inside, but not the
     #   extra outputs.

@@ -178,7 +178,7 @@ def get_patched_runner(config_path):
     return runner
 
 
-def get_test_output(config_path):
+def get_test_output(config_path) -> list[dict]:
     patched_runner = get_patched_runner(config_path)
     return get_runner_outputs(patched_runner=patched_runner)
 
@@ -206,7 +206,7 @@ class TmpFileProducerMock:
         ...
 
 
-def get_default_logprep_config(pipeline_config, with_hmac=True):
+def get_default_logprep_config(pipeline_config, with_hmac=True) -> Configuration:
     config_yml = {
         "version": "1",
         "process_count": 1,
@@ -239,7 +239,7 @@ def get_default_logprep_config(pipeline_config, with_hmac=True):
             }
         }
 
-    return config_yml
+    return Configuration(**config_yml)
 
 
 def start_logprep(config_path: str, env: dict = None) -> subprocess.Popen:

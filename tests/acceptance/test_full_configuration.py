@@ -6,7 +6,6 @@ from pathlib import Path
 
 import requests
 
-from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import (
     HTTPServerForTesting,
     convert_to_http_config,
@@ -25,9 +24,9 @@ def teardown_function():
 def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
     pipeline = get_full_pipeline(exclude=["normalizer"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
-    config.get("output").update({"kafka": {"type": "dummy_output", "default": False}})
-    config_path = str(tmp_path / "generated_config.yml")
-    dump_config_as_file(config_path, config)
+    config.output.update({"kafka": {"type": "dummy_output", "default": False}})
+    config_path = tmp_path / "generated_config.yml"
+    config_path.write_text(config.as_yaml(), encoding="utf-8")
     proc = start_logprep(config_path)
     output = proc.stdout.readline().decode("utf8")
     while True:
@@ -44,20 +43,20 @@ def test_start_of_logprep_with_full_configuration_from_file(tmp_path):
 def test_start_of_logprep_with_full_configuration_http():
     pipeline = get_full_pipeline(exclude=["normalizer"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
-    config.get("output").update({"kafka": {"type": "dummy_output", "default": False}})
+    config.output.update({"kafka": {"type": "dummy_output", "default": False}})
     endpoint = "http://localhost:32000"
     config = convert_to_http_config(config, endpoint)
-    config_path = "generated_config.yml"
-    dump_config_as_file(config_path, config)
+    config_path = Path("generated_config.yml")
+    config_path.write_text(config.as_yaml(), encoding="utf-8")
     with HTTPServerForTesting.run_in_thread():
-        proc = start_logprep(f"{endpoint}/{config_path}")
+        proc = start_logprep(f"{endpoint}/{str(config_path)}")
         output = proc.stdout.readline().decode("utf8")
         while True:
-            assert not re.search("Invalid", output)
-            assert not re.search("Exception", output)
-            assert not re.search("critical", output)
-            assert not re.search("Error", output)
-            assert not re.search("ERROR", output)
+            assert not re.search("Invalid", output), output
+            assert not re.search("Exception", output), output
+            assert not re.search("critical", output), output
+            assert not re.search("Error", output), output
+            assert not re.search("ERROR", output), output
             if re.search("Startup complete", output):
                 break
             output = proc.stdout.readline().decode("utf8")
@@ -124,31 +123,29 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
     # normalizer is excluded because of deprecation
     pipeline = get_full_pipeline(exclude=["requester", "selective_extractor", "normalizer"])
     config = get_default_logprep_config(pipeline, with_hmac=False)
-    config |= {
-        "version": "my_custom_version",
-        "config_refresh_interval": 300,
-        "metrics": {"enabled": True, "port": 8000},
-        "input": {
-            "fileinput": {
-                "type": "file_input",
-                "logfile_path": str(input_file_path),
-                "start": "begin",
-                "interval": 1,
-                "watch_file": True,
-            }
+    config.version = "my_custom_version"
+    config.config_refresh_interval = 300
+    config.metrics = {"enabled": True, "port": 8000}
+    config.input = {
+        "fileinput": {
+            "type": "file_input",
+            "logfile_path": str(input_file_path),
+            "start": "begin",
+            "interval": 1,
+            "watch_file": True,
+        }
+    }
+    config.output = {
+        "kafka": {  # the name has to be kafka for some default rules
+            "type": "console_output",
         },
-        "output": {
-            "kafka": {  # the name has to be kafka for some default rules
-                "type": "console_output",
-            },
-            "second_output": {
-                "type": "console_output",
-            },
+        "second_output": {
+            "type": "console_output",
         },
     }
-    config_path = str(tmp_path / "generated_config.yml")
+    config_path = tmp_path / "generated_config.yml"
     # duplicate one processor to test that rule metrics are separated by processor names and not by type
-    config["pipeline"].append(
+    config.pipeline.append(
         {
             "calculator2": {
                 "generic_rules": ["tests/testdata/unit/calculator/generic_rules"],
@@ -157,7 +154,7 @@ def test_logprep_exposes_prometheus_metrics(tmp_path):
             }
         }
     )
-    dump_config_as_file(config_path, config)
+    config_path.write_text(config.as_yaml(), encoding="utf-8")
     proc = start_logprep(config_path, env={"PROMETHEUS_MULTIPROC_DIR": tmp_path})
     input_file_path.write_text("user root logged in\n", encoding="utf8")
     while True:
