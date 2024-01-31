@@ -593,33 +593,25 @@ pipeline:
                 None,
             ),
             (
-                "invalid datatype in port is tolerated",
+                "invalid datatype in port",
                 {"enabled": True, "port": "8000"},
-                None,
+                TypeError,
             ),
             (
                 "unknown option",
                 {"enabled": True, "port": 8000, "unknown_option": "foo"},
-                InvalidConfigurationError,
+                ValueError,
             ),
         ],
     )
     def test_verify_metrics_config(
         self, metrics_config_dict, raised_error, test_case
     ):  # pylint: disable=unused-argument
-        config = Configuration()
-        config.metrics = metrics_config_dict
-        config.output = {"dummy": {"type": "dummy_output"}}
-        config.input = {"dummy": {"type": "dummy_input", "documents": []}}
-        if raised_error is not None:
-            try:
-                config.verify()
-            except InvalidConfigurationErrors as error:
-                assert any(
-                    (isinstance(error, raised_error) for error in error.errors)
-                ), f"No '{raised_error.__name__}' raised for test case '{test_case}'!"
+        if raised_error is None:
+            _ = Configuration(**{"metrics": metrics_config_dict})
         else:
-            config.verify()
+            with pytest.raises(raised_error):
+                _ = Configuration(**{"metrics": metrics_config_dict})
 
     def test_reload_reloads_complete_config(self, tmp_path):
         config_path = tmp_path / "pipeline.yml"

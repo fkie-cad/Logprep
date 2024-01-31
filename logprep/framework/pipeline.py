@@ -13,7 +13,7 @@ import multiprocessing
 import queue
 import warnings
 from ctypes import c_bool
-from functools import cached_property
+from functools import cached_property, partial
 from multiprocessing import Lock, Value, current_process
 from typing import Any, List, Tuple
 
@@ -41,6 +41,7 @@ from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.configuration import Configuration
+from logprep.util.pipeline_profiler import PipelineProfiler
 
 
 def _handle_pipeline_error(func):
@@ -180,6 +181,8 @@ class Pipeline:
         self.pipeline_index = pipeline_index
         self._encoder = msgspec.msgpack.Encoder()
         self._decoder = msgspec.msgpack.Decoder()
+        if self._logprep_config.profile_pipelines:
+            self.run = partial(PipelineProfiler.profile_function, self.run)
 
     @_handle_pipeline_error
     def _setup(self):
