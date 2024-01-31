@@ -14,7 +14,7 @@ import queue
 import warnings
 from ctypes import c_bool
 from functools import cached_property
-from multiprocessing import Lock, Process, Value, current_process
+from multiprocessing import Lock, Value, current_process
 from typing import Any, List, Tuple
 
 import attrs
@@ -41,7 +41,6 @@ from logprep.factory import Factory
 from logprep.metrics.metrics import HistogramMetric, Metric
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.util.configuration import Configuration
-from logprep.util.pipeline_profiler import PipelineProfiler
 
 
 def _handle_pipeline_error(func):

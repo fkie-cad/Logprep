@@ -8,7 +8,7 @@ import multiprocessing
 from attr import define, field
 
 from logprep.abc.component import Component
-from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline
+from logprep.framework.pipeline import Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
@@ -137,7 +137,7 @@ class PipelineManager:
         if not self.prometheus_exporter.is_running:
             self.prometheus_exporter.run()
 
-    def _create_pipeline(self, index) -> MultiprocessingPipeline:
+    def _create_pipeline(self, index) -> multiprocessing.Process:
         pipeline = Pipeline(
             pipeline_index=index,
             config=self._configuration,

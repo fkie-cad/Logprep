@@ -3,7 +3,7 @@
 # pylint: disable=attribute-defined-outside-init
 from copy import deepcopy
 from logging import DEBUG, getLogger
-from multiprocessing import Lock, active_children
+from multiprocessing import Lock
 from unittest import mock
 
 import pytest
@@ -15,7 +15,6 @@ from logprep.abc.input import (
     CriticalInputParsingError,
     FatalInputError,
     InputWarning,
-    SourceDisconnectedWarning,
 )
 from logprep.abc.output import (
     CriticalOutputError,
@@ -24,7 +23,7 @@ from logprep.abc.output import (
     OutputWarning,
 )
 from logprep.factory import Factory
-from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline
+from logprep.framework.pipeline import Pipeline
 from logprep.processor.base.exceptions import ProcessingCriticalError, ProcessingWarning
 from logprep.processor.deleter.rule import DeleterRule
 from logprep.util.configuration import Configuration
