@@ -4,21 +4,21 @@ import responses
 
 from logprep.event_generator.http.output import Output
 
-TARGET_DOMAIN = "https://www.test.de"
+TARGET_URL = "https://www.test.de"
 
 
 @pytest.fixture(name="output")
 def get_output():
-    config = {"target_domain": TARGET_DOMAIN, "user": "user", "password": "password"}
+    config = {"target_url": TARGET_URL, "user": "user", "password": "password"}
     return Output(config=config)
 
 
 class TestOutput:
     @responses.activate
     def test_one_repeat(self, output):
-        responses.add(responses.POST, f"{TARGET_DOMAIN}/123", status=200)
+        responses.add(responses.POST, f"{TARGET_URL}/123", status=200)
         events_string = """[{"event1_key": "event1_value"}\n{"event2_key": "event2_value"}]"""
-        batch = (f"{TARGET_DOMAIN}/123", events_string)
+        batch = (f"{TARGET_URL}/123", events_string)
         statistics = output.send(batch)
         assert isinstance(statistics.get("Batch send time"), float)
         assert statistics.get("Batch send time") > 0
@@ -31,9 +31,9 @@ class TestOutput:
 
     @responses.activate
     def test_404_status_code(self, output):
-        responses.add(responses.POST, f"{TARGET_DOMAIN}/123", status=404)
+        responses.add(responses.POST, f"{TARGET_URL}/123", status=404)
         events_string = """[{"event1_key": "event1_value"}\n{"event2_key": "event2_value"}]"""
-        batch = (f"{TARGET_DOMAIN}/123", events_string)
+        batch = (f"{TARGET_URL}/123", events_string)
         statistics = output.send(batch)
         assert isinstance(statistics.get("Batch send time"), float)
         assert statistics.get("Batch send time") > 0

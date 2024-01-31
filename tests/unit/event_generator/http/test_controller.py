@@ -13,7 +13,7 @@ from tests.unit.event_generator.http.util import create_test_event_files
 
 class TestController:
     def setup_method(self):
-        self.target_domain = "http://testendpoint"
+        self.target_url = "http://testendpoint"
         self.batch_size = 10
         self.contoller = Controller(
             input_dir="",
@@ -21,7 +21,7 @@ class TestController:
             replace_timestamp=True,
             tag="testdata",
             report=True,
-            target_domain=self.target_domain,
+            target_url=self.target_url,
             user="test-user",
             password="pass",
             thread_count=1,
@@ -63,12 +63,8 @@ class TestController:
         self.contoller.input.temp_dir = tmp_path / "tmp_input_file"  # Mock temp dir for test
         os.makedirs(self.contoller.input._temp_dir, exist_ok=True)
         expected_status_code = 200
-        responses.add(
-            responses.POST, f"{self.target_domain}/target-one", status=expected_status_code
-        )
-        responses.add(
-            responses.POST, f"{self.target_domain}/target-two", status=expected_status_code
-        )
+        responses.add(responses.POST, f"{self.target_url}/target-one", status=expected_status_code)
+        responses.add(responses.POST, f"{self.target_url}/target-two", status=expected_status_code)
         statistics = self.contoller.run()
         total_events = class_one_number_events + class_two_number_events
         assert "Batch send time" in statistics
@@ -84,11 +80,11 @@ class TestController:
         for call_id, call in enumerate(responses.calls):
             if call_id < (class_one_number_events / self.batch_size):
                 assert (
-                    call.request.url == f"{self.target_domain}/target-one"
+                    call.request.url == f"{self.target_url}/target-one"
                 ), f"Call {call_id} has wrong target"
             else:
                 assert (
-                    call.request.url == f"{self.target_domain}/target-two"
+                    call.request.url == f"{self.target_url}/target-two"
                 ), f"Call {call_id} has wrong target"
             expected_http_header = "application/x-ndjson; charset=utf-8"
             assert call.request.headers.get("Content-Type") == expected_http_header
@@ -102,7 +98,7 @@ class TestController:
             replace_timestamp=True,
             tag="testdata",
             report=True,
-            target_domain=self.target_domain,
+            target_url=self.target_url,
             user="test-user",
             password="pass",
             thread_count=2,

@@ -62,7 +62,7 @@ class Output:
             self.log.error(error)
         except requests.exceptions.MissingSchema as error:
             raise ConnectionError(
-                f"No schema set in target-domain: {self.config.get('target_domain')}"
+                f"No schema set in target-url: {self.config.get('target_url')}"
             ) from error
         except requests.exceptions.ReadTimeout as error:
             stats = {"Requests Timeout": 1, "Events Timeout": number_events}

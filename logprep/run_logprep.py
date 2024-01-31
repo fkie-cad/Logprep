@@ -212,8 +212,9 @@ def generate_kafka(config, file):
 @generate.command(name="http")
 @click.option("--input-dir", help="Path to the root input directory", required=True, type=str)
 @click.option(
-    "--target-domain",
-    help="Target domain where the events should be send to",
+    "--target-url",
+    help="Target root url where all events should be send to. The specific path of each log class "
+    "will be appended to it, resulting in the complete url that should be used as an endpoint.",
     required=True,
     type=str,
 )

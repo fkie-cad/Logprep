@@ -14,7 +14,7 @@ from logprep.event_generator.http.reporter import Reporter
 
 class TestReporter:
     def setup_method(self):
-        self.target_domain = "http://testendpoint"
+        self.target_url = "http://testendpoint"
         self.args = {
             "input_dir": "",
             "batch_size": 10,
@@ -22,7 +22,7 @@ class TestReporter:
             "repeats": 1,
             "tag": "testdata",
             "report": True,
-            "target_domain": self.target_domain,
+            "target_url": self.target_url,
             "user": "test-user",
             "password": "pass",
         }

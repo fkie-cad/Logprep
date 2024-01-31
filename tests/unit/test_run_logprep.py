@@ -309,7 +309,7 @@ class TestGeneratorCLI:
                 "http",
                 "--input-dir",
                 "/some-path",
-                "--target-domain",
+                "--target-url",
                 "some-domain",
                 "--user",
                 "user",
@@ -320,7 +320,7 @@ class TestGeneratorCLI:
         assert result.exit_code == 0
         mock_controller_class.assert_called_with(
             input_dir="/some-path",
-            target_domain="some-domain",
+            target_url="some-domain",
             user="user",
             password="password",
             batch_size=500,
@@ -345,7 +345,7 @@ class TestGeneratorCLI:
                 "http",
                 "--input-dir",
                 "/some-path",
-                "--target-domain",
+                "--target-url",
                 "some-domain",
                 "--user",
                 "user",
@@ -372,7 +372,7 @@ class TestGeneratorCLI:
         assert result.exit_code == 0
         mock_generator.assert_called_with(
             input_dir="/some-path",
-            target_domain="some-domain",
+            target_url="some-domain",
             user="user",
             password="password",
             batch_size=1000,

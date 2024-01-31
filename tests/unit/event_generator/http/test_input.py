@@ -16,9 +16,9 @@ from tests.unit.event_generator.http.util import create_test_event_files
 
 class TestInput:
     def setup_method(self):
-        self.test_domain = "https://testdomain.de"
+        self.test_url = "https://testdomain.de"
         config = {
-            "target_domain": self.test_domain,
+            "target_url": self.test_url,
             "input_root_path": "",
             "batch_size": 50,
             "replace_timestamp": True,
@@ -171,10 +171,10 @@ class TestInput:
         loader = self.input.load()
         target, events = next(loader)
         assert len(events.splitlines()) == 50
-        assert target == f"{self.test_domain}/target-one"
+        assert target == f"{self.test_url}/target-one"
         target, events = next(loader)
         assert len(events.splitlines()) == 50
-        assert target == f"{self.test_domain}/target-two"
+        assert target == f"{self.test_url}/target-two"
 
     @pytest.mark.parametrize(
         "config, expected_error, error_message",
@@ -289,7 +289,7 @@ class TestInput:
         self.input.reformat_dataset()
         event_id = 0
         previous_event_id = -1  # count through event id's and check if they always increase
-        expected_target = f"{self.test_domain}/target-class-one"
+        expected_target = f"{self.test_url}/target-class-one"
         for batch in self.input.load():
             target, events = batch
             assert target == expected_target
@@ -301,7 +301,7 @@ class TestInput:
                 previous_event_id = event_id
             if event_id == 149:  # end of first log class reached (resetting for second class)
                 previous_event_id = -1
-                expected_target = f"{self.test_domain}/target-class-two"
+                expected_target = f"{self.test_url}/target-class-two"
 
     def test_load_returns_event_in_shuffled_order(self, tmp_path):
         example_event = {"some": "event"}
@@ -379,7 +379,7 @@ class TestInput:
         self, tmp_path
     ):
         config = {
-            "target_domain": self.test_domain,
+            "target_url": self.test_url,
             "input_root_path": "",
             "batch_size": 77,  # take an odd number so the batchsize will exceed the event limit
             "replace_timestamp": True,
