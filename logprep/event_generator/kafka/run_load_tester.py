@@ -13,7 +13,7 @@ class LoadTester:
 
     def __init__(self, config, file):
         self.config = Path(config)
-        self.file = file
+        self.file = Path(file) if file is not None else None
 
     def run(self):
         """Start function for the load-tester"""

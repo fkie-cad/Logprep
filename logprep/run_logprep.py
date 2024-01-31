@@ -196,7 +196,9 @@ def generate():
 
 @generate.command(name="kafka")
 @click.argument("config")
-@click.option("--file", help="Path to file with documents", default=False, is_flag=True)
+@click.option(
+    "--file", help="Path to file with documents", default=None, type=click.Path(exists=True)
+)
 def generate_kafka(config, file):
     """
     Generate events by taking them from kafka or a jsonl file and sending them to Kafka.
