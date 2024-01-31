@@ -329,35 +329,3 @@ class Pipeline:
         self.logger.debug(f"Stopping pipeline ({self._process_name})")
         with self._continue_iterating.get_lock():
             self._continue_iterating.value = False
-
-
-class MultiprocessingPipeline(Process, Pipeline):
-    """A thread-safe Pipeline for multiprocessing."""
-
-    def __init__(
-        self,
-        pipeline_index: int,
-        config: Configuration,
-        log_queue: multiprocessing.Queue,
-        lock: Lock,
-        used_server_ports: dict,
-    ) -> None:
-        self._profile = config.profile_pipelines
-
-        Pipeline.__init__(
-            self,
-            pipeline_index=pipeline_index,
-            config=config,
-            log_queue=log_queue,
-            lock=lock,
-            used_server_ports=used_server_ports,
-        )
-        self._continue_iterating = Value(c_bool)
-        Process.__init__(self)
-
-    def run(self) -> None:
-        """Start processing the Pipeline."""
-        if self._profile:
-            PipelineProfiler.profile_function(Pipeline.run, self)
-        else:
-            Pipeline.run(self)

@@ -8,7 +8,7 @@ import multiprocessing
 from attr import define, field
 
 from logprep.abc.component import Component
-from logprep.framework.pipeline import MultiprocessingPipeline
+from logprep.framework.pipeline import MultiprocessingPipeline, Pipeline
 from logprep.metrics.exporter import PrometheusExporter
 from logprep.metrics.metrics import CounterMetric
 from logprep.util.configuration import Configuration
@@ -95,14 +95,13 @@ class PipelineManager:
         while len(self._pipelines) < count:
             new_pipeline_index = len(self._pipelines) + 1
             self._pipelines.append(self._create_pipeline(new_pipeline_index))
-            self._pipelines[-1].start()
             self.metrics.number_of_pipeline_starts += 1
 
     def _decrease_to_count(self, count: int):
         while len(self._pipelines) > count:
-            pipeline = self._pipelines.pop()
-            pipeline.stop()
-            pipeline.join()
+            pipeline_process = self._pipelines.pop()
+            pipeline_process.stop()
+            pipeline_process.join()
             self.metrics.number_of_pipeline_stops += 1
 
     def restart_failed_pipeline(self):
@@ -139,11 +138,15 @@ class PipelineManager:
             self.prometheus_exporter.run()
 
     def _create_pipeline(self, index) -> MultiprocessingPipeline:
-        self._logger.info("Created new pipeline")
-        return MultiprocessingPipeline(
+        pipeline = Pipeline(
             pipeline_index=index,
             config=self._configuration,
             log_queue=self.log_queue,
             lock=self._lock,
             used_server_ports=self._used_server_ports,
         )
+        self._logger.info("Created new pipeline")
+        process = multiprocessing.Process(target=pipeline.run, daemon=True)
+        process.stop = pipeline.stop
+        process.start()
+        return process
