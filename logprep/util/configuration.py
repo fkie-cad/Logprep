@@ -387,9 +387,13 @@ class Configuration:
             missing_env_error = MissingEnvironmentError(", ".join(missing_env_vars))
             raise InvalidConfigurationErrors([missing_env_error])
         if "PROMETHEUS_MULTIPROC_DIR" in os.environ:
-            if not Path(os.environ["PROMETHEUS_MULTIPROC_DIR"]).exists():
+            prometheus_multiproc_path = os.environ["PROMETHEUS_MULTIPROC_DIR"]
+            if not Path(prometheus_multiproc_path).exists():
                 raise InvalidConfigurationError(
-                    "PROMETHEUS_MULTIPROC_DIR is set, but does not exist"
+                    (
+                        "PROMETHEUS_MULTIPROC_DIR is set, but "
+                        f"'{prometheus_multiproc_path}' does not exist"
+                    )
                 )
             return
 

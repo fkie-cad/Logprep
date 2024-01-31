@@ -10,10 +10,12 @@ class PrometheusExporter:
     """Used to control the prometheus exporter and to manage the metrics"""
 
     def __init__(self, status_logger_config):
+        self.is_running = False
         self._logger = getLogger("Prometheus Exporter")
+        self._logger.debug("Initializing Prometheus Exporter")
         self.configuration = status_logger_config
         self._port = status_logger_config.get("port", 8000)
-        # self._prepare_multiprocessing()
+        self._prepare_multiprocessing()
 
     def _prepare_multiprocessing(self):
         """
@@ -50,3 +52,4 @@ class PrometheusExporter:
         """Starts the default prometheus http endpoint"""
         start_http_server(self._port)
         self._logger.info(f"Prometheus Exporter started on port {self._port}")
+        self.is_running = True

@@ -5,7 +5,7 @@ logger:
   level: DEBUG
 
 metrics:
-  enabled: false
+  enabled: true
   port: 8000
 
 pipeline:

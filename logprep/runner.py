@@ -142,9 +142,8 @@ class Runner:
         error occurs.
         """
 
+        self._set_logprep_version_info()
         self._schedule_config_refresh_job()
-        # if self._manager.prometheus_exporter:
-        #     self._manager.prometheus_exporter.run()
         self._manager.restart()
         self._logger.info("Startup complete")
         self._logger.debug("Runner iterating")
@@ -167,10 +166,7 @@ class Runner:
             self._manager.restart()
             self._schedule_config_refresh_job()
             self._logger.info(f"Configuration version: {self._configuration.version}")
-            self.metrics.version_info.add_with_labels(
-                1,
-                {"logprep": f"{get_versions()['version']}", "config": self._configuration.version},
-            )
+            self._set_logprep_version_info()
         except (requests.RequestException, FileNotFoundError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
             self.metrics.number_of_config_refresh_failures += 1
@@ -181,6 +177,12 @@ class Runner:
         except InvalidConfigurationError as error:
             self._logger.error(str(error))
             self.metrics.number_of_config_refresh_failures += 1
+
+    def _set_logprep_version_info(self):
+        self.metrics.version_info.add_with_labels(
+            1,
+            {"logprep": f"{get_versions()['version']}", "config": self._configuration.version},
+        )
 
     def stop(self):
         """Stop the current process"""

@@ -261,3 +261,21 @@ class TestRunner:
         assert not runner._exit_received
         runner.stop()
         assert runner._exit_received
+
+    @mock.patch("logprep.runner.Runner._keep_iterating", new=partial(mock_keep_iterating, 1))
+    def test_start_sets_version_metric(self, runner: Runner):
+        runner._configuration.version = "very custom version"
+        with mock.patch("logprep.metrics.metrics.GaugeMetric.add_with_labels") as mock_add:
+            runner.start()
+        mock_add.assert_called()
+        mock_add.assert_has_calls(
+            (
+                mock.call(
+                    1,
+                    {
+                        "logprep": f"{get_versions()['version']}",
+                        "config": runner._configuration.version,
+                    },
+                ),
+            )
+        )
