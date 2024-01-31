@@ -4,6 +4,7 @@
 import datetime
 import os
 from collections import Counter
+from unittest import mock
 
 import pandas as pd
 import yaml
@@ -92,8 +93,14 @@ class TestReporter:
                 "Batch send time": 0.2,
             }
         )
-        for _ in range(10):
-            self.reporter.update(statistics)
+        # mock time to prevent a flipping test. If the time datapoints jump from one second the
+        # next then the calculation for the "per second" metrics won't be as expected/accurate.
+        with mock.patch("logprep.event_generator.http.reporter.datetime") as mock_now:
+            for i in range(10):
+                mock_now.datetime.now.return_value = datetime.datetime(
+                    year=2024, month=1, day=31, hour=9, minute=29, second=42, microsecond=i
+                )
+                self.reporter.update(statistics)
         self.reporter.set_run_duration(2)
         self.reporter.write_experiment_results()
 
