@@ -145,3 +145,13 @@ class TestPipelineManager:
         self.config.metrics = Metrics(enabled=True, port=8000)
         manager = PipelineManager(self.config)
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)
+
+    def test_stop_closes_log_queue(self):
+        self.manager.log_queue = mock.MagicMock()
+        self.manager.stop()
+        self.manager.log_queue.close.assert_called()
+
+    def test_stop_stops_queue_listener(self):
+        self.manager._queue_listener = mock.MagicMock()
+        self.manager.stop()
+        self.manager._queue_listener.stop.assert_called()
