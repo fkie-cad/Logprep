@@ -18,6 +18,7 @@
 * a do nothing option do dummy output to ensure dummy does not fill memory
 * make the s3 connector raise `FatalOutputError` instead of warnings
 * make the s3 connector blocking by removing threading
+* revert the change from v9.0.0 to always check the existence of a field for negated key-value based lucene filter expressions
 
 ### Bugfix
 
