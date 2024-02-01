@@ -108,7 +108,7 @@ class TestRunLogprepCli:
         assert result.exit_code == 1
         assert "No getter for protocol 'almighty_protocol'" in result.output
 
-    @mock.patch("logprep.util.configuration.Configuration.verify")
+    @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_successfully(self, mock_verify):
         args = ["test", "config", "tests/testdata/config/config.yml"]
         result = self.cli_runner.invoke(cli, args)
@@ -116,7 +116,7 @@ class TestRunLogprepCli:
         mock_verify.assert_called()
         assert "The verification of the configuration was successful" in result.stdout
 
-    @mock.patch("logprep.util.configuration.Configuration.verify")
+    @mock.patch("logprep.util.configuration.Configuration._verify")
     def test_test_config_verifies_configuration_unsuccessfully(self, mock_verify):
         mock_verify.side_effect = InvalidConfigurationError
         args = ["test", "config", "tests/testdata/config/config.yml"]
@@ -223,14 +223,14 @@ class TestRunLogprepCli:
         mock_runner.stop.assert_called()
 
     def test_logprep_exits_on_invalid_configuration(self):
-        with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
+        with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
             mock_verify.side_effect = InvalidConfigurationError
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])
             assert result.exit_code == 1
 
     def test_logprep_exits_on_any_exception_during_verify(self):
-        with mock.patch("logprep.util.configuration.Configuration.verify") as mock_verify:
+        with mock.patch("logprep.util.configuration.Configuration._verify") as mock_verify:
             mock_verify.side_effect = Exception
             config_path = "tests/testdata/config/config.yml"
             result = self.cli_runner.invoke(cli, ["run", config_path])
