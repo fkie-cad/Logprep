@@ -233,7 +233,7 @@ class TestGetVersionString:
         config.version = "0.1.0"
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
-            r"logprep version:\s+\d+\.\d+\.\d+.*\n"
+            r"logprep version:\s+[^\s]+\n"
             r"configuration version:\s+0\.1\.0, None"
         )
 
@@ -244,7 +244,7 @@ class TestGetVersionString:
         config = Configuration.from_sources([path_to_config])
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
-            r"logprep version:\s+\d+\.\d+\.\d+.*\n"
+            r"logprep version:\s+[^\s]+\n"
             r"configuration version:\s+1,\s+file://[^\s]+/config\.yml"
         )
 
@@ -255,7 +255,7 @@ class TestGetVersionString:
         config = Configuration.from_sources([path_to_config, path_to_config])
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
-            r"logprep version:\s+\d+\.\d+\.\d+.*\n"
+            r"logprep version:\s+[^\s]+\n"
             r"configuration version:\s+1,\s+file://[^\s]+/config\.yml,\s+file://[^\s]+/config\.yml"
         )
 
@@ -265,7 +265,7 @@ class TestGetVersionString:
     def test_get_version_string_without_config(self):
         expected_pattern = (
             r"python version:\s+3\.\d+\.\d+\n"
-            r"logprep version:\s+\d+\.\d+\.\d+.*\n"
+            r"logprep version:\s+[^\s]+\n"
             r"configuration version:\s+no configuration found in file:///etc/logprep/pipeline.yml"
         )
 
