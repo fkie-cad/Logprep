@@ -18,6 +18,7 @@
 * a do nothing option do dummy output to ensure dummy does not fill memory
 * make the s3 connector raise `FatalOutputError` instead of warnings
 * make the s3 connector blocking by removing threading
+* revert the change from v9.0.0 to always check the existence of a field for negated key-value based lucene filter expressions
 
 ### Bugfix
 
@@ -80,6 +81,7 @@
   - add lru caching for peudonymizatin of urls
 * improve loading times for the rule tree by optimizing the rule segmentation and sorting
 * add support for python 3.12 and remove support for python 3.9
+* always check the existence of a field for negated key-value based lucene filter expressions
 * add kafka exporter to quickstart setup
 
 ### Bugfix
