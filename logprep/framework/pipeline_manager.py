@@ -58,7 +58,7 @@ class PipelineManager:
         self._lock = multiprocessing.Lock()
         self._used_server_ports = None
         prometheus_config = self._configuration.metrics
-        if prometheus_config.get("enabled", False):
+        if prometheus_config.enabled:
             self.prometheus_exporter = PrometheusExporter(prometheus_config)
         else:
             self.prometheus_exporter = None

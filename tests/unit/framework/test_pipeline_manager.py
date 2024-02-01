@@ -7,7 +7,7 @@ from unittest import mock
 
 from logprep.framework.pipeline_manager import PipelineManager
 from logprep.metrics.exporter import PrometheusExporter
-from logprep.util.configuration import Configuration
+from logprep.util.configuration import Configuration, Metrics
 from tests.testdata.metadata import path_to_config
 
 
@@ -142,6 +142,6 @@ class TestPipelineManager:
             prometheus_exporter_mock.cleanup_prometheus_multiprocess_dir.assert_called()
 
     def test_prometheus_exporter_is_instanciated_if_metrics_enabled(self):
-        self.config.metrics["enabled"] = True
+        self.config.metrics = Metrics(enabled=True, port=8000)
         manager = PipelineManager(self.config)
         assert isinstance(manager.prometheus_exporter, PrometheusExporter)

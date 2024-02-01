@@ -272,8 +272,12 @@ class Configuration:
             except (json.JSONDecodeError, ValueError):
                 config_dict = config_getter.get_yaml()
             config = Configuration(**config_dict, getter=config_getter)
-        except (ScannerError, ValueError, TypeError) as error:
-            raise InvalidConfigurationError(f"Invalid configuration file: {path}") from error
+        except TypeError as error:
+            raise InvalidConfigurationError(f"Invalid configuration file: {path} {error.args[0]}")
+        except (ScannerError, ValueError) as error:
+            raise InvalidConfigurationError(
+                f"Invalid configuration file: {path} {str(error)}"
+            ) from error
         config._configs = (config,)
         return config
 
