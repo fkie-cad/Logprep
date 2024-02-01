@@ -99,7 +99,7 @@ def run(configs: tuple[str], version=None) -> None:
     logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
     for version in get_versions_string(configuration).split("\n"):
         logger.info(version)
-    logger.debug(f'Metric export enabled: {configuration.metrics.get("enabled", False)}')
+    logger.debug(f"Metric export enabled: {configuration.metrics.enabled}")
     logger.debug(f"Config path: {configs}")
     runner = None
     try:
