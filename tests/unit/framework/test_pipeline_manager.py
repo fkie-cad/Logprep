@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
+from copy import deepcopy
 from logging import Logger
 from unittest import mock
 
@@ -110,7 +111,7 @@ class TestPipelineManager:
             failed_pipeline.is_alive = mock.MagicMock()
             failed_pipeline.is_alive.return_value = False
             failed_pipeline.pid = 42
-            self.config.metrics["enabled"] = True
+            self.config.metrics = {"enabled": True, "port": 1234}
             self.config.process_count = 2
             manager = PipelineManager(self.config)
             prometheus_exporter_mock = mock.MagicMock()
@@ -131,9 +132,10 @@ class TestPipelineManager:
 
     def test_stop_calls_prometheus_cleanup_method(self, tmpdir):
         with mock.patch("os.environ", new={"PROMETHEUS_MULTIPROC_DIR": str(tmpdir)}):
-            self.config.metrics["enabled"] = True
+            config = deepcopy(self.config)
+            config.metrics = {"enabled": True, "port": 1234}
             self.config.process_count = 2
-            manager = PipelineManager(self.config)
+            manager = PipelineManager(config)
             prometheus_exporter_mock = mock.MagicMock()
             manager.prometheus_exporter = prometheus_exporter_mock
             manager.stop()

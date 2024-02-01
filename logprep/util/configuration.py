@@ -167,6 +167,12 @@ class MissingEnvironmentError(InvalidConfigurationError):
         super().__init__(f"Environment variable(s) used, but not set: {message}")
 
 
+@define(kw_only=True, frozen=True)
+class Metrics:
+    enabled: bool = field(validator=validators.instance_of(bool), default=False)
+    port: int = field(validator=validators.instance_of(int), default=8000)
+
+
 @define(kw_only=True)
 class Configuration:
     version: str = field(
@@ -209,15 +215,10 @@ class Configuration:
     """Output connector configuration. Defaults to :code:`{}`."""
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
     """Pipeline configuration. Defaults to :code:`[]`."""
-    metrics: dict = field(
-        validator=[
-            validators.instance_of(dict),
-            validators.deep_mapping(
-                key_validator=validators.in_(("enabled", "port")),
-                value_validator=validators.instance_of((int, bool)),
-            ),
-        ],
-        default={"enabled": False, "port": 8000},
+    metrics: Metrics = field(
+        validator=validators.instance_of(Metrics),
+        factory=Metrics,
+        converter=lambda x: Metrics(**x) if isinstance(x, dict) else x,
         eq=False,
     )
     """Metrics configuration. Defaults to :code:`{"enabled": False, "port": 8000}`."""
@@ -470,10 +471,6 @@ class Configuration:
                 self._verify_processor_outputs(processor_config)
             except Exception as error:  # pylint: disable=broad-except
                 errors.append(error)
-        try:
-            self._verify_metrics_config()
-        except Exception as error:  # pylint: disable=broad-except
-            errors.append(error)
         if errors:
             raise InvalidConfigurationErrors(errors)
 
@@ -532,13 +529,3 @@ class Configuration:
                         f"{processor.describe()}: output"
                         f" '{output_name}' does not exist in logprep outputs"
                     )
-
-    def _verify_metrics_config(self):
-        errors = []
-        for key in self.metrics:
-            if key not in ["enabled", "port"]:
-                errors.append(InvalidConfigurationError(f"Unknown metrics option: {key}"))
-        if "enabled" not in self.metrics:
-            errors.append(RequiredConfigurationKeyMissingError("metrics > enabled"))
-        if errors:
-            raise InvalidConfigurationErrors(errors)

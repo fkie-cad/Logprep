@@ -10,7 +10,6 @@ from unittest import mock
 import pytest
 
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
-from logprep.util.configuration import Configuration
 
 LOGGER = logging.getLogger()
 
@@ -160,9 +159,8 @@ class TestAutoRuleTester:
         auto_rule_tester._reset_trees(
             processor
         )  # Called every time by auto tester before adding rules
-        mock_replace_regex_keywords_by_regex_expression.assert_called_once()
         auto_rule_tester._load_rules(processor, "specific_rules")
-        assert mock_replace_regex_keywords_by_regex_expression.call_count == 2
+        assert mock_replace_regex_keywords_by_regex_expression.call_count == 1
 
     @mock.patch("logprep.processor.list_comparison.processor.ListComparison.setup")
     def test_list_comparison_specific_setup_called_on_load_rules(

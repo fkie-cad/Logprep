@@ -13,6 +13,7 @@ from logprep.util.configuration import (
     Configuration,
     InvalidConfigurationError,
     InvalidConfigurationErrors,
+    Metrics,
 )
 from logprep.util.getter import FileGetter
 from tests.testdata.metadata import (
@@ -44,7 +45,7 @@ class TestConfiguration:
             ("pipeline", list, []),
             ("input", dict, {}),
             ("output", dict, {}),
-            ("metrics", dict, {"enabled": False, "port": 8000}),
+            ("metrics", Metrics, Metrics(**{"enabled": False, "port": 8000})),
         ],
     )
     def test_configuration_init(self, attribute, attribute_type, default):
@@ -74,8 +75,16 @@ class TestConfiguration:
             ("process_count", 1, 2),
             ("timeout", 1.0, 2.0),
             ("logger", {"level": "INFO"}, {"level": "DEBUG"}),
-            ("metrics", {"enabled": False, "port": 8000}, {"enabled": True, "port": 9000}),
-            ("metrics", {"enabled": False, "port": 8000}, {"enabled": True, "port": 9000}),
+            (
+                "metrics",
+                Metrics(**{"enabled": False, "port": 8000}),
+                Metrics(**{"enabled": True, "port": 9000}),
+            ),
+            (
+                "metrics",
+                Metrics(**{"enabled": False, "port": 8000}),
+                Metrics(**{"enabled": True, "port": 9000}),
+            ),
         ],
     )
     def test_get_last_value(self, tmp_path, attribute, first_value, second_value):
@@ -601,7 +610,7 @@ pipeline:
             (
                 "unknown option",
                 {"enabled": True, "port": 8000, "unknown_option": "foo"},
-                ValueError,
+                TypeError,
             ),
         ],
     )

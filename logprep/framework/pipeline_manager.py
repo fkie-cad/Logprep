@@ -127,6 +127,7 @@ class PipelineManager:
         if self.prometheus_exporter:
             self.prometheus_exporter.cleanup_prometheus_multiprocess_dir()
         self._queue_listener.stop()
+        self.log_queue.close()
 
     def restart(self):
         """Restarts all pipelines"""
