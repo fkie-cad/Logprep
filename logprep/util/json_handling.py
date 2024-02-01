@@ -34,22 +34,6 @@ def list_json_files_in_directory(directory: str) -> List[str]:
     return valid_file_paths
 
 
-def dump_config_as_file(config_path, config):
-    """
-    Saves a config file based on the given config dictionary.
-
-    Parameters
-    ----------
-    config_path: str
-        The path were the File should be saved
-    config: dict
-        The configuration that should be saved
-    """
-
-    with open(config_path, "w", encoding="utf8") as generated_config_file:
-        safe_dump(config, generated_config_file)
-
-
 def parse_jsonl(jsonl_path):
     """
     Read and parse all json events from a given jsonl file.
