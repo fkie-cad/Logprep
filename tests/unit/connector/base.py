@@ -555,4 +555,5 @@ class BaseOutputTestCase(BaseConnectorTestCase):
     def test_store_calls_batch_finished_callback(self):
         self.object.input_connector = mock.MagicMock()
         self.object.store({"message": "my event message"})
-        self.object.input_connector.batch_finished_callback.assert_called()
+        if self.object.handles_backlog:
+            self.object.input_connector.batch_finished_callback.assert_called()

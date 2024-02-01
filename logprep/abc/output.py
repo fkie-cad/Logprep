@@ -53,9 +53,10 @@ class Output(Connector):
         But this output can be called as output for extra_data.
         """
 
-    __slots__ = {"input_connector"}
+    __slots__ = {"input_connector", "handles_backlog"}
 
     input_connector: Optional[Input]
+    handles_backlog: bool
 
     @property
     def default(self):
@@ -75,6 +76,7 @@ class Output(Connector):
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self.input_connector = None
+        self.handles_backlog = True
 
     @abstractmethod
     def store(self, document: dict) -> Optional[bool]:

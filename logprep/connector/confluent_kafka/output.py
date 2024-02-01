@@ -24,18 +24,18 @@ Example
             request.required.acks: -1
             queue.buffering.max.ms: 0.5
 """
-
 import json
 from datetime import datetime
 from functools import cached_property, partial
+from logging import Logger
 from socket import getfqdn
 from typing import Optional
 
 from attrs import define, field, validators
-from confluent_kafka import KafkaException, Producer
+from confluent_kafka import KafkaException, Producer, Message
 
 from logprep.abc.output import CriticalOutputError, FatalOutputError, Output
-from logprep.metrics.metrics import GaugeMetric, Metric
+from logprep.metrics.metrics import GaugeMetric, Metric, CounterMetric
 from logprep.util.validators import keys_in_validator
 
 DEFAULTS = {
@@ -138,6 +138,13 @@ class ConfluentKafkaOutput(Output):
         )
         """Total number of message bytes (including framing, such as per-Message framing and
         MessageSet/batch framing) transmitted to Kafka brokers"""
+        number_of_successfully_delivered_events: CounterMetric = field(
+            factory=lambda: CounterMetric(
+                description="Number of events that were successfully delivered to Kafka",
+                name="number_of_successfully_delivered_events",
+            )
+        )
+        """Number of events that were successfully delivered to Kafka"""
 
     @define(kw_only=True, slots=False)
     class Config(Output.Config):
@@ -147,6 +154,8 @@ class ConfluentKafkaOutput(Output):
         error_topic: str
         flush_timeout: float
         send_timeout: int = field(validator=validators.instance_of(int), default=0)
+        delivered_callback_frequency: int = field(validator=validators.instance_of(int), default=1)
+        """ (Optional) count of delivered messages before batch_finished_callback is called."""
         kafka_config: Optional[dict] = field(
             validator=[
                 validators.instance_of(dict),
@@ -170,6 +179,11 @@ class ConfluentKafkaOutput(Output):
             :template: defaults-renderer.tmpl
 
         """
+
+    def __init__(self, name: str, configuration: "ConfluentKafkaOutput.Config", logger: Logger):
+        super().__init__(name, configuration, logger)
+        self.handles_backlog = False
+        self._delivered_cnt = 0
 
     @cached_property
     def _producer(self):
@@ -233,25 +247,20 @@ class ConfluentKafkaOutput(Output):
         return f"{base_description} - Kafka Output: {self._config.kafka_config.get('bootstrap.servers')}"
 
     def store(self, document: dict) -> Optional[bool]:
-        """Store a document in the producer topic.
+        """Store a document in the configured producer topic.
 
         Parameters
         ----------
         document : dict
            Document to store.
 
-        Returns
-        -------
-        Returns True to inform the pipeline to call the batch_finished_callback method in the
-        configured input
         """
-        self.store_custom(document, self._config.topic)
-        if self.input_connector:
-            self.input_connector.batch_finished_callback()
+        self.metrics.number_of_processed_events += 1
+        self._send_to_kafka(document, self._config.topic)
 
     @Metric.measure_time()
     def store_custom(self, document: dict, target: str) -> None:
-        """Write document to Kafka into target topic.
+        """Store a document in the target topic.
 
         Parameters
         ----------
@@ -259,6 +268,25 @@ class ConfluentKafkaOutput(Output):
             Document to be stored in target topic.
         target : str
             Topic to store document in.
+
+        """
+        self._send_to_kafka(document, target, set_offsets=False)
+
+    def _send_to_kafka(self, document, target, set_offsets=True):
+        """Send document to target Kafka topic.
+
+        Documents are sent asynchronously via "produce".
+        A callback method is used to set the offset for each message once it has been
+        successfully delivered.
+        The callback specified for "produce" is called for each document that has been delivered to
+        Kafka whenever the "poll" method is called (directly or by "flush").
+
+        Parameters
+        ----------
+        document : dict
+            Document to be sent to target topic.
+        target : str
+            Topic to send document to.
         Raises
         ------
         CriticalOutputError
@@ -266,9 +294,13 @@ class ConfluentKafkaOutput(Output):
 
         """
         try:
-            self._producer.produce(target, value=self._encoder.encode(document))
+            callback = self.delivered_callback() if set_offsets else None
+            self._producer.produce(
+                target,
+                value=self._encoder.encode(document),
+                on_delivery=callback,
+            )
             self._producer.poll(self._config.send_timeout)
-            self.metrics.number_of_processed_events += 1
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
@@ -282,6 +314,12 @@ class ConfluentKafkaOutput(Output):
         self, error_message: str, document_received: dict, document_processed: dict
     ) -> None:
         """Write errors into error topic for documents that failed processing.
+
+        Documents are sent asynchronously via "produce".
+        A callback method is used to set the offset for each message once it has been
+        successfully delivered.
+        The callback specified for "produce" is called for each document that has been delivered to
+        Kafka whenever the "poll" method is called (directly or by "flush").
 
         Parameters
         ----------
@@ -304,11 +342,56 @@ class ConfluentKafkaOutput(Output):
             self._producer.produce(
                 self._config.error_topic,
                 value=json.dumps(value, separators=(",", ":")).encode("utf-8"),
+                on_delivery=self.delivered_callback(),
             )
             self._producer.poll(self._config.send_timeout)
         except BufferError:
             # block program until buffer is empty
             self._producer.flush(timeout=self._config.flush_timeout)
+
+    def delivered_callback(self):
+        """Callback that can called when a single message has been successfully delivered.
+
+        The callback is called asynchronously, therefore the current message is stored within a
+        closure.
+        This message is required to later set the offset.
+
+        Returns
+        -------
+        store_offsets_on_success
+            This is the callback method that the Kafka producer calls. It has access to "message".
+
+        """
+        message = self._get_current_message()
+
+        def store_offsets_on_success(error, _):
+            """Set offset via message stored in closure if no error occurred.
+
+            "delivered_callback_frequency" can be configured to prevent setting the callback for
+            every single message that was successfully delivered.
+            Setting this higher than 1 might be useful if auto-commit is disabled.
+
+            """
+            if error:
+                raise FatalOutputError(output=self, message=error)
+            if message:
+                self._delivered_cnt += 1
+                self.metrics.number_of_successfully_delivered_events += 1
+                self.input_connector.update_last_delivered_records(message)
+                if self._delivered_cnt >= self._config.delivered_callback_frequency:
+                    self.input_connector.batch_finished_callback()
+                    self._delivered_cnt = 0
+
+        return store_offsets_on_success
+
+    def _get_current_message(self) -> Optional[Message]:
+        if hasattr(self.input_connector, "last_valid_record"):
+            return self.input_connector.last_valid_record
+        return None
+
+    @Metric.measure_time()
+    def _write_backlog(self):
+        self._producer.flush(self._config.flush_timeout)
 
     def setup(self):
         super().setup()

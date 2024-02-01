@@ -31,7 +31,7 @@ Example
 from functools import cached_property, partial
 from logging import Logger
 from socket import getfqdn
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union, Iterable
 
 import msgspec
 from attrs import define, field, validators
@@ -43,6 +43,7 @@ from confluent_kafka import (
     Consumer,
     KafkaException,
     TopicPartition,
+    Message,
 )
 
 from logprep.abc.connector import Connector
@@ -234,12 +235,20 @@ class ConfluentKafkaInput(Input):
         """
 
     _last_valid_records: dict
+    _last_valid_record: Optional[Message]
+    _last_delivered_records: dict
 
-    __slots__ = ["_last_valid_records"]
+    __slots__ = [
+        "_last_valid_records",
+        "_last_valid_record",
+        "_last_delivered_records",
+    ]
 
     def __init__(self, name: str, configuration: "Connector.Config", logger: Logger) -> None:
         super().__init__(name, configuration, logger)
+        self._last_valid_record = None
         self._last_valid_records = {}
+        self._last_delivered_records = {}
 
     @cached_property
     def _consumer(self) -> Consumer:
@@ -356,7 +365,7 @@ class ConfluentKafkaInput(Input):
         base_description = super().describe()
         return f"{base_description} - Kafka Input: {self._config.kafka_config['bootstrap.servers']}"
 
-    def _get_raw_event(self, timeout: float) -> bytearray:
+    def _get_raw_event(self, timeout: float) -> Optional[bytearray]:
         """Get next raw Message from Kafka.
 
         Parameters
@@ -385,10 +394,28 @@ class ConfluentKafkaInput(Input):
             raise CriticalInputError(
                 self, "A confluent-kafka record contains an error code", kafka_error
             )
-        self._last_valid_records[message.partition()] = message
+        self._update_last_valid_records(message)
         labels = {"description": f"topic: {self._config.topic} - partition: {message.partition()}"}
         self.metrics.current_offsets.add_with_labels(message.offset() + 1, labels)
         return message.value()
+
+    def _update_last_valid_records(self, message: Message):
+        """Update last valid records.
+
+        It updates a dict with multiple partitions if the output connector handles its own backlog.
+        It stores just the last message if the output connector does not handle its own backlog and
+        just needs the last valid record.
+
+        Parameters
+        -------
+        message : Message
+            Message to update the last valid records with.
+
+        """
+        if self.output_connector.handles_backlog:
+            self._last_valid_records[message.partition()] = message
+        else:
+            self._last_valid_record = message
 
     def _get_event(self, timeout: float) -> Union[Tuple[None, None], Tuple[dict, dict]]:
         """Parse the raw document from Kafka into a json.
@@ -429,6 +456,10 @@ class ConfluentKafkaInput(Input):
     def _enable_auto_commit(self) -> bool:
         return self._config.kafka_config.get("enable.auto.commit") == "true"
 
+    @property
+    def last_valid_record(self) -> Optional[dict]:
+        return self._last_valid_record
+
     def batch_finished_callback(self) -> None:
         """Store offsets for each kafka partition in `self._last_valid_records`
         and if configured commit them. Should be called by output connectors if
@@ -439,14 +470,38 @@ class ConfluentKafkaInput(Input):
         self._handle_offsets(self._consumer.store_offsets)
         if not self._enable_auto_commit:
             self._handle_offsets(self._consumer.commit)
+        self._clear_records()
+
+    def update_last_delivered_records(self, message: Message):
+        """Update last delivered records.
+
+        Update a dict with the last record for each partition that has been successfully delivered.
+
+        Parameters
+        -------
+        message : Message
+            Message to update the last delivered records with.
+
+        """
+        self._last_delivered_records[message.partition()] = message
+
+    def _clear_records(self):
         self._last_valid_records.clear()
+        self._last_valid_record = None
+        self._last_delivered_records.clear()
 
     def _handle_offsets(self, offset_handler: Callable) -> None:
-        for message in self._last_valid_records.values():
+        for message in self._get_offset_messages():
             try:
-                offset_handler(message=message)
+                if message:
+                    offset_handler(message=message)
             except KafkaException as error:
                 raise InputWarning(self, f"{error}, {message}") from error
+
+    def _get_offset_messages(self) -> Iterable[Message]:
+        if self.output_connector.handles_backlog:
+            return self._last_valid_records.values()
+        return self._last_delivered_records.values()
 
     def _assign_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:
@@ -471,8 +526,9 @@ class ConfluentKafkaInput(Input):
                 f"topic: {topic_partition.topic} | "
                 f"partition {topic_partition.partition}"
             )
-        self.output_connector._write_backlog()
-        self.batch_finished_callback()
+        if hasattr(self.output_connector, "_write_backlog"):
+            self.output_connector._write_backlog()
+            self.batch_finished_callback()
 
     def _lost_callback(self, consumer, topic_partitions):
         for topic_partition in topic_partitions:

@@ -50,6 +50,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         "logprep_number_of_failed_events",
         "logprep_number_of_warnings",
         "logprep_number_of_errors",
+        "logprep_number_of_successfully_delivered_events",
     ]
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer", return_value="The Producer")
@@ -59,10 +60,13 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
     def test_store_sends_event_to_expected_topic(self, _):
+        self.object.delivered_callback = mock.MagicMock()
         kafka_producer = self.object._producer
         event = {"field": "content"}
         event_raw = json.dumps(event, separators=(",", ":")).encode("utf-8")
-        expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
+        expected_call = mock.call(
+            self.CONFIG.get("topic"), value=event_raw, on_delivery=self.object.delivered_callback()
+        )
         self.object.store(event)
         kafka_producer.produce.assert_called()
         assert expected_call in kafka_producer.produce.mock_calls
@@ -72,7 +76,7 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         kafka_producer = self.object._producer
         event = {"field": "content"}
         event_raw = json.dumps(event, separators=(",", ":")).encode("utf-8")
-        expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw)
+        expected_call = mock.call(self.CONFIG.get("topic"), value=event_raw, on_delivery=None)
         self.object.store_custom(event, self.CONFIG.get("topic"))
         kafka_producer.produce.assert_called()
         assert expected_call in kafka_producer.produce.mock_calls
@@ -142,10 +146,37 @@ class TestConfluentKafkaOutput(BaseOutputTestCase, CommonConfluentKafkaTestCase)
         assert self.object.metrics.number_of_processed_events == 1
 
     @mock.patch("logprep.connector.confluent_kafka.output.Producer")
-    def test_store_calls_batch_finished_callback(self, _):  # pylint: disable=arguments-differ
+    def test_delivered_callback_calls_with_message_calls_callback(
+        self, _
+    ):  # pylint: disable=arguments-differ
         self.object.input_connector = mock.MagicMock()
-        self.object.store({"message": "my event message"})
+        self.object.input_connector.last_valid_record = mock.MagicMock()
+        callback = self.object.delivered_callback()
+        callback(None, "msg")
+        self.object.input_connector.update_last_delivered_records.assert_called()
         self.object.input_connector.batch_finished_callback.assert_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_delivered_callback_calls_without_message_does_not_call_callback(
+        self, _
+    ):  # pylint: disable=arguments-differ
+        self.object.input_connector = mock.MagicMock()
+        self.object.input_connector.last_valid_record = None
+        callback = self.object.delivered_callback()
+        callback(None, "msg")
+        self.object.input_connector.update_last_delivered_records.assert_not_called()
+        self.object.input_connector.batch_finished_callback.assert_not_called()
+
+    @mock.patch("logprep.connector.confluent_kafka.output.Producer")
+    def test_delivered_callback_calls_with_error_does_not_call_callback(
+        self, _
+    ):  # pylint: disable=arguments-differ
+        self.object.input_connector = mock.MagicMock()
+        callback = self.object.delivered_callback()
+        with pytest.raises(FatalOutputError, match=r"some_error"):
+            callback(BaseException("some_error"), "msg")
+        self.object.input_connector.update_last_delivered_records.assert_not_called()
+        self.object.input_connector.batch_finished_callback.assert_not_called()
 
     def test_setup_raises_fatal_output_error_on_invalid_config(self):
         config = {"myconfig": "the config", "bootstrap.servers": "testserver:9092"}
