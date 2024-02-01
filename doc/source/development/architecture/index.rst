@@ -93,10 +93,11 @@ The following diagrams illustrate the flow of a single event to make it more com
    :file: ../../development/architecture/diagramms/event.drawio.html
 
 
-Shared ressources within Multiprocessing
-========================================
+Multiprocessing
+===============
 
-This diagram shows what ressources are shared within the multiprocessing processes.
+This diagram shows what ressources are shared within the multiprocessing processes and how the
+processes are started and stopped.
 
 .. raw:: html
    :file: ../../development/architecture/diagramms/multiprocessing.drawio.html
