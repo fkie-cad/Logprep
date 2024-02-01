@@ -770,9 +770,8 @@ class TestPseudonymizer(BaseProcessorTestCase):
 
     def _load_specific_rule(self, rule):
         self.object._config.regex_mapping = self.regex_mapping
-        del self.object.__dict__["_regex_mapping"]
         super()._load_specific_rule(rule)
-        self.object._replace_regex_keywords_by_regex_expression()
+        self.object.setup()
 
     def test_pseudonymize_url_fields_not_in_pseudonymize(self):
         pseudonym = "<pseudonym:d95ac3629be3245d3f5e836c059516ad04081d513d2888f546b783d178b02e5a>"

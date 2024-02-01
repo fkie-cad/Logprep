@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from logprep.util.configuration import Configuration
-from logprep.util.json_handling import dump_config_as_file
 from tests.acceptance.util import get_default_logprep_config, get_test_output
 
 basicConfig(level=DEBUG, format="%(asctime)-15s %(name)-5s %(levelname)-8s: %(message)s")

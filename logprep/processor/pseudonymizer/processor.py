@@ -213,9 +213,23 @@ class Pseudonymizer(Processor):
         super().__init__(name=name, configuration=configuration, logger=logger)
         self.pseudonyms = []
 
-    def load_rules(self, specific_rules_targets: List[str], generic_rules_targets: List[str]):
-        super().load_rules(specific_rules_targets, generic_rules_targets)
+    def setup(self):
+        super().setup()
         self._replace_regex_keywords_by_regex_expression()
+
+    def _replace_regex_keywords_by_regex_expression(self):
+        for rule_dict in self._specific_rules:
+            for dotted_field, regex_keyword in rule_dict.pseudonyms.items():
+                if regex_keyword in self._regex_mapping:
+                    rule_dict.pseudonyms[dotted_field] = re.compile(
+                        self._regex_mapping[regex_keyword]
+                    )
+        for rule_dict in self._generic_rules:
+            for dotted_field, regex_keyword in rule_dict.pseudonyms.items():
+                if regex_keyword in self._regex_mapping:
+                    rule_dict.pseudonyms[dotted_field] = re.compile(
+                        self._regex_mapping[regex_keyword]
+                    )
 
     def process(self, event: dict):
         self.pseudonyms = []
@@ -308,16 +322,6 @@ class Pseudonymizer(Processor):
             url_string = url_string.replace(parsed_url.query, pseudonymized_query)
         self.metrics.pseudonymized_urls += 1
         return url_string
-
-    def _replace_regex_keywords_by_regex_expression(self):
-        for rule in self._specific_rules:
-            for dotted_field, regex_keyword in rule.pseudonyms.items():
-                if regex_keyword in self._regex_mapping:
-                    rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
-        for rule in self._generic_rules:
-            for dotted_field, regex_keyword in rule.pseudonyms.items():
-                if regex_keyword in self._regex_mapping:
-                    rule.pseudonyms[dotted_field] = re.compile(self._regex_mapping[regex_keyword])
 
     def _wrap_hash(self, hash_string: str) -> str:
         return self.HASH_PREFIX + hash_string + self.HASH_SUFFIX

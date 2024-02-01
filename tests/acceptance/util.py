@@ -178,7 +178,7 @@ def get_patched_runner(config_path):
     return runner
 
 
-def get_test_output(config_path) -> list[dict]:
+def get_test_output(config_path: str) -> list[dict]:
     patched_runner = get_patched_runner(config_path)
     return get_runner_outputs(patched_runner=patched_runner)
 

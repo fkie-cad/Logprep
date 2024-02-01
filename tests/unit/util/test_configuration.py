@@ -1,6 +1,7 @@
 # pylint: disable=missing-docstring
 # pylint: disable=protected-access
 # pylint: disable=line-too-long
+import json
 import uuid
 from logging import getLogger
 from pathlib import Path
@@ -14,7 +15,6 @@ from logprep.util.configuration import (
     InvalidConfigurationErrors,
 )
 from logprep.util.getter import FileGetter
-from logprep.util.json_handling import dump_config_as_file
 from tests.testdata.metadata import (
     path_to_config,
     path_to_invalid_config,
@@ -419,23 +419,24 @@ pipeline:
                         },
                     ],
                 },
-                3,
+                2,
             ),
         ],
     )
     def test_verify_verifies_config(self, tmp_path, test_case, test_config, error_count):
-        test_config_path = str(tmp_path / "failure-config.yml")
-        if "input" not in test_config:
-            test_config["input"] = {"dummy": {"type": "dummy_input", "documents": []}}
-        if "output" not in test_config:
-            test_config["output"] = {"dummy": {"type": "dummy_output"}}
-        dump_config_as_file(test_config_path, test_config)
+        test_config_path = tmp_path / "failure-config.yml"
+        test_config = Configuration(**test_config)
+        if not test_config.input:
+            test_config.input = {"dummy": {"type": "dummy_input", "documents": []}}
+        if not test_config.output:
+            test_config.output = {"dummy": {"type": "dummy_output"}}
+        test_config_path.write_text(test_config.as_yaml())
         if error_count:
             with pytest.raises(InvalidConfigurationErrors) as raised:
-                Configuration.from_sources([test_config_path])
+                Configuration.from_sources([str(test_config_path)])
             assert len(raised.value.errors) == error_count, test_case
         else:
-            Configuration.from_sources([test_config_path])
+            Configuration.from_sources([str(test_config_path)])
 
     patch = mock.patch(
         "os.environ",
@@ -815,6 +816,20 @@ output:
         config = Configuration.from_sources([path_to_config, path_to_only_output_config])
         assert isinstance(config.as_yaml(), str)
         assert "type: dummy_output" in config.as_yaml()
+
+    def test_as_dict_returns_json_serializable_dict(self, config_path):
+        config = Configuration.from_sources([str(config_path)])
+        config.version = "super_custom_version"
+        config_dict = config.as_dict()
+        assert isinstance(config_dict, dict)
+        for key in config_dict.get("pipeline"):
+            try:
+                assert json.dumps(key)
+            except Exception as error:
+                raise AssertionError(f"Value for key {key} is not json serializable") from error
+        assert json.dumps(config_dict), "Config dict is not json serializable"
+        assert config.as_json(), "Config json is not json serializable"
+        config_path.write_text(config.as_json())
 
     def test_returned_json_is_valid_config(self, config_path):
         config = Configuration.from_sources([str(config_path)])

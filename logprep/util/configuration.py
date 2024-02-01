@@ -363,7 +363,8 @@ class Configuration:
         self.pipeline = pipeline_with_loaded_rules
 
     def _load_rule_definitions(self, processor_definition: dict) -> dict:
-        _ = Factory.create(deepcopy(processor_definition), logger=getLogger(__name__))
+        processor_definition = deepcopy(processor_definition)
+        _ = Factory.create(processor_definition, logger=getLogger(__name__))
         processor_name, processor_config = processor_definition.popitem()
         for rule_tree_name in ("specific_rules", "generic_rules"):
             rules_targets = self.resolve_directories(processor_config.get(rule_tree_name, []))

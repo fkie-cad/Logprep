@@ -9,10 +9,10 @@ import copy
 import pytest
 from pytest import raises
 
+from logprep.factory import Factory
 from logprep.processor.base.exceptions import ValueDoesnotExistInSchemaError
 from logprep.processor.labeler.labeling_schema import LabelingSchema
 from logprep.processor.labeler.rule import LabelerRule
-from logprep.factory import Factory
 from tests.testdata.metadata import path_to_schema, path_to_schema2
 from tests.unit.processor.base import BaseProcessorTestCase
 
@@ -247,7 +247,8 @@ class TestLabeler(BaseProcessorTestCase):
         with raises(
             ValueDoesnotExistInSchemaError, match="Invalid value 'windows' for key 'reporter'."
         ):
-            Factory.create({"test instance": config}, self.logger)
+            labeler = Factory.create({"test instance": config}, self.logger)
+            labeler.setup()
 
     def test_create_loads_the_specified_labeling_schema(self):
         config = copy.deepcopy(self.CONFIG)
