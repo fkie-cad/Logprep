@@ -289,13 +289,13 @@ Depending on how you have installed Logprep you have different choices to run Lo
 If you have installed it via PyPI or the Github Development release just run:
 
 ```
-logprep $CONFIG
+logprep run $CONFIG
 ```
 
 If you have installed Logprep via cloning the repository then you should run it via:
 
 ```
-PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG
+PYTHONPATH="." python3 logprep/run_logprep.py run $CONFIG
 ```
 
 Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 
@@ -307,7 +307,7 @@ The next sections all assume an installation via pip
 The following command can be executed to verify the configuration file without having to run Logprep:
 
 ```
-logprep --verify-config $CONFIG
+logprep test config $CONFIG
 ```
 
 Where `$CONFIG` is the path or uri to a configuration file (see the documentation about the 

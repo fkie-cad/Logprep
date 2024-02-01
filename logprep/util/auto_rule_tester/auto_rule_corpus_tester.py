@@ -11,7 +11,7 @@ To start the tester call:
 ..  code-block:: bash
     :caption: Run rule corpus test
 
-    logprep $CONFIG --auto-corpus-test --corpus-testdata $CORPUS_TEST_DATA
+    logprep test integration $CONFIG $CORPUS_TEST_DATA
 
 Where in the parameter :code:`CONFIG` should point to a valid logprep configuration and
 :code:`CORPUS_TEST_DATA` to a directory containing the test data with the different test cases.

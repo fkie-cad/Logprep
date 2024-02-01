@@ -1,7 +1,4 @@
 """
-Configuration File
-==================
-
 Configuration is done via YAML or JSON files or http api ressources.
 Logprep searches for the file :code:`/etc/logprep/pipeline.yml` if no
 configuration file is passed.
@@ -22,10 +19,7 @@ or
 
 ..  code-block:: bash
     
-    logprep run \
-        http://api/v1/pipeline \
-        http://api/v1/addition_processor_pipline \
-        /path/to/conector.yaml
+    logprep run http://api/v1/pipeline http://api/v1/addition_processor_pipline /path/to/conector.yaml
 
 The options under :code:`input`, :code:`output` and :code:`pipeline` are passed
 to factories in Logprep.
@@ -120,6 +114,8 @@ from logprep.util.json_handling import list_json_files_in_directory
 
 
 class MyYAML(YAML):
+    """helper class to dump yaml with ruamel.yaml"""
+
     def dump(self, data, stream=None, **kw):
         inefficient = False
         if stream is None:
@@ -176,30 +172,43 @@ class Configuration:
     version: str = field(
         validator=validators.instance_of(str), converter=str, default="unset", eq=True
     )
-    """Version of the configuration file. Defaults to `unset`."""
+    """It is optionally possible to set a version to your configuration file which can be printed via
+    :code:`logprep run --version config/pipeline.yml`.
+    This has no effect on the execution of logprep and is merely used for documentation purposes.
+    Defaults to :code:`unset`."""
     config_refresh_interval: Optional[int] = field(
         validator=validators.instance_of((int, type(None))), default=None, eq=False
     )
-    """Interval in seconds to refresh the configuration. Defaults to `None`, which
-    means that the configuration will not be refreshed."""
+    """Configures the interval in seconds on which logprep should try to reload the configuration.
+    If not configured, logprep won't reload the configuration automatically.
+    If configured the configuration will only be reloaded if the configuration version changes.
+    If http errors occurs on configuration reload `config_refresh_interval` is set to a quarter
+    of the current `config_refresh_interval` until a minimum of 5 seconds is reached.
+    Defaults to :code:`None`, which means that the configuration will not be refreshed."""
     process_count: int = field(
         validator=[validators.instance_of(int), validators.ge(1)], default=1, eq=False
     )
-    """Number of logprep processes to start. Defaults to `1`."""
+    """Number of logprep processes to start. Defaults to :code:`1`."""
     timeout: float = field(
         validator=[validators.instance_of(float), validators.gt(0)], default=5.0, eq=False
     )
-    """Timeout in seconds for each logprep process. Defaults to `5.0`."""
+    """Logprep tries to rea_configurationct to signals (like sent by CTRL+C) within the given time.
+    The time taken for some processing steps is not always predictable, thus it is not possible to
+    ensure that this time will be adhered to.
+    However, Logprep reacts quickly for small values (< 1.0), but this requires more processing power.
+    This can be useful for testing and debugging.
+    Larger values (like 5.0) slow the reaction time down, but this requires less processing power,
+    which makes in preferable for continuous operation. Defaults to :code:`5.0`."""
     logger: dict = field(
         validator=validators.instance_of(dict), default={"level": "INFO"}, eq=False
     )
-    """Logger configuration. Defaults to `{"level": "INFO"}`."""
+    """Logger configuration. Defaults to :code:`{"level": "INFO"}`."""
     input: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
-    """Input connector configuration. Defaults to `{}`."""
+    """Input connector configuration. Defaults to :code:`{}`."""
     output: dict = field(validator=validators.instance_of(dict), factory=dict, eq=False)
-    """Output connector configuration. Defaults to `{}`."""
+    """Output connector configuration. Defaults to :code:`{}`."""
     pipeline: list[dict] = field(validator=validators.instance_of(list), factory=list, eq=False)
-    """Pipeline configuration. Defaults to `[]`."""
+    """Pipeline configuration. Defaults to :code:`[]`."""
     metrics: dict = field(
         validator=[
             validators.instance_of(dict),
@@ -211,11 +220,11 @@ class Configuration:
         default={"enabled": False, "port": 8000},
         eq=False,
     )
-    """Metrics configuration. Defaults to `{"enabled": False, "port": 8000}`."""
+    """Metrics configuration. Defaults to :code:`{"enabled": False, "port": 8000}`."""
     profile_pipelines: bool = field(default=False, eq=False)
-    """Start the profiler to profile the pipeline. Defaults to `False`."""
+    """Start the profiler to profile the pipeline. Defaults to :code:`False`."""
     print_auto_test_stack_trace: bool = field(default=False, eq=False)
-    """Print stack trace when auto test fails. Defaults to `False`."""
+    """Print stack trace when auto test fails. Defaults to :code:`False`."""
 
     _getter: Getter = field(
         validator=validators.instance_of(Getter),
@@ -301,7 +310,7 @@ class Configuration:
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         try:
-            configuration.verify()
+            configuration._verify()
         except InvalidConfigurationErrors as error:
             errors = [*errors, *error.errors]
         if errors:
@@ -367,7 +376,7 @@ class Configuration:
         _ = Factory.create(processor_definition, logger=getLogger(__name__))
         processor_name, processor_config = processor_definition.popitem()
         for rule_tree_name in ("specific_rules", "generic_rules"):
-            rules_targets = self.resolve_directories(processor_config.get(rule_tree_name, []))
+            rules_targets = self._resolve_directories(processor_config.get(rule_tree_name, []))
             rules_definitions = list(
                 chain(*[self._get_dict_list_from_target(target) for target in rules_targets])
             )
@@ -389,7 +398,7 @@ class Configuration:
         return list(rule_data)
 
     @staticmethod
-    def resolve_directories(rule_sources: list) -> list:
+    def _resolve_directories(rule_sources: list) -> list:
         """resolves directories to a list of files or rule definitions
 
         Parameters
@@ -429,7 +438,7 @@ class Configuration:
             return values[-1]
         return getattr(Configuration(), attribute)
 
-    def verify(self):
+    def _verify(self):
         """Verify the configuration."""
         errors = []
         try:

@@ -488,7 +488,7 @@ $LOGPREP_OUTPUT
 """
         )
         config = Configuration.from_sources([str(config_path)])
-        config.verify()
+        config._verify()
         assert config.version == "1"
         assert config.process_count == 16
         assert config.output["kafka"]["topic"] == "producer"

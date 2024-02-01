@@ -11,15 +11,15 @@ The output is displayed in the console and changes made by Logprep are being hig
 ..  code-block:: bash
     :caption: Directly with Python
 
-    PYTHONPATH="." python3 logprep/run_logprep.py $CONFIG --dry-run $EVENTS
+    PYTHONPATH="." python3 logprep/run_logprep.py test dry-run $CONFIG $EVENTS
 
 ..  code-block:: bash
     :caption: With a PEX file
 
-    logprep.pex $CONFIG --dry-run $EVENTS
+    logprep.pex test dry-run $CONFIG $EVENTS
 
 Where :code:`$CONFIG` is the path to a configuration file
-(see :doc:`configuration/configurationdata`).
+(see :ref:`configuration`).
 The only required section in the configuration is :code:`pipeline`
 (see tests/testdata/config/config-dry-run.yml for an example).
 The remaining options are set internally or are being ignored.

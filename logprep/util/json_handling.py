@@ -3,8 +3,6 @@ import json
 import os
 from typing import List
 
-from yaml import safe_dump
-
 
 def list_json_files_in_directory(directory: str) -> List[str]:
     """
