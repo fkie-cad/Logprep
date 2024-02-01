@@ -131,8 +131,8 @@ class PipelineManager:
 
     def restart(self):
         """Restarts all pipelines"""
-        self._decrease_to_count(0)
-        self._increase_to_count(self._configuration.process_count)
+        self.set_count(0)
+        self.set_count(self._configuration.process_count)
         if not self.prometheus_exporter:
             return
         if not self.prometheus_exporter.is_running:
