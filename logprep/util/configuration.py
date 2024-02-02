@@ -34,7 +34,7 @@ and rule files in all places.
 Environment variables have to be set in uppercase and prefixed
 with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or
 :code:`CI_`. Lowercase variables are ignored. Forbidden
-variable names are: :code:`["LOGPREP_LIST"]`
+variable names are: :code:`["LOGPREP_LIST"]`, as it is already used internally.
 
 The following config file will be valid by setting the given environment variables:
 
