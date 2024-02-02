@@ -85,7 +85,7 @@ class Runner:
             factory=lambda: CounterMetric(
                 description=(
                     "Indicates how often the logprep configuration "
-                    "could not be updated due to failures during the process."
+                    "could not be updated due to failures during the update."
                 ),
                 name="number_of_config_refreshes",
                 labels={"from": "unset", "config": "unset"},
