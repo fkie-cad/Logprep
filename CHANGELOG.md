@@ -19,6 +19,7 @@
 * make the s3 connector raise `FatalOutputError` instead of warnings
 * make the s3 connector blocking by removing threading
 * revert the change from v9.0.0 to always check the existence of a field for negated key-value based lucene filter expressions
+* make store_custom in s3, opensearch and elasticsearch connector not call `batch_finished_callback` to prevent data loss that could be caused by partially processed events
 
 ### Bugfix
 
