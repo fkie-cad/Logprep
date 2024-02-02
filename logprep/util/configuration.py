@@ -25,7 +25,7 @@ The options under :code:`input`, :code:`output` and :code:`pipeline` are passed
 to factories in Logprep.
 They contain settings for each separate processor and connector.
 Details for configuring connectors are described in
-:ref:`output` and :ref:`input` and for processors in :ref:`processors` .
+:ref:`output` and :ref:`input` and for processors in :ref:`processors`.
 General information about the configuration of the pipeline can be found
 in :ref:`pipeline_config` .
 
