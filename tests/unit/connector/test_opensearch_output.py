@@ -152,7 +152,8 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     ):
         self.object._config.message_backlog_size = 1
         self.object._handle_serialization_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_serialization_error.assert_called()
 
     @mock.patch(
@@ -162,7 +163,8 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_write_to_search_context_calls_handle_connection_error_if_connection_error(self, _):
         self.object._config.message_backlog_size = 1
         self.object._handle_connection_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_connection_error.assert_called()
 
     @mock.patch(
@@ -172,7 +174,8 @@ class TestOpenSearchOutput(BaseOutputTestCase):
     def test_write_to_search_context_calls_handle_bulk_index_error_if_bulk_index_error(self, _):
         self.object._config.message_backlog_size = 1
         self.object._handle_bulk_index_error = mock.MagicMock()
-        self.object._write_to_search_context({"dummy": "event"})
+        self.object._message_backlog.append({"dummy": "event"})
+        self.object._write_to_search_context()
         self.object._handle_bulk_index_error.assert_called()
 
     @mock.patch("opensearchpy.helpers.parallel_bulk")

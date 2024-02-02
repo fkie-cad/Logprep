@@ -194,29 +194,28 @@ class S3Output(Output):
         return prefix
 
     @Metric.measure_time()
-    def _write_to_s3_resource(self, document: dict, prefix: str):
-        """Writes a document into s3 bucket using given prefix.
+    def _write_to_s3_resource(self):
+        """Writes a document into s3 bucket using given prefix."""
+        if self._backlog_size >= self._config.message_backlog_size:
+            self._write_backlog()
+
+    def _add_to_backlog(self, document: dict, prefix: str):
+        """Adds document to backlog and adds a a prefix.
 
         Parameters
         ----------
         document : dict
-           Document to store.
+           Document to store in backlog.
         """
         prefix = self._add_dates(prefix)
         prefix = f"{self._base_prefix}{prefix}"
         self._message_backlog[prefix].append(document)
-
-        if self._backlog_size >= self._config.message_backlog_size:
-            self._write_backlog()
 
     def _write_backlog(self):
         """Write to s3 if it is not already writing."""
         if not self._message_backlog:
             return
 
-        self._bulk()
-
-    def _bulk(self):
         self._logger.info("Writing %s documents to s3", self._backlog_size)
         for prefix_mb, document_batch in self._message_backlog.items():
             self._write_document_batch(document_batch, f"{prefix_mb}/{time()}-{uuid4()}")
@@ -263,8 +262,8 @@ class S3Output(Output):
                 document, f"Prefix field '{self._config.prefix_field}' empty or missing in document"
             )
             prefix_value = self._config.default_prefix
-
-        self._write_to_s3_resource(document, prefix_value)
+        self._add_to_backlog(document, prefix_value)
+        self._write_to_s3_resource()
 
     @staticmethod
     def _build_no_prefix_document(message_document: dict, reason: str):
@@ -279,7 +278,12 @@ class S3Output(Output):
         return document
 
     def store_custom(self, document: dict, target: str):
-        """Write document into s3 bucket using the target prefix.
+        """Store document into backlog to be written into s3 bucket using the target prefix.
+
+        Only add to backlog instead of writing the batch and calling batch_finished_callback,
+        since store_custom can be called before the event has been fully processed.
+        Setting the offset or comiting before fully processing an event can lead to data loss if
+        Logprep terminates.
 
         Parameters
         ----------
@@ -289,8 +293,7 @@ class S3Output(Output):
             Prefix for the document.
 
         """
-        self.metrics.number_of_processed_events += 1
-        self._write_to_s3_resource(document, target)
+        self._add_to_backlog(document, target)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Write errors into s3 bucket using error prefix for documents that failed processing.
@@ -312,4 +315,5 @@ class S3Output(Output):
             "processed": document_processed,
             "@timestamp": TimeParser.now().isoformat(),
         }
-        self._write_to_s3_resource(error_document, self._config.error_prefix)
+        self._add_to_backlog(error_document, self._config.error_prefix)
+        self._write_to_s3_resource()

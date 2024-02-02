@@ -191,7 +191,8 @@ class TestS3Output(BaseOutputTestCase):
         s3_output = Factory.create({"s3": s3_config}, self.logger)
         assert self._calculate_backlog_size(s3_output) == 0
         for idx in range(1, message_backlog_size):
-            s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+            s3_output._add_to_backlog({"dummy": "event"}, "write_to_s3")
+            s3_output._write_to_s3_resource()
             assert self._calculate_backlog_size(s3_output) == idx
 
     def test_write_to_s3_resource_sets_current_backlog_count_and_is_max_backlog(self):
@@ -205,23 +206,27 @@ class TestS3Output(BaseOutputTestCase):
 
         # Backlog not full
         for idx in range(message_backlog_size - 1):
-            s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+            s3_output._add_to_backlog({"dummy": "event"}, "write_to_s3")
+            s3_output._write_to_s3_resource()
             assert self._calculate_backlog_size(s3_output) == idx + 1
         s3_output._write_document_batch.assert_not_called()
 
         # Backlog full then cleared
-        s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+        s3_output._add_to_backlog({"dummy": "event"}, "write_to_s3")
+        s3_output._write_to_s3_resource()
         s3_output._write_document_batch.assert_called_once()
         assert self._calculate_backlog_size(s3_output) == 0
 
         # Backlog not full
         for idx in range(message_backlog_size - 1):
-            s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+            s3_output._add_to_backlog({"dummy": "event"}, "write_to_s3")
+            s3_output._write_to_s3_resource()
             assert self._calculate_backlog_size(s3_output) == idx + 1
         s3_output._write_document_batch.assert_called_once()
 
         # Backlog full then cleared
-        s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
+        s3_output._add_to_backlog({"dummy": "event"}, "write_to_s3")
+        s3_output._write_to_s3_resource()
         assert s3_output._write_document_batch.call_count == 2
         assert self._calculate_backlog_size(s3_output) == 0
 
@@ -247,7 +252,8 @@ class TestS3Output(BaseOutputTestCase):
     def test_write_to_s3_resource_replaces_dates(self):
         expected_prefix = f'base_prefix/prefix-{TimeParser.now().strftime("%y:%m:%d")}'
         self.object._write_backlog = mock.MagicMock()
-        self.object._write_to_s3_resource({"foo": "bar"}, "base_prefix/prefix-%{%y:%m:%d}")
+        self.object._add_to_backlog({"foo": "bar"}, "base_prefix/prefix-%{%y:%m:%d}")
+        self.object._write_to_s3_resource()
         resulting_prefix = next(iter(self.object._message_backlog.keys()))
 
         assert expected_prefix == resulting_prefix

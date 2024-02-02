@@ -212,10 +212,16 @@ class ElasticsearchOutput(Output):
 
         self._add_dates(document)
         self.metrics.number_of_processed_events += 1
-        self._write_to_search_context(document)
+        self._message_backlog.append(document)
+        self._write_to_search_context()
 
     def store_custom(self, document: dict, target: str):
-        """Write document to Elasticsearch into the target index.
+        """Store document into backlog to be written into Elasticsearch with the target index.
+
+        Only add to backlog instead of writing the batch and calling batch_finished_callback,
+        since store_custom can be called before the event has been fully processed.
+        Setting the offset or comiting before fully processing an event can lead to data loss if
+        Logprep terminates.
 
         Parameters
         ----------
@@ -231,8 +237,7 @@ class ElasticsearchOutput(Output):
         """
         document["_index"] = target
         self._add_dates(document)
-        self.metrics.number_of_processed_events += 1
-        self._write_to_search_context(document)
+        self._message_backlog.append(document)
 
     def store_failed(self, error_message: str, document_received: dict, document_processed: dict):
         """Write errors into error topic for documents that failed processing.
@@ -256,7 +261,8 @@ class ElasticsearchOutput(Output):
             "_index": self._config.error_index,
         }
         self._add_dates(error_document)
-        self._write_to_search_context(error_document)
+        self._message_backlog.append(error_document)
+        self._write_to_search_context()
 
     def _build_failed_index_document(self, message_document: dict, reason: str):
         document = {
@@ -278,7 +284,7 @@ class ElasticsearchOutput(Output):
                 formatted_date = now.strftime(date_format_match[2:-1])
                 document["_index"] = re.sub(date_format_match, formatted_date, document["_index"])
 
-    def _write_to_search_context(self, document):
+    def _write_to_search_context(self):
         """Writes documents from a buffer into Elasticsearch indices.
 
         Writes documents in a bulk if the document buffer limit has been reached.
@@ -286,17 +292,11 @@ class ElasticsearchOutput(Output):
         The target index is determined per document by the value of the meta field '_index'.
         A configured default index is used if '_index' hasn't been set.
 
-        Parameters
-        ----------
-        document : dict
-           Document to store.
-
         Returns
         -------
         Returns True to inform the pipeline to call the batch_finished_callback method in the
         configured input
         """
-        self._message_backlog.append(document)
         if len(self._message_backlog) >= self._config.message_backlog_size:
             self._write_backlog()
 
