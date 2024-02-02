@@ -301,7 +301,7 @@ pipeline:
             ("verifies input config", {"input": {"random_name": {"type": "unknown"}}}, 1),
             ("verifies output config", {"output": {"kafka_output": {"type": "unknown"}}}, 1),
             (
-                "multiple output config failures",
+                "multiple outputs but one config failure",
                 {
                     "output": {
                         "dummy": {"type": "wrong_type"},
