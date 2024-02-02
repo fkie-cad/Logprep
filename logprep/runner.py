@@ -92,7 +92,7 @@ class Runner:
             )
         )
         """Indicates how often the logprep configuration could not be updated
-          due to failures during the process."""
+          due to failures during the update."""
 
     @property
     def _metric_labels(self) -> dict[str, str]:
