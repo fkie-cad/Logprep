@@ -96,8 +96,7 @@ from logging import getLogger
 from pathlib import Path
 from typing import Any, List, Optional
 
-from attr import define, field, validators
-from attrs import asdict
+from attrs import asdict, define, field, validators
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
