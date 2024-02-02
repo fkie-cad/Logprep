@@ -197,7 +197,7 @@ class Configuration:
     timeout: float = field(
         validator=[validators.instance_of(float), validators.gt(0)], default=5.0, eq=False
     )
-    """Logprep tries to rea_configurationct to signals (like sent by CTRL+C) within the given time.
+    """Logprep tries to react to signals (like sent by CTRL+C) within the given time.
     The time taken for some processing steps is not always predictable, thus it is not possible to
     ensure that this time will be adhered to.
     However, Logprep reacts quickly for small values (< 1.0), but this requires more processing power.
