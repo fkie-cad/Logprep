@@ -30,7 +30,7 @@ General information about the configuration of the pipeline can be found
 in :ref:`pipeline_config`.
 
 It is possible to use environment variables in all configuration
-and rules files in all places.
+and rule files in all places.
 Environment variables have to be set in uppercase and prefixed
 with :code:`LOGPREP_`, :code:`GITHUB_`, :code:`PYTEST_` or
 :code:`CI_`. Lowercase variables are ignored. Forbidden
