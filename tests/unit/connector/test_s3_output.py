@@ -206,26 +206,22 @@ class TestS3Output(BaseOutputTestCase):
         # Backlog not full
         for idx in range(message_backlog_size - 1):
             s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-            self._wait_for_writing_thread(s3_output)
             assert self._calculate_backlog_size(s3_output) == idx + 1
         s3_output._write_document_batch.assert_not_called()
 
         # Backlog full then cleared
         s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-        self._wait_for_writing_thread(s3_output)
         s3_output._write_document_batch.assert_called_once()
         assert self._calculate_backlog_size(s3_output) == 0
 
         # Backlog not full
         for idx in range(message_backlog_size - 1):
             s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-            self._wait_for_writing_thread(s3_output)
             assert self._calculate_backlog_size(s3_output) == idx + 1
         s3_output._write_document_batch.assert_called_once()
 
         # Backlog full then cleared
         s3_output._write_to_s3_resource({"dummy": "event"}, "write_to_s3")
-        self._wait_for_writing_thread(s3_output)
         assert s3_output._write_document_batch.call_count == 2
         assert self._calculate_backlog_size(s3_output) == 0
 
@@ -237,7 +233,6 @@ class TestS3Output(BaseOutputTestCase):
         self.object._s3_resource = mock.MagicMock()
         self.object.input_connector = mock.MagicMock()
         self.object.store({"message": "my event message"})
-        self._wait_for_writing_thread(self.object)
         self.object.input_connector.batch_finished_callback.assert_called()
 
     def test_store_does_not_call_batch_finished_callback_if_disabled(self):
@@ -269,11 +264,6 @@ class TestS3Output(BaseOutputTestCase):
     def test_store_failed_counts_failed_events(self):
         self.object._write_backlog = mock.MagicMock()
         super().test_store_failed_counts_failed_events()
-
-    @staticmethod
-    def _wait_for_writing_thread(s3_output):
-        if s3_output._writing_thread is not None:
-            s3_output._writing_thread.join()
 
     @staticmethod
     def _calculate_backlog_size(s3_output):

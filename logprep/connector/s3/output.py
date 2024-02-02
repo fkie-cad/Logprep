@@ -137,7 +137,6 @@ class S3Output(Output):
     def __init__(self, name: str, configuration: "S3Output.Config", logger: Logger):
         super().__init__(name, configuration, logger)
         self._message_backlog = defaultdict(list)
-        self._writing_thread = None
         self._base_prefix = f"{self._config.base_prefix}/" if self._config.base_prefix else ""
         self._s3_resource = None
         self._setup_s3_resource()
