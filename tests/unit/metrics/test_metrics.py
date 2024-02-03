@@ -169,6 +169,28 @@ class TestMetric:
             )
             metric.init_tracker()
 
+    def test_add_with_labels_none_value_raises_typeerror(self):
+        metric = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        with pytest.raises(TypeError, match="not supported between instances of 'NoneType'"):
+            metric.add_with_labels(None, {"A": "a"})
+
+    def test_add_with_labels_none_labels_raises_typeerror(self):
+        metric = CounterMetric(
+            name="testmetric",
+            description="empty description",
+            labels={"A": "a"},
+            registry=self.custom_registry,
+        )
+        metric.init_tracker()
+        with pytest.raises(TypeError, match=" unsupported operand type(s) for |"):
+            metric.add_with_labels(1, None)
+
 
 class TestGaugeMetric:
     def setup_method(self):
