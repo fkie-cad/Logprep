@@ -1,4 +1,5 @@
 """This module contains the logprep runner and is responsible for signal handling."""
+
 # pylint: disable=logging-fstring-interpolation
 
 import logging
@@ -142,7 +143,7 @@ class Runner:
         error occurs.
         """
 
-        self._set_logprep_version_info()
+        self._set_version_info_metric()
         self._schedule_config_refresh_job()
         self._manager.restart()
         self._logger.info("Startup complete")
@@ -166,7 +167,7 @@ class Runner:
             self._manager.restart()
             self._schedule_config_refresh_job()
             self._logger.info(f"Configuration version: {self._configuration.version}")
-            self._set_logprep_version_info()
+            self._set_version_info_metric()
         except (requests.RequestException, FileNotFoundError) as error:
             self._logger.warning(f"Failed to load configuration: {error}")
             self.metrics.number_of_config_refresh_failures += 1
@@ -178,7 +179,7 @@ class Runner:
             self._logger.error(str(error))
             self.metrics.number_of_config_refresh_failures += 1
 
-    def _set_logprep_version_info(self):
+    def _set_version_info_metric(self):
         self.metrics.version_info.add_with_labels(
             1,
             {"logprep": f"{get_versions()['version']}", "config": self._configuration.version},
