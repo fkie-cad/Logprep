@@ -1,4 +1,5 @@
 """This module contains helper functions that are shared by different modules."""
+
 import re
 import sys
 from functools import lru_cache, partial, reduce
@@ -326,7 +327,9 @@ def get_versions_string(config: "Configuration" = None) -> str:
     version_string = f"{'python version:'.ljust(padding)}{sys.version.split()[0]}"
     version_string += f"\n{'logprep version:'.ljust(padding)}{versions['version']}"
     if config:
-        config_version = f"{config.version}, {', '.join(config.paths) if config.paths else 'None'}"
+        config_version = (
+            f"{config.version}, {', '.join(config.config_paths) if config.config_paths else 'None'}"
+        )
     else:
         config_version = f"no configuration found in {', '.join([DEFAULT_CONFIG_LOCATION])}"
     version_string += f"\n{'configuration version:'.ljust(padding)}{config_version}"

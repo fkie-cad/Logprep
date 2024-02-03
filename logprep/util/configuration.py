@@ -246,7 +246,7 @@ class Configuration:
     )
 
     @property
-    def paths(self) -> list[str]:
+    def config_paths(self) -> list[str]:
         """Paths of the configuration files."""
         # pylint: disable=protected-access
         targets = (
@@ -363,7 +363,7 @@ class Configuration:
         """Reload the configuration."""
         errors = []
         try:
-            new_config = Configuration.from_sources(self.paths)
+            new_config = Configuration.from_sources(self.config_paths)
             if new_config == self:
                 raise ConfigVersionDidNotChangeError()
             self._configs = new_config._configs  # pylint: disable=protected-access

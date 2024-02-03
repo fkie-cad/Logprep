@@ -156,3 +156,14 @@ class TestPipelineManager:
             with mock.patch.object(self.manager, "_queue_listener"):
                 self.manager.stop()
                 log_queue_mock.close.assert_called()
+
+    def test_set_count_increases_number_of_pipeline_starts_metric(self):
+        self.manager.metrics.number_of_pipeline_starts = 0
+        self.manager.set_count(2)
+        assert self.manager.metrics.number_of_pipeline_starts == 2
+
+    def test_set_count_increases_number_of_pipeline_stops_metric(self):
+        self.manager.metrics.number_of_pipeline_stops = 0
+        self.manager.set_count(2)
+        self.manager.set_count(0)
+        assert self.manager.metrics.number_of_pipeline_stops == 2
