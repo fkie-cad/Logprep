@@ -94,7 +94,7 @@ from copy import deepcopy
 from itertools import chain
 from logging import getLogger
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Iterable, List, Optional
 
 from attrs import asdict, define, field, validators
 from requests import RequestException
@@ -284,7 +284,7 @@ class Configuration:
         return config
 
     @classmethod
-    def from_sources(cls, config_paths: list[str]) -> "Configuration":
+    def from_sources(cls, config_paths: Iterable[str]) -> "Configuration":
         """Creates configuration from a list of configuration sources.
 
         Parameters
@@ -298,6 +298,8 @@ class Configuration:
             resulting configuration object.
 
         """
+        if not config_paths:
+            config_paths = [DEFAULT_CONFIG_LOCATION]
         errors = []
         configs = []
         for config_path in config_paths:

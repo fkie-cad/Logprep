@@ -15,6 +15,7 @@ from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 
@@ -62,7 +63,7 @@ def cli() -> None:
 
 
 @cli.command(short_help="Run logprep to process log messages", epilog=EPILOG_STR)
-@click.argument("configs", nargs=-1, required=True)
+@click.argument("configs", nargs=-1, required=False)
 @click.option(
     "--version",
     is_flag=True,
@@ -170,7 +171,7 @@ def test_rules(configs: tuple[str]) -> None:
 @test.command(
     short_help="Run the rule corpus tester against a given configuration", name="integration"
 )
-@click.argument("configs", nargs=-1)
+@click.argument("configs", nargs=-1, required=False)
 @click.argument("testdata")
 def test_ruleset(configs: tuple[str], testdata: str):
     """Test the given ruleset against specified test data
@@ -179,6 +180,7 @@ def test_ruleset(configs: tuple[str], testdata: str):
     CONFIG is a path to configuration file (filepath or URL).
     TESTDATA is a path to a set of test files.
     """
+    _ = _get_configuration(configs)
     tester = RuleCorpusTester(configs, testdata)
     tester.run()
 

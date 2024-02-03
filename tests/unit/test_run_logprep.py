@@ -15,6 +15,7 @@ from logprep import run_logprep
 from logprep._version import get_versions
 from logprep.run_logprep import cli
 from logprep.util.configuration import Configuration, InvalidConfigurationError
+from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
 
 
 class TestRunLogprepCli:
@@ -76,6 +77,21 @@ class TestRunLogprepCli:
             result = self.cli_runner.invoke(cli, command.split())
         mocked_target.assert_called()
         assert result.exit_code == 0, f"{result.exc_info}"
+
+    @pytest.mark.parametrize(
+        "command",
+        [
+            ("run",),
+            ("test", "config"),
+            ("test", "unit"),
+            ("test", "dry-run", "input_data"),
+            ("test", "integration", "testdata"),
+        ],
+    )
+    def test_cli_invokes_default_config_location(self, command):
+        result = self.cli_runner.invoke(cli, [*command])
+        assert result.exit_code != 0
+        assert "does not exist: /etc/logprep/pipeline.yml" in result.stdout
 
     @mock.patch("logprep.run_logprep.Runner")
     def test_cli_run_starts_runner_with_config(self, mock_runner):
@@ -196,10 +212,6 @@ class TestRunLogprepCli:
         assert f"configuration version:   1, http://localhost:32000/{config_path}" in result.output
         assert "username" not in result.output
         assert "password" not in result.output
-
-    def test_run_no_config_error_is_printed_if_no_config_was_arg_was_given(self):
-        result = self.cli_runner.invoke(cli, ["run"])
-        assert result.exit_code == 2
 
     def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self, capsys):
         non_existing_config_file = "/tmp/does/not/exist.yml"
