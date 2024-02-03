@@ -1,6 +1,7 @@
 """Content getters provide a shared interface to get content from targets.
 They are returned by the GetterFactory.
 """
+
 import os
 import re
 from collections import defaultdict

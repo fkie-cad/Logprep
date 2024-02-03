@@ -2,7 +2,6 @@
 # pylint: disable=protected-access
 # pylint: disable=attribute-defined-outside-init
 import logging
-import re
 import sys
 from pathlib import Path
 from unittest import mock
@@ -138,7 +137,7 @@ class TestRunLogprepCli:
         assert result.exit_code == 0
         assert f"python version:          {sys.version.split()[0]}" in result.output
         assert f"logprep version:         {get_versions()['version']}" in result.output
-        assert f"configuration version:   no configuration found" in result.output
+        assert "configuration version:   no configuration found" in result.output
 
     def test_run_version_arg_prints_logprep_version_with_config_version(self):
         args = ["run", "--version", "tests/testdata/config/config.yml"]
@@ -201,7 +200,6 @@ class TestRunLogprepCli:
     def test_run_no_config_error_is_printed_if_no_config_was_arg_was_given(self):
         result = self.cli_runner.invoke(cli, ["run"])
         assert result.exit_code == 2
-        assert "Usage: logprep run [OPTIONS] CONFIG\nTry 'logprep run --help' for help.\n\nError: Missing argument 'CONFIG'."
 
     def test_run_no_config_error_is_printed_if_given_config_file_does_not_exist(self, capsys):
         non_existing_config_file = "/tmp/does/not/exist.yml"
@@ -210,7 +208,6 @@ class TestRunLogprepCli:
         expected_lines = (
             f"One or more of the given config file(s) does not exist: "
             f"{non_existing_config_file}\n"
-            f"Create the configuration or change the path. Use '--help' for more information."
         )
         assert expected_lines in result.output
 

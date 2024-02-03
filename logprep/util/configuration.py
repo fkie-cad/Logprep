@@ -97,6 +97,7 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 from attrs import asdict, define, field, validators
+from requests import RequestException
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 from ruamel.yaml.scanner import ScannerError
@@ -108,7 +109,7 @@ from logprep.factory_error import FactoryError, InvalidConfigurationError
 from logprep.processor.base.exceptions import InvalidRuleDefinitionError
 from logprep.util import getter
 from logprep.util.defaults import DEFAULT_CONFIG_LOCATION
-from logprep.util.getter import GetterFactory
+from logprep.util.getter import GetterFactory, GetterNotFoundError
 from logprep.util.json_handling import list_json_files_in_directory
 
 
@@ -264,16 +265,18 @@ class Configuration:
             Configuration object attrs class.
 
         """
-        config_getter = GetterFactory.from_string(path)
         try:
+            config_getter = GetterFactory.from_string(path)
             try:
                 config_dict = config_getter.get_json()
             except (json.JSONDecodeError, ValueError):
                 config_dict = config_getter.get_yaml()
             config = Configuration(**config_dict, getter=config_getter)
         except TypeError as error:
-            raise InvalidConfigurationError(f"Invalid configuration file: {path} {error.args[0]}")
-        except (ScannerError, ValueError) as error:
+            raise InvalidConfigurationError(
+                f"Invalid configuration file: {path} {error.args[0]}"
+            ) from error
+        except ValueError as error:
             raise InvalidConfigurationError(
                 f"Invalid configuration file: {path} {str(error)}"
             ) from error
@@ -301,6 +304,16 @@ class Configuration:
             try:
                 config = Configuration.from_source(config_path)
                 configs.append(config)
+            except (GetterNotFoundError, RequestException) as error:
+                raise InvalidConfigurationError(f"{config_path} {error}") from error
+            except FileNotFoundError as error:
+                raise InvalidConfigurationError(
+                    f"One or more of the given config file(s) does not exist: {error.filename}\n",
+                ) from error
+            except ScannerError as error:
+                raise InvalidConfigurationError(
+                    f"Invalid yaml or json file: {config_path} {error.problem}\n"
+                ) from error
             except InvalidConfigurationError as error:
                 errors.append(error)
         configuration = Configuration()

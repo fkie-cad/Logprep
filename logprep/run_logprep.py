@@ -9,14 +9,12 @@ import warnings
 from pathlib import Path
 
 import click
-import requests
 from colorama import Fore
 
 from logprep.runner import Runner
 from logprep.util.auto_rule_tester.auto_rule_corpus_tester import RuleCorpusTester
 from logprep.util.auto_rule_tester.auto_rule_tester import AutoRuleTester
 from logprep.util.configuration import Configuration, InvalidConfigurationError
-from logprep.util.getter import GetterNotFoundError
 from logprep.util.helper import get_versions_string, print_fcolor
 from logprep.util.rule_dry_runner import DryRunner
 
@@ -31,7 +29,7 @@ logging.getLogger("elasticsearch").setLevel(logging.ERROR)
 EPILOG_STR = "Check out our docs at https://logprep.readthedocs.io/en/latest/"
 
 
-def print_version_and_exit(config: "Configuration") -> None:
+def _print_version(config: "Configuration") -> None:
     print(get_versions_string(config))
     sys.exit(0)
 
@@ -49,24 +47,9 @@ def _get_logger(logger_config: dict) -> logging.Logger:
 def _get_configuration(config_paths: list[str]) -> Configuration:
     try:
         return Configuration.from_sources(config_paths)
-    except FileNotFoundError as error:
-        print(
-            f"One or more of the given config file(s) does not exist: {error.filename}",
-            file=sys.stderr,
-        )
-        print(
-            "Create the configuration or change the path. Use '--help' for more information.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-    except GetterNotFoundError as error:
-        print(f"{error}", file=sys.stderr)
-    except requests.RequestException as error:
-        print(f"{error}", file=sys.stderr)
     except InvalidConfigurationError as error:
         print(f"InvalidConfigurationError: {error}", file=sys.stderr)
         sys.exit(1)
-    return None
 
 
 @click.group(name="logprep")
@@ -94,7 +77,7 @@ def run(configs: tuple[str], version=None) -> None:
     """
     configuration = _get_configuration(configs)
     if version:
-        print_version_and_exit(configuration)
+        _print_version(configuration)
     logger = _get_logger(configuration.logger)
     logger.info(f"Log level set to '{logging.getLevelName(logger.level)}'")
     for version in get_versions_string(configuration).split("\n"):

@@ -9,6 +9,8 @@ from unittest import mock
 
 import pytest
 from attrs import asdict
+from requests.exceptions import HTTPError
+from ruamel.yaml.scanner import ScannerError
 
 from logprep.util.configuration import (
     Configuration,
@@ -16,7 +18,7 @@ from logprep.util.configuration import (
     InvalidConfigurationErrors,
     Metrics,
 )
-from logprep.util.getter import FileGetter
+from logprep.util.getter import FileGetter, GetterNotFoundError
 from tests.testdata.metadata import (
     path_to_config,
     path_to_invalid_config,
@@ -900,3 +902,39 @@ output:
         config.config_refresh_interval = 99
         assert config.config_refresh_interval != config2.config_refresh_interval
         assert config == config2
+
+    @pytest.mark.parametrize(
+        "testcase, mocked, side_effect, expected_error_message",
+        [
+            (
+                "getter protocol does not exist",
+                "logprep.util.getter.GetterFactory.from_string",
+                GetterNotFoundError("No getter for protocol 'does_not_exist'"),
+                r"No getter for protocol 'does_not_exist'",
+            ),
+            (
+                "getter raises FileNotFoundError",
+                "logprep.util.getter.FileGetter.get",
+                FileNotFoundError,
+                r"One or more of the given config file\(s\) does not exist:",
+            ),
+            (
+                "document is not a valid json or yaml",
+                "logprep.util.getter.FileGetter.get_yaml",
+                ScannerError,
+                "Invalid yaml or json file:",
+            ),
+            (
+                "url returns 404",
+                "logprep.util.getter.GetterFactory.from_string",
+                HTTPError("404 Client Error: Not Found for url: http://does_not_exist"),
+                "404 Client Error: Not Found for url: http://does_not_exist",
+            ),
+        ],
+    )
+    def test_configuration_raises_invalidconfigurationerror(
+        self, testcase, mocked, side_effect, expected_error_message
+    ):
+        with mock.patch(mocked, side_effect=side_effect):
+            with pytest.raises(InvalidConfigurationError, match=expected_error_message):
+                Configuration.from_sources([path_to_config])
