@@ -223,12 +223,12 @@ pipeline:
         [
             (
                 "str as processor definition",
-                {"pipeline": [{"processor_name": "should be a dict"}]},
+                {"pipeline": [{"processor_name": "SHOULD BE A DICT"}]},
                 1,
             ),
             (
                 "unknown processor type",
-                {"pipeline": [{"processor_name": {"type": "unknown"}}]},
+                {"pipeline": [{"processor_name": {"type": "UNKNOWN"}}]},
                 1,
             ),
             (
@@ -300,13 +300,13 @@ pipeline:
                 },
                 3,
             ),
-            ("verifies input config", {"input": {"random_name": {"type": "unknown"}}}, 1),
-            ("verifies output config", {"output": {"kafka_output": {"type": "unknown"}}}, 1),
+            ("verifies input config", {"input": {"random_name": {"type": "UNKNOWN"}}}, 1),
+            ("verifies output config", {"output": {"kafka_output": {"type": "UNKNOWN"}}}, 1),
             (
                 "multiple outputs but one config failure",
                 {
                     "output": {
-                        "dummy": {"type": "wrong_type"},
+                        "dummy": {"type": "WRONG_TYPE"},
                         "kafka_output": {"type": "dummy_output"},
                     },
                 },
@@ -328,7 +328,7 @@ pipeline:
                     "pipeline": [
                         {
                             "some_processor_name": {
-                                "type": "does_not_exist",
+                                "type": "DOES_NOT_EXIST",
                             }
                         }
                     ]
@@ -362,7 +362,7 @@ pipeline:
                                 "include_parent_labels": "on",
                                 "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
                                 "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
-                                "some_unknown_option": "foo",
+                                "SOME_UNKNOWN_OPTION": "FOO",
                             }
                         }
                     ]
@@ -380,7 +380,7 @@ pipeline:
                                 "include_parent_labels": "on",
                                 "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
                                 "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
-                                "some unknown option": "foo",
+                                "SOME UNKNOWN OPTION": "FOO",
                             }
                         }
                     ]
@@ -393,10 +393,10 @@ pipeline:
                     "pipeline": [
                         {
                             "some_processor_name": {
-                                "type": "does_not_exist",
+                                "type": "DOES_NOT_EXIST",
                             }
                         },
-                        {"another_processor_name": {"type": "does_not_exist"}},
+                        {"another_processor_name": {"type": "DOES_NOT_EXIST"}},
                     ]
                 },
                 2,
@@ -413,13 +413,13 @@ pipeline:
                                 "include_parent_labels": "on",
                                 "specific_rules": ["quickstart/exampledata/rules/labeler/specific"],
                                 "generic_rules": ["quickstart/exampledata/rules/labeler/generic"],
-                                "some unknown option": "foo",
+                                "SOME UNKNOWN OPTION": "FOO",
                             }
                         },
                         {
                             "pseudo": {
                                 "type": "pseudonymizer",
-                                "outputs": [{"kafka": "topic"}],
+                                "outputs": [{"KAFKA": "topic"}],
                                 "pubkey_analyst": "tests/testdata/unit/pseudonymizer/example_analyst_pub.pem",
                                 "pubkey_depseudo": "tests/testdata/unit/pseudonymizer/example_depseudo_pub.pem",
                                 "hash_salt": "a_secret_tasty_ingredient",
@@ -616,7 +616,7 @@ pipeline:
             ),
             (
                 "unknown option",
-                {"enabled": True, "port": 8000, "unknown_option": "foo"},
+                {"enabled": True, "port": 8000, "UNKNOWN_OPTION": "FOO"},
                 TypeError,
             ),
         ],
